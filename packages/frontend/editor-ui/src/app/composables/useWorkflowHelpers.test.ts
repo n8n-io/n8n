@@ -45,7 +45,7 @@ describe('useWorkflowHelpers', () => {
 	let workflowState: WorkflowState;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -56,7 +56,7 @@ describe('useWorkflowHelpers', () => {
 
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
-		uiStore = useUIStore();
+		uiStore = mockedStore(useUIStore);
 	});
 
 	afterEach(() => {
@@ -458,15 +458,17 @@ describe('useWorkflowHelpers', () => {
 
 		it('should call getWorkflowDataToSave if state is dirty', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.markStateDirty();
+			const stateIsDirtySpy = vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
 			} as unknown as WorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			stateIsDirtySpy.mockRestore();
 		});
 
 		it('should return null if no conflicts with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
+			const uiStore = mockedStore(useUIStore);
 			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -664,7 +666,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -677,7 +678,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
@@ -691,7 +692,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -703,7 +703,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',

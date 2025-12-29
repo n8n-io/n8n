@@ -22,6 +22,7 @@ describe('useBeforeUnload', () => {
 					stateIsDirty: false,
 				},
 			},
+			stubActions: false,
 		});
 		setActivePinia(pinia);
 
