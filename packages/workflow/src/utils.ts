@@ -429,8 +429,7 @@ export function isDomainAllowed(
 	}
 }
 
-const COMMUNITY_PACKAGE_NAME_REGEX =
-	/^(?!@n8n\/)(?!@intento\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 export function isCommunityPackageName(packageName: string): boolean {
 	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;

@@ -365,165 +365,18 @@ importers:
         specifier: ^8.1.4
         version: 8.1.4
 
-  packages/@intento/ai:
+  packages/@intento/core:
     dependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../../@n8n/config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../../@n8n/di
-      '@n8n/errors':
-        specifier: workspace:^
-        version: link:../../@n8n/errors
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
     devDependencies:
-      '@n8n/eslint-plugin-community-nodes':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-plugin-community-nodes
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../@n8n/typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/jsonwebtoken':
-        specifier: 'catalog:'
-        version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
-      '@types/uuid':
-        specifier: 'catalog:'
-        version: 10.0.0
-      eslint:
-        specifier: 9.29.0
-        version: 9.29.0(jiti@2.6.1)
-
-  packages/@intento/post-editing:
-    dependencies:
       '@n8n/config':
         specifier: workspace:*
         version: link:../../@n8n/config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../../@n8n/di
-      '@n8n/errors':
-        specifier: workspace:^
-        version: link:../../@n8n/errors
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
-    devDependencies:
-      '@n8n/eslint-plugin-community-nodes':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-plugin-community-nodes
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/jsonwebtoken':
-        specifier: 'catalog:'
-        version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
-      '@types/uuid':
-        specifier: 'catalog:'
-        version: 10.0.0
-      eslint:
-        specifier: 9.29.0
-        version: 9.29.0(jiti@2.6.1)
-
-  packages/@intento/quality-assurance:
-    dependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../../@n8n/config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../../@n8n/di
-      '@n8n/errors':
-        specifier: workspace:^
-        version: link:../../@n8n/errors
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
-    devDependencies:
-      '@n8n/eslint-plugin-community-nodes':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-plugin-community-nodes
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../@n8n/typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/jsonwebtoken':
-        specifier: 'catalog:'
-        version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
-      '@types/uuid':
-        specifier: 'catalog:'
-        version: 10.0.0
-      eslint:
-        specifier: 9.29.0
-        version: 9.29.0(jiti@2.6.1)
-
-  packages/@intento/translation:
-    dependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../../@n8n/config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../../@n8n/di
-      '@n8n/errors':
-        specifier: workspace:^
-        version: link:../../@n8n/errors
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
-    devDependencies:
-      '@n8n/eslint-plugin-community-nodes':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-plugin-community-nodes
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../@n8n/typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/jsonwebtoken':
-        specifier: 'catalog:'
-        version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
-      '@types/uuid':
-        specifier: 'catalog:'
-        version: 10.0.0
-      eslint:
-        specifier: 9.29.0
-        version: 9.29.0(jiti@2.6.1)
 
   packages/@n8n/ai-workflow-builder.ee:
     dependencies:
@@ -1638,18 +1491,6 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
-      '@intento/ai':
-        specifier: workspace:*
-        version: link:../@intento/ai
-      '@intento/post-editing':
-        specifier: workspace:*
-        version: link:../@intento/post-editing
-      '@intento/quality-assurance':
-        specifier: workspace:*
-        version: link:../@intento/quality-assurance
-      '@intento/translation':
-        specifier: workspace:*
-        version: link:../@intento/translation
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
@@ -17745,8 +17586,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.1.8:
-    resolution: {integrity: sha512-oaowlmEM6BaYY+8o+9D9cuzxpWQWHqHTMKakMxXu0E+UCIOMTljyIPO15jcnaCwJtZu/zWDotK7mOIHvWD9mcw==}
+  vue-component-type-helpers@3.2.1:
+    resolution: {integrity: sha512-gKV7XOkQl4urSuLHNY1tnVQf7wVgtb/mKbRyxSLWGZUY9RK7aDPhBenTjm+i8ZFe0zC2PZeHMPtOZXZfyaFOzQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -24160,7 +24001,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.1.8
+      vue-component-type-helpers: 3.2.1
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -36143,7 +35984,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.1.8: {}
+  vue-component-type-helpers@3.2.1: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:

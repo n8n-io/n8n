@@ -30,14 +30,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		const { nodes, credentials } = n8n;
 
-		const packageVersion = ![
-			'n8n-nodes-base',
-			'@n8n/n8n-nodes-langchain',
-			'@intento/ai',
-			'@intento/translation',
-			'@intento/post-editing',
-			'@intento/quality-assurance',
-		].includes(name)
+		const packageVersion = !['n8n-nodes-base', '@n8n/n8n-nodes-langchain'].includes(name)
 			? version
 			: undefined;
 

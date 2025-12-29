@@ -1,0 +1,126 @@
+{"level":"debug","message":"User settings loaded from: /Users/antonlysak/.n8n/config","metadata":{"file":"instance-settings.js","function":"loadOrCreate","timestamp":"2025-12-29T04:01:32.684Z"}}
+{"level":"debug","message":"Received CLI command","metadata":{"args":[],"execPath":"/Users/antonlysak/.nvm/versions/node/v22.21.1/bin/node","file":"cli-parser.js","flags":{},"function":"parse","scriptPath":"/Users/antonlysak/Documents/code/n8n/packages/cli/bin/n8n","timestamp":"2025-12-29T04:01:32.709Z"}}
+{"level":"info","message":"Initializing n8n process","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.710Z"}}
+{"level":"debug","message":"Lazy-loading nodes and credentials from n8n-nodes-base","metadata":{"credentials":386,"file":"lazy-package-directory-loader.js","function":"loadAll","nodes":481,"timestamp":"2025-12-29T04:01:32.767Z"}}
+{"level":"debug","message":"Lazy-loading nodes and credentials from @n8n/n8n-nodes-langchain","metadata":{"credentials":26,"file":"lazy-package-directory-loader.js","function":"loadAll","nodes":111,"timestamp":"2025-12-29T04:01:32.772Z"}}
+{"level":"info","message":"n8n ready on ::, port 5678","metadata":{"file":"abstract-server.js","function":"init","timestamp":"2025-12-29T04:01:32.876Z"}}
+{"level":"debug","message":"Initializing AuthRolesService...","metadata":{"file":"auth.roles.service.js","function":"init","timestamp":"2025-12-29T04:01:32.881Z"}}
+{"level":"debug","message":"No scopes to update.","metadata":{"file":"auth.roles.service.js","function":"syncScopes","timestamp":"2025-12-29T04:01:32.884Z"}}
+{"level":"debug","message":"No obsolete scopes to delete.","metadata":{"file":"auth.roles.service.js","function":"syncScopes","timestamp":"2025-12-29T04:01:32.884Z"}}
+{"level":"debug","message":"No global roles to update.","metadata":{"file":"auth.roles.service.js","function":"syncRoles","timestamp":"2025-12-29T04:01:32.889Z"}}
+{"level":"debug","message":"No project roles to update.","metadata":{"file":"auth.roles.service.js","function":"syncRoles","timestamp":"2025-12-29T04:01:32.889Z"}}
+{"level":"debug","message":"No credential roles to update.","metadata":{"file":"auth.roles.service.js","function":"syncRoles","timestamp":"2025-12-29T04:01:32.889Z"}}
+{"level":"debug","message":"No workflow roles to update.","metadata":{"file":"auth.roles.service.js","function":"syncRoles","timestamp":"2025-12-29T04:01:32.889Z"}}
+{"level":"debug","message":"AuthRolesService initialized successfully.","metadata":{"file":"auth.roles.service.js","function":"init","timestamp":"2025-12-29T04:01:32.889Z"}}
+{"level":"info","message":"n8n Task Broker ready on 127.0.0.1, port 5679","metadata":{"file":"task-broker-server.js","function":"setupHttpServer","timestamp":"2025-12-29T04:01:32.912Z"}}
+{"level":"debug","message":"[license SDK] initializing for deviceFingerprint e013d01b84953fcbd88f5b885bc9a19035055320eaea7582d14245177f80b0ce","metadata":{"file":"LicenseManager.js","function":"log","scopes":["license"],"timestamp":"2025-12-29T04:01:32.965Z"}}
+{"level":"info","message":"[license SDK] Skipping renewal on init: license cert is not due for renewal","metadata":{"file":"LicenseManager.js","function":"log","scopes":["license"],"timestamp":"2025-12-29T04:01:32.973Z"}}
+{"level":"debug","message":"License initialized","metadata":{"file":"license.js","function":"init","scopes":["license"],"timestamp":"2025-12-29T04:01:32.973Z"}}
+{"level":"debug","message":"Skipping license activation","metadata":{"file":"base-command.js","function":"initLicense","timestamp":"2025-12-29T04:01:32.973Z"}}
+{"level":"debug","message":"Querying database for waiting executions","metadata":{"file":"wait-tracker.js","function":"getWaitingExecutions","scopes":["waiting-executions"],"timestamp":"2025-12-29T04:01:32.973Z"}}
+{"level":"debug","message":"Started tracking waiting executions","metadata":{"file":"wait-tracker.js","function":"startTracking","scopes":["waiting-executions"],"timestamp":"2025-12-29T04:01:32.974Z"}}
+{"level":"debug","message":"Wait tracker init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.974Z"}}
+{"level":"debug","message":"Loading overwrite credentials from static envvar","metadata":{"file":"credentials-overwrites.js","function":"init","timestamp":"2025-12-29T04:01:32.974Z"}}
+{"level":"debug","message":"Credentials overwrites init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.974Z"}}
+{"level":"debug","message":"Binary data service init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.975Z"}}
+{"level":"debug","message":"Data deduplication service init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.975Z"}}
+{"level":"debug","message":"External hooks init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.975Z"}}
+{"level":"debug","message":"Workflow history init complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.975Z"}}
+{"level":"debug","message":"Test runner cleanup complete","metadata":{"file":"start.js","function":"init","timestamp":"2025-12-29T04:01:32.977Z"}}
+{"level":"info","message":"Registered runner \"JS Task Runner\" (znWsv2Rd-OONsN2sC5tAw) ","metadata":{"file":"task-broker-ws-server.js","function":"onMessage","timestamp":"2025-12-29T04:01:33.470Z"}}
+{"level":"debug","message":"Started flushing timer","metadata":{"file":"insights-collection.service.js","function":"init","scopes":["insights"],"timestamp":"2025-12-29T04:01:33.513Z"}}
+{"level":"debug","message":"Started compaction timer","metadata":{"file":"insights-compaction.service.js","function":"startCompactionTimer","scopes":["insights"],"timestamp":"2025-12-29T04:01:33.513Z"}}
+{"level":"debug","message":"Started pruning timer","metadata":{"file":"insights-pruning.service.js","function":"startPruningTimer","scopes":["insights"],"timestamp":"2025-12-29T04:01:33.513Z"}}
+{"level":"debug","message":"Initialized module \"insights\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.513Z"}}
+{"level":"debug","message":"Skipped init for unlicensed module \"external-secrets\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.513Z"}}
+{"level":"debug","message":"Initialized module \"community-packages\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.515Z"}}
+{"level":"debug","message":"Initialized module \"data-table\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.534Z"}}
+{"level":"debug","message":"Initialized module \"mcp\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.591Z"}}
+{"level":"debug","message":"Skipped init for unlicensed module \"provisioning\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.591Z"}}
+{"level":"debug","message":"Initialized module \"breaking-changes\"","metadata":{"file":"module-registry.js","function":"initModules","timestamp":"2025-12-29T04:01:33.595Z"}}
+{"level":"debug","message":"Registering 0 execution context hooks.","metadata":{"file":"execution-context-hook-registry.service.js","function":"init","timestamp":"2025-12-29T04:01:33.595Z"}}
+{"level":"debug","message":"OIDC login is disabled.","metadata":{"file":"oidc.service.ee.js","function":"init","timestamp":"2025-12-29T04:01:33.925Z"}}
+{"level":"debug","message":"Registered a \"reload-license\" event handler on License#reload","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"relay-execution-lifecycle-event\" event handler on Push#handleRelayExecutionLifecycleEvent","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"reload-overwrite-credentials\" event handler on CredentialsOverwrites#reloadOverwriteCredentials","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"clear-test-webhooks\" event handler on TestWebhooks#handleClearTestWebhooks","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"display-workflow-activation\" event handler on ActiveWorkflowManager#handleDisplayWorkflowActivation","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"display-workflow-deactivation\" event handler on ActiveWorkflowManager#handleDisplayWorkflowDeactivation","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.933Z"}}
+{"level":"debug","message":"Registered a \"display-workflow-activation-error\" event handler on ActiveWorkflowManager#handleDisplayWorkflowActivationError","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"add-webhooks-triggers-and-pollers\" event handler on ActiveWorkflowManager#handleAddWebhooksTriggersAndPollers","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"remove-triggers-and-pollers\" event handler on ActiveWorkflowManager#handleRemoveTriggersAndPollers","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"restart-event-bus\" event handler on MessageEventBus#restart","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"response-to-get-worker-status\" event handler on WorkerStatusService#handleWorkerStatusResponse","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"community-package-update\" event handler on CommunityPackagesService#handleInstallEvent","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"community-package-install\" event handler on CommunityPackagesService#handleInstallEvent","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"community-package-uninstall\" event handler on CommunityPackagesService#handleUninstallEvent","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"reload-sso-provisioning-configuration\" event handler on ProvisioningService#handleReloadSsoProvisioningConfiguration","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"reload-saml-config\" event handler on SamlService#reload","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered a \"reload-oidc-config\" event handler on OidcService#reload","metadata":{"file":"pubsub.registry.js","function":"init","scopes":["pubsub"],"timestamp":"2025-12-29T04:01:33.934Z"}}
+{"level":"debug","message":"Registered rule: removed-nodes-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: process-env-access-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: pyodide-removed-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: file-access-restriction-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: disabled-nodes-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: wait-node-subworkflow-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: git-node-bare-repos-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: dotenv-upgrade-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: oauth-callback-auth-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: cli-activate-all-workflows-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: queue-worker-max-stalled-count-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: tunnel-option-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: removed-database-types-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: settings-file-permissions-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: task-runners-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: task-runner-docker-image-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: sqlite-legacy-driver-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.939Z"}}
+{"level":"debug","message":"Registered rule: binary-data-storage-v2","metadata":{"file":"breaking-changes.rule-registry.service.js","function":"register","scopes":["breaking-changes"],"timestamp":"2025-12-29T04:01:33.940Z"}}
+{"level":"debug","message":"Initializing event bus...","metadata":{"file":"message-event-bus.js","function":"initialize","timestamp":"2025-12-29T04:01:33.941Z"}}
+{"level":"debug","message":"Initializing event writer","metadata":{"file":"message-event-bus.js","function":"initialize","timestamp":"2025-12-29T04:01:33.942Z"}}
+{"level":"debug","message":"Checking for unsent event messages","metadata":{"file":"message-event-bus.js","function":"initialize","timestamp":"2025-12-29T04:01:33.943Z"}}
+{"level":"debug","message":"Start logging into /Users/antonlysak/.n8n/n8nEventLog.log ","metadata":{"file":"message-event-bus.js","function":"initialize","timestamp":"2025-12-29T04:01:33.956Z"}}
+{"level":"debug","message":"MessageEventBus initialized","metadata":{"file":"message-event-bus.js","function":"initialize","timestamp":"2025-12-29T04:01:33.957Z"}}
+{"level":"info","message":"Version: 1.121.0","metadata":{"file":"abstract-server.js","function":"start","timestamp":"2025-12-29T04:01:33.957Z"}}
+{"level":"debug","message":"Server ID: main-N277rj33iXFiYIhK","metadata":{"file":"server.js","function":"start","timestamp":"2025-12-29T04:01:33.957Z"}}
+{"level":"debug","message":"Soft-deletion every 60 minutes","metadata":{"file":"executions-pruning.service.js","function":"scheduleRollingSoftDeletions","scopes":["pruning"],"timestamp":"2025-12-29T04:01:33.958Z"}}
+{"level":"debug","message":"Hard-deletion in next 15 minutes","metadata":{"file":"executions-pruning.service.js","function":"scheduleNextHardDeletion","scopes":["pruning"],"timestamp":"2025-12-29T04:01:33.958Z"}}
+{"level":"debug","message":"Started pruning timers","metadata":{"file":"executions-pruning.service.js","function":"startPruning","scopes":["pruning"],"timestamp":"2025-12-29T04:01:33.958Z"}}
+{"level":"info","message":"\nEditor is now accessible via:\nhttp://localhost:5678","metadata":{"file":"base-command.js","function":"log","timestamp":"2025-12-29T04:01:33.972Z"}}
+{"level":"info","message":"\nPress \"o\" to open in Browser.","metadata":{"file":"base-command.js","function":"log","timestamp":"2025-12-29T04:01:33.973Z"}}
+{"level":"debug","message":"Skipped browserId check on /types/nodes.json","metadata":{"file":"auth.service.js","function":"resolveJwt","timestamp":"2025-12-29T04:01:36.082Z"}}
+{"level":"debug","message":"Skipped browserId check on /types/credentials.json","metadata":{"file":"auth.service.js","function":"resolveJwt","timestamp":"2025-12-29T04:01:36.386Z"}}
+{"level":"debug","message":"Skipped browserId check on /rest/push","metadata":{"file":"auth.service.js","function":"resolveJwt","timestamp":"2025-12-29T04:01:38.824Z"}}
+{"level":"debug","message":"Add editor-UI session","metadata":{"file":"abstract.push.js","function":"add","pushRef":"fdhiucguxg","timestamp":"2025-12-29T04:01:38.824Z"}}
+{"level":"debug","message":"Skipped browserId check on /types/credentials.json","metadata":{"file":"auth.service.js","function":"resolveJwt","timestamp":"2025-12-29T04:01:38.834Z"}}
+{"level":"debug","message":"Removed editor-UI session","metadata":{"file":"abstract.push.js","function":"remove","pushRef":"fdhiucguxg","timestamp":"2025-12-29T04:01:50.688Z"}}
+{"level":"debug","message":"Querying database for waiting executions","metadata":{"file":"wait-tracker.js","function":"getWaitingExecutions","scopes":["waiting-executions"],"timestamp":"2025-12-29T04:02:32.980Z"}}
+{"level":"debug","message":"Querying database for waiting executions","metadata":{"file":"wait-tracker.js","function":"getWaitingExecutions","scopes":["waiting-executions"],"timestamp":"2025-12-29T04:03:32.981Z"}}
+{"level":"info","message":"Received SIGINT. Shutting down...","metadata":{"file":"base-command.js","timestamp":"2025-12-29T04:03:36.116Z"}}
+{"level":"debug","message":"Shutting down component \"License.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.116Z"}}
+{"level":"debug","message":"Shutting down component \"Push.onShutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Shutting down component \"ActiveWorkflowManager.removeAllTriggerAndPollerBasedWorkflows()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Shutting down component \"AbstractServer.onShutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Shutting down component \"ChatService.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Shutting down component \"ChatServer.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Shutting down component \"ExecutionsPruningService.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.117Z"}}
+{"level":"debug","message":"Stopped pruning timers","metadata":{"file":"executions-pruning.service.js","function":"stopPruning","scopes":["pruning"],"timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"InsightsModule.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"ExternalSecretsModule.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"DataTableModule.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"McpModule.shutdown()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"TaskRunnerModule.stop()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.118Z"}}
+{"level":"debug","message":"Shutting down component \"TaskRunnerProcessBase.stop()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.119Z"}}
+{"level":"debug","message":"License shut down","metadata":{"file":"license.js","function":"shutdown","scopes":["license"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"External secrets manager shut down","metadata":{"file":"external-secrets-manager.ee.js","function":"shutdown","scopes":["external-secrets"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"Stopped flushing timer","metadata":{"file":"insights-collection.service.js","function":"stopFlushingTimer","scopes":["insights"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"Flushing remaining insights before shutdown","metadata":{"file":"insights-collection.service.js","function":"shutdown","scopes":["insights"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"Stopped compaction timer","metadata":{"file":"insights-compaction.service.js","function":"stopCompactionTimer","scopes":["insights"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"Stopped pruning timer","metadata":{"file":"insights-pruning.service.js","function":"stopPruningTimer","scopes":["insights"],"timestamp":"2025-12-29T04:03:36.161Z"}}
+{"level":"debug","message":"Deregistered runner \"znWsv2Rd-OONsN2sC5tAw\"","metadata":{"file":"task-broker-ws-server.js","function":"removeConnection","timestamp":"2025-12-29T04:03:36.162Z"}}
+{"level":"info","message":"[runnner:js] Received SIGTERM signal, shutting down...","metadata":{"file":"forward-to-logger.js","timestamp":"2025-12-29T04:03:36.162Z"}}
+{"level":"info","message":"[runnner:js] Task runner stopped","metadata":{"file":"forward-to-logger.js","timestamp":"2025-12-29T04:03:36.163Z"}}
+{"level":"debug","message":"Shutting down component \"Telemetry.stopTracking()\"","metadata":{"file":"shutdown.service.js","function":"shutdownComponent","timestamp":"2025-12-29T04:03:36.166Z"}}
+{"level":"info","message":"\nStopping n8n...","metadata":{"file":"start.js","function":"stopProcess","timestamp":"2025-12-29T04:03:36.167Z"}}
+{"level":"debug","message":"Stopped tracking waiting executions","metadata":{"file":"wait-tracker.js","function":"stopTracking","scopes":["waiting-executions"],"timestamp":"2025-12-29T04:03:36.167Z"}}
+{"level":"debug","message":"Shutting down event writer...","metadata":{"file":"message-event-bus.js","function":"close","timestamp":"2025-12-29T04:03:36.168Z"}}
+{"level":"debug","message":"EventBus shut down.","metadata":{"file":"message-event-bus.js","function":"close","timestamp":"2025-12-29T04:03:36.169Z"}}
