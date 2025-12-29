@@ -18,17 +18,17 @@ const WORKFLOW_ID_COLUMN_NAME = 'workflowId';
  * Note: SQLite does not enforce VARCHAR length limits, so no migration is needed for SQLite.
  */
 export class ExpandInsightsWorkflowIdLength1766500000000 implements IrreversibleMigration {
-	async up({ isMysql, isPostgres, escape, queryRunner }: MigrationContext) {
-		const tableName = escape.tableName(INSIGHTS_METADATA_TABLE_NAME);
-		const columnName = escape.columnName(WORKFLOW_ID_COLUMN_NAME);
+	async up({ isPostgres, escape, queryRunner }: MigrationContext) {
+		// Only PostgreSQL needs this migration:
+		// - SQLite does not enforce VARCHAR length constraints
+		// - MySQL is no longer supported in n8n 2.0+
+		if (isPostgres) {
+			const tableName = escape.tableName(INSIGHTS_METADATA_TABLE_NAME);
+			const columnName = escape.columnName(WORKFLOW_ID_COLUMN_NAME);
 
-		if (isMysql) {
-			await queryRunner.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} VARCHAR(36);`);
-		} else if (isPostgres) {
 			await queryRunner.query(
 				`ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE VARCHAR(36);`,
 			);
 		}
-		// SQLite: No action needed - SQLite ignores VARCHAR length constraints
 	}
 }
