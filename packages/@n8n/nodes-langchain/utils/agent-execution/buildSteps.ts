@@ -250,13 +250,24 @@ export function buildSteps(
 				observation = JSON.stringify('');
 			}
 
+			// Build toolInput for the result:
+			// - If toolInputForResult is an object, use it directly (e.g., { expression: '2+2' })
+			// - If toolInputForResult is a primitive (string, number), wrap it as { input: value }
+			// - Otherwise, return empty object
+			let resultToolInput: IDataObject;
+			if (toolInputForResult && typeof toolInputForResult === 'object') {
+				resultToolInput = toolInputForResult as IDataObject;
+			} else if (toolInputForResult !== undefined && toolInputForResult !== null) {
+				// Handle primitive values like strings or numbers
+				resultToolInput = { input: toolInputForResult };
+			} else {
+				resultToolInput = {};
+			}
+
 			const toolResult = {
 				action: {
 					tool: nodeNameToToolName(tool.action.nodeName),
-					toolInput:
-						toolInputForResult && typeof toolInputForResult === 'object'
-							? (toolInputForResult as IDataObject)
-							: {},
+					toolInput: resultToolInput,
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
 					toolCallId: toolInput?.id,
