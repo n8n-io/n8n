@@ -135,7 +135,7 @@ describe('AddNodeTool', () => {
 					name: 'AI Assistant',
 					connectionParametersReasoning:
 						REASONING.DYNAMIC_AI_NODE + ', setting hasOutputParser:true',
-					connectionParameters: { hasOutputParser: true },
+					connectionParameters: [{ path: 'hasOutputParser', type: 'boolean', value: 'true' }],
 				}),
 				mockConfig,
 			);
@@ -147,6 +147,93 @@ describe('AddNodeTool', () => {
 				type: '@n8n/n8n-nodes-langchain.agent',
 				parameters: { hasOutputParser: true },
 			});
+		});
+
+		it('should handle multiple connection parameters', async () => {
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-2b');
+
+			const result = await addNodeTool.invoke(
+				buildAddNodeInput({
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					name: 'Configured Agent',
+					connectionParametersReasoning: 'AI agent with multiple configuration options',
+					connectionParameters: [
+						{ path: 'hasOutputParser', type: 'boolean', value: 'true' },
+						{ path: 'maxIterations', type: 'number', value: '10' },
+						{ path: 'agentType', type: 'string', value: 'conversational' },
+					],
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectNodeAdded(content, {
+				name: 'Configured Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				parameters: {
+					hasOutputParser: true,
+					maxIterations: 10,
+					agentType: 'conversational',
+				},
+			});
+		});
+
+		it('should handle nested connection parameters', async () => {
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-2c');
+
+			const result = await addNodeTool.invoke(
+				buildAddNodeInput({
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					name: 'Nested Config Agent',
+					connectionParametersReasoning: 'AI agent with nested options',
+					connectionParameters: [
+						{ path: 'options.memory.enabled', type: 'boolean', value: 'true' },
+						{ path: 'options.memory.maxSize', type: 'number', value: '1000' },
+					],
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectNodeAdded(content, {
+				name: 'Nested Config Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				parameters: {
+					options: {
+						memory: {
+							enabled: true,
+							maxSize: 1000,
+						},
+					},
+				},
+			});
+		});
+
+		it('should handle parse error in connection parameters gracefully', async () => {
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-2d');
+
+			const result = await addNodeTool.invoke(
+				buildAddNodeInput({
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					name: 'Invalid Agent',
+					connectionParametersReasoning: 'Testing invalid number value',
+					connectionParameters: [{ path: 'maxIterations', type: 'number', value: 'not-a-number' }],
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			// Should return an error response, not throw
+			expectToolError(content, /Invalid number value/);
 		});
 
 		it('should handle validation errors', async () => {
