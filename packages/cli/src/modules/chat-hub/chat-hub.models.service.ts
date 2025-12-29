@@ -8,7 +8,7 @@ import {
 	type ChatModelsResponse,
 } from '@n8n/api-types';
 import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
@@ -26,7 +26,6 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { Scope } from '@n8n/permissions';
-import { Logger } from '@n8n/backend-common';
 
 @Service()
 export class ChatHubModelsService {

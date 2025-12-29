@@ -23,8 +23,8 @@ export async function getModels(this: ILoadOptionsFunctions): Promise<INodePrope
 
 	// Sort models by name
 	options.sort((a, b) => {
-		const nameA = (a.name as string).toLowerCase();
-		const nameB = (b.name as string).toLowerCase();
+		const nameA = String(a.name).toLowerCase();
+		const nameB = String(b.name).toLowerCase();
 		return nameA.localeCompare(nameB);
 	});
 
