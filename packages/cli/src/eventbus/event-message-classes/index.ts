@@ -85,6 +85,9 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.unarchived',
 	'n8n.audit.workflow.activated',
 	'n8n.audit.workflow.deactivated',
+	'n8n.audit.variable.created',
+	'n8n.audit.variable.updated',
+	'n8n.audit.variable.deleted',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

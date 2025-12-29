@@ -260,7 +260,8 @@ test.describe('Projects', () => {
 
 			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
-			expect(n8n.page.url()).toContain('/workflow/new');
+			// New workflows redirect to /workflow/<id>?new=true
+			expect(n8n.page.url()).toMatch(/\/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});
@@ -350,7 +351,7 @@ test.describe('Projects', () => {
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
 			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await expect(n8n.page.getByRole('option')).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption('Project 2');
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 
@@ -367,7 +368,7 @@ test.describe('Projects', () => {
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
 			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await expect(n8n.page.getByRole('option')).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_ADMIN_CREDENTIALS.email);
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 
@@ -384,7 +385,7 @@ test.describe('Projects', () => {
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
 			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(5);
+			await expect(n8n.page.getByRole('option')).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_OWNER_CREDENTIALS.email);
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 

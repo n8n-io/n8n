@@ -11,6 +11,8 @@ import {
 	type MailpitMessage,
 	type MailpitMessageSummary,
 } from './n8n-test-container-mailpit';
+import type { ObservabilityStack } from './n8n-test-container-observability';
+import { VictoriaLogsHelper, escapeLogsQL } from './n8n-test-container-victoria-helpers';
 
 export interface LogMatch {
 	container: StartedTestContainer;
@@ -31,6 +33,11 @@ interface StreamLogMatch {
 	date: Date | null;
 }
 
+interface ContainerTestHelpersOptions {
+	/** Observability stack for enhanced log queries */
+	observability?: ObservabilityStack;
+}
+
 /**
  * Container helpers bound to a specific set of containers
  */
@@ -44,8 +51,16 @@ export class ContainerTestHelpers {
 
 	private _mailHelper?: MailHelper;
 
-	constructor(containers: StartedTestContainer[]) {
+	private observability?: ObservabilityStack;
+
+	private victoriaLogs?: VictoriaLogsHelper;
+
+	constructor(containers: StartedTestContainer[], options?: ContainerTestHelpersOptions) {
 		this.containers = containers;
+		this.observability = options?.observability;
+		if (this.observability) {
+			this.victoriaLogs = VictoriaLogsHelper.from(this.observability.victoriaLogs);
+		}
 	}
 
 	/**
@@ -71,7 +86,7 @@ export class ContainerTestHelpers {
 
 	/**
 	 * Wait for a log message matching pattern (case-insensitive by default)
-	 * Uses streaming approach for immediate detection
+	 * Uses VictoriaLogs when observability is enabled, otherwise uses container log streaming
 	 *
 	 * @returns LogMatch if found, null if timeout reached and throwOnTimeout is false
 	 * @throws Error if timeout reached and throwOnTimeout is true (default)
@@ -87,6 +102,18 @@ export class ContainerTestHelpers {
 			throwOnTimeout = true,
 		} = options;
 
+		// Use VictoriaLogs when available for faster and more reliable log queries
+		if (this.victoriaLogs) {
+			return await this.waitForLogViaVictoriaLogs(
+				messagePattern,
+				namePattern,
+				timeoutMs,
+				throwOnTimeout,
+				caseSensitive,
+			);
+		}
+
+		// Fallback to container log streaming
 		const messageRegex = this.createRegex(messagePattern, caseSensitive);
 		const targetContainers = namePattern ? this.findContainers(namePattern) : this.containers;
 		const startTime = Date.now();
@@ -110,6 +137,61 @@ export class ContainerTestHelpers {
 			timeoutMs,
 			throwOnTimeout,
 		);
+	}
+
+	/**
+	 * Wait for log via VictoriaLogs (faster and more reliable than container streaming)
+	 */
+	private async waitForLogViaVictoriaLogs(
+		messagePattern: string | RegExp,
+		namePattern: string | RegExp | undefined,
+		timeoutMs: number,
+		throwOnTimeout: boolean,
+		caseSensitive: boolean,
+	): Promise<LogMatch | null> {
+		const patternStr = typeof messagePattern === 'string' ? messagePattern : messagePattern.source;
+		// LogsQL regex is case-sensitive by default; use (?i) prefix for case-insensitive
+		const regexPrefix = caseSensitive ? '' : '(?i)';
+
+		// Build LogsQL query - search for the pattern in the message field
+		// If namePattern is provided, also filter by container name
+		// Escape special characters to prevent query injection
+		let query = `_msg:~"${regexPrefix}${escapeLogsQL(patternStr)}"`;
+		if (namePattern) {
+			const containerPattern = typeof namePattern === 'string' ? namePattern : namePattern.source;
+			query = `container:~"${regexPrefix}${escapeLogsQL(containerPattern)}" AND ${query}`;
+		}
+
+		console.log(
+			`🔍 [VictoriaLogs] Waiting for log pattern: ${patternStr} (timeout: ${timeoutMs}ms)`,
+		);
+
+		const logEntry = await this.victoriaLogs!.waitForLog(query, {
+			timeoutMs,
+		});
+
+		if (logEntry) {
+			// Find the matching container for the LogMatch response
+			const containerName = logEntry.container ?? 'unknown';
+			const matchingContainer = this.containers.find((c) => c.getName().includes(containerName));
+
+			console.log(`✅ [VictoriaLogs] Found log in container: ${containerName}`);
+
+			return {
+				container: matchingContainer ?? this.containers[0],
+				containerName,
+				message: logEntry.message,
+				timestamp: new Date(logEntry._time),
+			};
+		}
+
+		console.log(`❌ [VictoriaLogs] Timeout reached after ${timeoutMs}ms`);
+
+		if (throwOnTimeout) {
+			throw new Error(`Timeout waiting for log pattern: ${patternStr} after ${timeoutMs}ms`);
+		}
+
+		return null;
 	}
 
 	/**
