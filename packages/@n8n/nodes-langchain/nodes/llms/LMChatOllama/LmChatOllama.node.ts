@@ -13,8 +13,15 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getModels } from '../LMOllama/methods/loadOptions';
 
 export class LmChatOllama implements INodeType {
+	methods = {
+		loadOptions: {
+			getModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Chat Model',
 
