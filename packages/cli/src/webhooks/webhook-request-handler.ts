@@ -152,6 +152,17 @@ class WebhookRequestHandler {
 		if (needsSandbox && !isWebhookHtmlSandboxingDisabled()) {
 			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 		}
+
+		const origin = res.req?.headers?.origin;
+
+		if (!origin || origin === 'null') {
+			res.setHeader('Access-Control-Allow-Origin', '*');
+		} else {
+			res.setHeader('Access-Control-Allow-Origin', origin);
+		}
+
+		res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+		res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 	}
 
 	/**

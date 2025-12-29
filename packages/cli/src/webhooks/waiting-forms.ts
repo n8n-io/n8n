@@ -75,6 +75,19 @@ export class WaitingForms extends WaitingWebhooks {
 	): Promise<IWebhookResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
 
+		function applyCors(req: express.Request, res: express.Response) {
+			const origin = req.headers.origin;
+
+			if (!origin || origin === 'null') {
+				res.setHeader('Access-Control-Allow-Origin', '*');
+			} else {
+				res.setHeader('Access-Control-Allow-Origin', origin);
+			}
+
+			res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+			res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+		}
+
 		this.logReceivedWebhook(req.method, executionId);
 
 		sanitizeWebhookRequest(req);
@@ -97,9 +110,7 @@ export class WaitingForms extends WaitingWebhooks {
 				}
 			}
 
-			if (req.headers.origin) {
-				res.header('Access-Control-Allow-Origin', req.headers.origin);
-			}
+			applyCors(req, res);
 
 			res.send(status);
 			return { noWebhookResponse: true };
@@ -147,6 +158,8 @@ export class WaitingForms extends WaitingWebhooks {
 				lastNodeExecuted = completionPage;
 			}
 		}
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,
