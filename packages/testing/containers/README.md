@@ -51,7 +51,7 @@ test.use({
 // Multiple services
 test.use({
   capability: {
-    services: ['mailpit', 'keycloak', 'observability'],
+    services: ['mailpit', 'keycloak', 'victoriaLogs', 'victoriaMetrics', 'vector'],
   },
 });
 
@@ -60,7 +60,7 @@ test.use({
   capability: {
     mains: 2,
     workers: 1,
-    services: ['observability'],
+    services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
   },
 });
 ```
@@ -328,11 +328,16 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `mailpit` | ✓ | Email testing (SMTP + UI) |
 | `gitea` | ✓ | Git server for source control |
 | `keycloak` | ✓ | OIDC/SSO provider |
-| `observability` | ✓ | VictoriaMetrics + VictoriaLogs |
+| `victoriaLogs` | - | VictoriaLogs for log storage |
+| `victoriaMetrics` | - | VictoriaMetrics for metrics |
+| `vector` | - | Vector log collector (depends on victoriaLogs) |
 | `tracing` | ✓ | Jaeger for distributed tracing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
-| `loadBalancer` | - | Traefik for multi-main |
+| `loadBalancer` | - | Caddy for multi-main |
+
+**Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
+The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
 
 ## CLI Options
 

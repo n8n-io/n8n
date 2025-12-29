@@ -45,8 +45,7 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 }
 
 export const loadBalancer: Service<LoadBalancerResult> = {
-	description: 'Caddy load balancer for multi-main',
-	phase: 'before-n8n',
+	description: 'Caddy load balancer',
 	shouldStart: (ctx) => ctx.needsLoadBalancer,
 
 	getOptions(ctx) {

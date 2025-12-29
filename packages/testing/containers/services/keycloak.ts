@@ -6,7 +6,7 @@ import { Agent } from 'undici';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { ContentInjection, HelperContext, Service, ServiceResult } from './types';
+import type { FileToMount, HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'keycloak';
 const HTTPS_PORT = 8443;
@@ -41,7 +41,7 @@ export interface KeycloakMeta {
 		firstName: string;
 		lastName: string;
 	};
-	n8nContentInjection: ContentInjection[];
+	n8nFilesToMount: FileToMount[];
 }
 
 export type KeycloakResult = ServiceResult<KeycloakMeta>;
@@ -164,25 +164,29 @@ async function waitForKeycloakReady(
 		connect: { ca: certPem },
 	});
 
-	while (Date.now() - startTime < timeoutMs) {
-		try {
-			const response = await fetch(url, {
-				// @ts-expect-error - dispatcher is an undici-specific option
-				dispatcher: agent,
-			});
-			if (response.ok) {
-				return;
+	try {
+		while (Date.now() - startTime < timeoutMs) {
+			try {
+				const response = await fetch(url, {
+					// @ts-expect-error - dispatcher is an undici-specific option
+					dispatcher: agent,
+				});
+				if (response.ok) {
+					return;
+				}
+			} catch {
+				// Retry on connection errors
 			}
-		} catch {
-			// Retry on connection errors
+
+			await wait(retryIntervalMs);
 		}
 
-		await wait(retryIntervalMs);
+		throw new Error(
+			`Keycloak discovery endpoint at ${url} did not become ready within ${timeoutMs / 1000} seconds`,
+		);
+	} finally {
+		await agent.close();
 	}
-
-	throw new Error(
-		`Keycloak discovery endpoint at ${url} did not become ready within ${timeoutMs / 1000} seconds`,
-	);
 }
 
 export const keycloak: Service<KeycloakResult> = {
@@ -200,6 +204,8 @@ export const keycloak: Service<KeycloakResult> = {
 
 		for (const container of n8nContainers) {
 			const startTime = Date.now();
+			let verified = false;
+
 			while (Date.now() - startTime < timeoutMs) {
 				try {
 					const execResult = await container.exec([
@@ -210,11 +216,20 @@ export const keycloak: Service<KeycloakResult> = {
 						'-',
 						result.meta.internalDiscoveryUrl,
 					]);
-					if (execResult.exitCode === 0) break;
+					if (execResult.exitCode === 0) {
+						verified = true;
+						break;
+					}
 				} catch {
 					// Retry
 				}
 				await wait(retryIntervalMs);
+			}
+
+			if (!verified) {
+				throw new Error(
+					`Keycloak verification failed: ${container.getName()} could not reach ${result.meta.internalDiscoveryUrl} within ${timeoutMs}ms`,
+				);
 			}
 		}
 	},
@@ -283,7 +298,7 @@ export const keycloak: Service<KeycloakResult> = {
 						firstName: KEYCLOAK_TEST_USER_FIRSTNAME,
 						lastName: KEYCLOAK_TEST_USER_LASTNAME,
 					},
-					n8nContentInjection: [{ content: certPem, target: N8N_KEYCLOAK_CERT_PATH }],
+					n8nFilesToMount: [{ content: certPem, target: N8N_KEYCLOAK_CERT_PATH }],
 				},
 			};
 		} catch (error) {

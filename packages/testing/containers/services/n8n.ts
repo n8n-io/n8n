@@ -6,7 +6,7 @@ import { DockerImageNotFoundError } from '../docker-image-not-found-error';
 import { createElapsedLogger, createSilentLogConsumer } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { ContentInjection } from './types';
+import type { FileToMount } from './types';
 
 const N8N_IMAGE = getDockerImageFromEnv(TEST_CONTAINER_IMAGES.n8n);
 
@@ -50,7 +50,7 @@ export interface N8NInstancesOptions {
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
-	contentToInject?: ContentInjection[];
+	filesToMount?: FileToMount[];
 }
 
 export interface N8NInstancesResult {
@@ -113,7 +113,7 @@ interface SharedConfig {
 	environment: Record<string, string>;
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
-	contentToInject?: ContentInjection[];
+	filesToMount?: FileToMount[];
 }
 
 async function createContainer(
@@ -121,7 +121,7 @@ async function createContainer(
 	shared: SharedConfig,
 ): Promise<StartedTestContainer> {
 	const { name, isWorker, instanceNumber, networkAlias, hostPort } = instance;
-	const { projectName, environment, network, resourceQuota, contentToInject } = shared;
+	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE)
@@ -137,8 +137,8 @@ async function createContainer(
 		.withReuse()
 		.withNetwork(network);
 
-	if (contentToInject?.length) {
-		container = container.withCopyContentToContainer(contentToInject);
+	if (filesToMount?.length) {
+		container = container.withCopyContentToContainer(filesToMount);
 	}
 
 	if (resourceQuota) {
@@ -175,7 +175,7 @@ async function createContainer(
 export async function createN8NInstances(
 	options: N8NInstancesOptions,
 ): Promise<N8NInstancesResult> {
-	const { mains, workers, projectName, network, allocatedPort, resourceQuota, contentToInject } =
+	const { mains, workers, projectName, network, allocatedPort, resourceQuota, filesToMount } =
 		options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -187,7 +187,7 @@ export async function createN8NInstances(
 		environment,
 		network,
 		resourceQuota,
-		contentToInject,
+		filesToMount,
 	};
 
 	const instances: InstanceConfig[] = [
@@ -209,11 +209,25 @@ export async function createN8NInstances(
 		})),
 	];
 
-	for (const instance of instances) {
-		const type = instance.isWorker ? 'worker' : 'main';
-		log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-		containers.push(await createContainer(instance, shared));
-		log(`${type} ${instance.instanceNumber} ready`);
+	// Start main 1 first (handles DB migrations/setup)
+	const [main1, ...remaining] = instances;
+	log(`Starting main 1: ${main1.name} (DB setup)`);
+	containers.push(await createContainer(main1, shared));
+	log('main 1 ready');
+
+	// Start remaining instances in parallel
+	if (remaining.length > 0) {
+		log(`Starting ${remaining.length} remaining instances in parallel...`);
+		const parallelContainers = await Promise.all(
+			remaining.map(async (instance) => {
+				const type = instance.isWorker ? 'worker' : 'main';
+				log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
+				const container = await createContainer(instance, shared);
+				log(`${type} ${instance.instanceNumber} ready`);
+				return container;
+			}),
+		);
+		containers.push(...parallelContainers);
 	}
 
 	return { containers, environment };

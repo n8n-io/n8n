@@ -15,8 +15,7 @@ export interface TaskRunnerMeta {
 export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
-	description: 'Task runner for external code execution',
-	phase: 'after-n8n',
+	description: 'Task Runner',
 	shouldStart: () => true,
 
 	getOptions(ctx) {

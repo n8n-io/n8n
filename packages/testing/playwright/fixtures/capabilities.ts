@@ -12,7 +12,7 @@ export const CAPABILITIES = {
 	proxy: { services: ['proxy'] },
 	'source-control': { services: ['gitea'] },
 	oidc: { services: ['keycloak'] },
-	observability: { services: ['observability'] },
+	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;

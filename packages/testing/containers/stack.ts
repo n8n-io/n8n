@@ -8,29 +8,15 @@ import type { LoadBalancerResult } from './services/load-balancer';
 import { createN8NInstances } from './services/n8n';
 import { helperFactories, services } from './services/registry';
 import type {
-	ContentInjection,
+	FileToMount,
 	HelperContext,
 	HelperFactories,
-	MultiContainerResult,
 	Service,
 	ServiceHelpers,
 	ServiceResult,
 	StackConfig,
 	StartContext,
 } from './services/types';
-
-function isMultiContainerResult(
-	result: ServiceResult | MultiContainerResult,
-): result is MultiContainerResult {
-	return 'containers' in result && Array.isArray(result.containers);
-}
-
-function extractContainers(result: ServiceResult | MultiContainerResult): StartedTestContainer[] {
-	if (isMultiContainerResult(result)) {
-		return result.containers;
-	}
-	return [result.container];
-}
 
 const SERVICE_REGISTRY: Record<string, Service> = services;
 
@@ -55,47 +41,31 @@ function shouldServiceStart(name: string, service: Service, ctx: StartContext): 
 	return ctx.config.services?.includes(name) ?? false;
 }
 
-function isBeforeN8n(service: Service): boolean {
-	if (service.phase === 'after-n8n') return false;
-	if (service.phase === 'before-n8n') return true;
-	return typeof service.env === 'function';
-}
+function groupByDependencyLevel(serviceNames: string[]): string[][] {
+	const levels: string[][] = [];
+	const assigned = new Set<string>();
 
-function sortByDependencies(serviceNames: string[]): string[] {
-	const sorted: string[] = [];
-	const visited = new Set<string>();
-	const visiting = new Set<string>();
-
-	function visit(name: string) {
-		if (visited.has(name)) return;
-		if (visiting.has(name)) {
-			throw new Error(`Circular dependency detected: ${name}`);
-		}
-
-		visiting.add(name);
-		const service = SERVICE_REGISTRY[name];
-		if (service?.dependsOn) {
-			for (const dep of service.dependsOn) {
-				if (serviceNames.includes(dep)) {
-					visit(dep);
-				}
+	while (assigned.size < serviceNames.length) {
+		const currentLevel: string[] = [];
+		for (const name of serviceNames) {
+			if (assigned.has(name)) continue;
+			const service = SERVICE_REGISTRY[name];
+			const deps = service?.dependsOn ?? [];
+			if (deps.every((dep) => !serviceNames.includes(dep) || assigned.has(dep))) {
+				currentLevel.push(name);
 			}
 		}
-		visiting.delete(name);
-		visited.add(name);
-		sorted.push(name);
+		if (currentLevel.length === 0) {
+			throw new Error('Circular dependency detected in services');
+		}
+		levels.push(currentLevel);
+		currentLevel.forEach((name) => assigned.add(name));
 	}
 
-	for (const name of serviceNames) {
-		visit(name);
-	}
-
-	return sorted;
+	return levels;
 }
 
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const log = createElapsedLogger('n8n-stack');
-
 	const {
 		mains = 1,
 		workers = 0,
@@ -105,6 +75,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		resourceQuota,
 		services: enabledServices = [],
 	} = config;
+
+	const log = createElapsedLogger('stack');
 
 	const isQueueMode = mains > 1 || workers > 0;
 	const needsLoadBalancer = mains > 1;
@@ -124,7 +96,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const serviceResults: Record<string, ServiceResult> = {};
 	let environment: Record<string, string> = {};
 
-	log(`Starting stack creation: ${uniqueProjectName}`);
+	log(`Starting: ${uniqueProjectName}`);
 
 	const network = await new Network().start();
 
@@ -144,48 +116,51 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		},
 	};
 
-	// Phase 1: Before-n8n Services
+	// Step 1: Start services (parallel by dependency level)
 	const servicesToStart = Object.keys(SERVICE_REGISTRY).filter((name) =>
 		shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 	);
+	const dependencyLevels = groupByDependencyLevel(servicesToStart);
 
-	const beforeN8nServices = servicesToStart.filter((name) => isBeforeN8n(SERVICE_REGISTRY[name]));
-	const afterN8nServices = servicesToStart.filter((name) => !isBeforeN8n(SERVICE_REGISTRY[name]));
-	const sortedBeforeN8n = sortByDependencies(beforeN8nServices);
+	for (const level of dependencyLevels) {
+		const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
 
-	for (const name of sortedBeforeN8n) {
-		const service = SERVICE_REGISTRY[name];
-		log(`Starting ${service.description}...`);
+		const levelPromises = level.map(async (name) => {
+			const service = SERVICE_REGISTRY[name];
+			const options = service.getOptions?.(ctx);
+			const result = await service.start(network, uniqueProjectName, options, ctx);
+			return { name, service, result };
+		});
 
-		const options = service.getOptions?.(ctx);
-		const result = await service.start(network, uniqueProjectName, options);
+		const results = await Promise.all(levelPromises);
 
-		containers.push(...extractContainers(result as ServiceResult | MultiContainerResult));
-		serviceResults[name] = result;
+		for (const { name, service, result } of results) {
+			containers.push(result.container);
+			serviceResults[name] = result;
 
-		if (service.env) {
-			environment = { ...environment, ...service.env(result) };
-		}
-		if (service.extraEnv) {
-			environment = { ...environment, ...service.extraEnv(result) };
+			if (service.env) {
+				environment = { ...environment, ...service.env(result) };
+			}
+			if (service.extraEnv) {
+				environment = { ...environment, ...service.extraEnv(result) };
+			}
 		}
 
 		ctx.environment = environment;
 		ctx.serviceResults = serviceResults;
 
-		log(`${service.description} ready`);
+		log(`Services ready: ${levelNames}`);
 	}
 
-	// Phase 2: n8n Instances
+	// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 	const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
 	const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
 
-	const contentToInject: ContentInjection[] = Object.values(serviceResults).flatMap((result) => {
-		const meta = result.meta as { n8nContentInjection?: ContentInjection[] } | undefined;
-		return meta?.n8nContentInjection ?? [];
+	const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
+		const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
+		return meta?.n8nFilesToMount ?? [];
 	});
 
-	log(`Starting n8n instances (${mains} mains, ${workers} workers)...`);
 	const n8nResult = await createN8NInstances({
 		mains,
 		workers,
@@ -197,51 +172,37 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		baseUrl: needsLoadBalancer ? undefined : baseUrl,
 		allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 		resourceQuota,
-		contentToInject,
+		filesToMount,
 	});
 	containers.push(...n8nResult.containers);
-	log('All n8n instances started');
+	log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
 
 	if (lbResult) {
-		log('Polling load balancer for readiness...');
 		await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
-		log('Load balancer is ready');
+		log('Load balancer ready');
 	}
 
 	ctx.baseUrl = baseUrl;
 
-	// Phase 3: Post-n8n Verification
+	// Run verification hooks (e.g. keycloak connectivity check)
 	const n8nContainers = containers.filter((c) => {
 		const name = c.getName();
 		return name.includes('-n8n-main-') || name.endsWith('-n8n');
 	});
 
-	for (const name of sortedBeforeN8n) {
+	const verifications: string[] = [];
+	for (const name of servicesToStart) {
 		const service = SERVICE_REGISTRY[name];
 		if (service.verifyFromN8n && serviceResults[name]) {
-			log(`Verifying ${service.description} connectivity from n8n...`);
 			await service.verifyFromN8n(serviceResults[name], n8nContainers);
-			log(`${service.description} connectivity verified`);
+			verifications.push(service.description);
 		}
 	}
-
-	// Phase 4: After-n8n Services
-	const sortedAfterN8n = sortByDependencies(afterN8nServices);
-
-	for (const name of sortedAfterN8n) {
-		const service = SERVICE_REGISTRY[name];
-		log(`Starting ${service.description}...`);
-
-		const options = service.getOptions?.(ctx);
-		const result = await service.start(network, uniqueProjectName, options);
-
-		containers.push(...extractContainers(result as ServiceResult | MultiContainerResult));
-		serviceResults[name] = result;
-
-		log(`${service.description} ready`);
+	if (verifications.length > 0) {
+		log(`Verified: ${verifications.join(', ')}`);
 	}
 
-	log(`Stack ready! baseUrl: ${baseUrl}`);
+	log(`Ready: ${baseUrl}`);
 	await waitForNetworkQuiet();
 
 	// Build service helpers proxy
@@ -304,6 +265,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	};
 }
 
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return String(error);
+}
+
 async function stopN8NStack(
 	containers: StartedTestContainer[],
 	network: StartedNetwork,
@@ -315,7 +283,9 @@ async function stopN8NStack(
 			try {
 				await container.stop();
 			} catch (error) {
-				errors.push(new Error(`Failed to stop container ${container.getId()}: ${error as string}`));
+				errors.push(
+					new Error(`Failed to stop container ${container.getId()}: ${getErrorMessage(error)}`),
+				);
 			}
 		});
 		await Promise.allSettled(stopPromises);
@@ -323,7 +293,9 @@ async function stopN8NStack(
 		try {
 			await network.stop();
 		} catch (error) {
-			errors.push(new Error(`Failed to stop network ${network.getName()}: ${error as string}`));
+			errors.push(
+				new Error(`Failed to stop network ${network.getName()}: ${getErrorMessage(error)}`),
+			);
 		}
 
 		if (errors.length > 0) {

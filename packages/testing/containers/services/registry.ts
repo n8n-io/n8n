@@ -2,13 +2,16 @@ import { gitea, createGiteaHelper } from './gitea';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
 import { mailpit, createMailpitHelper } from './mailpit';
-import { observability, createObservabilityHelper } from './observability';
+import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
 import { proxy } from './proxy';
 import { redis } from './redis';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
 import type { Service, ServiceResult, HelperFactories } from './types';
+import { vector } from './vector';
+import { victoriaLogs } from './victoria-logs';
+import { victoriaMetrics } from './victoria-metrics';
 
 export const services: Record<string, Service<ServiceResult>> = {
 	postgres,
@@ -16,7 +19,9 @@ export const services: Record<string, Service<ServiceResult>> = {
 	mailpit,
 	gitea,
 	keycloak,
-	observability,
+	victoriaLogs,
+	victoriaMetrics,
+	vector,
 	tracing,
 	proxy,
 	taskRunner,

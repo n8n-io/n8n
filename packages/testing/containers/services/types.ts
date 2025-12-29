@@ -1,25 +1,23 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
-export interface ContentInjection {
+export interface FileToMount {
 	content: string;
 	target: string;
 }
 
 export interface ServiceMeta {
-	n8nContentInjection?: ContentInjection[];
+	/**
+	 * Files to mount into n8n containers. Use when n8n needs files that can't
+	 * be passed via environment (e.g., NODE_EXTRA_CA_CERTS requires a file path).
+	 * See keycloak.ts for usage example.
+	 */
+	n8nFilesToMount?: FileToMount[];
 }
 
 export interface ServiceResult<TMeta = unknown> {
 	container: StartedTestContainer;
 	meta: TMeta;
 }
-
-export interface MultiContainerResult<TMeta = unknown> {
-	containers: StartedTestContainer[];
-	meta: TMeta;
-}
-
-export type ServicePhase = 'before-n8n' | 'after-n8n';
 
 export interface StartContext {
 	config: StackConfig;
@@ -30,7 +28,7 @@ export interface StartContext {
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
 	environment: Record<string, string>;
-	serviceResults: Record<string, ServiceResult | MultiContainerResult>;
+	serviceResults: Record<string, ServiceResult>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
 }
@@ -45,13 +43,17 @@ export interface StackConfig {
 	services?: string[];
 }
 
-export interface Service<TResult extends ServiceResult | MultiContainerResult = ServiceResult> {
+export interface Service<TResult extends ServiceResult = ServiceResult> {
 	readonly description: string;
-	readonly phase?: ServicePhase;
 	readonly dependsOn?: readonly string[];
 	shouldStart?(ctx: StartContext): boolean;
 	getOptions?(ctx: StartContext): unknown;
-	start(network: StartedNetwork, projectName: string, options?: unknown): Promise<TResult>;
+	start(
+		network: StartedNetwork,
+		projectName: string,
+		options?: unknown,
+		ctx?: StartContext,
+	): Promise<TResult>;
 	env?(result: TResult): Record<string, string>;
 	extraEnv?(result: TResult): Record<string, string>;
 	verifyFromN8n?(result: TResult, n8nContainers: StartedTestContainer[]): Promise<void>;

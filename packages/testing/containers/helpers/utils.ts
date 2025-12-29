@@ -3,13 +3,13 @@ import type { Readable } from 'stream';
 import type { StartedTestContainer } from 'testcontainers';
 
 /**
- * Create a logger that prefixes messages with elapsed time since creation
+ * Create a logger that prefixes messages with elapsed time since creation.
  */
 export function createElapsedLogger(prefix: string) {
 	const startTime = Date.now();
 
 	return (message: string) => {
-		const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+		const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 		console.log(`[${prefix} +${elapsed}s] ${message}`);
 	};
 }

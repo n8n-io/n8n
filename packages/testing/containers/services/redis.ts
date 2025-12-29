@@ -14,8 +14,7 @@ export interface RedisMeta {
 export type RedisResult = ServiceResult<RedisMeta>;
 
 export const redis: Service<RedisResult> = {
-	description: 'Redis cache and queue',
-	dependsOn: ['postgres'],
+	description: 'Redis',
 	shouldStart: (ctx) => ctx.isQueueMode,
 
 	async start(network: StartedNetwork, projectName: string): Promise<RedisResult> {

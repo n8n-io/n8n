@@ -5,8 +5,9 @@ import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { KeycloakResult } from './services/keycloak';
-import type { ObservabilityResult } from './services/observability';
 import type { TracingResult } from './services/tracing';
+import type { VictoriaLogsResult } from './services/victoria-logs';
+import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
 
@@ -140,7 +141,7 @@ async function main() {
 	const services: string[] = [];
 	if (values['source-control']) services.push('gitea');
 	if (values.oidc) services.push('keycloak');
-	if (values.observability) services.push('observability');
+	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
 
 	// Build configuration
@@ -218,7 +219,6 @@ async function main() {
 	let stack: N8NStack;
 
 	try {
-		log.info('Starting containers...');
 		try {
 			stack = await createN8NStack(config);
 		} catch (error) {
@@ -249,18 +249,21 @@ async function main() {
 		}
 
 		// Display observability configuration if enabled
-		const observabilityResult = stack.serviceResults.observability as
-			| ObservabilityResult
-			| undefined;
-		if (observabilityResult) {
+		const logsResult = stack.serviceResults.victoriaLogs as VictoriaLogsResult | undefined;
+		const metricsResult = stack.serviceResults.victoriaMetrics as VictoriaMetricsResult | undefined;
+		if (logsResult || metricsResult) {
 			console.log('');
 			log.header('Observability Stack (VictoriaObs)');
-			log.info(
-				`VictoriaLogs UI: ${colors.cyan}${observabilityResult.meta.logs.queryEndpoint}/select/vmui${colors.reset}`,
-			);
-			log.info(
-				`VictoriaMetrics UI: ${colors.cyan}${observabilityResult.meta.metrics.queryEndpoint}/vmui${colors.reset}`,
-			);
+			if (logsResult) {
+				log.info(
+					`VictoriaLogs UI: ${colors.cyan}${logsResult.meta.queryEndpoint}/select/vmui${colors.reset}`,
+				);
+			}
+			if (metricsResult) {
+				log.info(
+					`VictoriaMetrics UI: ${colors.cyan}${metricsResult.meta.queryEndpoint}/vmui${colors.reset}`,
+				);
+			}
 			// Vector is always started when observability is enabled in the new stack
 			log.success('Container logs collected by Vector (runs in background)');
 		}
@@ -330,7 +333,7 @@ function displayConfig(config: N8NConfig) {
 	}
 
 	// Display observability status
-	if (services.includes('observability')) {
+	if (services.includes('victoriaLogs')) {
 		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
 	} else {
 		log.info('Observability: disabled');
