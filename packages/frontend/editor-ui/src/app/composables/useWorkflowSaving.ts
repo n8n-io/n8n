@@ -452,8 +452,10 @@ export function useWorkflowSaving({
 						console.log('[AutoSave] ✅ Workflow saved successfully');
 					}
 				} finally {
-					autosaveStore.setAutoSaveState(AutoSaveState.Idle);
-					autosaveStore.setPendingAutoSave(null);
+					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+						autosaveStore.setPendingAutoSave(null);
+					}
 				}
 			})();
 
