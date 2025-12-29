@@ -51,7 +51,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				if (command instanceof Command) {
 					await command.revert();
 					historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
-					uiStore.stateIsDirty = true;
+					uiStore.markStateDirty();
 				}
 				trackCommand(command, 'undo');
 			},
@@ -83,7 +83,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				if (command instanceof Command) {
 					await command.revert();
 					historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
-					uiStore.stateIsDirty = true;
+					uiStore.markStateDirty();
 				}
 				trackCommand(command, 'redo');
 			},

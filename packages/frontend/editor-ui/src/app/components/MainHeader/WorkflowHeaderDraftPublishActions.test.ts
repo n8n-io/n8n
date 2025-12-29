@@ -123,7 +123,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			connections: {},
 		};
 		workflowsStore.workflowTriggerNodes = [];
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 		uiStore.isActionActive = { workflowSaving: false };
 
 		mockSaveCurrentWorkflow.mockClear();
@@ -235,7 +235,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	describe('Publish button behavior', () => {
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			setupEnabledPublishButton({
 				workflow: {
 					...workflowsStore.workflow,
@@ -257,7 +257,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when dirty then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent();
@@ -273,7 +273,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when isNewWorkflow is true then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent({
@@ -294,7 +294,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should not open publish modal if save fails', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			mockSaveCurrentWorkflow.mockResolvedValue(false);
 			setupEnabledPublishButton();
 
@@ -327,7 +327,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { queryByTestId } = renderComponent();
 
@@ -338,7 +338,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [{ ...triggerNode, disabled: true }];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { getByTestId } = renderComponent();
 
@@ -349,7 +349,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { getByTestId } = renderComponent();
 
@@ -360,7 +360,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { getByTestId } = renderComponent();
 
@@ -371,7 +371,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { queryByTestId } = renderComponent();
 
@@ -382,7 +382,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = null;
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { getByTestId } = renderComponent();
 

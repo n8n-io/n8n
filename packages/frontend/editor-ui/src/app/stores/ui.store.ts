@@ -606,6 +606,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const markStateDirty = () => {
+		stateIsDirty.value = true;
+	};
+
+	const markStateClean = () => {
+		stateIsDirty.value = false;
+	};
+
 	/**
 	 * Register a modal dynamically
 	 */
@@ -664,7 +672,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
-		stateIsDirty,
+		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -700,6 +708,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		markStateDirty,
+		markStateClean,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

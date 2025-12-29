@@ -27,6 +27,7 @@ describe('useBeforeUnload', () => {
 
 		uiStore = useUIStore();
 		canvasStore = useCanvasStore();
+		uiStore.markStateClean();
 	});
 
 	describe('onBeforeUnload', () => {
@@ -41,7 +42,7 @@ describe('useBeforeUnload', () => {
 		});
 
 		it('should prompt user if state is dirty', () => {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			const { onBeforeUnload } = useBeforeUnload({ route: defaultRoute });
 			const event = new Event('beforeunload');
 
@@ -51,7 +52,7 @@ describe('useBeforeUnload', () => {
 		});
 
 		it('should start loading if state is not dirty', () => {
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			const startLoadingSpy = vi.spyOn(canvasStore, 'startLoading');
 			const { onBeforeUnload } = useBeforeUnload({ route: defaultRoute });
 			const event = new Event('beforeunload');

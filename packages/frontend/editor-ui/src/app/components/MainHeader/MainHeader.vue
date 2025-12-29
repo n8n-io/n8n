@@ -193,7 +193,11 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 		window.open(href, '_blank');
 	} else if (route.name !== routeToNavigateTo.name) {
 		if (route.name === VIEWS.NEW_WORKFLOW) {
-			uiStore.stateIsDirty = dirtyState.value;
+			if (dirtyState.value) {
+				uiStore.markStateDirty();
+			} else {
+				uiStore.markStateClean();
+			}
 		}
 		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
 		await router.push(routeToNavigateTo);

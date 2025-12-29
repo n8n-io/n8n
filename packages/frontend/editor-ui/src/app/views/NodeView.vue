@@ -1631,7 +1631,7 @@ function checkIfRouteIsAllowed() {
 	) {
 		void nextTick(async () => {
 			resetWorkspace();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			await router.replace({ name: VIEWS.HOMEPAGE });
 		});
