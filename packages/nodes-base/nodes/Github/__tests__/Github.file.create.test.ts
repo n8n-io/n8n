@@ -43,8 +43,8 @@ describe('Github Node - File Create/Edit Operations', () => {
 		} as unknown as jest.Mocked<IExecuteFunctions>;
 	});
 
-	describe('File Create - Binary Data with Filesystem Mode', () => {
-		it('should convert binary data buffer to base64 when id contains colon (filesystem mode)', async () => {
+	describe('File Create - Binary Data', () => {
+		it('should handle binary data by converting buffer to base64', async () => {
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
 					const params: Record<string, any> = {
@@ -63,8 +63,8 @@ describe('Github Node - File Create/Edit Operations', () => {
 			);
 
 			const mockBinaryData = {
-				id: 'filesystem-v2:abc123def456',
-				data: 'filesystem-v2',
+				id: 'test-id',
+				data: 'base64data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
 			};
@@ -101,113 +101,6 @@ describe('Github Node - File Create/Edit Operations', () => {
 		});
 	});
 
-	describe('File Create - Binary Data without Filesystem Mode', () => {
-		it('should use existing base64 data when id does not contain colon', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, _itemIndex: number, fallback?: any) => {
-					const params: Record<string, any> = {
-						resource: 'file',
-						operation: 'create',
-						owner: 'test-owner',
-						repository: 'test-repo',
-						filePath: 'test/file.txt',
-						commitMessage: 'Add test file',
-						binaryData: true,
-						binaryPropertyName: 'data',
-						additionalParameters: {},
-					};
-					return params[paramName] ?? fallback;
-				},
-			);
-			const existingBase64 = 'dGVzdCBjb250ZW50';
-			const mockBinaryData = {
-				id: 'simple-id',
-				data: existingBase64,
-				mimeType: 'text/plain',
-				fileName: 'test.txt',
-			};
-
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
-				content: {
-					name: 'file.txt',
-					path: 'test/file.txt',
-					sha: 'abc123',
-				},
-			});
-
-			const result = await github.execute.call(mockExecuteFunctions);
-
-			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).not.toHaveBeenCalled();
-
-			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
-				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
-				expect.objectContaining({
-					content: existingBase64,
-					message: 'Add test file',
-				}),
-				{},
-			);
-
-			expect(result).toBeDefined();
-			expect(result.length).toBeGreaterThan(0);
-		});
-
-		it('should use existing base64 data when id is undefined', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, _itemIndex: number, fallback?: any) => {
-					const params: Record<string, any> = {
-						resource: 'file',
-						operation: 'create',
-						owner: 'test-owner',
-						repository: 'test-repo',
-						filePath: 'test/file.txt',
-						commitMessage: 'Add test file',
-						binaryData: true,
-						binaryPropertyName: 'data',
-						additionalParameters: {},
-					};
-					return params[paramName] ?? fallback;
-				},
-			);
-
-			const existingBase64 = 'dGVzdCBjb250ZW50';
-			const mockBinaryData = {
-				data: existingBase64,
-				mimeType: 'text/plain',
-				fileName: 'test.txt',
-			};
-
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
-				content: {
-					name: 'file.txt',
-					path: 'test/file.txt',
-					sha: 'abc123',
-				},
-			});
-
-			const result = await github.execute.call(mockExecuteFunctions);
-
-			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).not.toHaveBeenCalled();
-
-			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
-				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
-				expect.objectContaining({
-					content: existingBase64,
-					message: 'Add test file',
-				}),
-				{},
-			);
-
-			expect(result).toBeDefined();
-			expect(result.length).toBeGreaterThan(0);
-		});
-	});
 
 	describe('File Create - Text Content', () => {
 		it('should use base64 content as-is when fileContent is already base64', async () => {
@@ -299,7 +192,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 		});
 	});
 
-	describe('File Edit - Binary Data with Filesystem Mode', () => {
+	describe('File Edit - Binary Data', () => {
 		it('should get file SHA and convert buffer to base64 for edit operation', async () => {
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
@@ -319,7 +212,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 			);
 
 			const mockBinaryData = {
-				id: 'filesystem-v2:abc123def456',
+				id: 'test-id',
 				data: 'old-base64-data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
