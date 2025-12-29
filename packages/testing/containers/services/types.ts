@@ -95,6 +95,10 @@ export interface StackConfig {
 /**
  * Base service interface - defines how to start a container.
  *
+ * Service enablement:
+ * - Services with `shouldStart` use that function to determine if they start
+ * - Services without `shouldStart` are enabled via `config.services` array using their registry key
+ *
  * Phase detection:
  * - Services with env() or extraEnv() automatically run before n8n
  * - Services with phase: 'after-n8n' run after n8n starts
@@ -116,10 +120,10 @@ export interface Service<TResult extends ServiceResult | MultiContainerResult = 
 	 */
 	readonly dependsOn?: readonly string[];
 
-	/** Simple config key - service starts if config[configKey] is truthy */
-	readonly configKey?: keyof StackConfig;
-
-	/** Complex start condition (overrides configKey if both present) */
+	/**
+	 * Custom start condition. If not provided, service is enabled via `config.services` array.
+	 * Use for services that auto-start based on context (e.g., redis for queue mode).
+	 */
 	shouldStart?(ctx: StartContext): boolean;
 
 	/** Compute options to pass to start() */

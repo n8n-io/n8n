@@ -203,7 +203,6 @@ async function waitForKeycloakReady(
 // Service definition
 export const keycloak: Service<KeycloakResult> = {
 	description: 'Keycloak OIDC provider',
-	configKey: 'oidc',
 
 	getOptions(ctx) {
 		const port = ctx.allocatedPorts.loadBalancer ?? ctx.allocatedPorts.main;

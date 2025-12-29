@@ -119,19 +119,14 @@ export interface N8NStack {
 /**
  * Determines if a service should start based on its configuration.
  */
-function shouldServiceStart(_name: string, service: Service, ctx: StartContext): boolean {
-	// Check explicit shouldStart function first
+function shouldServiceStart(name: string, service: Service, ctx: StartContext): boolean {
+	// Services with shouldStart use custom logic (e.g., redis for queue mode)
 	if (service.shouldStart) {
 		return service.shouldStart(ctx);
 	}
 
-	// Check configKey
-	if (service.configKey) {
-		return ctx.config[service.configKey] === true;
-	}
-
-	// Services without conditions don't auto-start (must be explicitly enabled)
-	return false;
+	// Otherwise, check if service is in the enabled services array
+	return ctx.config.services?.includes(name) ?? false;
 }
 
 /**
@@ -197,13 +192,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		env = {},
 		projectName,
 		resourceQuota,
-		oidc = false,
+		services: enabledServices = [],
 	} = config;
 
 	// Derived config
 	const isQueueMode = mains > 1 || workers > 0;
 	const needsLoadBalancer = mains > 1;
-	const usePostgres = usePostgresConfig || isQueueMode || oidc;
+	// Keycloak (OIDC) requires PostgreSQL for session storage
+	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
 	// Pre-allocate ports for services that need to know n8n's port

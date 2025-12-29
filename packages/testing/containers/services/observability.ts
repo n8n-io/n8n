@@ -168,7 +168,6 @@ encoding.codec = "json"
 // Service definition
 export const observability: Service<ObservabilityResult> = {
 	description: 'Observability stack (VictoriaLogs + VictoriaMetrics + Vector)',
-	configKey: 'observability',
 
 	getOptions(ctx) {
 		const { mains, workers, projectName } = ctx;

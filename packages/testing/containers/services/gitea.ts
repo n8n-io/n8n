@@ -28,7 +28,6 @@ export type GiteaResult = ServiceResult<GiteaMeta>;
 // Service definition
 export const gitea: Service<GiteaResult> = {
 	description: 'Git server (Gitea)',
-	configKey: 'sourceControl',
 
 	async start(network: StartedNetwork, projectName: string): Promise<GiteaResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();

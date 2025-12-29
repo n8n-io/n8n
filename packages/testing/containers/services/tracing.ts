@@ -53,7 +53,6 @@ export interface TracerWebhookConfig {
 // Service definition
 export const tracing: Service<TracingResult> = {
 	description: 'Tracing stack (Jaeger + n8n-tracer)',
-	configKey: 'tracing',
 
 	async start(
 		network: StartedNetwork,

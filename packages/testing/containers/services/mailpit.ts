@@ -78,7 +78,6 @@ export type MailpitResult = ServiceResult<MailpitMeta>;
 // Service definition
 export const mailpit: Service<MailpitResult> = {
 	description: 'Email testing server',
-	configKey: 'email',
 
 	async start(network: StartedNetwork, projectName: string): Promise<MailpitResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();

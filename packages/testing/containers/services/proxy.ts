@@ -20,7 +20,6 @@ export type ProxyResult = ServiceResult<ProxyMeta>;
 // Service definition
 export const proxy: Service<ProxyResult> = {
 	description: 'HTTP proxy server',
-	configKey: 'proxyServerEnabled',
 
 	extraEnv(result): Record<string, string> {
 		return {
