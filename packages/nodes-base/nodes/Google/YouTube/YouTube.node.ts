@@ -193,6 +193,9 @@ export class YouTube implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
+					console.log(
+						`DEBUG: Executing YouTube Node execution. Resource: ${resource}, Operation: ${operation}`,
+					);
 					if (operation === 'get') {
 						//https://developers.google.com/youtube/v3/docs/channels/list
 						let part = this.getNodeParameter('part', i) as string[];

@@ -1,0 +1,387 @@
+
+> n8n-nodes-base@1.118.0 test:vitest C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base
+> vitest "nodes/Google/YouTube/__test__/node/YouTube.node.test.ts"
+
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+DEBUG: load-nodes-and-credentials.ts LOADED
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\channels.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\playlists.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\videoCategories.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\playlistItems.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+(node:14672) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/workflow/dist/esm/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31mΓ¥»[39m nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 286[2mms[22m[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mChannel[2m > [22mnodes\Google\YouTube\__test__\node\channels.workflow[39m[32m 189[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist[2m > [22mnodes\Google\YouTube\__test__\node\playlists.workflow[39m[32m 29[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mVideo Categories[2m > [22mnodes\Google\YouTube\__test__\node\videoCategories.workflow[39m[32m 31[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist Item[2m > [22mnodes\Google\YouTube\__test__\node\playlistItems.workflow[39m[32m 19[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 4 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Channel > nodes\Google\YouTube\__test__\node\channels.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist > nodes\Google\YouTube\__test__\node\playlists.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Video Categories > nodes\Google\YouTube\__test__\node\videoCategories.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist Item > nodes\Google\YouTube\__test__\node\playlistItems.workflow
+Error: Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m   Start at [22m 14:58:49
+[2m   Duration [22m 177.11s[2m (transform 68.95s, setup 46.07s, collect 49.62s, tests 286ms, environment 1ms, prepare 10.27s)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+c[3J[1m[44m RERUN [49m[22m [34m[2m../core/nodes-testing/node-test-harness.ts [22m[34mx1 [34m[39m
+       [2m Filename pattern: [22m[34mnodes/Google/YouTube/__test__/node/YouTube.node.test.ts[39m
+
+DEBUG: load-nodes-and-credentials.ts LOADED
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\channels.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\playlists.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\videoCategories.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\playlistItems.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+
+(node:27008) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/workflow/dist/esm/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31mΓ¥»[39m nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 239[2mms[22m[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mChannel[2m > [22mnodes\Google\YouTube\__test__\node\channels.workflow[39m[32m 151[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist[2m > [22mnodes\Google\YouTube\__test__\node\playlists.workflow[39m[32m 28[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mVideo Categories[2m > [22mnodes\Google\YouTube\__test__\node\videoCategories.workflow[39m[32m 32[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist Item[2m > [22mnodes\Google\YouTube\__test__\node\playlistItems.workflow[39m[32m 16[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 4 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Channel > nodes\Google\YouTube\__test__\node\channels.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist > nodes\Google\YouTube\__test__\node\playlists.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Video Categories > nodes\Google\YouTube\__test__\node\videoCategories.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist Item > nodes\Google\YouTube\__test__\node\playlistItems.workflow
+Error: Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m   Start at [22m 15:01:46
+[2m   Duration [22m 5.62s
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+[1m[35m
+Restarting due to config changes...[39m[22m
+DEBUG: aliases: {
+  '@credentials': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\nodes-base\\credentials',
+  '@test': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\nodes-base\\test',
+  '@utils': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\nodes-base\\utils',
+  '@nodes-testing': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\core\\nodes-testing',
+  '@': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\core\\src',
+  '@n8n/backend-common': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\backend-common\\src\\index.ts',
+  '@n8n/client-oauth2': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\client-oauth2\\src\\index.ts',
+  '@n8n/decorators': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\decorators\\src\\index.ts',
+  '@n8n/di': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\di\\src\\di.ts',
+  '@n8n/config': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\config\\src\\index.ts',
+  '@n8n/constants': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\constants\\src\\index.ts',
+  '@n8n/errors': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\errors\\src\\index.ts',
+  '@n8n/permissions': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\@n8n\\permissions\\src\\index.ts',
+  'n8n-workflow': 'C:\\Users\\10000\\OneDrive\\Documents\\GitHub\\n8n\\packages\\workflow\\src\\index.ts'
+}
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+[1m[35m
+Restarting due to config changes...[39m[22m
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Errors ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Error ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: Terminating worker thread
+ Γ¥» Object.ThreadTermination ../../node_modules/.pnpm/tinypool@1.1.1/node_modules/tinypool/dist/index.js:393:27
+ Γ¥» ../../node_modules/.pnpm/tinypool@1.1.1/node_modules/tinypool/dist/index.js:432:73
+ Γ¥» process.processTicksAndRejections node:internal/process/task_queues:103:5
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+
+[2m Test Files [22m [90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 15:02:59
+[2m   Duration [22m 116.08s[2m (transform 91.02s, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\src\index.ts
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Errors ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+[2m Test Files [22m [90m (1)[39m
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Error ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: [vitest-worker]: Timeout calling "fetch" with "["/@vite/env","ssr"]"
+ Γ¥» Object.onTimeoutError ../../node_modules/.pnpm/vitest@3.1.3_@types+debug@4_c9312c8ab0039d3967d9bd06f4524652/node_modules/vitest/dist/chunks/rpc.D9_013TY.js:62:10
+ Γ¥» Timeout._onTimeout ../../node_modules/.pnpm/vitest@3.1.3_@types+debug@4_c9312c8ab0039d3967d9bd06f4524652/node_modules/vitest/dist/chunks/index.CJ0plNrh.js:57:62
+ Γ¥» listOnTimeout node:internal/timers:605:17
+ Γ¥» process.processTimers node:internal/timers:541:7
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+[2m      Tests [22m [2mno tests[22m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 15:05:04
+[2m   Duration [22m 116.34s[2m (transform 107.70s, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+[1m[35m
+Restarting due to config changes...[39m[22m
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\INVALID_PATH
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Errors ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Error ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: [vitest-worker]: Timeout calling "fetch" with "["/@vite/env","ssr"]"
+ Γ¥» Object.onTimeoutError ../../node_modules/.pnpm/vitest@3.1.3_@types+debug@4_c9312c8ab0039d3967d9bd06f4524652/node_modules/vitest/dist/chunks/rpc.D9_013TY.js:62:10
+ Γ¥» Timeout._onTimeout ../../node_modules/.pnpm/vitest@3.1.3_@types+debug@4_c9312c8ab0039d3967d9bd06f4524652/node_modules/vitest/dist/chunks/index.CJ0plNrh.js:57:62
+ Γ¥» listOnTimeout node:internal/timers:605:17
+ Γ¥» process.processTimers node:internal/timers:541:7
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+
+[2m Test Files [22m [90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 15:09:56
+[2m   Duration [22m 141.44s[2m (transform 113.18s, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+[1m[35m
+Restarting due to config changes...[39m[22m
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\src\index.ts
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+DEBUG: load-nodes-and-credentials.ts LOADED
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\channels.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\playlists.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\videoCategories.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\playlistItems.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+(node:39480) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/workflow/dist/esm/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31mΓ¥»[39m nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 623[2mms[22m[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mChannel[2m > [22mnodes\Google\YouTube\__test__\node\channels.workflow[39m[33m 421[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist[2m > [22mnodes\Google\YouTube\__test__\node\playlists.workflow[39m[32m 57[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mVideo Categories[2m > [22mnodes\Google\YouTube\__test__\node\videoCategories.workflow[39m[32m 58[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist Item[2m > [22mnodes\Google\YouTube\__test__\node\playlistItems.workflow[39m[32m 22[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 4 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Channel > nodes\Google\YouTube\__test__\node\channels.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist > nodes\Google\YouTube\__test__\node\playlists.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Video Categories > nodes\Google\YouTube\__test__\node\videoCategories.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist Item > nodes\Google\YouTube\__test__\node\playlistItems.workflow
+Error: Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m   Start at [22m 15:13:01
+[2m   Duration [22m 265.71s[2m (transform 116.52s, setup 59.50s, collect 69.44s, tests 623ms, environment 6ms, prepare 81.70s)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+[1m[35m
+Restarting due to config changes...[39m[22m
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\src\index.ts
+
+[1m[44m DEV [49m[22m [34mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+DEBUG: load-nodes-and-credentials.ts LOADED
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\channels.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\playlists.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\videoCategories.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\playlistItems.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+(node:33096) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/workflow/dist/esm/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31mΓ¥»[39m nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 330[2mms[22m[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mChannel[2m > [22mnodes\Google\YouTube\__test__\node\channels.workflow[39m[32m 205[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist[2m > [22mnodes\Google\YouTube\__test__\node\playlists.workflow[39m[32m 30[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mVideo Categories[2m > [22mnodes\Google\YouTube\__test__\node\videoCategories.workflow[39m[32m 23[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist Item[2m > [22mnodes\Google\YouTube\__test__\node\playlistItems.workflow[39m[32m 45[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 4 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Channel > nodes\Google\YouTube\__test__\node\channels.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist > nodes\Google\YouTube\__test__\node\playlists.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Video Categories > nodes\Google\YouTube\__test__\node\videoCategories.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist Item > nodes\Google\YouTube\__test__\node\playlistItems.workflow
+Error: Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m   Start at [22m 15:40:21
+[2m   Duration [22m 175.25s[2m (transform 103.43s, setup 47.27s, collect 47.02s, tests 330ms, environment 1ms, prepare 43.25s)[22m
+
+[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
+       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m

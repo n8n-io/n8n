@@ -1,0 +1,63 @@
+
+> @n8n/n8n-nodes-langchain@1.119.0 test C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\@n8n\nodes-langchain
+> jest "nodes/vendors/GoogleGemini/actions/cache/test/cache.test.ts"
+
+FAIL nodes/vendors/GoogleGemini/actions/cache/test/cache.test.ts (7.879 s)
+  GoogleGemini Node - Cache
+    Cache -> Create
+      ΓêÜ should create cached content (43 ms)
+    Cache -> Update
+      ΓêÜ should update cached content TTL (1 ms)
+    Cache -> Get
+      ├ù should get cached content (2 ms)
+    Cache -> List
+      ΓêÜ should list cached contents (1 ms)
+    Cache -> Delete
+      ├ù should delete cached content (1 ms)
+
+  ΓùÅ GoogleGemini Node - Cache ΓÇ║ Cache -> Get ΓÇ║ should get cached content
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "GET", "/v1beta/cachedContents/12345", undefined
+    Received: "GET", "/v1beta/cachedContents/12345"
+
+    Number of calls: 1
+
+      128 | 			});
+      129 |
+    > 130 | 			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/cachedContents/12345', undefined);
+          | 			                       ^
+      131 | 		});
+      132 | 	});
+      133 |
+
+      at Object.<anonymous> (nodes/vendors/GoogleGemini/actions/cache/test/cache.test.ts:130:27)
+
+  ΓùÅ GoogleGemini Node - Cache ΓÇ║ Cache -> Delete ΓÇ║ should delete cached content
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "DELETE", "/v1beta/cachedContents/12345", undefined
+    Received: "DELETE", "/v1beta/cachedContents/12345"
+
+    Number of calls: 1
+
+      184 | 			});
+      185 |
+    > 186 | 			expect(apiRequestMock).toHaveBeenCalledWith(
+          | 			                       ^
+      187 | 				'DELETE',
+      188 | 				'/v1beta/cachedContents/12345',
+      189 | 				undefined,
+
+      at Object.<anonymous> (nodes/vendors/GoogleGemini/actions/cache/test/cache.test.ts:186:27)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 3 passed, 5 total
+Snapshots:   0 total
+Time:        12.729 s
+Ran all test suites matching /nodes\\vendors\\GoogleGemini\\actions\\cache\\test\\cache.test.ts/i.
+C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\@n8n\nodes-langchain:
+ΓÇëERR_PNPM_RECURSIVE_RUN_FIRST_FAILΓÇë @n8n/n8n-nodes-langchain@1.119.0 test: `jest "nodes/vendors/GoogleGemini/actions/cache/test/cache.test.ts"`
+Exit status 1

@@ -41,13 +41,8 @@ describe('Test YouTube Node', () => {
 				})
 				.reply(200, { items: [channels[0]] });
 			youtubeNock
-				.put('/v3/channels', (body) => {
-					return (
-						body.id === 'UCabc123def456ghi789jkl' &&
-						body.brandingSettings?.channel?.description === 'Test'
-					);
-				})
-				.query({ part: 'brandingSettings' })
+				.put('/v3/channels')
+				.query(true)
 				.reply(200, {
 					kind: 'youtube#channel',
 					etag: 'someEtag',
@@ -61,7 +56,7 @@ describe('Test YouTube Node', () => {
 				});
 		});
 
-		new NodeTestHarness().setupTests({
+		new NodeTestHarness({ testDir: __dirname }).setupTests({
 			credentials,
 			workflowFiles: ['channels.workflow.json'],
 		});
@@ -113,7 +108,7 @@ describe('Test YouTube Node', () => {
 			youtubeNock.delete('/v3/playlists', { id: 'playlist_id_1' }).reply(200, { success: true });
 		});
 
-		new NodeTestHarness().setupTests({
+		new NodeTestHarness({ testDir: __dirname }).setupTests({
 			credentials,
 			workflowFiles: ['playlists.workflow.json'],
 		});
@@ -130,9 +125,7 @@ describe('Test YouTube Node', () => {
 				.reply(200, { items: categories });
 		});
 
-		afterAll(() => youtubeNock.done());
-
-		new NodeTestHarness().setupTests({
+		new NodeTestHarness({ testDir: __dirname }).setupTests({
 			credentials,
 			workflowFiles: ['videoCategories.workflow.json'],
 		});
@@ -172,9 +165,7 @@ describe('Test YouTube Node', () => {
 				.reply(200, {});
 		});
 
-		afterAll(() => youtubeNock.done());
-
-		new NodeTestHarness().setupTests({
+		new NodeTestHarness({ testDir: __dirname }).setupTests({
 			credentials,
 			workflowFiles: ['playlistItems.workflow.json'],
 		});

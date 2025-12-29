@@ -1,0 +1,124 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"value": "OPENAI_SORA",
+							"expression": "={{ $json.api_router.target_endpoint }}"
+						},
+						{
+							"value": "GOOGLE_VERTEX",
+							"expression": "={{ $json.api_router.target_endpoint }}"
+						}
+					]
+				}
+			},
+			"name": "Router (Switch)",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [460, 300],
+			"id": "router-node"
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/[PROJECT_ID]/locations/us-central1/publishers/google/models/veo-3.1-generate-preview:predict",
+				"sendHeaders": true,
+				"contentType": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer [YOUR_ACCESS_TOKEN]"
+						}
+					]
+				},
+				"jsonParameters": true,
+				"bodyParametersJson": "={{ $json.api_router.payload }}"
+			},
+			"name": "Vertex AI Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [700, 200],
+			"id": "vertex-node"
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://api.openai.com/v1/video/generations",
+				"sendHeaders": true,
+				"contentType": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer [YOUR_OPENAI_KEY]"
+						}
+					]
+				},
+				"jsonParameters": true,
+				"bodyParametersJson": "={{ $json.api_router.payload }}"
+			},
+			"name": "Sora Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [700, 400],
+			"id": "sora-node"
+		},
+		{
+			"parameters": {
+				"prompt": "={{ $json.vision_qa_criteria.prompt_for_vision_agent }}"
+			},
+			"name": "Vision QA (Gemini)",
+			"type": "n8n-nodes-base.googleGemini",
+			"typeVersion": 1,
+			"position": [940, 300],
+			"id": "vision-qa-node",
+			"notes": "Checks the video URL against 'vision_qa_criteria' from the agent."
+		}
+	],
+	"connections": {
+		"Router (Switch)": {
+			"main": [
+				[
+					{
+						"node": "Sora Request",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Vertex AI Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Vertex AI Request": {
+			"main": [
+				[
+					{
+						"node": "Vision QA (Gemini)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sora Request": {
+			"main": [
+				[
+					{
+						"node": "Vision QA (Gemini)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

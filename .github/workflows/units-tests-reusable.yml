@@ -30,7 +30,7 @@ jobs:
     name: Backend Unit Tests
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}  # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -62,7 +62,7 @@ jobs:
     name: Backend Integration Tests
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}  # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

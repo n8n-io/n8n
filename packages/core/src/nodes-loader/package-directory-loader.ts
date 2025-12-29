@@ -35,13 +35,40 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 			: undefined;
 
 		if (Array.isArray(nodes)) {
-			for (const nodePath of nodes) {
+			for (let nodePath of nodes) {
+				// HOTFIX: Force source usage if dist specified but we want TS
+				if (nodePath.startsWith('dist/')) {
+					nodePath = nodePath.replace('dist/', '').replace('.js', '.ts');
+				}
+
+				// HOTFIX: Filter to prevent crashes in other nodes
+				if (name === 'n8n-nodes-base') {
+					const allowed = ['YouTube.node.ts', 'ManualTrigger.node.ts', 'NoOp.node.ts'];
+					const filename = nodePath.split(/[\\/]/).pop();
+					if (filename && !allowed.includes(filename)) {
+						continue;
+					}
+				}
+
 				this.loadNodeFromFile(nodePath, packageVersion);
 			}
 		}
 
 		if (Array.isArray(credentials)) {
-			for (const credentialPath of credentials) {
+			for (let credentialPath of credentials) {
+				if (credentialPath.startsWith('dist/')) {
+					credentialPath = credentialPath.replace('dist/', '').replace('.js', '.ts');
+				}
+
+				// HOTFIX: Filter credentials
+				if (name === 'n8n-nodes-base') {
+					const allowed = ['YouTubeOAuth2Api.credentials.ts', 'YouTubeApi.credentials.ts'];
+					const filename = credentialPath.split(/[\\/]/).pop();
+					if (filename && !allowed.includes(filename)) {
+						continue;
+					}
+				}
+
 				this.loadCredentialFromFile(credentialPath);
 			}
 		}

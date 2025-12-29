@@ -1,0 +1,58 @@
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	new file:   .github/workflows/validate-copilot-instructions.yml
+	new file:   shellcheck-install.ps1
+	new file:   tests/copilot-instructions.test.js
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   packages/@n8n/backend-common/src/logging/logger.ts
+	modified:   packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+	modified:   packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/node.type.ts
+	modified:   packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/router.ts
+	modified:   packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/versionDescription.ts
+	modified:   packages/@n8n/nodes-langchain/package.json
+	modified:   packages/@n8n/typescript-config/tsconfig.common.json
+	modified:   packages/core/nodes-testing/credentials-helper.ts
+	modified:   packages/core/nodes-testing/load-nodes-and-credentials.ts
+	modified:   packages/core/nodes-testing/node-test-harness.ts
+	modified:   packages/core/src/errors/error-reporter.ts
+	modified:   packages/core/src/nodes-loader/package-directory-loader.ts
+	modified:   packages/core/tsconfig.json
+	modified:   packages/nodes-base/jest.config.js
+	modified:   packages/nodes-base/nodes/Google/YouTube/YouTube.node.ts
+	modified:   packages/nodes-base/nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+	modified:   packages/nodes-base/package.json
+	modified:   packages/nodes-base/test/setup.ts
+	modified:   packages/nodes-base/tsconfig.json
+	modified:   pnpm-lock.yaml
+	modified:   pnpm-workspace.yaml
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	git_status.txt
+	n8n.code-workspace
+	packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/cache/
+	packages/api-key-manager/
+	packages/core/src/test-require.js
+	packages/nodes-base/.env.example
+	packages/nodes-base/assets/
+	packages/nodes-base/debug_output.txt
+	packages/nodes-base/debug_output_2.txt
+	packages/nodes-base/debug_output_3.txt
+	packages/nodes-base/debug_output_4.txt
+	packages/nodes-base/debug_output_5.txt
+	packages/nodes-base/debug_output_6.txt
+	packages/nodes-base/debug_output_7.txt
+	packages/nodes-base/debug_output_8.txt
+	packages/nodes-base/test-require.js
+	packages/nodes-base/test-youtube-load.ts
+	packages/nodes-base/test_output.txt
+	packages/nodes-base/vitest.config.ts
+	test_output.txt
+	typecheck_output.txt
+

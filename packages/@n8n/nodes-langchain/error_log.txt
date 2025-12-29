@@ -1,0 +1,6 @@
+
+> @n8n/n8n-nodes-langchain@1.119.0 typecheck C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\@n8n\nodes-langchain
+> tsc --noEmit
+
+../../core/nodes-testing/node-test-harness.ts(385,23): error TS2554: Expected 1 arguments, but got 2.
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

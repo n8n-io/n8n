@@ -1,0 +1,59 @@
+name: Copilot Instructions Validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/copilot-instructions.md'
+  push:
+    branches: [master, main]
+    paths:
+      - '.github/copilot-instructions.md'
+
+jobs:
+  validate-copilot-instructions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Validate copilot instructions format
+        run: |
+          # Check file exists
+          if [[ ! -f ".github/copilot-instructions.md" ]]; then
+            echo "❌ .github/copilot-instructions.md not found"
+            exit 1
+          fi
+
+          # Check for secrets
+          if grep -E "(sk-[a-zA-Z0-9]{48}|ghp_[a-zA-Z0-9]{36}|discord\.com/api/webhooks)" .github/copilot-instructions.md; then
+            echo "❌ Potential secrets found in copilot instructions"
+            exit 1
+          fi
+
+          # Validate markdown
+          npx markdownlint .github/copilot-instructions.md || echo "⚠️ Markdown linting issues (non-blocking)"
+
+          echo "✅ Copilot instructions validation passed"
+
+      - name: Test referenced commands exist
+        run: |
+          # Verify pnpm scripts exist in key packages
+          if [[ -f "packages/cli/package.json" ]]; then
+            echo "Checking packages/cli scripts..."
+            jq -r '.scripts | keys[]' packages/cli/package.json | grep -E "(dev|build|start)" || echo "⚠️ Some CLI scripts missing"
+          fi
+
+          if [[ -f "packages/editor-ui/package.json" ]]; then
+            echo "Checking packages/editor-ui scripts..."
+            jq -r '.scripts | keys[]' packages/editor-ui/package.json | grep -E "(dev|build)" || echo "⚠️ Some editor-ui scripts missing"
+          fi

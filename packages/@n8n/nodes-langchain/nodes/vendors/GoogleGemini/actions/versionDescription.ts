@@ -2,6 +2,7 @@
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as audio from './audio';
+import * as cache from './cache';
 import * as document from './document';
 import * as file from './file';
 import * as image from './image';
@@ -64,6 +65,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'audio',
 				},
 				{
+					name: 'Cached Content',
+					value: 'cache',
+				},
+				{
 					name: 'Document',
 					value: 'document',
 				},
@@ -87,6 +92,7 @@ export const versionDescription: INodeTypeDescription = {
 			default: 'text',
 		},
 		...audio.description,
+		...cache.description,
 		...document.description,
 		...file.description,
 		...image.description,

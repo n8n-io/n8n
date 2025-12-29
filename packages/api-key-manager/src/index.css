@@ -1,0 +1,167 @@
+:root {
+	--bg-color: #0f1014;
+	--card-bg: rgba(35, 36, 44, 0.7);
+	--accent-primary: #ff6d5a; /* n8n-ish orange/red */
+	--accent-glow: rgba(255, 109, 90, 0.4);
+	--text-primary: #ffffff;
+	--text-secondary: #a1a1aa;
+	--border-color: rgba(255, 255, 255, 0.1);
+	--glass-border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body {
+	margin: 0;
+	background-color: var(--bg-color);
+	color: var(--text-primary);
+	font-family:
+		'Inter',
+		system-ui,
+		-apple-system,
+		sans-serif;
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	padding: 40px;
+}
+
+#root {
+	width: 100%;
+	max-width: 800px;
+}
+
+h1 {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-bottom: 2rem;
+	letter-spacing: -0.02em;
+	background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+.card {
+	background: var(--card-bg);
+	border: var(--glass-border);
+	-webkit-backdrop-filter: blur(12px); /* Safari support */
+	backdrop-filter: blur(12px);
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+	transition: transform 0.2s ease;
+	will-change: transform; /* Hint for browser optimization */
+	transform: translateZ(0); /* Force GPU Layer */
+}
+
+/* -------------------------------------------------------------------------
+   Utility Classes for App.tsx (Replaces inline styles)
+   ------------------------------------------------------------------------- */
+.section-title {
+	margin: 0;
+	font-size: 1.2rem;
+}
+
+.section-description {
+	margin: 4px 0 0 0;
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+}
+
+.loading-state {
+	padding: 40px;
+	text-align: center;
+	color: var(--text-secondary);
+	font-style: italic;
+}
+
+.key-name {
+	font-weight: 500;
+	margin-bottom: 4px;
+}
+
+.service-name {
+	font-size: 0.8rem;
+	color: var(--accent-primary);
+	margin-bottom: 4px;
+}
+
+.key-date {
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+}
+
+.action-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+}
+
+button.primary {
+	background: var(--accent-primary);
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	border-radius: 8px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 0 15px var(--accent-glow);
+	transition: all 0.2s ease;
+}
+
+button.primary:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 0 25px var(--accent-glow);
+}
+
+.key-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.key-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px;
+	background: rgba(255, 255, 255, 0.03);
+	border-radius: 8px;
+	border: var(--glass-border);
+}
+
+.key-value {
+	font-family: 'JetBrains Mono', monospace;
+	color: var(--text-secondary);
+	font-size: 0.9em;
+}
+
+.key-meta {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+}
+
+.status-badge {
+	font-size: 0.75rem;
+	padding: 4px 8px;
+	border-radius: 4px;
+	background: rgba(34, 197, 94, 0.2);
+	color: #4ade80;
+	border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+button.icon-btn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 8px;
+	border-radius: 6px;
+	transition: background 0.2s;
+}
+
+button.icon-btn:hover {
+	background: rgba(255, 255, 255, 0.1);
+	color: white;
+}

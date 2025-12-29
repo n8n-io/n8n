@@ -1,5 +1,8 @@
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { InstanceSettings } from '../src/instance-settings/instance-settings';
 import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -18,8 +21,9 @@ import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
-import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
+import { ExecutionLifecycleHooks } from '../src/execution-engine/execution-lifecycle-hooks';
+import { WorkflowExecute } from '../src/execution-engine/workflow-execute';
+import { ErrorReporter } from '../src/errors/error-reporter';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { NodeTypes } from './node-types';
@@ -28,6 +32,7 @@ type NodeOutputs = WorkflowTestData['output']['nodeData'];
 
 type TestHarnessOptions = {
 	additionalPackagePaths?: string[];
+	testDir?: string;
 };
 
 type TestOptions = {
@@ -43,8 +48,10 @@ export class NodeTestHarness {
 
 	private readonly packagePaths: string[];
 
-	constructor({ additionalPackagePaths }: TestHarnessOptions = {}) {
-		this.testDir = path.dirname(callsites()[1].getFileName()!);
+	constructor({ additionalPackagePaths, testDir }: TestHarnessOptions = {}) {
+		this.testDir = testDir ?? path.dirname(callsites()[1].getFileName()!);
+		console.log('DEBUG: NodeTestHarness testDir:', this.testDir);
+		console.log('DEBUG: callsites()[1].getFileName():', callsites()[1]?.getFileName());
 		this.packagePaths = additionalPackagePaths ?? [];
 		this.packagePaths.unshift(this.packageDir);
 
@@ -64,7 +71,11 @@ export class NodeTestHarness {
 			options.workflowFiles?.map((fileName) => path.join(this.relativePath, fileName)) ??
 			this.workflowFilenames;
 
+		console.log('DEBUG: workflowFilenames:', workflowFilenames);
+		console.log('DEBUG: relativePath:', this.relativePath);
+
 		const tests = this.workflowToTests(workflowFilenames, options);
+		console.log('DEBUG: Number of tests generated:', tests.length);
 		for (const testData of tests) {
 			this.setupTest(testData, options);
 		}
@@ -74,6 +85,8 @@ export class NodeTestHarness {
 		if (options.assertBinaryData) testData.output.assertBinaryData = true;
 		if (options.credentials) testData.credentials = options.credentials;
 		if (options.nock) testData.nock = options.nock;
+
+		console.log('DEBUG: globalThis.test type:', typeof (globalThis as any).test);
 
 		test(testData.description, async () => {
 			if (testData.nock) this.setupNetworkMocks(testData.nock);
@@ -183,6 +196,30 @@ export class NodeTestHarness {
 	private async executeWorkflow(testData: WorkflowTestData) {
 		const loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
+
+		// HOTFIX: Register InstanceSettings directly
+		const tempDir = mkdtempSync(path.join(tmpdir(), 'n8n-test-'));
+		const mockInstanceSettings = mock<InstanceSettings>({
+			n8nFolder: tempDir,
+			encryptionKey: 'test-key',
+		});
+		Container.set(InstanceSettings, mockInstanceSettings);
+
+		const mockGlobalConfig = mock<GlobalConfig>({
+			logging: {
+				level: 'silent',
+				outputs: [],
+				scopes: [],
+			} as any,
+		});
+		Container.set(GlobalConfig, mockGlobalConfig);
+
+		const mockLogger = mock<Logger>();
+		Container.set(Logger, mockLogger);
+
+		const mockErrorReporter = mock<ErrorReporter>();
+		Container.set(ErrorReporter, mockErrorReporter);
+
 		await loadNodesAndCredentials.init();
 		const nodeTypes = Container.get(NodeTypes);
 		const credentialsHelper = Container.get(CredentialsHelper);

@@ -1,0 +1,3 @@
+Credit name,Status,Currency,Percent remaining,Remaining value,Original value,Type,Credit ID,Scope,Start date,End date,Credit application type
+Free Trial,Expired,$,100,422.49,422.49,One-time,FreeTrial:Credit-01F007-79FBD4-3095AC,Certain usage; see the terms for free trial.,2025-12-01,2025-12-02,Net pricing,
+Free Trial,Available,$,99.8009186016237,421.65,422.49,One-time,FreeTrialUpgrade:CreditId-FreeTrial:Credit-01F007-79FBD4-3095AC,Certain usage; see the terms for free trial.,2025-12-02,2026-03-03,Net pricing,

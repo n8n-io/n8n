@@ -1,0 +1,198 @@
+{
+	"name": "PRZ_ANIMATION_ENGINE_Gemini-chatgpt-notion-remix",
+	"version": "3.0",
+	"description": "Hybrid PRZ Studio Everything Pack v3.0 \u2014 Sora + Gemini + ChatGPT + Notion + Remix pipeline. This JSON is a human-readable Make-style blueprint you can adapt into a real Make scenario export.",
+	"notes": "This is a conceptual blueprint (not an official Make export) describing modules, wiring, and responsibilities for PRZ_ANIMATION_ENGINE_Gemini-chatgpt-notion-remix.",
+	"modules": [
+		{
+			"id": "trigger_webhook",
+			"label": "Trigger: Webhook / Notion Watch",
+			"type": "trigger",
+			"service": "webhook_or_notion",
+			"role": "Entry point for new/updated PRZ video records or manual test calls.",
+			"outputs": ["ai_director_router"]
+		},
+		{
+			"id": "ai_director_router",
+			"label": "AI Director (Make AI Agent)",
+			"type": "ai_builder",
+			"service": "make_ai_builder",
+			"role": "Runs PRZ-MAKE-AI-AGENT with PRZ-CONSOLE output and command routing (/pulse, /compile, /render, /vision, /remix, /trendboost, /zacecho).",
+			"inputs": ["trigger_webhook"],
+			"outputs": [
+				"route_pulse",
+				"route_compile",
+				"route_render",
+				"route_vision",
+				"route_remix",
+				"route_trendboost",
+				"route_zacecho",
+				"route_status_only"
+			]
+		},
+		{
+			"id": "route_pulse",
+			"label": "Router: /pulse",
+			"type": "router",
+			"role": "When AI chooses /pulse, write Pulse metadata suggestions into Notion and set Status = 'Pulsed'.",
+			"outputs": ["notion_update_pulse"]
+		},
+		{
+			"id": "notion_update_pulse",
+			"label": "Notion: Update Pulse Fields",
+			"type": "notion_update",
+			"role": "Update Prompt (User), Status and any internal Pulse metadata fields."
+		},
+		{
+			"id": "route_compile",
+			"label": "Router: /compile",
+			"type": "router",
+			"role": "When AI chooses /compile, store Prompt (Compiled) from DATA and set Status = 'Compiled'.",
+			"outputs": ["notion_update_compiled"]
+		},
+		{
+			"id": "notion_update_compiled",
+			"label": "Notion: Save Compiled Prompt",
+			"type": "notion_update",
+			"role": "Write Prompt (Compiled) and Status = 'Compiled' to Notion."
+		},
+		{
+			"id": "route_render",
+			"label": "Router: /render",
+			"type": "router",
+			"role": "When AI chooses /render, send Sora create JSON from DATA to HTTP module.",
+			"outputs": ["http_sora_create"]
+		},
+		{
+			"id": "http_sora_create",
+			"label": "HTTP: Sora POST /videos",
+			"type": "http",
+			"role": "POST https://api.openai.com/v1/videos with JSON body from AI DATA. Store video.id and Status='Rendering'.",
+			"outputs": ["notion_update_render_started", "sora_status_loop"]
+		},
+		{
+			"id": "notion_update_render_started",
+			"label": "Notion: Mark Rendering",
+			"type": "notion_update",
+			"role": "Store Sora Job ID, Model, Size, Seconds, Status='Rendering'."
+		},
+		{
+			"id": "sora_status_loop",
+			"label": "Loop: Poll Sora Status",
+			"type": "loop_http",
+			"role": "GET /videos/{id} until status=='completed' or 'failed'. On success, proceed to download; on failure, log error and set Status='Failed'.",
+			"outputs": ["http_sora_download", "notion_update_failed"]
+		},
+		{
+			"id": "http_sora_download",
+			"label": "HTTP: Sora Download Content",
+			"type": "http",
+			"role": "GET /videos/{id}/content (variant=video, thumbnail, spritesheet) and upload to cloud storage.",
+			"outputs": ["cloud_upload_assets", "notion_update_final_url"]
+		},
+		{
+			"id": "cloud_upload_assets",
+			"label": "Cloud: Upload Assets",
+			"type": "cloud_storage",
+			"role": "Store video.mp4, thumbnail.webp, spritesheet.jpg and return public URLs."
+		},
+		{
+			"id": "notion_update_final_url",
+			"label": "Notion: Save Final Video URL",
+			"type": "notion_update",
+			"role": "Write Final Video URL, Status='Rendered', and asset links."
+		},
+		{
+			"id": "route_vision",
+			"label": "Router: /vision",
+			"type": "router",
+			"role": "When AI chooses /vision, send Gemini Vision JSON from DATA.",
+			"outputs": ["http_gemini_vision"]
+		},
+		{
+			"id": "http_gemini_vision",
+			"label": "HTTP: Gemini Vision",
+			"type": "http",
+			"role": "POST to Gemini Vision endpoint with DATA JSON. Receive virality_score, notes, improvement_suggestions, gemini_enhanced_metadata.",
+			"outputs": ["notion_update_vision_feedback"]
+		},
+		{
+			"id": "notion_update_vision_feedback",
+			"label": "Notion: Save Vision Feedback",
+			"type": "notion_update",
+			"role": "Write Gemini Video Feedback, Gemini Findings, and optionally Trend Keywords (Gemini)."
+		},
+		{
+			"id": "route_trendboost",
+			"label": "Router: /trendboost",
+			"type": "router",
+			"role": "When AI chooses /trendboost, send Gemini Ultra JSON for trend/SEO analysis.",
+			"outputs": ["http_gemini_trend"]
+		},
+		{
+			"id": "http_gemini_trend",
+			"label": "HTTP: Gemini Ultra (Trend)",
+			"type": "http",
+			"role": "POST to Gemini text endpoint with DATA JSON. Map findings back into Notion.",
+			"outputs": ["notion_update_trend"]
+		},
+		{
+			"id": "notion_update_trend",
+			"label": "Notion: Save Gemini Trend Fields",
+			"type": "notion_update",
+			"role": "Write Gemini Findings, Trend Keywords (Gemini)."
+		},
+		{
+			"id": "route_remix",
+			"label": "Router: /remix",
+			"type": "router",
+			"role": "When AI chooses /remix, send Sora Remix JSON from DATA to HTTP module.",
+			"outputs": ["http_sora_remix"]
+		},
+		{
+			"id": "http_sora_remix",
+			"label": "HTTP: Sora Remix",
+			"type": "http",
+			"role": "POST https://api.openai.com/v1/videos/{previous_video_id}/remix with JSON body from AI DATA. Store new job ID, set Status='Rendering Remix'.",
+			"outputs": ["notion_update_remix_started", "sora_status_loop"]
+		},
+		{
+			"id": "notion_update_remix_started",
+			"label": "Notion: Mark Remix Rendering",
+			"type": "notion_update",
+			"role": "Store new Sora Job ID, set Remix of ID, Status='Rendering Remix'."
+		},
+		{
+			"id": "route_zacecho",
+			"label": "Router: /zacecho",
+			"type": "router",
+			"role": "When AI chooses /zacecho, log stabilization suggestions and optionally trigger another /resonance or finalize.",
+			"outputs": ["notion_update_zacecho"]
+		},
+		{
+			"id": "notion_update_zacecho",
+			"label": "Notion: Save ZacEcho Notes",
+			"type": "notion_update",
+			"role": "Store ZacEcho stabilization suggestions, recommended next action, and lock-in notes for canon/style."
+		},
+		{
+			"id": "route_status_only",
+			"label": "Router: Status-only Replies",
+			"type": "router",
+			"role": "Handles /status, /debug, /explain outputs from AI for human-facing logs or dashboards.",
+			"outputs": ["log_console_status"]
+		},
+		{
+			"id": "log_console_status",
+			"label": "Utility: Log PRZ Console Output",
+			"type": "logger",
+			"role": "Store last PRZ-CONSOLE block for debugging/monitoring."
+		},
+		{
+			"id": "notion_update_failed",
+			"label": "Notion: Mark Failed Render",
+			"type": "notion_update",
+			"role": "Set Status='Failed', capture error message from Sora or Gemini."
+		}
+	]
+}

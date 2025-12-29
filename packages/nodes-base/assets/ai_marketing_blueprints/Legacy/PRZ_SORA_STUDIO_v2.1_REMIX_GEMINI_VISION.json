@@ -1,0 +1,280 @@
+{
+	"name": "PRZ_SORA_STUDIO_v2.1_REMIX_GEMINI_VISION",
+	"flow": {
+		"root": "notion_watch",
+		"nodes": {
+			"notion_watch": {
+				"id": "notion_watch",
+				"type": "module",
+				"module": "notion:watchDatabaseItems",
+				"params": {
+					"database_id": "YOUR_NOTION_DATABASE_ID",
+					"filter_type": "property",
+					"property_name": "Status",
+					"property_value": "Requested"
+				},
+				"next": "gemini_trend_scan"
+			},
+			"gemini_trend_scan": {
+				"id": "gemini_trend_scan",
+				"type": "module",
+				"module": "http:post",
+				"params": {
+					"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-ultra:generateContent?key=YOUR_GEMINI_API_KEY",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": "{\\n  \\\"contents\\\": [\\n    {\\n      \\\"parts\\\": [\\n        {\\\"text\\\": \\\"You are the PRZ-Gemini Intelligence Layer. Analyze viral trends and output optimized metadata in JSON. Idea: {{Prompt (User)}} Return JSON with trend_insights, recommended_keywords, style_optimizations, risk_factors, metadata_for_chatgpt.\\\"}\\n      ]\\n    }\\n  ]\\n}"
+				},
+				"mapping": {
+					"trend_insights": "response.contents[0].parts[0].inline_data.trend_insights",
+					"recommended_keywords": "response.contents[0].parts[0].inline_data.recommended_keywords",
+					"metadata_for_chatgpt": "response.contents[0].parts[0].inline_data.metadata_for_chatgpt"
+				},
+				"next": "notion_update_after_gemini"
+			},
+			"notion_update_after_gemini": {
+				"id": "notion_update_after_gemini",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Gemini Findings": "{{trend_insights}}",
+						"Trend Keywords (Gemini)": "{{recommended_keywords}}",
+						"Status": "Gemini Scan Complete"
+					}
+				},
+				"next": "chatgpt_prz_compiler"
+			},
+			"chatgpt_prz_compiler": {
+				"id": "chatgpt_prz_compiler",
+				"type": "module",
+				"module": "openai:createChatCompletion",
+				"params": {
+					"model": "gpt-5.1",
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are the PRZ Sora Compiler. Produce elite cinematic, comedic prompts using PRZ Studio rules."
+						},
+						{
+							"role": "user",
+							"content": "USER IDEA: {{Prompt (User)}} \\nGEMINI METADATA: {{metadata_for_chatgpt}}"
+						}
+					]
+				},
+				"mapping": {
+					"compiled_prompt": "choices[0].message.content"
+				},
+				"next": "notion_store_compiled"
+			},
+			"notion_store_compiled": {
+				"id": "notion_store_compiled",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Prompt (Compiled)": "{{compiled_prompt}}",
+						"Status": "Compiled"
+					}
+				},
+				"next": "sora_create_video"
+			},
+			"sora_create_video": {
+				"id": "sora_create_video",
+				"type": "module",
+				"module": "http:post",
+				"params": {
+					"url": "https://api.openai.com/v1/videos",
+					"headers": {
+						"Content-Type": "application/json",
+						"Authorization": "Bearer YOUR_OPENAI_API_KEY"
+					},
+					"body": "{\\n  \\\"model\\\": \\\"{{Model}}\\\",\\n  \\\"prompt\\\": \\\"{{compiled_prompt}}\\\",\\n  \\\"seconds\\\": {{Seconds}},\\n  \\\"size\\\": \\\"{{Size}}\\\"\\n}"
+				},
+				"mapping": {
+					"sora_job_id": "response.id",
+					"initial_status": "response.status"
+				},
+				"next": "notion_store_sora_job"
+			},
+			"notion_store_sora_job": {
+				"id": "notion_store_sora_job",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Sora Job ID": "{{sora_job_id}}",
+						"Status": "Queued"
+					}
+				},
+				"next": "webhook_wait"
+			},
+			"webhook_wait": {
+				"id": "webhook_wait",
+				"type": "module",
+				"module": "webhook:customWebhook",
+				"params": {
+					"webhook_id": "YOUR_WEBHOOK_ID"
+				},
+				"next": "router"
+			},
+			"router": {
+				"id": "router",
+				"type": "router",
+				"branches": {
+					"completed": {
+						"condition": "{{type}} = \\\"video.completed\\\"",
+						"next": "sora_download_video"
+					},
+					"failed": {
+						"condition": "{{type}} = \\\"video.failed\\\"",
+						"next": "notion_failed"
+					}
+				}
+			},
+			"sora_download_video": {
+				"id": "sora_download_video",
+				"type": "module",
+				"module": "http:get",
+				"params": {
+					"url": "https://api.openai.com/v1/videos/{{id}}/content?variant=video",
+					"headers": {
+						"Authorization": "Bearer YOUR_OPENAI_API_KEY"
+					}
+				},
+				"mapping": {
+					"video_binary": "response.body"
+				},
+				"next": "cloud_upload_video"
+			},
+			"cloud_upload_video": {
+				"id": "cloud_upload_video",
+				"type": "module",
+				"module": "googledrive:uploadFile",
+				"params": {
+					"file": "{{video_binary}}",
+					"fileName": "sora_render_{{id}}.mp4",
+					"folderId": "YOUR_DRIVE_FOLDER"
+				},
+				"mapping": {
+					"video_url": "response.webViewLink"
+				},
+				"next": "notion_store_final"
+			},
+			"notion_store_final": {
+				"id": "notion_store_final",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Final Video URL": "{{video_url}}",
+						"Status": "Completed"
+					}
+				},
+				"next": "gemini_vision_analyze"
+			},
+			"gemini_vision_analyze": {
+				"id": "gemini_vision_analyze",
+				"type": "module",
+				"module": "http:post",
+				"params": {
+					"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-ultra:generateContent?key=YOUR_GEMINI_API_KEY",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": "{\\n  \\\"contents\\\": [\\n    {\\n      \\\"parts\\\": [\\n        {\\\"text\\\": \\\"You are PRZ-Gemini Video Intelligence. Analyze this video (URL: {{video_url}}) for virality, pacing, clarity, hook strength, and comedic timing. Return JSON with virality_score, notes, improvement_suggestions, gemini_enhanced_metadata.\\\"}\\n      ]\\n    }\\n  ]\\n}"
+				},
+				"mapping": {
+					"virality_score": "response.contents[0].parts[0].inline_data.virality_score",
+					"gv_notes": "response.contents[0].parts[0].inline_data.notes",
+					"improvement_suggestions": "response.contents[0].parts[0].inline_data.improvement_suggestions",
+					"gemini_enhanced_metadata": "response.contents[0].parts[0].inline_data.gemini_enhanced_metadata"
+				},
+				"next": "notion_store_gemini_feedback"
+			},
+			"notion_store_gemini_feedback": {
+				"id": "notion_store_gemini_feedback",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Gemini Video Feedback": "Score: {{virality_score}}\\nNotes: {{gv_notes}}\\nSuggestions: {{improvement_suggestions}}"
+					}
+				},
+				"next": "chatgpt_resonance"
+			},
+			"chatgpt_resonance": {
+				"id": "chatgpt_resonance",
+				"type": "module",
+				"module": "openai:createChatCompletion",
+				"params": {
+					"model": "gpt-5.1",
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are PRZ Resonance, refining Sora prompts based on rendered output and Gemini feedback."
+						},
+						{
+							"role": "user",
+							"content": "Here is the original compiled prompt:\\n{{compiled_prompt}}\\n\\nHere is Gemini's video analysis JSON:\\n{{gemini_enhanced_metadata}}\\n\\nGenerate an improved Sora prompt for a remix that fixes pacing, enhances the hook, and maintains style. Output ONLY the new prompt."
+						}
+					]
+				},
+				"mapping": {
+					"remix_prompt": "choices[0].message.content"
+				},
+				"next": "sora_remix_video"
+			},
+			"sora_remix_video": {
+				"id": "sora_remix_video",
+				"type": "module",
+				"module": "http:post",
+				"params": {
+					"url": "https://api.openai.com/v1/videos/{{id}}/remix",
+					"headers": {
+						"Content-Type": "application/json",
+						"Authorization": "Bearer YOUR_OPENAI_API_KEY"
+					},
+					"body": "{\\n  \\\"prompt\\\": \\\"{{remix_prompt}}\\\"\\n}"
+				},
+				"mapping": {
+					"remix_job_id": "response.id",
+					"remix_status": "response.status"
+				},
+				"next": "notion_store_remix_job"
+			},
+			"notion_store_remix_job": {
+				"id": "notion_store_remix_job",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Remix of ID": "{{id}}",
+						"Sora Job ID": "{{remix_job_id}}",
+						"Status": "Queued (Remix)"
+					}
+				},
+				"next": "webhook_wait"
+			},
+			"notion_failed": {
+				"id": "notion_failed",
+				"type": "module",
+				"module": "notion:updatePage",
+				"params": {
+					"page_id": "{{ID}}",
+					"properties": {
+						"Status": "Failed",
+						"Notes (Pulse/Resonance)": "Sora reported failure: {{id}}"
+					}
+				}
+			}
+		}
+	}
+}

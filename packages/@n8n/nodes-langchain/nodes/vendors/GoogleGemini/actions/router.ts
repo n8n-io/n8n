@@ -1,6 +1,7 @@
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import * as audio from './audio';
+import * as cache from './cache';
 import * as document from './document';
 import * as file from './file';
 import * as image from './image';
@@ -39,6 +40,9 @@ export async function router(this: IExecuteFunctions) {
 			break;
 		case 'video':
 			execute = video[googleGeminiTypeData.operation].execute;
+			break;
+		case 'cache':
+			execute = cache[googleGeminiTypeData.operation].execute;
 			break;
 		default:
 			throw new NodeOperationError(

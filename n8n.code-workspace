@@ -1,0 +1,49 @@
+{
+"folders": [
+{
+"name": "Root",
+"path": "."
+},
+{
+"name": "Nodes Base",
+"path": "packages/nodes-base"
+},
+{
+"name": "Workflow",
+"path": "packages/workflow"
+},
+{
+"name": "Nodes LangChain",
+"path": "packages/@n8n/nodes-langchain"
+},
+{
+"name": "CLI",
+"path": "packages/cli"
+},
+{
+"name": "Core",
+"path": "packages/core"
+},
+{
+"name": "Editor UI",
+"path": "packages/editor-ui"
+}
+],
+"settings": {
+"typescript.tsdk": "node_modules/typescript/lib",
+"editor.formatOnSave": true,
+"editor.defaultFormatter": "esbenp.prettier-vscode",
+"eslint.workingDirectories": [
+{ "pattern": "packages/*" },
+{ "pattern": "packages/@n8n/*" }
+]
+},
+"extensions": {
+"recommendations": [
+"dbaeumer.vscode-eslint",
+"esbenp.prettier-vscode",
+"eg2.tslint",
+"editorconfig.editorconfig"
+]
+}
+}

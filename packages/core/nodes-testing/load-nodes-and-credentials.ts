@@ -10,13 +10,22 @@ import type {
 } from 'n8n-workflow';
 import path from 'node:path';
 
-import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../dist/errors';
-import { LazyPackageDirectoryLoader } from '../dist/nodes-loader/lazy-package-directory-loader';
+import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../src/errors';
+import { LazyPackageDirectoryLoader } from '../src/nodes-loader/lazy-package-directory-loader';
 
 /** This rewrites the nodes/credentials source path to load the typescript code instead of the compiled javascript code */
+process.stdout.write('DEBUG: load-nodes-and-credentials.ts LOADED\n');
+
 const fixSourcePath = (loadInfo: LoadingDetails) => {
 	if (!loadInfo) return;
-	loadInfo.sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+	const original = loadInfo.sourcePath;
+	// Handle absolute paths: replace /dist/ with / and .js with .ts
+	// e.g. .../nodes-base/dist/nodes/Yield.node.js -> .../nodes-base/nodes/Yield.node.ts
+	loadInfo.sourcePath = loadInfo.sourcePath
+		.replace(/[\\/]dist[\\/]/, path.sep) // Replace /dist/ with /
+		.replace(/\.js$/, '.ts');
+
+	process.stdout.write(`DEBUG: FixSourcePath: ${original} -> ${loadInfo.sourcePath}\n`);
 };
 
 @Service()
@@ -36,6 +45,12 @@ export class LoadNodesAndCredentials {
 
 	async init() {
 		for (const [packageName, loader] of Object.entries(this.loaders)) {
+			if (packageName === 'n8n-nodes-base') {
+				// HOTFIX: Only load YouTube and dependencies to avoid Asana/ESM crashes
+				// We access the protected includeNodes property (available as property on instance)
+				// @ts-ignore
+				loader.includeNodes = ['YouTube', 'ManualTrigger', 'NoOp'];
+			}
 			await loader.loadAll();
 			const { known, directory } = loader;
 

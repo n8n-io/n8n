@@ -1,0 +1,75 @@
+
+> n8n-nodes-base@1.118.0 test:vitest C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base
+> vitest "nodes/Google/YouTube/__test__/node/YouTube.node.test.ts" "--run" "--no-cache"
+
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\src\index.ts
+
+[1m[46m RUN [49m[22m [36mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+DEBUG: load-nodes-and-credentials.ts LOADED
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\channels.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [ [32m'nodes\\Google\\YouTube\\__test__\\node\\playlists.workflow.json'[39m ]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\videoCategories.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+[90mstdout[2m | nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+[22m[39mDEBUG: NodeTestHarness testDir: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node
+DEBUG: callsites()[1].getFileName(): C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\nodes\Google\YouTube\__test__\node\YouTube.node.test.ts
+DEBUG: workflowFilenames: [
+  [32m'nodes\\Google\\YouTube\\__test__\\node\\playlistItems.workflow.json'[39m
+]
+DEBUG: relativePath: nodes\Google\YouTube\__test__\node
+DEBUG: Number of tests generated: [33m1[39m
+DEBUG: globalThis.test type: function
+
+(node:19796) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/workflow/dist/esm/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31mΓ¥»[39m nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 454[2mms[22m[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mChannel[2m > [22mnodes\Google\YouTube\__test__\node\channels.workflow[39m[33m 346[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist[2m > [22mnodes\Google\YouTube\__test__\node\playlists.workflow[39m[32m 25[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mVideo Categories[2m > [22mnodes\Google\YouTube\__test__\node\videoCategories.workflow[39m[32m 29[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+[31m   [31m├ù[31m Test YouTube Node[2m > [22mPlaylist Item[2m > [22mnodes\Google\YouTube\__test__\node\playlistItems.workflow[39m[32m 36[2mms[22m[39m
+[31m     ΓåÆ Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 4 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Channel > nodes\Google\YouTube\__test__\node\channels.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist > nodes\Google\YouTube\__test__\node\playlists.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Video Categories > nodes\Google\YouTube\__test__\node\videoCategories.workflow
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts > Test YouTube Node > Playlist Item > nodes\Google\YouTube\__test__\node\playlistItems.workflow
+Error: Cannot find module 'C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\logger-proxy' imported from C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\workflow\dist\esm\index.js
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m   Start at [22m 15:49:42
+[2m   Duration [22m 26.58s[2m (transform 11.59s, setup 77ms, collect 21.95s, tests 454ms, environment 1ms, prepare 1.22s)[22m
+
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

@@ -1,0 +1,3 @@
+tables_record_id,tables_created_at,tables_updated_at,request_id,status,created_at,completed_at,error_message
+01KCH3R5K4MWE75Z2NJTKK6E4R,2025-12-15T13:38:41.892000+00:00,2025-12-15T13:38:41.891590+00:00,INIT-000,completed,01/01/25,01/01/25,
+01KCH3R5K4MWE75Z2NJTKK6E4S,2025-12-15T13:38:41.892000+00:00,2025-12-15T13:38:41.891590+00:00,TEST-LOCK-001,processing,01/01/25,,

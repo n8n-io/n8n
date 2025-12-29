@@ -1,0 +1,3 @@
+request_id,status,created_at,completed_at,error_message
+INIT-000,completed,2025-01-01T00:00:00Z,2025-01-01T00:00:01Z,
+TEST-LOCK-001,processing,2025-01-01T12:00:00Z,,

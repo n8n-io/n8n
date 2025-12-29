@@ -9,7 +9,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { Credentials } from '../dist/credentials';
+import { Credentials } from '../src/credentials';
 import { CredentialTypes } from './credential-types';
 
 @Service()

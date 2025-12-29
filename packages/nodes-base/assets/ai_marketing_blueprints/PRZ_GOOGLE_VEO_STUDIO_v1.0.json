@@ -1,0 +1,246 @@
+{
+	"name": "PRZ_GOOGLE_VEO_STUDIO_v1.0",
+	"nodes": [
+		{
+			"id": "notion_watch",
+			"name": "notion_watch",
+			"typeVersion": 1,
+			"position": [100, 300],
+			"type": "n8n-nodes-base.notionTrigger",
+			"parameters": {
+				"event": "paged_added",
+				"databaseId": "ntn_588750214sZ5Idt0NGBul4sxgLVP5BIuk4FY9bs"
+			},
+			"credentials": {
+				"notionApi": {
+					"id": "NOTION_CRED_ID"
+				}
+			}
+		},
+		{
+			"id": "gemini_trend_scan",
+			"name": "gemini_trend_scan",
+			"typeVersion": 1,
+			"position": [350, 300],
+			"type": "n8n-nodes-base.httpRequest",
+			"parameters": {
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-ultra:generateContent?key=PLACEHOLDER_KEY",
+				"method": "POST",
+				"body": "{\\n  \\\"contents\\\": [\\n    {\\n      \\\"parts\\\": [\\n        {\\\"text\\\": \\\"You are the PRZ-Gemini Intelligence Layer. Analyze viral trends and output optimized metadata in JSON. Idea: {{Prompt (User)}} Return JSON with trend_insights, recommended_keywords, style_optimizations, risk_factors, metadata_for_chatgpt.\\\"}\\n      ]\\n    }\\n  ]\\n}",
+				"jsonParameters": true
+			}
+		},
+		{
+			"id": "notion_update_after_gemini",
+			"name": "notion_update_after_gemini",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "chatgpt_prz_compiler",
+			"name": "chatgpt_prz_compiler",
+			"typeVersion": 1,
+			"position": [850, 300],
+			"type": "n8n-nodes-base.openAi",
+			"parameters": {
+				"resource": "chat",
+				"operation": "message",
+				"model": "gpt-5.1",
+				"prompt": "[{\"role\":\"system\",\"content\":\"You are the PRZ Sora Compiler. Produce elite cinematic, comedic prompts using PRZ Studio rules.\"},{\"role\":\"user\",\"content\":\"USER IDEA: {{Prompt (User)}} \\\\nGEMINI METADATA: {{metadata_for_chatgpt}}\"}]"
+			}
+		},
+		{
+			"id": "notion_store_compiled",
+			"name": "notion_store_compiled",
+			"typeVersion": 1,
+			"position": [1100, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "sora_create_video",
+			"name": "google_veo_create_video",
+			"typeVersion": 1,
+			"position": [1350, 300],
+			"type": "n8n-nodes-base.httpRequest",
+			"parameters": {
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-ultra:generateContent?key={{ $env.VITE_GOOGLE_VERTEX_KEY }}",
+				"method": "POST",
+				"authentication": "header",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{ $env.VITE_GOOGLE_VERTEX_KEY }}"
+						}
+					]
+				},
+				"body": "{\n  \"instances\": [\n    {\n      \"prompt\": \"{{compiled_prompt}}\",\n      \"negative_prompt\": \"distorted, blurry, low quality\",\n      \"frame_rate\": 24\n    }\n  ],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"16:9\"\n  }\n}",
+				"jsonParameters": true
+			}
+		},
+		{
+			"id": "notion_store_sora_job",
+			"name": "notion_store_sora_job",
+			"typeVersion": 1,
+			"position": [1600, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "webhook_wait",
+			"name": "webhook_wait",
+			"typeVersion": 1,
+			"position": [1850, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "router",
+			"name": "router",
+			"typeVersion": 1,
+			"position": [2100, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "sora_download_video",
+			"name": "sora_download_video",
+			"typeVersion": 1,
+			"position": [2350, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "cloud_upload_video",
+			"name": "cloud_upload_video",
+			"typeVersion": 1,
+			"position": [2600, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "notion_store_final",
+			"name": "notion_store_final",
+			"typeVersion": 1,
+			"position": [2850, 300],
+			"type": "n8n-nodes-base.noOp"
+		},
+		{
+			"id": "notion_failed",
+			"name": "notion_failed",
+			"typeVersion": 1,
+			"position": [3100, 300],
+			"type": "n8n-nodes-base.noOp"
+		}
+	],
+	"connections": {
+		"notion_watch": {
+			"main": [
+				[
+					{
+						"node": "gemini_trend_scan",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"gemini_trend_scan": {
+			"main": [
+				[
+					{
+						"node": "notion_update_after_gemini",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"notion_update_after_gemini": {
+			"main": [
+				[
+					{
+						"node": "chatgpt_prz_compiler",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"chatgpt_prz_compiler": {
+			"main": [
+				[
+					{
+						"node": "notion_store_compiled",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"notion_store_compiled": {
+			"main": [
+				[
+					{
+						"node": "google_veo_create_video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"google_veo_create_video": {
+			"main": [
+				[
+					{
+						"node": "notion_store_sora_job",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"notion_store_sora_job": {
+			"main": [
+				[
+					{
+						"node": "webhook_wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"webhook_wait": {
+			"main": [
+				[
+					{
+						"node": "router",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"sora_download_video": {
+			"main": [
+				[
+					{
+						"node": "cloud_upload_video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"cloud_upload_video": {
+			"main": [
+				[
+					{
+						"node": "notion_store_final",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"versionId": "5dd87920-cea7-46ea-9d3a-c66eed290446"
+}

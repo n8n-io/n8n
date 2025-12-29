@@ -1,3 +1,4 @@
+// cspell:ignore langchain genai
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -119,8 +120,15 @@ export class LmChatGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-2.5-flash',
 			},
+			{
+				displayName: 'Cached Content',
+				name: 'cachedContent',
+				type: 'string',
+				default: '',
+				description: 'Name of the cached content to use (e.g. cachedContents/...)',
+			},
 			// thinking budget not supported in @langchain/google-genai
-			// as it utilises the old google generative ai SDK
+			// as it utilizes the old google generative ai SDK
 			getAdditionalOptions({ supportsThinkingBudget: false }),
 		],
 	};
@@ -147,10 +155,15 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
+		const cachedContent = this.getNodeParameter('cachedContent', itemIndex, undefined) as
+			| string
+			| undefined;
+
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			model: modelName,
+			cachedContent,
 			topK: options.topK,
 			topP: options.topP,
 			temperature: options.temperature,
@@ -158,7 +171,7 @@ export class LmChatGoogleGemini implements INodeType {
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
-		});
+		} as any);
 
 		return {
 			response: model,

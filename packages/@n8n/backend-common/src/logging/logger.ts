@@ -43,7 +43,9 @@ export class Logger implements LoggerType {
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		{ isRoot }: { isRoot?: boolean } = { isRoot: true },
 	) {
-		this.level = this.globalConfig.logging.level;
+		// Defensive check for testing environments where DI might fail
+		const loggingConfig = this.globalConfig?.logging;
+		this.level = loggingConfig?.level ?? 'silent';
 
 		const isSilent = this.level === 'silent';
 

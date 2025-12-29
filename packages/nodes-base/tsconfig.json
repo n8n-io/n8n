@@ -1,11 +1,12 @@
 {
-	"extends": ["@n8n/typescript-config/modern/tsconfig.json"],
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
 		"paths": {
 			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"],
-			"@nodes-testing/*": ["../core/nodes-testing/*"]
+			"@nodes-testing/*": ["../core/nodes-testing/*"],
+			"n8n-workflow": ["../workflow/src/index.ts"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 
@@ -28,7 +29,8 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"strictNullChecks": true,
-		"preserveConstEnums": true
+		"preserveConstEnums": true,
+		"forceConsistentCasingInFileNames": true
 	},
 	"include": [
 		"shims.d.ts",

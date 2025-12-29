@@ -1,0 +1,31 @@
+
+> n8n-nodes-base@1.118.0 test:vitest C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base
+> vitest "nodes/Google/YouTube/__test__/node/YouTube.node.test.ts" "--run"
+
+DEBUG: n8n-workflow alias: C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\nodes-base\INVALID_PATH
+
+[1m[46m RUN [49m[22m [36mv3.1.3 [39m[90mC:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base[39m
+
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Suites 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  nodes/Google/YouTube/__test__/node/YouTube.node.test.ts [ nodes/Google/YouTube/__test__/node/YouTube.node.test.ts ]
+Error: Cannot find module 'n8n-workflow' imported from 'C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/@n8n/decorators/src/errors.ts'.
+
+- If you rely on tsconfig.json's "paths" to resolve modules, please install "vite-tsconfig-paths" plugin to handle module resolution.
+- Make sure you don't have relative aliases in your Vitest config. Use absolute paths instead. Read more: https://vitest.dev/guide/common-errors
+ Γ¥» ../@n8n/decorators/src/errors.ts:1:1
+      1| import { UnexpectedError } from 'n8n-workflow';
+       | ^
+      2| 
+      3| export class NonMethodError extends UnexpectedError {
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 15:11:32
+[2m   Duration [22m 15.93s[2m (transform 2.98s, setup 227ms, collect 0ms, tests 0ms, environment 1ms, prepare 1.80s)[22m
+
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

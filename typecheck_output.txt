@@ -1,0 +1,275 @@
+
+> @n8n/n8n-nodes-langchain@1.119.0 typecheck C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\@n8n\nodes-langchain
+> tsc --noEmit
+
+nodes/agents/Agent/agents/ConversationalAgent/execute.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/ConversationalAgent/execute.ts(3,52): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ConversationalAgent/execute.ts(61,43): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nOutputParser'.
+  Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+nodes/agents/Agent/agents/ConversationalAgent/execute.ts(99,55): error TS2345: Argument of type 'N8nOutputParser' is not assignable to parameter of type 'BaseOutputParser<unknown>'.
+  Type 'N8nStructuredOutputParser' is missing the following properties from type 'BaseOutputParser<unknown>': parseResult, parseWithPrompt, getFormatInstructions, _type, and 40 more.
+nodes/agents/Agent/agents/OpenAiFunctionsAgent/execute.ts(3,41): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/OpenAiFunctionsAgent/execute.ts(4,44): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/OpenAiFunctionsAgent/execute.ts(5,51): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/OpenAiFunctionsAgent/execute.ts(70,43): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nOutputParser'.
+  Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+nodes/agents/Agent/agents/OpenAiFunctionsAgent/execute.ts(107,55): error TS2345: Argument of type 'N8nOutputParser' is not assignable to parameter of type 'BaseOutputParser<unknown>'.
+  Type 'N8nStructuredOutputParser' is missing the following properties from type 'BaseOutputParser<unknown>': parseResult, parseWithPrompt, getFormatInstructions, _type, and 40 more.
+nodes/agents/Agent/agents/PlanAndExecuteAgent/execute.ts(3,45): error TS2307: Cannot find module 'langchain/experimental/plan_and_execute' or its corresponding type declarations.
+nodes/agents/Agent/agents/PlanAndExecuteAgent/execute.ts(47,43): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nOutputParser'.
+  Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+nodes/agents/Agent/agents/PlanAndExecuteAgent/execute.ts(84,55): error TS2345: Argument of type 'N8nOutputParser' is not assignable to parameter of type 'BaseOutputParser<unknown>'.
+  Type 'N8nStructuredOutputParser' is missing the following properties from type 'BaseOutputParser<unknown>': parseResult, parseWithPrompt, getFormatInstructions, _type, and 40 more.
+nodes/agents/Agent/agents/ReActAgent/execute.ts(4,57): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ReActAgent/execute.ts(69,43): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nOutputParser'.
+  Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+nodes/agents/Agent/agents/ReActAgent/execute.ts(107,55): error TS2345: Argument of type 'N8nOutputParser' is not assignable to parameter of type 'BaseOutputParser<unknown>'.
+  Type 'N8nStructuredOutputParser' is missing the following properties from type 'BaseOutputParser<unknown>': parseResult, parseWithPrompt, getFormatInstructions, _type, and 40 more.
+nodes/agents/Agent/agents/SqlAgent/execute.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/SqlAgent/execute.ts(4,42): error TS2307: Cannot find module 'langchain/agents/toolkits/sql' or its corresponding type declarations.
+nodes/agents/Agent/agents/SqlAgent/execute.ts(5,44): error TS2307: Cannot find module 'langchain/agents/toolkits/sql' or its corresponding type declarations.
+nodes/agents/Agent/agents/SqlAgent/execute.ts(6,29): error TS2307: Cannot find module 'langchain/sql_db' or its corresponding type declarations.
+nodes/agents/Agent/agents/SqlAgent/other/handlers/postgres.test.ts(2,46): error TS6305: Output file 'C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base/dist/nodes/Postgres/v2/helpers/interfaces.d.ts' has not been built from source file 'C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/nodes-base/nodes/Postgres/v2/helpers/interfaces.ts'.
+nodes/agents/Agent/agents/SqlAgent/other/handlers/postgres.ts(2,46): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/common.ts(5,47): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/common.ts(6,39): error TS2307: Cannot find module 'langchain/dist/agents/tool_calling/output_parser' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/common.ts(7,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/common.ts(8,50): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V1/execute.ts(3,55): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts(11,8): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts(12,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts(13,50): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts(9,68): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts(10,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts(11,50): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/agents/utils.ts(2,50): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/commons.test.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/commons.test.ts(9,47): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/commons.test.ts(10,39): error TS2307: Cannot find module 'langchain/dist/agents/tool_calling/output_parser' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/commons.test.ts(11,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV1.test.ts(3,31): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV1.test.ts(4,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts(3,31): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts(4,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts(11,40): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts(12,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts(13,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/utils.test.ts(1,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/Agent/test/utils.test.ts(2,39): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts(1,31): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts(2,37): error TS2307: Cannot find module 'langchain/dist/experimental/openai_assistant/schema' or its corresponding type declarations.
+nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts(3,41): error TS2307: Cannot find module 'langchain/experimental/openai_assistant' or its corresponding type declarations.
+nodes/chains/ChainLLM/methods/chainExecutor.ts(156,42): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nOutputParser'.
+  Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+nodes/chains/ChainRetrievalQA/processItem.ts(9,43): error TS2307: Cannot find module 'langchain/chains/combine_documents' or its corresponding type declarations.
+nodes/chains/ChainRetrievalQA/processItem.ts(10,38): error TS2307: Cannot find module 'langchain/chains/retrieval' or its corresponding type declarations.
+nodes/chains/ChainSummarization/helpers.ts(2,47): error TS2307: Cannot find module 'langchain/chains' or its corresponding type declarations.
+nodes/chains/ChainSummarization/V1/ChainSummarizationV1.node.ts(4,47): error TS2307: Cannot find module 'langchain/chains' or its corresponding type declarations.
+nodes/chains/ChainSummarization/V1/ChainSummarizationV1.node.ts(5,40): error TS2307: Cannot find module 'langchain/chains' or its corresponding type declarations.
+nodes/chains/ChainSummarization/V2/processItem.ts(5,40): error TS2307: Cannot find module 'langchain/chains' or its corresponding type declarations.
+nodes/chains/InformationExtractor/InformationExtractor.node.ts(3,60): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/chains/InformationExtractor/InformationExtractor.node.ts(302,32): error TS2322: Type 'unknown' is not assignable to type 'IDataObject | GenericValue | GenericValue[] | IDataObject[]'.
+nodes/chains/InformationExtractor/InformationExtractor.node.ts(315,32): error TS2322: Type 'unknown' is not assignable to type 'IDataObject | GenericValue | GenericValue[] | IDataObject[]'.
+nodes/chains/InformationExtractor/processItem.ts(4,41): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/chains/InformationExtractor/test/processItem.test.ts(2,60): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(4,60): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(236,35): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(242,19): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(245,38): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(246,40): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(376,35): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(382,19): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(385,38): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts(386,40): error TS18046: 'output' is of type 'unknown'.
+nodes/chains/TextClassifier/processItem.ts(4,65): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/chains/TextClassifier/processItem.ts(56,2): error TS2322: Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+nodes/chains/TextClassifier/TextClassifier.node.ts(2,60): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+nodes/code/Code.node.ts(3,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox' or its corresponding type declarations.
+nodes/code/Code.node.ts(4,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/Sandbox' or its corresponding type declarations.
+nodes/code/Code.node.ts(5,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/utils' or its corresponding type declarations.
+nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.ts(1,34): error TS2307: Cannot find module '@langchain/community/document_loaders/web/github' or its corresponding type declarations.
+nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts(3,34): error TS2307: Cannot find module 'n8n-nodes-base/dist/utils/utilities' or its corresponding type declarations.
+nodes/embeddings/EmbeddingsHuggingFaceInference/EmbeddingsHuggingFaceInference.node.ts(3,48): error TS2307: Cannot find module '@langchain/community/embeddings/hf' or its corresponding type declarations.
+nodes/Guardrails/test/helpers/model.test.ts(2,36): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/Guardrails/test/helpers/model.test.ts(104,27): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/Guardrails/test/helpers/model.test.ts(131,27): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/llms/LmChatAzureOpenAi/__tests__/N8nOAuth2TokenCredential.test.ts(1,30): error TS2307: Cannot find module '@n8n/client-oauth2' or its corresponding type declarations.
+nodes/llms/LmChatAzureOpenAi/__tests__/N8nOAuth2TokenCredential.test.ts(99,4): error TS2578: Unused '@ts-expect-error' directive.
+nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts(2,44): error TS2307: Cannot find module '@n8n/client-oauth2' or its corresponding type declarations.
+nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts(3,30): error TS2307: Cannot find module '@n8n/client-oauth2' or its corresponding type declarations.
+nodes/llms/LmChatAzureOpenAi/types.ts(1,43): error TS2307: Cannot find module '@n8n/client-oauth2' or its corresponding type declarations.
+nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts(4,34): error TS2307: Cannot find module 'n8n-nodes-base/dist/utils/utilities' or its corresponding type declarations.
+nodes/llms/LMOllama/LmOllama.node.ts(1,24): error TS2307: Cannot find module '@langchain/community/llms/ollama' or its corresponding type declarations.
+nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.ts(1,38): error TS2307: Cannot find module '@langchain/community/llms/hf' or its corresponding type declarations.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(96,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(143,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(188,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(320,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(354,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts(397,60): error TS2339: Property 'getTools' does not exist on type 'McpToolkit'.
+nodes/mcp/McpClientTool/utils.ts(6,44): error TS2307: Cannot find module '@n8n/client-oauth2' or its corresponding type declarations.
+nodes/mcp/McpClientTool/utils.ts(7,25): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/mcp/McpTrigger/McpTrigger.node.ts(1,43): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Webhook/error' or its corresponding type declarations.
+nodes/mcp/McpTrigger/McpTrigger.node.ts(2,47): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Webhook/utils' or its corresponding type declarations.
+nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.ts(1,46): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.ts(2,36): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.ts(105,19): error TS7006: Parameter 'message' implicitly has an 'any' type.
+nodes/memory/MemoryManager/MemoryManager.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/memory/MemoryManager/MemoryManager.node.ts(53,46): error TS7006: Parameter 'message' implicitly has an 'any' type.
+nodes/memory/MemoryManager/MemoryManager.node.ts(401,25): error TS7006: Parameter 'message' implicitly has an 'any' type.
+nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.ts(2,36): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryMotorhead/MemoryMotorhead.node.ts(1,33): error TS2307: Cannot find module '@langchain/community/memory/motorhead_memory' or its corresponding type declarations.
+nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.ts(1,44): error TS2307: Cannot find module '@langchain/community/stores/message/postgres' or its corresponding type declarations.
+nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.ts(2,50): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.ts(3,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/transport/index' or its corresponding type declarations.
+nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.ts(4,46): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.ts(5,40): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest' or its corresponding type declarations.
+nodes/memory/MemoryRedisChat/MemoryRedisChat.node.ts(3,50): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryXata/MemoryXata.node.ts(1,40): error TS2307: Cannot find module '@langchain/community/stores/message/xata' or its corresponding type declarations.
+nodes/memory/MemoryXata/MemoryXata.node.ts(3,50): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/memory/MemoryZep/MemoryZep.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/dist/memory/chat_memory' or its corresponding type declarations.
+nodes/memory/MemoryZep/MemoryZep.node.ts(2,27): error TS2307: Cannot find module '@langchain/community/memory/zep' or its corresponding type declarations.
+nodes/memory/MemoryZep/MemoryZep.node.ts(3,32): error TS2307: Cannot find module '@langchain/community/memory/zep_cloud' or its corresponding type declarations.
+nodes/memory/MemoryZep/MemoryZep.node.ts(23,17): error TS4112: This member cannot have an 'override' modifier because its containing class 'WhiteSpaceTrimmedZepCloudMemory' does not extend another class.
+nodes/memory/MemoryZep/MemoryZep.node.ts(144,49): error TS2554: Expected 0 arguments, but got 1.
+nodes/output_parser/OutputParserAutofixing/test/OutputParserAutofixing.node.test.ts(7,32): error TS2307: Cannot find module 'n8n-core' or its corresponding type declarations.
+nodes/output_parser/OutputParserItemList/test/OutputParserItemList.node.test.ts(2,32): error TS2307: Cannot find module 'n8n-core' or its corresponding type declarations.
+nodes/output_parser/OutputParserStructured/test/OutputParserStructured.node.test.ts(4,32): error TS2307: Cannot find module 'n8n-core' or its corresponding type declarations.
+nodes/retrievers/RetrieverContextualCompression/RetrieverContextualCompression.node.ts(3,48): error TS2307: Cannot find module 'langchain/retrievers/contextual_compression' or its corresponding type declarations.
+nodes/retrievers/RetrieverContextualCompression/RetrieverContextualCompression.node.ts(4,35): error TS2307: Cannot find module 'langchain/retrievers/document_compressors/chain_extract' or its corresponding type declarations.
+nodes/retrievers/RetrieverMultiQuery/RetrieverMultiQuery.node.ts(3,37): error TS2307: Cannot find module 'langchain/retrievers/multi_query' or its corresponding type declarations.
+nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.ts(3,48): error TS2307: Cannot find module 'langchain/retrievers/contextual_compression' or its corresponding type declarations.
+nodes/retrievers/RetrieverVectorStore/test/RetrieverVectorStore.node.test.ts(3,48): error TS2307: Cannot find module 'langchain/retrievers/contextual_compression' or its corresponding type declarations.
+nodes/retrievers/RetrieverWorkflow/RetrieverWorkflow.node.ts(4,47): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/retrievers/RetrieverWorkflow/RetrieverWorkflow.node.ts(5,25): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode' or its corresponding type declarations.
+nodes/ToolExecutor/ToolExecutor.node.ts(2,30): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/tools/ToolCalculator/ToolCalculator.node.test.ts(1,28): error TS2307: Cannot find module '@langchain/community/tools/calculator' or its corresponding type declarations.
+nodes/tools/ToolCalculator/ToolCalculator.node.ts(1,28): error TS2307: Cannot find module '@langchain/community/tools/calculator' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.test.ts(2,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.ts(5,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.ts(6,37): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.ts(7,31): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/PythonSandbox' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.ts(8,30): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/Sandbox' or its corresponding type declarations.
+nodes/tools/ToolCode/ToolCode.node.ts(9,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Code/Sandbox' or its corresponding type declarations.
+nodes/tools/ToolHttpRequest/utils.ts(8,47): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions' or its corresponding type declarations.
+nodes/tools/ToolSearXng/ToolSearXng.node.test.ts(1,31): error TS2307: Cannot find module '@langchain/community/tools/searxng_search' or its corresponding type declarations.
+nodes/tools/ToolSearXng/ToolSearXng.node.ts(1,31): error TS2307: Cannot find module '@langchain/community/tools/searxng_search' or its corresponding type declarations.
+nodes/tools/ToolSerpApi/ToolSerpApi.node.test.ts(1,25): error TS2307: Cannot find module '@langchain/community/tools/serpapi' or its corresponding type declarations.
+nodes/tools/ToolSerpApi/ToolSerpApi.node.ts(1,25): error TS2307: Cannot find module '@langchain/community/tools/serpapi' or its corresponding type declarations.
+nodes/tools/ToolThink/test/ToolThink.node.test.ts(2,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolThink/ToolThink.node.ts(1,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolVectorStore/ToolVectorStore.node.test.ts(2,35): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolVectorStore/ToolVectorStore.node.ts(3,33): error TS2307: Cannot find module 'langchain/chains' or its corresponding type declarations.
+nodes/tools/ToolVectorStore/ToolVectorStore.node.ts(4,35): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolWikipedia/ToolWikipedia.node.test.ts(1,35): error TS2307: Cannot find module '@langchain/community/tools/wikipedia_query_run' or its corresponding type declarations.
+nodes/tools/ToolWikipedia/ToolWikipedia.node.ts(1,35): error TS2307: Cannot find module '@langchain/community/tools/wikipedia_query_run' or its corresponding type declarations.
+nodes/tools/ToolWolframAlpha/ToolWolframAlpha.node.test.ts(1,34): error TS2307: Cannot find module '@langchain/community/tools/wolframalpha' or its corresponding type declarations.
+nodes/tools/ToolWolframAlpha/ToolWolframAlpha.node.ts(1,34): error TS2307: Cannot find module '@langchain/community/tools/wolframalpha' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/ToolWorkflow.node.test.ts(2,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v1/ToolWorkflowV1.node.ts(6,47): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v1/ToolWorkflowV1.node.ts(7,25): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v2/methods/localResourceMapping.ts(1,43): error TS2307: Cannot find module 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts(5,47): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts(6,25): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode' or its corresponding type declarations.
+nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts(7,45): error TS2307: Cannot find module 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions' or its corresponding type declarations.
+nodes/trigger/ChatTrigger/Chat.node.ts(2,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/trigger/ChatTrigger/ChatTrigger.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+nodes/trigger/ChatTrigger/ChatTrigger.node.ts(741,15): error TS7006: Parameter 'message' implicitly has an 'any' type.
+nodes/trigger/ChatTrigger/ChatTrigger.node.ts(742,12): error TS7006: Parameter 'message' implicitly has an 'any' type.
+nodes/vector_store/shared/createVectorStoreNode/createVectorStoreNode.test.ts(7,34): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/vector_store/shared/createVectorStoreNode/operations/__tests__/retrieveAsToolOperation.test.ts(8,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/vector_store/shared/createVectorStoreNode/operations/retrieveAsToolOperation.ts(4,29): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/vector_store/shared/createVectorStoreNode/operations/retrieveAsToolOperation.ts(48,16): error TS7006: Parameter 'input' implicitly has an 'any' type.
+nodes/vector_store/shared/MemoryManager/MemoryCalculator.ts(2,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/MemoryVectorStoreManager.ts(4,35): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/StoreCleanupService.ts(1,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/test/MemoryCalculator.test.ts(3,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/test/MemoryVectorStoreManager.test.ts(4,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/test/StoreCleanupService.test.ts(2,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/shared/MemoryManager/types.ts(2,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.ts(2,40): error TS2307: Cannot find module 'langchain/vectorstores/memory' or its corresponding type declarations.
+nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.ts(2,31): error TS2307: Cannot find module 'langchain/document' or its corresponding type declarations.
+nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.ts(1,24): error TS2307: Cannot find module '@langchain/community/vectorstores/milvus' or its corresponding type declarations.
+nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.ts(2,36): error TS2307: Cannot find module '@langchain/community/vectorstores/milvus' or its corresponding type declarations.
+nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.ts(16,52): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions' or its corresponding type declarations.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(5,8): error TS2307: Cannot find module '@langchain/community/vectorstores/pgvector' or its corresponding type declarations.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(7,35): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/transport/index' or its corresponding type declarations.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(8,46): error TS2307: Cannot find module 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces' or its corresponding type declarations.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(195,42): error TS2554: Expected 0 arguments, but got 2.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(197,31): error TS2339: Property '_initializeClient' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(198,31): error TS2339: Property 'ensureTableInDatabase' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(199,29): error TS2339: Property 'collectionTableName' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(200,32): error TS2339: Property 'ensureCollectionTableInDatabase' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(211,34): error TS2339: Property 'filter' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(216,64): error TS2344: Type 'ExtendedPGVectorStore' does not satisfy the constraint 'VectorStore'.
+  Type 'ExtendedPGVectorStore' is missing the following properties from type 'VectorStore': FilterType, lc_namespace, embeddings, _vectorstoreType, and 15 more.
+nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.ts(316,15): error TS2339: Property 'client' does not exist on type 'ExtendedPGVectorStore'.
+nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/vectorstores/supabase' or its corresponding type declarations.
+nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.ts(1,37): error TS2307: Cannot find module '@langchain/community/vectorstores/supabase' or its corresponding type declarations.
+nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.ts(1,38): error TS2307: Cannot find module '@langchain/community/vectorstores/supabase' or its corresponding type declarations.
+nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.ts(2,37): error TS2307: Cannot find module '@langchain/community/vectorstores/supabase' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZep/VectorStoreZep.node.test.ts(1,32): error TS2307: Cannot find module '@langchain/community/vectorstores/zep' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZep/VectorStoreZep.node.test.ts(2,37): error TS2307: Cannot find module '@langchain/community/vectorstores/zep_cloud' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZep/VectorStoreZep.node.ts(1,32): error TS2307: Cannot find module '@langchain/community/vectorstores/zep' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZep/VectorStoreZep.node.ts(2,37): error TS2307: Cannot find module '@langchain/community/vectorstores/zep_cloud' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.ts(1,32): error TS2307: Cannot find module '@langchain/community/vectorstores/zep' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.ts(1,33): error TS2307: Cannot find module '@langchain/community/vectorstores/zep' or its corresponding type declarations.
+nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.ts(2,32): error TS2307: Cannot find module '@langchain/community/vectorstores/zep' or its corresponding type declarations.
+nodes/vendors/GoogleGemini/actions/router.ts(44,8): error TS2678: Type '"cache"' is not comparable to type '"text" | "image" | "audio" | "file" | "video" | "document"'.
+nodes/vendors/GoogleGemini/actions/router.ts(45,14): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'typeof import("C:/Users/10000/OneDrive/Documents/GitHub/n8n/packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/cache/index")'.
+nodes/vendors/GoogleGemini/actions/router.ts(45,41): error TS2339: Property 'operation' does not exist on type 'never'.
+nodes/vendors/Ollama/Ollama.node.test.ts(143,4): error TS2578: Unused '@ts-expect-error' directive.
+nodes/vendors/Ollama/Ollama.node.test.ts(206,4): error TS2578: Unused '@ts-expect-error' directive.
+nodes/vendors/OpenAi/helpers/utils.ts(4,41): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/vendors/OpenAi/test/utils.test.ts(3,36): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+nodes/vendors/OpenAi/test/v2/actions/text/response.operation.test.ts(11,27): error TS2307: Cannot find module 'langchain/tools' or its corresponding type declarations.
+nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts(2,31): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts(3,37): error TS2307: Cannot find module 'langchain/dist/experimental/openai_assistant/schema' or its corresponding type declarations.
+nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts(4,41): error TS2307: Cannot find module 'langchain/experimental/openai_assistant' or its corresponding type declarations.
+nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts(5,41): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+utils/helpers.ts(6,25): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+utils/helpers.ts(7,37): error TS2307: Cannot find module 'langchain/memory' or its corresponding type declarations.
+utils/logWrapper.ts(1,37): error TS2307: Cannot find module '@langchain/community/memory/chat_memory' or its corresponding type declarations.
+utils/logWrapper.ts(13,41): error TS2307: Cannot find module 'langchain/dist/document_loaders/base' or its corresponding type declarations.
+utils/logWrapper.ts(223,8): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(267,5): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(268,5): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(269,5): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(315,8): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(342,5): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(343,5): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(388,8): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/logWrapper.ts(446,8): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+utils/N8nBinaryLoader.ts(1,27): error TS2307: Cannot find module '@langchain/community/document_loaders/fs/csv' or its corresponding type declarations.
+utils/N8nBinaryLoader.ts(2,28): error TS2307: Cannot find module '@langchain/community/document_loaders/fs/docx' or its corresponding type declarations.
+utils/N8nBinaryLoader.ts(3,28): error TS2307: Cannot find module '@langchain/community/document_loaders/fs/epub' or its corresponding type declarations.
+utils/N8nBinaryLoader.ts(4,27): error TS2307: Cannot find module '@langchain/community/document_loaders/fs/pdf' or its corresponding type declarations.
+utils/N8nBinaryLoader.ts(8,28): error TS2307: Cannot find module 'langchain/document_loaders/fs/json' or its corresponding type declarations.
+utils/N8nBinaryLoader.ts(9,28): error TS2307: Cannot find module 'langchain/document_loaders/fs/text' or its corresponding type declarations.
+utils/N8nJsonLoader.ts(3,28): error TS2307: Cannot find module 'langchain/document_loaders/fs/json' or its corresponding type declarations.
+utils/N8nJsonLoader.ts(4,28): error TS2307: Cannot find module 'langchain/document_loaders/fs/text' or its corresponding type declarations.
+utils/N8nJsonLoader.ts(81,18): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+utils/N8nTool.ts(3,40): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+utils/output_parsers/N8nOutputFixingParser.ts(89,28): error TS2339: Property 'getFormatInstructions' does not exist on type 'N8nStructuredOutputParser'.
+utils/output_parsers/N8nOutputFixingParser.ts(93,28): error TS2339: Property 'schema' does not exist on type 'N8nStructuredOutputParser'.
+utils/output_parsers/N8nStructuredOutputParser.ts(2,40): error TS2307: Cannot find module 'langchain/output_parsers' or its corresponding type declarations.
+utils/output_parsers/N8nStructuredOutputParser.ts(38,30): error TS2339: Property 'schema' does not exist on type 'N8nStructuredOutputParser'.
+utils/output_parsers/N8nStructuredOutputParser.ts(142,15): error TS2339: Property 'schema' does not exist on type 'N8nStructuredOutputParser'.
+utils/schemaParsing.ts(1,33): error TS2307: Cannot find module '@n8n/json-schema-to-zod' or its corresponding type declarations.
+utils/tests/helpers.test.ts(2,25): error TS2307: Cannot find module 'langchain/agents' or its corresponding type declarations.
+../../core/nodes-testing/credentials-helper.ts(12,29): error TS2307: Cannot find module '../dist/credentials' or its corresponding type declarations.
+../../core/nodes-testing/load-nodes-and-credentials.ts(13,76): error TS2307: Cannot find module '../dist/errors' or its corresponding type declarations.
+../../core/nodes-testing/load-nodes-and-credentials.ts(14,44): error TS2307: Cannot find module '../dist/nodes-loader/lazy-package-directory-loader' or its corresponding type declarations.
+../../core/nodes-testing/load-nodes-and-credentials.ts(60,43): error TS7006: Parameter 'nodeName' implicitly has an 'any' type.
+../../core/nodes-testing/node-test-harness.ts(1,26): error TS2307: Cannot find module '@n8n/decorators' or its corresponding type declarations.
+../../core/nodes-testing/node-test-harness.ts(21,41): error TS2307: Cannot find module '../dist/execution-engine/execution-lifecycle-hooks' or its corresponding type declarations.
+../../core/nodes-testing/node-test-harness.ts(22,33): error TS2307: Cannot find module '../dist/execution-engine/workflow-execute' or its corresponding type declarations.
+../../core/nodes-testing/node-test-harness.ts(205,41): error TS7006: Parameter 'nodeName' implicitly has an 'any' type.
+../../core/nodes-testing/node-test-harness.ts(210,45): error TS7006: Parameter 'fullRunData' implicitly has an 'any' type.
+../../core/nodes-testing/node-test-harness.ts(215,4): error TS2353: Object literal may only specify known properties, and 'hooks' does not exist in type '{ credentialsHelper?: { getParentTypes?: ((name: string) => string[]) | undefined; authenticate?: ((credentials: ICredentialDataDecryptedObject, typeName: string, requestOptions: IHttpRequestOptions | IRequestOptionsSimplified, workflow: Workflow, node: INode) => Promise<...>) | undefined; ... 5 more ...; getCredent...'.
+../../core/nodes-testing/node-test-harness.ts(219,18): error TS2339: Property 'credentialsHelper' does not exist on type '{ [K in keyof T]: T[K] extends (...args: infer A) => infer B ? CalledWithMock<B, A> : T[K]; } & T'.
+../../nodes-base/test/nodes/Helpers.ts(2,44): error TS2307: Cannot find module 'n8n-core' or its corresponding type declarations.
+C:\Users\10000\OneDrive\Documents\GitHub\n8n\packages\@n8n\nodes-langchain:
+ΓÇëERR_PNPM_RECURSIVE_RUN_FIRST_FAILΓÇë @n8n/n8n-nodes-langchain@1.119.0 typecheck: `tsc --noEmit`
+Exit status 1
