@@ -4,10 +4,8 @@ import type { StartedNetwork } from 'testcontainers';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'redis';
 
-// Types
 export interface RedisMeta {
 	host: string;
 	port: number;
@@ -15,7 +13,6 @@ export interface RedisMeta {
 
 export type RedisResult = ServiceResult<RedisMeta>;
 
-// Service definition
 export const redis: Service<RedisResult> = {
 	description: 'Redis cache and queue',
 	dependsOn: ['postgres'],

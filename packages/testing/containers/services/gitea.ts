@@ -5,7 +5,6 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'gitea';
 const HTTP_PORT = 3000;
 const SSH_PORT = 22;
@@ -15,7 +14,6 @@ const DEFAULT_EMAIL = 'admin@example.com';
 const DEFAULT_REPO = 'n8n-test-repo';
 const DEFAULT_BRANCHES = ['development', 'staging', 'production'];
 
-// Types
 export interface GiteaMeta {
 	apiUrl: string;
 	adminUsername: string;
@@ -25,10 +23,8 @@ export interface GiteaMeta {
 
 export type GiteaResult = ServiceResult<GiteaMeta>;
 
-// Service definition
 export const gitea: Service<GiteaResult> = {
 	description: 'Git server (Gitea)',
-	configKey: 'sourceControl',
 
 	async start(network: StartedNetwork, projectName: string): Promise<GiteaResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
@@ -87,7 +83,6 @@ export const gitea: Service<GiteaResult> = {
 	},
 };
 
-// Internal helper functions
 async function addUser(
 	container: StartedTestContainer,
 	username: string,
@@ -145,7 +140,6 @@ async function addBranch(
 	]);
 }
 
-// Helper class
 export class GiteaHelper {
 	private readonly container: StartedTestContainer;
 	private readonly meta: GiteaMeta;
@@ -227,7 +221,6 @@ export class GiteaHelper {
 	}
 }
 
-// Helper factory
 export function createGiteaHelper(ctx: HelperContext): GiteaHelper {
 	const result = ctx.serviceResults.gitea as GiteaResult | undefined;
 	if (!result) {
@@ -236,7 +229,6 @@ export function createGiteaHelper(ctx: HelperContext): GiteaHelper {
 	return new GiteaHelper(result.container, result.meta);
 }
 
-// Type registration via declaration merging
 declare module './types' {
 	interface ServiceHelpers {
 		gitea: GiteaHelper;

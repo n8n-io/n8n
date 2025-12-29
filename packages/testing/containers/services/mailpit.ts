@@ -5,12 +5,10 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'mailpit';
 const SMTP_PORT = 1025;
 const HTTP_PORT = 8025;
 
-// Types
 type MailpitAddress = {
 	Address: string;
 	Name?: string;
@@ -75,10 +73,8 @@ export interface MailpitMeta {
 
 export type MailpitResult = ServiceResult<MailpitMeta>;
 
-// Service definition
 export const mailpit: Service<MailpitResult> = {
 	description: 'Email testing server',
-	configKey: 'email',
 
 	async start(network: StartedNetwork, projectName: string): Promise<MailpitResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
@@ -129,7 +125,6 @@ export const mailpit: Service<MailpitResult> = {
 	},
 };
 
-// Helper class
 export class MailpitHelper {
 	private readonly apiBaseUrl: string;
 
@@ -210,7 +205,6 @@ export class MailpitHelper {
 	}
 }
 
-// Helper factory
 export function createMailpitHelper(ctx: HelperContext): MailpitHelper {
 	const result = ctx.serviceResults.mailpit as MailpitResult | undefined;
 	if (!result) {
@@ -219,7 +213,6 @@ export function createMailpitHelper(ctx: HelperContext): MailpitHelper {
 	return new MailpitHelper(result.meta.apiBaseUrl);
 }
 
-// Type registration via declaration merging
 declare module './types' {
 	interface ServiceHelpers {
 		mailpit: MailpitHelper;

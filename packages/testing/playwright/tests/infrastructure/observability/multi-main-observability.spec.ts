@@ -44,7 +44,7 @@ import { test, expect } from '../../../fixtures/base';
 // Configure test to run with multi-main queue mode and observability stack
 test.use({
 	capability: {
-		observability: true,
+		services: ['observability'],
 		mains: 2,
 		workers: 1,
 	},

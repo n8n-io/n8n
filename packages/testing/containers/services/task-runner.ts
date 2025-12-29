@@ -4,7 +4,6 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
-// Types
 export interface TaskRunnerConfig {
 	taskBrokerUri: string;
 }
@@ -15,11 +14,9 @@ export interface TaskRunnerMeta {
 
 export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
-// Service definition
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task runner for external code execution',
 	phase: 'after-n8n',
-	// Always start - task runner is mandatory for all stacks
 	shouldStart: () => true,
 
 	getOptions(ctx) {
@@ -69,6 +66,4 @@ export const taskRunner: Service<TaskRunnerResult> = {
 			return throwWithLogs(error);
 		}
 	},
-	// Note: Task runner env vars (N8N_RUNNERS_*) are hardcoded in stack.ts
-	// since task runner is always enabled
 };

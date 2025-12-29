@@ -4,10 +4,8 @@ import type { StartedNetwork } from 'testcontainers';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'postgres';
 
-// Types
 export interface PostgresMeta {
 	database: string;
 	username: string;
@@ -16,7 +14,6 @@ export interface PostgresMeta {
 
 export type PostgresResult = ServiceResult<PostgresMeta>;
 
-// Service definition
 export const postgres: Service<PostgresResult> = {
 	description: 'PostgreSQL database',
 	shouldStart: (ctx) => ctx.usePostgres,

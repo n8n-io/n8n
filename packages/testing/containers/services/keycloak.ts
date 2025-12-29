@@ -8,11 +8,9 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { ContentInjection, HelperContext, Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'keycloak';
 const HTTPS_PORT = 8443;
 
-// Keycloak test configuration (internal - exposed via meta)
 const KEYCLOAK_TEST_REALM = 'test';
 const KEYCLOAK_TEST_CLIENT_ID = 'n8n-e2e';
 const KEYCLOAK_TEST_CLIENT_SECRET = 'n8n-test-secret';
@@ -23,14 +21,9 @@ const KEYCLOAK_TEST_USER_LASTNAME = 'User';
 
 const KEYCLOAK_ADMIN_USER = 'admin';
 const KEYCLOAK_ADMIN_PASSWORD = 'admin';
-
-/** Path where the CA certificate is exported in PEM format inside the keycloak container */
 const KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
-
-/** Path where the CA certificate will be mounted in n8n containers */
 const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 
-// Types
 export interface KeycloakConfig {
 	n8nCallbackUrl: string;
 }
@@ -40,25 +33,19 @@ export interface KeycloakMeta {
 	internalDiscoveryUrl: string;
 	certPem: string;
 	hostPort: number;
-	/** OIDC client credentials for test realm */
 	clientId: string;
 	clientSecret: string;
-	/** Test user credentials */
 	testUser: {
 		email: string;
 		password: string;
 		firstName: string;
 		lastName: string;
 	};
-	/** Content to inject into n8n containers (CA certificate) */
 	n8nContentInjection: ContentInjection[];
 }
 
 export type KeycloakResult = ServiceResult<KeycloakMeta>;
 
-/**
- * Generates the realm import JSON for Keycloak with the test client and user.
- */
 function generateRealmJson(callbackUrl: string): string {
 	return JSON.stringify({
 		realm: KEYCLOAK_TEST_REALM,
@@ -140,7 +127,6 @@ exec /opt/keycloak/bin/kc.sh start-dev \\
 `;
 }
 
-/** Extract the CA certificate from the Keycloak container. */
 async function extractCertificate(
 	container: StartedTestContainer,
 	timeoutMs: number = 30000,
@@ -165,7 +151,6 @@ async function extractCertificate(
 	);
 }
 
-/** Poll the Keycloak HTTPS discovery endpoint until it's ready. */
 async function waitForKeycloakReady(
 	port: number,
 	certPem: string,
@@ -200,10 +185,8 @@ async function waitForKeycloakReady(
 	);
 }
 
-// Service definition
 export const keycloak: Service<KeycloakResult> = {
 	description: 'Keycloak OIDC provider',
-	configKey: 'oidc',
 
 	getOptions(ctx) {
 		const port = ctx.allocatedPorts.loadBalancer ?? ctx.allocatedPorts.main;
@@ -316,7 +299,6 @@ export const keycloak: Service<KeycloakResult> = {
 	},
 };
 
-// Helper class
 export class KeycloakHelper {
 	private readonly meta: KeycloakMeta;
 
@@ -324,49 +306,38 @@ export class KeycloakHelper {
 		this.meta = meta;
 	}
 
-	/** The external discovery URL (accessible from the host) */
 	get discoveryUrl(): string {
 		return this.meta.discoveryUrl;
 	}
 
-	/** The internal discovery URL (accessible from within Docker network) */
 	get internalDiscoveryUrl(): string {
 		return this.meta.internalDiscoveryUrl;
 	}
 
-	/** PEM-encoded CA certificate for the Keycloak HTTPS server */
 	get certPem(): string {
 		return this.meta.certPem;
 	}
 
-	/** The allocated host port for Keycloak HTTPS */
 	get hostPort(): number {
 		return this.meta.hostPort;
 	}
 
-	/** The test realm name */
 	get realm(): string {
 		return KEYCLOAK_TEST_REALM;
 	}
 
-	/** The test client ID */
 	get clientId(): string {
 		return this.meta.clientId;
 	}
 
-	/** The test client secret */
 	get clientSecret(): string {
 		return this.meta.clientSecret;
 	}
 
-	/** Test user credentials */
 	get testUser() {
 		return this.meta.testUser;
 	}
 
-	/**
-	 * Wait for Keycloak to be reachable from inside an n8n container.
-	 */
 	async waitForFromContainer(
 		n8nContainer: StartedTestContainer,
 		timeoutMs: number = 30000,
@@ -399,7 +370,6 @@ export class KeycloakHelper {
 	}
 }
 
-// Helper factory
 export function createKeycloakHelper(ctx: HelperContext): KeycloakHelper {
 	const result = ctx.serviceResults.keycloak as KeycloakResult | undefined;
 	if (!result) {
@@ -408,7 +378,6 @@ export function createKeycloakHelper(ctx: HelperContext): KeycloakHelper {
 	return new KeycloakHelper(result.container, result.meta);
 }
 
-// Type registration via declaration merging
 declare module './types' {
 	interface ServiceHelpers {
 		keycloak: KeycloakHelper;

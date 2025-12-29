@@ -4,7 +4,6 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
-// Types
 export interface LoadBalancerConfig {
 	mainCount: number;
 	hostPort?: number;
@@ -17,9 +16,6 @@ export interface LoadBalancerMeta {
 
 export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 
-/**
- * Builds Caddy configuration for load balancing n8n instances
- */
 function buildCaddyConfig(upstreamServers: string[]): string {
 	const backends = upstreamServers.join(' ');
 	return `
@@ -48,7 +44,6 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 }`;
 }
 
-// Service definition
 export const loadBalancer: Service<LoadBalancerResult> = {
 	description: 'Caddy load balancer for multi-main',
 	phase: 'before-n8n',

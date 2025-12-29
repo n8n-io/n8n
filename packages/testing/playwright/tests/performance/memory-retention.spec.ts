@@ -8,7 +8,7 @@ test.use({
 			memory: 0.75,
 			cpu: 0.5,
 		},
-		observability: true,
+		services: ['observability'],
 	},
 });
 

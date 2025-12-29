@@ -1,12 +1,3 @@
-/**
- * Observability Stack Service
- *
- * Combines VictoriaLogs, VictoriaMetrics, and Vector for:
- * - Log streaming feature testing (enterprise syslog destination)
- * - Container log collection for test debugging
- * - Metrics collection via PromQL queries
- */
-
 import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
@@ -14,17 +5,13 @@ import { GenericContainer, Wait } from 'testcontainers';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
-// Constants
 const VICTORIA_LOGS_HTTP_PORT = 9428;
 const VICTORIA_LOGS_SYSLOG_PORT = 514;
 const VICTORIA_METRICS_HTTP_PORT = 8428;
 const VICTORIA_LOGS_HOSTNAME = 'victoria-logs';
 const VICTORIA_METRICS_HOSTNAME = 'victoria-metrics';
+const SYSLOG_FACILITY_LOCAL0 = 16; // RFC 5424
 
-// Syslog facility codes (RFC 5424)
-const SYSLOG_FACILITY_LOCAL0 = 16;
-
-// Types
 export interface ScrapeTarget {
 	job: string;
 	instance: string;
@@ -43,11 +30,8 @@ export interface ObservabilityMeta {
 		syslog: {
 			host: string;
 			port: number;
-			/** Default syslog protocol */
 			protocol: 'tcp' | 'udp';
-			/** Default syslog facility (RFC 5424) */
 			facility: number;
-			/** Default app name for syslog messages */
 			appName: string;
 		};
 	};
@@ -58,7 +42,6 @@ export interface ObservabilityMeta {
 }
 
 export type ObservabilityResult = ServiceResult<ObservabilityMeta> & {
-	// Additional containers for cleanup
 	containers: StartedTestContainer[];
 };
 
@@ -88,9 +71,6 @@ export interface WaitForMetricOptions {
 	predicate?: (values: MetricResult[]) => boolean;
 }
 
-/**
- * Generate Prometheus scrape configuration for VictoriaMetrics
- */
 function generateScrapeConfig(targets: ScrapeTarget[]): string {
 	const jobGroups = new Map<string, ScrapeTarget[]>();
 	for (const target of targets) {
@@ -125,9 +105,6 @@ ${scrapeConfigs.join('\n')}
 `;
 }
 
-/**
- * Generate Vector configuration for Docker log collection
- */
 function generateVectorConfig(projectName: string, victoriaLogsEndpoint: string): string {
 	return `
 # Disable healthcheck to allow Vector to start while Docker socket becomes available
@@ -165,10 +142,8 @@ encoding.codec = "json"
 `;
 }
 
-// Service definition
 export const observability: Service<ObservabilityResult> = {
 	description: 'Observability stack (VictoriaLogs + VictoriaMetrics + Vector)',
-	configKey: 'observability',
 
 	getOptions(ctx) {
 		const { mains, workers, projectName } = ctx;
@@ -319,7 +294,6 @@ export const observability: Service<ObservabilityResult> = {
 	},
 };
 
-// Logs Helper
 export class LogsHelper {
 	constructor(private readonly endpoint: string) {}
 
@@ -365,7 +339,6 @@ export class LogsHelper {
 	}
 }
 
-// Metrics Helper
 export class MetricsHelper {
 	constructor(private readonly endpoint: string) {}
 
@@ -412,7 +385,6 @@ export class MetricsHelper {
 	}
 }
 
-// Combined Observability Helper
 export class ObservabilityHelper {
 	readonly logs: LogsHelper;
 	readonly metrics: MetricsHelper;
@@ -425,7 +397,6 @@ export class ObservabilityHelper {
 	}
 }
 
-// Helper factory
 export function createObservabilityHelper(ctx: HelperContext): ObservabilityHelper {
 	const result = ctx.serviceResults.observability as ObservabilityResult | undefined;
 	if (!result) {
@@ -434,7 +405,6 @@ export function createObservabilityHelper(ctx: HelperContext): ObservabilityHelp
 	return new ObservabilityHelper(result.meta);
 }
 
-// Type registration via declaration merging
 declare module './types' {
 	interface ServiceHelpers {
 		observability: ObservabilityHelper;

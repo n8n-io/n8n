@@ -4,11 +4,9 @@ import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
-// Constants
 const HOSTNAME = 'proxyserver';
-const PORT = 1080; // mockserver default port
+const PORT = 1080;
 
-// Types
 export interface ProxyMeta {
 	host: string;
 	port: number;
@@ -17,10 +15,8 @@ export interface ProxyMeta {
 
 export type ProxyResult = ServiceResult<ProxyMeta>;
 
-// Service definition
 export const proxy: Service<ProxyResult> = {
 	description: 'HTTP proxy server',
-	configKey: 'proxyServerEnabled',
 
 	extraEnv(result): Record<string, string> {
 		return {

@@ -1,14 +1,3 @@
-/**
- * n8n Test Container Stack
- *
- * Orchestrates creation of complete n8n container stacks for testing with support for:
- * - Single instances (SQLite or PostgreSQL)
- * - Queue mode with Redis (mains > 1 or workers > 0)
- * - Multi-main instances with load balancing
- * - Task runner containers for external code execution
- * - Optional services (email, source control, OIDC, observability, tracing)
- */
-
 import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
@@ -30,18 +19,12 @@ import type {
 	StartContext,
 } from './services/types';
 
-/**
- * Type guard to check if a service result has multiple containers.
- */
 function isMultiContainerResult(
 	result: ServiceResult | MultiContainerResult,
 ): result is MultiContainerResult {
 	return 'containers' in result && Array.isArray(result.containers);
 }
 
-/**
- * Extract containers from a service result (handles both single and multi-container results).
- */
 function extractContainers(result: ServiceResult | MultiContainerResult): StartedTestContainer[] {
 	if (isMultiContainerResult(result)) {
 		return result.containers;
@@ -49,107 +32,35 @@ function extractContainers(result: ServiceResult | MultiContainerResult): Starte
 	return [result.container];
 }
 
-// ============================================================================
-// Service Registry
-// ============================================================================
-
-/**
- * Services available for automatic phase-based startup.
- * All services are handled uniformly based on their phase and shouldStart conditions.
- */
 const SERVICE_REGISTRY: Record<string, Service> = services;
 
-// ============================================================================
-// Configuration
-// ============================================================================
-
-// N8NConfig is just an alias for StackConfig - all properties defined there
 export type N8NConfig = StackConfig;
 
-/**
- * Unified n8n test stack interface.
- *
- * This is the single entry point for all container testing functionality:
- * - `baseUrl`: URL to access n8n
- * - `containers`: Raw container access
- * - `serviceResults`: Raw service results (for advanced use)
- * - `services`: Type-safe helpers for interacting with services
- *
- * @example
- * ```typescript
- * test('example', async ({ n8nContainer }) => {
- *   // Access helpers via services (type-safe, discoverable)
- *   await n8nContainer.services.mailpit.waitForMessage({ to: 'user@example.com' });
- *   await n8nContainer.services.observability.logs.query('level:error');
- *
- *   // Convenience shortcuts
- *   await n8nContainer.logs.query('level:error');
- *   await n8nContainer.metrics.query('up');
- *
- *   // Base URL
- *   n8nContainer.baseUrl;
- * });
- * ```
- */
 export interface N8NStack {
-	/** URL to access n8n */
 	baseUrl: string;
-	/** Stop all containers and cleanup */
 	stop: () => Promise<void>;
-	/** Raw container access for advanced operations */
 	containers: StartedTestContainer[];
-	/** Raw service results (for advanced use, prefer `services` for helpers) */
 	serviceResults: Record<string, ServiceResult>;
-	/** Type-safe service helpers for common operations */
 	services: ServiceHelpers;
-	/** Shortcut for services.observability.logs */
 	logs: ServiceHelpers['observability']['logs'];
-	/** Shortcut for services.observability.metrics */
 	metrics: ServiceHelpers['observability']['metrics'];
-	/** Find containers by name pattern (for chaos testing) */
 	findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
-	/** Stop a container by name pattern (for chaos testing) */
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 }
 
-// ============================================================================
-// Service Helpers
-// ============================================================================
-
-/**
- * Determines if a service should start based on its configuration.
- */
-function shouldServiceStart(_name: string, service: Service, ctx: StartContext): boolean {
-	// Check explicit shouldStart function first
+function shouldServiceStart(name: string, service: Service, ctx: StartContext): boolean {
 	if (service.shouldStart) {
 		return service.shouldStart(ctx);
 	}
-
-	// Check configKey
-	if (service.configKey) {
-		return ctx.config[service.configKey] === true;
-	}
-
-	// Services without conditions don't auto-start (must be explicitly enabled)
-	return false;
+	return ctx.config.services?.includes(name) ?? false;
 }
 
-/**
- * Determines if a service runs before n8n (provides environment variables)
- * or after n8n (needs n8n running).
- */
 function isBeforeN8n(service: Service): boolean {
-	// Explicit phase takes precedence
 	if (service.phase === 'after-n8n') return false;
 	if (service.phase === 'before-n8n') return true;
-
-	// Services with env() method run before n8n (they provide n8n environment)
 	return typeof service.env === 'function';
 }
 
-/**
- * Topologically sorts services based on dependencies.
- */
 function sortByDependencies(serviceNames: string[]): string[] {
 	const sorted: string[] = [];
 	const visited = new Set<string>();
@@ -182,14 +93,9 @@ function sortByDependencies(serviceNames: string[]): string[] {
 	return sorted;
 }
 
-// ============================================================================
-// Main Stack Creation
-// ============================================================================
-
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
 	const log = createElapsedLogger('n8n-stack');
 
-	// Extract config with defaults
 	const {
 		mains = 1,
 		workers = 0,
@@ -197,16 +103,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		env = {},
 		projectName,
 		resourceQuota,
-		oidc = false,
+		services: enabledServices = [],
 	} = config;
 
-	// Derived config
 	const isQueueMode = mains > 1 || workers > 0;
 	const needsLoadBalancer = mains > 1;
-	const usePostgres = usePostgresConfig || isQueueMode || oidc;
+	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
-	// Pre-allocate ports for services that need to know n8n's port
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
 
@@ -216,20 +120,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		allocatedMainPort = await getPort();
 	}
 
-	// State
 	const containers: StartedTestContainer[] = [];
 	const serviceResults: Record<string, ServiceResult> = {};
-	// Environment accumulated from services (BASE_ENV is added by n8n service)
 	let environment: Record<string, string> = {};
 
 	log(`Starting stack creation: ${uniqueProjectName}`);
 
-	// Always create network
-	log('Creating network...');
 	const network = await new Network().start();
-	log('Network created');
 
-	// Build context for services
 	const ctx: StartContext = {
 		config: { ...config, postgres: usePostgres },
 		projectName: uniqueProjectName,
@@ -246,23 +144,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		},
 	};
 
-	// ========================================================================
 	// Phase 1: Before-n8n Services
-	// ========================================================================
-
-	// Determine which services should start
 	const servicesToStart = Object.keys(SERVICE_REGISTRY).filter((name) =>
 		shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 	);
 
-	// Split by phase
 	const beforeN8nServices = servicesToStart.filter((name) => isBeforeN8n(SERVICE_REGISTRY[name]));
 	const afterN8nServices = servicesToStart.filter((name) => !isBeforeN8n(SERVICE_REGISTRY[name]));
-
-	// Sort by dependencies
 	const sortedBeforeN8n = sortByDependencies(beforeN8nServices);
 
-	// Start before-n8n services
 	for (const name of sortedBeforeN8n) {
 		const service = SERVICE_REGISTRY[name];
 		log(`Starting ${service.description}...`);
@@ -273,7 +163,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(...extractContainers(result as ServiceResult | MultiContainerResult));
 		serviceResults[name] = result;
 
-		// Collect environment variables
 		if (service.env) {
 			environment = { ...environment, ...service.env(result) };
 		}
@@ -281,23 +170,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			environment = { ...environment, ...service.extraEnv(result) };
 		}
 
-		// Update context
 		ctx.environment = environment;
 		ctx.serviceResults = serviceResults;
 
 		log(`${service.description} ready`);
 	}
 
-	// ========================================================================
 	// Phase 2: n8n Instances
-	// ========================================================================
-
 	const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
-
-	// Determine baseUrl from load balancer or direct port
 	const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
 
-	// Collect content injections from all services (e.g., Keycloak CA cert)
 	const contentToInject: ContentInjection[] = Object.values(serviceResults).flatMap((result) => {
 		const meta = result.meta as { n8nContentInjection?: ContentInjection[] } | undefined;
 		return meta?.n8nContentInjection ?? [];
@@ -320,27 +202,20 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	containers.push(...n8nResult.containers);
 	log('All n8n instances started');
 
-	// Wait for load balancer to see healthy backends
 	if (lbResult) {
 		log('Polling load balancer for readiness...');
 		await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
 		log('Load balancer is ready');
 	}
 
-	// Update context with baseUrl for after-n8n services
 	ctx.baseUrl = baseUrl;
 
-	// ========================================================================
 	// Phase 3: Post-n8n Verification
-	// ========================================================================
-
-	// Get n8n containers for verification
 	const n8nContainers = containers.filter((c) => {
 		const name = c.getName();
 		return name.includes('-n8n-main-') || name.endsWith('-n8n');
 	});
 
-	// Run verifyFromN8n hooks for services that have them
 	for (const name of sortedBeforeN8n) {
 		const service = SERVICE_REGISTRY[name];
 		if (service.verifyFromN8n && serviceResults[name]) {
@@ -350,10 +225,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		}
 	}
 
-	// ========================================================================
 	// Phase 4: After-n8n Services
-	// ========================================================================
-
 	const sortedAfterN8n = sortByDependencies(afterN8nServices);
 
 	for (const name of sortedAfterN8n) {
@@ -372,7 +244,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	log(`Stack ready! baseUrl: ${baseUrl}`);
 	await waitForNetworkQuiet();
 
-	// Build service helpers (Proxy-based for lazy instantiation and caching)
+	// Build service helpers proxy
 	const helperCtx: HelperContext = {
 		containers,
 		findContainer: (pattern: RegExp) => containers.find((c) => pattern.test(c.getName())),
@@ -431,10 +303,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		},
 	};
 }
-
-// ============================================================================
-// Cleanup
-// ============================================================================
 
 async function stopN8NStack(
 	containers: StartedTestContainer[],

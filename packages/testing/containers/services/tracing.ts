@@ -1,19 +1,9 @@
-/**
- * Tracing Stack Service
- *
- * Combines Jaeger and n8n-tracer for:
- * - Distributed tracing of workflow executions
- * - Visualizing job lifecycle in queue mode (job → workflow → node → task)
- * - Debugging multi-main/worker coordination
- */
-
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
-// Constants
 const JAEGER_OTLP_PORT = 4318;
 const JAEGER_UI_PORT = 16686;
 const N8N_TRACER_INGEST_PORT = 8889;
@@ -21,7 +11,6 @@ const N8N_TRACER_HEALTH_PORT = 8888;
 const JAEGER_HOSTNAME = 'jaeger';
 const N8N_TRACER_HOSTNAME = 'n8n-tracer';
 
-// Types
 export interface TracingConfig {
 	deploymentMode?: 'scaling';
 }
@@ -38,11 +27,9 @@ export interface TracingMeta {
 }
 
 export type TracingResult = ServiceResult<TracingMeta> & {
-	// Additional containers for cleanup
 	containers: StartedTestContainer[];
 };
 
-/** Webhook destination configuration for n8n-tracer. */
 export interface TracerWebhookConfig {
 	url: string;
 	method: 'POST';
@@ -50,10 +37,8 @@ export interface TracerWebhookConfig {
 	subscribedEvents: string[];
 }
 
-// Service definition
 export const tracing: Service<TracingResult> = {
 	description: 'Tracing stack (Jaeger + n8n-tracer)',
-	configKey: 'tracing',
 
 	async start(
 		network: StartedNetwork,
@@ -134,7 +119,6 @@ export const tracing: Service<TracingResult> = {
 	},
 };
 
-// Helper class
 export class TracingHelper {
 	private readonly meta: TracingMeta;
 
@@ -142,36 +126,22 @@ export class TracingHelper {
 		this.meta = meta;
 	}
 
-	/** External Jaeger UI URL for viewing traces (from host) */
 	get jaegerUiUrl(): string {
 		return this.meta.jaeger.uiUrl;
 	}
 
-	/** Internal OTLP endpoint for container-to-container communication */
 	get internalOtlpEndpoint(): string {
 		return this.meta.jaeger.internalOtlpEndpoint;
 	}
 
-	/** Internal ingest endpoint for n8n log streaming */
 	get internalIngestEndpoint(): string {
 		return this.meta.tracer.internalIngestEndpoint;
 	}
 
-	/** Ingest URL for log streaming destination config */
 	get ingestUrl(): string {
 		return this.meta.tracer.ingestUrl;
 	}
 
-	/**
-	 * Get webhook destination config for n8n-tracer.
-	 *
-	 * @example
-	 * ```typescript
-	 * await api.enableFeature('logStreaming');
-	 * const config = tracing.getWebhookConfig();
-	 * const destination = await api.createWebhookDestination(config);
-	 * ```
-	 */
 	getWebhookConfig(label = 'n8n-tracer'): TracerWebhookConfig {
 		return {
 			url: this.meta.tracer.ingestUrl,
@@ -182,7 +152,6 @@ export class TracingHelper {
 	}
 }
 
-// Helper factory
 export function createTracingHelper(ctx: HelperContext): TracingHelper {
 	const result = ctx.serviceResults.tracing as TracingResult | undefined;
 	if (!result) {
@@ -191,7 +160,6 @@ export function createTracingHelper(ctx: HelperContext): TracingHelper {
 	return new TracingHelper(result.meta);
 }
 
-// Type registration via declaration merging
 declare module './types' {
 	interface ServiceHelpers {
 		tracing: TracingHelper;

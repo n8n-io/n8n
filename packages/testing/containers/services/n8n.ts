@@ -1,10 +1,3 @@
-/**
- * n8n Container Service
- *
- * Handles creation of n8n main and worker containers with all environment
- * configuration for different modes (single, queue, multi-main).
- */
-
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
@@ -15,15 +8,9 @@ import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { ContentInjection } from './types';
 
-// ============================================================================
-// Constants
-// ============================================================================
-
 const N8N_IMAGE = getDockerImageFromEnv(TEST_CONTAINER_IMAGES.n8n);
 
-/** Base environment for all n8n instances (includes task runner - always enabled). */
 const BASE_ENV: Record<string, string> = {
-	// Core settings
 	N8N_LOG_LEVEL: 'debug',
 	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
 	E2E_TESTS: 'false',
@@ -32,11 +19,9 @@ const BASE_ENV: Record<string, string> = {
 	N8N_METRICS: 'true',
 	NODE_ENV: 'development',
 	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
-	// License
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 	N8N_LICENSE_CERT: process.env.N8N_LICENSE_CERT ?? '',
-	// Task runner (always enabled)
 	N8N_RUNNERS_ENABLED: 'true',
 	N8N_RUNNERS_MODE: 'external',
 	N8N_RUNNERS_AUTH_TOKEN: 'test',
@@ -54,39 +39,24 @@ const WORKER_WAIT_STRATEGY = Wait.forAll([
 	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
 ]);
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/** Options for creating n8n instances. */
 export interface N8NInstancesOptions {
 	mains: number;
 	workers: number;
 	projectName: string;
 	network: StartedNetwork;
-	/** Environment from services (merged with BASE_ENV) */
 	serviceEnvironment: Record<string, string>;
-	/** User-provided environment overrides */
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
-	/** Base URL for webhooks (single instance mode) */
 	baseUrl?: string;
-	/** Port for single-instance direct binding */
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
-	/** Content to inject into containers (e.g., certs) */
 	contentToInject?: ContentInjection[];
 }
 
-/** Result from creating n8n instances. */
 export interface N8NInstancesResult {
 	containers: StartedTestContainer[];
 	environment: Record<string, string>;
 }
-
-// ============================================================================
-// Environment Computation
-// ============================================================================
 
 function computeEnvironment(options: N8NInstancesOptions): Record<string, string> {
 	const {
@@ -122,7 +92,6 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		}
 	}
 
-	// Single instance: set webhook URL
 	if (mains === 1 && baseUrl) {
 		env.WEBHOOK_URL = baseUrl;
 		env.N8N_PORT = '5678';
@@ -131,16 +100,11 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	return env;
 }
 
-// ============================================================================
-// Container Creation
-// ============================================================================
-
 interface InstanceConfig {
 	name: string;
 	isWorker: boolean;
 	instanceNumber: number;
 	networkAlias?: string;
-	/** Host port binding (single-instance main only) */
 	hostPort?: number;
 }
 
@@ -185,7 +149,6 @@ async function createContainer(
 		container = container.withNetworkAliases(networkAlias);
 	}
 
-	// Configure ports and wait strategy
 	const waitStrategy = isWorker ? WORKER_WAIT_STRATEGY : MAIN_WAIT_STRATEGY;
 	const ports = hostPort ? [{ container: 5678, host: hostPort }, 5679] : [5678, 5679];
 
@@ -209,13 +172,6 @@ async function createContainer(
 	}
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
-/**
- * Create n8n main and worker instances.
- */
 export async function createN8NInstances(
 	options: N8NInstancesOptions,
 ): Promise<N8NInstancesResult> {
@@ -234,9 +190,7 @@ export async function createN8NInstances(
 		contentToInject,
 	};
 
-	// Build instance configs
 	const instances: InstanceConfig[] = [
-		// Main instances
 		...Array.from({ length: mains }, (_, i) => {
 			const num = i + 1;
 			const name = mains > 1 ? `${projectName}-n8n-main-${num}` : `${projectName}-n8n`;
@@ -248,7 +202,6 @@ export async function createN8NInstances(
 				hostPort: num === 1 ? allocatedPort : undefined,
 			};
 		}),
-		// Worker instances
 		...Array.from({ length: workers }, (_, i) => ({
 			name: `${projectName}-n8n-worker-${i + 1}`,
 			isWorker: true,
@@ -256,7 +209,6 @@ export async function createN8NInstances(
 		})),
 	];
 
-	// Create containers sequentially (order matters for startup)
 	for (const instance of instances) {
 		const type = instance.isWorker ? 'worker' : 'main';
 		log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);

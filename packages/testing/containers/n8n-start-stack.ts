@@ -136,13 +136,17 @@ async function main() {
 		process.exit(0);
 	}
 
+	// Build services array from CLI flags
+	const services: string[] = [];
+	if (values['source-control']) services.push('gitea');
+	if (values.oidc) services.push('keycloak');
+	if (values.observability) services.push('observability');
+	if (values.tracing) services.push('tracing');
+
 	// Build configuration
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
-		sourceControl: values['source-control'] ?? false,
-		oidc: values.oidc ?? false,
-		observability: values.observability ?? false,
-		tracing: values.tracing ?? false,
+		services,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -285,10 +289,11 @@ function displayConfig(config: N8NConfig) {
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;
+	const services = config.services ?? [];
 
 	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres = config.postgres || isQueueMode || config.oidc;
+	const usePostgres = config.postgres || isQueueMode || services.includes('keycloak');
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
 	if (isQueueMode) {
@@ -306,7 +311,7 @@ function displayConfig(config: N8NConfig) {
 	log.info('Task runner: enabled');
 
 	// Display source control status
-	if (config.sourceControl) {
+	if (services.includes('gitea')) {
 		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
 		log.info('  Admin: giteaadmin / giteapassword');
 		log.info('  Repository: n8n-test-repo');
@@ -315,7 +320,7 @@ function displayConfig(config: N8NConfig) {
 	}
 
 	// Display OIDC status
-	if (config.oidc) {
+	if (services.includes('keycloak')) {
 		log.info('OIDC: enabled (Keycloak)');
 		if (!config.postgres && !isQueueMode) {
 			log.info('(PostgreSQL automatically enabled for OIDC)');
@@ -325,14 +330,14 @@ function displayConfig(config: N8NConfig) {
 	}
 
 	// Display observability status
-	if (config.observability) {
+	if (services.includes('observability')) {
 		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
 	} else {
 		log.info('Observability: disabled');
 	}
 
 	// Display tracing status
-	if (config.tracing) {
+	if (services.includes('tracing')) {
 		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
 	} else {
 		log.info('Tracing: disabled');
