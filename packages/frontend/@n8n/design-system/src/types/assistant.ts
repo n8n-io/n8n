@@ -1,9 +1,19 @@
 export namespace ChatUI {
 	export interface TextMessage {
+		id?: string;
 		role: 'assistant' | 'user';
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
+	}
+
+	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
+		role: 'assistant';
+		aborted: true;
 	}
 
 	export interface SummaryBlock {
@@ -42,23 +52,6 @@ export namespace ChatUI {
 		eventName: 'session-error';
 	}
 
-	export interface GeneratedNodesMessage {
-		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	export interface ComposedNodesMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-
 	export interface QuickReply {
 		type: string;
 		text: string;
@@ -66,6 +59,7 @@ export namespace ChatUI {
 	}
 
 	export interface ErrorMessage {
+		id?: string;
 		role: 'assistant';
 		type: 'error';
 		content: string;
@@ -80,37 +74,49 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
-	export interface WorkflowStepMessage {
+	export interface WorkflowUpdatedMessage {
 		role: 'assistant';
-		type: 'workflow-step';
-		steps: string[];
-	}
-
-	export interface WorkflowNodeMessage {
-		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	export interface WorkflowComposedMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-	export interface WorkflowGeneratedMessage {
-		role: 'assistant';
-		type: 'workflow-generated';
+		type: 'workflow-updated';
 		codeSnippet: string;
 	}
-	export interface RateWorkflowMessage {
+
+	export interface ToolMessage {
+		id?: string;
 		role: 'assistant';
-		type: 'rate-workflow';
-		content: string;
+		type: 'tool';
+		toolName: string;
+		toolCallId?: string;
+		displayTitle?: string; // tool display name like "Searching for node"
+		customDisplayTitle?: string; // tool call specific custom title like "Searching for OpenAI"
+		status: 'running' | 'completed' | 'error';
+		updates: Array<{
+			type: 'input' | 'output' | 'progress' | 'error';
+			data: Record<string, unknown>;
+			timestamp?: string;
+		}>;
+	}
+
+	export interface ThinkingItem {
+		id: string;
+		displayTitle: string;
+		status: 'pending' | 'running' | 'completed' | 'error';
+	}
+
+	export interface ThinkingGroupMessage {
+		id?: string;
+		role: 'assistant';
+		type: 'thinking-group';
+		items: ThinkingItem[];
+		latestStatusText: string;
+	}
+
+	export interface CustomMessage {
+		id?: string;
+		role: 'assistant' | 'user';
+		type: 'custom';
+		message?: string;
+		customType: string;
+		data: unknown;
 	}
 
 	type MessagesWithReplies = (
@@ -123,19 +129,126 @@ export namespace ChatUI {
 	};
 
 	export type AssistantMessage = (
+		| TextMessage
+		| TaskAbortedMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
 		| SessionTimeoutMessage
 		| SessionErrorMessage
 		| AgentSuggestionMessage
-		| WorkflowStepMessage
-		| WorkflowNodeMessage
-		| WorkflowComposedMessage
-		| WorkflowGeneratedMessage
-		| RateWorkflowMessage
+		| WorkflowUpdatedMessage
+		| ToolMessage
+		| ThinkingGroupMessage
+		| CustomMessage
 	) & {
-		id: string;
-		read: boolean;
+		id?: string;
+		read?: boolean;
+		showRating?: boolean;
+		ratingStyle?: 'regular' | 'minimal';
+		showFeedback?: boolean;
 	};
+}
+
+export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
+
+// Type guards for ChatUI messages
+export function isTextMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
+	return msg.type === 'text' && !('aborted' in msg);
+}
+
+export function isTaskAbortedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TaskAbortedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'text' && 'aborted' in msg && msg.aborted;
+}
+
+export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'block';
+}
+
+export function isCodeDiffMessage(msg: ChatUI.AssistantMessage): msg is ChatUI.CodeDiffMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'code-diff';
+}
+
+export function isErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'error';
+}
+
+export function isEndSessionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.EndSessionMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'end-session';
+}
+
+export function isSessionTimeoutMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionTimeoutMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-timeout';
+}
+
+export function isSessionErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-error';
+}
+
+export function isAgentSuggestionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.AgentSuggestionMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'agent-suggestion';
+}
+
+export function isWorkflowUpdatedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowUpdatedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-updated';
+}
+
+export function isToolMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ToolMessage & { id?: string; read?: boolean } {
+	return msg.type === 'tool';
+}
+
+export function isCustomMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.CustomMessage & { id?: string; read?: boolean } {
+	return msg.type === 'custom';
+}
+
+export function isThinkingGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ThinkingGroupMessage & { id?: string; read?: boolean } {
+	return msg.type === 'thinking-group';
+}
+
+// Helper to ensure message has required id and read properties
+export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
+	msg: T,
+): msg is T & { id: string; read: boolean } {
+	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
+}
+
+// Workflow suggestion interface for the N8nPromptInputSuggestions component
+export interface WorkflowSuggestion {
+	id: string;
+	summary: string;
+	prompt: string;
 }

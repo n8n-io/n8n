@@ -30,15 +30,15 @@ import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import type { TaskParams } from '@/task-runner';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import { noOp, TaskRunner } from '@/task-runner';
+import type { TaskParams } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
@@ -48,7 +48,6 @@ import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface RpcCallObject {
@@ -57,6 +56,8 @@ export interface RpcCallObject {
 
 export interface JSExecSettings {
 	code: string;
+	// Additional properties to add to the context
+	additionalProperties?: Record<string, unknown>;
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -95,6 +96,8 @@ export class JsTaskRunner extends TaskRunner {
 
 	private readonly taskDataReconstruct = new DataRequestResponseReconstruct();
 
+	private readonly mode: 'secure' | 'insecure' = 'secure';
+
 	constructor(config: MainConfig, name = 'JS Task Runner') {
 		super({
 			taskType: 'javascript',
@@ -117,19 +120,17 @@ export class JsTaskRunner extends TaskRunner {
 		const allowedExternalModules = parseModuleAllowList(
 			jsRunnerConfig.allowedExternalModules ?? '',
 		);
+		this.mode = jsRunnerConfig.insecureMode ? 'insecure' : 'secure';
 
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,
 		});
 
-		this.preventPrototypePollution(allowedExternalModules, jsRunnerConfig.allowPrototypeMutation);
+		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
 	}
 
-	private preventPrototypePollution(
-		allowedExternalModules: Set<string> | '*',
-		allowPrototypeMutation: boolean,
-	) {
+	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
@@ -137,15 +138,25 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
-				require(module);
+				try {
+					require(module);
+				} catch (error) {
+					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						);
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
-		// Freeze globals if needed
-		if (!allowPrototypeMutation) {
+		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
+		if (process.env.NODE_ENV !== 'test') {
 			Object.getOwnPropertyNames(globalThis)
 				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				.map((name) => globalThis[name])
 				.filter((value) => typeof value === 'function')
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
@@ -210,9 +221,19 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
+		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer,
+			Buffer: new Proxy(Buffer, {
+				get(target, prop) {
+					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
+					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
+						// eslint-disable-next-line @typescript-eslint/unbound-method
+						return Buffer.alloc;
+					}
+					return target[prop as keyof typeof Buffer];
+				},
+			}),
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -240,12 +261,13 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
-	): Promise<INodeExecutionData[]> {
+	): Promise<TaskResultData['result']> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
+			...settings.additionalProperties,
 		});
 
 		try {
@@ -256,14 +278,15 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const preventPrototypeManipulation =
-					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
+				let taskResult: Promise<TaskResultData['result']>;
 
-				const taskResult = runInContext(
-					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-					context,
-					{ timeout: this.taskTimeout * 1000 },
-				) as Promise<TaskResultData['result']>;
+				if (this.mode === 'secure') {
+					taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+						timeout: this.taskTimeout * 1000,
+					}) as Promise<TaskResultData['result']>;
+				} else {
+					taskResult = this.runDirectly<TaskResultData['result']>(settings.code, context);
+				}
 
 				void taskResult
 					.then(resolve)
@@ -277,7 +300,7 @@ export class JsTaskRunner extends TaskRunner {
 				return [];
 			}
 
-			return validateRunForAllItemsOutput(result);
+			return result;
 		} catch (e) {
 			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
 			const error = this.toExecutionErrorIfNeeded(e);
@@ -309,7 +332,13 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const context = this.buildContext(
+			taskId,
+			workflow,
+			data.node,
+			undefined,
+			settings.additionalProperties,
+		);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);
@@ -317,18 +346,22 @@ export class JsTaskRunner extends TaskRunner {
 			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
-				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+				const result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
 					const abortHandler = () => {
 						reject(new TimeoutError(this.taskTimeout));
 					};
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInContext(
-						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-						context,
-						{ timeout: this.taskTimeout * 1000 },
-					) as Promise<INodeExecutionData>;
+					let taskResult: Promise<INodeExecutionData>;
+
+					if (this.mode === 'secure') {
+						taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+							timeout: this.taskTimeout * 1000,
+						}) as Promise<INodeExecutionData>;
+					} else {
+						taskResult = this.runDirectly<INodeExecutionData>(settings.code, context);
+					}
 
 					void taskResult
 						.then(resolve)
@@ -343,17 +376,18 @@ export class JsTaskRunner extends TaskRunner {
 					continue;
 				}
 
-				result = validateRunForEachItemOutput(result, index);
 				if (result) {
+					const jsonData = this.extractJsonData(result);
+
 					returnData.push(
 						result.binary
 							? {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 									binary: result.binary,
 								}
 							: {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 								},
 					);
@@ -409,6 +443,19 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+	}
+
+	private extractJsonData(result: INodeExecutionData) {
+		if (!isObject(result)) return result;
+
+		if ('json' in result) return result.json;
+
+		if ('binary' in result) {
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
+		}
+
+		return result;
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
@@ -541,5 +588,31 @@ export class JsTaskRunner extends TaskRunner {
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
 		});
+	}
+
+	private createVmExecutableCode(code: string) {
+		return [
+			// shim for `global` compatibility
+			'globalThis.global = globalThis',
+
+			// prevent prototype manipulation
+			'Object.getPrototypeOf = () => ({})',
+			'Reflect.getPrototypeOf = () => ({})',
+			'Object.setPrototypeOf = () => false',
+			'Reflect.setPrototypeOf = () => false',
+
+			// wrap user code
+			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
+		].join('; ');
+	}
+
+	private async runDirectly<T>(code: string, context: Context): Promise<T> {
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const fn = new Function(
+			'context',
+			`with(context) { return (async function() {${code}\n})(); }`,
+		);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
+		return await fn(context);
 	}
 }

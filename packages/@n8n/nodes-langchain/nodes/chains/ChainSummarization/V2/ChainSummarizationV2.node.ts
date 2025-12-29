@@ -60,7 +60,7 @@ export class ChainSummarizationV2 implements INodeType {
 				name: 'Summarization Chain',
 				color: '#909298',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [],

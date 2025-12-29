@@ -1,9 +1,9 @@
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
-import { NodeConnectionTypes, Node } from 'n8n-workflow';
+import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
-import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
+import { getConnectedTools } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingTransport';
 import { McpServerManager } from './McpServer';
@@ -46,7 +46,7 @@ export class McpTrigger extends Node {
 			header: 'Listen for MCP events',
 			executionsHelp: {
 				inactive:
-					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. <a data-key='activate'>Activate</a> the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
+					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 				active:
 					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
@@ -125,6 +125,16 @@ export class McpTrigger extends Node {
 				ndvHideMethod: true,
 				ndvHideUrl: true,
 			},
+			{
+				name: 'default',
+				httpMethod: 'DELETE',
+				responseMode: 'onReceived',
+				isFullPath: true,
+				path: '={{$parameter["path"]}}',
+				nodeType: 'mcp',
+				ndvHideMethod: true,
+				ndvHideUrl: true,
+			},
 		],
 	};
 
@@ -162,22 +172,30 @@ export class McpTrigger extends Node {
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// Here we handle POST requests. These can be either
+			// Here we handle POST and DELETE requests.
+			// POST can be either:
 			// 1) Client calls in an established session using the SSE transport, or
 			// 2) Client calls in an established session using the StreamableHTTPServerTransport
 			// 3) Session setup requests using the StreamableHTTPServerTransport
+			// DELETE is used to terminate the session using the StreamableHTTPServerTransport
 
-			// Check if there is a session and a transport is already established
-			const sessionId = mcpServerManager.getSessionId(req);
-			if (sessionId && mcpServerManager.getTransport(sessionId)) {
-				const connectedTools = await getConnectedTools(context, true);
-				const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-				if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+			if (req.method === 'DELETE') {
+				await mcpServerManager.handleDeleteRequest(req, resp);
 			} else {
-				// If no session is established, this is a setup request
-				// for the StreamableHTTPServerTransport, so we create a new transport
-				await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+				// Check if there is a session and a transport is already established
+				const sessionId = mcpServerManager.getSessionId(req);
+
+				if (sessionId && mcpServerManager.getTransport(sessionId)) {
+					const connectedTools = await getConnectedTools(context, true);
+					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
+					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+				} else {
+					// If no session is established, this is a setup request
+					// for the StreamableHTTPServerTransport, so we create a new transport
+					await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+				}
 			}
+
 			return { noWebhookResponse: true };
 		}
 

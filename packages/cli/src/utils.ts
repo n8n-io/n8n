@@ -89,6 +89,36 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&
-		!nodeType.methods
+		(!nodeType.methods || isDeclarativeNode)
 	);
+};
+
+/**
+ * Recursively gets all key paths of an object or array, filtered by the provided value filter.
+ * @param obj - The object or array to search.
+ * @param keys - The array to store matching keys.
+ * @param valueFilter - A function to filter values.
+ * @returns The array of matching key paths.
+ */
+export const getAllKeyPaths = (
+	obj: unknown,
+	currentPath = '',
+	paths: string[] = [],
+	valueFilter: (value: string) => boolean,
+): string[] => {
+	if (Array.isArray(obj)) {
+		obj.forEach((item, index) =>
+			getAllKeyPaths(item, `${currentPath}[${index}]`, paths, valueFilter),
+		);
+	} else if (obj && typeof obj === 'object') {
+		for (const [key, value] of Object.entries(obj)) {
+			const newPath = currentPath ? `${currentPath}.${key}` : key;
+			if (typeof value === 'string' && valueFilter(value)) {
+				paths.push(newPath);
+			} else {
+				getAllKeyPaths(value, newPath, paths, valueFilter);
+			}
+		}
+	}
+	return paths;
 };

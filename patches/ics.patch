@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index c69d9542b6f211d7dd3da0d11eb62002ed480457..a85c007d243ff0323c6ee271768147a848737241 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "version": "2.40.0",
+   "description": "iCal (ics) file generator",
+   "exports": {
++    "types": "./index.d.ts",
+     "require": "./index.js",
+     "default": "./dist/index.js"
+   },

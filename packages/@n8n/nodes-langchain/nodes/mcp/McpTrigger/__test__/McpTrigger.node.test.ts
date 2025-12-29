@@ -5,7 +5,10 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 
-import type { FlushingSSEServerTransport } from '../FlushingTransport';
+import type {
+	FlushingSSEServerTransport,
+	FlushingStreamableHTTPTransport,
+} from '../FlushingTransport';
 import type { McpServerManager } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
@@ -136,6 +139,33 @@ describe('McpTrigger Node', () => {
 				'/custom-path',
 				mockResponse,
 			);
+		});
+
+		it('should handle DELETE webhook for StreamableHTTP session termination', async () => {
+			// Configure the context for DELETE webhook
+			mockContext.getWebhookName.mockReturnValue('default');
+			const mockDeleteRequest = mock<Request>({
+				method: 'DELETE',
+				headers: { 'mcp-session-id': sessionId },
+				path: '/custom-path',
+			});
+			mockContext.getRequestObject.mockReturnValueOnce(mockDeleteRequest);
+
+			// Mock existing StreamableHTTP transport
+			mockServerManager.getSessionId.mockReturnValue(sessionId);
+			mockServerManager.getTransport.mockReturnValue(mock<FlushingStreamableHTTPTransport>({}));
+
+			// Call the webhook method
+			const result = await mcpTrigger.webhook(mockContext);
+
+			// Verify that handleDeleteRequest was called
+			expect(mockServerManager.handleDeleteRequest).toHaveBeenCalledWith(
+				mockDeleteRequest,
+				mockResponse,
+			);
+
+			// Verify the returned result
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

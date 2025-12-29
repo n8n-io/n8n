@@ -1,18 +1,30 @@
-import { NodeApiError, type IExecuteFunctions, type INode, type IDataObject } from 'n8n-workflow';
+import {
+	NodeApiError,
+	type IExecuteFunctions,
+	type INode,
+	type IDataObject,
+	jsonParse,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type Stream from 'node:stream';
 
 import { SESSION_MODE } from './actions/common/fields';
-import type { TScrollingMode } from './constants';
+import { BASE_URL, type TScrollingMode } from './constants';
 import {
 	ERROR_MESSAGES,
 	DEFAULT_TIMEOUT_MINUTES,
+	DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
 	MIN_TIMEOUT_MINUTES,
 	MAX_TIMEOUT_MINUTES,
 	SESSION_STATUS,
 	OPERATION_TIMEOUT,
 } from './constants';
 import { apiRequest } from './transport';
-import type { IAirtopResponse, IAirtopSessionResponse } from './transport/types';
+import type {
+	IAirtopResponse,
+	IAirtopServerEvent,
+	IAirtopSessionResponse,
+} from './transport/types';
 
 /**
  * Validate a required string field
@@ -364,7 +376,7 @@ export async function createSession(
 	this: IExecuteFunctions,
 	parameters: IDataObject,
 	timeout = OPERATION_TIMEOUT,
-): Promise<{ sessionId: string }> {
+): Promise<{ sessionId: string; data: IAirtopSessionResponse }> {
 	// Request session creation
 	const response = (await apiRequest.call(
 		this,
@@ -401,7 +413,12 @@ export async function createSession(
 		sessionStatus = sessionStatusResponse.data.status;
 	}
 
-	return { sessionId };
+	return {
+		sessionId,
+		data: {
+			...response,
+		},
+	};
 }
 
 /**
@@ -445,4 +462,78 @@ export async function createSessionAndWindow(
 	}
 	this.logger.info(`[${node.name}] Window successfully created.`);
 	return { sessionId, windowId };
+}
+
+/**
+ * SSE Helpers
+ */
+
+/**
+ * Parses a server event from a string
+ * @param eventText - The string to parse
+ * @returns The parsed event or null if the string is not a valid event
+ */
+function parseEvent(eventText: string): IAirtopServerEvent | null {
+	const dataLine = eventText.split('\n').find((line) => line.startsWith('data:'));
+	if (!dataLine) {
+		return null;
+	}
+	const jsonStr = dataLine.replace('data: ', '').trim();
+	return jsonParse<IAirtopServerEvent>(jsonStr, {
+		errorMessage: 'Failed to parse server event',
+	});
+}
+
+/**
+ * Waits for a session event to occur
+ * @param this - The execution context providing access to n8n functionality
+ * @param sessionId - ID of the session to check for events
+ * @param condition - Function to check if the event meets the condition
+ * @param timeoutInSeconds - Maximum time in seconds to wait before failing (defaults to DEFAULT_DOWNLOAD_TIMEOUT_SECONDS)
+ * @returns Promise resolving to the event when the condition is met
+ */
+export async function waitForSessionEvent(
+	this: IExecuteFunctions,
+	sessionId: string,
+	condition: (event: IAirtopServerEvent) => boolean,
+	timeoutInSeconds = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
+): Promise<IAirtopServerEvent> {
+	const url = `${BASE_URL}/sessions/${sessionId}/events?all=true`;
+	let stream: Stream;
+
+	const eventPromise = new Promise<IAirtopServerEvent>(async (resolve) => {
+		stream = (await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', {
+			method: 'GET',
+			url,
+			encoding: 'stream',
+		})) as Stream;
+
+		stream.on('data', (data: Uint8Array) => {
+			const event = parseEvent(data.toString());
+			if (!event) {
+				return;
+			}
+			// handle event
+			if (condition(event)) {
+				stream.removeAllListeners();
+				resolve(event);
+				return;
+			}
+		});
+	});
+
+	const timeoutPromise = new Promise<void>((_resolve, reject) => {
+		setTimeout(() => {
+			reject(
+				new NodeApiError(this.getNode(), {
+					message: ERROR_MESSAGES.TIMEOUT_REACHED,
+					code: 500,
+				}),
+			);
+			stream.removeAllListeners();
+		}, timeoutInSeconds * 1000);
+	});
+
+	const result = await Promise.race([eventPromise, timeoutPromise]);
+	return result as IAirtopServerEvent;
 }

@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -22,6 +20,7 @@ import {
 	handleUpdateOperation,
 	handleRetrieveOperation,
 	handleRetrieveAsToolOperation,
+	handleRetrieveAsToolExecuteOperation,
 } from './operations';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
@@ -34,7 +33,8 @@ const ragStarterCallout: INodeProperties = {
 	typeOptions: {
 		calloutAction: {
 			label: 'RAG starter template',
-			type: 'openRagStarterTemplate',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'rag-starter-template',
 		},
 	},
 	default: '',
@@ -77,7 +77,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			credentials: args.meta.credentials,
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
@@ -292,9 +292,26 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				return [resultData];
 			}
 
+			if (mode === 'retrieve-as-tool') {
+				const items = this.getInputData(0);
+				const resultData = [];
+
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					const docs = await handleRetrieveAsToolExecuteOperation(
+						this,
+						args,
+						embeddings,
+						itemIndex,
+					);
+					resultData.push(...docs);
+				}
+
+				return [resultData];
+			}
+
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load", "update" and "insert" operation modes are supported with execute',
+				'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
 			);
 		}
 

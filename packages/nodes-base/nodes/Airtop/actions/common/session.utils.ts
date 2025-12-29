@@ -25,22 +25,33 @@ export async function executeRequestWithSessionManagement(
 		body: IDataObject;
 	},
 ): Promise<IAirtopResponse> {
-	const { sessionId, windowId } = shouldCreateNewSession.call(this, index)
-		? await createSessionAndWindow.call(this, index)
-		: validateSessionAndWindowId.call(this, index);
+	let airtopSessionId = '';
+	try {
+		const { sessionId, windowId } = shouldCreateNewSession.call(this, index)
+			? await createSessionAndWindow.call(this, index)
+			: validateSessionAndWindowId.call(this, index);
+		airtopSessionId = sessionId;
 
-	const shouldTerminateSession = this.getNodeParameter('autoTerminateSession', index, false);
+		const shouldTerminateSession = this.getNodeParameter('autoTerminateSession', index, false);
 
-	const endpoint = request.path.replace('{sessionId}', sessionId).replace('{windowId}', windowId);
-	const response = await apiRequest.call(this, request.method, endpoint, request.body);
+		const endpoint = request.path.replace('{sessionId}', sessionId).replace('{windowId}', windowId);
+		const response = await apiRequest.call(this, request.method, endpoint, request.body);
 
-	validateAirtopApiResponse(this.getNode(), response);
+		validateAirtopApiResponse(this.getNode(), response);
 
-	if (shouldTerminateSession) {
-		await apiRequest.call(this, 'DELETE', `/sessions/${sessionId}`);
-		this.logger.info(`[${this.getNode().name}] Session terminated.`);
-		return response;
+		if (shouldTerminateSession) {
+			await apiRequest.call(this, 'DELETE', `/sessions/${sessionId}`);
+			this.logger.info(`[${this.getNode().name}] Session terminated.`);
+			return response;
+		}
+
+		return { sessionId, windowId, ...response };
+	} catch (error) {
+		// terminate session on error
+		if (airtopSessionId) {
+			await apiRequest.call(this, 'DELETE', `/sessions/${airtopSessionId}`);
+			this.logger.info(`[${this.getNode().name}] Session terminated.`);
+		}
+		throw error;
 	}
-
-	return { sessionId, windowId, ...response };
 }

@@ -1,8 +1,11 @@
 import { TestRunRepository, TestCaseExecutionRepository } from '@n8n/db';
-import type { TestRun } from '@n8n/db';
-import type { TestCaseExecution } from '@n8n/db';
-import type { AggregatedTestRunMetrics } from '@n8n/db';
-import type { TestCaseExecutionErrorCode, TestRunErrorCode } from '@n8n/db';
+import type {
+	TestRun,
+	TestCaseExecution,
+	AggregatedTestRunMetrics,
+	TestCaseExecutionErrorCode,
+	TestRunErrorCode,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 

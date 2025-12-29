@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { isContainedWithin, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -16,7 +16,7 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -49,7 +49,7 @@ type Codex = {
 };
 
 export type Types = {
-	nodes: INodeTypeBaseDescription[];
+	nodes: INodeTypeDescription[];
 	credentials: ICredentialType[];
 };
 
@@ -80,6 +80,8 @@ export abstract class DirectoryLoader {
 
 	protected readonly logger = Container.get(Logger);
 
+	protected removeNonIncludedNodes = false;
+
 	constructor(
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
@@ -92,6 +94,8 @@ export abstract class DirectoryLoader {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (error.code !== 'ENOENT') throw error;
 		}
+
+		this.removeNonIncludedNodes = this.includeNodes.length > 0;
 	}
 
 	abstract packageName: string;
@@ -111,6 +115,13 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
+	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([pkg]) => pkg === packageName)
+			.map(([_, nodeType]) => nodeType);
+	}
+
 	private loadClass<T>(sourcePath: string) {
 		const filePath = this.resolvePath(sourcePath);
 		const [className] = path.parse(sourcePath).name.split('.');
@@ -127,13 +138,13 @@ export abstract class DirectoryLoader {
 	}
 
 	/** Loads a nodes class from a file, fixes icons, and augments the codex */
-	loadNodeFromFile(filePath: string) {
+	loadNodeFromFile(filePath: string, packageVersion?: string) {
 		const tempNode = this.loadClass<INodeType | IVersionedNodeType>(filePath);
 		this.addCodex(tempNode, filePath);
 
 		const nodeType = tempNode.description.name;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
+		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 
@@ -150,6 +161,7 @@ export abstract class DirectoryLoader {
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
+				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
 				this.applySpecialNodeParameters(version);
 			}
@@ -165,6 +177,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
 			this.applySpecialNodeParameters(tempNode);
 
@@ -242,6 +255,7 @@ export abstract class DirectoryLoader {
 			sourcePath: filePath,
 		};
 
+		if (this.isLazyLoaded) return;
 		this.types.credentials.push(tempCredential);
 	}
 
@@ -382,6 +396,13 @@ export abstract class DirectoryLoader {
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+
+		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+			throw new UnexpectedError(
+				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
+			);
+		}
+
 		return `icons/${this.packageName}/${iconPath}`;
 	}
 
@@ -392,16 +413,30 @@ export abstract class DirectoryLoader {
 		const { icon } = obj;
 		if (!icon) return;
 
+		const hasExpression =
+			typeof icon === 'string'
+				? isExpression(icon)
+				: isExpression(icon.light) || isExpression(icon.dark);
+
+		if (hasExpression) {
+			obj.iconBasePath = `icons/${this.packageName}/${path.dirname(filePath)}`;
+			return;
+		}
+
+		const processIconPath = (iconValue: string) =>
+			iconValue.startsWith('file:') ? this.getIconPath(iconValue, filePath) : null;
+
+		let iconUrl;
 		if (typeof icon === 'string') {
-			if (icon.startsWith('file:')) {
-				obj.iconUrl = this.getIconPath(icon, filePath);
-				obj.icon = undefined;
-			}
-		} else if (icon.light.startsWith('file:') && icon.dark.startsWith('file:')) {
-			obj.iconUrl = {
-				light: this.getIconPath(icon.light, filePath),
-				dark: this.getIconPath(icon.dark, filePath),
-			};
+			iconUrl = processIconPath(icon);
+		} else {
+			const light = processIconPath(icon.light);
+			const dark = processIconPath(icon.dark);
+			iconUrl = light && dark ? { light, dark } : null;
+		}
+
+		if (iconUrl) {
+			obj.iconUrl = iconUrl;
 			obj.icon = undefined;
 		}
 	}

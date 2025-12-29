@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="Item extends DatatableRow">
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
@@ -13,7 +13,7 @@ const ALL_ROWS = -1;
 
 interface DatatableProps {
 	columns: DatatableColumn[];
-	rows: DatatableRow[];
+	rows: Item[];
 	currentPage?: number;
 	pagination?: boolean;
 	rowsPerPage?: number;
@@ -69,7 +69,7 @@ function onRowsPerPageChange(value: number) {
 	}
 }
 
-function getTdValue(row: DatatableRow, column: DatatableColumn) {
+function getTdValue(row: Item, column: DatatableColumn) {
 	return getValueByPath<DatatableRowDataType>(row, column.path);
 }
 
@@ -108,6 +108,8 @@ function getThStyle(column: DatatableColumn) {
 				</template>
 			</tbody>
 		</N8nTableBase>
+
+		<slot name="postdata" />
 
 		<div class="pagination">
 			<N8nPagination
@@ -155,7 +157,7 @@ function getThStyle(column: DatatableColumn) {
 	align-items: center;
 	bottom: 0;
 	overflow: visible;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .pageSizeSelector {

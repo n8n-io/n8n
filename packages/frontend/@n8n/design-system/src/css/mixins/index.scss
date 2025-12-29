@@ -1,5 +1,5 @@
 @forward 'breakpoints';
-@forward 'button';
+@forward 'button' hide $B, $E;
 @forward 'config';
 @forward 'function';
 @forward 'mixins';

@@ -25,3 +25,45 @@ properties:
   executionOrder:
     type: string
     example: v1
+  callerPolicy:
+    type: string
+    enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
+    default: workflowsFromSameOwner
+    description: |
+      Controls which workflows are allowed to call this workflow using the Execute Workflow node.
+
+      Available options:
+      - `any`: Any workflow can call this workflow (no restrictions)
+      - `none`: No other workflows can call this workflow (completely blocked)
+      - `workflowsFromSameOwner` (default): Only workflows owned by the same project can call this workflow
+        * For personal projects: Only workflows created by the same user
+        * For team projects: Only workflows within the same team project
+      - `workflowsFromAList`: Only specific workflows listed in the `callerIds` field can call this workflow
+        * Requires the `callerIds` field to specify which workflow IDs are allowed
+        * See `callerIds` field documentation for usage
+    example: workflowsFromSameOwner
+  callerIds:
+    type: string
+    description: Comma-separated list of workflow IDs allowed to call this workflow (only used with workflowsFromAList policy)
+    example: '14, 18, 23'
+  timeSavedPerExecution:
+    type: number
+    description: Estimated time saved per execution in minutes
+  availableInMCP:
+    type: boolean
+    default: false
+    description: |
+      Controls whether this workflow is accessible via the Model Context Protocol (MCP).
+
+      When enabled, this workflow can be called by MCP clients (AI assistants and other tools
+      that support MCP). This allows external AI tools to discover and execute this workflow
+      as part of their capabilities.
+
+      Requirements for enabling MCP access:
+      - The workflow must be active (not deactivated)
+      - The workflow must contain at least one active Webhook node
+      - Only webhook-triggered workflows can be exposed via MCP
+
+      Security note: When a workflow is available in MCP, it can be discovered and executed
+      by any MCP client that has the appropriate API credentials for your n8n instance.
+    example: false

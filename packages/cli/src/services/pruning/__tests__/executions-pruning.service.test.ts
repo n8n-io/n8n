@@ -1,9 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
+import type { DbConnection } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-
-import type { DbConnection } from '@/databases/db-connection';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
@@ -155,6 +154,52 @@ describe('PruningService', () => {
 
 			expect(scheduleRollingSoftDeletionsSpy).toHaveBeenCalled();
 			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopPruning', () => {
+		afterEach(() => jest.restoreAllMocks());
+
+		it('should stop pruning when instance loses leadership', () => {
+			// arrange
+
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+			let isLeader = true;
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'main',
+				isMultiMain: true,
+			});
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
+			instanceSettings.markAsFollower.mockImplementation(() => {
+				isLeader = false;
+			});
+
+			const pruningService = new ExecutionsPruningService(
+				mockLogger(),
+				instanceSettings,
+				dbConnection,
+				mock(),
+				mock(),
+				mock<ExecutionsConfig>({
+					pruneData: true,
+					pruneDataIntervals: { softDelete: 60, hardDelete: 15 },
+				}),
+			);
+
+			pruningService.startPruning();
+
+			// act
+
+			instanceSettings.markAsFollower();
+			pruningService.stopPruning();
+
+			// assert
+
+			expect(isLeader).toBe(false);
+			expect(clearIntervalSpy).toHaveBeenCalled();
+			expect(clearTimeoutSpy).toHaveBeenCalled();
 		});
 	});
 });

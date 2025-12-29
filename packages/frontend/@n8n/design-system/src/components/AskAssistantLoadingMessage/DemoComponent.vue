@@ -51,6 +51,6 @@ onMounted(() => {
 
 <style module lang="scss">
 .loading-message {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
 }
 </style>

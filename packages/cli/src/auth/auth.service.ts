@@ -1,19 +1,19 @@
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { Time } from '@n8n/constants';
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
-import type { AuthenticatedRequest } from '@/requests';
+import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
@@ -24,6 +24,8 @@ interface AuthJwtPayload {
 	hash: string;
 	/** This is a client generated unique string to prevent session hijacking */
 	browserId?: string;
+	/** This indicates if mfa was used during the creation of this token */
+	usedMfa?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -33,6 +35,23 @@ interface IssuedJWT extends AuthJwtPayload {
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
+}
+
+interface CreateAuthMiddlewareOptions {
+	/**
+	 * If true, MFA is not enforced
+	 */
+	allowSkipMFA: boolean;
+	/**
+	 * If true, authentication becomes optional in preview mode
+	 */
+	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, the middleware will not throw an error if authentication fails
+	 * and will instead call next() regardless of authentication status.
+	 * Use this for endpoints that should return different data for authenticated vs unauthenticated users.
+	 */
+	allowUnauthenticated?: boolean;
 }
 
 @Service()
@@ -48,10 +67,8 @@ export class AuthService {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
+		private readonly mfaService: MfaService,
 	) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		this.authMiddleware = this.authMiddleware.bind(this);
-
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
@@ -64,27 +81,69 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
+
+			// Skip browser ID check for type files
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/mcp-oauth/authorize/',
+
+			// Skip browser ID check for chat hub attachments
+			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 		];
 	}
 
-	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		const token = req.cookies[AUTH_COOKIE_NAME];
-		if (token) {
-			try {
-				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
-				if (isInvalid) throw new AuthError('Unauthorized');
-				req.user = await this.resolveJwt(token, req, res);
-			} catch (error) {
-				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
-					this.clearCookie(res);
-				} else {
-					throw error;
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		allowUnauthenticated,
+	}: CreateAuthMiddlewareOptions) {
+		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			const token = req.cookies[AUTH_COOKIE_NAME];
+
+			if (token) {
+				try {
+					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+					if (isInvalid) throw new AuthError('Unauthorized');
+
+					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
+					const mfaEnforced = this.mfaService.isMFAEnforced();
+
+					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
+						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
+						if (user.mfaEnabled) {
+							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
+							throw new AuthError('MFA not used during authentication');
+						} else {
+							if (allowUnauthenticated) {
+								return next();
+							}
+
+							// In this case we don't want to clear the cookie, to allow for MFA setup
+							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
+							return;
+						}
+					}
+
+					req.user = user;
+					req.authInfo = {
+						usedMfa,
+					};
+				} catch (error) {
+					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+						this.clearCookie(res);
+					} else {
+						throw error;
+					}
 				}
 			}
-		}
 
-		if (req.user) next();
-		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
+
+			if (req.user) next();
+			else if (shouldSkipAuth) next();
+			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		};
 	}
 
 	clearCookie(res: Response) {
@@ -107,19 +166,15 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, browserId?: string) {
+	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (
-			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role !== 'global:owner' &&
-			!isWithinUsersLimit
-		) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
@@ -129,18 +184,23 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
+			usedMfa,
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
 
-	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<User> {
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -148,6 +208,7 @@ export class AuthService {
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
 			where: { id: jwtPayload.id },
+			relations: ['role'],
 		});
 
 		if (
@@ -175,10 +236,10 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, req.browserId);
+			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
 		}
 
-		return user;
+		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
@@ -211,7 +272,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 
 		if (!user) {
@@ -242,9 +303,9 @@ export class AuthService {
 		return createHash('sha256').update(input).digest('base64');
 	}
 
-	/** How many **milliseconds** before expiration should a JWT be renewed */
+	/** How many **milliseconds** before expiration should a JWT be renewed. */
 	get jwtRefreshTimeout() {
-		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = config.get('userManagement');
+		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = this.globalConfig.userManagement;
 		if (jwtRefreshTimeoutHours === 0) {
 			return Math.floor(jwtSessionDurationHours * 0.25 * Time.hours.toMilliseconds);
 		} else {
@@ -252,8 +313,8 @@ export class AuthService {
 		}
 	}
 
-	/** How many **seconds** is an issued JWT valid for */
+	/** How many **seconds** is an issued JWT valid for. */
 	get jwtExpiration() {
-		return config.get('userManagement.jwtSessionDurationHours') * Time.hours.toSeconds;
+		return this.globalConfig.userManagement.jwtSessionDurationHours * Time.hours.toSeconds;
 	}
 }

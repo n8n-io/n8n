@@ -2,6 +2,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
@@ -10,9 +11,11 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 
 @Service()
@@ -29,14 +32,14 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	private getWorkflow(execution: IExecutionResponse) {
+	protected getWorkflow(execution: IExecutionResponse) {
 		const { workflowData } = execution;
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -74,6 +77,8 @@ export class WaitingForms extends WaitingWebhooks {
 
 		this.logReceivedWebhook(req.method, executionId);
 
+		sanitizeWebhookRequest(req);
+
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
@@ -91,6 +96,11 @@ export class WaitingForms extends WaitingWebhooks {
 					status = 'form-waiting';
 				}
 			}
+
+			if (req.headers.origin) {
+				res.header('Access-Control-Allow-Origin', req.headers.origin);
+			}
+
 			res.send(status);
 			return { noWebhookResponse: true };
 		}
@@ -123,6 +133,7 @@ export class WaitingForms extends WaitingWebhooks {
 			);
 
 			if (!completionPage) {
+				res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 				res.render('form-trigger-completion', {
 					title: 'Form Submitted',
 					message: 'Your response has been recorded',

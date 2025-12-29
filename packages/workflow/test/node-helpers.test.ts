@@ -7,7 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
-} from '@/interfaces';
+} from '../src/interfaces';
 import {
 	getNodeParameters,
 	isSubNodeType,
@@ -21,8 +21,10 @@ import {
 	isDefaultNodeName,
 	makeNodeName,
 	isTool,
-} from '@/node-helpers';
-import type { Workflow } from '@/workflow';
+	getNodeWebhookPath,
+} from '../src/node-helpers';
+import type { Workflow } from '../src/workflow';
+import { mock } from 'vitest-mock-extended';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -3414,6 +3416,104 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is not an object or is an array',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as an array instead of an object
+						values: [] as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is a string',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as a string
+						values: 'invalid value' as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
@@ -4226,7 +4326,7 @@ describe('NodeHelpers', () => {
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
-				getSimpleParameterValue: jest.fn().mockReturnValue([NodeConnectionTypes.Main]),
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
 			},
 		} as unknown as Workflow;
 
@@ -4382,7 +4482,8 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					(workflowMock.expression.getSimpleParameterValue as jest.Mock).mockReturnValueOnce(
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);
 				}
@@ -4759,6 +4860,205 @@ describe('NodeHelpers', () => {
 						displayOptions: {
 							show: {
 								'/condition': ['value1'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature is enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is not enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition eq is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition eq is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition not is met (feature disabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition not is not met (feature enabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature with multiple conditions (OR logic)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+							useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }, { _cnd: { eq: 'useFeatureB' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is checked but node has no features',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: undefined,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
 							},
 						},
 					},
@@ -5273,8 +5573,8 @@ describe('NodeHelpers', () => {
 
 		it.each([
 			['Create a new user', true],
-			['Test Node', true],
-			['Test Node1', true],
+			['Test Node', false],
+			['Test Node1', false],
 			['Create a new user5', true],
 			['Create a new user in Test Node5', false],
 			['Create a new user 5', false],
@@ -5529,6 +5829,38 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('Create user in Test Node');
 		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['pythonNative', 'Code in Python'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python',
+								value: 'pythonNative',
+								action: 'Code in Python',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
 	});
 	describe('isTool', () => {
 		it('should return true for a node with AiTool output', () => {
@@ -5609,6 +5941,50 @@ describe('NodeHelpers', () => {
 			const parameters = { mode: 'retrieve-as-tool' };
 			const result = isTool(description, parameters);
 			expect(result).toBe(false);
+		});
+	});
+	describe('getNodeWebhookPath', () => {
+		const mockWorkflowId = 'workflow-123';
+		const mockPath = 'test-path';
+
+		it('should return path when restartWebhook is true', () => {
+			const node = mock<INode>({ name: 'TestNode' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, true);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return path when node has webhookId and isFullPath is true', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, true, false);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return webhookId when node has webhookId, isFullPath is true, and path is empty', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, '', true, false);
+
+			expect(result).toBe('webhook-456');
+		});
+
+		it('should return webhookId/path when node has webhookId and isFullPath is false', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('webhook-456/test-path');
+		});
+
+		it('should return workflowId/nodename/path when node has no webhookId', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: undefined });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('workflow-123/testnode/test-path');
 		});
 	});
 });

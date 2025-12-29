@@ -10,9 +10,6 @@
                 "type": "string"
             }
         },
-        "displayName": {
-            "type": "string"
-        },
         "emailAddresses": {
             "type": "array",
             "items": {
@@ -31,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

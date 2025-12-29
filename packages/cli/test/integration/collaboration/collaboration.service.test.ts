@@ -1,3 +1,9 @@
+import {
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -10,10 +16,7 @@ import type {
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
-import { mockInstance } from '@test/mocking';
 import { createMember, createOwner } from '@test-integration/db/users';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));

@@ -1,34 +1,34 @@
 {
   "name": "@n8n/rest-api-client",
   "type": "module",
-  "version": "1.2.0",
+  "version": "2.2.0",
   "files": [
     "dist"
   ],
   "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "pnpm run typecheck && tsup",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint src --ext .js,.ts,.vue --quiet",
-    "lintfix": "eslint src --ext .js,.ts,.vue --fix",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
     "format": "biome format --write . && prettier --write . --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
@@ -49,10 +49,10 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "tsup": "catalog:",
-    "typescript": "catalog:frontend",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend"
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "license": "See LICENSE.md file in the root of the repository"
 }

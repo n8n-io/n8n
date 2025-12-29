@@ -44,8 +44,9 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		//getSendAndWaitConfig
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
@@ -61,7 +62,9 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 
 		expect(transporter.sendMail).toHaveBeenCalledWith({
 			from: 'from@mail.com',
-			html: expect.stringContaining('href="http://localhost/waiting-webhook/nodeID?approved=true"'),
+			html: expect.stringContaining(
+				'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
+			),
 			subject: 'my subject',
 			to: 'to@mail.com',
 		});

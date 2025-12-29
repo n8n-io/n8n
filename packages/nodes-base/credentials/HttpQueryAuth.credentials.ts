@@ -5,7 +5,7 @@ export class HttpQueryAuth implements ICredentialType {
 
 	displayName = 'Query Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
@@ -10,7 +10,6 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
-import { isContainedWithin } from '@/utils/path-util';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -22,48 +21,69 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { StatusResourceOwner } from './types/resource-owner';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
-	return path.join(workflowExportFolder, `${workflowId}.json`);
+	return safeJoinPath(workflowExportFolder, `${workflowId}.json`);
+}
+
+export function getProjectExportPath(projectId: string, projectExportFolder: string): string {
+	return safeJoinPath(projectExportFolder, `${projectId}.json`);
 }
 
 export function getCredentialExportPath(
 	credentialId: string,
 	credentialExportFolder: string,
 ): string {
-	return path.join(credentialExportFolder, `${credentialId}.json`);
+	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
 }
 
 export function getVariablesPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
 }
 
 export function getTagsPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 }
 
 export function getFoldersPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
 }
 
 export async function readTagAndMappingsFromSourceControlFile(file: string): Promise<{
 	tags: TagEntity[];
 	mappings: WorkflowTagMapping[];
 }> {
-	return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
-		await fsReadFile(file, { encoding: 'utf8' }),
-		{ fallbackValue: { tags: [], mappings: [] } },
-	);
+	try {
+		return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+			await fsReadFile(file, { encoding: 'utf8' }),
+			{ fallbackValue: { tags: [], mappings: [] } },
+		);
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { tags: [], mappings: [] };
+		}
+		throw error;
+	}
 }
 
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
-	return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
-		fallbackValue: { folders: [] },
-	});
+	try {
+		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: { folders: [] },
+		});
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return { folders: [] };
+		}
+		throw error;
+	}
 }
 
 export function sourceControlFoldersExistCheck(
@@ -216,13 +236,28 @@ export function normalizeAndValidateSourceControlledFilePath(
 ) {
 	ok(path.isAbsolute(gitFolderPath), 'gitFolder must be an absolute path');
 
-	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
+	const normalizedPath = path.isAbsolute(filePath)
+		? filePath
+		: safeJoinPath(gitFolderPath, filePath);
 
 	if (!isContainedWithin(gitFolderPath, filePath)) {
 		throw new UserError(`File path ${filePath} is invalid`);
 	}
 
 	return normalizedPath;
+}
+
+export function hasOwnerChanged(
+	owner1?: StatusResourceOwner,
+	owner2?: StatusResourceOwner,
+): boolean {
+	// We only compare owners when there is at least one team owner
+	// because personal owners projects are not synced with source control
+	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+		return false;
+	}
+
+	return owner1?.projectId !== owner2?.projectId;
 }
 
 /**
@@ -233,8 +268,10 @@ export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
 ): boolean {
-	return (
-		remote.versionId !== local.versionId ||
-		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
-	);
+	const hasVersionIdChanged = remote.versionId !== local.versionId;
+	const hasParentFolderIdChanged =
+		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
+
+	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
 }

@@ -2,6 +2,7 @@ import { LDAP_FEATURE_NAME, LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
+	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SettingsRepository,
@@ -9,11 +10,12 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Flags } from '@oclif/core';
 import { UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -24,34 +26,41 @@ import { BaseCommand } from '../base-command';
 const wrongFlagsError =
 	'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.';
 
-export class Reset extends BaseCommand {
-	static description =
-		'\nResets the database to the default ldap state.\n\nTHIS DELETES ALL LDAP MANAGED USERS.';
+const flagsSchema = z.object({
+	userId: z
+		.string()
+		.describe(
+			'The ID of the user to assign the workflows and credentials owned by the deleted LDAP users to',
+		)
+		.optional(),
+	projectId: z
+		.string()
+		.describe(
+			'The ID of the project to assign the workflows and credentials owned by the deleted LDAP users to',
+		)
+		.optional(),
+	deleteWorkflowsAndCredentials: z
+		.boolean()
+		.describe(
+			'Delete all workflows and credentials owned by the users that were created by the users managed via LDAP.',
+		)
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n ldap:reset --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-		'$ n8n ldap:reset --projectId=Ox8O54VQrmBrb4qL',
-		'$ n8n ldap:reset --deleteWorkflowsAndCredentials',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		userId: Flags.string({
-			description:
-				'The ID of the user to assign the workflows and credentials owned by the deleted LDAP users to',
-		}),
-		projectId: Flags.string({
-			description:
-				'The ID of the project to assign the workflows and credentials owned by the deleted LDAP users to',
-		}),
-		deleteWorkflowsAndCredentials: Flags.boolean({
-			description:
-				'Delete all workflows and credentials owned by the users that were created by the users managed via LDAP.',
-		}),
-	};
-
+@Command({
+	name: 'ldap:reset',
+	description:
+		'Resets the database to the default ldap state.\n\nTHIS DELETES ALL LDAP MANAGED USERS.',
+	examples: [
+		'--userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--projectId=Ox8O54VQrmBrb4qL',
+		'--deleteWorkflowsAndCredentials',
+	],
+	flagsSchema,
+})
+export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
-		const { flags } = await this.parse(Reset);
+		const { flags } = this;
 		const numberOfOptions =
 			Number(!!flags.userId) +
 			Number(!!flags.projectId) +
@@ -161,7 +170,10 @@ export class Reset extends BaseCommand {
 	}
 
 	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		const owner = await Container.get(UserRepository).findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
+		});
 		if (!owner) {
 			throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}

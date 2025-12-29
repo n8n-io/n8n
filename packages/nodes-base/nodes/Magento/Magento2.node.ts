@@ -169,6 +169,7 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === false && attribute.frontend_label !== '') {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -189,6 +190,7 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === true && attribute.frontend_label !== null) {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -346,7 +348,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = [
 							'amazon_id',
@@ -490,7 +492,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = [
 							'amazon_id',
@@ -661,7 +663,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product!, rest);
 
@@ -776,7 +778,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product!, rest);
 

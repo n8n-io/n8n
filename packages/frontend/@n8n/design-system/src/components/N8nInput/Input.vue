@@ -2,13 +2,12 @@
 import { ElInput } from 'element-plus';
 import { computed, ref } from 'vue';
 
-import type { ElementPlusSizePropType, InputAutocompletePropType } from '@n8n/design-system/types';
-import type { InputSize, InputType } from '@n8n/design-system/types/input';
-
+import type { ElementPlusSizePropType, InputAutocompletePropType } from '../../types';
+import type { InputSize, InputType } from '../../types/input';
 import { uid } from '../../utils';
 
 interface InputProps {
-	modelValue?: string | number;
+	modelValue?: string | number | null;
 	type?: InputType;
 	size?: InputSize;
 	placeholder?: string;
@@ -101,7 +100,7 @@ defineExpose({ focus, blur, select });
 
 <style lang="scss" module>
 .xlarge {
-	--input-font-size: var(--font-size-m);
+	--input--font-size: var(--font-size--md);
 	input {
 		height: 48px;
 	}

@@ -30,7 +30,6 @@ export class MicrosoftSharePoint implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
-			ignoreHttpStatusErrors: true,
 		},
 		properties: [
 			{

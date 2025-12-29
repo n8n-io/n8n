@@ -1,9 +1,11 @@
 import { inTest } from '@n8n/backend-common';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags, type Config } from '@oclif/core';
+import { z } from 'zod';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -12,31 +14,31 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 import { BaseCommand } from './base-command';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-export class Worker extends BaseCommand {
-	static description = '\nStarts a n8n worker';
+const flagsSchema = z.object({
+	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
+});
 
-	static examples = ['$ n8n worker --concurrency=5'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		concurrency: Flags.integer({
-			default: 10,
-			description: 'How many jobs can run in parallel.',
-		}),
-	};
-
+@Command({
+	name: 'worker',
+	description: 'Starts a n8n worker',
+	examples: ['--concurrency=5'],
+	flagsSchema,
+})
+export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	/**
 	 * How many jobs this worker may run concurrently.
 	 *
 	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
 	 * other than -1, else taken from `--concurrency` flag.
 	 */
-	concurrency: number;
+	private concurrency: number;
 
-	scalingService: ScalingService;
+	private scalingService: ScalingService;
 
 	override needsCommunityPackages = true;
 
@@ -59,12 +61,12 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	constructor(argv: string[], cmdConfig: Config) {
-		if (config.getEnv('executions.mode') !== 'queue') {
-			config.set('executions.mode', 'queue');
-		}
+	constructor() {
+		super();
 
-		super(argv, cmdConfig);
+		if (this.globalConfig.executions.mode !== 'queue') {
+			this.globalConfig.executions.mode = 'queue';
+		}
 
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -86,8 +88,12 @@ export class Worker extends BaseCommand {
 		await this.setConcurrency();
 		await super.init();
 
+		Container.get(DeprecationService).warn();
+
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
@@ -109,7 +115,10 @@ export class Worker extends BaseCommand {
 			}),
 		);
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		await this.executionContextHookRegistry.init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initEventBus() {
@@ -129,13 +138,16 @@ export class Worker extends BaseCommand {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
+		Container.get(WorkerStatusService);
 	}
 
 	async setConcurrency() {
-		const { flags } = await this.parse(Worker);
+		const { flags } = this;
 
-		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const envConcurrency = this.globalConfig.executions.concurrency.productionLimit;
 
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 

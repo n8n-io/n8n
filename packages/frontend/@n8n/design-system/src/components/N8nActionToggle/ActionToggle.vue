@@ -1,17 +1,18 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="UserType extends IUser, Actions extends UserAction<UserType>[]">
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref } from 'vue';
 
-import type { UserAction } from '@n8n/design-system/types';
-import type { IconOrientation, IconSize } from '@n8n/design-system/types/icon';
-
+import { useParentScroll } from '../../composables/useParentScroll';
+import type { IUser, UserAction } from '../../types';
+import type { IconOrientation, IconSize } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
+import N8nLoading from '../N8nLoading';
 
 const SIZE = ['mini', 'small', 'medium'] as const;
 const THEME = ['default', 'dark'] as const;
 
-interface ActionToggleProps {
-	actions?: UserAction[];
+interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAction<UserType>>> {
+	actions?: Actions;
 	placement?: Placement;
 	size?: (typeof SIZE)[number];
 	iconSize?: IconSize;
@@ -22,33 +23,58 @@ interface ActionToggleProps {
 	disabled?: boolean;
 	popperClass?: string;
 	trigger?: 'click' | 'hover';
+	closeOnParentScroll?: boolean;
 }
 
+type ActionValue = Actions[number]['value'];
+
 defineOptions({ name: 'N8nActionToggle' });
-withDefaults(defineProps<ActionToggleProps>(), {
-	actions: () => [],
-	placement: 'bottom',
-	size: 'medium',
-	theme: 'default',
-	iconSize: 'medium',
-	iconOrientation: 'vertical',
-	loading: false,
-	loadingRowCount: 3,
-	disabled: false,
-	popperClass: '',
-	trigger: 'click',
-});
+const props = withDefaults(
+	defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(),
+	{
+		actions: () => [],
+		placement: 'bottom',
+		size: 'medium',
+		theme: 'default',
+		iconSize: 'medium',
+		iconOrientation: 'vertical',
+		loading: false,
+		loadingRowCount: 3,
+		disabled: false,
+		popperClass: '',
+		trigger: 'click',
+		closeOnParentScroll: true,
+	},
+);
 
 const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 
 const emit = defineEmits<{
-	action: [value: string];
+	action: [value: ActionValue];
 	'visible-change': [value: boolean];
-	'item-mouseup': [action: UserAction];
+	'item-mouseup': [action: UserAction<UserType>];
 }>();
 
+// Close dropdown when parent scrolls
+const { attachScrollListeners, detachScrollListeners } = useParentScroll(actionToggleRef, () => {
+	if (props.closeOnParentScroll) {
+		actionToggleRef.value?.handleClose();
+	}
+});
+
 const onCommand = (value: string) => emit('action', value);
-const onVisibleChange = (value: boolean) => emit('visible-change', value);
+const onVisibleChange = (value: boolean) => {
+	emit('visible-change', value);
+
+	if (props.closeOnParentScroll) {
+		if (value) {
+			attachScrollListeners();
+		} else {
+			detachScrollListeners();
+		}
+	}
+};
+
 const openActionToggle = (isOpen: boolean) => {
 	if (isOpen) {
 		actionToggleRef.value?.handleOpen();
@@ -57,7 +83,7 @@ const openActionToggle = (isOpen: boolean) => {
 	}
 };
 
-const onActionMouseUp = (action: UserAction) => {
+const onActionMouseUp = (action: UserAction<UserType>) => {
 	emit('item-mouseup', action);
 	actionToggleRef.value?.handleClose();
 };
@@ -86,7 +112,7 @@ defineExpose({
 			<slot>
 				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
 					<N8nIcon
-						:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
 						:size="iconSize"
 					/>
 				</span>
@@ -117,7 +143,7 @@ defineExpose({
 						<div :class="$style.iconContainer">
 							<N8nIcon
 								v-if="action.type === 'external-link'"
-								icon="external-link-alt"
+								icon="external-link"
 								size="xsmall"
 								color="text-base"
 							/>
@@ -136,24 +162,26 @@ defineExpose({
 
 .button {
 	cursor: pointer;
-	padding: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+	display: flex;
+	align-items: center;
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		cursor: pointer;
 	}
 
 	&:focus {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .dark {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 
 	&:focus {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 }
 
@@ -162,19 +190,19 @@ defineExpose({
 }
 
 li:hover .iconContainer svg {
-	color: var(--color-primary-tint-1);
+	color: var(--color--primary--tint-1);
 }
 
 .loading-dropdown {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing-xs) 0;
-	gap: var(--spacing-2xs);
+	padding: var(--spacing--xs) 0;
+	gap: var(--spacing--2xs);
 }
 
 .loading {
 	display: flex;
 	width: 100%;
-	min-width: var(--spacing-3xl);
+	min-width: var(--spacing--3xl);
 }
 </style>

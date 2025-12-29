@@ -1,5 +1,6 @@
-import type { GlobalRole, Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
+import type express from 'express';
 import type {
 	ICredentialsEncrypted,
 	IRunExecutionData,
@@ -11,7 +12,11 @@ import type {
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
+	IDataObject,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
 import type { Folder } from './folder';
@@ -21,6 +26,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -74,12 +80,16 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -104,7 +114,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	role?: GlobalRole;
+	role?: string;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
@@ -112,6 +122,8 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	lastActiveAt?: Date | null;
+	mfaAuthenticated?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -210,7 +222,15 @@ export namespace ListQueryDb {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+		type OptionalBaseFields =
+			| 'name'
+			| 'active'
+			| 'versionId'
+			| 'activeVersionId'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'tags'
+			| 'description';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
@@ -269,7 +289,13 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+
+export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
+
+export function isAuthProviderType(value: string): value is AuthProviderType {
+	return ALL_AUTH_PROVIDERS.safeParse(value).success;
+}
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
@@ -289,7 +315,6 @@ export type TestRunErrorCode =
 	| 'EVALUATION_TRIGGER_NOT_FOUND'
 	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
 	| 'EVALUATION_TRIGGER_DISABLED'
-	| 'SET_OUTPUTS_NODE_NOT_FOUND'
 	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
 	| 'SET_METRICS_NODE_NOT_FOUND'
 	| 'SET_METRICS_NODE_NOT_CONFIGURED'
@@ -325,12 +350,6 @@ export namespace ListQuery {
 	};
 }
 
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
-
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
 	finished?: boolean;
@@ -355,3 +374,47 @@ export type WorkflowFolderUnionFull = (
 ) & {
 	resource: ResourceType;
 };
+
+export type APIRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
+
+export type AuthenticationInformation = {
+	usedMfa: boolean;
+};
+
+export type AuthenticatedRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
+	user: User;
+	authInfo?: AuthenticationInformation;
+	cookies: Record<string, string | undefined>;
+	headers: express.Request['headers'] & {
+		'push-ref': string;
+	};
+};
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
+}
+
+export type WorkflowHistoryUpdate = Omit<
+	Partial<WorkflowHistory>,
+	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
+>;

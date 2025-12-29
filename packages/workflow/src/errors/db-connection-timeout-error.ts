@@ -1,4 +1,4 @@
-import { ApplicationError } from './application.error';
+import { ApplicationError } from '@n8n/errors';
 
 export type DbConnectionTimeoutErrorOpts = {
 	configuredTimeoutInMs: number;

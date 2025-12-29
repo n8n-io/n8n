@@ -3,7 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
-import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -46,18 +46,32 @@ export class WebhookService {
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		let cachedStaticWebhook;
+		try {
+			cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		} catch (error) {
+			this.logger.warn('Failed to query webhook cache', {
+				error: ensureError(error).message,
+			});
+			cachedStaticWebhook = undefined;
+		}
 
 		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			try {
+				await this.cacheService.set(cacheKey, dbStaticWebhook);
+			} catch (error) {
+				this.logger.warn('Failed to cache webhook', {
+					error: ensureError(error).message,
+				});
+			}
 			return dbStaticWebhook;
 		}
 
-		return await this.findDynamicWebhook(method, path);
+		return await this.findDynamicWebhook(path, method);
 	}
 
 	/**
@@ -71,7 +85,7 @@ export class WebhookService {
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
-	private async findDynamicWebhook(method: Method, path: string) {
+	private async findDynamicWebhook(path: string, method?: Method) {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
@@ -112,7 +126,13 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
-		void this.cacheService.set(webhook.cacheKey, webhook);
+		try {
+			await this.cacheService.set(webhook.cacheKey, webhook);
+		} catch (error) {
+			this.logger.warn('Failed to cache webhook', {
+				error: ensureError(error).message,
+			});
+		}
 
 		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}
@@ -133,10 +153,19 @@ export class WebhookService {
 		return await this.webhookRepository.remove(webhooks);
 	}
 
-	async getWebhookMethods(path: string) {
-		return await this.webhookRepository
-			.find({ select: ['method'], where: { webhookPath: path } })
+	async getWebhookMethods(rawPath: string) {
+		// Try to find static webhooks first
+		const staticMethods = await this.webhookRepository
+			.find({ select: ['method'], where: { webhookPath: rawPath } })
 			.then((rows) => rows.map((r) => r.method));
+
+		if (staticMethods.length > 0) {
+			return staticMethods;
+		}
+
+		// Otherwise, try to find dynamic webhooks based on path only
+		const dynamicWebhooks = await this.findDynamicWebhook(rawPath);
+		return dynamicWebhooks ? [dynamicWebhooks.method] : [];
 	}
 
 	private isDynamicPath(rawPath: string) {
