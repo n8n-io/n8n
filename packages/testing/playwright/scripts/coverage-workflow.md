@@ -87,10 +87,10 @@ The HTML report will show you:
 If you see "No coverage files found":
 
 1. Build with coverage: `BUILD_WITH_COVERAGE=true pnpm build` or `pnpm build:docker:coverage`
-2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:standard`
+2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:sqlite`
 3. Check that coverage files exist in `.nyc_output/{projectName}/` directories
    - For local mode: `.nyc_output/e2e/`
-   - For container mode: `.nyc_output/standard:e2e/`, `.nyc_output/standard:e2e:isolated/`, etc.
+   - For container mode: `.nyc_output/sqlite:e2e/`, `.nyc_output/sqlite:e2e:isolated/`, etc.
 
 ### Low Coverage Percentage
 
@@ -129,7 +129,7 @@ For automated coverage reporting:
   run: pnpm build:docker:coverage
 
 - name: Run Container Coverage Tests
-  run: pnpm --filter n8n-playwright test:container:standard
+  run: pnpm --filter n8n-playwright test:container:sqlite
   env:
     BUILD_WITH_COVERAGE: 'true'
 
@@ -161,8 +161,8 @@ packages/testing/playwright/
 │   └── ...                  # Individual file reports
 ├── .nyc_output/             # Raw coverage data (per project)
 │   ├── e2e/                  # Local mode coverage
-│   ├── standard:e2e/         # Container mode coverage
-│   ├── standard:e2e:isolated/
+│   ├── sqlite:e2e/           # Container mode coverage
+│   ├── sqlite:e2e:isolated/
 │   └── out.json            # Merged coverage data
 ├── nyc.config.ts           # NYC configuration
 └── scripts/

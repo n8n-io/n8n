@@ -1,10 +1,9 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
-import { capabilities } from '../../../fixtures/capabilities';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
-test.use({ addContainerCapability: capabilities.sourceControl });
+test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
 	expect(
