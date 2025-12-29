@@ -230,96 +230,38 @@ describe('AutomergeProvider', () => {
 			expect(change.oldValue).toEqual({ position: { x: 100, y: 200 } });
 		});
 
-		it('should emit deep path when nested map is modified via get()', () => {
-			// Set up nested object structure
+		it('should return plain objects (no CRDT wrapping)', () => {
+			map.set('node-1', { position: { x: 100, y: 200 } });
+
+			// Plain objects are returned as-is, not wrapped
+			const node = map.get('node-1');
+			expect(node).toEqual({ position: { x: 100, y: 200 } });
+		});
+
+		it('should return plain arrays (no CRDT wrapping)', () => {
+			map.set('items', ['a', 'b', 'c']);
+
+			// Plain arrays are returned as-is, not wrapped
+			const items = map.get('items') as string[];
+			expect(items.length).toBe(3);
+			expect(items[0]).toBe('a');
+			expect(items).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should emit event when replacing nested object', () => {
 			map.set('node-1', { position: { x: 100, y: 200 } });
 
 			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
-			// Get nested maps via public API and modify
-			const nodeMap = map.get('node-1') as CRDTMap<unknown>;
-			const positionMap = nodeMap.get('position') as CRDTMap<unknown>;
-			positionMap.set('x', 150);
+			// Replace the whole object to modify nested data
+			map.set('node-1', { position: { x: 150, y: 200 } });
 
 			expect(changes).toHaveLength(1);
 			const change = changes[0] as DeepChangeEvent;
-			expect(change.path).toEqual(['node-1', 'position', 'x']);
+			expect(change.path).toEqual(['node-1']);
 			expect(change.action).toBe(ChangeAction.update);
-			expect(change.value).toBe(150);
-			expect(change.oldValue).toBe(100);
-		});
-
-		it('should allow building nested structures incrementally', () => {
-			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
-
-			// Start with empty object, build up structure
-			map.set('node-1', {});
-			const nodeMap = map.get('node-1') as CRDTMap<unknown>;
-
-			nodeMap.set('parameters', {});
-			const params = nodeMap.get('parameters') as CRDTMap<unknown>;
-
-			params.set('url', 'https://example.com');
-			params.set('method', 'POST');
-			params.set('body', { data: { nested: 'value' } });
-
-			// Modify deeply nested value
-			const body = params.get('body') as CRDTMap<unknown>;
-			const data = body.get('data') as CRDTMap<unknown>;
-			data.set('nested', 'updated');
-
-			// Should have 6 changes: node-1, parameters, url, method, body, nested update
-			expect(changes).toHaveLength(6);
-
-			// Verify the deep update
-			const lastChange = changes[5] as DeepChangeEvent;
-			expect(lastChange.path).toEqual(['node-1', 'parameters', 'body', 'data', 'nested']);
-			expect(lastChange.action).toBe(ChangeAction.update);
-			expect(lastChange.value).toBe('updated');
-			expect(lastChange.oldValue).toBe('value');
-		});
-
-		it('should return CRDTArray when getting array value from map', () => {
-			map.set('items', ['a', 'b', 'c']);
-
-			const items = map.get('items') as CRDTArray<string>;
-			expect(items.length).toBe(3);
-			expect(items.get(0)).toBe('a');
-			expect(items.toArray()).toEqual(['a', 'b', 'c']);
-		});
-
-		it('should emit ArrayChangeEvent when nested array is modified via get()', () => {
-			map.set('items', ['a', 'b']);
-
-			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
-
-			// Modify the nested array
-			const items = map.get('items') as CRDTArray<string>;
-			items.push('c');
-
-			expect(changes).toHaveLength(1);
-			const change = changes[0] as ArrayChangeEvent;
-			expect(change.path).toEqual(['items']);
-			expect(change.delta).toEqual([{ retain: 2 }, { insert: ['c'] }]);
-		});
-
-		it('should emit ArrayChangeEvent with correct path for deeply nested array', () => {
-			map.set('node-1', { connections: ['conn-a'] });
-
-			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
-
-			const node = map.get('node-1') as CRDTMap<unknown>;
-			const connections = node.get('connections') as CRDTArray<string>;
-			connections.push('conn-b');
-
-			expect(changes).toHaveLength(1);
-			const change = changes[0] as ArrayChangeEvent;
-			expect(change.path).toEqual(['node-1', 'connections']);
-			expect(change.delta).toEqual([{ retain: 1 }, { insert: ['conn-b'] }]);
+			expect(change.value).toEqual({ position: { x: 150, y: 200 } });
 		});
 	});
 
@@ -404,18 +346,18 @@ describe('AutomergeProvider', () => {
 			expect(arr2.get(0)).toBe('value');
 		});
 
-		it('should handle nested objects', () => {
+		it('should handle nested objects as plain values', () => {
 			const objArr = doc.getArray<{ name: string }>('obj-array');
 			objArr.push({ name: 'first' }, { name: 'second' });
 
 			expect(objArr.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
 
-			// Get nested object as CRDTMap
-			const first = objArr.get(0) as CRDTMap<string>;
-			expect(first.get('name')).toBe('first');
+			// Plain objects are returned as-is, not wrapped
+			const first = objArr.get(0) as { name: string };
+			expect(first.name).toBe('first');
 		});
 
-		it('should handle nested arrays', () => {
+		it('should handle nested arrays as plain values', () => {
 			const nestedArr = doc.getArray<string[]>('nested-array');
 			nestedArr.push(['a', 'b'], ['c', 'd']);
 
@@ -424,9 +366,9 @@ describe('AutomergeProvider', () => {
 				['c', 'd'],
 			]);
 
-			// Get nested array as CRDTArray
-			const inner = nestedArr.get(0) as CRDTArray<string>;
-			expect(inner.get(0)).toBe('a');
+			// Plain arrays are returned as-is, not wrapped
+			const inner = nestedArr.get(0) as string[];
+			expect(inner[0]).toBe('a');
 			expect(inner.length).toBe(2);
 		});
 	});

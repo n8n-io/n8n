@@ -29,7 +29,13 @@ export { AutomergeProvider } from './providers/automerge';
 
 // Transports
 export type { SyncTransport } from './transports';
-export { MockTransport } from './transports';
+export {
+	MockTransport,
+	MessagePortTransport,
+	WebSocketTransport,
+	BroadcastChannelTransport,
+} from './transports';
+export type { WebSocketTransportConfig } from './transports';
 
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';

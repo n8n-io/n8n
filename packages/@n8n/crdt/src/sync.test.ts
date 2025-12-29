@@ -101,15 +101,13 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (e
 			expect(node.position.y).toBe(200);
 		});
 
-		it('should sync incremental nested changes', () => {
+		it('should sync incremental nested changes by replacement', () => {
 			// Initial setup
 			map1.set('node', { position: { x: 100, y: 200 } });
 			doc2.applyUpdate(doc1.encodeState());
 
-			// Make nested change via CRDTMap API
-			const node1 = map1.get('node') as CRDTMap<unknown>;
-			const pos1 = node1.get('position') as CRDTMap<unknown>;
-			pos1.set('x', 150);
+			// Make nested change by replacing the whole object (no magic nesting)
+			map1.set('node', { position: { x: 150, y: 200 } });
 
 			// Sync
 			doc2.applyUpdate(doc1.encodeState());
@@ -285,39 +283,36 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (e
 			expect(objArr2.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
 		});
 
-		it('should sync modifications to nested objects in arrays', () => {
+		it('should sync plain objects in arrays', () => {
 			const objArr1 = doc1.getArray<{ value: number }>('objects');
+			const objArr2 = doc2.getArray<{ value: number }>('objects');
 			objArr1.push({ value: 100 });
 			doc2.applyUpdate(doc1.encodeState());
 
-			// Modify nested object
-			const obj = objArr1.get(0) as CRDTMap<number>;
-			obj.set('value', 999);
-			doc2.applyUpdate(doc1.encodeState());
-
-			const objArr2 = doc2.getArray<{ value: number }>('objects');
-			const result = objArr2.get(0) as CRDTMap<number>;
-			expect(result.get('value')).toBe(999);
+			// Plain objects are synced as-is
+			const result = objArr2.get(0) as { value: number };
+			expect(result.value).toBe(100);
 		});
 
-		it('should sync arrays stored in maps', () => {
+		it('should sync plain arrays stored in maps', () => {
 			map1.set('list', ['item1', 'item2']);
 			doc2.applyUpdate(doc1.encodeState());
 
-			const list2 = map2.get('list') as CRDTArray<string>;
-			expect(list2.toArray()).toEqual(['item1', 'item2']);
+			// Plain arrays are returned as-is
+			const list2 = map2.get('list') as string[];
+			expect(list2).toEqual(['item1', 'item2']);
 		});
 
-		it('should sync modifications to arrays stored in maps', () => {
+		it('should sync array replacements in maps', () => {
 			map1.set('list', ['a']);
 			doc2.applyUpdate(doc1.encodeState());
 
-			const list1 = map1.get('list') as CRDTArray<string>;
-			list1.push('b', 'c');
+			// Replace whole array to modify
+			map1.set('list', ['a', 'b', 'c']);
 			doc2.applyUpdate(doc1.encodeState());
 
-			const list2 = map2.get('list') as CRDTArray<string>;
-			expect(list2.toArray()).toEqual(['a', 'b', 'c']);
+			const list2 = map2.get('list') as string[];
+			expect(list2).toEqual(['a', 'b', 'c']);
 		});
 	});
 

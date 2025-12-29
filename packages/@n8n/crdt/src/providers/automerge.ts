@@ -31,20 +31,9 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 		return (doc[this.mapName] as Record<string, unknown>) ?? {};
 	}
 
-	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+	get(key: string): T | undefined {
 		const mapData = this.getMapData();
-		const value = mapData[key];
-
-		// If value is an object (not null, not array), return a nested AutomergeMap
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-			return new AutomergeNestedMap(this.docHolder, this.mapName, [key]) as CRDTMap<unknown>;
-		}
-		// If value is an array, return a nested AutomergeArray
-		if (Array.isArray(value)) {
-			return new AutomergeNestedArray(this.docHolder, this.mapName, [key]) as CRDTArray<unknown>;
-		}
-
-		return value as T | undefined;
+		return mapData[key] as T | undefined;
 	}
 
 	set(key: string, value: T): void {
@@ -99,121 +88,6 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 }
 
 /**
- * Nested map for accessing deep paths within an Automerge document.
- */
-class AutomergeNestedMap<T = unknown> implements CRDTMap<T> {
-	constructor(
-		private readonly docHolder: AutomergeDocHolder,
-		private readonly mapName: string,
-		private readonly path: Array<string | number>,
-	) {}
-
-	private getNestedData(): Record<string, unknown> | undefined {
-		const doc = this.docHolder.getDoc();
-		let current: unknown = doc[this.mapName];
-
-		for (const segment of this.path) {
-			if (current === null || current === undefined) {
-				return undefined;
-			}
-			current = (current as Record<string, unknown>)[segment as string];
-		}
-
-		return current as Record<string, unknown> | undefined;
-	}
-
-	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
-		const data = this.getNestedData();
-		if (!data) return undefined;
-
-		const value = data[key];
-
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-			return new AutomergeNestedMap(this.docHolder, this.mapName, [
-				...this.path,
-				key,
-			]) as CRDTMap<unknown>;
-		}
-		if (Array.isArray(value)) {
-			return new AutomergeNestedArray(this.docHolder, this.mapName, [
-				...this.path,
-				key,
-			]) as CRDTArray<unknown>;
-		}
-
-		return value as T | undefined;
-	}
-
-	set(key: string, value: T): void {
-		this.docHolder.change((doc) => {
-			let current: Record<string, unknown> = doc[this.mapName] as Record<string, unknown>;
-
-			for (const segment of this.path) {
-				if (!current[segment as string]) {
-					current[segment as string] = {};
-				}
-				current = current[segment as string] as Record<string, unknown>;
-			}
-
-			current[key] = value;
-		});
-	}
-
-	delete(key: string): void {
-		this.docHolder.change((doc) => {
-			let current: Record<string, unknown> = doc[this.mapName] as Record<string, unknown>;
-
-			for (const segment of this.path) {
-				if (!current[segment as string]) return;
-				current = current[segment as string] as Record<string, unknown>;
-			}
-
-			delete current[key];
-		});
-	}
-
-	has(key: string): boolean {
-		const data = this.getNestedData();
-		return data !== undefined && key in data;
-	}
-
-	keys(): IterableIterator<string> {
-		const data = this.getNestedData();
-		return Object.keys(data ?? {})[Symbol.iterator]();
-	}
-
-	*values(): IterableIterator<T> {
-		const data = this.getNestedData();
-		if (data) {
-			for (const value of Object.values(data)) {
-				yield value as T;
-			}
-		}
-	}
-
-	*entries(): IterableIterator<[string, T]> {
-		const data = this.getNestedData();
-		if (data) {
-			for (const [key, value] of Object.entries(data)) {
-				yield [key, value as T];
-			}
-		}
-	}
-
-	toJSON(): Record<string, T> {
-		return { ...(this.getNestedData() ?? {}) } as Record<string, T>;
-	}
-
-	onDeepChange(handler: ChangeHandler): Unsubscribe {
-		// Nested maps share the same change handlers via the docHolder
-		this.docHolder.addChangeHandler(this.mapName, handler);
-		return () => {
-			this.docHolder.removeChangeHandler(this.mapName, handler);
-		};
-	}
-}
-
-/**
  * Automerge implementation of CRDTArray.
  */
 class AutomergeArray<T = unknown> implements CRDTArray<T> {
@@ -231,22 +105,10 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 		return this.getArrayData().length;
 	}
 
-	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+	get(index: number): T | undefined {
 		const arrayData = this.getArrayData();
 		if (index < 0 || index >= arrayData.length) return undefined;
-
-		const value = arrayData[index];
-
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-			return new AutomergeNestedMap(this.docHolder, this.arrayName, [index]) as CRDTMap<unknown>;
-		}
-		if (Array.isArray(value)) {
-			return new AutomergeNestedArray(this.docHolder, this.arrayName, [
-				index,
-			]) as CRDTArray<unknown>;
-		}
-
-		return value as T | undefined;
+		return arrayData[index] as T | undefined;
 	}
 
 	push(...items: T[]): void {
@@ -276,111 +138,6 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 
 	toArray(): T[] {
 		return [...this.getArrayData()] as T[];
-	}
-
-	toJSON(): T[] {
-		return this.toArray();
-	}
-
-	onDeepChange(handler: ChangeHandler): Unsubscribe {
-		this.docHolder.addChangeHandler(this.arrayName, handler);
-		return () => {
-			this.docHolder.removeChangeHandler(this.arrayName, handler);
-		};
-	}
-}
-
-/**
- * Nested array for accessing deep paths within an Automerge document.
- */
-class AutomergeNestedArray<T = unknown> implements CRDTArray<T> {
-	constructor(
-		private readonly docHolder: AutomergeDocHolder,
-		private readonly arrayName: string,
-		private readonly path: Array<string | number>,
-	) {}
-
-	private getNestedData(): unknown[] | undefined {
-		const doc = this.docHolder.getDoc();
-		let current: unknown = doc[this.arrayName];
-
-		for (const segment of this.path) {
-			if (current === null || current === undefined) {
-				return undefined;
-			}
-			current = (current as Record<string | number, unknown>)[segment];
-		}
-
-		return Array.isArray(current) ? current : undefined;
-	}
-
-	get length(): number {
-		return this.getNestedData()?.length ?? 0;
-	}
-
-	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
-		const data = this.getNestedData();
-		if (!data || index < 0 || index >= data.length) return undefined;
-
-		const value = data[index];
-
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-			return new AutomergeNestedMap(this.docHolder, this.arrayName, [
-				...this.path,
-				index,
-			]) as CRDTMap<unknown>;
-		}
-		if (Array.isArray(value)) {
-			return new AutomergeNestedArray(this.docHolder, this.arrayName, [
-				...this.path,
-				index,
-			]) as CRDTArray<unknown>;
-		}
-
-		return value as T | undefined;
-	}
-
-	push(...items: T[]): void {
-		this.docHolder.change((doc) => {
-			let current: unknown = doc[this.arrayName];
-			for (const segment of this.path) {
-				if (!current) return;
-				current = (current as Record<string | number, unknown>)[segment];
-			}
-			if (Array.isArray(current)) {
-				current.push(...items);
-			}
-		});
-	}
-
-	insert(index: number, ...items: T[]): void {
-		this.docHolder.change((doc) => {
-			let current: unknown = doc[this.arrayName];
-			for (const segment of this.path) {
-				if (!current) return;
-				current = (current as Record<string | number, unknown>)[segment];
-			}
-			if (Array.isArray(current)) {
-				current.splice(index, 0, ...items);
-			}
-		});
-	}
-
-	delete(index: number, count = 1): void {
-		this.docHolder.change((doc) => {
-			let current: unknown = doc[this.arrayName];
-			for (const segment of this.path) {
-				if (!current) return;
-				current = (current as Record<string | number, unknown>)[segment];
-			}
-			if (Array.isArray(current)) {
-				current.splice(index, count);
-			}
-		});
-	}
-
-	toArray(): T[] {
-		return [...(this.getNestedData() ?? [])] as T[];
 	}
 
 	toJSON(): T[] {

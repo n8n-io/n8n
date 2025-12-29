@@ -6,7 +6,7 @@ over Yjs and Automerge CRDT libraries.
 ## Status
 
 **Phase 1 Complete** - Core data structures (Map, Array) and sync infrastructure
-are functional with 300+ passing conformance tests.
+are functional with **362 passing tests**.
 
 See [crdt-poc.md](./crdt-poc.md) for full documentation and roadmap.
 
@@ -25,19 +25,43 @@ const doc = provider.createDoc('workflow-123');
 const nodes = doc.getMap('nodes');
 nodes.set('node-1', { position: { x: 100, y: 200 } });
 
-// Access nested structures
-const node = nodes.get('node-1') as CRDTMap<unknown>;
-const position = node.get('position') as CRDTMap<number>;
-position.set('x', 150); // Fine-grained update
+// Plain objects are returned as-is (no automatic CRDT wrapping)
+const node = nodes.get('node-1'); // Returns { position: { x: 100, y: 200 } }
 
-// Observe deep changes
+// To update nested data, replace the whole object
+nodes.set('node-1', { position: { x: 150, y: 200 } });
+
+// Observe changes
 nodes.onDeepChange((changes) => {
     for (const change of changes) {
         console.log(change.path, change.action, change.value);
-        // ['node-1', 'position', 'x'], 'update', 150
+        // ['node-1'], 'update', { position: { x: 150, y: 200 } }
     }
 });
 ```
+
+## Plain Objects and Sync
+
+Plain objects stored in CRDT structures **do sync** across peers, but they sync as
+**atomic values** (last-write-wins), not as collaborative structures:
+
+```typescript
+// Both peers start synced
+mapA.set('node', { x: 100, y: 200 });
+// After sync: mapB.get('node') → { x: 100, y: 200 }
+
+// Concurrent edits to the same key = conflict (one wins)
+mapA.set('node', { x: 150, y: 200 });  // Peer A changes x
+mapB.set('node', { x: 100, y: 250 });  // Peer B changes y
+// After sync: both get { x: 150, y: 200 } OR { x: 100, y: 250 }
+// One write wins entirely - changes are NOT merged
+
+// For fine-grained collaborative editing, use explicit CRDT structures:
+const nodeX = doc.getMap('node-x');  // Separate CRDT map for x values
+const nodeY = doc.getMap('node-y');  // Separate CRDT map for y values
+```
+
+This "no magic" design matches raw Yjs behavior and keeps the API predictable.
 
 ## Sync
 
@@ -79,6 +103,66 @@ await syncB.start();
 - `SyncProvider` - Manages document synchronization
 - `SyncTransport` - Transport interface for moving binary data
 - `MockTransport` - In-memory transport for testing
+- `MessagePortTransport` - SharedWorker/Worker/MessageChannel communication
+- `WebSocketTransport` - Server sync with auto-reconnect
+- `BroadcastChannelTransport` - Cross-tab sync (Safari fallback)
+
+## Transports
+
+All transports implement the same `SyncTransport` interface:
+
+```typescript
+interface SyncTransport {
+  send(data: Uint8Array): void;
+  onReceive(handler: (data: Uint8Array) => void): Unsubscribe;
+  connect(): Promise<void>;
+  disconnect(): void;
+  readonly connected: boolean;
+}
+```
+
+### WebSocket Transport
+
+```typescript
+import { WebSocketTransport, createSyncProvider } from '@n8n/crdt';
+
+const transport = new WebSocketTransport({
+  url: 'wss://server/sync',
+  reconnect: true,
+  reconnectDelay: 1000,
+  maxReconnectAttempts: 10,
+});
+
+transport.onConnectionChange((connected) => {
+  console.log('Connection state:', connected);
+});
+
+const sync = createSyncProvider(doc, transport);
+await sync.start();
+```
+
+### MessagePort Transport (SharedWorker)
+
+```typescript
+import { MessagePortTransport, createSyncProvider } from '@n8n/crdt';
+
+// In main thread
+const worker = new SharedWorker('worker.js');
+const transport = new MessagePortTransport(worker.port);
+const sync = createSyncProvider(doc, transport);
+await sync.start();
+```
+
+### BroadcastChannel Transport (Cross-tab)
+
+```typescript
+import { BroadcastChannelTransport, createSyncProvider } from '@n8n/crdt';
+
+const transport = new BroadcastChannelTransport('workflow-123');
+const sync = createSyncProvider(doc, transport);
+await sync.start();
+// Messages automatically sync across all tabs on same channel
+```
 
 ## Provider Differences
 
@@ -89,3 +173,12 @@ While the API is unified, some edge-case behaviors differ between providers:
 | Array out-of-bounds index | Throws `RangeError` | Clamps to valid range |
 
 For portable code, always use valid indices (`0 <= index <= length`).
+
+## Not Yet Implemented
+
+The following CRDT types are not yet part of this abstraction:
+
+- **Text** - For collaborative text editing (rich text, code editors)
+- **Counter** - For conflict-free increment/decrement operations
+
+These can be added in future phases if needed.
