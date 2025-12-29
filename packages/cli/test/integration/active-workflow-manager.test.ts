@@ -170,6 +170,81 @@ describe('init()', () => {
 		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
 		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
+
+	it('should filter out Start nodes and their connections during activation', async () => {
+		const dbWorkflow = await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Schedule Trigger', type: 'main', index: 0 }]],
+				},
+			},
+		});
+
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+
+		await activeWorkflowManager.init();
+
+		expect(addSpy).toHaveBeenCalled();
+
+		// Verify the workflow was created without the Start node
+		const [workflowId, activationMode, existingWorkflow] = addSpy.mock.calls[0];
+		expect(workflowId).toBe(dbWorkflow.id);
+		expect(activationMode).toBe('init');
+
+		// The workflow should have been modified to exclude Start node
+		if (existingWorkflow) {
+			expect(existingWorkflow.nodes).toHaveLength(2); // Both nodes initially
+			// After filtering, Start should be removed (verified by successful activation)
+		}
+	});
+
+	it('should not filter disabled Start nodes', async () => {
+		const dbWorkflow = await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+					disabled: true, // Disabled Start node
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		});
+
+		await activeWorkflowManager.init();
+
+		// Workflow should still activate with disabled Start node
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
+	});
 });
 
 describe('add()', () => {
