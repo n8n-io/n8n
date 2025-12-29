@@ -23,7 +23,7 @@ import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import { applySubgraphCacheMarkers } from '../utils/cache-control';
+import { applySubgraphCacheMarkers, isAnthropicModel } from '../utils/cache-control';
 import {
 	buildDiscoveryContextBlock,
 	buildWorkflowJsonBlock,
@@ -121,18 +121,23 @@ export class BuilderSubgraph extends BaseSubgraph<
 			? [...baseTools, createGetNodeConnectionExamplesTool(config.logger)]
 			: baseTools;
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
+
+		// Build system message block with optional cache control for Anthropic models
+		const systemMessageBlock: {
+			type: 'text';
+			text: string;
+			cache_control?: { type: 'ephemeral' };
+		} = {
+			type: 'text',
+			text: buildBuilderPrompt(),
+		};
+		if (isAnthropicModel(config.llm)) {
+			systemMessageBlock.cache_control = { type: 'ephemeral' };
+		}
+
 		// Create agent with tools bound
 		const systemPrompt = ChatPromptTemplate.fromMessages([
-			[
-				'system',
-				[
-					{
-						type: 'text',
-						text: buildBuilderPrompt(),
-						cache_control: { type: 'ephemeral' },
-					},
-				],
-			],
+			['system', [systemMessageBlock]],
 			['placeholder', '{messages}'],
 		]);
 		if (typeof config.llm.bindTools !== 'function') {
@@ -148,7 +153,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
 			// Apply cache markers to accumulated messages (for tool loop iterations)
-			applySubgraphCacheMarkers(state.messages);
+			applySubgraphCacheMarkers(state.messages, config.llm);
 
 			// Messages already contain context from transformInput
 			const response = await agent.invoke({

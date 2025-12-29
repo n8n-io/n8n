@@ -26,7 +26,7 @@ import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
 import type { WorkflowMetadata } from '../types/tools';
-import { applySubgraphCacheMarkers } from '../utils/cache-control';
+import { applySubgraphCacheMarkers, isAnthropicModel } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
@@ -131,9 +131,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
+	private llm!: BaseChatModel;
 
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
+		this.llm = config.llm;
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
@@ -162,18 +164,22 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Generate prompt based on feature flags
 		const discoveryPrompt = buildDiscoveryPrompt({ includeExamples });
 
+		// Build system message block with optional cache control for Anthropic models
+		const systemMessageBlock: {
+			type: 'text';
+			text: string;
+			cache_control?: { type: 'ephemeral' };
+		} = {
+			type: 'text',
+			text: discoveryPrompt,
+		};
+		if (isAnthropicModel(config.llm)) {
+			systemMessageBlock.cache_control = { type: 'ephemeral' };
+		}
+
 		// Create agent with tools bound (including submit tool)
 		const systemPrompt = ChatPromptTemplate.fromMessages([
-			[
-				'system',
-				[
-					{
-						type: 'text',
-						text: discoveryPrompt,
-						cache_control: { type: 'ephemeral' },
-					},
-				],
-			],
+			['system', [systemMessageBlock]],
 			['human', '{prompt}'],
 			['placeholder', '{messages}'],
 		]);
@@ -213,7 +219,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
 		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
-			applySubgraphCacheMarkers(state.messages);
+			applySubgraphCacheMarkers(state.messages, this.llm);
 		}
 
 		// Messages already contain context from transformInput

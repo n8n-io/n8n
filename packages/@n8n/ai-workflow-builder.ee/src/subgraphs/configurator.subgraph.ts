@@ -23,7 +23,7 @@ import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import { applySubgraphCacheMarkers } from '../utils/cache-control';
+import { applySubgraphCacheMarkers, isAnthropicModel } from '../utils/cache-control';
 import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
@@ -136,22 +136,30 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			? [...baseTools, createGetNodeConfigurationExamplesTool(config.logger)]
 			: baseTools;
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
+
+		// Build system message blocks with optional cache control for Anthropic models
+		const systemMessageBlocks: Array<{
+			type: 'text';
+			text: string;
+			cache_control?: { type: 'ephemeral' };
+		}> = [
+			{
+				type: 'text',
+				text: buildConfiguratorPrompt(),
+			},
+			{
+				type: 'text',
+				text: INSTANCE_URL_PROMPT,
+			},
+		];
+		if (isAnthropicModel(config.llm)) {
+			// Add cache control to the last block for Anthropic models
+			systemMessageBlocks[systemMessageBlocks.length - 1].cache_control = { type: 'ephemeral' };
+		}
+
 		// Create agent with tools bound
 		const systemPromptTemplate = ChatPromptTemplate.fromMessages([
-			[
-				'system',
-				[
-					{
-						type: 'text',
-						text: buildConfiguratorPrompt(),
-					},
-					{
-						type: 'text',
-						text: INSTANCE_URL_PROMPT,
-						cache_control: { type: 'ephemeral' },
-					},
-				],
-			],
+			['system', systemMessageBlocks],
 			['placeholder', '{messages}'],
 		]);
 
@@ -169,7 +177,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		 */
 		const callAgent = async (state: typeof ConfiguratorSubgraphState.State) => {
 			// Apply cache markers to accumulated messages (for tool loop iterations)
-			applySubgraphCacheMarkers(state.messages);
+			applySubgraphCacheMarkers(state.messages, config.llm);
 
 			// Messages already contain context from transformInput
 			const response: unknown = await this.agent.invoke({
