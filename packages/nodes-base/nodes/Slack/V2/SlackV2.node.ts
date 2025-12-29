@@ -380,7 +380,7 @@ export class SlackV2 implements INodeType {
 				'/chat.postMessage',
 				createSendAndWaitMessageBody(this),
 			);
-			
+
 			const waitTill = configureWaitTillDate(this);
 
 			await this.putExecutionToWait(waitTill);
