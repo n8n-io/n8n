@@ -159,13 +159,13 @@ jest.mock('../validate-workflow.tool', () => ({
 
 describe('builder-tools', () => {
 	let mockLogger: Logger;
-	let mockLlmComplexTask: BaseChatModel;
+	let mockLlm: BaseChatModel;
 	let parsedNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockLogger = mock<Logger>();
-		mockLlmComplexTask = mock<BaseChatModel>();
+		mockLlm = mock<BaseChatModel>();
 		parsedNodeTypes = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook];
 	});
 
@@ -174,13 +174,13 @@ describe('builder-tools', () => {
 			const tools = getBuilderTools({
 				parsedNodeTypes,
 				logger: mockLogger,
-				llmComplexTask: mockLlmComplexTask,
+				getModel: () => mockLlm,
 				instanceUrl: 'https://test.n8n.io',
 				featureFlags: { templateExamples: true },
 			});
 
 			expect(tools).toHaveLength(12);
-			expect(createCategorizePromptTool).toHaveBeenCalledWith(mockLlmComplexTask, mockLogger);
+			expect(createCategorizePromptTool).toHaveBeenCalledWith(mockLlm, mockLogger);
 			expect(createGetBestPracticesTool).toHaveBeenCalled();
 			expect(createGetWorkflowExamplesTool).toHaveBeenCalledWith(mockLogger);
 			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
@@ -191,7 +191,7 @@ describe('builder-tools', () => {
 			expect(createRemoveNodeTool).toHaveBeenCalledWith(mockLogger);
 			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
 				parsedNodeTypes,
-				mockLlmComplexTask,
+				mockLlm,
 				mockLogger,
 				'https://test.n8n.io',
 			);
@@ -199,33 +199,15 @@ describe('builder-tools', () => {
 			expect(createValidateWorkflowTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
 		});
 
-		it('should exclude workflow examples tool when feature flag is disabled', () => {
+		it.each([
+			{ featureFlags: { templateExamples: false }, desc: 'disabled' },
+			{ featureFlags: {}, desc: 'empty object' },
+			{ featureFlags: undefined, desc: 'undefined' },
+		])('should exclude workflow examples tool when featureFlags is $desc', ({ featureFlags }) => {
 			const tools = getBuilderTools({
 				parsedNodeTypes,
-				logger: mockLogger,
-				llmComplexTask: mockLlmComplexTask,
-				featureFlags: { templateExamples: false },
-			});
-
-			expect(tools).toHaveLength(11);
-			expect(createGetWorkflowExamplesTool).not.toHaveBeenCalled();
-		});
-
-		it('should exclude workflow examples tool when feature flag is not provided', () => {
-			const tools = getBuilderTools({
-				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
-			});
-
-			expect(tools).toHaveLength(11);
-			expect(createGetWorkflowExamplesTool).not.toHaveBeenCalled();
-		});
-
-		it('should exclude workflow examples tool when featureFlags is undefined', () => {
-			const tools = getBuilderTools({
-				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
-				featureFlags: undefined,
+				getModel: () => mockLlm,
+				featureFlags,
 			});
 
 			expect(tools).toHaveLength(11);
@@ -240,7 +222,7 @@ describe('builder-tools', () => {
 
 			getBuilderTools({
 				parsedNodeTypes: customNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
+				getModel: () => mockLlm,
 			});
 
 			expect(createNodeSearchTool).toHaveBeenCalledWith(customNodeTypes);
@@ -318,7 +300,7 @@ describe('builder-tools', () => {
 		it('should return the same number of tools when feature flag is enabled', () => {
 			const builderTools = getBuilderTools({
 				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
+				getModel: () => mockLlm,
 				logger: mockLogger,
 				featureFlags: { templateExamples: true },
 			});
@@ -334,7 +316,7 @@ describe('builder-tools', () => {
 		it('should return the same number of tools when feature flag is disabled', () => {
 			const builderTools = getBuilderTools({
 				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
+				getModel: () => mockLlm,
 				logger: mockLogger,
 				featureFlags: { templateExamples: false },
 			});
