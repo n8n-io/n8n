@@ -1870,11 +1870,9 @@ watch(
 );
 
 watch(
-	() => uiStore.stateIsDirty,
-	(isDirty) => {
-		if (isDirty) {
-			void workflowSaving.autoSaveWorkflow();
-		}
+	() => uiStore.dirtyStateSetCount,
+	() => {
+		void workflowSaving.autoSaveWorkflow();
 	},
 );
 
