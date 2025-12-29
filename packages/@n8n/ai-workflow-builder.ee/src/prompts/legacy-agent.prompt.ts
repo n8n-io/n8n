@@ -1,4 +1,7 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+
+import { isAnthropicModel } from '@/utils/cache-control';
 
 import { instanceUrlPrompt } from './chains/parameter-updater/instance-url';
 
@@ -16,6 +19,8 @@ interface PhaseConfig {
  */
 export interface MainAgentPromptOptions {
 	includeExamplesPhase?: boolean;
+	/** LLM to check for Anthropic-specific features like cache_control */
+	llm?: BaseChatModel;
 }
 
 /**
@@ -620,6 +625,16 @@ const PREVIOUS_SUMMARY = `<previous_summary>
  */
 export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 	const systemPrompt = generateSystemPrompt(options);
+	const shouldApplyCacheControl = options.llm ? isAnthropicModel(options.llm) : false;
+
+	// Build message blocks with optional cache control for Anthropic models
+	const lastMessageBlock: { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } } = {
+		type: 'text',
+		text: PREVIOUS_SUMMARY,
+	};
+	if (shouldApplyCacheControl) {
+		lastMessageBlock.cache_control = { type: 'ephemeral' };
+	}
 
 	return ChatPromptTemplate.fromMessages([
 		[
@@ -628,7 +643,7 @@ export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 				{ type: 'text', text: systemPrompt },
 				{ type: 'text', text: instanceUrlPrompt },
 				{ type: 'text', text: RESPONSE_PATTERNS },
-				{ type: 'text', text: PREVIOUS_SUMMARY, cache_control: { type: 'ephemeral' } },
+				lastMessageBlock,
 			],
 		],
 		['placeholder', '{messages}'],
