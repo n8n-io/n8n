@@ -368,7 +368,7 @@ export const useExpressionEditor = ({
 
 	// Helper: Count [*] wildcards in expression
 	function countArrayWildcards(expression: string): number {
-		const matches = expression.match(/\[\s*\*\s*\]/g);
+		const matches = expression.match(ARRAY_WILDCARD_REGEX);
 		return matches?.length ?? 0;
 	}
 

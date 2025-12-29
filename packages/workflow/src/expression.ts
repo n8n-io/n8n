@@ -46,6 +46,21 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
+/**
+ * Recursively checks if an object contains any string values with [*] wildcard syntax.
+ */
+const containsWildcardSyntax = (obj: object): boolean => {
+	for (const value of Object.values(obj)) {
+		if (typeof value === 'string' && isExpression(value) && hasArrayWildcardSyntax(value)) {
+			return true;
+		}
+		if (typeof value === 'object' && value !== null && containsWildcardSyntax(value)) {
+			return true;
+		}
+	}
+	return false;
+};
+
 // Make sure that error get forwarded
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
@@ -535,9 +550,20 @@ export class Expression {
 		// The parameter value is complex so resolve depending on type
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = parameterValue.map((item) =>
-				resolveParameterValue(item as NodeParameterValueType, {}),
-			);
+			// Only flatten when [*] wildcard syntax is used - this ensures backward compatibility
+			const returnData: NodeParameterValueType[] = [];
+			for (const item of parameterValue) {
+				const resolved = resolveParameterValue(item as NodeParameterValueType, {});
+				// Check if item contains [*] syntax and resolved to an array (was expanded)
+				const itemUsesWildcard =
+					typeof item === 'object' && item !== null && containsWildcardSyntax(item);
+				if (itemUsesWildcard && Array.isArray(resolved)) {
+					// Flatten expanded arrays from [*] expressions
+					returnData.push(...resolved);
+				} else {
+					returnData.push(resolved);
+				}
+			}
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 

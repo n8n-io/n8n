@@ -61,6 +61,7 @@ const EXPRESSION_EXTENSION_REGEX = new RegExp(
 );
 
 // Regex to detect [*] array mapping syntax (e.g., items[*].field)
+// Note: No 'g' flag here - used with .test() which has stateful behavior with global regexes
 const ARRAY_WILDCARD_REGEX = /\[\s*\*\s*\]/;
 
 // Placeholder used to make [*] parseable by esprima
@@ -72,6 +73,12 @@ export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_REGEX.test(str);
 
 export const hasArrayWildcardSyntax = (str: string): boolean => ARRAY_WILDCARD_REGEX.test(str);
+
+/**
+ * Replaces all [*] occurrences with the placeholder for parsing
+ */
+const replaceArrayWildcards = (str: string): string =>
+	str.replace(/\[\s*\*\s*\]/g, `["${ARRAY_WILDCARD_PLACEHOLDER}"]`);
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
@@ -223,10 +230,7 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	try {
 		// Preprocess: Replace [*] with ["__n8n_array_wildcard__"] to make it parseable
 		// JavaScript doesn't allow [*] as it interprets * as multiplication operator
-		const preprocessedExpression = expression.replace(
-			ARRAY_WILDCARD_REGEX,
-			`["${ARRAY_WILDCARD_PLACEHOLDER}"]`,
-		);
+		const preprocessedExpression = replaceArrayWildcards(expression);
 
 		const ast = parse(preprocessedExpression, {
 			parser: { parse: parseWithEsprimaNext },
