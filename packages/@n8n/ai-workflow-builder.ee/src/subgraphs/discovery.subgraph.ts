@@ -15,6 +15,7 @@ import {
 	formatTechniqueList,
 	formatExampleCategorizations,
 } from '@/prompts/agents/discovery.prompt';
+import { extractResourceOperations } from '@/utils/resource-operation-extractor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -79,7 +80,7 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Found nodes with version, reasoning and connection-changing parameters
+	// Output: Found nodes with version, reasoning, connection-changing parameters, and available resources
 	nodesFound: Annotation<
 		Array<{
 			nodeName: string;
@@ -88,6 +89,14 @@ export const DiscoverySubgraphState = Annotation.Root({
 			connectionChangingParameters: Array<{
 				name: string;
 				possibleValues: Array<string | boolean | number>;
+			}>;
+			availableResources?: Array<{
+				value: string;
+				displayName: string;
+				operations: Array<{
+					value: string;
+					displayName: string;
+				}>;
 			}>;
 		}>
 	>({
@@ -132,10 +141,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
 	private llm!: BaseChatModel;
+	private parsedNodeTypes!: INodeTypeDescription[];
 
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.llm = config.llm;
+		this.parsedNodeTypes = config.parsedNodeTypes;
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
@@ -235,7 +246,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	/**
 	 * Format the output from the submit tool call
-	 * No hydration - just return raw node names. Subgraphs will hydrate if needed.
+	 * Hydrates availableResources for each node using node type definitions.
 	 */
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages.at(-1);
@@ -262,9 +273,37 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
 		);
 
-		// Return raw output without hydration, including templateIds from workflow examples
+		// Hydrate nodesFound with availableResources from node type definitions
+		const hydratedNodesFound = output.nodesFound.map((node) => {
+			// Find the node type definition
+			const nodeType = this.parsedNodeTypes.find(
+				(nt) =>
+					nt.name === node.nodeName &&
+					(Array.isArray(nt.version)
+						? nt.version.includes(node.version)
+						: nt.version === node.version),
+			);
+
+			if (!nodeType) {
+				return node;
+			}
+
+			// Extract resource/operation info
+			const resourceOpInfo = extractResourceOperations(nodeType, node.version);
+
+			if (!resourceOpInfo) {
+				return node;
+			}
+
+			// Add availableResources to the node
+			return {
+				...node,
+				availableResources: resourceOpInfo.resources,
+			};
+		});
+
 		return {
-			nodesFound: output.nodesFound,
+			nodesFound: hydratedNodesFound,
 			bestPractices: bestPracticesTool?.text,
 			templateIds: state.templateIds ?? [],
 		};
