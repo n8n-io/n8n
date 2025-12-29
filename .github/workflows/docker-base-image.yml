@@ -20,6 +20,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Skip Docker builds for forks (they don't have DOCKER_USERNAME secret)
+    # For pull_request events, github.repository is the target repo (n8n-io/n8n),
+    # so we must check github.event.pull_request.head.repo.full_name for the source
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.repository == 'n8n-io/n8n') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n')
     strategy:
       matrix:
         node_version: ['20', '22.21.1', '24']
