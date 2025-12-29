@@ -25,8 +25,6 @@ import {
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
-	buildModelSelectorMenuItems,
-	applySearch,
 } from '@/features/ai/chatHub/chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -34,6 +32,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
 import ChatProviderAvatar from './ChatProviderAvatar.vue';
+import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
 
 const {
 	selectedAgent,
@@ -243,7 +242,7 @@ defineExpose({
 				:class="ui.class"
 				:popper-class="$style.tooltip"
 			>
-				<N8nIcon icon="info" size="small" color="text-light" :class="$style.menuIcon" />
+				<N8nIcon icon="info" size="small" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
 		</template>
 	</N8nDropdownMenu>
@@ -285,8 +284,13 @@ defineExpose({
 	margin-block: -4px;
 }
 
+.infoIcon,
 .menuIcon {
 	flex-shrink: 0;
+}
+
+.infoIcon {
+	margin-inline: var(--spacing--5xs);
 }
 
 .avatarIcon {

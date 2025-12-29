@@ -801,6 +801,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				inputModalities: [],
 				available: true,
 			},
+			groupName: null,
+			groupIcon: null,
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;

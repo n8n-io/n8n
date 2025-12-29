@@ -12,7 +12,6 @@ import {
 	type AgentIconOrEmoji,
 	type EnrichedStructuredChunk,
 	type ChatProviderSettingsDto,
-	chatHubLLMProviderSchema,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -22,17 +21,9 @@ import type {
 	FlattenedModel,
 	ChatConversation,
 } from './chat.types';
-import {
-	CHAT_VIEW,
-	MAX_AGENT_NAME_CHARS_MENU,
-	NEW_AGENT_MENU_ID,
-	providerDisplayNames,
-} from './constants';
+import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { DropdownMenuItemProps, IconOrEmoji } from '@n8n/design-system';
-import { truncateBeforeLast } from '@n8n/utils';
-import type { I18nClass } from '@n8n/i18n';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -355,25 +346,13 @@ export function isLlmProviderModel(
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
-	providerSettings: Record<ChatHubLLMProvider, ChatProviderSettingsDto>,
+	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
 ): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
-		const settings: ChatProviderSettingsDto | undefined = isLlmProvider(provider)
-			? providerSettings[provider]
-			: undefined;
-
-		if (!settings?.enabled) {
-			continue;
-		}
-
-		const availableModels = response[provider].models.filter((providerModel) => {
-			const { model } = providerModel;
-			if (isLlmProviderModel(model) && settings.allowedModels.length > 0) {
-				return settings.allowedModels.some((allowed) => allowed.model === model.model);
-			}
-
-			return true;
-		});
+		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
+		const availableModels = response[provider].models.filter(
+			(agent) => !settings || isAllowedModel(settings, agent.model),
+		);
 
 		if (availableModels.length > 0) {
 			return availableModels[0];
@@ -381,6 +360,17 @@ export function findOneFromModelsResponse(
 	}
 
 	return undefined;
+}
+
+export function isAllowedModel(
+	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
+	model: ChatHubConversationModel,
+): boolean {
+	return (
+		enabled &&
+		(allowedModels.length === 0 ||
+			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
+	);
 }
 
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
@@ -486,309 +476,6 @@ export function promisifyStreamingApi<T>(
 	};
 }
 
-type MenuItem = DropdownMenuItemProps<
-	string,
-	{ provider: ChatHubProvider; isFlattened?: boolean; description?: string }
->;
-
-interface BuildMenuItemsOptions {
-	includeCustomAgents: boolean;
-	isLoading: boolean;
-	i18n: I18nClass;
-	settings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>;
-}
-
-/**
- * Helper function to check if text matches search query
- */
-function matchesSearch(text: string, query: string) {
-	if (!query) return true;
-	return text.toLowerCase().includes(query);
-}
-
-/**
- * Helper function to filter menu items with children based on search
- */
-function filterMenuItem(item: MenuItem, query: string, parentMatched = false): MenuItem | null {
-	if (!query || parentMatched) return item;
-
-	const labelMatches = matchesSearch((item.label || '').toLowerCase(), query);
-	const filteredChildren = (item.children ?? []).flatMap((child) => {
-		const matched = filterMenuItem(child, query, labelMatches);
-
-		return matched ? [matched] : [];
-	});
-
-	// Include parent if it matches or has any matching children
-	if (labelMatches || filteredChildren.length > 0) {
-		return {
-			...item,
-			children: filteredChildren,
-		};
-	}
-
-	return null;
-}
-
-function buildPersonalAgentsMenuItem(
-	agents: ChatModelDto[],
-	{ isLoading, i18n, includeCustomAgents }: BuildMenuItemsOptions,
-): MenuItem | null {
-	if (!includeCustomAgents) {
-		return null;
-	}
-
-	const customAgents = isLoading
-		? []
-		: agents.map<MenuItem>((agent) => ({
-				id: stringifyModel(agent.model),
-				icon: (agent.icon ?? personalAgentDefaultIcon) as IconOrEmoji,
-				label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-				disabled: false,
-				data: { provider: 'custom-agent', description: agent.description ?? undefined },
-			}));
-
-	return {
-		id: 'custom-agents',
-		label: i18n.baseText('chatHub.agent.personalAgents'),
-		icon: personalAgentDefaultIcon as IconOrEmoji,
-		data: { provider: 'custom-agent' },
-		children: [
-			...(isLoading
-				? [
-						{
-							id: 'loading',
-							label: i18n.baseText('generic.loadingEllipsis'),
-							disabled: true,
-						},
-					]
-				: customAgents),
-			{
-				id: NEW_AGENT_MENU_ID,
-				icon: { type: 'icon' as const, value: 'plus' as const },
-				label: i18n.baseText('chatHub.agent.newAgent'),
-				disabled: false,
-				divided: isLoading || customAgents.length > 0,
-			},
-		],
-	};
-}
-
-function buildN8nAgentsMenuItem(
-	agents: ChatModelDto[],
-	{ includeCustomAgents, i18n, isLoading }: BuildMenuItemsOptions,
-): MenuItem | null {
-	if (!includeCustomAgents) {
-		return null;
-	}
-
-	const children: MenuItem[] = [];
-
-	if (isLoading) {
-		children.push({
-			id: 'loading',
-			label: i18n.baseText('generic.loadingEllipsis'),
-			disabled: true,
-		});
-	} else if (agents.length === 0) {
-		children.push({
-			id: 'no-agents',
-			label: i18n.baseText('chatHub.workflowAgents.empty.noAgents'),
-			disabled: true,
-		});
-	} else {
-		children.push(
-			...agents.map<MenuItem>((agent) => ({
-				id: stringifyModel(agent.model),
-				icon: (agent.icon ?? workflowAgentDefaultIcon) as IconOrEmoji,
-				label: truncateBeforeLast(agent.name, 200),
-				disabled: false,
-				data: { provider: agent.model.provider, description: agent.description ?? undefined },
-			})),
-		);
-	}
-
-	return {
-		id: 'n8n-agents',
-		label: i18n.baseText('chatHub.agent.workflowAgents'),
-		icon: { type: 'icon' as const, value: 'robot' as const },
-		data: { provider: 'n8n' },
-		children,
-	};
-}
-
-function buildLlmProviderMenuItem(
-	provider: ChatHubLLMProvider,
-	{ models: theAgents, error }: ChatModelsResponse[ChatHubLLMProvider],
-	{ settings, i18n, isLoading }: BuildMenuItemsOptions,
-): MenuItem | null {
-	const providerSettings = settings[provider];
-
-	// Filter out disabled providers from the menu
-	if (providerSettings?.enabled === false) {
-		return null;
-	}
-
-	const configureMenu = {
-		id: `${provider}::configure`,
-		icon: { type: 'icon' as const, value: 'settings' as const },
-		label: i18n.baseText('chatHub.agent.configureCredentials'),
-		disabled: false,
-	};
-
-	if (isLoading) {
-		return {
-			id: provider,
-			label: providerDisplayNames[provider],
-			data: { provider },
-			children: [
-				configureMenu,
-				{
-					id: `${provider}::loading`,
-					label: i18n.baseText('generic.loadingEllipsis'),
-					disabled: true,
-					divided: true,
-				},
-			],
-		};
-	}
-
-	// Add any manually defined models in settings
-	for (const model of providerSettings?.allowedModels ?? []) {
-		if (model.isManual) {
-			theAgents.push(
-				createFakeAgent({ provider, model: model.model }, { name: model.displayName }),
-			);
-		}
-	}
-
-	const agentOptions =
-		theAgents.length > 0
-			? theAgents
-					.filter(
-						(agent) =>
-							// Filter out models not allowed in settings
-							!providerSettings ||
-							providerSettings.allowedModels.length === 0 ||
-							providerSettings.allowedModels.some(
-								(m) => 'model' in agent.model && m.model === agent.model.model,
-							),
-					)
-					.map<MenuItem>((agent) => ({
-						id: stringifyModel(agent.model),
-						label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-						disabled: false,
-						data: { provider: agent.model.provider, description: agent.description ?? undefined },
-					}))
-					.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
-			: error
-				? [{ id: `${provider}::error`, disabled: true, label: error }]
-				: [];
-
-	const children = [
-		configureMenu,
-		...agentOptions.map((option, index) => (index === 0 ? { ...option, divided: true } : option)),
-		...(agentOptions.length > 0 && providerSettings?.allowedModels.length === 0
-			? [
-					{
-						id: `${provider}::add-model`,
-						icon: { type: 'icon' as const, value: 'plus' as const },
-						label: i18n.baseText('chatHub.agent.addModel'),
-						disabled: false,
-						divided: true,
-					},
-				]
-			: []),
-	];
-
-	return {
-		id: provider,
-		data: { provider },
-		label: providerDisplayNames[provider],
-		children,
-	};
-}
-
-export function applySearch(menuItems: MenuItem[], query: string): MenuItem[] {
-	if (!query) {
-		return menuItems;
-	}
-
-	return menuItems.reduce<MenuItem[]>((acc, item) => {
-		const matched = filterMenuItem(item, query);
-
-		if (!matched) {
-			return acc;
-		}
-
-		const children = matched.children ?? [];
-		const flattenCount = Math.max(0, 10 - acc.length);
-		const provider = matched.data?.provider;
-		const providerName = provider ? providerDisplayNames[provider] : '';
-
-		acc.push(
-			...children.slice(0, flattenCount).flatMap((child) =>
-				child.data?.provider
-					? [
-							{
-								...child,
-								label: `${providerName} > ${child.label}`,
-								divided: false,
-								data: { ...child.data, isFlattened: true },
-							},
-						]
-					: [],
-			),
-		);
-
-		if (children.length > flattenCount) {
-			acc.push({
-				...matched,
-				divided: false,
-				label: flattenCount > 0 ? `More ${providerName} models...` : matched.label,
-				children: (matched.children ?? []).slice(flattenCount),
-			});
-		}
-
-		return acc;
-	}, []);
-}
-
-/**
- * Builds the menu items for the model selector dropdown
- */
-export function buildModelSelectorMenuItems(
-	agents: ChatModelsResponse,
-	options: BuildMenuItemsOptions,
-): MenuItem[] {
-	const menuItems: MenuItem[] = [];
-	const personalAgentsItem = buildPersonalAgentsMenuItem(agents['custom-agent'].models, options);
-	const n8nAgentsItem = buildN8nAgentsMenuItem(agents.n8n.models, options);
-	const flatModels: MenuItem[] = [];
-
-	if (personalAgentsItem) {
-		menuItems.push(personalAgentsItem);
-		flatModels.push(...(personalAgentsItem.children ?? []));
-	}
-
-	if (n8nAgentsItem) {
-		menuItems.push(n8nAgentsItem);
-		flatModels.push(...(n8nAgentsItem.children ?? []));
-	}
-
-	for (let i = 0; i < chatHubLLMProviderSchema.options.length; i++) {
-		const provider = chatHubLLMProviderSchema.options[i];
-		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
-
-		if (item) {
-			menuItems.push(i === 0 ? { ...item, divided: true } : item);
-			flatModels.push(...(item.children ?? []));
-		}
-	}
-
-	return menuItems;
-}
-
 export function createFakeAgent(
 	model: ChatHubConversationModel,
 	fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
@@ -808,5 +495,7 @@ export function createFakeAgent(
 			},
 			available: true,
 		},
+		groupName: null,
+		groupIcon: null,
 	};
 }
