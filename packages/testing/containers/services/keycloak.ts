@@ -12,14 +12,14 @@ import type { HelperContext, Service, ServiceResult } from './types';
 const HOSTNAME = 'keycloak';
 const HTTPS_PORT = 8443;
 
-// Keycloak test configuration
-export const KEYCLOAK_TEST_REALM = 'test';
-export const KEYCLOAK_TEST_CLIENT_ID = 'n8n-e2e';
-export const KEYCLOAK_TEST_CLIENT_SECRET = 'n8n-test-secret';
-export const KEYCLOAK_TEST_USER_EMAIL = 'test@n8n.io';
-export const KEYCLOAK_TEST_USER_PASSWORD = 'testpassword';
-export const KEYCLOAK_TEST_USER_FIRSTNAME = 'Test';
-export const KEYCLOAK_TEST_USER_LASTNAME = 'User';
+// Keycloak test configuration (internal - exposed via meta)
+const KEYCLOAK_TEST_REALM = 'test';
+const KEYCLOAK_TEST_CLIENT_ID = 'n8n-e2e';
+const KEYCLOAK_TEST_CLIENT_SECRET = 'n8n-test-secret';
+const KEYCLOAK_TEST_USER_EMAIL = 'test@n8n.io';
+const KEYCLOAK_TEST_USER_PASSWORD = 'testpassword';
+const KEYCLOAK_TEST_USER_FIRSTNAME = 'Test';
+const KEYCLOAK_TEST_USER_LASTNAME = 'User';
 
 const KEYCLOAK_ADMIN_USER = 'admin';
 const KEYCLOAK_ADMIN_PASSWORD = 'admin';
@@ -40,6 +40,16 @@ export interface KeycloakMeta {
 	internalDiscoveryUrl: string;
 	certPem: string;
 	hostPort: number;
+	/** OIDC client credentials for test realm */
+	clientId: string;
+	clientSecret: string;
+	/** Test user credentials */
+	testUser: {
+		email: string;
+		password: string;
+		firstName: string;
+		lastName: string;
+	};
 }
 
 export type KeycloakResult = ServiceResult<KeycloakMeta>;
@@ -280,6 +290,14 @@ export const keycloak: Service<KeycloakResult> = {
 					internalDiscoveryUrl,
 					certPem,
 					hostPort: allocatedHostPort,
+					clientId: KEYCLOAK_TEST_CLIENT_ID,
+					clientSecret: KEYCLOAK_TEST_CLIENT_SECRET,
+					testUser: {
+						email: KEYCLOAK_TEST_USER_EMAIL,
+						password: KEYCLOAK_TEST_USER_PASSWORD,
+						firstName: KEYCLOAK_TEST_USER_FIRSTNAME,
+						lastName: KEYCLOAK_TEST_USER_LASTNAME,
+					},
 				},
 			};
 		} catch (error) {
@@ -330,22 +348,17 @@ export class KeycloakHelper {
 
 	/** The test client ID */
 	get clientId(): string {
-		return KEYCLOAK_TEST_CLIENT_ID;
+		return this.meta.clientId;
 	}
 
 	/** The test client secret */
 	get clientSecret(): string {
-		return KEYCLOAK_TEST_CLIENT_SECRET;
+		return this.meta.clientSecret;
 	}
 
 	/** Test user credentials */
 	get testUser() {
-		return {
-			email: KEYCLOAK_TEST_USER_EMAIL,
-			password: KEYCLOAK_TEST_USER_PASSWORD,
-			firstName: KEYCLOAK_TEST_USER_FIRSTNAME,
-			lastName: KEYCLOAK_TEST_USER_LASTNAME,
-		};
+		return this.meta.testUser;
 	}
 
 	/**

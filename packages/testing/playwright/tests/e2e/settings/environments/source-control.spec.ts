@@ -21,9 +21,9 @@ test.describe('Source Control Settings @capability:source-control', () => {
 	let repoUrl: string;
 	let repoName: string;
 
-	test.beforeEach(async ({ n8n, chaos }) => {
+	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		const gitea = chaos.services.gitea;
+		const gitea = n8nContainer.services.gitea;
 		await initSourceControl({ n8n, gitea });
 
 		// Create unique repo with branches via API (not UI)
@@ -52,8 +52,8 @@ test.describe('Source Control Settings @capability:source-control', () => {
 		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
 	});
 
-	test('should switch between branches', async ({ n8n, chaos }) => {
-		const gitea = chaos.services.gitea;
+	test('should switch between branches', async ({ n8n, n8nContainer }) => {
+		const gitea = n8nContainer.services.gitea;
 		await gitea.createBranch(repoName, 'development');
 		await gitea.createBranch(repoName, 'staging');
 		await gitea.createBranch(repoName, 'production');

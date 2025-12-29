@@ -4,12 +4,9 @@ import { parseArgs } from 'node:util';
 import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
-import {
-	KEYCLOAK_TEST_CLIENT_ID,
-	KEYCLOAK_TEST_CLIENT_SECRET,
-	KEYCLOAK_TEST_USER_EMAIL,
-	KEYCLOAK_TEST_USER_PASSWORD,
-} from './services/keycloak';
+import type { KeycloakResult } from './services/keycloak';
+import type { ObservabilityResult } from './services/observability';
+import type { TracingResult } from './services/tracing';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
 
@@ -233,36 +230,42 @@ async function main() {
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
 
 		// Display OIDC configuration if enabled
-		if (stack.oidc) {
+		const keycloakResult = stack.serviceResults.keycloak as KeycloakResult | undefined;
+		if (keycloakResult) {
+			const { meta } = keycloakResult;
 			console.log('');
 			log.header('OIDC Configuration (Keycloak)');
-			log.info(`Discovery URL: ${colors.cyan}${stack.oidc.discoveryUrl}${colors.reset}`);
-			log.info(`Client ID: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_ID}${colors.reset}`);
-			log.info(`Client Secret: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_SECRET}${colors.reset}`);
+			log.info(`Discovery URL: ${colors.cyan}${meta.discoveryUrl}${colors.reset}`);
+			log.info(`Client ID: ${colors.cyan}${meta.clientId}${colors.reset}`);
+			log.info(`Client Secret: ${colors.cyan}${meta.clientSecret}${colors.reset}`);
 			console.log('');
 			log.header('Test User Credentials');
-			log.info(`Email: ${colors.cyan}${KEYCLOAK_TEST_USER_EMAIL}${colors.reset}`);
-			log.info(`Password: ${colors.cyan}${KEYCLOAK_TEST_USER_PASSWORD}${colors.reset}`);
+			log.info(`Email: ${colors.cyan}${meta.testUser.email}${colors.reset}`);
+			log.info(`Password: ${colors.cyan}${meta.testUser.password}${colors.reset}`);
 		}
 
 		// Display observability configuration if enabled
-		if (stack.observability) {
+		const observabilityResult = stack.serviceResults.observability as
+			| ObservabilityResult
+			| undefined;
+		if (observabilityResult) {
 			console.log('');
 			log.header('Observability Stack (VictoriaObs)');
 			log.info(
-				`VictoriaLogs UI: ${colors.cyan}${stack.observability.meta.logs.queryEndpoint}/select/vmui${colors.reset}`,
+				`VictoriaLogs UI: ${colors.cyan}${observabilityResult.meta.logs.queryEndpoint}/select/vmui${colors.reset}`,
 			);
 			log.info(
-				`VictoriaMetrics UI: ${colors.cyan}${stack.observability.meta.metrics.queryEndpoint}/vmui${colors.reset}`,
+				`VictoriaMetrics UI: ${colors.cyan}${observabilityResult.meta.metrics.queryEndpoint}/vmui${colors.reset}`,
 			);
 			// Vector is always started when observability is enabled in the new stack
 			log.success('Container logs collected by Vector (runs in background)');
 		}
 
-		if (stack.tracing) {
+		const tracingResult = stack.serviceResults.tracing as TracingResult | undefined;
+		if (tracingResult) {
 			console.log('');
 			log.header('Tracing Stack (n8n-tracer + Jaeger)');
-			log.info(`Jaeger UI: ${colors.cyan}${stack.tracing.meta.jaeger.uiUrl}${colors.reset}`);
+			log.info(`Jaeger UI: ${colors.cyan}${tracingResult.meta.jaeger.uiUrl}${colors.reset}`);
 		}
 
 		console.log('');

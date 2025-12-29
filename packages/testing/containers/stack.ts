@@ -10,11 +10,12 @@
  */
 
 import getPort from 'get-port';
-import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
+import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
 
 import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
+import { createHelperContext } from './helpers/context';
 import {
 	createElapsedLogger,
 	createSilentLogConsumer,
@@ -24,15 +25,15 @@ import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { N8N_KEYCLOAK_CERT_PATH, type KeycloakResult } from './services/keycloak';
 import type { LoadBalancerResult } from './services/load-balancer';
-import { type ObservabilityResult } from './services/observability';
-import { services } from './services/registry';
-import { type TracingResult } from './services/tracing';
+import { helperFactories, services } from './services/registry';
 import type {
+	HelperFactories,
 	MultiContainerResult,
 	Service,
+	ServiceHelpers,
 	ServiceResult,
-	StartContext,
 	StackConfig,
+	StartContext,
 } from './services/types';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
@@ -102,18 +103,50 @@ const SERVICE_REGISTRY: Record<string, Service> = services;
 // N8NConfig is just an alias for StackConfig - all properties defined there
 export type N8NConfig = StackConfig;
 
+/**
+ * Unified n8n test stack interface.
+ *
+ * This is the single entry point for all container testing functionality:
+ * - `baseUrl`: URL to access n8n
+ * - `containers`: Raw container access
+ * - `serviceResults`: Raw service results (for advanced use)
+ * - `services`: Type-safe helpers for interacting with services
+ *
+ * @example
+ * ```typescript
+ * test('example', async ({ n8nContainer }) => {
+ *   // Access helpers via services (type-safe, discoverable)
+ *   await n8nContainer.services.mailpit.waitForMessage({ to: 'user@example.com' });
+ *   await n8nContainer.services.observability.logs.query('level:error');
+ *
+ *   // Convenience shortcuts
+ *   await n8nContainer.logs.query('level:error');
+ *   await n8nContainer.metrics.query('up');
+ *
+ *   // Base URL
+ *   n8nContainer.baseUrl;
+ * });
+ * ```
+ */
 export interface N8NStack {
+	/** URL to access n8n */
 	baseUrl: string;
+	/** Stop all containers and cleanup */
 	stop: () => Promise<void>;
+	/** Raw container access for advanced operations */
 	containers: StartedTestContainer[];
+	/** Raw service results (for advanced use, prefer `services` for helpers) */
 	serviceResults: Record<string, ServiceResult>;
-	// Legacy compatibility
-	oidc?: {
-		discoveryUrl: string;
-		internalDiscoveryUrl: string;
-	};
-	observability?: ObservabilityResult;
-	tracing?: TracingResult;
+	/** Type-safe service helpers for common operations */
+	services: ServiceHelpers;
+	/** Shortcut for services.observability.logs */
+	logs: ServiceHelpers['observability']['logs'];
+	/** Shortcut for services.observability.metrics */
+	metrics: ServiceHelpers['observability']['metrics'];
+	/** Find containers by name pattern (for chaos testing) */
+	findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
+	/** Stop a container by name pattern (for chaos testing) */
+	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 }
 
 // ============================================================================
@@ -402,24 +435,59 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	log(`Stack ready! baseUrl: ${baseUrl}`);
 	await waitForNetworkQuiet();
 
-	// Build legacy compatibility properties
-	const observabilityResult = serviceResults.observability as ObservabilityResult | undefined;
-	const tracingResult = serviceResults.tracing as TracingResult | undefined;
+	// Build service helpers (Proxy-based for lazy instantiation and caching)
+	const helperCtx = createHelperContext(containers, serviceResults);
+	const helperCache: Partial<ServiceHelpers> = {};
+
+	const servicesProxy = new Proxy({} as ServiceHelpers, {
+		get: <K extends keyof ServiceHelpers>(_target: ServiceHelpers, prop: K): ServiceHelpers[K] => {
+			if (prop in helperCache) {
+				return helperCache[prop]!;
+			}
+
+			const factory = (helperFactories as HelperFactories)[prop];
+			if (!factory) {
+				throw new Error(
+					`No helper factory found for service: ${String(prop)}. ` +
+						`Available helpers: ${Object.keys(helperFactories).join(', ')}`,
+				);
+			}
+
+			const helper = factory(helperCtx);
+			helperCache[prop] = helper;
+			return helper;
+		},
+		has: (_target, prop) => prop in helperFactories,
+		ownKeys: () => Object.keys(helperFactories),
+		getOwnPropertyDescriptor: (_target, prop) => {
+			if (prop in helperFactories) {
+				return { enumerable: true, configurable: true };
+			}
+			return undefined;
+		},
+	});
 
 	return {
 		baseUrl,
 		stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
 		containers,
 		serviceResults,
-		// Legacy compatibility
-		...(keycloakResult && {
-			oidc: {
-				discoveryUrl: keycloakResult.meta.discoveryUrl,
-				internalDiscoveryUrl: keycloakResult.meta.internalDiscoveryUrl,
-			},
-		}),
-		...(observabilityResult && { observability: observabilityResult }),
-		...(tracingResult && { tracing: tracingResult }),
+		services: servicesProxy,
+		get logs() {
+			return servicesProxy.observability.logs;
+		},
+		get metrics() {
+			return servicesProxy.observability.metrics;
+		},
+		findContainers(namePattern: string | RegExp): StartedTestContainer[] {
+			const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
+			return containers.filter((container) => regex.test(container.getName()));
+		},
+		async stopContainer(namePattern: string | RegExp): Promise<StoppedTestContainer | null> {
+			const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
+			const container = containers.find((c) => regex.test(c.getName()));
+			return container ? await container.stop() : null;
+		},
 	};
 }
 

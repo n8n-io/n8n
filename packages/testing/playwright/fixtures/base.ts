@@ -1,7 +1,6 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
-import { ContainerTestHelpers } from 'n8n-containers/helpers/container';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
@@ -30,7 +29,6 @@ type WorkerFixtures = {
 	backendUrl: string;
 	frontendUrl: string;
 	dbSetup: undefined;
-	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
 	capability?: CapabilityOption;
 };
@@ -114,21 +112,6 @@ export const test = base.extend<
 				await apiContext.dispose();
 			}
 			await use(undefined);
-		},
-		{ scope: 'worker' },
-	],
-
-	chaos: [
-		async ({ n8nContainer }, use) => {
-			if (getBackendUrl()) {
-				throw new TestError(
-					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
-				);
-			}
-			const helpers = new ContainerTestHelpers(n8nContainer.containers, {
-				serviceResults: n8nContainer.serviceResults,
-			});
-			await use(helpers);
 		},
 		{ scope: 'worker' },
 	],
@@ -252,7 +235,13 @@ export { expect };
 
 /*
 Fixture Dependency Graph:
-Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup, chaos]
+Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
+
+n8nContainer provides unified access to:
+- services: Type-safe helpers (mailpit, gitea, observability, etc.)
+- logs/metrics: Shortcuts for observability queries
+- findContainers/stopContainer: Container operations for chaos testing
+- serviceResults: Raw service results (advanced use)
 */

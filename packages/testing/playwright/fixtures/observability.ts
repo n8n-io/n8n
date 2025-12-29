@@ -1,5 +1,4 @@
 import type { Fixtures, TestInfo } from '@playwright/test';
-import { ObservabilityHelper } from 'n8n-containers';
 import type { N8NStack } from 'n8n-containers/stack';
 
 /**
@@ -26,10 +25,11 @@ async function attachLogsOnFailure(
 	testInfo: TestInfo,
 	options: { lookbackMinutes?: number } = {},
 ): Promise<void> {
-	if (!stack?.observability?.meta) return;
+	// Use the observability service helper if available
+	const obs = stack.services?.observability;
+	if (!obs) return;
 
 	const lookback = options.lookbackMinutes ?? 5;
-	const obs = new ObservabilityHelper(stack.observability.meta);
 
 	try {
 		// Query all logs from the last N minutes
@@ -101,7 +101,7 @@ export const observabilityFixtures: Fixtures<
 			await use(undefined);
 
 			// After test: attach logs if failed
-			if (testInfo.status !== testInfo.expectedStatus && n8nContainer?.observability) {
+			if (testInfo.status !== testInfo.expectedStatus && n8nContainer?.services?.observability) {
 				await attachLogsOnFailure(n8nContainer, testInfo);
 			}
 		},

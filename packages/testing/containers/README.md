@@ -214,7 +214,7 @@ pnpm run stack:clean:all
 - **Queue Mode**: Automatically enables PostgreSQL (required for queue mode)
 - **Multi-Main**: Requires queue mode and special licensing read from N8N_LICENSE_ACTIVATION_KEY environment variable
 - **Performance Plans**: Use `--plan` for quick cloud plan simulation
-- **Log Monitoring**: Use the `ContainerTestHelpers` class for advanced log monitoring in tests
+- **Service Helpers**: Access via `n8nContainer.services.mailpit`, `n8nContainer.services.gitea`, etc.
 
 ## Docker Image
 

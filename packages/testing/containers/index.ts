@@ -2,18 +2,15 @@
  * n8n Test Containers
  *
  * This package provides container management utilities for n8n testing.
+ * Services are accessed via n8nContainer.services.* in tests.
  */
 
 // Stack orchestration
 export { createN8NStack } from './stack';
 export type { N8NConfig, N8NStack } from './stack';
 
-// Performance plans
+// Performance plans (CLI-only, not for tests)
 export * from './performance-plans';
-
-// Container test helpers
-export { ContainerTestHelpers } from './helpers/container';
-export type { ContainerTestHelpersOptions } from './helpers/container';
 
 // Service types
 export type {
@@ -25,59 +22,35 @@ export type {
 	HelperFactories,
 } from './services/types';
 
-// Mailpit
+// Mailpit - Types for email testing
 export {
-	MailpitHelper,
 	type MailpitMessage,
 	type MailpitMessageSummary,
 	type MailpitQuery,
 	type MailpitMeta,
-	type MailpitResult,
 } from './services/mailpit';
 
-// Keycloak/OIDC test constants
+// Keycloak/OIDC - Types only (credentials accessed via n8nContainer.services.keycloak)
 export {
-	KEYCLOAK_TEST_REALM,
-	KEYCLOAK_TEST_CLIENT_ID,
-	KEYCLOAK_TEST_CLIENT_SECRET,
-	KEYCLOAK_TEST_USER_EMAIL,
-	KEYCLOAK_TEST_USER_PASSWORD,
-	KEYCLOAK_TEST_USER_FIRSTNAME,
-	KEYCLOAK_TEST_USER_LASTNAME,
 	N8N_KEYCLOAK_CERT_PATH,
-	KeycloakHelper,
-	type KeycloakConfig,
 	type KeycloakMeta,
-	type KeycloakResult,
 } from './services/keycloak';
 
-// Observability stack
+// Observability - Types for logs/metrics (accessed via n8nContainer.services.observability)
 export {
-	SYSLOG_DEFAULTS,
-	ObservabilityHelper,
-	LogsHelper,
-	MetricsHelper,
 	escapeLogsQL,
-	type ScrapeTarget,
-	type ObservabilityConfig,
 	type ObservabilityMeta,
-	type ObservabilityResult,
 	type LogEntry,
 	type LogQueryOptions,
 	type MetricResult,
 	type WaitForMetricOptions,
 } from './services/observability';
 
-// Tracing stack
-export {
-	TracingHelper,
-	type TracingConfig,
-	type TracingMeta,
-	type TracingResult,
-} from './services/tracing';
+// Tracing - Types (accessed via n8nContainer.services.tracing)
+export { type TracingMeta } from './services/tracing';
 
-// Gitea (source control)
-export { GiteaHelper, type GiteaMeta, type GiteaResult } from './services/gitea';
+// Gitea - Types for source control (accessed via n8nContainer.services.gitea)
+export { type GiteaHelper, type GiteaMeta } from './services/gitea';
 
 // Service registry
 export { services, helperFactories } from './services/registry';

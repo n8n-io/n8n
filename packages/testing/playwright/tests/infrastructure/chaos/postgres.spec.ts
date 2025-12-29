@@ -15,7 +15,7 @@ test.skip(
 			description: 'CAT-1018',
 		},
 	},
-	async ({ api, chaos }) => {
+	async ({ api, n8nContainer }) => {
 		test.setTimeout(300000);
 
 		// ========== SETUP: Verify Initial Health ==========
@@ -29,7 +29,7 @@ test.skip(
 
 		// ========== CHAOS INJECTION: Block Database Traffic ==========
 		// Find postgres container and install iptables to simulate network issues
-		const postgres = chaos.findContainers('postgres*')[0];
+		const postgres = n8nContainer.findContainers('postgres*')[0];
 
 		// Install iptables in the postgres container (Alpine Linux)
 		const apkUpdate = await postgres.exec(['apk', 'update']);
@@ -44,7 +44,7 @@ test.skip(
 
 		// ========== WAIT FOR CONNECTION ISSUES ==========
 		// Query VictoriaLogs for database timeout messages
-		await chaos.logs.waitForLog('Database connection timed out', {
+		await n8nContainer.logs.waitForLog('Database connection timed out', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 			start: '-1m',
 		});
@@ -64,7 +64,7 @@ test.skip(
 
 		// ========== VERIFY: Automatic Recovery ==========
 		// Query VictoriaLogs for database recovery messages
-		await chaos.logs.waitForLog('Database connection recovered', {
+		await n8nContainer.logs.waitForLog('Database connection recovered', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 			start: '-1m',
 		});

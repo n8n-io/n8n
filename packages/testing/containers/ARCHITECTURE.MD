@@ -12,7 +12,7 @@ This document describes the architecture for n8n test container services with a 
 
 1. **Single file per service**: Service definition + helpers live together
 2. **Zero changes to core files** when adding a new service with helpers
-3. **Full IDE autocomplete**: `chaos.services.gitea.` shows all methods
+3. **Full IDE autocomplete**: `n8nContainer.services.gitea.` shows all methods
 4. **Explicit over magic**: No runtime reflection, decoration, or hidden behavior
 5. **Graceful errors**: Clear messages when a service isn't running
 
@@ -76,15 +76,17 @@ Helpers are only instantiated when accessed, and cached thereafter.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Test Code                                    │
-│   await chaos.services.gitea.createRepo('my-repo')                  │
+│   await n8nContainer.services.gitea.createRepo('my-repo')           │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    ContainerTestHelpers                              │
+│                           N8NStack                                   │
 │   services: ServiceHelpers  ← Proxy with lazy instantiation         │
-│   mail: MailHelper          ← Legacy accessor (keep for compat)     │
-│   logs: VictoriaLogsHelper  ← Observability accessor                │
+│   logs: VictoriaLogsHelper  ← Observability shortcut                │
+│   metrics: VictoriaMetricsHelper  ← Observability shortcut          │
+│   findContainers(pattern)   ← Container operations                  │
+│   stopContainer(pattern)    ← Chaos testing support                 │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
                     ┌───────────────┼───────────────┐
@@ -107,19 +109,17 @@ Helpers are only instantiated when accessed, and cached thereafter.
 packages/testing/containers/
 ├── services/
 │   ├── types.ts              # Core interfaces + ServiceHelpers base
-│   ├── index.ts              # Service registry + helper factory exports
+│   ├── registry.ts           # Service registry + helper factory exports
 │   ├── postgres.ts           # Service only (no helper needed)
 │   ├── redis.ts              # Service only (no helper needed)
 │   ├── gitea.ts              # Service + GiteaHelper
 │   ├── mailpit.ts            # Service + MailpitHelper
 │   ├── keycloak.ts           # Service + KeycloakHelper
-│   ├── victoria-logs.ts      # Service + VictoriaLogsHelper
-│   ├── victoria-metrics.ts   # Service + VictoriaMetricsHelper
+│   ├── observability.ts      # Service + ObservabilityHelper
 │   └── ...
 ├── helpers/
-│   ├── context.ts            # HelperContext type + creation
-│   └── container.ts          # ContainerTestHelpers class
-├── stack.ts                  # Stack orchestration
+│   └── context.ts            # HelperContext creation utility
+├── stack.ts                  # Stack orchestration + N8NStack interface
 └── index.ts                  # Public exports
 ```
 
@@ -310,7 +310,7 @@ export const gitea: Service<GiteaResult> = {
 
 /**
  * Helper for interacting with Gitea in tests.
- * Access via `chaos.services.gitea` in tests.
+ * Access via `n8nContainer.services.gitea` in tests.
  */
 export class GiteaHelper {
   constructor(
@@ -598,162 +598,61 @@ export const servicesWithHelpers = Object.keys(helperFactories);
 
 ---
 
-## ContainerTestHelpers
+## N8NStack (Unified Entry Point)
 
-### `helpers/container.ts`
+The `N8NStack` interface returned by `createN8NStack()` provides a unified API for all test interactions:
 
 ```typescript
-import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
+export interface N8NStack {
+  /** Base URL for n8n API/UI */
+  baseUrl: string;
 
-import type {
-  ServiceHelpers,
-  HelperContext,
-  ObservabilityStack,
-  ServiceResult,
-} from '../services/types';
-import { helperFactories } from '../services';
+  /** Stop all containers in the stack */
+  stop: () => Promise<void>;
 
-/**
- * Test helpers bound to a running container stack.
- *
- * Usage in tests:
- * ```typescript
- * test('example', async ({ chaos }) => {
- *   // Access service helpers via .services
- *   await chaos.services.gitea.createRepo('my-repo');
- *   await chaos.services.mailpit.waitForMessage({ to: 'test@example.com' });
- *
- *   // Access logs/metrics via dedicated accessors
- *   const logs = await chaos.logs.query('level:error');
- * });
- * ```
- */
-export class ContainerTestHelpers {
-  private readonly helperCache = new Map<string, unknown>();
-  private readonly context: HelperContext;
+  /** All started containers */
+  containers: StartedTestContainer[];
 
-  constructor(
-    private readonly containers: StartedTestContainer[],
-    options: {
-      observability?: ObservabilityStack;
-      serviceResults?: Record<string, ServiceResult>;
-    } = {},
-  ) {
-    this.context = {
-      containers,
-      findContainer: (pattern) => containers.find((c) => pattern.test(c.getName())),
-      observability: options.observability,
-      serviceResults: options.serviceResults ?? {},
-    };
-  }
+  /** Raw service results for advanced use cases */
+  serviceResults: Record<string, ServiceResult>;
 
-  /**
-   * Access service helpers by name.
-   *
-   * Helpers are lazily instantiated on first access and cached.
-   * TypeScript provides full autocomplete for available helpers.
-   *
-   * @example
-   * await chaos.services.gitea.createRepo('my-repo');
-   * await chaos.services.mailpit.waitForMessage({ subject: 'Welcome' });
-   */
-  readonly services: ServiceHelpers = new Proxy({} as ServiceHelpers, {
-    get: (_, serviceName: string) => {
-      // Return cached helper if available
-      if (this.helperCache.has(serviceName)) {
-        return this.helperCache.get(serviceName);
-      }
+  /** Type-safe service helpers (Proxy with lazy instantiation) */
+  services: ServiceHelpers;
 
-      // Look up factory
-      const factory = helperFactories[serviceName as keyof typeof helperFactories];
-      if (!factory) {
-        throw new Error(
-          `No helper available for service: "${serviceName}". ` +
-          `Available helpers: ${Object.keys(helperFactories).join(', ')}`
-        );
-      }
+  /** Shortcut for observability logs (requires observability capability) */
+  logs: ServiceHelpers['observability']['logs'];
 
-      // Create helper and cache it
-      const helper = factory(this.context);
-      this.helperCache.set(serviceName, helper);
-      return helper;
-    },
-  });
+  /** Shortcut for observability metrics (requires observability capability) */
+  metrics: ServiceHelpers['observability']['metrics'];
 
-  /**
-   * Shortcut for victoria-logs helper.
-   * Requires observability capability.
-   */
-  get logs(): ServiceHelpers['victoria-logs'] {
-    return this.services['victoria-logs'];
-  }
+  /** Find containers by name pattern for chaos testing */
+  findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
 
-  /**
-   * Shortcut for victoria-metrics helper.
-   * Requires observability capability.
-   */
-  get metrics(): ServiceHelpers['victoria-metrics'] {
-    return this.services['victoria-metrics'];
-  }
-
-  /**
-   * Shortcut for mailpit helper.
-   * Requires email capability.
-   * @deprecated Use chaos.services.mailpit instead
-   */
-  get mail(): ServiceHelpers['mailpit'] {
-    return this.services.mailpit;
-  }
-
-  // =========================================================================
-  // Container Operations (existing functionality)
-  // =========================================================================
-
-  /** Find containers matching a name pattern */
-  findContainers(pattern: string | RegExp): StartedTestContainer[] {
-    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
-    return this.containers.filter((c) => regex.test(c.getName()));
-  }
-
-  /** Stop a container by name pattern */
-  async stopContainer(pattern: string | RegExp): Promise<StoppedTestContainer | null> {
-    const container = this.findContainers(pattern)[0];
-    return container ? await container.stop() : null;
-  }
-
-  /** Wait for a log message across containers */
-  async waitForLog(
-    messagePattern: string | RegExp,
-    options: {
-      namePattern?: string | RegExp;
-      timeoutMs?: number;
-      throwOnTimeout?: boolean;
-    } = {},
-  ): Promise<LogMatch | null> {
-    // Implementation unchanged from current
-    // ...
-  }
-
-  /** Read logs from a container */
-  async readLogs(containerPattern: string | RegExp, since?: number): Promise<string> {
-    // Implementation unchanged from current
-    // ...
-  }
-}
-
-export interface LogMatch {
-  container: StartedTestContainer;
-  containerName: string;
-  message: string;
-  timestamp: Date;
+  /** Stop a container by name pattern for chaos testing */
+  stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 }
 ```
 
----
+### Usage in Tests
+
+```typescript
+test('example', async ({ n8nContainer }) => {
+  // Access service helpers via .services
+  await n8nContainer.services.gitea.createRepo('my-repo');
+  await n8nContainer.services.mailpit.waitForMessage({ to: 'test@example.com' });
+
+  // Access logs/metrics via shortcuts
+  const logs = await n8nContainer.logs.query('level:error');
+
+  // Chaos testing - find and stop containers
+  const postgres = n8nContainer.findContainers('postgres*')[0];
+  await n8nContainer.stopContainer('redis*');
+});
+```
 
 ## Test Usage Examples
 
-### Before (Current)
+### Before (Legacy Pattern)
 
 ```typescript
 import { addGiteaRepo, addGiteaBranch, addGiteaSSHKey } from 'n8n-containers';
@@ -770,16 +669,16 @@ test('source control', async ({ n8nContainer }) => {
 });
 ```
 
-### After (New Architecture)
+### After (Current Architecture)
 
 ```typescript
-test('source control', async ({ chaos }) => {
+test('source control', async ({ n8nContainer }) => {
   // Discoverable via autocomplete
-  const repo = await chaos.services.gitea.createRepo('my-repo');
+  const repo = await n8nContainer.services.gitea.createRepo('my-repo');
   await repo.createBranch('develop');
 
   // Or chain it
-  const url = chaos.services.gitea.getSSHUrl('my-repo');
+  const url = n8nContainer.services.gitea.getSSHUrl('my-repo');
 });
 ```
 
@@ -791,9 +690,9 @@ import { test, expect } from '../fixtures/base';
 test.use({ capability: 'source-control' });
 
 test.describe('Source Control', () => {
-  test('should connect and switch branches', async ({ n8n, chaos }) => {
+  test('should connect and switch branches', async ({ n8n, n8nContainer }) => {
     // Create repo with branches - fully typed, discoverable
-    const repo = await chaos.services.gitea.createRepo('test-repo');
+    const repo = await n8nContainer.services.gitea.createRepo('test-repo');
     await repo.createBranch('development');
     await repo.createBranch('staging');
 
@@ -871,9 +770,9 @@ export const helperFactories = { ...existing, minio: createMinioHelper };
 ## Migration Plan
 
 ### Phase 1: Core Infrastructure
-- [ ] Create `services/types.ts` with new interfaces
-- [ ] Update `helpers/container.ts` with Proxy-based services accessor
-- [ ] Update Stack to pass serviceResults to ContainerTestHelpers
+- [x] Create `services/types.ts` with new interfaces
+- [x] Add Proxy-based services accessor to N8NStack
+- [x] Pass serviceResults through stack orchestration
 
 ### Phase 2: Migrate Existing Services
 - [ ] Gitea: Add GiteaHelper class, createGiteaHelper factory, declaration merge
@@ -882,8 +781,9 @@ export const helperFactories = { ...existing, minio: createMinioHelper };
 - [ ] Victoria*: Already have helper classes, add factories + declaration merge
 
 ### Phase 3: Update Tests
-- [ ] Update source-control tests to use `chaos.services.gitea`
-- [ ] Update email tests to use `chaos.services.mailpit`
+- [x] Update source-control tests to use `n8nContainer.services.gitea`
+- [x] Update email tests to use `n8nContainer.services.mailpit`
+- [x] Unified entry point - removed separate `chaos` fixture
 - [ ] Deprecate standalone function exports (keep for backwards compat)
 
 ### Phase 4: Documentation
@@ -917,6 +817,6 @@ Use decorators to register helpers. Rejected because:
 - "Too magic" - harder to trace
 
 ### Manual Getter Registration
-Add a getter to ContainerTestHelpers for each service. Rejected because:
+Add a getter to N8NStack for each service. Rejected because:
 - Doesn't scale to 100 services
 - Requires changes to core file for each new service

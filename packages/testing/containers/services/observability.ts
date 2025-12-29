@@ -24,13 +24,6 @@ const VICTORIA_METRICS_HOSTNAME = 'victoria-metrics';
 // Syslog facility codes (RFC 5424)
 const SYSLOG_FACILITY_LOCAL0 = 16;
 
-/** Syslog configuration for n8n log streaming destination. */
-export const SYSLOG_DEFAULTS = {
-	protocol: 'tcp' as const,
-	facility: SYSLOG_FACILITY_LOCAL0,
-	app_name: 'n8n',
-};
-
 // Types
 export interface ScrapeTarget {
 	job: string;
@@ -47,7 +40,16 @@ export interface ObservabilityMeta {
 	logs: {
 		queryEndpoint: string;
 		internalEndpoint: string;
-		syslog: { host: string; port: number };
+		syslog: {
+			host: string;
+			port: number;
+			/** Default syslog protocol */
+			protocol: 'tcp' | 'udp';
+			/** Default syslog facility (RFC 5424) */
+			facility: number;
+			/** Default app name for syslog messages */
+			appName: string;
+		};
 	};
 	metrics: {
 		queryEndpoint: string;
@@ -296,6 +298,9 @@ export const observability: Service<ObservabilityResult> = {
 					syslog: {
 						host: VICTORIA_LOGS_HOSTNAME,
 						port: VICTORIA_LOGS_SYSLOG_PORT,
+						protocol: 'tcp',
+						facility: SYSLOG_FACILITY_LOCAL0,
+						appName: 'n8n',
 					},
 				},
 				metrics: {
@@ -411,7 +416,7 @@ export class MetricsHelper {
 export class ObservabilityHelper {
 	readonly logs: LogsHelper;
 	readonly metrics: MetricsHelper;
-	readonly syslog: { host: string; port: number };
+	readonly syslog: ObservabilityMeta['logs']['syslog'];
 
 	constructor(meta: ObservabilityMeta) {
 		this.logs = new LogsHelper(meta.logs.queryEndpoint);
