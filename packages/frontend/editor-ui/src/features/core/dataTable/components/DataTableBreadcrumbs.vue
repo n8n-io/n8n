@@ -118,7 +118,6 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:max-length="30"
 					:read-only="false"
 					:disabled="false"
 					@update:model-value="onNameSubmit"

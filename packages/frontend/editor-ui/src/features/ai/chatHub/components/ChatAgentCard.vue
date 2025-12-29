@@ -3,8 +3,9 @@ import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
-import { N8nActionDropdown, N8nBadge, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
 
 const { agent } = defineProps<{
@@ -16,16 +17,21 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
+const i18n = useI18n();
+
 type MenuAction = 'edit' | 'delete';
 
 const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
-	return [
-		{ id: 'edit' as const, label: 'Edit' },
-		...(agent.model.provider === 'custom-agent'
-			? [{ id: 'delete' as const, label: 'Delete' }]
-			: []),
-	];
+	return agent.model.provider === 'custom-agent'
+		? [{ id: 'delete' as const, label: i18n.baseText('chatHub.agent.card.menu.delete') }]
+		: [];
 });
+
+const canEdit = computed(
+	() =>
+		agent.model.provider === 'custom-agent' ||
+		(agent.model.provider === 'n8n' && agent.metadata.scopes?.includes('workflow:read')),
+);
 
 function handleSelectMenu(action: MenuAction) {
 	switch (action) {
@@ -39,7 +45,7 @@ function handleSelectMenu(action: MenuAction) {
 </script>
 
 <template>
-	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card">
+	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card" data-test-id="chat-agent-card">
 		<ChatAgentAvatar :agent="agent" size="lg" />
 
 		<div :class="$style.content">
@@ -47,23 +53,21 @@ function handleSelectMenu(action: MenuAction) {
 				{{ agent.name }}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.description">
-				{{ agent.description || 'No description' }}
+				{{ agent.description || i18n.baseText('chatHub.agent.card.noDescription') }}
 			</N8nText>
 		</div>
 
-		<N8nBadge theme="tertiary" show-border :class="$style.badge">
-			{{ agent.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
-		</N8nBadge>
-
 		<div :class="$style.actions">
 			<N8nIconButton
+				v-if="canEdit"
 				icon="pen"
 				type="tertiary"
 				size="medium"
-				title="Edit"
+				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
 			/>
 			<N8nActionDropdown
+				v-if="menuItems.length > 0"
 				:items="menuItems"
 				placement="bottom-end"
 				@select="handleSelectMenu"
@@ -74,7 +78,7 @@ function handleSelectMenu(action: MenuAction) {
 						icon="ellipsis-vertical"
 						type="tertiary"
 						size="medium"
-						title="More options"
+						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
 						text
 						:class="$style.actionDropdownTrigger"
 					/>

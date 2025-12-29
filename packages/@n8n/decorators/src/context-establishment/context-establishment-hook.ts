@@ -2,9 +2,9 @@ import type { Constructable } from '@n8n/di';
 import type {
 	INode,
 	INodeExecutionData,
-	PlaintextExecutionContext,
-	IWorkflowBase,
 	INodeProperties,
+	PlaintextExecutionContext,
+	Workflow,
 } from 'n8n-workflow';
 
 /**
@@ -22,7 +22,7 @@ export type ContextEstablishmentOptions = {
 	triggerNode: INode;
 
 	/** The complete workflow definition */
-	workflow: IWorkflowBase;
+	workflow: Workflow;
 
 	/**
 	 * Trigger items from the workflow execution start.
@@ -30,7 +30,7 @@ export type ContextEstablishmentOptions = {
 	 * Hooks can extract data from these items and optionally modify them
 	 * (e.g., removing sensitive headers before storage).
 	 */
-	triggerItems: INodeExecutionData[];
+	triggerItems: INodeExecutionData[] | null;
 
 	/**
 	 * The plaintext execution context built so far.
@@ -265,7 +265,7 @@ export interface IContextEstablishmentHook {
 	 *
 	 * **Implementation requirements:**
 	 * 1. Extract relevant data from trigger items (headers, body, query params, etc.)
-	 * 2. Optionally modify trigger items to remove sensitive data
+	 * 2. Optionally modify trigger items to remove sensitive data, if these are not provided in the response they are not modified
 	 * 3. Return partial context updates to merge into execution context
 	 * 4. Throw errors for unrecoverable failures (stops workflow execution)
 	 *

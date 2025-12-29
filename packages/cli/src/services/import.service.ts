@@ -7,6 +7,7 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager } from '@n8n/typeorm';
@@ -56,6 +57,7 @@ export class ImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async initRecords() {
@@ -88,6 +90,13 @@ export class ImportService {
 		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
 				if (workflow.active || workflow.activeVersionId) {
+					await this.workflowPublishHistoryRepository.addRecord({
+						workflowId: workflow.id,
+						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
+						event: 'deactivated',
+						userId: null,
+					});
+
 					workflow.active = false;
 					workflow.activeVersionId = null;
 

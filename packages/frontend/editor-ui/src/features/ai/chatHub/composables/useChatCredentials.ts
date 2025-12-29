@@ -1,6 +1,5 @@
 import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -81,14 +80,20 @@ export function useChatCredentials(userId: string) {
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
 		isCredentialsReady.value
-			? {
-					...autoSelectCredentials.value,
-					...selectedCredentials.value,
-				}
+			? chatHubProviderSchema.options.reduce<CredentialsMap>((acc, provider) => {
+					const cred = selectedCredentials.value[provider] ?? null;
+
+					acc[provider] =
+						cred && credentialsStore.allCredentials.some((c) => c.id === cred)
+							? cred
+							: autoSelectCredentials.value[provider];
+
+					return acc;
+				}, {})
 			: null,
 	);
 
-	function selectCredential(provider: ChatHubProvider, id: string) {
+	function selectCredential(provider: ChatHubProvider, id: string | null) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 
@@ -96,16 +101,9 @@ export function useChatCredentials(userId: string) {
 		() => projectStore.personalProject,
 		async (personalProject) => {
 			if (personalProject) {
-				const hasGlobalCredentialRead = hasPermission(['rbac'], {
-					rbac: { scope: 'credential:read' },
-				});
-
 				await Promise.all([
 					credentialsStore.fetchCredentialTypes(false),
-					// For non-owner users only fetch credentials from personal project.
-					hasGlobalCredentialRead
-						? credentialsStore.fetchAllCredentials()
-						: credentialsStore.fetchAllCredentials(personalProject.id),
+					credentialsStore.fetchAllCredentialsForWorkflow({ projectId: personalProject.id }),
 				]);
 
 				isInitialized.value = true;

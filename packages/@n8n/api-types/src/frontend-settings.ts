@@ -91,12 +91,11 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
-	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
 		secure: boolean;
 	};
 	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
-	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
+	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;

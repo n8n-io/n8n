@@ -58,6 +58,16 @@ const ExecutionContextSchemaV1 = z.object({
 	source: WorkflowExecuteModeSchema,
 
 	/**
+	 * Optional node where execution started
+	 */
+	triggerNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+		})
+		.optional(),
+
+	/**
 	 * Optional ID of the parent execution, if this is set this
 	 * execution context inherited from the mentioned parent execution context.
 	 */
@@ -137,7 +147,7 @@ export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> &
 	credentials?: ICredentialContext;
 };
 
-const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
+export const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
 	const typeName = schema.meta()?.title ?? 'Object';
 	try {
 		const normalizedObject = typeof value === 'string' ? jsonParse(value) : value;

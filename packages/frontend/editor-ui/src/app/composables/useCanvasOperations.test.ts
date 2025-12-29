@@ -37,7 +37,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	AGENT_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -63,6 +65,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 
 const mockRoute = reactive({
 	query: {},
+	params: {},
 });
 
 const mockRouterReplace = vi.fn();
@@ -2873,6 +2876,134 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
+
+		it('should remove connections if the input port index is no longer valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 },
+				],
+			});
+		});
+
+		it('should keep connections if the input port index is still valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [
+					NodeConnectionTypes.Main,
+					NodeConnectionTypes.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
+				],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((type) => {
+				if (type === AGENT_NODE_TYPE) return targetNodeType;
+				if (type === OPEN_AI_CHAT_MODEL_NODE_TYPE) return sourceNodeType;
+				return undefined;
+			});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('revalidateNodeOutputConnections', () => {
@@ -3252,7 +3383,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('initializeWorkspace', () => {
-		it('should initialize the workspace', () => {
+		it('should initialize the workspace', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const workflow = createTestWorkflow({
 				nodes: [createTestNode()],
@@ -3260,13 +3391,13 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflowsStore.setNodes).toHaveBeenCalled();
 			expect(workflowsStore.setConnections).toHaveBeenCalled();
 		});
 
-		it('should initialize node data from node type description', () => {
+		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
 			const version = 1;
@@ -3291,7 +3422,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflow.nodes[0].parameters).toEqual({ value: true });
 		});
@@ -3984,6 +4115,63 @@ describe('useCanvasOperations', () => {
 				newName: 'Test Workflow Name',
 				setStateDirty: true,
 			});
+		});
+
+		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
+			const toast = useToast();
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+
+			// Create a node type with maxNodes: 1
+			const executeWorkflowTriggerNodeType = mockNodeTypeDescription({
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				maxNodes: 1,
+			});
+
+			nodeTypesStore.nodeTypes = {
+				[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: { 1: executeWorkflowTriggerNodeType },
+			};
+
+			// Create workflow data with two nodes of the same type (that has maxNodes: 1)
+			const nodesToImport = [
+				{
+					id: 'import-1',
+					name: 'Execute Workflow Trigger 1',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [200, 200] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'import-2',
+					name: 'Execute Workflow Trigger 2',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [300, 300] as [number, number],
+					parameters: {},
+				},
+			];
+
+			const workflowDataToImport = {
+				nodes: nodesToImport,
+				connections: {},
+				pinData: {
+					'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+					'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+				},
+			};
+
+			// Mock createWorkflowObject to return a workflow with no nodes (since none can be created due to maxNodes limit)
+			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+
+			// This should not throw even when nodes can't be added due to maxNodes limit
+			await expect(
+				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
+			).resolves.not.toThrow();
+			expect(toast.showError).not.toHaveBeenCalled();
 		});
 	});
 

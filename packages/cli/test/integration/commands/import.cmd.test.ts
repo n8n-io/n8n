@@ -5,6 +5,7 @@ import {
 	getAllSharedWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
+import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
@@ -17,6 +18,7 @@ import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(ActiveWorkflowManager);
+mockInstance(WorkflowPublishHistoryRepository);
 
 const command = setupTestCommand(ImportWorkflowsCommand);
 

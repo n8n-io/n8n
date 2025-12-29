@@ -6,12 +6,9 @@ import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+
 import type { PermissionsRecord } from '@n8n/permissions';
-import {
-	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/app/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi } from '@/Interface';
@@ -70,23 +67,9 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
-const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
-	const foundActiveTriggers = workflowsStore.workflowTriggerNodes.filter(
-		(trigger) => !trigger.disabled,
-	);
-	const foundTriggers = foundActiveTriggers.filter(
-		(trigger) => trigger.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	);
-
-	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
+const isNewWorkflow = computed(() => {
+	return !workflowsStore.isWorkflowSaved[props.workflowId];
 });
-
-const isNewWorkflow = computed(
-	() =>
-		!props.workflowId ||
-		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflowId === 'new',
-);
 
 const disabled = computed((): boolean => {
 	if (props.isArchived) {
@@ -227,9 +210,7 @@ watch(
 						i18n.baseText(
 							isArchived
 								? 'workflowActivator.thisWorkflowIsArchived'
-								: containsOnlyExecuteWorkflowTrigger
-									? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
-									: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
 						)
 					}}
 				</div>
@@ -245,7 +226,7 @@ watch(
 				:disabled="
 					disabled ||
 					workflowActivate.updatingWorkflowActivation.value ||
-					(!isNewWorkflow && !workflowPermissions.update)
+					(!isNewWorkflow && !workflowPermissions.publish)
 				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"

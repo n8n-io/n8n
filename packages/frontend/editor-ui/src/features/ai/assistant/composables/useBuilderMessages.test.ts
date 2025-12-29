@@ -10,6 +10,11 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+// Mock generateShortId to return a predictable value for testing
+vi.mock('../builder.utils', () => ({
+	generateShortId: () => 'abc123',
+}));
+
 describe('useBuilderMessages', () => {
 	let builderMessages: ReturnType<typeof useBuilderMessages>;
 
@@ -36,7 +41,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				role: 'assistant',
 				type: 'text',
 				content: 'Hello, how can I help?',
@@ -72,7 +77,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages).toHaveLength(1);
 			const toolMessage = result.messages[0] as ChatUI.ToolMessage;
 			expect(toolMessage).toMatchObject({
-				id: 'call-123', // Should use toolCallId as ID
+				id: 'test-id--abc123--0-call-123', // Format is messageId-toolCallId
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'add_nodes',
@@ -164,7 +169,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0', // Should fall back to generated ID
+				id: 'test-id--abc123--0-undefined', // Format is messageId-toolCallId (undefined when missing)
 				type: 'tool',
 				toolName: 'some_tool',
 			});
@@ -224,7 +229,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				type: 'workflow-updated',
 				codeSnippet: '{"nodes": [], "connections": {}}',
 				read: false,
@@ -262,11 +267,11 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(3);
 			expect(result.messages[0].type).toBe('text');
-			expect(result.messages[0].id).toBe('batch-id-0');
+			expect(result.messages[0].id).toBe('batch-id--abc123--0');
 			expect(result.messages[1].type).toBe('tool');
-			expect(result.messages[1].id).toBe('call-123'); // Uses toolCallId
+			expect(result.messages[1].id).toBe('batch-id--abc123--1-call-123'); // Format is messageId-toolCallId
 			expect(result.messages[2].type).toBe('workflow-updated');
-			expect(result.messages[2].id).toBe('batch-id-2');
+			expect(result.messages[2].id).toBe('batch-id--abc123--2');
 		});
 
 		it('should show tool name when tool is in progress with displayTitle', () => {
@@ -988,7 +993,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0].id).toBe('test-id-0');
+			expect(result.messages[0].id).toBe('test-id--abc123--0-undefined'); // Format is messageId-toolCallId (undefined when missing)
 		});
 
 		it('should handle workflow-updated messages with invalid JSON', () => {
@@ -1526,7 +1531,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages).toHaveLength(1);
 			const errorMessage = result.messages[0] as ChatUI.ErrorMessage;
 			expect(errorMessage).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				role: 'assistant',
 				type: 'error',
 				content: 'Something went wrong',

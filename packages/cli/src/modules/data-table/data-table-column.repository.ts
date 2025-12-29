@@ -24,47 +24,58 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		super(DataTableColumn, dataSource.manager);
 	}
 
-	async getColumns(dataTableId: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				const columns = await em
-					.createQueryBuilder(DataTableColumn, 'dsc')
-					.where('dsc.dataTableId = :dataTableId', { dataTableId })
-					.getMany();
+	/**
+	 * Validates that a column name is not reserved as a system column
+	 */
+	private validateNotSystemColumn(columnName: string): void {
+		if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+			throw new DataTableSystemColumnNameConflictError(columnName);
+		}
+		if (columnName === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+			throw new DataTableSystemColumnNameConflictError(columnName, 'testing');
+		}
+	}
 
-				// Ensure columns are always returned in the correct order by index,
-				// since the database does not guarantee ordering and TypeORM does not preserve
-				// join order in @OneToMany relations.
-				columns.sort((a, b) => a.index - b.index);
-				return columns;
-			},
-			false,
-		);
+	/**
+	 * Validates that a column name is unique within a data table
+	 */
+	private async validateUniqueColumnName(
+		columnName: string,
+		dataTableId: string,
+		em: EntityManager,
+	): Promise<void> {
+		const existingColumnMatch = await em.existsBy(DataTableColumn, {
+			name: columnName,
+			dataTableId,
+		});
+
+		if (existingColumnMatch) {
+			const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
+			if (!dataTable) {
+				throw new UnexpectedError('Data table not found');
+			}
+			throw new DataTableColumnNameConflictError(columnName, dataTable.name);
+		}
+	}
+
+	async getColumns(dataTableId: string, trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		const columns = await em
+			.createQueryBuilder(DataTableColumn, 'dsc')
+			.where('dsc.dataTableId = :dataTableId', { dataTableId })
+			.getMany();
+
+		// Ensure columns are always returned in the correct order by index,
+		// since the database does not guarantee ordering and TypeORM does not preserve
+		// join order in @OneToMany relations.
+		columns.sort((a, b) => a.index - b.index);
+		return columns;
 	}
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			if (DATA_TABLE_SYSTEM_COLUMNS.includes(schema.name)) {
-				throw new DataTableSystemColumnNameConflictError(schema.name);
-			}
-			if (schema.name === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
-				throw new DataTableSystemColumnNameConflictError(schema.name, 'testing');
-			}
-
-			const existingColumnMatch = await em.existsBy(DataTableColumn, {
-				name: schema.name,
-				dataTableId,
-			});
-
-			if (existingColumnMatch) {
-				const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
-				if (!dataTable) {
-					throw new UnexpectedError('Data table not found');
-				}
-				throw new DataTableColumnNameConflictError(schema.name, dataTable.name);
-			}
+			this.validateNotSystemColumn(schema.name);
+			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
 			if (schema.index === undefined) {
 				const columns = await this.getColumns(dataTableId, em);
@@ -122,6 +133,32 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			await this.shiftColumns(dataTableId, column.index, -1, em);
 			await this.shiftColumns(dataTableId, targetIndex, 1, em);
 			await em.update(DataTableColumn, { id: column.id }, { index: targetIndex });
+		});
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		column: DataTableColumn,
+		newName: string,
+		trx?: EntityManager,
+	) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			this.validateNotSystemColumn(newName);
+			await this.validateUniqueColumnName(newName, dataTableId, em);
+
+			const oldName = column.name;
+
+			await em.update(DataTableColumn, { id: column.id }, { name: newName });
+
+			await this.ddlService.renameColumn(
+				dataTableId,
+				oldName,
+				newName,
+				em.connection.options.type,
+				em,
+			);
+
+			return { ...column, name: newName };
 		});
 	}
 

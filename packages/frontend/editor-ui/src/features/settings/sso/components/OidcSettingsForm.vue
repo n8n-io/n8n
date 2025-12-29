@@ -9,21 +9,18 @@ import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import UserRoleProvisioningDropdown, {
-	type UserRoleProvisioningSetting,
-} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
 
@@ -32,10 +29,13 @@ const clientId = ref('');
 const clientSecret = ref('');
 
 const showUserRoleProvisioningDialog = ref(false);
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
-	useUserRoleProvisioningForm(userRoleProvisioning);
+const {
+	formValue: userRoleProvisioning,
+	isUserRoleProvisioningChanged,
+	saveProvisioningConfig,
+	shouldPromptUserToConfirmUserRoleProvisioningChange,
+} = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
@@ -100,14 +100,27 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 		ssoStore.oidcConfig?.prompt === prompt.value &&
-		!isUserRoleProvisioningChanged() &&
+		!isUserRoleProvisioningChanged.value &&
 		storedAcrString === authenticationContextClassReference.value &&
 		currentAcrString === storedAcrString
 	);
 });
 
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
+	if (
+		!provisioningChangesConfirmed &&
+		shouldPromptUserToConfirmUserRoleProvisioningChange({
+			currentLoginEnabled: !!ssoStore.oidcConfig?.loginEnabled,
+			loginEnabledFormValue: ssoStore.isOidcLoginEnabled,
+		})
+	) {
+		showUserRoleProvisioningDialog.value = true;
+		return;
+	}
+
+	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
+	const isDisablingOidcLogin = isLoginEnabledChanged && ssoStore.oidcConfig?.loginEnabled === true;
+	if (isDisablingOidcLogin) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
 				interpolate: { protocol: 'OIDC' },
@@ -127,11 +140,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
-	if (isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
-		showUserRoleProvisioningDialog.value = true;
-		return;
-	}
-
 	const acrArray = authenticationContextClassReference.value
 		.split(',')
 		.map((s) => s.trim())
@@ -147,12 +155,9 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 		});
+		await saveProvisioningConfig(isDisablingOidcLogin);
 
-		if (isUserRoleProvisioningChanged()) {
-			await saveProvisioningConfig();
-			sendTrackingEventForUserProvisioning();
-			showUserRoleProvisioningDialog.value = false;
-		}
+		showUserRoleProvisioningDialog.value = false;
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
@@ -171,20 +176,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 function sendTrackingEvent(config: OidcConfigDto) {
 	const trackingMetadata = {
-		instance_id: instanceId,
+		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.OIDC,
 		discovery_endpoint: config.discoveryEndpoint,
 		is_active: config.loginEnabled,
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
-}
-
-function sendTrackingEventForUserProvisioning() {
-	telemetry.track('User updated provisioning settings', {
-		instance_id: instanceId,
-		authentication_method: SupportedProtocols.OIDC,
-		updated_setting: userRoleProvisioning.value,
-	});
 }
 
 onMounted(async () => {

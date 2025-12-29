@@ -1,0 +1,54 @@
+# Poutine Security Scanner Configuration
+# https://github.com/boostsecurityio/poutine
+#
+# This file defines skip rules for known-safe patterns.
+# Add new entries only after security review.
+
+skip:
+  # === SELF-HOSTED RUNNERS ===
+  # We use Blacksmith (trusted CI provider) for self-hosted runners.
+  # The ubuntu-slim runner is also a trusted provider.
+  - rule: pr_runs_on_self_hosted
+
+  # === UNVERIFIED ACTIONS ===
+  # Third-party actions from non-verified GitHub Marketplace creators.
+  # These have been reviewed and approved for use.
+  # Add new actions here only after security review.
+  - rule: github_action_from_unverified_creator_used
+    purl:
+      - pkg:githubactions/act10ns/slack
+      - pkg:githubactions/anthropics/claude-code-action
+      - pkg:githubactions/astral-sh/setup-uv
+      - pkg:githubactions/chromaui/action
+      - pkg:githubactions/dorny/paths-filter
+      - pkg:githubactions/extractions/setup-just
+      - pkg:githubactions/fjogeleit/http-request-action
+      - pkg:githubactions/isbang/compose-action
+      - pkg:githubactions/lironer/bundlemon-action
+      - pkg:githubactions/ncipollo/release-action
+      - pkg:githubactions/peter-evans/create-or-update-comment
+      - pkg:githubactions/peter-evans/create-pull-request
+      - pkg:githubactions/pnpm/action-setup
+      - pkg:githubactions/rharkor/caching-for-turbo
+      - pkg:githubactions/tomi/paths-filter-action
+      - pkg:githubactions/useblacksmith/setup-docker-builder
+
+  # === TEMPORARY SKIPS ===
+  # These findings need to be addressed in a follow-up ticket.
+  # Do not add new entries to this section.
+
+  # TODO: Fix injection vulnerability - use environment variable instead of
+  # direct interpolation of github.event.inputs.dataset
+  - rule: injection
+    path:
+      - .github/workflows/ci-evals.yml
+
+  # TODO: Review untrusted checkout execution patterns.
+  # These workflows run local actions or package managers after checking out
+  # untrusted PR code, which is a potential security risk.
+  - rule: untrusted_checkout_exec
+    path:
+      - .github/workflows/sbom-generation-callable.yml
+      - .github/workflows/linting-reusable.yml
+      - .github/workflows/test-workflows-callable.yml
+      - .github/workflows/units-tests-reusable.yml

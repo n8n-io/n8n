@@ -1,6 +1,8 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -25,9 +27,11 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
 		jest.clearAllMocks();
 	});
 
@@ -222,6 +226,9 @@ describe('WorkflowsController', () => {
 					throw new BadRequestError('Stopping execution for test');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -229,6 +236,7 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert
@@ -278,6 +286,9 @@ describe('WorkflowsController', () => {
 					throw new Error('User does not have access');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -285,6 +296,7 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert

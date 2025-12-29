@@ -11,7 +11,7 @@ import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 import { useStyles } from '@/app/composables/useStyles';
 
-import { N8nPopoverReka, N8nText } from '@n8n/design-system';
+import { N8nPopover, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
 	unresolvedExpression?: string;
@@ -45,7 +45,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka
+	<N8nPopover
 		:open="visible"
 		side="bottom"
 		:side-flip="false"
@@ -85,7 +85,7 @@ defineExpose({
 				</div>
 			</div>
 		</template>
-	</N8nPopoverReka>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

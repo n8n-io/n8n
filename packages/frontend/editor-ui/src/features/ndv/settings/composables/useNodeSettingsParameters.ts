@@ -172,10 +172,15 @@ export function useNodeSettingsParameters() {
 		path: string | undefined = '',
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	): boolean {
+		// Fast path: hidden parameters are never displayed
 		if (parameter.type === 'hidden') {
 			return false;
 		}
 
+		// Fast path: if no display/disabled options defined, no need for further checks
+		const hasDisplayOptions = parameter[displayKey] !== undefined;
+
+		// Check custom API call - only compute if needed
 		if (
 			nodeHelpers.isCustomApiCallSelected(nodeParameters) &&
 			mustHideDuringCustomApiCall(parameter, nodeParameters)
@@ -183,98 +188,187 @@ export function useNodeSettingsParameters() {
 			return false;
 		}
 
-		const nodeType = !node ? null : nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		// Cache node type lookup - used multiple times
+		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
+		const nodeTypeValue = node?.type ?? '';
 
-		// TODO: For now, hide all fields that are used in authentication fields displayOptions
-		// Ideally, we should check if any non-auth field depends on it before hiding it but
-		// since there is no such case, omitting it to avoid additional computation
-		const shouldHideAuthRelatedParameter = isAuthRelatedParameter(
-			getNodeAuthFields(nodeType),
-			parameter,
-		);
+		// Auth-related parameter handling - only compute if not in KEEP_AUTH_IN_NDV_FOR_NODES
+		if (!KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeTypeValue)) {
+			const mainNodeAuthField = getMainAuthField(nodeType);
 
-		const mainNodeAuthField = getMainAuthField(nodeType);
+			if (mainNodeAuthField) {
+				// Check if parameter is the main auth field itself
+				if (parameter.name === mainNodeAuthField.name) {
+					return false;
+				}
 
-		// Hide authentication related fields since it will now be part of credentials modal
-		if (
-			!KEEP_AUTH_IN_NDV_FOR_NODES.includes(node?.type ?? '') &&
-			mainNodeAuthField &&
-			(parameter.name === mainNodeAuthField.name || shouldHideAuthRelatedParameter)
-		) {
-			return false;
+				// Only compute auth fields if we have a main auth field
+				// TODO: For now, hide all fields that are used in authentication fields displayOptions
+				// Ideally, we should check if any non-auth field depends on it before hiding it but
+				// since there is no such case, omitting it to avoid additional computation
+				if (isAuthRelatedParameter(getNodeAuthFields(nodeType), parameter)) {
+					return false;
+				}
+			}
 		}
 
 		// Hide chat hub toggle on chat trigger when module isn't enabled.
 		// Remove this check when feature is generally available.
-		if (nodeType?.name === CHAT_TRIGGER_NODE_TYPE && parameter.name === 'availableInChat') {
-			if (!settingsStore.isChatFeatureEnabled) {
-				return false;
-			}
+		if (
+			nodeType?.name === CHAT_TRIGGER_NODE_TYPE &&
+			parameter.name === 'availableInChat' &&
+			!settingsStore.isChatFeatureEnabled
+		) {
+			return false;
 		}
 
-		if (parameter[displayKey] === undefined) {
-			// If it is not defined no need to do a proper check
+		// Fast path: no display options means parameter should be displayed
+		if (!hasDisplayOptions) {
 			return true;
 		}
 
-		const nodeParams: INodeParameters = {};
-		let rawValues = nodeParameters;
-		if (path) {
-			rawValues = get(nodeParameters, path) as INodeParameters;
-		}
+		// Get raw values at path
+		const rawValues = path ? (get(nodeParameters, path) as INodeParameters) : nodeParameters;
 
 		if (!rawValues) {
 			return false;
 		}
-		// Resolve expressions
-		const resolveKeys = Object.keys(rawValues);
-		let key: string;
-		let i = 0;
-		let parameterGotResolved = false;
-		do {
-			key = resolveKeys.shift() as string;
-			const value = rawValues[key];
-			if (typeof value === 'string' && value?.charAt(0) === '=') {
-				// Contains an expression that
-				if (
-					value.includes('$parameter') &&
-					resolveKeys.some((parameterName) => value.includes(parameterName))
-				) {
-					// Contains probably an expression of a missing parameter so skip
-					resolveKeys.push(key);
-					continue;
-				} else {
-					// Contains probably no expression with a missing parameter so resolve
-					try {
-						nodeParams[key] = workflowHelpers.resolveExpression(
-							value,
-							nodeParams,
-						) as NodeParameterValue;
-					} catch {
-						// If expression is invalid ignore
-						nodeParams[key] = '';
-					}
-					parameterGotResolved = true;
-				}
-			} else {
-				// Does not contain an expression, add directly
-				nodeParams[key] = rawValues[key];
-			}
-			// TODO: Think about how to calculate this best
-			if (i++ > 50) {
-				// Make sure we do not get caught
+
+		// Check if any expressions need resolution
+		const keys = Object.keys(rawValues);
+		const keyCount = keys.length;
+
+		// Fast path: no keys means nothing to resolve
+		if (keyCount === 0) {
+			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+		}
+
+		// Check if we have any expressions to resolve (scan first to avoid unnecessary work)
+		let hasExpressions = false;
+		for (let i = 0; i < keyCount; i++) {
+			const value = rawValues[keys[i]];
+			if (typeof value === 'string' && value.charAt(0) === '=') {
+				hasExpressions = true;
 				break;
 			}
-		} while (resolveKeys.length !== 0);
+		}
+
+		// Fast path: no expressions means we can use original parameters directly
+		if (!hasExpressions) {
+			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+		}
+
+		// Resolve expressions - use index-based iteration for better performance
+		const nodeParams: INodeParameters = {};
+		const pendingKeys: string[] = [];
+		let parameterGotResolved = false;
+
+		// First pass: resolve non-dependent expressions and collect plain values
+		for (let i = 0; i < keyCount; i++) {
+			const key = keys[i];
+			const value = rawValues[key];
+
+			if (typeof value === 'string' && value.charCodeAt(0) === 61) {
+				// 61 is '='
+				// Check if expression depends on other parameters that haven't been resolved yet
+				if (value.includes('$parameter')) {
+					// Check if any remaining key is referenced in this expression
+					let hasDependency = false;
+					for (let j = i + 1; j < keyCount; j++) {
+						if (value.includes(keys[j])) {
+							hasDependency = true;
+							break;
+						}
+					}
+					// Also check already-deferred keys in pendingKeys
+					if (!hasDependency) {
+						for (let j = 0; j < pendingKeys.length; j++) {
+							if (value.includes(pendingKeys[j])) {
+								hasDependency = true;
+								break;
+							}
+						}
+					}
+					if (hasDependency) {
+						pendingKeys.push(key);
+						continue;
+					}
+				}
+
+				// Resolve expression
+				try {
+					nodeParams[key] = workflowHelpers.resolveExpression(
+						value,
+						nodeParams,
+					) as NodeParameterValue;
+				} catch {
+					nodeParams[key] = '';
+				}
+				parameterGotResolved = true;
+			} else {
+				nodeParams[key] = rawValues[key];
+			}
+		}
+
+		// Second pass: resolve pending expressions (those with dependencies)
+		// Use index-based iteration to avoid shift() which is O(n)
+		const maxIterations = pendingKeys.length * 2; // Safety limit
+		let iterations = 0;
+		let pendingIndex = 0;
+		while (pendingIndex < pendingKeys.length && iterations < maxIterations) {
+			iterations++;
+			const key = pendingKeys[pendingIndex];
+			const value = rawValues[key] as string;
+
+			// Check if dependencies are now resolved (only check remaining items)
+			let hasDependency = false;
+			for (let j = pendingIndex + 1; j < pendingKeys.length; j++) {
+				if (value.includes(pendingKeys[j])) {
+					hasDependency = true;
+					break;
+				}
+			}
+
+			if (hasDependency) {
+				// Move to next, will revisit this key in remaining unresolved keys
+				pendingKeys.push(key);
+				pendingIndex++;
+				continue;
+			}
+
+			try {
+				nodeParams[key] = workflowHelpers.resolveExpression(
+					value,
+					nodeParams,
+				) as NodeParameterValue;
+			} catch {
+				nodeParams[key] = '';
+			}
+			parameterGotResolved = true;
+			pendingIndex++;
+		}
+
+		// Handle any remaining unresolved keys (circular dependencies or safety limit)
+		for (let i = pendingIndex; i < pendingKeys.length; i++) {
+			const key = pendingKeys[i];
+			try {
+				nodeParams[key] = workflowHelpers.resolveExpression(
+					rawValues[key] as string,
+					nodeParams,
+				) as NodeParameterValue;
+			} catch {
+				nodeParams[key] = '';
+			}
+			parameterGotResolved = true;
+		}
 
 		if (parameterGotResolved) {
 			if (path) {
-				rawValues = deepCopy(nodeParameters);
-				set(rawValues, path, nodeParams);
-				return nodeHelpers.displayParameter(rawValues, parameter, path, node, displayKey);
-			} else {
-				return nodeHelpers.displayParameter(nodeParams, parameter, '', node, displayKey);
+				const resolvedValues = deepCopy(nodeParameters);
+				set(resolvedValues, path, nodeParams);
+				return nodeHelpers.displayParameter(resolvedValues, parameter, path, node, displayKey);
 			}
+			return nodeHelpers.displayParameter(nodeParams, parameter, '', node, displayKey);
 		}
 
 		return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);

@@ -30,6 +30,15 @@ describe('Test MicrosoftOneDrive, file > download', () => {
 	const httpRequest = jest.fn(async () => ({ body: mock<IncomingMessage>() }));
 	const prepareBinaryData = jest.fn(async () => ({ data: 'testBinary' }));
 
+	const mockNode = {
+		id: 'test-node-id',
+		name: 'Microsoft OneDrive Test',
+		type: 'n8n-nodes-base.microsoftOneDrive',
+		typeVersion: 1.1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		microsoftOneDrive = new MicrosoftOneDrive();
@@ -40,6 +49,8 @@ describe('Test MicrosoftOneDrive, file > download', () => {
 			returnJsonArray: jest.fn((data) => [data]),
 			constructExecutionMetaData: jest.fn((data) => data),
 		} as any;
+
+		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 	});
 
 	afterEach(() => {

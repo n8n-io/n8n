@@ -19,12 +19,19 @@ interface Props {
 	formatIssueMessage: (value: WorkflowNodeIssue['value']) => string;
 }
 
+interface Emits {
+	click: [];
+}
+
 const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 const ndvStore = useNDVStore();
 
 function handleEditClick() {
 	ndvStore.setActiveNodeName(props.issue.node, 'other');
+
+	emit('click');
 }
 </script>
 
@@ -52,8 +59,8 @@ function handleEditClick() {
 			{{ formatIssueMessage(issue.value) }}
 		</div>
 
-		<!-- Edit button -->
-		<N8nIcon size="large" icon="pencil" />
+		<!-- Navigate chevron -->
+		<N8nIcon :class="$style.chevron" icon="chevron-right" />
 	</li>
 </template>
 
@@ -62,28 +69,17 @@ function handleEditClick() {
 	list-style: none;
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--3xs) 0;
-	border-bottom: 1px solid var(--color--foreground--tint-1);
+	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
 
 	&:hover {
 		color: var(--color--primary);
 	}
-
-	&:first-child {
-		padding-top: 0;
-	}
-
-	&:last-child {
-		border-bottom: none;
-	}
 }
 
 .nodeIcon {
 	margin-right: var(--spacing--2xs);
-	margin-top: var(--spacing--4xs);
 	flex-shrink: 0;
-	align-self: flex-start;
 }
 
 .nodeName {
@@ -97,10 +93,10 @@ function handleEditClick() {
 	line-height: var(--line-height--md);
 }
 
-.editButton {
-	--button--border-color: transparent;
-	margin-left: auto;
+.chevron {
+	width: 16px;
+	height: 16px;
 	flex-shrink: 0;
-	align-self: center;
+	color: var(--color--text);
 }
 </style>

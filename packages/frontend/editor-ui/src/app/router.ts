@@ -6,6 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import { nanoid } from 'nanoid';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -21,6 +22,9 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -50,6 +54,7 @@ const SettingsPersonalView = async () =>
 	await import('@/features/core/auth/views/SettingsPersonalView.vue');
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
+const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -209,6 +214,17 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			middleware: ['authenticated'],
+		},
+		beforeEnter: (to, _from, next) => {
+			const posthogStore = usePostHog();
+			if (
+				posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) ===
+				TEMPLATE_SETUP_EXPERIENCE.variant
+			) {
+				next({ name: VIEWS.TEMPLATE_IMPORT, params: { id: to.params.id } });
+			} else {
+				next();
+			}
 		},
 	},
 	{
@@ -386,6 +402,16 @@ export const routes: RouteRecordRaw[] = [
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
+		},
+		beforeEnter: (to) => {
+			// Generate a unique workflow ID using nanoid and redirect to it
+			// Preserve existing query params (e.g., templateId, projectId) and add new=true
+			const newWorkflowId = nanoid();
+			return {
+				name: VIEWS.WORKFLOW,
+				params: { name: newWorkflowId },
+				query: { ...to.query, new: 'true' },
+			};
 		},
 	},
 	{
@@ -628,6 +654,30 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'resolvers',
+				name: VIEWS.RESOLVERS,
+				components: {
+					settingsView: SettingsResolversView,
+				},
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('DYNAMIC_CREDENTIALS');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'project-roles',
 				components: {
 					settingsView: RouterView,
@@ -673,7 +723,12 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['apiKey:manage'],
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {

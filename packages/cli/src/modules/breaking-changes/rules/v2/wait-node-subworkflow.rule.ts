@@ -1,19 +1,33 @@
-import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
+import type {
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeRecommendation,
+	BreakingChangeWorkflowIssue,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import type {
+	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,
-	IBreakingChangeWorkflowRule,
-	WorkflowDetectionReport,
+	IBreakingChangeBatchWorkflowRule,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
+interface ParentWorkflowInfo {
+	parentWorkflowId: string;
+	executeWorkflowNode: INode;
+	calledWorkflowId?: string;
+}
+
 @Service()
-export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
+export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule {
 	id: string = 'wait-node-subworkflow-v2';
+
+	// Internal state for batch processing
+	private subWorkflowsWithWaitingNodes: Map<string, string> = new Map(); // workflowId -> workflowName
+	private parentWorkflowsCalling: ParentWorkflowInfo[] = [];
 
 	// Configuration for node types and their waiting conditions
 	private readonly waitingNodeConfig: Array<{ nodeTypes: string[]; operation?: string }> = [
@@ -51,13 +65,13 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
-			title: 'Waiting node behavior change in sub-workflows',
+			title: 'Sub-workflow waiting node output behavior change',
 			description:
-				'Waiting nodes (Wait, Form, and HITL nodes) in sub-workflows now return data from the last node instead of the node before the waiting node',
+				'Parent workflows calling sub-workflows with waiting nodes (Wait, Form, HITL) now receive correct data. Previously, incorrect results were returned when the sub-workflow entered a waiting state.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-it-contains-a-wait-node',
+				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-the-sub-workflow-resumes-from-waiting-waiting-for-webhook-forms-hitl-etc',
 		};
 	}
 
@@ -66,80 +80,161 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Review sub-workflow output handling',
+				action: 'Review Execute Workflow node outputs',
 				description:
-					'Check workflows that use Execute Workflow node to call sub-workflows containing waiting nodes (Wait, Form, or HITL nodes). The output data structure may have changed.',
+					'Check the Execute Workflow nodes flagged above. If your workflow logic depends on the specific data returned from sub-workflows containing waiting nodes, verify the data structure is correct.',
 			},
 			{
-				action: 'Update downstream logic',
+				action: 'Test affected parent workflows',
 				description:
-					'Adjust any logic in parent workflows that depends on the data returned from sub-workflows with waiting nodes, as it now returns the last node data instead of the node before the waiting node.',
-			},
-			{
-				action: 'Test affected workflows',
-				description:
-					'Test all workflows with Execute Workflow nodes calling sub-workflows that contain waiting nodes to ensure the new behavior works as expected.',
+					'Run the affected parent workflows to verify the data returned from sub-workflows with waiting nodes is now correct and matches your expectations.',
 			},
 		];
 	}
 
-	private hasWaitingOperation(node: INode, requiredOperation: string): boolean {
-		const operation = node.parameters.operation;
-		return operation === requiredOperation;
+	reset(): void {
+		this.subWorkflowsWithWaitingNodes.clear();
+		this.parentWorkflowsCalling = [];
 	}
 
-	async detectWorkflow(
-		_workflow: WorkflowEntity,
+	async collectWorkflowData(
+		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionReport> {
-		// Check if the workflow contains any waiting nodes (Wait, Form, or HITL nodes)
-		const foundWaitingNodes: Array<{ node: INode; nodeTypeName: string }> = [];
+	): Promise<void> {
+		// Check if this workflow IS a sub-workflow with waiting nodes
+		const hasExecuteWorkflowTrigger =
+			(nodesGroupedByType.get('n8n-nodes-base.executeWorkflowTrigger')?.length ?? 0) > 0;
+		const hasWaitingNodes = this.findWaitingNodes(nodesGroupedByType).length > 0;
 
-		// Check all configured node types
+		if (hasExecuteWorkflowTrigger && hasWaitingNodes) {
+			this.subWorkflowsWithWaitingNodes.set(workflow.id, workflow.name);
+		}
+
+		// Check if this workflow CALLS sub-workflows with waitForSubWorkflow enabled
+		const executeWorkflowNodes = nodesGroupedByType.get('n8n-nodes-base.executeWorkflow') ?? [];
+		for (const node of executeWorkflowNodes) {
+			// Check if waitForSubWorkflow is enabled (default is true)
+			const options = node.parameters.options as INodeParameters | undefined;
+			const waitForSubWorkflowValue = options?.waitForSubWorkflow;
+			// If waitForSubWorkflow is explicitly false, skip. Otherwise treat as true (default).
+			// Expressions (strings starting with =) are treated as true to avoid false negatives.
+			const isExplicitlyFalse = waitForSubWorkflowValue === false;
+			if (isExplicitlyFalse) {
+				continue; // Skip if not waiting for sub-workflow completion
+			}
+
+			const calledWorkflowId = this.extractCalledWorkflowId(node, workflow.id);
+
+			this.parentWorkflowsCalling.push({
+				parentWorkflowId: workflow.id,
+				executeWorkflowNode: node,
+				calledWorkflowId,
+			});
+		}
+	}
+
+	async produceReport(): Promise<BatchWorkflowDetectionReport> {
+		// Group issues by parent workflow ID (a parent may call multiple affected sub-workflows)
+		const issuesByParentWorkflow = new Map<string, BreakingChangeWorkflowIssue[]>();
+
+		// For each parent workflow calling a sub-workflow, check if it calls an affected sub-workflow
+		for (const parent of this.parentWorkflowsCalling) {
+			const isUnknownWorkflow = parent.calledWorkflowId === undefined;
+			const subWorkflowName =
+				parent.calledWorkflowId !== undefined
+					? this.subWorkflowsWithWaitingNodes.get(parent.calledWorkflowId)
+					: undefined;
+			const isKnownAffectedWorkflow = subWorkflowName !== undefined;
+
+			if (!isUnknownWorkflow && !isKnownAffectedWorkflow) {
+				continue;
+			}
+
+			const issue: BreakingChangeWorkflowIssue = {
+				title: isUnknownWorkflow
+					? 'Execute Workflow node may call sub-workflow with changed output behavior'
+					: 'Execute Workflow node calls sub-workflow with changed output behavior',
+				description: isUnknownWorkflow
+					? `The "${parent.executeWorkflowNode.name}" node calls a sub-workflow dynamically (via expression or parameter). If the called sub-workflow contains waiting nodes (Wait, Form, Human-in-the-loop), the data returned has changed in v2 - it now returns the correct data instead of the previously incorrect results.`
+					: `The "${parent.executeWorkflowNode.name}" node calls sub-workflow "${subWorkflowName}" (ID: ${parent.calledWorkflowId}) which contains waiting nodes. The data returned from this sub-workflow has changed in v2 - it now returns the correct data instead of the previously incorrect results.`,
+				level: 'warning',
+				nodeId: parent.executeWorkflowNode.id,
+				nodeName: parent.executeWorkflowNode.name,
+			};
+
+			const existingIssues = issuesByParentWorkflow.get(parent.parentWorkflowId);
+			if (existingIssues) {
+				existingIssues.push(issue);
+			} else {
+				issuesByParentWorkflow.set(parent.parentWorkflowId, [issue]);
+			}
+		}
+
+		// Convert to the expected format
+		const affectedWorkflows: BatchWorkflowDetectionReport['affectedWorkflows'] = [];
+		for (const [workflowId, issues] of issuesByParentWorkflow) {
+			affectedWorkflows.push({ workflowId, issues });
+		}
+
+		return { affectedWorkflows };
+	}
+
+	private findWaitingNodes(nodesGroupedByType: Map<string, INode[]>): INode[] {
+		const waitingNodes: INode[] = [];
+
 		for (const { nodeTypes, operation } of this.waitingNodeConfig) {
 			for (const nodeType of nodeTypes) {
 				const nodes = nodesGroupedByType.get(nodeType) ?? [];
 
 				// If no operation is specified, all nodes of this type wait
 				// Otherwise, filter for nodes with the specific operation
-				const waitingNodes = operation
-					? nodes.filter((node) => this.hasWaitingOperation(node, operation))
+				const matchingNodes = operation
+					? nodes.filter((node) => node.parameters.operation === operation)
 					: nodes;
 
-				for (const node of waitingNodes) {
-					const nodeTypeName = nodeType.split('.').pop() ?? nodeType;
-					foundWaitingNodes.push({ node, nodeTypeName });
-				}
+				waitingNodes.push(...matchingNodes);
 			}
 		}
 
-		if (foundWaitingNodes.length === 0) {
-			return { isAffected: false, issues: [] };
+		return waitingNodes;
+	}
+
+	protected extractCalledWorkflowId(node: INode, callerWorkflowId: string): string | undefined {
+		const source = node.parameters.source as string | undefined;
+
+		// Only handle database source - for other sources we can't determine the workflow ID statically
+		if (source !== 'database' && source !== undefined) {
+			return undefined;
 		}
 
-		// Check if this workflow IS a subworkflow by looking for Execute Workflow Trigger
-		const executeWorkflowTriggerNodes =
-			nodesGroupedByType.get('n8n-nodes-base.executeWorkflowTrigger') ?? [];
+		// Default source is 'database', so also handle when source is undefined
+		const workflowId = node.parameters.workflowId;
 
-		if (executeWorkflowTriggerNodes.length === 0) {
-			return { isAffected: false, issues: [] };
+		if (typeof workflowId === 'string') {
+			// Check if it's an expression (starts with =)
+			if (workflowId.startsWith('=')) {
+				// Can't evaluate expressions statically
+				return this.isWorkflowItselfExpression(workflowId) ? callerWorkflowId : undefined;
+			}
+			return workflowId;
 		}
 
-		// This workflow is a subworkflow (has Execute Workflow Trigger) and contains waiting nodes
-		// The output behavior has changed
-		// Create one issue per waiting node
+		if (typeof workflowId === 'object' && workflowId !== null && 'value' in workflowId) {
+			const value = workflowId.value;
+			if (typeof value === 'string') {
+				// Check if it's an expression (starts with =)
+				if (value.startsWith('=')) {
+					// Can't evaluate expressions statically
+					return this.isWorkflowItselfExpression(value) ? callerWorkflowId : undefined;
+				}
+				return value;
+			}
+		}
 
-		const issues = foundWaitingNodes.map(({ node, nodeTypeName }) => ({
-			title: 'Sub-workflow with waiting node has changed output behavior',
-			description: `This workflow is a sub-workflow (contains Execute Workflow Trigger) with a waiting node (${nodeTypeName}). The data returned to the parent workflow from sub-workflows containing waiting nodes has changed. Previously, the child workflow returned data from the node before the waiting node. Now they return data from the last node in the workflow.`,
-			level: 'warning' as const,
-			nodeId: node.id,
-			nodeName: node.name,
-		}));
+		return undefined;
+	}
 
-		return {
-			isAffected: true,
-			issues,
-		};
+	private isWorkflowItselfExpression(workflowIdExpression: string): boolean {
+		return workflowIdExpression.replace('{{ ', '{{').replace(' }}', '}}') === '={{$workflow.id}}';
 	}
 }
