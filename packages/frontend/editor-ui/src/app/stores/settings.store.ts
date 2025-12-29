@@ -239,11 +239,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
 		setSettings(fetchedSettings);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
-			// that need the full set of auntenticated settings
+			// that need the full set of authenticated settings
 			return;
 		}
 
@@ -274,7 +275,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
 		if (fetchedSettings.telemetry.enabled) {
