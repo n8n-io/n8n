@@ -303,8 +303,14 @@ export LANGSMITH_DATASET_NAME=your_dataset_name
 # Run evaluation
 pnpm eval:langsmith
 
+# With custom experiment name
+pnpm eval:langsmith --name "my-experiment"
+
 # With feature flags enabled
 pnpm eval:langsmith --multi-agent
+
+# With multiple repetitions and custom name
+pnpm eval:langsmith --repetitions 3 --name "stability-test"
 ```
 
 ### Pairwise Evaluation
@@ -577,8 +583,9 @@ When feature flags are enabled, they are logged at the start of the evaluation:
 ### Langsmith Evaluation Output
 
 - Results are stored in Langsmith dashboard
-- Experiment name format: `workflow-builder-evaluation-[date]`
+- Experiment name format: `<name>-[date]` (default: `workflow-builder-evaluation-[date]`)
 - Includes detailed metrics for each evaluation category
+- Use `--name` flag to customize the experiment name prefix
 
 ### Pairwise Evaluation Output
 

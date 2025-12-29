@@ -130,7 +130,7 @@ async function main(): Promise<void> {
 			});
 		}
 	} else if (useLangsmith) {
-		await runLangsmithEvaluation(args.repetitions, featureFlags);
+		await runLangsmithEvaluation(args.repetitions, featureFlags, args.experimentName);
 	} else {
 		const csvTestCases = args.promptsCsvPath
 			? loadTestCasesFromCsv(args.promptsCsvPath)
