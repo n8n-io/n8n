@@ -6,7 +6,7 @@ import type { Service, ServiceResult } from './types';
 
 // Constants
 const HOSTNAME = 'proxyserver';
-const PORT = 8080;
+const PORT = 1080; // mockserver default port
 
 // Types
 export interface ProxyMeta {

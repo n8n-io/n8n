@@ -51,6 +51,7 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 // Service definition
 export const loadBalancer: Service<LoadBalancerResult> = {
 	description: 'Caddy load balancer for multi-main',
+	phase: 'before-n8n',
 	shouldStart: (ctx) => ctx.needsLoadBalancer,
 
 	getOptions(ctx) {
@@ -58,6 +59,13 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			mainCount: ctx.mains,
 			hostPort: ctx.allocatedPorts.loadBalancer,
 		} as LoadBalancerConfig;
+	},
+
+	env(result) {
+		return {
+			WEBHOOK_URL: result.meta.baseUrl,
+			N8N_PROXY_HOPS: '1',
+		};
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {

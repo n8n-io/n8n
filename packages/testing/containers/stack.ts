@@ -22,18 +22,38 @@ import {
 } from './helpers/utils';
 import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 import { waitForNetworkQuiet } from './network-stabilization';
-import { gitea } from './services/gitea';
-import { keycloak, N8N_KEYCLOAK_CERT_PATH, type KeycloakResult } from './services/keycloak';
-import { loadBalancer, type LoadBalancerResult } from './services/load-balancer';
-import { mailpit } from './services/mailpit';
-import { observability, type ObservabilityResult } from './services/observability';
-import { postgres } from './services/postgres';
-import { proxy } from './services/proxy';
-import { redis } from './services/redis';
-import { taskRunner } from './services/task-runner';
-import { tracing, type TracingResult } from './services/tracing';
-import type { Service, ServiceResult, StartContext, StackConfig } from './services/types';
+import { N8N_KEYCLOAK_CERT_PATH, type KeycloakResult } from './services/keycloak';
+import type { LoadBalancerResult } from './services/load-balancer';
+import { type ObservabilityResult } from './services/observability';
+import { services } from './services/registry';
+import { type TracingResult } from './services/tracing';
+import type {
+	MultiContainerResult,
+	Service,
+	ServiceResult,
+	StartContext,
+	StackConfig,
+} from './services/types';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
+
+/**
+ * Type guard to check if a service result has multiple containers.
+ */
+function isMultiContainerResult(
+	result: ServiceResult | MultiContainerResult,
+): result is MultiContainerResult {
+	return 'containers' in result && Array.isArray(result.containers);
+}
+
+/**
+ * Extract containers from a service result (handles both single and multi-container results).
+ */
+function extractContainers(result: ServiceResult | MultiContainerResult): StartedTestContainer[] {
+	if (isMultiContainerResult(result)) {
+		return result.containers;
+	}
+	return [result.container];
+}
 
 // Default n8n image
 const N8N_IMAGE = getDockerImageFromEnv(TEST_CONTAINER_IMAGES.n8n);
@@ -70,24 +90,10 @@ const N8N_WORKER_WAIT_STRATEGY = Wait.forAll([
 // ============================================================================
 
 /**
- * All available services, keyed by name.
- * Services are started in order based on phase and dependencies.
- *
- * Note: loadBalancer is NOT in this registry because it's handled specially
- * in Phase 2 (must start before n8n instances but needs port allocation first).
+ * Services available for automatic phase-based startup.
+ * All services are handled uniformly based on their phase and shouldStart conditions.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SERVICE_REGISTRY: Record<string, Service<any>> = {
-	postgres,
-	redis,
-	mailpit,
-	gitea,
-	proxy,
-	keycloak,
-	observability,
-	tracing,
-	taskRunner,
-};
+const SERVICE_REGISTRY: Record<string, Service> = services;
 
 // ============================================================================
 // Configuration
@@ -226,10 +232,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const network = await new Network().start();
 	log('Network created');
 
-	if (needsLoadBalancer) {
-		environment.N8N_PROXY_HOPS = '1';
-	}
-
 	// Build context for services
 	const ctx: StartContext = {
 		config: { ...config, postgres: usePostgres },
@@ -271,12 +273,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const options = service.getOptions?.(ctx);
 		const result = await service.start(network, uniqueProjectName, options);
 
-		// Handle multi-container services (observability, tracing)
-		if ('containers' in result) {
-			containers.push(...result.containers);
-		} else {
-			containers.push(result.container);
-		}
+		containers.push(...extractContainers(result as ServiceResult | MultiContainerResult));
 		serviceResults[name] = result;
 
 		// Collect environment variables
@@ -325,58 +322,39 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	};
 
 	// ========================================================================
-	// Phase 2: Load Balancer + n8n Instances
+	// Phase 2: n8n Instances
 	// ========================================================================
 
-	let baseUrl: string;
 	const keycloakResult = serviceResults.keycloak as KeycloakResult | undefined;
+	const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
 
-	if (needsLoadBalancer) {
-		log('Starting Caddy load balancer...');
-		const lbOptions = loadBalancer.getOptions!(ctx);
-		const lbResult = (await loadBalancer.start(
-			network,
-			uniqueProjectName,
-			lbOptions,
-		)) as LoadBalancerResult;
-		containers.push(lbResult.container);
-		serviceResults.loadBalancer = lbResult;
+	// Determine baseUrl from load balancer or direct port
+	const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
 
-		baseUrl = lbResult.meta.baseUrl;
-		environment.WEBHOOK_URL = baseUrl;
+	// For single instance mode, set WEBHOOK_URL and N8N_PORT
+	if (!needsLoadBalancer) {
+		environment = { ...environment, WEBHOOK_URL: baseUrl, N8N_PORT: '5678' };
+	}
 
-		log(`Starting n8n instances (${mains} mains, ${workers} workers)...`);
-		const instances = await createN8NInstances({
-			mainCount: mains,
-			workerCount: workers,
-			uniqueProjectName,
-			environment,
-			network,
-			resourceQuota,
-			keycloakCertPem: keycloakResult?.meta.certPem,
-		});
-		containers.push(...instances);
-		log('All n8n instances started');
+	log(`Starting n8n instances (${mains} mains, ${workers} workers)...`);
+	const instances = await createN8NInstances({
+		mainCount: mains,
+		workerCount: workers,
+		uniqueProjectName,
+		environment,
+		network,
+		directPort: needsLoadBalancer ? undefined : allocatedMainPort,
+		resourceQuota,
+		keycloakCertPem: keycloakResult?.meta.certPem,
+	});
+	containers.push(...instances);
+	log('All n8n instances started');
 
+	// Wait for load balancer to see healthy backends
+	if (lbResult) {
 		log('Polling load balancer for readiness...');
 		await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
 		log('Load balancer is ready');
-	} else {
-		// Single instance mode
-		baseUrl = `http://localhost:${allocatedMainPort}`;
-		environment = { ...environment, WEBHOOK_URL: baseUrl, N8N_PORT: '5678' };
-
-		const instances = await createN8NInstances({
-			mainCount: 1,
-			workerCount: workers,
-			uniqueProjectName,
-			environment,
-			network,
-			directPort: allocatedMainPort,
-			resourceQuota,
-			keycloakCertPem: keycloakResult?.meta.certPem,
-		});
-		containers.push(...instances);
 	}
 
 	// Update context with baseUrl for after-n8n services
@@ -415,11 +393,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const options = service.getOptions?.(ctx);
 		const result = await service.start(network, uniqueProjectName, options);
 
-		if ('containers' in result) {
-			containers.push(...result.containers);
-		} else {
-			containers.push(result.container);
-		}
+		containers.push(...extractContainers(result as ServiceResult | MultiContainerResult));
 		serviceResults[name] = result;
 
 		log(`${service.description} ready`);
