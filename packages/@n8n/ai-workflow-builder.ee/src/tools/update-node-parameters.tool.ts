@@ -3,6 +3,7 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ParameterEntry } from '@/schemas/parameter-entry.schema';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
@@ -18,12 +19,17 @@ import {
 	createNodeNotFoundError,
 	createNodeTypeNotFoundError,
 } from './helpers/validation';
+import { arrayToNodeParameters } from './utils/array-to-parameters.utils';
 import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
+import {
+	validateParametersWithDisplayOptions,
+	formatValidationIssuesForLLM,
+} from './utils/parameter-validation.utils';
 
 /**
  * Schema for update node parameters input
@@ -81,7 +87,7 @@ async function processParameterUpdates(
 		logger,
 	);
 
-	const newParameters = (await parametersChain.invoke({
+	const chainResult = (await parametersChain.invoke({
 		workflow_json: trimWorkflowJSON(workflow),
 		execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
 		execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
@@ -92,26 +98,42 @@ async function processParameterUpdates(
 		node_definition: nodePropertiesJson,
 		changes: formattedChanges,
 		instanceUrl: instanceUrl ?? '',
-	})) as INodeParameters;
+	})) as { parameters: ParameterEntry[] };
 
-	// Ensure newParameters is a valid object
-	if (!newParameters || typeof newParameters !== 'object') {
-		throw new ParameterUpdateError('Invalid parameters returned from LLM', {
+	// Ensure chainResult is a valid object with parameters array
+	if (!chainResult || typeof chainResult !== 'object') {
+		throw new ParameterUpdateError('Invalid response returned from LLM', {
 			nodeId,
 			nodeType: node.type,
 		});
 	}
 
-	// Ensure parameters property exists and is valid
-	if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
-		throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
-			nodeId,
-			nodeType: node.type,
-		});
+	// Ensure parameters property exists and is an array
+	if (!chainResult.parameters || !Array.isArray(chainResult.parameters)) {
+		throw new ParameterUpdateError(
+			'Invalid parameters structure returned from LLM - expected array',
+			{
+				nodeId,
+				nodeType: node.type,
+			},
+		);
 	}
+
+	// Convert array format to INodeParameters
+	const newParameters = arrayToNodeParameters(chainResult.parameters);
 
 	// Fix expression prefixes in the new parameters
-	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
+	const fixedParameters = fixExpressionPrefixes(newParameters);
+
+	// Validate parameters with display options
+	const validationResult = validateParametersWithDisplayOptions(node, nodeType, fixedParameters);
+
+	if (!validationResult.valid) {
+		const validationMessage = formatValidationIssuesForLLM(validationResult);
+		logger?.warn(`Parameter validation issues for node "${node.name}": ${validationMessage}`);
+	}
+
+	return fixedParameters;
 }
 
 export const UPDATING_NODE_PARAMETER_TOOL: BuilderToolBase = {

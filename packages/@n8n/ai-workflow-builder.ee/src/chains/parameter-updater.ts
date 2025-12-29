@@ -15,6 +15,7 @@ import {
 	COMMON_PATTERNS,
 	OUTPUT_FORMAT,
 } from '@/prompts/chains/parameter-updater';
+import { ParameterEntrySchema } from '@/schemas/parameter-entry.schema';
 
 import { LLMServiceError } from '../errors';
 import type { ParameterUpdaterOptions } from '../types/config';
@@ -22,14 +23,14 @@ import type { ParameterUpdaterOptions } from '../types/config';
 export const parametersSchema = z
 	.object({
 		parameters: z
-			.object({})
-			.passthrough()
+			.array(ParameterEntrySchema)
+			.min(1)
 			.describe(
-				"The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes.",
+				'Array of parameter updates using dot notation paths. Each entry specifies: path (e.g., "method", "headers.0.name"), type (string|number|boolean), and value (as string).',
 			),
 	})
 	.describe(
-		'The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { "parameters": { "method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] } } }}',
+		'Parameter updates as an array of entries. Example: [{ "path": "method", "type": "string", "value": "POST" }, { "path": "headers.0.name", "type": "string", "value": "Content-Type" }]',
 	);
 
 const nodeDefinitionPrompt = `
@@ -147,6 +148,7 @@ export const createParameterUpdaterChain = (
 		nodeDefinitionMessage,
 		workflowContextMessage,
 	]);
+
 	const llmWithStructuredOutput = llm.withStructuredOutput(parametersSchema);
 	const modelWithStructure = prompt.pipe(llmWithStructuredOutput);
 

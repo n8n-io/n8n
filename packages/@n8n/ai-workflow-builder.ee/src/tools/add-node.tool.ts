@@ -2,18 +2,30 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ParameterEntry } from '@/schemas/parameter-entry.schema';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { NodeTypeNotFoundError, ValidationError } from '../errors';
-import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
-import { calculateNodePosition } from './utils/node-positioning.utils';
+import { arrayToNodeParameters } from './utils/array-to-parameters.utils';
 import { isSubNode } from '../utils/node-helpers';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
+import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
+import { calculateNodePosition } from './utils/node-positioning.utils';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
+
+/**
+ * Schema for connection parameter entries
+ * Note: No 'json' type - connection parameters are simple key-value pairs
+ */
+const connectionParameterEntrySchema = z.object({
+	path: z.string().min(1).describe('Parameter name like "mode", "operation", "resource"'),
+	type: z.enum(['string', 'number', 'boolean']).describe('The value type'),
+	value: z.string().describe('The parameter value as string'),
+});
 
 const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
@@ -27,10 +39,9 @@ const baseSchema = {
 			'REQUIRED: Explain your reasoning about connection parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "HTTP Request has static inputs, so no special parameters needed"',
 		),
 	connectionParameters: z
-		.object({})
-		.passthrough()
+		.array(connectionParameterEntrySchema)
 		.describe(
-			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
+			'Parameters that affect node connections as array of entries. Example: [{ "path": "mode", "type": "string", "value": "insert" }]. Pass empty array [] if no connection parameters needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
 		),
 };
 
@@ -160,6 +171,12 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					return createErrorResponse(config, error);
 				}
 
+				// Convert connection parameters array to INodeParameters object
+				const connectionParamsObject =
+					connectionParameters && connectionParameters.length > 0
+						? arrayToNodeParameters(connectionParameters as ParameterEntry[])
+						: undefined;
+
 				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
@@ -167,7 +184,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					name,
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
-					connectionParameters as INodeParameters,
+					connectionParamsObject as INodeParameters,
 					id,
 				);
 
@@ -226,8 +243,8 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 To add multiple nodes, call this tool multiple times in parallel.
 
 CRITICAL: You MUST provide:
-1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using {}
-2. connectionParameters - The actual parameters (use {} for nodes without special needs)
+1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using []
+2. connectionParameters - Array of parameter entries (use [] for nodes without special needs)
 
 IMPORTANT: DO NOT rely on default values! Always explicitly set connection-affecting parameters when they exist.
 
@@ -238,18 +255,20 @@ REASONING EXAMPLES:
 - "AI Agent has dynamic inputs, setting hasOutputParser:true to enable output parser connections"
 - "Set node has standard main connections only, using empty parameters"
 
+CONNECTION PARAMETERS FORMAT: [{ "path": "paramName", "type": "string|number|boolean", "value": "valueAsString" }]
+
 CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
 - AI Agent (@n8n/n8n-nodes-langchain.agent):
-  - For output parser support: { hasOutputParser: true }
-  - Without output parser: { hasOutputParser: false }
+  - For output parser: [{ "path": "hasOutputParser", "type": "boolean", "value": "true" }]
+  - Without output parser: [{ "path": "hasOutputParser", "type": "boolean", "value": "false" }]
 - Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
-  - For document input: { mode: "insert" }
-  - For querying: { mode: "retrieve" }
-  - For AI Agent and tool use: { mode: "retrieve-as-tool" }
+  - For document input: [{ "path": "mode", "type": "string", "value": "insert" }]
+  - For querying: [{ "path": "mode", "type": "string", "value": "retrieve" }]
+  - For AI Agent/tool: [{ "path": "mode", "type": "string", "value": "retrieve-as-tool" }]
 - Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
-  - For text splitter input: { textSplittingMode: "custom" }
-  - For built-in splitting: { textSplittingMode: "simple" }
-- Regular nodes (HTTP Request, Set, Code, etc.): {}
+  - Text splitter input: [{ "path": "textSplittingMode", "type": "string", "value": "custom" }]
+  - Built-in splitting: [{ "path": "textSplittingMode", "type": "string", "value": "simple" }]
+- Regular nodes (HTTP Request, Set, Code, etc.): []
 
 Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
 			schema: nodeCreationSchema,
