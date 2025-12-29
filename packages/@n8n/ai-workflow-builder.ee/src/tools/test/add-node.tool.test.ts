@@ -65,7 +65,7 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: 'n8n-nodes-base.code',
 					name: 'Process Data',
-					connectionParametersReasoning: REASONING.STATIC_NODE,
+					initialParametersReasoning: REASONING.STATIC_NODE,
 				}),
 				mockConfig,
 			);
@@ -124,7 +124,7 @@ describe('AddNodeTool', () => {
 			expect(content.update.workflowOperations?.[0]?.nodes?.[0]?.name).toBe('Code1');
 		});
 
-		it('should handle connection parameters for AI nodes', async () => {
+		it('should handle initial parameters for AI nodes', async () => {
 			setupWorkflowState(mockGetCurrentTaskInput);
 
 			const mockConfig = createToolConfig('add_nodes', 'test-call-2');
@@ -133,9 +133,8 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: '@n8n/n8n-nodes-langchain.agent',
 					name: 'AI Assistant',
-					connectionParametersReasoning:
-						REASONING.DYNAMIC_AI_NODE + ', setting hasOutputParser:true',
-					connectionParameters: [{ path: 'hasOutputParser', type: 'boolean', value: 'true' }],
+					initialParametersReasoning: REASONING.DYNAMIC_AI_NODE + ', setting hasOutputParser:true',
+					initialParameters: [{ path: 'hasOutputParser', type: 'boolean', value: 'true' }],
 				}),
 				mockConfig,
 			);
@@ -149,7 +148,7 @@ describe('AddNodeTool', () => {
 			});
 		});
 
-		it('should handle multiple connection parameters', async () => {
+		it('should handle multiple initial parameters', async () => {
 			setupWorkflowState(mockGetCurrentTaskInput);
 
 			const mockConfig = createToolConfig('add_nodes', 'test-call-2b');
@@ -158,8 +157,8 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: '@n8n/n8n-nodes-langchain.agent',
 					name: 'Configured Agent',
-					connectionParametersReasoning: 'AI agent with multiple configuration options',
-					connectionParameters: [
+					initialParametersReasoning: 'AI agent with multiple configuration options',
+					initialParameters: [
 						{ path: 'hasOutputParser', type: 'boolean', value: 'true' },
 						{ path: 'maxIterations', type: 'number', value: '10' },
 						{ path: 'agentType', type: 'string', value: 'conversational' },
@@ -181,7 +180,7 @@ describe('AddNodeTool', () => {
 			});
 		});
 
-		it('should handle nested connection parameters', async () => {
+		it('should handle nested initial parameters', async () => {
 			setupWorkflowState(mockGetCurrentTaskInput);
 
 			const mockConfig = createToolConfig('add_nodes', 'test-call-2c');
@@ -190,8 +189,8 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: '@n8n/n8n-nodes-langchain.agent',
 					name: 'Nested Config Agent',
-					connectionParametersReasoning: 'AI agent with nested options',
-					connectionParameters: [
+					initialParametersReasoning: 'AI agent with nested options',
+					initialParameters: [
 						{ path: 'options.memory.enabled', type: 'boolean', value: 'true' },
 						{ path: 'options.memory.maxSize', type: 'number', value: '1000' },
 					],
@@ -215,7 +214,7 @@ describe('AddNodeTool', () => {
 			});
 		});
 
-		it('should handle parse error in connection parameters gracefully', async () => {
+		it('should handle parse error in initial parameters gracefully', async () => {
 			setupWorkflowState(mockGetCurrentTaskInput);
 
 			const mockConfig = createToolConfig('add_nodes', 'test-call-2d');
@@ -224,8 +223,8 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: '@n8n/n8n-nodes-langchain.agent',
 					name: 'Invalid Agent',
-					connectionParametersReasoning: 'Testing invalid number value',
-					connectionParameters: [{ path: 'maxIterations', type: 'number', value: 'not-a-number' }],
+					initialParametersReasoning: 'Testing invalid number value',
+					initialParameters: [{ path: 'maxIterations', type: 'number', value: 'not-a-number' }],
 				}),
 				mockConfig,
 			);
@@ -265,7 +264,7 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: 'n8n-nodes-base.unknown',
 					name: 'Unknown Node',
-					connectionParametersReasoning: 'Testing unknown node',
+					initialParametersReasoning: 'Testing unknown node',
 				}),
 				mockConfig,
 			);
@@ -307,7 +306,7 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: 'n8n-nodes-base.webhook',
 					name: 'Incoming Webhook',
-					connectionParametersReasoning: REASONING.WEBHOOK_NODE,
+					initialParametersReasoning: REASONING.WEBHOOK_NODE,
 				}),
 				mockConfig,
 			);
@@ -374,7 +373,7 @@ describe('AddNodeTool', () => {
 				buildAddNodeInput({
 					nodeType: '@n8n/n8n-nodes-langchain.agent',
 					name: 'AI Agent',
-					connectionParametersReasoning: 'Agent node for AI processing',
+					initialParametersReasoning: 'Agent node for AI processing',
 				}),
 				mockConfig,
 			);
@@ -420,7 +419,7 @@ describe('AddNodeTool', () => {
 					nodeType: 'n8n-nodes-base.httpRequest',
 					nodeVersion: 2,
 					name: 'HTTP Request V2',
-					connectionParametersReasoning: 'Need version 2 for specific features',
+					initialParametersReasoning: 'Need version 2 for specific features',
 				}),
 				mockConfig,
 			);
@@ -447,7 +446,7 @@ describe('AddNodeTool', () => {
 					nodeType: 'n8n-nodes-base.code',
 					nodeVersion: 99, // Non-existent version
 					name: 'Code V99',
-					connectionParametersReasoning: 'Requesting non-existent version',
+					initialParametersReasoning: 'Requesting non-existent version',
 				}),
 				mockConfig,
 			);
@@ -488,7 +487,7 @@ describe('AddNodeTool', () => {
 					nodeType: 'n8n-nodes-base.multiVersionCode',
 					nodeVersion: 2,
 					name: 'Multi Version Code V2',
-					connectionParametersReasoning: 'Need version 2 from array versions',
+					initialParametersReasoning: 'Need version 2 from array versions',
 				}),
 				mockConfig,
 			);
@@ -526,7 +525,7 @@ describe('AddNodeTool', () => {
 					nodeType: 'n8n-nodes-base.multiVersionCode',
 					nodeVersion: 4,
 					name: 'Multi Version Code V4',
-					connectionParametersReasoning: 'Requesting version not in array',
+					initialParametersReasoning: 'Requesting version not in array',
 				}),
 				mockConfig,
 			);

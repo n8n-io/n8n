@@ -505,8 +505,8 @@ export const buildAddNodeInput = (overrides: {
 	nodeType: string;
 	nodeVersion?: number;
 	name?: string;
-	connectionParametersReasoning?: string;
-	connectionParameters?: Array<{
+	initialParametersReasoning?: string;
+	initialParameters?: Array<{
 		path: string;
 		type: 'string' | 'number' | 'boolean';
 		value: string;
@@ -515,10 +515,10 @@ export const buildAddNodeInput = (overrides: {
 	nodeType: overrides.nodeType,
 	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
-	connectionParametersReasoning:
-		overrides.connectionParametersReasoning ??
-		'Standard node with static inputs/outputs, no connection parameters needed',
-	connectionParameters: overrides.connectionParameters ?? [],
+	initialParametersReasoning:
+		overrides.initialParametersReasoning ??
+		'Standard node with static inputs/outputs, no initial parameters needed',
+	initialParameters: overrides.initialParameters ?? [],
 });
 
 // Build connect nodes input
