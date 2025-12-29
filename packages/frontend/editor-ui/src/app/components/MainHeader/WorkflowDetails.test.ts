@@ -13,7 +13,6 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { Mock } from 'vitest';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -149,6 +148,11 @@ describe('WorkflowDetails', () => {
 
 		// Set up default mocks
 		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+		workflowsStore.workflowsById = {
+			'1': workflow as unknown as IWorkflowDb,
+			'123': workflow as unknown as IWorkflowDb,
+		};
+		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 
@@ -162,9 +166,9 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('renders workflow name and tags', async () => {
-		(useRoute as Mock).mockReturnValueOnce({
+		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
-		});
+		} as unknown as ReturnType<typeof useRoute>);
 		const { getByTestId, getByText } = renderComponent({
 			props: {
 				...workflow,
@@ -217,13 +221,13 @@ describe('WorkflowDetails', () => {
 
 	describe('Workflow menu', () => {
 		beforeEach(() => {
-			(useRoute as Mock).mockReturnValueOnce({
+			vi.mocked(useRoute).mockReturnValueOnce({
 				meta: {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
 				params: { name: 'test' },
-			});
+			} as unknown as ReturnType<typeof useRoute>);
 		});
 
 		it('should not have workflow duplicate and import without update permission', async () => {
@@ -265,6 +269,16 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should have disabled 'Archive' option on new workflow", async () => {
+			vi.mocked(useRoute)
+				.mockReset()
+				.mockReturnValue({
+					meta: {
+						nodeView: true,
+					},
+					query: { parentFolderId: '1', new: 'true' },
+					params: { name: 'test' },
+				} as unknown as ReturnType<typeof useRoute>);
+
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
@@ -634,6 +648,14 @@ describe('WorkflowDetails', () => {
 
 	describe('Toast notifications', () => {
 		it('should show personal toast when creating workflow without project context', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = null;
 
 			const { getByTestId } = renderComponent({
@@ -655,6 +677,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should show project toast when creating workflow in non-personal project', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = {
 				id: 'project-1',
 				name: 'Test Project',
@@ -686,6 +716,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should show folder toast when creating workflow in folder context', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = {
 				id: 'project-1',
 				name: 'Test Project',
@@ -718,6 +756,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should not show toast when saving existing workflow', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { parentFolderId: '1' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,

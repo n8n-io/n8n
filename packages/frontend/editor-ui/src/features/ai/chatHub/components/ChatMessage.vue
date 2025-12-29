@@ -3,7 +3,7 @@ import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vu
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
@@ -18,10 +18,18 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
+interface MergedAttachment {
+	isNew: boolean;
+	file: File;
+	downloadUrl?: string;
+	index: number;
+}
+
 const {
 	message,
 	compact,
 	isEditing,
+	isEditSubmitting,
 	hasSessionStreaming,
 	minHeight,
 	cachedAgentDisplayName,
@@ -31,6 +39,7 @@ const {
 	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
+	isEditSubmitting: boolean;
 	hasSessionStreaming: boolean;
 	cachedAgentDisplayName: string | null;
 	cachedAgentIcon: AgentIconOrEmoji | null;
@@ -44,7 +53,7 @@ const {
 const emit = defineEmits<{
 	startEdit: [];
 	cancelEdit: [];
-	update: [message: ChatMessage];
+	update: [content: string, keptAttachmentIndices: number[], newFiles: File[]];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
 }>();
@@ -56,6 +65,9 @@ const i18n = useI18n();
 const styles = useCssModule();
 
 const editedText = ref('');
+const newFiles = ref<File[]>([]);
+const removedExistingIndices = ref<Set<number>>(new Set());
+const fileInputRef = useTemplateRef('fileInputRef');
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
@@ -89,6 +101,13 @@ const attachments = computed(() =>
 	})),
 );
 
+const mergedAttachments = computed(() => [
+	...attachments.value.flatMap<MergedAttachment>(({ downloadUrl, file }, idx) =>
+		removedExistingIndices.value.has(idx) ? [] : [{ isNew: false, file, index: idx, downloadUrl }],
+	),
+	...newFiles.value.map<MergedAttachment>((file, index) => ({ isNew: true, file, index })),
+]);
+
 const hideMessage = computed(() => {
 	return message.status === 'success' && message.content === '';
 });
@@ -112,8 +131,54 @@ function handleConfirmEdit() {
 		return;
 	}
 
-	emit('update', { ...message, content: editedText.value });
+	// Calculate which original indices to keep (not removed)
+	const keptAttachmentIndices = message.attachments
+		.map((_, idx) => idx)
+		.filter((idx) => !removedExistingIndices.value.has(idx));
+
+	emit('update', editedText.value, keptAttachmentIndices, newFiles.value);
 }
+
+function handleAttachClick() {
+	fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+
+	if (!files || files.length === 0) {
+		return;
+	}
+
+	for (const file of Array.from(files)) {
+		newFiles.value.push(file);
+	}
+
+	if (target) {
+		target.value = '';
+	}
+}
+
+function handleRemoveFile(file: MergedAttachment) {
+	if (file.isNew) {
+		newFiles.value = newFiles.value.filter((_, idx) => idx !== file.index);
+		return;
+	}
+
+	removedExistingIndices.value.add(file.index);
+}
+
+function addFiles(files: File[]) {
+	for (const file of files) {
+		newFiles.value.push(file);
+	}
+}
+
+// Expose method for parent component to add files via template ref
+defineExpose({
+	addFiles,
+});
 
 function handleKeydownTextarea(e: KeyboardEvent) {
 	if (e.key === 'Escape') {
@@ -165,6 +230,8 @@ watch(
 	() => isEditing,
 	(editing) => {
 		editedText.value = editing ? message.content : '';
+		newFiles.value = [];
+		removedExistingIndices.value = new Set();
 	},
 	{ immediate: true },
 );
@@ -201,42 +268,67 @@ onBeforeMount(() => {
 			'--container--width': `${containerWidth}px`,
 		}"
 		:data-message-id="message.id"
+		:data-test-id="`chat-message-${message.id}`"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
 			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
 		<div :class="$style.content">
+			<input
+				v-if="message.type === 'human'"
+				ref="fileInputRef"
+				type="file"
+				data-test-id="message-edit-file-input"
+				:class="$style.fileInput"
+				multiple
+				@change="handleFileSelect"
+			/>
 			<div v-if="isEditing" :class="$style.editContainer">
-				<div v-if="attachments.length > 0" :class="$style.attachments">
+				<div
+					v-if="message.type === 'human' && mergedAttachments.length > 0"
+					:class="$style.attachments"
+				>
 					<ChatFile
-						v-for="(attachment, index) in attachments"
+						v-for="(attachment, index) in mergedAttachments"
 						:key="index"
 						:file="attachment.file"
-						:is-removable="false"
-						:href="attachment.downloadUrl"
+						is-removable
+						:href="attachment.isNew ? undefined : attachment.downloadUrl"
+						@remove="handleRemoveFile(attachment)"
 					/>
 				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
 					type="textarea"
-					:autosize="{ minRows: 3, maxRows: 20 }"
+					:autosize="{ minRows: 1, maxRows: 20 }"
 					:class="$style.textarea"
 					@keydown="handleKeydownTextarea"
 				/>
-				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
-						{{ i18n.baseText('chatHub.message.edit.cancel') }}
-					</N8nButton>
-					<N8nButton
-						type="primary"
-						size="small"
-						:disabled="!editedText.trim()"
-						@click="handleConfirmEdit"
-					>
-						{{ i18n.baseText('chatHub.message.edit.send') }}
-					</N8nButton>
+				<div :class="$style.editFooter">
+					<N8nIconButton
+						v-if="message.type === 'human'"
+						native-type="button"
+						type="secondary"
+						icon="paperclip"
+						text
+						@click.stop="handleAttachClick"
+					/>
+					<div :class="$style.editActions">
+						<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+							{{ i18n.baseText('chatHub.message.edit.cancel') }}
+						</N8nButton>
+						<N8nButton
+							type="primary"
+							size="small"
+							:disabled="!editedText.trim() || isEditSubmitting"
+							:loading="isEditSubmitting"
+							@click="handleConfirmEdit"
+						>
+							{{ i18n.baseText('chatHub.message.edit.send') }}
+						</N8nButton>
+					</div>
 				</div>
 			</div>
 			<div v-else>
@@ -518,10 +610,20 @@ onBeforeMount(() => {
 	padding: 0 !important;
 }
 
+.fileInput {
+	display: none;
+}
+
+.editFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
 .editActions {
 	display: flex;
-	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .typingIndicator {

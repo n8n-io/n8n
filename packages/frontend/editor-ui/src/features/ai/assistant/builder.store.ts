@@ -1,12 +1,12 @@
 import type { VIEWS } from '@/app/constants';
-import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
@@ -18,8 +18,15 @@ import {
 	getAiSessions,
 	getBuilderCredits,
 	getSessionsMetadata,
+	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
-import { generateMessageId, createBuilderPayload } from './builder.utils';
+import {
+	generateMessageId,
+	createBuilderPayload,
+	extractRevertVersionIds,
+	fetchExistingVersionIds,
+	enrichMessagesWithRevertVersion,
+} from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -33,6 +40,10 @@ import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/node
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { IWorkflowDb } from '@/Interface';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -43,11 +54,15 @@ export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
 	| 'field_focus_placeholder_in_ndv'
-	| 'no_placeholder_values_left';
+	| 'no_placeholder_values_left'
+	| 'revert_version_from_builder';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
 	type?: string;
+	revert_user_message_id?: string;
+	revert_version_id?: string;
+	no_versions_reverted?: number;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -115,6 +130,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
+	const uiStore = useUIStore();
+	const router = useRouter();
+	const workflowSaver = useWorkflowSaving({ router });
 
 	// Composables
 	const {
@@ -302,8 +320,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * and ensures chat is open. Called before initiating API request to minimize
 	 * perceived latency.
 	 */
-	function prepareForStreaming(userMessage: string, messageId: string) {
-		const userMsg = createUserMessage(userMessage, messageId);
+	function prepareForStreaming(
+		userMessage: string,
+		messageId: string,
+		revertVersion?: { id: string; createdAt: string },
+	) {
+		const userMsg = createUserMessage(userMessage, messageId, revertVersion);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
@@ -384,15 +406,47 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('User submitted builder message', trackingPayload);
 	}
 
+	/**
+	 * Saves the workflow and returns the version info for message history.
+	 * For new workflows, creates the workflow first.
+	 * For existing workflows, only saves if there are unsaved changes.
+	 * Returns the version ID and timestamp after any save operation.
+	 */
+	async function saveWorkflowAndGetRevertVersion(): Promise<
+		{ id: string; createdAt: string } | undefined
+	> {
+		const isNewWorkflow = workflowsStore.isNewWorkflow;
+		const hasUnsavedChanges = uiStore.stateIsDirty;
+
+		// Save if it's a new workflow or has unsaved changes
+		if (isNewWorkflow || hasUnsavedChanges) {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				throw new Error('Could not save changes');
+			}
+		}
+
+		const versionId = workflowsStore.workflowVersionId;
+		if (!versionId) return undefined;
+
+		// Use workflow updatedAt as version timestamp
+		// might not be the same as "version.createdAt" but close enough
+		const updatedAt = workflowsStore.workflow.updatedAt;
+		return {
+			id: versionId,
+			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
+		};
+	}
+
 	// Core API functions
 	/**
 	 * Sends a message to the AI builder service and handles the streaming response.
 	 * Prevents concurrent requests by checking streaming state.
+	 * Saves workflow first to get versionId for restore functionality.
 	 * Captures workflow state before sending for comparison in telemetry.
 	 * Creates a retry handler that preserves the original message context.
-	 * Note: This function is NOT async - streaming happens via callbacks.
 	 */
-	function sendChatMessage(options: {
+	async function sendChatMessage(options: {
 		text: string;
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
@@ -403,6 +457,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		executionStatus?: string;
 	}) {
 		if (streaming.value) {
+			return;
+		}
+
+		let revertVersion;
+		try {
+			revertVersion = await saveWorkflowAndGetRevertVersion();
+		} catch {
 			return;
 		}
 
@@ -445,7 +506,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId);
+		prepareForStreaming(text, userMessageId, revertVersion);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload = createBuilderPayload(text, userMessageId, {
@@ -455,7 +516,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(userMessageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -485,6 +546,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, userMessageId, retry),
+				revertVersion?.id,
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
@@ -497,6 +559,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Only loads if a workflow ID exists (not for new unsaved workflows).
 	 * Replaces current chat messages entirely - does NOT merge with existing messages.
 	 * Sessions are ordered by recency, so sessions[0] is always the latest.
+	 * Filters out messages with revertVersionId pointing to non-existent versions.
 	 * Silently fails and returns empty array on error to prevent UI disruption.
 	 */
 	async function loadSessions() {
@@ -513,13 +576,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			if (sessions.length > 0) {
 				const latestSession = sessions[0];
 
-				// Clear existing messages
-				chatMessages.value = clearMessages();
+				// Extract version IDs and check which still exist
+				const versionIds = extractRevertVersionIds(latestSession.messages);
+				const versionMap = await fetchExistingVersionIds(
+					rootStore.restApiContext,
+					workflowId,
+					versionIds,
+				);
 
-				// Convert and add messages from the session
-				const convertedMessages = latestSession.messages
+				// Enrich messages with revertVersion objects and convert to UI messages
+				const enrichedMessages = enrichMessagesWithRevertVersion(
+					latestSession.messages,
+					versionMap,
+				);
+				const convertedMessages = enrichedMessages
 					.map((msg) => {
-						const id = generateMessageId();
+						// Use messageId from backend if available, otherwise generate new one
+						const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : generateMessageId();
 						return mapAssistantMessageToUI(msg, id);
 					})
 					// Do not include wf updated messages from session
@@ -601,6 +674,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 	}
 
+	function clearExistingWorkflow() {
+		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+	}
+
 	function applyWorkflowUpdate(workflowJson: string) {
 		let workflowData: WorkflowDataUpdate;
 		try {
@@ -617,9 +695,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Capture current state before clearing
 		const { nodePositions, existingNodeIds, pinnedDataByNodeName } = captureCurrentWorkflowState();
 
-		// Clear existing workflow
-		workflowState.removeAllConnections({ setStateDirty: false });
-		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+		clearExistingWorkflow();
 
 		// For the initial generation, we want to apply auto-generated workflow name
 		// but only if the workflow has default name
@@ -733,7 +809,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
-				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {
@@ -770,16 +846,69 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('Workflow builder journey', payload);
 	}
 
-	watch(
-		workflowTodos,
-		(newTodos, oldTodos) => {
-			// Only track if we had todos before and now we don't
-			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0) {
-				trackWorkflowBuilderJourney('no_placeholder_values_left');
+	// Version management for workflow history
+	const workflowHistoryStore = useWorkflowHistoryStore();
+
+	/**
+	 * Restores the workflow to a previous version and truncates chat messages.
+	 * Finds the user message with the matching messageId and removes it
+	 * along with all messages after it.
+	 *
+	 * @param versionId - The workflow version ID to restore to
+	 * @param messageId - The message ID to truncate from
+	 */
+	async function restoreToVersion(
+		versionId: string,
+		messageId: string,
+	): Promise<IWorkflowDb | undefined> {
+		const workflowId = workflowsStore.workflowId;
+
+		// Save current workflow if there are unsaved changes before restoring
+		if (uiStore.stateIsDirty) {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				// saving errored or user opted not to overwrite changes
+				return;
 			}
-		},
-		{ deep: true },
-	);
+		}
+
+		// 1. Restore the workflow using existing workflow history store
+		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(
+			workflowId,
+			versionId,
+			false,
+		);
+
+		// version id is important to update, because otherwise the next time user saves,
+		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
+		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
+		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
+
+		// 2. Truncate messages in backend session (removes message with messageId and all after)
+		await truncateBuilderMessages(rootStore.restApiContext, workflowId, messageId);
+
+		// 3. Truncate local chat messages - find user message with matching messageId
+		// and remove it along with all messages after it
+		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
+		const messagesBeingReverted =
+			msgIndex !== -1
+				? chatMessages.value
+						.slice(msgIndex)
+						.filter((msg) => 'revertVersion' in msg && msg.revertVersion).length
+				: 0;
+		if (msgIndex !== -1) {
+			chatMessages.value = chatMessages.value.slice(0, msgIndex);
+		}
+
+		// 4. Track telemetry event for version restore
+		trackWorkflowBuilderJourney('revert_version_from_builder', {
+			revert_user_message_id: messageId,
+			revert_version_id: versionId,
+			no_versions_reverted: messagesBeingReverted,
+		});
+
+		return updatedWorkflow;
+	}
 
 	// Public API
 	return {
@@ -817,5 +946,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		resetAiBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		// Version management
+		restoreToVersion,
+		clearExistingWorkflow,
 	};
 });

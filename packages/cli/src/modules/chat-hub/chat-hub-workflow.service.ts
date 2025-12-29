@@ -576,7 +576,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'id', value: model },
+						model,
 						options: {},
 					},
 				};

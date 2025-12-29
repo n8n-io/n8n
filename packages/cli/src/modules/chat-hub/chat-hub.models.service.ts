@@ -25,6 +25,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { Scope } from '@n8n/permissions';
 
 @Service()
 export class ChatHubModelsService {
@@ -754,18 +755,17 @@ export class ChatHubModelsService {
 		});
 
 		return workflows.flatMap((workflow) => {
-			const model = this.extractModelFromWorkflow(workflow);
+			const scopes = activeWorkflows.find((w) => w.id === workflow.id)?.scopes ?? [];
+			const model = this.extractModelFromWorkflow(workflow, scopes);
 
 			return model ? [model] : [];
 		});
 	}
 
-	extractModelFromWorkflow({
-		name,
-		activeVersion,
-		id,
-		shared,
-	}: WorkflowEntity): ChatModelDto | null {
+	extractModelFromWorkflow(
+		{ name, activeVersion, id, shared }: WorkflowEntity,
+		scopes: Scope[],
+	): ChatModelDto | null {
 		if (!activeVersion) {
 			return null;
 		}
@@ -808,6 +808,7 @@ export class ChatHubModelsService {
 					functionCalling: false,
 				},
 				available: true,
+				scopes,
 			},
 		};
 	}
