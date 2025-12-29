@@ -6,7 +6,6 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/app/components/MainSidebar.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -27,7 +26,6 @@ vi.mock('vue-router', () => ({
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
-let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let versionsStore: MockedStore<typeof useVersionsStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
@@ -54,7 +52,6 @@ describe('MainSidebar', () => {
 		});
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
-		sourceControlStore = mockedStore(useSourceControlStore);
 		versionsStore = mockedStore(useVersionsStore);
 		usersStore = mockedStore(useUsersStore);
 		templatesStore = mockedStore(useTemplatesStore);
@@ -82,23 +79,6 @@ describe('MainSidebar', () => {
 	it('renders the sidebar without error', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
-
-	test.each([
-		[false, true, true],
-		[true, false, false],
-		[true, true, false],
-		[false, false, false],
-	])(
-		'should render readonly tooltip when is opened %s and the environment is readonly %s',
-		(sidebarMenuCollapsed, branchReadOnly, shouldRender) => {
-			uiStore.sidebarMenuCollapsed = sidebarMenuCollapsed;
-			sourceControlStore.preferences.branchReadOnly = branchReadOnly;
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('read-only-env-icon') !== null).toBe(shouldRender);
-		},
-	);
 
 	describe('Version Update CTA', () => {
 		it('should not render version update CTA when hasVersionUpdates is false', () => {

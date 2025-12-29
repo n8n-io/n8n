@@ -25,11 +25,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -920,10 +916,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id:
-			workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? null
-				: workflowsStore.workflowId,
+		workflow_id: workflowsStore.workflowId,
 	});
 
 	return credential;
@@ -1076,10 +1069,7 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id:
-				workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-					? null
-					: workflowsStore.workflowId,
+			workflow_id: workflowsStore.workflowId || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,

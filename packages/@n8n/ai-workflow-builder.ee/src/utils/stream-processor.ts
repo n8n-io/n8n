@@ -322,11 +322,25 @@ function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	const rawText = extractHumanMessageText(msg.content);
 	const cleanedText = cleanContextTags(rawText);
 
-	return {
+	const result: Record<string, unknown> = {
 		role: 'user',
 		type: 'message',
 		text: cleanedText,
 	};
+
+	// Extract versionId from additional_kwargs and expose as revertVersionId
+	const versionId = msg.additional_kwargs?.versionId;
+	if (typeof versionId === 'string') {
+		result.revertVersionId = versionId;
+	}
+
+	// Extract messageId from additional_kwargs
+	const messageId = msg.additional_kwargs?.messageId;
+	if (typeof messageId === 'string') {
+		result.id = messageId;
+	}
+
+	return result;
 }
 
 /** Process array content from AIMessage and return formatted text messages */

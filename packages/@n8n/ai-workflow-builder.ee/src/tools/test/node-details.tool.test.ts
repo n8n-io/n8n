@@ -1,3 +1,4 @@
+import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
@@ -14,7 +15,9 @@ import {
 	expectXMLTag,
 	type ParsedToolContent,
 	createNodeType,
+	createNode,
 } from '../../../test/test-utils';
+import type { WorkflowMetadata } from '../../types/tools';
 import { createNodeDetailsTool } from '../node-details.tool';
 
 // Mock LangGraph dependencies
@@ -23,6 +26,19 @@ jest.mock('@langchain/langgraph', () => ({
 	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
 		content: JSON.stringify(params),
 	})),
+}));
+
+const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
+	typeof getCurrentTaskInput
+>;
+
+// Mock the templates module to prevent actual API calls
+jest.mock('../web/templates', () => ({
+	fetchWorkflowsFromTemplates: jest.fn().mockResolvedValue({
+		workflows: [],
+		totalFound: 0,
+		templateIds: [],
+	}),
 }));
 
 describe('NodeDetailsTool', () => {
@@ -604,6 +620,118 @@ describe('NodeDetailsTool', () => {
 				name: 'n8n-nodes-base.multiVersion',
 				displayName: 'Multi Version Node',
 				description: 'Node that supports versions 1, 2, and 3',
+			});
+		});
+
+		describe('cached templates', () => {
+			// Helper to create mock cached templates with specific node configurations
+			let mockTemplateIdCounter = 1;
+			const createMockCachedTemplate = (
+				name: string,
+				nodes: Array<ReturnType<typeof createNode>>,
+			): WorkflowMetadata => ({
+				templateId: mockTemplateIdCounter++,
+				name,
+				description: `Template: ${name}`,
+				workflow: {
+					nodes,
+					connections: {},
+					name,
+				},
+			});
+
+			it('should retrieve node examples from cached templates', async () => {
+				const mockConfig = createToolConfig('get_node_details', 'test-cached-1');
+
+				// Create cached templates containing HTTP Request nodes with different configurations
+				const cachedTemplates: WorkflowMetadata[] = [
+					createMockCachedTemplate('API Integration Workflow', [
+						createNode({
+							id: 'http-1',
+							name: 'Fetch User Data',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							parameters: {
+								url: 'https://api.example.com/users',
+								method: 'GET',
+								authentication: 'genericCredentialType',
+							},
+						}),
+						createNode({
+							id: 'code-1',
+							name: 'Process Data',
+							type: 'n8n-nodes-base.code',
+						}),
+					]),
+					createMockCachedTemplate('Webhook Handler', [
+						createNode({
+							id: 'http-2',
+							name: 'Post to Slack',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							parameters: {
+								url: 'https://hooks.slack.com/services/xxx',
+								method: 'POST',
+								bodyParameters: {
+									parameters: [{ name: 'text', value: 'Hello World' }],
+								},
+							},
+						}),
+					]),
+				];
+
+				// Mock getCurrentTaskInput to return state with cached templates
+				mockGetCurrentTaskInput.mockReturnValue({
+					cachedTemplates,
+					workflowJSON: { nodes: [], connections: {}, name: 'Test' },
+					messages: [],
+				});
+
+				const result = await nodeDetailsTool.invoke(
+					buildNodeDetailsInput({
+						nodeName: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+					}),
+					mockConfig,
+				);
+
+				const content = parseToolResult<ParsedToolContent>(result);
+				const message = content.update.messages[0]?.kwargs.content;
+
+				expectToolSuccess(content, '<node_details>');
+
+				expect(message).toEqual(`<node_details>
+<name>n8n-nodes-base.httpRequest</name>
+<display_name>HTTP Request</display_name>
+<description>Test node description</description>
+<connections>
+<input>main</input>
+<output>main</output>
+</connections>
+<node_examples>
+<example>
+{
+  "url": "https://api.example.com/users",
+  "method": "GET",
+  "authentication": "genericCredentialType"
+}
+</example>
+<example>
+{
+  "url": "https://hooks.slack.com/services/xxx",
+  "method": "POST",
+  "bodyParameters": {
+    "parameters": [
+      {
+        "name": "text",
+        "value": "Hello World"
+      }
+    ]
+  }
+}
+</example>
+</node_examples>
+</node_details>`);
 			});
 		});
 	});

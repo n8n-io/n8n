@@ -231,6 +231,25 @@ export function buildSteps(
 			});
 
 			const toolInputForResult = toolInput.input;
+
+			// Build observation from tool result data or error information
+			// When tool execution fails, ai_tool may be missing but error info should be preserved
+			const aiToolData = tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json);
+			let observation: string;
+			if (aiToolData && aiToolData.length > 0) {
+				observation = JSON.stringify(aiToolData);
+			} else if (tool.data?.error) {
+				// Include error information in observation so the agent can see what went wrong
+				// tool.data is ITaskData which has error?: ExecutionError
+				const errorInfo = {
+					error: tool.data.error.message ?? 'Unknown error',
+					...(tool.data.error.name && { errorType: tool.data.error.name }),
+				};
+				observation = JSON.stringify(errorInfo);
+			} else {
+				observation = JSON.stringify('');
+			}
+
 			const toolResult = {
 				action: {
 					tool: nodeNameToToolName(tool.action.nodeName),
@@ -243,7 +262,7 @@ export function buildSteps(
 					toolCallId: toolInput?.id,
 					type: toolInput.type || 'tool_call',
 				},
-				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json) ?? ''),
+				observation,
 			};
 
 			steps.push(toolResult);

@@ -373,4 +373,10 @@ describe('ExecuteContext', () => {
 			await expect(testExecuteContext.sendChunk('item', 0, 'test')).resolves.toBeUndefined();
 		});
 	});
+
+	describe('isToolExecution', () => {
+		it('should return false for regular workflow execution', () => {
+			expect(executeContext.isToolExecution()).toBe(false);
+		});
+	});
 });

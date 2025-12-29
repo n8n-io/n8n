@@ -140,7 +140,6 @@ defineExpose({
 									data-test-id="navigation-submenu-item"
 									:index="subitem.id"
 									:disabled="subitem.disabled"
-									:class="{ [$style.menuItemWithTooltip]: subitem.description }"
 									@click="emit('itemClick', $event)"
 								>
 									<slot name="item-icon" v-bind="{ item: subitem }">
@@ -251,12 +250,6 @@ defineExpose({
 		color: var(--color--text--tint-1);
 	}
 
-	:global(.el-menu--horizontal .el-menu .el-menu-item) {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--2xs);
-	}
-
 	:global(.el-sub-menu__icon-arrow svg) {
 		margin-top: auto;
 	}
@@ -279,10 +272,6 @@ defineExpose({
 	color: var(--color--text);
 }
 
-.menuItemWithTooltip {
-	position: relative;
-}
-
 .menuItemTitle {
 	flex: 1;
 	overflow: hidden;
@@ -300,10 +289,7 @@ defineExpose({
 
 .infoIcon {
 	color: var(--color--text--tint-1);
-	cursor: pointer;
-
-	&:hover {
-		color: var(--color--text);
-	}
+	outline: none;
+	margin-left: var(--spacing--2xs);
 }
 </style>
