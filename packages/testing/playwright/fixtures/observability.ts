@@ -1,6 +1,6 @@
 import type { Fixtures, TestInfo } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { ObservabilityHelper } from 'n8n-containers/n8n-test-container-victoria-helpers';
+import { ObservabilityHelper } from 'n8n-containers';
+import type { N8NStack } from 'n8n-containers/stack';
 
 /**
  * Fixture type for auto-attaching logs on test failure.
@@ -26,10 +26,10 @@ async function attachLogsOnFailure(
 	testInfo: TestInfo,
 	options: { lookbackMinutes?: number } = {},
 ): Promise<void> {
-	if (!stack?.observability) return;
+	if (!stack?.observability?.meta) return;
 
 	const lookback = options.lookbackMinutes ?? 5;
-	const obs = new ObservabilityHelper(stack.observability);
+	const obs = new ObservabilityHelper(stack.observability.meta);
 
 	try {
 		// Query all logs from the last N minutes

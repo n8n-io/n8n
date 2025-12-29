@@ -73,7 +73,7 @@ test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, chaos
 		'Workflow executed successfully',
 	);
 
-	const msg = await chaos.mail.waitForMessage({ to: toEmail, subject });
+	const msg = await chaos.services.mailpit.waitForMessage({ to: toEmail, subject });
 
 	expect(msg).toBeTruthy();
 });

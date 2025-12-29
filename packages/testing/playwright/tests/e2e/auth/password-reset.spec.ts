@@ -9,6 +9,9 @@ test('Password reset email is delivered @capability:email', async ({ api, chaos 
 	});
 	expect(res.ok()).toBeTruthy();
 
-	const msg = await chaos.mail.waitForMessage({ to: ownerEmail, subject: /password reset/i });
+	const msg = await chaos.services.mailpit.waitForMessage({
+		to: ownerEmail,
+		subject: /password reset/i,
+	});
 	expect(msg).toBeTruthy();
 });

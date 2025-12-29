@@ -18,11 +18,11 @@ async function expectNoChangesToCommit(n8n: n8nPage) {
 }
 
 test.describe('Push resources to Git @capability:source-control', () => {
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, chaos }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		await setupGitRepo(n8n, n8nContainer);
+		await setupGitRepo(n8n, chaos.services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {

@@ -2,10 +2,13 @@ import { Time } from '@n8n/constants';
 
 import { test, expect } from '../../../fixtures/base';
 
+// Enable observability to use VictoriaLogs for log queries
+test.use({ capability: 'observability' });
+
 // @CATS team to look at this.  This works locally, but not in CI. Maybe IP table rules are not working in CI?
 // eslint-disable-next-line playwright/no-skipped-test
 test.skip(
-	'Database connection timeout health check bug @mode:postgres @chaostest',
+	'Database connection timeout health check bug @mode:postgres @chaostest @capability:observability',
 	{
 		annotation: {
 			type: 'issue',
@@ -40,9 +43,10 @@ test.skip(
 		expect(blockPostgresTraffic.exitCode).toBe(0);
 
 		// ========== WAIT FOR CONNECTION ISSUES ==========
-		await chaos.waitForLog('Database connection timed out', {
-			namePattern: 'n8n-*',
+		// Query VictoriaLogs for database timeout messages
+		await chaos.logs.waitForLog('Database connection timed out', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
+			start: '-1m',
 		});
 
 		// ========== VERIFY: Health Checks ==========
@@ -59,9 +63,10 @@ test.skip(
 		expect(allowPostgresTraffic.exitCode).toBe(0);
 
 		// ========== VERIFY: Automatic Recovery ==========
-		await chaos.waitForLog('Database connection recovered', {
-			namePattern: 'n8n-*',
+		// Query VictoriaLogs for database recovery messages
+		await chaos.logs.waitForLog('Database connection recovered', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
+			start: '-1m',
 		});
 	},
 );

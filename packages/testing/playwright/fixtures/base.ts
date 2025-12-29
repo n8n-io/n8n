@@ -1,9 +1,9 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
+import { ContainerTestHelpers } from 'n8n-containers/helpers/container';
+import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
+import { createN8NStack } from 'n8n-containers/stack';
 
 import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
@@ -35,27 +35,8 @@ type WorkerFixtures = {
 	capability?: CapabilityOption;
 };
 
-interface ContainerConfig {
-	postgres?: boolean;
-	queueMode?: {
-		mains: number;
-		workers: number;
-	};
-	env?: Record<string, string>;
-	proxyServerEnabled?: boolean;
-	taskRunner?: boolean;
-	sourceControl?: boolean;
-	email?: boolean;
-	oidc?: boolean;
-	observability?: boolean;
-	resourceQuota?: {
-		memory?: number; // in GB
-		cpu?: number; // in cores
-	};
-}
-
-type CapabilityOption = Capability | ContainerConfig;
-type ProjectUse = { containerConfig?: ContainerConfig };
+type CapabilityOption = Capability | N8NConfig;
+type ProjectUse = { containerConfig?: N8NConfig };
 
 export const test = base.extend<
 	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
@@ -80,13 +61,13 @@ export const test = base.extend<
 			}
 
 			const { containerConfig: base = {} } = workerInfo.project.use as ProjectUse;
-			const override: ContainerConfig = !capability
+			const override: N8NConfig = !capability
 				? {}
 				: typeof capability === 'string'
 					? CAPABILITIES[capability]
 					: capability;
 
-			const config: ContainerConfig = {
+			const config: N8NConfig = {
 				...base,
 				...override,
 				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
@@ -145,7 +126,7 @@ export const test = base.extend<
 				);
 			}
 			const helpers = new ContainerTestHelpers(n8nContainer.containers, {
-				observability: n8nContainer.observability,
+				serviceResults: n8nContainer.serviceResults,
 			});
 			await use(helpers);
 		},

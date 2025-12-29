@@ -21,7 +21,7 @@ test.describe('Memory Consumption @capability:observability', () => {
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
 	}, testInfo) => {
-		const obs = new ObservabilityHelper(n8nContainer.observability!);
+		const obs = new ObservabilityHelper(n8nContainer.observability!.meta);
 
 		// Wait for container to stabilize (allows GC to run, startup memory to be freed)
 		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME_MS));

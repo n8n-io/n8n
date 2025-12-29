@@ -47,7 +47,8 @@ import { test, expect } from '../../../fixtures/base';
 test.use({
 	capability: {
 		observability: true,
-		queueMode: { mains: 2, workers: 1 },
+		mains: 2,
+		workers: 1,
 	},
 });
 
@@ -63,7 +64,7 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 	 */
 	test('should scrape metrics from all n8n instances', async ({ n8nContainer }) => {
 		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+		const obs = new ObservabilityHelper(obsStack.meta);
 
 		// Expected targets: 2 mains + 1 worker = 3 instances
 		const expectedTargets = 3;
@@ -115,8 +116,8 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 		await api.enableFeature('logStreaming');
 
 		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
-		const { host, port } = obsStack.victoriaLogs.syslog;
+		const obs = new ObservabilityHelper(obsStack.meta);
+		const { host, port } = obsStack.meta.logs.syslog;
 
 		// ========== STEP 2: Configure syslog destination ==========
 		// Create a syslog destination pointing to VictoriaLogs

@@ -14,10 +14,10 @@ async function expectPullSuccess(n8n: n8nPage) {
 test.describe('Pull resources from Git @capability:source-control', () => {
 	let repoUrl: string;
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, chaos }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
-		repoUrl = await setupGitRepo(n8n, n8nContainer);
+		repoUrl = await setupGitRepo(n8n, chaos.services.gitea);
 	});
 
 	test('should pull new resources from remote', async ({ n8n }) => {

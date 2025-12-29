@@ -79,7 +79,7 @@ N8N_TEST_ENV='{"N8N_LOG_LEVEL":"debug","N8N_METRICS":"true","N8N_ENABLED_MODULES
 ## Programmatic Usage
 
 ```typescript
-import { createN8NStack } from './containers/n8n-test-containers';
+import { createN8NStack } from 'n8n-containers';
 
 // Simple SQLite instance
 const stack = await createN8NStack();

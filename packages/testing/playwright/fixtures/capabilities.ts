@@ -1,14 +1,15 @@
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
 /**
  * Capability definitions for `test.use({ capability: 'email' })`.
  * Add `@capability:X` tag to tests for orchestration grouping.
+ *
+ * Note: task-runner is always enabled, no capability needed.
  */
 export const CAPABILITIES = {
 	email: { email: true },
 	proxy: { proxyServerEnabled: true },
 	'source-control': { sourceControl: true },
-	'task-runner': { taskRunner: true },
 	oidc: { oidc: true },
 	observability: { observability: true },
 } as const satisfies Record<string, Partial<N8NConfig>>;

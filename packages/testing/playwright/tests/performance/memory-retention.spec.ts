@@ -28,7 +28,7 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 	}
 
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		const obs = new ObservabilityHelper(n8nContainer.observability!);
+		const obs = new ObservabilityHelper(n8nContainer.observability!.meta);
 
 		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
 		// RSS can stay high after GC due to OS memory management

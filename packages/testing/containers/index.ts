@@ -4,22 +4,36 @@
  * This package provides container management utilities for n8n testing.
  */
 
-export { createN8NStack } from './n8n-test-container-creation';
-export type { N8NConfig, N8NStack } from './n8n-test-container-creation';
+// Stack orchestration
+export { createN8NStack } from './stack';
+export type { N8NConfig, N8NStack } from './stack';
 
+// Performance plans
 export * from './performance-plans';
 
-export { ContainerTestHelpers } from './n8n-test-container-helpers';
+// Container test helpers
+export { ContainerTestHelpers } from './helpers/container';
+export type { ContainerTestHelpersOptions } from './helpers/container';
+
+// Service types
+export type {
+	Service,
+	ServiceResult,
+	ServiceHelpers,
+	HelperContext,
+	HelperFactory,
+	HelperFactories,
+} from './services/types';
+
+// Mailpit
 export {
-	setupMailpit,
-	getMailpitEnvironment,
-	mailpitClear,
-	mailpitList,
-	mailpitGet,
-	mailpitWaitForMessage,
+	MailpitHelper,
 	type MailpitMessage,
+	type MailpitMessageSummary,
 	type MailpitQuery,
-} from './n8n-test-container-mailpit';
+	type MailpitMeta,
+	type MailpitResult,
+} from './services/mailpit';
 
 // Keycloak/OIDC test constants
 export {
@@ -30,42 +44,40 @@ export {
 	KEYCLOAK_TEST_USER_PASSWORD,
 	KEYCLOAK_TEST_USER_FIRSTNAME,
 	KEYCLOAK_TEST_USER_LASTNAME,
-} from './n8n-test-container-keycloak';
+	N8N_KEYCLOAK_CERT_PATH,
+	KeycloakHelper,
+	type KeycloakConfig,
+	type KeycloakMeta,
+	type KeycloakResult,
+} from './services/keycloak';
 
-// VictoriaObs stack for test observability
+// Observability stack
 export {
-	setupVictoriaLogs,
-	setupVictoriaMetrics,
-	setupObservabilityStack,
 	SYSLOG_DEFAULTS,
-	type VictoriaLogsSetupResult,
-	type VictoriaMetricsSetupResult,
-	type ObservabilityStack,
-	type ScrapeTarget,
-} from './n8n-test-container-observability';
-
-// VictoriaObs query helpers
-export {
-	VictoriaLogsHelper,
-	VictoriaMetricsHelper,
 	ObservabilityHelper,
+	LogsHelper,
+	MetricsHelper,
+	escapeLogsQL,
+	type ScrapeTarget,
+	type ObservabilityConfig,
+	type ObservabilityMeta,
+	type ObservabilityResult,
 	type LogEntry,
 	type LogQueryOptions,
 	type MetricResult,
 	type WaitForMetricOptions,
-} from './n8n-test-container-victoria-helpers';
+} from './services/observability';
 
-// Export Vector setup result type for observability stack
-export { type VectorSetupResult } from './n8n-test-container-observability';
-
-// Tracing stack for workflow execution visualization
+// Tracing stack
 export {
-	setupJaeger,
-	setupN8nTracer,
-	setupTracingStack,
-	getTracerWebhookConfig,
-	type JaegerSetupResult,
-	type N8nTracerSetupResult,
-	type TracingStack,
-	type TracerWebhookConfig,
-} from './n8n-test-container-tracing';
+	TracingHelper,
+	type TracingConfig,
+	type TracingMeta,
+	type TracingResult,
+} from './services/tracing';
+
+// Gitea (source control)
+export { GiteaHelper, type GiteaMeta, type GiteaResult } from './services/gitea';
+
+// Service registry
+export { services, helperFactories } from './services/registry';
