@@ -25,7 +25,7 @@ describe('useBeforeUnload', () => {
 		});
 		setActivePinia(pinia);
 
-		uiStore = useUIStore();
+		uiStore = useUIStore(createTestingPinia({ stubActions: false }));
 		canvasStore = useCanvasStore();
 		uiStore.markStateClean();
 	});

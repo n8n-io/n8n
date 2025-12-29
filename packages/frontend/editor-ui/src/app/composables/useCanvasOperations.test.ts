@@ -1029,7 +1029,7 @@ describe('useCanvasOperations', () => {
 
 		it('should mark UI state as dirty', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const uiStore = mockedStore(useUIStore);
+			const uiStore = useUIStore(createTestingPinia({ stubActions: false }));
 			const nodeTypesStore = useNodeTypesStore();
 			const nodeTypeName = 'type';
 			const nodes = [mockNode({ name: 'Node 1', type: nodeTypeName, position: [30, 40] })];
@@ -1685,6 +1685,12 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('addConnections', () => {
+		const uiStore = useUIStore(createTestingPinia({ stubActions: false }));
+
+		beforeEach(() => {
+			uiStore.markStateClean();
+		});
+
 		it('should create connections between nodes', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -1769,7 +1775,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should set UI state as dirty', async () => {
-			const uiStore = mockedStore(useUIStore);
 			const connections: CanvasConnection[] = [];
 
 			const { addConnections } = useCanvasOperations();
@@ -1779,7 +1784,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not set UI state as dirty if keepPristine is true', async () => {
-			const uiStore = mockedStore(useUIStore);
 			const connections: CanvasConnection[] = [];
 
 			const { addConnections } = useCanvasOperations();
@@ -1790,9 +1794,14 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('createConnection', () => {
+		const uiStore = useUIStore(createTestingPinia({ stubActions: false }));
+
+		beforeEach(() => {
+			uiStore.markStateClean();
+		});
+
 		it('should not create a connection if source node does not exist', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const uiStore = mockedStore(useUIStore);
 			const connection: Connection = { source: 'nonexistent', target: 'targetNode' };
 
 			workflowsStore.getNodeById.mockReturnValueOnce(undefined);
@@ -1806,7 +1815,6 @@ describe('useCanvasOperations', () => {
 
 		it('should not create a connection if target node does not exist', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const uiStore = mockedStore(useUIStore);
 			const connection: Connection = { source: 'sourceNode', target: 'nonexistent' };
 
 			workflowsStore.getNodeById
@@ -1822,7 +1830,6 @@ describe('useCanvasOperations', () => {
 
 		it('should create a connection if source and target nodes exist and connection is allowed', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			const nodeTypeDescription = mockNodeTypeDescription({

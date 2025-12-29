@@ -48,7 +48,7 @@ describe('useWorkflowHelpers', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeAll(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = mockedStore(useWorkflowsStore);
 
 		workflowState = useWorkflowState();
