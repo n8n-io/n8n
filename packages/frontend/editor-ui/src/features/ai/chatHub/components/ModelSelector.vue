@@ -191,6 +191,7 @@ defineExpose({
 		placement="bottom-start"
 		:extra-popper-class="[$style.component, searchQuery ? $style.searching : ''].join(' ')"
 		searchable
+		:emptyText="searchQuery ? i18n.baseText('chatHub.models.selector.noMatch') : undefined"
 		@search="handleSearch"
 		@select="onSelect"
 	>

@@ -87,6 +87,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
 	searchDebounce?: number;
+	/** Text to be shown when no menu item exists */
+	emptyText?: string;
 }
 
 export interface DropdownMenuEmits<T = string> {

@@ -30,6 +30,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	searchable: false,
 	searchPlaceholder: 'Search...',
 	searchDebounce: 300,
+	emptyText: 'No items',
 });
 
 const emit = defineEmits<{
@@ -264,7 +265,7 @@ defineExpose({ open, close });
 						</template>
 						<template v-else-if="items.length === 0">
 							<slot name="empty">
-								<div :class="$style['empty-state']">No items</div>
+								<div :class="$style['empty-state']">{{ emptyText }}</div>
 							</slot>
 						</template>
 						<template v-else>
