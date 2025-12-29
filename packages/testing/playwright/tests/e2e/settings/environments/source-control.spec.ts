@@ -8,11 +8,7 @@ import {
 	initSourceControl,
 } from '../../../../utils/source-control-helper';
 
-test.use({
-	addContainerCapability: {
-		sourceControl: true,
-	},
-});
+test.use({ capability: 'source-control' });
 
 async function saveSettings(n8n: n8nPage) {
 	await n8n.settingsEnvironment.getSaveButton().click();
