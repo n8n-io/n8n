@@ -5,7 +5,7 @@ import type { n8nPage } from '../../pages/n8nPage';
 import { attachMetric } from '../../utils/performance-helper';
 
 test.use({
-	addContainerCapability: {
+	capability: {
 		resourceQuota: {
 			memory: 0.75,
 			cpu: 0.5,

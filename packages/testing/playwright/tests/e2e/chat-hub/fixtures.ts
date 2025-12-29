@@ -19,7 +19,7 @@ type ChatHubFixtures = {
 
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
-	addContainerCapability: {
+	capability: {
 		proxyServerEnabled: true,
 		env: {
 			N8N_COMMUNITY_PACKAGES_ENABLED: 'false', // To not generate API requests to staging server
