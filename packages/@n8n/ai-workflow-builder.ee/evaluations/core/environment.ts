@@ -8,7 +8,7 @@ import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
-import { filterTraceInputs, filterTraceOutputs, isMinimalTracingEnabled } from './trace-filters.js';
+import { createTraceFilters, isMinimalTracingEnabled, type TraceFilters } from './trace-filters.js';
 
 /** Maximum batch size in bytes for trace uploads (10MB) */
 const TRACE_BATCH_SIZE_LIMIT = 10_000_000;
@@ -21,6 +21,8 @@ export interface TestEnvironment {
 	llm: BaseChatModel;
 	tracer?: LangChainTracer;
 	lsClient?: Client;
+	/** Trace filtering utilities (only present when minimal tracing is enabled) */
+	traceFilters?: TraceFilters;
 }
 
 /**
@@ -49,12 +51,21 @@ export function createTracer(client: Client, projectName: string): LangChainTrac
 }
 
 /**
+ * Result of creating a LangSmith client with optional filtering.
+ */
+export interface LangsmithClientResult {
+	client: Client;
+	/** Trace filters (only present when minimal tracing is enabled) */
+	traceFilters?: TraceFilters;
+}
+
+/**
  * Creates a Langsmith client if API key is available.
  * By default, minimal tracing is enabled to reduce payload sizes and avoid 403 errors.
  * Set LANGSMITH_MINIMAL_TRACING=false to disable filtering and get full traces.
- * @returns Langsmith client or undefined
+ * @returns LangSmith client with optional trace filters, or undefined if no API key
  */
-export function createLangsmithClient(): Client | undefined {
+export function createLangsmithClient(): LangsmithClientResult | undefined {
 	const apiKey = process.env.LANGSMITH_API_KEY;
 	if (!apiKey) {
 		return undefined;
@@ -62,15 +73,24 @@ export function createLangsmithClient(): Client | undefined {
 
 	const minimalTracing = isMinimalTracingEnabled();
 
-	return new Client({
+	if (!minimalTracing) {
+		return { client: new Client({ apiKey }) };
+	}
+
+	// Create closure-scoped filters for this client instance
+	const traceFilters = createTraceFilters();
+
+	const client = new Client({
 		apiKey,
 		// Filter large fields from traces to avoid 403 payload errors
-		hideInputs: minimalTracing ? filterTraceInputs : undefined,
-		hideOutputs: minimalTracing ? filterTraceOutputs : undefined,
+		hideInputs: traceFilters.filterInputs,
+		hideOutputs: traceFilters.filterOutputs,
 		// Reduce batch size and concurrency for high-volume scenarios
-		batchSizeBytesLimit: minimalTracing ? TRACE_BATCH_SIZE_LIMIT : undefined,
-		traceBatchConcurrency: minimalTracing ? TRACE_BATCH_CONCURRENCY : undefined,
+		batchSizeBytesLimit: TRACE_BATCH_SIZE_LIMIT,
+		traceBatchConcurrency: TRACE_BATCH_CONCURRENCY,
 	});
+
+	return { client, traceFilters };
 }
 
 /**
@@ -80,11 +100,13 @@ export function createLangsmithClient(): Client | undefined {
 export async function setupTestEnvironment(): Promise<TestEnvironment> {
 	const parsedNodeTypes = loadNodesFromFile();
 	const llm = await setupLLM();
-	const lsClient = createLangsmithClient();
+	const lsClientResult = createLangsmithClient();
 
+	const lsClient = lsClientResult?.client;
+	const traceFilters = lsClientResult?.traceFilters;
 	const tracer = lsClient ? createTracer(lsClient, 'workflow-builder-evaluation') : undefined;
 
-	return { parsedNodeTypes, llm, tracer, lsClient };
+	return { parsedNodeTypes, llm, tracer, lsClient, traceFilters };
 }
 
 export interface CreateAgentOptions {

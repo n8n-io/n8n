@@ -32,31 +32,6 @@ function hasFilterableFields(obj: KVMap): boolean {
 	);
 }
 
-// Track if we've logged the filtering status
-let hasLoggedFilteringActive = false;
-
-// Track cumulative stats for final summary
-let totalInputBefore = 0;
-let totalInputAfter = 0;
-let totalOutputBefore = 0;
-let totalOutputAfter = 0;
-let inputCallCount = 0;
-let outputCallCount = 0;
-
-/**
- * Reset filtering statistics.
- * Call this at the start of each evaluation run to ensure accurate stats.
- */
-export function resetFilteringStats(): void {
-	hasLoggedFilteringActive = false;
-	totalInputBefore = 0;
-	totalInputAfter = 0;
-	totalOutputBefore = 0;
-	totalOutputAfter = 0;
-	inputCallCount = 0;
-	outputCallCount = 0;
-}
-
 /**
  * Get approximate size of an object in characters (JSON string length).
  * For ASCII content this approximates byte size.
@@ -140,136 +115,6 @@ function filterLargeStateFields(obj: KVMap): void {
 }
 
 /**
- * Filter inputs for minimal trace mode.
- * Removes large fields, keeps essential metadata for debugging.
- */
-export function filterTraceInputs(inputs: KVMap): KVMap {
-	// Log once per process to confirm filtering is active
-	if (!hasLoggedFilteringActive) {
-		hasLoggedFilteringActive = true;
-		console.log(
-			'➔ LangSmith trace filtering: ACTIVE (set LANGSMITH_MINIMAL_TRACING=false to disable)',
-		);
-	}
-
-	// Skip LangChain serializable objects - copying them causes size inflation
-	if (isLangChainSerializable(inputs)) {
-		const size = getApproxSize(inputs);
-		inputCallCount++;
-		totalInputBefore += size;
-		totalInputAfter += size;
-		return inputs;
-	}
-
-	// Skip if no filterable fields - avoid unnecessary copy overhead
-	if (!hasFilterableFields(inputs)) {
-		const size = getApproxSize(inputs);
-		inputCallCount++;
-		totalInputBefore += size;
-		totalInputAfter += size;
-		return inputs;
-	}
-
-	const beforeSize = getApproxSize(inputs);
-	const filtered = { ...inputs };
-
-	// Handle large top-level fields
-	filterLargeStateFields(filtered);
-
-	// Handle workflowContext if present
-	if (filtered.workflowContext && typeof filtered.workflowContext === 'object') {
-		const ctx = filtered.workflowContext as Record<string, unknown>;
-		const filteredCtx: Record<string, unknown> = {};
-
-		for (const [key, value] of Object.entries(ctx)) {
-			if ((LARGE_CONTEXT_FIELDS as readonly string[]).includes(key)) {
-				if (key === 'executionData') {
-					filteredCtx[key] = '[execution data omitted]';
-				} else if (key === 'executionSchema') {
-					filteredCtx[key] = `[${Array.isArray(value) ? value.length : 0} schemas]`;
-				} else if (key === 'expressionValues') {
-					filteredCtx[key] =
-						`[${typeof value === 'object' && value ? Object.keys(value).length : 0} expressions]`;
-				}
-			} else if (key === 'currentWorkflow' && value) {
-				// Summarize currentWorkflow
-				filteredCtx[key] = summarizeWorkflow(value);
-			} else {
-				filteredCtx[key] = value;
-			}
-		}
-
-		filtered.workflowContext = filteredCtx;
-	}
-
-	// Handle workflowJSON if present at top level
-	if (filtered.workflowJSON && typeof filtered.workflowJSON === 'object') {
-		const wf = filtered.workflowJSON as { nodes?: unknown[] };
-		if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
-			filtered.workflowJSON = summarizeWorkflow(filtered.workflowJSON);
-		}
-	}
-
-	// Track stats for final summary
-	const afterSize = getApproxSize(filtered);
-	inputCallCount++;
-	totalInputBefore += beforeSize;
-	totalInputAfter += afterSize;
-
-	return filtered;
-}
-
-/**
- * Filter outputs for minimal trace mode.
- */
-export function filterTraceOutputs(outputs: KVMap): KVMap {
-	// Skip LangChain serializable objects - copying them causes size inflation
-	if (isLangChainSerializable(outputs)) {
-		const size = getApproxSize(outputs);
-		outputCallCount++;
-		totalOutputBefore += size;
-		totalOutputAfter += size;
-		return outputs;
-	}
-
-	const beforeSize = getApproxSize(outputs);
-	outputCallCount++;
-
-	// Check if there are any filterable fields in outputs
-	const hasFilterableOutputFields =
-		'workflow' in outputs || LARGE_STATE_FIELDS.some((field) => field in outputs);
-
-	// Skip if no filterable fields
-	if (!hasFilterableOutputFields) {
-		totalOutputBefore += beforeSize;
-		totalOutputAfter += beforeSize;
-		return outputs;
-	}
-
-	const filtered = { ...outputs };
-
-	// Handle large state fields in outputs
-	filterLargeStateFields(filtered);
-
-	// Summarize workflow outputs if present and large
-	if (filtered.workflow && typeof filtered.workflow === 'object') {
-		const wf = filtered.workflow as { nodes?: unknown[] };
-		if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
-			filtered.workflow = summarizeWorkflow(filtered.workflow);
-		}
-	}
-
-	// Keep feedback array as-is - it's essential for evaluation results
-
-	// Track stats for final summary
-	const afterSize = getApproxSize(filtered);
-	totalOutputBefore += beforeSize;
-	totalOutputAfter += afterSize;
-
-	return filtered;
-}
-
-/**
  * Check if minimal tracing is enabled.
  * Default: true (enabled by default for evaluations)
  * Set LANGSMITH_MINIMAL_TRACING=false to disable.
@@ -281,31 +126,193 @@ export function isMinimalTracingEnabled(): boolean {
 }
 
 /**
- * Log final filtering statistics.
- * Call this at the end of evaluation runs to see total impact.
+ * Trace filter functions with closure-scoped statistics.
  */
-export function logFilteringStats(): void {
-	if (inputCallCount === 0 && outputCallCount === 0) {
-		return;
-	}
+export interface TraceFilters {
+	/** Filter function for hideInputs */
+	filterInputs: (inputs: KVMap) => KVMap;
+	/** Filter function for hideOutputs */
+	filterOutputs: (outputs: KVMap) => KVMap;
+	/** Log filtering statistics to console */
+	logStats: () => void;
+	/** Reset statistics (call at start of each evaluation run) */
+	resetStats: () => void;
+}
 
-	const inputReduction =
-		totalInputBefore > 0 ? ((1 - totalInputAfter / totalInputBefore) * 100).toFixed(1) : '0';
-	const outputReduction =
-		totalOutputBefore > 0 ? ((1 - totalOutputAfter / totalOutputBefore) * 100).toFixed(1) : '0';
-	const totalBefore = totalInputBefore + totalOutputBefore;
-	const totalAfter = totalInputAfter + totalOutputAfter;
-	const totalReduction = totalBefore > 0 ? ((1 - totalAfter / totalBefore) * 100).toFixed(1) : '0';
+/**
+ * Creates trace filter functions with closure-scoped state.
+ * Each call returns a new set of filters with independent statistics,
+ * avoiding global state issues with parallel evaluations.
+ */
+export function createTraceFilters(): TraceFilters {
+	// Closure-scoped state - isolated per client instance
+	let hasLoggedFilteringActive = false;
+	let totalInputBefore = 0;
+	let totalInputAfter = 0;
+	let totalOutputBefore = 0;
+	let totalOutputAfter = 0;
+	let inputCallCount = 0;
+	let outputCallCount = 0;
 
-	console.log('\n📊 ═══════════════ TRACE FILTERING SUMMARY ═══════════════');
-	console.log(
-		`   INPUTS:  ${formatBytes(totalInputBefore)} → ${formatBytes(totalInputAfter)} (${inputReduction}% reduction, ${inputCallCount} traces)`,
-	);
-	console.log(
-		`   OUTPUTS: ${formatBytes(totalOutputBefore)} → ${formatBytes(totalOutputAfter)} (${outputReduction}% reduction, ${outputCallCount} traces)`,
-	);
-	console.log(
-		`   TOTAL:   ${formatBytes(totalBefore)} → ${formatBytes(totalAfter)} (${totalReduction}% reduction)`,
-	);
-	console.log('═══════════════════════════════════════════════════════════\n');
+	const resetStats = (): void => {
+		hasLoggedFilteringActive = false;
+		totalInputBefore = 0;
+		totalInputAfter = 0;
+		totalOutputBefore = 0;
+		totalOutputAfter = 0;
+		inputCallCount = 0;
+		outputCallCount = 0;
+	};
+
+	const logStats = (): void => {
+		if (inputCallCount === 0 && outputCallCount === 0) {
+			return;
+		}
+
+		const inputReduction =
+			totalInputBefore > 0 ? ((1 - totalInputAfter / totalInputBefore) * 100).toFixed(1) : '0';
+		const outputReduction =
+			totalOutputBefore > 0 ? ((1 - totalOutputAfter / totalOutputBefore) * 100).toFixed(1) : '0';
+		const totalBefore = totalInputBefore + totalOutputBefore;
+		const totalAfter = totalInputAfter + totalOutputAfter;
+		const totalReduction =
+			totalBefore > 0 ? ((1 - totalAfter / totalBefore) * 100).toFixed(1) : '0';
+
+		console.log('\n📊 ═══════════════ TRACE FILTERING SUMMARY ═══════════════');
+		console.log(
+			`   INPUTS:  ${formatBytes(totalInputBefore)} → ${formatBytes(totalInputAfter)} (${inputReduction}% reduction, ${inputCallCount} traces)`,
+		);
+		console.log(
+			`   OUTPUTS: ${formatBytes(totalOutputBefore)} → ${formatBytes(totalOutputAfter)} (${outputReduction}% reduction, ${outputCallCount} traces)`,
+		);
+		console.log(
+			`   TOTAL:   ${formatBytes(totalBefore)} → ${formatBytes(totalAfter)} (${totalReduction}% reduction)`,
+		);
+		console.log('═══════════════════════════════════════════════════════════\n');
+	};
+
+	const filterInputs = (inputs: KVMap): KVMap => {
+		// Log once per client to confirm filtering is active
+		if (!hasLoggedFilteringActive) {
+			hasLoggedFilteringActive = true;
+			console.log(
+				'➔ LangSmith trace filtering: ACTIVE (set LANGSMITH_MINIMAL_TRACING=false to disable)',
+			);
+		}
+
+		// Skip LangChain serializable objects - copying them causes size inflation
+		if (isLangChainSerializable(inputs)) {
+			const size = getApproxSize(inputs);
+			inputCallCount++;
+			totalInputBefore += size;
+			totalInputAfter += size;
+			return inputs;
+		}
+
+		// Skip if no filterable fields - avoid unnecessary copy overhead
+		if (!hasFilterableFields(inputs)) {
+			const size = getApproxSize(inputs);
+			inputCallCount++;
+			totalInputBefore += size;
+			totalInputAfter += size;
+			return inputs;
+		}
+
+		const beforeSize = getApproxSize(inputs);
+		const filtered = { ...inputs };
+
+		// Handle large top-level fields
+		filterLargeStateFields(filtered);
+
+		// Handle workflowContext if present
+		if (filtered.workflowContext && typeof filtered.workflowContext === 'object') {
+			const ctx = filtered.workflowContext as Record<string, unknown>;
+			const filteredCtx: Record<string, unknown> = {};
+
+			for (const [key, value] of Object.entries(ctx)) {
+				if ((LARGE_CONTEXT_FIELDS as readonly string[]).includes(key)) {
+					if (key === 'executionData') {
+						filteredCtx[key] = '[execution data omitted]';
+					} else if (key === 'executionSchema') {
+						filteredCtx[key] = `[${Array.isArray(value) ? value.length : 0} schemas]`;
+					} else if (key === 'expressionValues') {
+						filteredCtx[key] =
+							`[${typeof value === 'object' && value ? Object.keys(value).length : 0} expressions]`;
+					}
+				} else if (key === 'currentWorkflow' && value) {
+					// Summarize currentWorkflow
+					filteredCtx[key] = summarizeWorkflow(value);
+				} else {
+					filteredCtx[key] = value;
+				}
+			}
+
+			filtered.workflowContext = filteredCtx;
+		}
+
+		// Handle workflowJSON if present at top level
+		if (filtered.workflowJSON && typeof filtered.workflowJSON === 'object') {
+			const wf = filtered.workflowJSON as { nodes?: unknown[] };
+			if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
+				filtered.workflowJSON = summarizeWorkflow(filtered.workflowJSON);
+			}
+		}
+
+		// Track stats for final summary
+		const afterSize = getApproxSize(filtered);
+		inputCallCount++;
+		totalInputBefore += beforeSize;
+		totalInputAfter += afterSize;
+
+		return filtered;
+	};
+
+	const filterOutputs = (outputs: KVMap): KVMap => {
+		// Skip LangChain serializable objects - copying them causes size inflation
+		if (isLangChainSerializable(outputs)) {
+			const size = getApproxSize(outputs);
+			outputCallCount++;
+			totalOutputBefore += size;
+			totalOutputAfter += size;
+			return outputs;
+		}
+
+		const beforeSize = getApproxSize(outputs);
+		outputCallCount++;
+
+		// Check if there are any filterable fields in outputs
+		const hasFilterableOutputFields =
+			'workflow' in outputs || LARGE_STATE_FIELDS.some((field) => field in outputs);
+
+		// Skip if no filterable fields
+		if (!hasFilterableOutputFields) {
+			totalOutputBefore += beforeSize;
+			totalOutputAfter += beforeSize;
+			return outputs;
+		}
+
+		const filtered = { ...outputs };
+
+		// Handle large state fields in outputs
+		filterLargeStateFields(filtered);
+
+		// Summarize workflow outputs if present and large
+		if (filtered.workflow && typeof filtered.workflow === 'object') {
+			const wf = filtered.workflow as { nodes?: unknown[] };
+			if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
+				filtered.workflow = summarizeWorkflow(filtered.workflow);
+			}
+		}
+
+		// Keep feedback array as-is - it's essential for evaluation results
+
+		// Track stats for final summary
+		const afterSize = getApproxSize(filtered);
+		totalOutputBefore += beforeSize;
+		totalOutputAfter += afterSize;
+
+		return filtered;
+	};
+
+	return { filterInputs, filterOutputs, logStats, resetStats };
 }

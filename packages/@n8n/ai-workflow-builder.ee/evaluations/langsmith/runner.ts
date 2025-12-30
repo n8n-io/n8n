@@ -10,7 +10,6 @@ import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
 import { DEFAULTS, EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { setupTestEnvironment, createAgent } from '../core/environment';
-import { logFilteringStats, resetFilteringStats } from '../core/trace-filters';
 import {
 	generateRunId,
 	safeExtractUsage,
@@ -132,7 +131,7 @@ export async function runLangsmithEvaluation(
 		}
 
 		// Setup test environment
-		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment();
 		// Note: Don't use the tracer from setupTestEnvironment() here.
 		// LangSmith's evaluate() manages its own tracing context - passing a separate
 		// tracer would create disconnected runs in a different project.
@@ -142,7 +141,7 @@ export async function runLangsmithEvaluation(
 		}
 
 		// Reset filtering stats for accurate per-run statistics
-		resetFilteringStats();
+		traceFilters?.resetStats();
 
 		// Get dataset name from env or use default
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
@@ -192,7 +191,7 @@ export async function runLangsmithEvaluation(
 		console.log(pc.green(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`));
 
 		// Log filtering statistics
-		logFilteringStats();
+		traceFilters?.logStats();
 
 		// Display results information
 		console.log('\nView detailed results in Langsmith dashboard');
