@@ -24,7 +24,6 @@ describe('ConcurrentExecutionsHeader', () => {
 				props: {
 					runningExecutionsCount: 0,
 					concurrencyCap: 0,
-					shortText: false,
 				},
 			}),
 		).not.toThrow();

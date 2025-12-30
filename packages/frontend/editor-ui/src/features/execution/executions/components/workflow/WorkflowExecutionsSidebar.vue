@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
-import { STOP_MANY_EXECUTIONS_MODAL_KEY, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
@@ -22,8 +22,6 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 
 import { ElCheckbox } from 'element-plus';
 import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -42,11 +40,9 @@ const emit = defineEmits<{
 	'execution:stopMany': [];
 }>();
 
-const uiStore = useUIStore();
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();

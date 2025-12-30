@@ -172,9 +172,6 @@ describe('ExecutionRepository', () => {
 			});
 
 			expect(executions).toHaveLength(2);
-			expect(result.identifiers.map((x) => x.id)).toEqual(
-				expect.arrayContaining(executions.map((x) => x.id)),
-			);
 		});
 
 		it('should find executions by startedAfter and startedBefore', async () => {

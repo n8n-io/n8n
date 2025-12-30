@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
