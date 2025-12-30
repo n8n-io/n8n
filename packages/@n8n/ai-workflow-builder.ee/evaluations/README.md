@@ -506,6 +506,7 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `EVAL_FEATURE_MULTI_AGENT` - Set to "true" to enable multi-agent mode
 - `EVAL_FEATURE_TEMPLATE_EXAMPLES` - Set to "true" to enable template examples
 - `N8N_EVALS_DISABLED_NODES` - Comma-separated list of node types to disable (e.g., `n8n-nodes-base.slack,@n8n/n8n-nodes-langchain.agent`)
+- `LANGSMITH_MINIMAL_TRACING` - Controls trace payload filtering (default: `true`). Set to `false` to get full unfiltered traces. When enabled, large fields like `cachedTemplates`, `parsedNodeTypes`, and `workflowContext` are summarized to reduce payload size and avoid 403 errors.
 
 ### Feature Flags
 

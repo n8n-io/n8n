@@ -8,6 +8,7 @@ import { pairwiseLangsmithEvaluator } from './metrics-builder';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
+import { logFilteringStats, resetFilteringStats } from '../core/trace-filters';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
 import { createLogger, type EvalLogger } from '../utils/logger';
@@ -277,6 +278,9 @@ export async function runPairwiseLangsmithEvaluation(
 			throw new Error('Langsmith client not initialized');
 		}
 
+		// Reset filtering stats for accurate per-run statistics
+		resetFilteringStats();
+
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? DEFAULTS.DATASET_NAME;
 		log.info(`➔ Dataset: ${datasetName}`);
 
@@ -320,6 +324,7 @@ export async function runPairwiseLangsmithEvaluation(
 			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
 			numRepetitions: repetitions,
+			client: lsClient,
 			metadata: {
 				numJudges,
 				numGenerations,
@@ -330,6 +335,9 @@ export async function runPairwiseLangsmithEvaluation(
 		});
 
 		const totalEvalTime = Date.now() - evalStartTime;
+
+		// Log filtering statistics
+		logFilteringStats();
 
 		log.success('\n✓ Pairwise evaluation completed');
 		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);

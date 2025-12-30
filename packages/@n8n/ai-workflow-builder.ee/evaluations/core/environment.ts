@@ -8,6 +8,13 @@ import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
+import { filterTraceInputs, filterTraceOutputs, isMinimalTracingEnabled } from './trace-filters.js';
+
+/** Maximum batch size in bytes for trace uploads (10MB) */
+const TRACE_BATCH_SIZE_LIMIT = 10_000_000;
+
+/** Number of concurrent trace batch uploads */
+const TRACE_BATCH_CONCURRENCY = 2;
 
 export interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -42,7 +49,9 @@ export function createTracer(client: Client, projectName: string): LangChainTrac
 }
 
 /**
- * Creates a Langsmith client if API key is available
+ * Creates a Langsmith client if API key is available.
+ * By default, minimal tracing is enabled to reduce payload sizes and avoid 403 errors.
+ * Set LANGSMITH_MINIMAL_TRACING=false to disable filtering and get full traces.
  * @returns Langsmith client or undefined
  */
 export function createLangsmithClient(): Client | undefined {
@@ -50,7 +59,18 @@ export function createLangsmithClient(): Client | undefined {
 	if (!apiKey) {
 		return undefined;
 	}
-	return new Client({ apiKey });
+
+	const minimalTracing = isMinimalTracingEnabled();
+
+	return new Client({
+		apiKey,
+		// Filter large fields from traces to avoid 403 payload errors
+		hideInputs: minimalTracing ? filterTraceInputs : undefined,
+		hideOutputs: minimalTracing ? filterTraceOutputs : undefined,
+		// Reduce batch size and concurrency for high-volume scenarios
+		batchSizeBytesLimit: minimalTracing ? TRACE_BATCH_SIZE_LIMIT : undefined,
+		traceBatchConcurrency: minimalTracing ? TRACE_BATCH_CONCURRENCY : undefined,
+	});
 }
 
 /**
