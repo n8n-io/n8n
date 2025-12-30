@@ -49,7 +49,7 @@ async function main(): Promise<void> {
 			break;
 
 		case 'llm-judge-local':
-		default:
+		default: {
 			// Local CLI evaluation (original behavior)
 			const csvTestCases = args.promptsCsv ? loadTestCasesFromCsv(args.promptsCsv) : undefined;
 			await runCliEvaluation({
@@ -60,6 +60,7 @@ async function main(): Promise<void> {
 				verbose: args.verbose,
 			});
 			break;
+		}
 	}
 }
 

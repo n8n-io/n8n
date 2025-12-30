@@ -1,8 +1,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
-import { programmaticEvaluation } from '../../programmatic/programmatic-evaluation';
 
+import { programmaticEvaluation } from '../../programmatic/programmatic-evaluation';
 import type { Evaluator, Feedback } from '../types';
 
 /**

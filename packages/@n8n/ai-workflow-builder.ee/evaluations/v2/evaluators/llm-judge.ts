@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
-import type { EvaluationInput } from '../../types/evaluation';
-import { evaluateWorkflow } from '../../chains/workflow-evaluator';
 
+import { evaluateWorkflow } from '../../chains/workflow-evaluator';
+import type { EvaluationInput } from '../../types/evaluation';
 import type { Evaluator, Feedback } from '../types';
 
 /**

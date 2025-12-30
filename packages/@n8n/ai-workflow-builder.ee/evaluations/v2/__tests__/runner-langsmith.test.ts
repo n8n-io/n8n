@@ -18,7 +18,9 @@ jest.mock('langsmith/evaluation', () => ({
 
 // Mock langsmith/traceable
 jest.mock('langsmith/traceable', () => ({
-	traceable: jest.fn((fn, _options) => fn),
+	traceable: jest.fn(
+		<T extends (...args: unknown[]) => unknown>(fn: T, _options: unknown): T => fn,
+	),
 }));
 
 /** Helper to create a minimal valid workflow for tests */
@@ -79,9 +81,9 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation((target, _options) => {
+			mockEvaluate.mockImplementation(async (target, _options) => {
 				capturedTarget = target;
-				return Promise.resolve(undefined);
+				return undefined;
 			});
 
 			const workflow = createMockWorkflow('Generated');
@@ -125,9 +127,9 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation((target, _options) => {
+			mockEvaluate.mockImplementation(async (target, _options) => {
 				capturedTarget = target;
-				return Promise.resolve(undefined);
+				return undefined;
 			});
 
 			const evaluator1 = createMockEvaluator('e1', [{ key: 'e1', score: 0.8 }]);
@@ -167,9 +169,9 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation((target, _options) => {
+			mockEvaluate.mockImplementation(async (target, _options) => {
 				capturedTarget = target;
-				return Promise.resolve(undefined);
+				return undefined;
 			});
 
 			const goodEvaluator = createMockEvaluator('good', [{ key: 'good', score: 1 }]);
@@ -211,10 +213,15 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
-			mockEvaluate.mockImplementation((_target, options) => {
-				capturedEvaluators = options.evaluators;
-				return Promise.resolve(undefined);
-			});
+			mockEvaluate.mockImplementation(
+				async (
+					_target: unknown,
+					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
+				) => {
+					capturedEvaluators = options.evaluators;
+					return undefined;
+				},
+			);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -256,10 +263,15 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
-			mockEvaluate.mockImplementation((_target, options) => {
-				capturedEvaluators = options.evaluators;
-				return Promise.resolve(undefined);
-			});
+			mockEvaluate.mockImplementation(
+				async (
+					_target: unknown,
+					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
+				) => {
+					capturedEvaluators = options.evaluators;
+					return undefined;
+				},
+			);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -296,16 +308,18 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = evaluate as jest.Mock;
 
 			let capturedTarget: (inputs: { prompt: string; evals?: unknown }) => Promise<unknown>;
-			mockEvaluate.mockImplementation((target, _options) => {
+			mockEvaluate.mockImplementation(async (target, _options) => {
 				capturedTarget = target;
-				return Promise.resolve(undefined);
+				return undefined;
 			});
 
 			const evaluator: Evaluator<{ dos: string }> = {
 				name: 'contextual',
-				evaluate: jest.fn().mockImplementation((_workflow, ctx) => {
-					return [{ key: 'contextual', score: ctx?.dos ? 1 : 0 }];
-				}),
+				evaluate: jest
+					.fn()
+					.mockImplementation((_workflow: SimpleWorkflow, ctx: { dos: string } | undefined) => {
+						return [{ key: 'contextual', score: ctx?.dos ? 1 : 0 }];
+					}),
 			};
 
 			const config: RunConfig = {

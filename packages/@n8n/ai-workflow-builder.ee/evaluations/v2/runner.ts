@@ -2,8 +2,6 @@ import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/ev
 import { evaluate } from 'langsmith/evaluation';
 import { traceable } from 'langsmith/traceable';
 
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
-
 import type {
 	Evaluator,
 	TestCase,
@@ -13,6 +11,7 @@ import type {
 	RunSummary,
 	EvaluationLifecycle,
 } from './types.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 /** Pass/fail threshold for overall score */
 const PASS_THRESHOLD = 0.7;
@@ -34,7 +33,7 @@ export function getLastResults(): ExampleResult[] {
  */
 async function evaluateWithPlugins(
 	workflow: SimpleWorkflow,
-	evaluators: Evaluator<unknown>[],
+	evaluators: Array<Evaluator<unknown>>,
 	context: unknown,
 	lifecycle?: Partial<EvaluationLifecycle>,
 ): Promise<Feedback[]> {
@@ -45,13 +44,13 @@ async function evaluateWithPlugins(
 				lifecycle?.onEvaluatorComplete?.(evaluator.name, feedback);
 				return feedback;
 			} catch (error) {
-				const err = error instanceof Error ? error : new Error(String(error));
-				lifecycle?.onEvaluatorError?.(evaluator.name, err);
+				const evaluatorError = error instanceof Error ? error : new Error(String(error));
+				lifecycle?.onEvaluatorError?.(evaluator.name, evaluatorError);
 				return [
 					{
 						key: `${evaluator.name}.error`,
 						score: 0,
-						comment: err.message,
+						comment: evaluatorError.message,
 					},
 				];
 			}
@@ -289,7 +288,7 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
  */
 export async function runEvaluation(config: RunConfig): Promise<RunSummary> {
 	if (config.mode === 'langsmith') {
-		return runLangsmith(config);
+		return await runLangsmith(config);
 	}
-	return runLocal(config);
+	return await runLocal(config);
 }

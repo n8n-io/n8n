@@ -5,8 +5,8 @@
  * that the factory correctly wraps it and transforms the results.
  */
 
-import { mock } from 'jest-mock-extended';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -17,7 +17,7 @@ const mockEvaluateWorkflow = jest.fn();
 // Mock the evaluateWorkflow function from chains
 // Path from test file to chains module: evaluations/v2/__tests__/evaluators -> evaluations/chains
 jest.mock('../../../chains/workflow-evaluator', () => ({
-	evaluateWorkflow: (...args: unknown[]) => mockEvaluateWorkflow(...args),
+	evaluateWorkflow: (...args: unknown[]): unknown => mockEvaluateWorkflow(...args),
 }));
 
 /** Helper to create a minimal valid workflow for tests */

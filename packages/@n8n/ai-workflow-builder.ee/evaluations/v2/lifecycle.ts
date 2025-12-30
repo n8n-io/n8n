@@ -1,7 +1,5 @@
 import pc from 'picocolors';
 
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
-
 import type {
 	EvaluationLifecycle,
 	RunConfig,
@@ -9,6 +7,7 @@ import type {
 	ExampleResult,
 	RunSummary,
 } from './types.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 /**
  * Truncate a string for display.
@@ -151,7 +150,7 @@ export function createQuietLifecycle(): EvaluationLifecycle {
 export function mergeLifecycles(
 	...lifecycles: Array<Partial<EvaluationLifecycle> | undefined>
 ): EvaluationLifecycle {
-	const validLifecycles = lifecycles.filter(Boolean) as Partial<EvaluationLifecycle>[];
+	const validLifecycles = lifecycles.filter(Boolean) as Array<Partial<EvaluationLifecycle>>;
 
 	return {
 		onStart(config: RunConfig): void {

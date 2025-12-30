@@ -40,7 +40,7 @@ export interface RunConfig {
 	/** Function to generate workflow from prompt */
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
 	/** Evaluators to run on each generated workflow */
-	evaluators: Evaluator<unknown>[];
+	evaluators: Array<Evaluator<unknown>>;
 	/** Global context available to all evaluators */
 	context?: unknown;
 	/** Directory for JSON output files */

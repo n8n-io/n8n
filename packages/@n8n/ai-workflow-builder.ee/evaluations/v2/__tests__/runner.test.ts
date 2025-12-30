@@ -125,11 +125,13 @@ describe('Runner - Local Mode', () => {
 		it('should pass context from test case to evaluators', async () => {
 			const evaluator: Evaluator<{ dos: string; donts: string }> = {
 				name: 'contextual',
-				evaluate: jest.fn().mockImplementation((_workflow, ctx) => {
-					expect(ctx.dos).toBe('Use Slack');
-					expect(ctx.donts).toBe('No HTTP');
-					return [{ key: 'contextual', score: 1 }];
-				}),
+				evaluate: jest
+					.fn()
+					.mockImplementation((_workflow: SimpleWorkflow, ctx: { dos: string; donts: string }) => {
+						expect(ctx.dos).toBe('Use Slack');
+						expect(ctx.donts).toBe('No HTTP');
+						return [{ key: 'contextual', score: 1 }];
+					}),
 			};
 
 			const config: RunConfig = {
@@ -153,11 +155,15 @@ describe('Runner - Local Mode', () => {
 		it('should merge global context with test case context', async () => {
 			const evaluator: Evaluator<{ global: boolean; local: string }> = {
 				name: 'merged',
-				evaluate: jest.fn().mockImplementation((_workflow, ctx) => {
-					expect(ctx.global).toBe(true);
-					expect(ctx.local).toBe('test');
-					return [{ key: 'merged', score: 1 }];
-				}),
+				evaluate: jest
+					.fn()
+					.mockImplementation(
+						(_workflow: SimpleWorkflow, ctx: { global: boolean; local: string }) => {
+							expect(ctx.global).toBe(true);
+							expect(ctx.local).toBe('test');
+							return [{ key: 'merged', score: 1 }];
+						},
+					),
 			};
 
 			const config: RunConfig = {
