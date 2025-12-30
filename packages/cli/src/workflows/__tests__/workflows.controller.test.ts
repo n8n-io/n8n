@@ -9,7 +9,6 @@ import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -162,7 +161,7 @@ describe('WorkflowsController', () => {
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 
-		it('should throw NotFoundError when no successful execution exists', async () => {
+		it('should return null when no successful execution exists', async () => {
 			/**
 			 * Arrange
 			 */
@@ -172,11 +171,14 @@ describe('WorkflowsController', () => {
 			controller.executionService = executionService;
 
 			/**
-			 * Act & Assert
+			 * Act
 			 */
-			await expect(controller.getLastSuccessfulExecution(req, res, workflowId)).rejects.toThrow(
-				NotFoundError,
-			);
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeNull();
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 	});
