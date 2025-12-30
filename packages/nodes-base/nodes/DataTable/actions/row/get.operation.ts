@@ -72,7 +72,7 @@ export const description: INodeProperties[] = [
 				orderBy: [true],
 			},
 		},
-		default: '',
+		default: 'id',
 	},
 	{
 		displayName: 'Order By Direction',
@@ -95,7 +95,7 @@ export const description: INodeProperties[] = [
 				orderBy: [true],
 			},
 		},
-		default: 'ASC',
+		default: 'DESC',
 		description: 'Sort direction for the column',
 	},
 ];
