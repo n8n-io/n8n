@@ -210,12 +210,11 @@ describe('init()', () => {
 		expect(activationMode).toBe('init');
 
 		// After filtering, the workflow should only have the Schedule Trigger (Start was removed)
-		if (existingWorkflow) {
-			expect(existingWorkflow.nodes).toHaveLength(1);
-			expect(existingWorkflow.nodes[0].type).toBe('n8n-nodes-base.scheduleTrigger');
-			// Connections from Start should also be removed
-			expect(existingWorkflow.connections.Start).toBeUndefined();
-		}
+		expect(existingWorkflow).toBeDefined();
+		expect(existingWorkflow!.nodes).toHaveLength(1);
+		expect(existingWorkflow!.nodes[0].type).toBe('n8n-nodes-base.scheduleTrigger');
+		// Connections from Start should also be removed
+		expect(existingWorkflow!.connections.Start).toBeUndefined();
 
 		// Workflow should be active in memory
 		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
@@ -250,13 +249,12 @@ describe('init()', () => {
 
 		// Verify disabled Start node was NOT filtered out
 		const [, , existingWorkflow] = addSpy.mock.calls[0];
-		if (existingWorkflow) {
-			// Both nodes should still be in the array (disabled Start is not filtered)
-			expect(existingWorkflow.nodes).toHaveLength(2);
-			const startNode = existingWorkflow.nodes.find((n) => n.name === 'Start');
-			expect(startNode).toBeDefined();
-			expect(startNode?.disabled).toBe(true);
-		}
+		expect(existingWorkflow).toBeDefined();
+		// Both nodes should still be in the array (disabled Start is not filtered)
+		expect(existingWorkflow!.nodes).toHaveLength(2);
+		const startNode = existingWorkflow!.nodes.find((n) => n.name === 'Start');
+		expect(startNode).toBeDefined();
+		expect(startNode!.disabled).toBe(true);
 	});
 });
 
