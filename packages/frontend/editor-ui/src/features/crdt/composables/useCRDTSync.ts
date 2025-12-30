@@ -10,6 +10,8 @@ export interface UseCRDTSyncOptions {
 	immediate?: boolean;
 	/** Sync to server. When false, only syncs between tabs (local-only mode). Default: true */
 	serverSync?: boolean;
+	/** Callback fired when initial sync is complete and doc is ready to use */
+	onReady?: (doc: CRDTDoc) => void;
 }
 
 export interface UseCRDTSyncReturn {
@@ -174,7 +176,7 @@ export function clearExecutionsInWorker(workflowDocId: string): void {
  * ```
  */
 export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
-	const { docId, immediate = true, serverSync = true } = options;
+	const { docId, immediate = true, serverSync = true, onReady } = options;
 	const rootStore = useRootStore();
 
 	const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
@@ -222,10 +224,13 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 
 			case 'initial-sync':
 				state.value = 'ready';
-				if (connectPromiseResolve && currentDoc) {
-					connectPromiseResolve(currentDoc);
-					connectPromiseResolve = null;
-					connectPromiseReject = null;
+				if (currentDoc) {
+					onReady?.(currentDoc);
+					if (connectPromiseResolve) {
+						connectPromiseResolve(currentDoc);
+						connectPromiseResolve = null;
+						connectPromiseReject = null;
+					}
 				}
 				break;
 		}
