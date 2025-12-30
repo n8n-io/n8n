@@ -15,6 +15,16 @@ const LARGE_STATE_FIELDS = ['cachedTemplates', 'parsedNodeTypes'] as const;
 const LANGCHAIN_SERIALIZABLE_KEYS = ['lc_serializable', 'lc_kwargs', 'lc_namespace'] as const;
 
 /**
+ * Large context fields within workflowContext that should be filtered.
+ */
+const LARGE_CONTEXT_FIELDS = ['executionData', 'executionSchema', 'expressionValues'] as const;
+
+/**
+ * Threshold for summarizing workflows instead of including full definition.
+ */
+const WORKFLOW_SUMMARY_THRESHOLD = 20;
+
+/**
  * Check if an object is a LangChain serializable object.
  * These objects should not be filtered as copying them causes size inflation.
  */
@@ -54,16 +64,6 @@ function formatBytes(bytes: number): string {
 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
 	return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 }
-
-/**
- * Large context fields within workflowContext that should be filtered.
- */
-const LARGE_CONTEXT_FIELDS = ['executionData', 'executionSchema', 'expressionValues'] as const;
-
-/**
- * Threshold for summarizing workflows instead of including full definition.
- */
-const WORKFLOW_SUMMARY_THRESHOLD = 20;
 
 /**
  * Summarize a workflow for minimal trace output.
@@ -114,6 +114,55 @@ function filterLargeStateFields(obj: KVMap): void {
 			}
 		}
 	}
+}
+
+/**
+ * Summarize a large context field to a placeholder string.
+ */
+function summarizeContextField(key: string, value: unknown): string {
+	switch (key) {
+		case 'executionData':
+			return '[execution data omitted]';
+		case 'executionSchema':
+			return `[${Array.isArray(value) ? value.length : 0} schemas]`;
+		case 'expressionValues':
+			return `[${typeof value === 'object' && value ? Object.keys(value).length : 0} expressions]`;
+		default:
+			return '[omitted]';
+	}
+}
+
+/**
+ * Filter workflowContext object, summarizing large fields.
+ */
+function filterWorkflowContext(ctx: Record<string, unknown>): Record<string, unknown> {
+	const filtered: Record<string, unknown> = {};
+
+	for (const [key, value] of Object.entries(ctx)) {
+		if ((LARGE_CONTEXT_FIELDS as readonly string[]).includes(key)) {
+			filtered[key] = summarizeContextField(key, value);
+		} else if (key === 'currentWorkflow' && value) {
+			filtered[key] = summarizeWorkflow(value);
+		} else {
+			filtered[key] = value;
+		}
+	}
+
+	return filtered;
+}
+
+/**
+ * Summarize a workflow field if it exceeds the node threshold.
+ */
+function summarizeLargeWorkflow(workflow: unknown): unknown {
+	if (!workflow || typeof workflow !== 'object') {
+		return workflow;
+	}
+	const wf = workflow as { nodes?: unknown[] };
+	if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
+		return summarizeWorkflow(workflow);
+	}
+	return workflow;
 }
 
 /**
@@ -195,6 +244,15 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 		log('═══════════════════════════════════════════════════════════\n');
 	};
 
+	/** Track input stats and return the object unchanged */
+	const trackInputPassthrough = (inputs: KVMap): KVMap => {
+		const size = getApproxSize(inputs);
+		inputCallCount++;
+		totalInputBefore += size;
+		totalInputAfter += size;
+		return inputs;
+	};
+
 	const filterInputs = (inputs: KVMap): KVMap => {
 		// Log once per client to confirm filtering is active
 		if (!hasLoggedFilteringActive) {
@@ -205,20 +263,12 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Skip LangChain serializable objects - copying them causes size inflation
 		if (isLangChainSerializable(inputs)) {
-			const size = getApproxSize(inputs);
-			inputCallCount++;
-			totalInputBefore += size;
-			totalInputAfter += size;
-			return inputs;
+			return trackInputPassthrough(inputs);
 		}
 
 		// Skip if no filterable fields - avoid unnecessary copy overhead
 		if (!hasFilterableFields(inputs)) {
-			const size = getApproxSize(inputs);
-			inputCallCount++;
-			totalInputBefore += size;
-			totalInputAfter += size;
-			return inputs;
+			return trackInputPassthrough(inputs);
 		}
 
 		const beforeSize = getApproxSize(inputs);
@@ -229,36 +279,14 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Handle workflowContext if present
 		if (filtered.workflowContext && typeof filtered.workflowContext === 'object') {
-			const ctx = filtered.workflowContext as Record<string, unknown>;
-			const filteredCtx: Record<string, unknown> = {};
-
-			for (const [key, value] of Object.entries(ctx)) {
-				if ((LARGE_CONTEXT_FIELDS as readonly string[]).includes(key)) {
-					if (key === 'executionData') {
-						filteredCtx[key] = '[execution data omitted]';
-					} else if (key === 'executionSchema') {
-						filteredCtx[key] = `[${Array.isArray(value) ? value.length : 0} schemas]`;
-					} else if (key === 'expressionValues') {
-						filteredCtx[key] =
-							`[${typeof value === 'object' && value ? Object.keys(value).length : 0} expressions]`;
-					}
-				} else if (key === 'currentWorkflow' && value) {
-					// Summarize currentWorkflow
-					filteredCtx[key] = summarizeWorkflow(value);
-				} else {
-					filteredCtx[key] = value;
-				}
-			}
-
-			filtered.workflowContext = filteredCtx;
+			filtered.workflowContext = filterWorkflowContext(
+				filtered.workflowContext as Record<string, unknown>,
+			);
 		}
 
 		// Handle workflowJSON if present at top level
 		if (filtered.workflowJSON && typeof filtered.workflowJSON === 'object') {
-			const wf = filtered.workflowJSON as { nodes?: unknown[] };
-			if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
-				filtered.workflowJSON = summarizeWorkflow(filtered.workflowJSON);
-			}
+			filtered.workflowJSON = summarizeLargeWorkflow(filtered.workflowJSON);
 		}
 
 		// Track stats for final summary
@@ -301,10 +329,7 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Summarize workflow outputs if present and large
 		if (filtered.workflow && typeof filtered.workflow === 'object') {
-			const wf = filtered.workflow as { nodes?: unknown[] };
-			if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
-				filtered.workflow = summarizeWorkflow(filtered.workflow);
-			}
+			filtered.workflow = summarizeLargeWorkflow(filtered.workflow);
 		}
 
 		// Keep feedback array as-is - it's essential for evaluation results
