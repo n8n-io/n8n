@@ -51,6 +51,16 @@ export {
 // Output
 export { createArtifactSaver, type ArtifactSaver, type ArtifactSaverOptions } from './output';
 
+// Cache analyzer
+export {
+	calculateCacheStats,
+	aggregateCacheStats,
+	formatCacheStats,
+	type CacheStatistics,
+	type UsageMetadata,
+	type FormattedCacheStatistics,
+} from './cache-analyzer';
+
 // Trace filtering (re-exported from v1 for convenience)
 export {
 	createTraceFilters,
