@@ -122,10 +122,18 @@ export async function runV2Evaluation(): Promise<void> {
 		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
 	} else if (args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') {
 		evaluators.push(
-			createPairwiseEvaluator(env.llm, { numJudges: args.numJudges }) as Evaluator<unknown>,
+			createPairwiseEvaluator(env.llm, {
+				numJudges: args.numJudges,
+				numGenerations: args.numGenerations,
+			}) as Evaluator<unknown>,
 		);
 		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
 	}
+
+	// Build context - include generateWorkflow for multi-gen pairwise
+	const isMultiGen =
+		(args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') &&
+		args.numGenerations > 1;
 
 	// Build config
 	const config: RunConfig = {
@@ -136,6 +144,8 @@ export async function runV2Evaluation(): Promise<void> {
 		generateWorkflow,
 		evaluators,
 		lifecycle,
+		// For multi-gen, pass generateWorkflow in context so evaluator can create multiple workflows
+		context: isMultiGen ? { generateWorkflow } : undefined,
 		langsmithOptions: args.mode.includes('langsmith')
 			? {
 					experimentName: args.experimentName ?? 'v2-evaluation',

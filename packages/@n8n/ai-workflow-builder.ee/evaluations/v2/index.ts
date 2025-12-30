@@ -61,6 +61,14 @@ export {
 	type FormattedCacheStatistics,
 } from './cache-analyzer';
 
+// Multi-generation utilities
+export {
+	getMajorityThreshold,
+	aggregateGenerations,
+	type GenerationDetail,
+	type MultiGenerationResult,
+} from './multi-gen';
+
 // Trace filtering (re-exported from v1 for convenience)
 export {
 	createTraceFilters,

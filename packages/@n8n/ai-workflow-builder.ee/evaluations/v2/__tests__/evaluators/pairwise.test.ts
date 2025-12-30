@@ -228,4 +228,170 @@ describe('Pairwise Evaluator', () => {
 			await expect(evaluator.evaluate(workflow, {})).rejects.toThrow('Judge panel failed');
 		});
 	});
+
+	describe('createPairwiseEvaluator() multi-gen', () => {
+		it('should use single-gen behavior when numGenerations is 1', async () => {
+			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numGenerations: 1 });
+
+			const workflow = createMockWorkflow();
+			const feedback = await evaluator.evaluate(workflow, {});
+
+			// Should have single-gen feedback keys
+			expect(feedback.find((f) => f.key === 'pairwise.majorityPass')).toBeDefined();
+			expect(feedback.find((f) => f.key === 'pairwise.diagnosticScore')).toBeDefined();
+			// Should NOT have multi-gen keys
+			expect(feedback.find((f) => f.key === 'pairwise.generationCorrectness')).toBeUndefined();
+		});
+
+		it('should generate multiple workflows when numGenerations > 1', async () => {
+			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 3, numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+
+			await evaluator.evaluate(workflow, {
+				dos: 'Test',
+				donts: 'Test',
+				prompt: 'Create a workflow',
+				generateWorkflow: mockGenerateWorkflow,
+			});
+
+			// Should have called generateWorkflow 3 times
+			expect(mockGenerateWorkflow).toHaveBeenCalledTimes(3);
+			// Should have called runJudgePanel 3 times (once per generation)
+			expect(mockRunJudgePanel).toHaveBeenCalledTimes(3);
+		});
+
+		it('should aggregate results across generations', async () => {
+			// First two generations pass, third fails
+			mockRunJudgePanel
+				.mockResolvedValueOnce(
+					createMockPanelResult({ majorityPass: true, avgDiagnosticScore: 0.9 }),
+				)
+				.mockResolvedValueOnce(
+					createMockPanelResult({ majorityPass: true, avgDiagnosticScore: 0.8 }),
+				)
+				.mockResolvedValueOnce(
+					createMockPanelResult({ majorityPass: false, avgDiagnosticScore: 0.5 }),
+				);
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 3, numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Create a workflow',
+				generateWorkflow: mockGenerateWorkflow,
+			});
+
+			// Should have multi-gen feedback
+			const correctness = feedback.find((f) => f.key === 'pairwise.generationCorrectness');
+			expect(correctness?.score).toBeCloseTo(2 / 3); // 2 of 3 passed
+			expect(correctness?.comment).toBe('2/3 generations passed');
+
+			const diagnostic = feedback.find((f) => f.key === 'pairwise.aggregatedDiagnostic');
+			expect(diagnostic?.score).toBeCloseTo((0.9 + 0.8 + 0.5) / 3);
+		});
+
+		it('should return per-generation feedback', async () => {
+			mockRunJudgePanel
+				.mockResolvedValueOnce(
+					createMockPanelResult({ majorityPass: true, avgDiagnosticScore: 0.9, primaryPasses: 3 }),
+				)
+				.mockResolvedValueOnce(
+					createMockPanelResult({ majorityPass: false, avgDiagnosticScore: 0.4, primaryPasses: 1 }),
+				);
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 3, numGenerations: 2 });
+
+			const workflow = createMockWorkflow();
+			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Create a workflow',
+				generateWorkflow: mockGenerateWorkflow,
+			});
+
+			// Gen 1 feedback
+			const gen1Pass = feedback.find((f) => f.key === 'pairwise.gen1.majorityPass');
+			expect(gen1Pass?.score).toBe(1);
+			expect(gen1Pass?.comment).toBe('3/3 judges');
+
+			const gen1Diag = feedback.find((f) => f.key === 'pairwise.gen1.diagnosticScore');
+			expect(gen1Diag?.score).toBe(0.9);
+
+			// Gen 2 feedback
+			const gen2Pass = feedback.find((f) => f.key === 'pairwise.gen2.majorityPass');
+			expect(gen2Pass?.score).toBe(0);
+			expect(gen2Pass?.comment).toBe('1/3 judges');
+
+			const gen2Diag = feedback.find((f) => f.key === 'pairwise.gen2.diagnosticScore');
+			expect(gen2Diag?.score).toBe(0.4);
+		});
+
+		it('should throw if generateWorkflow missing in context for multi-gen', async () => {
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+
+			await expect(
+				evaluator.evaluate(workflow, {
+					prompt: 'Create a workflow',
+					// Missing generateWorkflow
+				}),
+			).rejects.toThrow('Multi-gen requires generateWorkflow and prompt in context');
+		});
+
+		it('should throw if prompt missing in context for multi-gen', async () => {
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+
+			await expect(
+				evaluator.evaluate(workflow, {
+					generateWorkflow: mockGenerateWorkflow,
+					// Missing prompt
+				}),
+			).rejects.toThrow('Multi-gen requires generateWorkflow and prompt in context');
+		});
+
+		it('should run all generations in parallel', async () => {
+			// Track call order with timestamps
+			const callTimes: number[] = [];
+			mockRunJudgePanel.mockImplementation(async () => {
+				callTimes.push(Date.now());
+				await new Promise((r) => setTimeout(r, 50)); // Simulate async work
+				return createMockPanelResult();
+			});
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 3, numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+
+			await evaluator.evaluate(workflow, {
+				prompt: 'Create a workflow',
+				generateWorkflow: mockGenerateWorkflow,
+			});
+
+			// All calls should start within 20ms of each other (parallel)
+			const timeDiffs = callTimes.slice(1).map((t, i) => t - callTimes[i]);
+			timeDiffs.forEach((diff) => {
+				expect(diff).toBeLessThan(20);
+			});
+		});
+	});
 });
