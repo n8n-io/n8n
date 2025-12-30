@@ -58,7 +58,6 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
-const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({

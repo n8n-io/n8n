@@ -27,7 +27,6 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'execution:delete': [value: string];
 	'execution:stop': [value: string];
-	'execution:stopMany': [];
 	'execution:retry': [value: { id: string; loadWorkflow: boolean }];
 	'update:auto-refresh': [value: boolean];
 	'update:filters': [value: ExecutionFilterType];
@@ -91,7 +90,6 @@ onBeforeRouteLeave(async (to, _, next) => {
 			@reload-executions="emit('reload')"
 			@filter-updated="emit('update:filters', $event)"
 			@load-more="emit('load-more')"
-			@execution:stop-many="emit('execution:stopMany')"
 			@retry-execution="onRetryExecution"
 		/>
 		<div v-if="!hidePreview" :class="$style.content">

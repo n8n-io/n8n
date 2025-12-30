@@ -268,7 +268,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	// Returns the amount of stopped executions
 	async function stopManyExecutions(filter: Omit<StopExecutionFilterQuery, 'workflowId'>) {
-		return await makeRestApiRequest<number>(
+		return await makeRestApiRequest<{ stopped: number }>(
 			rootStore.restApiContext,
 			'POST',
 			'/executions/stopMany',

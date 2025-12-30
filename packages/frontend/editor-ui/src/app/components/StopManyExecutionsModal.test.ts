@@ -1,17 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '../constants';
-import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import type { RenderResult } from '@testing-library/vue';
-import { reactive } from 'vue';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -35,7 +27,7 @@ vi.mock('@/app/composables/useTelemetry', () => {
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
-	useRoute: () => reactive({}),
+	useRoute: () => ({}),
 	RouterLink: vi.fn(),
 }));
 
@@ -61,22 +53,8 @@ let renderModal: () => RenderResult;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 describe('StopManyExecutionsModal', () => {
-	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
-	let executionsStore: MockedStore<typeof useExecutionsStore>;
-	let uiStore: MockedStore<typeof useUIStore>;
-	let settingsStore: MockedStore<typeof useSettingsStore>;
-	let telemetry: ReturnType<typeof useTelemetry>;
-	let toast: ReturnType<typeof useToast>;
-
 	beforeEach(() => {
 		pinia = createTestingPinia();
-
-		workflowsStore = mockedStore(useWorkflowsStore);
-		executionsStore = mockedStore(useExecutionsStore);
-		uiStore = mockedStore(useUIStore);
-		settingsStore = mockedStore(useSettingsStore);
-		telemetry = useTelemetry();
-		toast = useToast();
 
 		renderModal = () =>
 			createComponentRenderer(StopManyExecutionsModal)({

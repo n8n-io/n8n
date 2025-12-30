@@ -67,7 +67,7 @@ const onSubmit = async () => {
 		});
 		const { startedBefore, startedAfter } = executionsStore.executionsFilters;
 
-		const count = await executionsStore.stopManyExecutions({
+		const { stopped: count } = await executionsStore.stopManyExecutions({
 			status,
 			startedBefore,
 			startedAfter,

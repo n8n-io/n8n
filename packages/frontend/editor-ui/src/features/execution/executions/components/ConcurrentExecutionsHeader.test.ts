@@ -24,6 +24,7 @@ describe('ConcurrentExecutionsHeader', () => {
 				props: {
 					runningExecutionsCount: 0,
 					concurrencyCap: 0,
+					shortText: false,
 				},
 			}),
 		).not.toThrow();
@@ -31,7 +32,7 @@ describe('ConcurrentExecutionsHeader', () => {
 
 	test.each([
 		[0, 5, 'No active executions'],
-		[2, 5, '2/5 active executions'],
+		[2, 5, '2/5 active'],
 	])(
 		'shows the correct text when there are %i running executions of %i',
 		async (runningExecutionsCount, concurrencyCap, text) => {
