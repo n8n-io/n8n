@@ -303,6 +303,9 @@ export LANGSMITH_DATASET_NAME=your_dataset_name
 # Run evaluation
 pnpm eval:langsmith
 
+# With custom experiment name
+pnpm eval:langsmith --name "my-experiment"
+
 # With feature flags enabled
 pnpm eval:langsmith --multi-agent
 ```

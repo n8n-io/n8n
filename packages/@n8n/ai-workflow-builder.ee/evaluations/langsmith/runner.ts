@@ -8,7 +8,7 @@ import pc from 'picocolors';
 import { createLangsmithEvaluator } from './evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
-import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
+import { DEFAULTS, EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
 	generateRunId,
@@ -100,12 +100,17 @@ function createWorkflowGenerator(
  * Runs evaluation using Langsmith
  * @param repetitions - Number of times to run each example (default: 1)
  * @param featureFlags - Optional feature flags to pass to the agent
+ * @param experimentName - Optional custom experiment name (default: 'workflow-builder-evaluation')
  */
 export async function runLangsmithEvaluation(
 	repetitions: number = 1,
 	featureFlags?: BuilderFeatureFlags,
+	experimentName?: string,
 ): Promise<void> {
+	const finalExperimentName = experimentName ?? DEFAULTS.LLM_JUDGE_EXPERIMENT_NAME;
+
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
+	console.log(pc.blue(`➔ Experiment: ${finalExperimentName}`));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
 	}
@@ -170,7 +175,7 @@ export async function runLangsmithEvaluation(
 			data: datasetName,
 			evaluators: [evaluator],
 			maxConcurrency: 7,
-			experimentPrefix: 'workflow-builder-evaluation',
+			experimentPrefix: finalExperimentName,
 			numRepetitions: repetitions,
 			metadata: {
 				evaluationType: 'llm-based',
@@ -184,7 +189,7 @@ export async function runLangsmithEvaluation(
 		// Display results information
 		console.log('\nView detailed results in Langsmith dashboard');
 		console.log(
-			`Experiment name: workflow-builder-evaluation-${new Date().toISOString().split('T')[0]}`,
+			`Experiment name: ${finalExperimentName}-${new Date().toISOString().split('T')[0]}`,
 		);
 
 		// Log summary of results if available
