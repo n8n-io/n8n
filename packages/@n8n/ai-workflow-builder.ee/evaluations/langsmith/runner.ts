@@ -3,7 +3,6 @@ import { evaluate } from 'langsmith/evaluation';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
@@ -17,6 +16,7 @@ import {
 	extractMessageContent,
 } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
+import { createLogger } from '../utils/logger';
 
 /**
  * Creates a workflow generation function for Langsmith evaluation
@@ -106,20 +106,22 @@ export async function runLangsmithEvaluation(
 	repetitions: number = 1,
 	featureFlags?: BuilderFeatureFlags,
 	experimentName?: string,
+	verbose: boolean = false,
 ): Promise<void> {
 	const finalExperimentName = experimentName ?? DEFAULTS.LLM_JUDGE_EXPERIMENT_NAME;
+	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
-	console.log(pc.blue(`➔ Experiment: ${finalExperimentName}`));
+	log.info(`➔ Experiment: ${finalExperimentName}`);
 	if (repetitions > 1) {
-		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
+		log.warn(`➔ Each example will be run ${repetitions} times`);
 	}
 	if (featureFlags) {
 		const enabledFlags = Object.entries(featureFlags)
 			.filter(([, v]) => v === true)
 			.map(([k]) => k);
 		if (enabledFlags.length > 0) {
-			console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+			log.success(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`);
 		}
 	}
 	console.log();
@@ -131,7 +133,7 @@ export async function runLangsmithEvaluation(
 		}
 
 		// Setup test environment
-		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment(log);
 		// Note: Don't use the tracer from setupTestEnvironment() here.
 		// LangSmith's evaluate() manages its own tracing context - passing a separate
 		// tracer would create disconnected runs in a different project.
@@ -145,7 +147,7 @@ export async function runLangsmithEvaluation(
 
 		// Get dataset name from env or use default
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
-		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
+		log.info(`➔ Using dataset: ${datasetName}`);
 
 		// Verify dataset exists
 		try {
@@ -188,24 +190,24 @@ export async function runLangsmithEvaluation(
 		});
 
 		const totalTime = Date.now() - startTime;
-		console.log(pc.green(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`));
+		log.success(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`);
 
 		// Log filtering statistics
 		traceFilters?.logStats();
 
 		// Display results information
-		console.log('\nView detailed results in Langsmith dashboard');
-		console.log(
-			`Experiment name: ${finalExperimentName}-${new Date().toISOString().split('T')[0]}`,
-		);
+		log.info('\nView detailed results in Langsmith dashboard');
+		log.info(`Experiment name: ${finalExperimentName}-${new Date().toISOString().split('T')[0]}`);
 
 		// Log summary of results if available
 		if (results) {
-			console.log(pc.dim('Evaluation run completed successfully'));
-			console.log(pc.dim(`Dataset: ${datasetName}`));
+			log.dim('Evaluation run completed successfully');
+			log.dim(`Dataset: ${datasetName}`);
 		}
 	} catch (error) {
-		console.error(pc.red('✗ Langsmith evaluation failed:'), error);
+		log.error(
+			`✗ Langsmith evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
 		process.exit(1);
 	}
 }

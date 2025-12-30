@@ -308,7 +308,20 @@ pnpm eval:langsmith --name "my-experiment"
 
 # With feature flags enabled
 pnpm eval:langsmith --multi-agent
+
+# Enable verbose logging
+pnpm eval:langsmith --verbose
 ```
+
+#### CLI Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--name <name>` | Custom experiment name in LangSmith | `workflow-builder-evaluation` |
+| `--repetitions <n>` | Number of times to repeat each example | 1 |
+| `--verbose`, `-v` | Enable verbose logging | false |
+| `--multi-agent` | Enable multi-agent architecture | false |
+| `--template-examples` | Enable template-based examples | false |
 
 ### Pairwise Evaluation
 
