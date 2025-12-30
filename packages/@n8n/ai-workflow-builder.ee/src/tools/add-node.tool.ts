@@ -172,16 +172,10 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				}
 
 				// Convert initial parameters array to INodeParameters object
-				console.log('\n=== DEBUG: add_nodes Tool - Initial Parameters ===');
-				console.log(`Node: ${name} (${nodeType} v${nodeVersion})`);
-				console.log('Raw initialParameters:', JSON.stringify(initialParameters, null, 2));
-
 				const initialParamsObject =
 					initialParameters && initialParameters.length > 0
 						? arrayToNodeParameters(initialParameters as ParameterEntry[])
 						: undefined;
-
-				console.log('Converted initialParamsObject:', JSON.stringify(initialParamsObject, null, 2));
 
 				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(

@@ -72,22 +72,12 @@ export function createConnectNodesTool(
 				// Validate input using Zod schema
 				const validatedInput = nodeConnectionSchema.parse(input);
 
-				// DEBUG: Log tool call input
-				console.log('\n=== DEBUG: connect_nodes Tool Called ===');
-				console.log('Input:', JSON.stringify(validatedInput, null, 2));
-
 				// Report tool start
 				reporter.start(validatedInput);
 
 				// Get current state
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
-
-				// DEBUG: Log available nodes
-				console.log(
-					'Available nodes:',
-					workflow.nodes.map((n) => `${n.name} (${n.id})`).join(', '),
-				);
 
 				// Report progress
 				reportProgress(reporter, 'Finding nodes to connect...');
@@ -161,9 +151,6 @@ export function createConnectNodesTool(
 					sourceNodeType,
 					targetNodeType,
 				);
-
-				// DEBUG: Log inference result
-				console.log('Inference result:', JSON.stringify(inferResult, null, 2));
 
 				if (inferResult.error) {
 					const connectionError = new ConnectionError(inferResult.error, {
@@ -296,14 +283,6 @@ export function createConnectNodesTool(
 						targetNode: true,
 					},
 				};
-
-				// DEBUG: Log final connection result
-				console.log('\n=== DEBUG: Connection Created ===');
-				console.log(
-					`Final: ${actualSourceNode.name} → ${actualTargetNode.name} (${connectionType})`,
-				);
-				console.log(`Swapped: ${swapped}`);
-				console.log('Connection object:', JSON.stringify(newConnection, null, 2));
 
 				reporter.complete(output);
 

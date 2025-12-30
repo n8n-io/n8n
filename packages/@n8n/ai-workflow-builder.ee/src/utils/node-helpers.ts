@@ -7,20 +7,15 @@ import { type INode, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-
  * @returns true if the node is a sub-node, false otherwise
  */
 export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean {
-	const debugPrefix = `[isSubNode] ${nodeType.name}:`;
-
 	if (node?.parameters?.mode === 'retrieve-as-tool') {
-		console.log(`${debugPrefix} TRUE (retrieve-as-tool mode)`);
 		return true;
 	}
 	// Treating agent as main node always
 	if (nodeType.name === '@n8n/n8n-nodes-langchain.agent') {
-		console.log(`${debugPrefix} FALSE (agent is always main node)`);
 		return false;
 	}
 	// If no inputs at all, it's definitely a sub-node
 	if (!nodeType.inputs || (Array.isArray(nodeType.inputs) && nodeType.inputs.length === 0)) {
-		console.log(`${debugPrefix} TRUE (no inputs defined)`);
 		return true;
 	}
 
@@ -35,12 +30,7 @@ export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean
 			return input.type === NodeConnectionTypes.Main || input.type.toLowerCase() === 'main';
 		});
 
-		const result = !hasMainInput;
-		const inputTypes = nodeType.inputs.map((i) => (typeof i === 'string' ? i : i.type));
-		console.log(
-			`${debugPrefix} ${result} (array inputs: [${inputTypes.join(', ')}], hasMainInput: ${hasMainInput})`,
-		);
-		return result;
+		return !hasMainInput;
 	}
 	// Handle expression-based inputs (dynamic)
 	if (typeof nodeType.inputs === 'string') {
@@ -73,20 +63,14 @@ export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean
 		];
 
 		// If any main input pattern is found, it's NOT a sub-node
-		const matchedPattern = mainInputPatterns.find(
+		const hasMainInput = mainInputPatterns.some(
 			(pattern) =>
 				typeof nodeType.inputs === 'string' &&
 				nodeType.inputs.toLowerCase().includes(pattern.toLowerCase()),
 		);
-		const hasMainInput = !!matchedPattern;
-		const result = !hasMainInput;
 
-		console.log(
-			`${debugPrefix} ${result} (expression-based, hasMainInput: ${hasMainInput}${matchedPattern ? `, matched: "${matchedPattern}"` : ''})`,
-		);
-		return result;
+		return !hasMainInput;
 	}
 	// If we can't determine, assume it's not a sub-node (safer default)
-	console.log(`${debugPrefix} FALSE (default - could not determine)`);
 	return false;
 }
