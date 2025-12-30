@@ -75,3 +75,35 @@ export {
 	isMinimalTracingEnabled,
 	type TraceFilters,
 } from '../core/trace-filters';
+
+// Score calculation utilities
+export {
+	parseFeedbackKey,
+	extractCategory,
+	groupByEvaluator,
+	calculateWeightedScore,
+	aggregateScores,
+	DEFAULT_WEIGHTS,
+	type ScoreWeights,
+	type AggregatedScore,
+	type FeedbackKeyParts,
+} from './score-calculator';
+
+// Report generation
+export {
+	extractViolationSeverity,
+	calculateReportMetrics,
+	generateMarkdownReport,
+	type ViolationSeverity,
+	type ReportOptions,
+	type ReportMetrics,
+} from './report-generator';
+
+// Test case generation
+export {
+	createTestCaseGenerator,
+	basicTestCases,
+	type TestCaseGeneratorOptions,
+	type GeneratedTestCase,
+	type TestCaseGenerator,
+} from './test-case-generator';

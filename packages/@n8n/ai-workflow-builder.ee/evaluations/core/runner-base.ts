@@ -238,25 +238,30 @@ export abstract class EvaluationRunnerBase<
 		const datasetName = this.getDatasetName();
 		this.logger.info(`➔ Dataset: ${datasetName}`);
 
-		// Verify dataset exists and count examples
-		let exampleCount = 0;
+		// Load examples from dataset
+		let examples: Example[] = [];
 		try {
 			const dataset = await lsClient.readDataset({ datasetName });
-			if (args.verbose) {
-				for await (const _ of lsClient.listExamples({ datasetId: dataset.id })) {
-					exampleCount++;
-				}
+			for await (const example of lsClient.listExamples({ datasetId: dataset.id })) {
+				examples.push(example);
 			}
 		} catch {
 			throw new Error(`Dataset "${datasetName}" not found`);
 		}
 
+		// Apply maxExamples limit if specified
+		const totalExamples = examples.length;
+		if (args.maxExamples && args.maxExamples > 0 && args.maxExamples < totalExamples) {
+			examples = examples.slice(0, args.maxExamples);
+			this.logger.warn(`➔ Limiting to ${args.maxExamples} of ${totalExamples} examples`);
+		}
+
 		// Log config
-		if (args.verbose && exampleCount > 0) {
+		if (args.verbose) {
 			this.progressReporter.displayConfig({
 				experimentName: this.getExperimentName(),
 				datasetName,
-				exampleCount,
+				exampleCount: examples.length,
 				repetitions: args.repetitions,
 				concurrency: args.concurrency,
 				modelName: process.env.LLM_MODEL,
@@ -270,9 +275,8 @@ export abstract class EvaluationRunnerBase<
 		const target = this.createTarget();
 		const evaluator = this.createEvaluator();
 
-		// Run LangSmith evaluation
-		await evaluate(target, {
-			data: datasetName,
+		// Common evaluate options
+		const evaluateOptions = {
 			evaluators: [evaluator],
 			maxConcurrency: args.concurrency,
 			experimentPrefix: this.getExperimentName(),
@@ -282,7 +286,18 @@ export abstract class EvaluationRunnerBase<
 				evaluationType: this.getMode(),
 				modelName: process.env.LLM_MODEL ?? 'default',
 			},
-		});
+		};
+
+		// Run LangSmith evaluation
+		// Use examples array when maxExamples is set, otherwise use dataset name
+		const useMaxExamples =
+			args.maxExamples && args.maxExamples > 0 && args.maxExamples < totalExamples;
+
+		if (useMaxExamples) {
+			await evaluate(target, { ...evaluateOptions, data: examples });
+		} else {
+			await evaluate(target, { ...evaluateOptions, data: datasetName });
+		}
 
 		const totalTime = Date.now() - startTime;
 		this.logger.success(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`);
