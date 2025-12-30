@@ -1,5 +1,7 @@
 import type { KVMap } from 'langsmith/schemas';
 
+import type { EvalLogger } from '../utils/logger.js';
+
 /**
  * Large state fields that should be filtered from traces.
  * These contribute most to payload bloat.
@@ -143,8 +145,9 @@ export interface TraceFilters {
  * Creates trace filter functions with closure-scoped state.
  * Each call returns a new set of filters with independent statistics,
  * avoiding global state issues with parallel evaluations.
+ * @param logger - Optional logger for output (uses console.log if not provided)
  */
-export function createTraceFilters(): TraceFilters {
+export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 	// Closure-scoped state - isolated per client instance
 	let hasLoggedFilteringActive = false;
 	let totalInputBefore = 0;
@@ -178,26 +181,26 @@ export function createTraceFilters(): TraceFilters {
 		const totalReduction =
 			totalBefore > 0 ? ((1 - totalAfter / totalBefore) * 100).toFixed(1) : '0';
 
-		console.log('\n📊 ═══════════════ TRACE FILTERING SUMMARY ═══════════════');
-		console.log(
+		const log = logger?.info ?? console.log;
+		log('\n📊 ═══════════════ TRACE FILTERING SUMMARY ═══════════════');
+		log(
 			`   INPUTS:  ${formatBytes(totalInputBefore)} → ${formatBytes(totalInputAfter)} (${inputReduction}% reduction, ${inputCallCount} traces)`,
 		);
-		console.log(
+		log(
 			`   OUTPUTS: ${formatBytes(totalOutputBefore)} → ${formatBytes(totalOutputAfter)} (${outputReduction}% reduction, ${outputCallCount} traces)`,
 		);
-		console.log(
+		log(
 			`   TOTAL:   ${formatBytes(totalBefore)} → ${formatBytes(totalAfter)} (${totalReduction}% reduction)`,
 		);
-		console.log('═══════════════════════════════════════════════════════════\n');
+		log('═══════════════════════════════════════════════════════════\n');
 	};
 
 	const filterInputs = (inputs: KVMap): KVMap => {
 		// Log once per client to confirm filtering is active
 		if (!hasLoggedFilteringActive) {
 			hasLoggedFilteringActive = true;
-			console.log(
-				'➔ LangSmith trace filtering: ACTIVE (set LANGSMITH_MINIMAL_TRACING=false to disable)',
-			);
+			const log = logger?.info ?? console.log;
+			log('➔ LangSmith trace filtering: ACTIVE (set LANGSMITH_MINIMAL_TRACING=false to disable)');
 		}
 
 		// Skip LangChain serializable objects - copying them causes size inflation

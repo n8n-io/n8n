@@ -271,7 +271,7 @@ export async function runPairwiseLangsmithEvaluation(
 			log.verbose('➔ Enabled LANGSMITH_TRACING=true');
 		}
 
-		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment(log);
 
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
@@ -397,7 +397,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	try {
 		validatePairwiseInputs(numJudges, numGenerations);
 
-		const { parsedNodeTypes, llm } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm } = await setupTestEnvironment(log);
 
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);

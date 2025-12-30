@@ -9,6 +9,7 @@ import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
 import { createTraceFilters, isMinimalTracingEnabled, type TraceFilters } from './trace-filters.js';
+import type { EvalLogger } from '../utils/logger.js';
 
 /** Maximum batch size in bytes for trace uploads (10MB) */
 const TRACE_BATCH_SIZE_LIMIT = 10_000_000;
@@ -63,9 +64,10 @@ export interface LangsmithClientResult {
  * Creates a Langsmith client if API key is available.
  * By default, minimal tracing is enabled to reduce payload sizes and avoid 403 errors.
  * Set LANGSMITH_MINIMAL_TRACING=false to disable filtering and get full traces.
+ * @param logger - Optional logger for trace filter output
  * @returns LangSmith client with optional trace filters, or undefined if no API key
  */
-export function createLangsmithClient(): LangsmithClientResult | undefined {
+export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResult | undefined {
 	const apiKey = process.env.LANGSMITH_API_KEY;
 	if (!apiKey) {
 		return undefined;
@@ -78,7 +80,7 @@ export function createLangsmithClient(): LangsmithClientResult | undefined {
 	}
 
 	// Create closure-scoped filters for this client instance
-	const traceFilters = createTraceFilters();
+	const traceFilters = createTraceFilters(logger);
 
 	const client = new Client({
 		apiKey,
@@ -95,12 +97,13 @@ export function createLangsmithClient(): LangsmithClientResult | undefined {
 
 /**
  * Sets up the test environment with LLM, nodes, and tracing
+ * @param logger - Optional logger for trace filter output
  * @returns Test environment configuration
  */
-export async function setupTestEnvironment(): Promise<TestEnvironment> {
+export async function setupTestEnvironment(logger?: EvalLogger): Promise<TestEnvironment> {
 	const parsedNodeTypes = loadNodesFromFile();
 	const llm = await setupLLM();
-	const lsClientResult = createLangsmithClient();
+	const lsClientResult = createLangsmithClient(logger);
 
 	const lsClient = lsClientResult?.client;
 	const traceFilters = lsClientResult?.traceFilters;
