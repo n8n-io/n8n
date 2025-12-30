@@ -143,6 +143,7 @@ async function main(): Promise<void> {
 			testCaseFilter: args.testCaseId,
 			repetitions: args.repetitions,
 			featureFlags,
+			verbose: args.verbose,
 		});
 	}
 }
