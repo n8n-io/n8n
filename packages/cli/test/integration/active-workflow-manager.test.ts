@@ -277,8 +277,8 @@ describe('add()', () => {
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
 				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 
-				if (!(argWorkflow instanceof Workflow)) fail();
-				if (!(_argWorkflow instanceof Workflow)) fail();
+				expect(argWorkflow).toBeInstanceOf(Workflow);
+				expect(_argWorkflow).toBeInstanceOf(Workflow);
 
 				expect(argWorkflow.id).toBe(dbWorkflow.id);
 				expect(_argWorkflow.id).toBe(dbWorkflow.id);
