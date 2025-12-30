@@ -156,11 +156,6 @@ function onAutoRefreshChange(enabled: string | number | boolean) {
 	emit('update:autoRefresh', boolValue);
 }
 
-function onStopManyExecutions() {
-	telemetry.track('User initiated stop many executions');
-	uiStore.openModal(STOP_MANY_EXECUTIONS_MODAL_KEY);
-}
-
 function scrollToActiveCard(): void {
 	if (
 		executionListRef.value &&

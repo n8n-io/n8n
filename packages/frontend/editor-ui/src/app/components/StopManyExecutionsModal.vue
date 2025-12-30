@@ -93,7 +93,7 @@ function closeModal() {
 		max-width="540px"
 		title="Stop Executions"
 		:event-bus="modalBus"
-		:name="STOP_MANY_EXECUTIONS_MODAL_KEY"
+		:name="props.modalName"
 		:center="true"
 		:close-on-click-modal="false"
 	>
