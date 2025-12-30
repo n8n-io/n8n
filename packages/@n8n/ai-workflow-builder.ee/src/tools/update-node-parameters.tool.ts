@@ -271,51 +271,39 @@ async function processParameterUpdates(
 	// Format inputs for the chain
 	const formattedChanges = formatChangesForPrompt(changes);
 
-	// DEBUG: Log node version and type info
-	console.log('=== DEBUG: processParameterUpdates ===');
-	console.log('Node ID:', nodeId);
-	console.log('Node Type:', node.type);
-	console.log('Node Version:', node.typeVersion);
-	console.log('Resource filter:', resource ?? 'none', resource ? '(auto-detected)' : '');
-	console.log('Operation filter:', operation ?? 'none', operation ? '(auto-detected)' : '');
-
-	// Get the node's properties definition as JSON (unfiltered)
-	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
-	const nodePropertiesTokenEstimate = Math.ceil(nodePropertiesJson.length / 4);
-	console.log(
-		`Node properties JSON size (UNFILTERED): ${nodePropertiesJson.length} chars (~${nodePropertiesTokenEstimate} tokens)`,
-	);
-
 	// Step 1: Filter by version
 	const versionFilteredProperties = filterPropertiesByVersion(
 		nodeType.properties || [],
 		node.typeVersion,
 		nodeType,
 	);
-	console.log(
-		`After version filtering: ${versionFilteredProperties.length} properties (from ${nodeType.properties?.length ?? 0})`,
-	);
 
 	// Step 2: Filter by resource/operation (if provided or auto-detected from node)
+	console.log('\n=== DEBUG: update_node_parameters - Property Filtering ===');
+	console.log(`Node: "${node.name}" (${node.type} v${node.typeVersion})`);
+	console.log(`Detected resource="${resource ?? 'none'}", operation="${operation ?? 'none'}"`);
+	console.log(
+		`Properties after version filter: ${versionFilteredProperties.length} (from ${nodeType.properties?.length ?? 0} total)`,
+	);
+
 	const finalFilteredProperties = filterPropertiesByResourceOperation(
 		versionFilteredProperties,
 		resource,
 		operation,
 	);
 
+	console.log(`Properties after resource/operation filter: ${finalFilteredProperties.length}`);
+
+	// Log which properties were filtered out for debugging
+	if (finalFilteredProperties.length < versionFilteredProperties.length) {
+		const filteredOutNames = versionFilteredProperties
+			.filter((p) => !finalFilteredProperties.includes(p))
+			.map((p) => p.name);
+		console.log(`Filtered out properties: ${filteredOutNames.join(', ')}`);
+	}
+
 	// Get final filtered JSON for the LLM
 	const filteredPropertiesJson = JSON.stringify(finalFilteredProperties, null, 2);
-	const filteredTokenEstimate = Math.ceil(filteredPropertiesJson.length / 4);
-
-	const totalReduction =
-		nodeType.properties?.length && nodeType.properties.length > 0
-			? ((1 - finalFilteredProperties.length / nodeType.properties.length) * 100).toFixed(1)
-			: '0.0';
-
-	console.log(`After resource/operation filtering: ${finalFilteredProperties.length} properties`);
-	console.log(
-		`FINAL: ${filteredPropertiesJson.length} chars (~${filteredTokenEstimate} tokens) - ${totalReduction}% reduction`,
-	);
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -360,8 +348,19 @@ async function processParameterUpdates(
 		);
 	}
 
+	// Log the raw LLM response for debugging
+	console.log('\n=== DEBUG: update_node_parameters - LLM Response ===');
+	console.log(`LLM returned ${chainResult.parameters.length} parameters for node "${node.name}"`);
+	console.log(
+		`Parameter paths: ${chainResult.parameters.map((p: ParameterEntry) => p.path).join(', ')}`,
+	);
+	console.log('Raw parameters:', JSON.stringify(chainResult.parameters, null, 2));
+
 	// Convert array format to INodeParameters
 	const newParameters = arrayToNodeParameters(chainResult.parameters);
+
+	// Log the converted parameters
+	console.log('Converted parameters:', JSON.stringify(newParameters, null, 2));
 
 	// Fix expression prefixes in the new parameters
 	const fixedParameters = fixExpressionPrefixes(newParameters);

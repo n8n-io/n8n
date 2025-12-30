@@ -458,6 +458,14 @@ export function inferConnectionType(
 	const targetInputTypes = getNodeInputTypes(targetNodeType, targetNode);
 	const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
 
+	// DEBUG: Log connection inference details
+	console.log('\n=== DEBUG: inferConnectionType ===');
+	console.log(`Source: "${sourceNode.name}" (${sourceNode.type})`);
+	console.log(`  - outputs: [${sourceOutputTypes.join(', ')}]`);
+	console.log(`  - inputs: [${sourceInputTypes.join(', ')}]`);
+	console.log(`Target: "${targetNode.name}" (${targetNode.type})`);
+	console.log(`  - inputs: [${targetInputTypes.join(', ')}]`);
+
 	// For nodes with dynamic inputs/outputs, check if they're currently acting as sub-nodes
 	// A node acts as a sub-node if it currently has no main inputs based on its parameters
 	const sourceHasMainInput = sourceInputTypes.includes(NodeConnectionTypes.Main);
@@ -472,79 +480,101 @@ export function inferConnectionType(
 		isSubNode(targetNodeType, targetNode) ||
 		(typeof targetNodeType.inputs === 'string' && !targetHasMainInput);
 
+	console.log(`Source isSubNode: ${sourceIsSubNode} (hasMainInput: ${sourceHasMainInput})`);
+	console.log(`Target isSubNode: ${targetIsSubNode} (hasMainInput: ${targetHasMainInput})`);
+
 	// Find matching connection types
 	const matchingTypes = sourceOutputTypes.filter((outputType) =>
 		targetInputTypes.includes(outputType),
 	);
 
-	// console.log(`Matching types: [${matchingTypes.join(', ')}]`);
+	console.log(`Matching types: [${matchingTypes.join(', ')}]`);
 
 	// Handle AI connections (sub-node to main node)
 	if (sourceIsSubNode && !targetIsSubNode) {
-		// console.log('Scenario: Sub-node to main node (AI connection)');
+		console.log('Decision: Sub-node → Main node (AI connection scenario)');
 		// Find AI connection types in the matches
 		const aiConnectionTypes = matchingTypes.filter((type) => type.startsWith('ai_'));
+		console.log(`  AI connection types found: [${aiConnectionTypes.join(', ')}]`);
 
 		if (aiConnectionTypes.length === 1) {
+			console.log(`  Result: Using ${aiConnectionTypes[0]}`);
 			return { connectionType: aiConnectionTypes[0] };
 		} else if (aiConnectionTypes.length > 1) {
+			console.log(`  Result: ERROR - Multiple AI types possible`);
 			// Multiple AI connection types possible
 			return {
 				possibleTypes: aiConnectionTypes,
 				error: `Multiple AI connection types possible: ${aiConnectionTypes.join(', ')}. Please specify which one to use.`,
 			};
 		}
+		console.log('  No AI connection types matched, continuing...');
 	}
 
 	// Handle reversed AI connections (main node to sub-node - needs swap)
 	if (!sourceIsSubNode && targetIsSubNode) {
-		// console.log('Scenario: Main node to sub-node (needs swap)');
+		console.log('Decision: Main node → Sub-node (needs swap scenario)');
 		// Check if target has any AI outputs that source accepts as inputs
 		const targetOutputTypes = getNodeOutputTypes(targetNodeType);
-		const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
+		const sourceInputTypesForSwap = getNodeInputTypes(sourceNodeType, sourceNode);
+		console.log(`  Target outputs: [${targetOutputTypes.join(', ')}]`);
+		console.log(`  Source inputs: [${sourceInputTypesForSwap.join(', ')}]`);
 
 		const reverseAiMatches = targetOutputTypes
 			.filter((type) => type.startsWith('ai_'))
-			.filter((type) => sourceInputTypes.includes(type));
+			.filter((type) => sourceInputTypesForSwap.includes(type));
+		console.log(`  Reverse AI matches: [${reverseAiMatches.join(', ')}]`);
 
 		if (reverseAiMatches.length === 1) {
+			console.log(`  Result: Using ${reverseAiMatches[0]} with SWAP`);
 			return {
 				connectionType: reverseAiMatches[0],
 				requiresSwap: true,
 			};
 		} else if (reverseAiMatches.length > 1) {
+			console.log(`  Result: ERROR - Multiple AI types with swap`);
 			return {
 				possibleTypes: reverseAiMatches,
 				requiresSwap: true,
 				error: `Multiple AI connection types possible (requires swap): ${reverseAiMatches.join(', ')}. Please specify which one to use.`,
 			};
 		}
+		console.log('  No reverse AI matches, continuing...');
 	}
 
 	// Handle main connections
 	if (!sourceIsSubNode && !targetIsSubNode) {
+		console.log('Decision: Main node → Main node (regular connection scenario)');
 		if (matchingTypes.includes(NodeConnectionTypes.Main)) {
+			console.log('  Result: Using main connection');
 			return { connectionType: NodeConnectionTypes.Main };
 		}
+		console.log('  No main connection type in matches, continuing...');
 	}
 
 	// Handle sub-node to sub-node connections
 	if (sourceIsSubNode && targetIsSubNode) {
+		console.log('Decision: Sub-node → Sub-node (chained AI scenario)');
 		// Check for AI document connections or other specific sub-node to sub-node connections
 		const subNodeConnections = matchingTypes.filter((type) => type.startsWith('ai_'));
+		console.log(`  Sub-node connection types: [${subNodeConnections.join(', ')}]`);
 
 		if (subNodeConnections.length === 1) {
+			console.log(`  Result: Using ${subNodeConnections[0]}`);
 			return { connectionType: subNodeConnections[0] };
 		} else if (subNodeConnections.length > 1) {
+			console.log(`  Result: ERROR - Multiple sub-node connection types`);
 			return {
 				possibleTypes: subNodeConnections,
 				error: `Multiple connection types possible between sub-nodes: ${subNodeConnections.join(', ')}. Please specify which one to use.`,
 			};
 		}
+		console.log('  No sub-node connections matched, continuing...');
 	}
 
 	// No valid connection found
 	if (matchingTypes.length === 0) {
+		console.log('Result: ERROR - No compatible connection types');
 		return {
 			error: `No compatible connection types found between "${sourceNode.name}" (outputs: ${sourceOutputTypes.join(', ') || 'none'}) and "${targetNode.name}" (inputs: ${targetInputTypes.join(', ') || 'none'})`,
 		};
@@ -552,9 +582,11 @@ export function inferConnectionType(
 
 	// If we have other matching types but couldn't determine the best one
 	if (matchingTypes.length === 1) {
+		console.log(`Result: Using single remaining match: ${matchingTypes[0]}`);
 		return { connectionType: matchingTypes[0] };
 	}
 
+	console.log(`Result: ERROR - Multiple unresolved types: [${matchingTypes.join(', ')}]`);
 	return {
 		possibleTypes: matchingTypes,
 		error: `Multiple connection types possible: ${matchingTypes.join(', ')}. Please specify which one to use.`,
