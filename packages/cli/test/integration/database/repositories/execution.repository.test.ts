@@ -138,7 +138,7 @@ describe('ExecutionRepository', () => {
 			const workflow = await createWorkflow();
 
 			// Insert executions with different statuses
-			const result = await executionRepo.insert([
+			await executionRepo.insert([
 				{
 					workflowId: workflow.id,
 					mode: 'manual',
