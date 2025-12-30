@@ -1,8 +1,0 @@
-
-> n8n@2.2.0 build /Users/ricardo/Documents/n8n-io/n8n/packages/cli
-> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
-
-
-> n8n@2.2.0 build:data /Users/ricardo/Documents/n8n-io/n8n/packages/cli
-> node scripts/build.mjs
-
