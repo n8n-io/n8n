@@ -64,6 +64,7 @@ describe('ScalingService', () => {
 	let scheduleQueueRecoverySpy: jest.SpyInstance;
 	let stopQueueRecoverySpy: jest.SpyInstance;
 	let stopQueueMetricsSpy: jest.SpyInstance;
+	let stopQueueMetricsListenersSpy: jest.SpyInstance;
 	let getRunningJobsCountSpy: jest.SpyInstance;
 
 	const bullConstructorArgs = [
@@ -110,6 +111,8 @@ describe('ScalingService', () => {
 
 		// @ts-expect-error Private method
 		stopQueueMetricsSpy = jest.spyOn(scalingService, 'stopQueueMetrics');
+		// @ts-expect-error Private method
+		stopQueueMetricsListenersSpy = jest.spyOn(scalingService, 'stopQueueMetricsListeners');
 	});
 
 	describe('setupQueue', () => {
@@ -206,6 +209,7 @@ describe('ScalingService', () => {
 				expect(queue.pause).toHaveBeenCalledWith(true, true);
 				expect(stopQueueRecoverySpy).toHaveBeenCalled();
 				expect(stopQueueMetricsSpy).toHaveBeenCalled();
+				expect(stopQueueMetricsListenersSpy).toHaveBeenCalled();
 			});
 		});
 
@@ -456,6 +460,98 @@ describe('ScalingService', () => {
 			await scalingService.recoverFromQueue();
 
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('queue metrics listeners', () => {
+		it('should register queue metrics listeners on leader takeover when metrics enabled', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+			await scalingService.setupQueue();
+
+			// @ts-expect-error private method
+			scalingService.startQueueMetricsListeners();
+
+			expect(queue.on).toHaveBeenCalledWith('global:completed', expect.any(Function));
+			expect(queue.on).toHaveBeenCalledWith('global:failed', expect.any(Function));
+		});
+
+		it('should not register queue metrics listeners when metrics disabled', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(false);
+			await scalingService.setupQueue();
+			queue.on.mockClear();
+
+			// @ts-expect-error private method
+			scalingService.startQueueMetricsListeners();
+
+			expect(queue.on).not.toHaveBeenCalledWith('global:completed', expect.any(Function));
+			expect(queue.on).not.toHaveBeenCalledWith('global:failed', expect.any(Function));
+		});
+
+		it('should unregister queue metrics listeners on leader stepdown', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+			await scalingService.setupQueue();
+
+			// @ts-expect-error private method
+			scalingService.stopQueueMetricsListeners();
+
+			expect(queue.off).toHaveBeenCalledWith('global:completed', expect.any(Function));
+			expect(queue.off).toHaveBeenCalledWith('global:failed', expect.any(Function));
+		});
+
+		it('should reset job counters on leader stepdown', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+			await scalingService.setupQueue();
+
+			// @ts-expect-error private field
+			scalingService.jobCounters.completed = 100;
+			// @ts-expect-error private field
+			scalingService.jobCounters.failed = 50;
+
+			// @ts-expect-error private method
+			scalingService.stopQueueMetricsListeners();
+
+			// @ts-expect-error private field
+			expect(scalingService.jobCounters.completed).toBe(0);
+			// @ts-expect-error private field
+			expect(scalingService.jobCounters.failed).toBe(0);
+		});
+
+		it('should increment completed counter when job completes', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+			await scalingService.setupQueue();
+
+			// @ts-expect-error private method
+			scalingService.startQueueMetricsListeners();
+
+			// Get the handler that was registered
+			const completedHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:completed',
+			)?.[1] as () => void;
+
+			// @ts-expect-error private field
+			const initialCount = scalingService.jobCounters.completed;
+			completedHandler();
+			// @ts-expect-error private field
+			expect(scalingService.jobCounters.completed).toBe(initialCount + 1);
+		});
+
+		it('should increment failed counter when job fails', async () => {
+			jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+			await scalingService.setupQueue();
+
+			// @ts-expect-error private method
+			scalingService.startQueueMetricsListeners();
+
+			// Get the handler that was registered
+			const failedHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:failed',
+			)?.[1] as () => void;
+
+			// @ts-expect-error private field
+			const initialCount = scalingService.jobCounters.failed;
+			failedHandler();
+			// @ts-expect-error private field
+			expect(scalingService.jobCounters.failed).toBe(initialCount + 1);
 		});
 	});
 });
