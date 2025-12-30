@@ -83,7 +83,9 @@ function handleSelectNodeType(value: NodeTypeSelectedPayload[]) {
 
 	const nodeType = value[0] ? nodeTypesStore.getNodeType(value[0].type) : undefined;
 	const typeVersion =
-		typeof nodeType?.version === 'number' ? nodeType.version : nodeType?.version[0];
+		typeof nodeType?.version === 'number'
+			? nodeType.version
+			: nodeType?.version.toSorted((a, b) => b - a)?.[0]; // pick latest
 
 	if (!nodeType || !typeVersion) {
 		return;
@@ -245,6 +247,9 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	position: relative;
+
+	/* maintain component height regardless of icon */
+	margin-block: -4px;
 }
 
 .icon {

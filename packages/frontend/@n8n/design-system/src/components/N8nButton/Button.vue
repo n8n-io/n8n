@@ -348,6 +348,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
+	/* maintain component height regardless of icon */
+	margin-block: -4px;
 
 	svg {
 		display: block;
