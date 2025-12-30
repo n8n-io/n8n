@@ -112,5 +112,6 @@ declare module 'vue-router' {
 		scrollOffset?: number;
 		setScrollPosition?: (position: number) => void;
 		readOnlyCanvas?: boolean;
+		layout?: 'default' | 'workflow' | 'settings' | 'unauthenticated' | 'demo';
 	}
 }

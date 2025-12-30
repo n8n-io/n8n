@@ -37,7 +37,6 @@ const ForgotMyPasswordView = async () =>
 const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
-const DemoFooter = async () => await import('@/features/execution/logs/components/DemoFooter.vue');
 const NodeView = async () => await import('@/app/views/NodeView.vue');
 const WorkflowExecutionsView = async () =>
 	await import('@/features/execution/executions/views/WorkflowExecutionsView.vue');
@@ -47,7 +46,6 @@ const WorkflowExecutionsLandingPage = async () =>
 	);
 const WorkflowExecutionsPreview = async () =>
 	await import('@/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue');
-const SettingsView = async () => await import('@/app/views/SettingsView.vue');
 const SettingsLdapView = async () =>
 	await import('@/features/settings/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () =>
@@ -417,11 +415,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
-		components: {
-			default: NodeView,
-			footer: DemoFooter,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'demo',
 			middleware: ['authenticated'],
 			middlewareOptions: {
 				authenticated: {
@@ -455,10 +451,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signin',
 		name: VIEWS.SIGNIN,
-		components: {
-			default: SigninView,
-		},
+		component: SigninView,
 		meta: {
+			layout: 'unauthenticated',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -468,10 +463,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signup',
 		name: VIEWS.SIGNUP,
-		components: {
-			default: SignupView,
-		},
+		component: SignupView,
 		meta: {
+			layout: 'unauthenticated',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -481,10 +475,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signout',
 		name: VIEWS.SIGNOUT,
-		components: {
-			default: SignoutView,
-		},
+		component: SignoutView,
 		meta: {
+			layout: 'unauthenticated',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -504,10 +497,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/setup',
 		name: VIEWS.SETUP,
-		components: {
-			default: SetupView,
-		},
+		component: SetupView,
 		meta: {
+			layout: 'unauthenticated',
 			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -517,10 +509,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/forgot-password',
 		name: VIEWS.FORGOT_PASSWORD,
-		components: {
-			default: ForgotMyPasswordView,
-		},
+		component: ForgotMyPasswordView,
 		meta: {
+			layout: 'unauthenticated',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -530,10 +521,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/change-password',
 		name: VIEWS.CHANGE_PASSWORD,
-		components: {
-			default: ChangePasswordView,
-		},
+		component: ChangePasswordView,
 		meta: {
+			layout: 'unauthenticated',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -543,7 +533,6 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
-		component: SettingsView,
 		props: true,
 		redirect: () => {
 			const settingsStore = useSettingsStore();
@@ -552,14 +541,16 @@ export const routes: RouteRecordRaw[] = [
 			}
 			return { name: VIEWS.USAGE };
 		},
+		meta: {
+			layout: 'settings',
+		},
 		children: [
 			{
 				path: 'usage',
 				name: VIEWS.USAGE,
-				components: {
-					settingsView: SettingsUsageAndPlan,
-				},
+				component: SettingsUsageAndPlan,
 				meta: {
+					layout: 'settings',
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
@@ -579,9 +570,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'migration-report',
-				components: {
-					settingsView: RouterView,
-				},
+				component: RouterView,
 				children: [
 					{
 						path: '',
@@ -615,9 +604,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'personal',
 				name: VIEWS.PERSONAL_SETTINGS,
-				components: {
-					settingsView: SettingsPersonalView,
-				},
+				component: SettingsPersonalView,
 				meta: {
 					middleware: ['authenticated'],
 					telemetry: {
@@ -633,9 +620,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
-				components: {
-					settingsView: SettingsUsersView,
-				},
+				component: SettingsUsersView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -656,9 +641,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'resolvers',
 				name: VIEWS.RESOLVERS,
-				components: {
-					settingsView: SettingsResolversView,
-				},
+				component: SettingsResolversView,
 				meta: {
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
@@ -679,9 +662,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'project-roles',
-				components: {
-					settingsView: RouterView,
-				},
+				component: RouterView,
 				children: [
 					{
 						path: '',
@@ -719,9 +700,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'api',
 				name: VIEWS.API_SETTINGS,
-				components: {
-					settingsView: SettingsApiView,
-				},
+				component: SettingsApiView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -742,9 +721,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
-				components: {
-					settingsView: SettingsSourceControl,
-				},
+				component: SettingsSourceControl,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -765,9 +742,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
-				components: {
-					settingsView: SettingsExternalSecrets,
-				},
+				component: SettingsExternalSecrets,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -788,9 +763,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
-				components: {
-					settingsView: SettingsSso,
-				},
+				component: SettingsSso,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -811,9 +784,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
-				components: {
-					settingsView: SettingsLogStreamingView,
-				},
+				component: SettingsLogStreamingView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -829,9 +800,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'workers',
 				name: VIEWS.WORKER_VIEW,
-				components: {
-					settingsView: WorkerView,
-				},
+				component: WorkerView,
 				meta: {
 					middleware: ['authenticated'],
 				},
@@ -839,9 +808,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
-				components: {
-					settingsView: SettingsCommunityNodesView,
-				},
+				component: SettingsCommunityNodesView,
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
@@ -861,9 +828,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'ldap',
 				name: VIEWS.LDAP_SETTINGS,
-				components: {
-					settingsView: SettingsLdapView,
-				},
+				component: SettingsLdapView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {

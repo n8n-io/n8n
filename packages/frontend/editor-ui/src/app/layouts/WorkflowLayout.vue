@@ -1,0 +1,35 @@
+<script lang="ts" setup>
+import { defineAsyncComponent } from 'vue';
+import BaseLayout from './BaseLayout.vue';
+
+const AppHeader = defineAsyncComponent(
+	async () => await import('@/app/components/app/AppHeader.vue'),
+);
+const AppSidebar = defineAsyncComponent(
+	async () => await import('@/app/components/app/AppSidebar.vue'),
+);
+const LogsPanel = defineAsyncComponent(
+	async () => await import('@/features/execution/logs/components/LogsPanel.vue'),
+);
+</script>
+
+<template>
+	<BaseLayout>
+		<template #header>
+			<Suspense>
+				<AppHeader />
+			</Suspense>
+		</template>
+		<template #sidebar>
+			<Suspense>
+				<AppSidebar />
+			</Suspense>
+		</template>
+		<RouterView />
+		<template #footer>
+			<Suspense>
+				<LogsPanel />
+			</Suspense>
+		</template>
+	</BaseLayout>
+</template>
