@@ -4,6 +4,7 @@ import { evaluate } from 'langsmith/evaluation';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
@@ -17,7 +18,10 @@ import {
 	extractMessageContent,
 } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
-import { createLogger } from '../utils/logger';
+import { createLogger, type EvalLogger } from '../utils/logger';
+
+// Type for evaluation results from LangSmith
+type EvaluationResultsIterator = Awaited<ReturnType<typeof evaluate>>;
 
 /**
  * Creates a workflow generation function for Langsmith evaluation
@@ -95,6 +99,153 @@ function createWorkflowGenerator(
 	);
 
 	return generateWorkflow;
+}
+
+// ============================================================================
+// Verbose Logging Helpers
+// ============================================================================
+
+/**
+ * Truncate a prompt for display (max 50 chars).
+ */
+function truncatePrompt(prompt: string, maxLen = 50): string {
+	const cleaned = prompt.replace(/\s+/g, ' ').trim();
+	return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '...' : cleaned;
+}
+
+/**
+ * Extract key scores from evaluation results.
+ */
+function extractKeyScores(results: Array<{ key: string; score?: number | boolean | null }>): {
+	overall: number;
+	func: number;
+	conn: number;
+	cfg: number;
+} {
+	const findScore = (key: string): number => {
+		const result = results.find((r) => r.key === key);
+		return typeof result?.score === 'number' ? result.score : 0;
+	};
+	return {
+		overall: findScore('overallScore'),
+		func: findScore('functionality'),
+		conn: findScore('connections'),
+		cfg: findScore('nodeConfiguration'),
+	};
+}
+
+/**
+ * Log a single evaluation result in verbose mode.
+ */
+function logEvaluationResult(
+	log: EvalLogger,
+	index: number,
+	prompt: string,
+	scores: { overall: number; func: number; conn: number; cfg: number },
+	hasError: boolean,
+): void {
+	const passed = !hasError && scores.overall >= 0.7;
+	const status = hasError ? pc.red('ERROR') : passed ? pc.green('PASS') : pc.yellow('WARN');
+	const score = hasError ? 'N/A' : `${(scores.overall * 100).toFixed(0)}%`;
+
+	log.verbose(`  [${index}] ${status} "${truncatePrompt(prompt)}" (${score})`);
+
+	if (!hasError) {
+		const scoreDetails = [
+			`func:${(scores.func * 100).toFixed(0)}%`,
+			`conn:${(scores.conn * 100).toFixed(0)}%`,
+			`cfg:${(scores.cfg * 100).toFixed(0)}%`,
+		];
+		log.verbose(`    Scores: ${scoreDetails.join(', ')}`);
+	}
+}
+
+/**
+ * Log summary statistics after evaluation completes.
+ */
+function logEvaluationSummary(
+	log: EvalLogger,
+	allScores: Array<{ overall: number; func: number; conn: number; cfg: number }>,
+	errorCount: number,
+): void {
+	if (allScores.length === 0) return;
+
+	const avgOf = (key: keyof (typeof allScores)[0]): number =>
+		allScores.reduce((sum, s) => sum + s[key], 0) / allScores.length;
+
+	const passCount = allScores.filter((s) => s.overall >= 0.7).length;
+
+	log.verbose('');
+	log.verbose(`  Summary: ${passCount}/${allScores.length} passed (${errorCount} errors)`);
+	log.verbose(
+		`  Avg scores: overall:${(avgOf('overall') * 100).toFixed(0)}%, ` +
+			`func:${(avgOf('func') * 100).toFixed(0)}%, ` +
+			`conn:${(avgOf('conn') * 100).toFixed(0)}%, ` +
+			`cfg:${(avgOf('cfg') * 100).toFixed(0)}%`,
+	);
+}
+
+/**
+ * Iterate evaluation results and log each one in verbose mode.
+ */
+async function processResultsWithLogging(
+	results: EvaluationResultsIterator,
+	log: EvalLogger,
+	verbose: boolean,
+): Promise<void> {
+	const allScores: Array<{ overall: number; func: number; conn: number; cfg: number }> = [];
+	let errorCount = 0;
+	let index = 1;
+
+	for await (const result of results) {
+		if (!verbose) continue;
+
+		// Extract prompt from run outputs
+		const prompt =
+			typeof result.run?.outputs?.prompt === 'string'
+				? result.run.outputs.prompt
+				: `Example ${index}`;
+
+		// Check for error
+		const hasError = result.evaluationResults?.results?.some(
+			(r: { key: string; score?: number | boolean | null }) =>
+				r.key === 'evaluationError' && r.score === 0,
+		);
+
+		if (hasError) {
+			errorCount++;
+			logEvaluationResult(log, index, prompt, { overall: 0, func: 0, conn: 0, cfg: 0 }, true);
+		} else if (result.evaluationResults?.results) {
+			const scores = extractKeyScores(result.evaluationResults.results);
+			allScores.push(scores);
+			logEvaluationResult(log, index, prompt, scores, false);
+		}
+
+		index++;
+	}
+
+	if (verbose && allScores.length > 0) {
+		logEvaluationSummary(log, allScores, errorCount);
+	}
+}
+
+/**
+ * Log verbose configuration info before evaluation starts.
+ */
+function logVerboseConfig(log: EvalLogger, exampleCount: number, repetitions: number): void {
+	if (exampleCount > 0) {
+		log.verbose(`➔ Dataset contains ${exampleCount} example(s)`);
+		log.verbose(
+			`➔ Total runs: ${exampleCount * repetitions} (${exampleCount} examples × ${repetitions} reps)`,
+		);
+		log.verbose('➔ Concurrency: 7 parallel evaluations');
+	}
+
+	const modelName = process.env.LLM_MODEL ?? 'default';
+	log.verbose(`➔ Model: ${modelName}`);
+	if (process.env.LANGSMITH_PROJECT) {
+		log.verbose(`➔ LangSmith project: ${process.env.LANGSMITH_PROJECT}`);
+	}
 }
 
 /**
@@ -186,13 +337,9 @@ export async function runLangsmithEvaluation(
 		// Verify dataset exists and get stats
 		const exampleCount = await verifyDatasetAndCountExamples(lsClient, datasetName, verbose);
 
-		// Verbose: dataset statistics
-		if (verbose && exampleCount > 0) {
-			log.verbose(`➔ Dataset contains ${exampleCount} example(s)`);
-			log.verbose(
-				`➔ Total runs: ${exampleCount * repetitions} (${exampleCount} examples × ${repetitions} reps)`,
-			);
-			log.verbose('➔ Concurrency: 7 parallel evaluations');
+		// Verbose: dataset and model configuration
+		if (verbose) {
+			logVerboseConfig(log, exampleCount, repetitions);
 		}
 
 		console.log();
@@ -219,6 +366,13 @@ export async function runLangsmithEvaluation(
 			},
 		});
 
+		// In verbose mode, iterate and log each result as it completes
+		if (verbose) {
+			log.verbose('');
+			log.verbose('Results:');
+		}
+		await processResultsWithLogging(results, log, verbose);
+
 		const totalTime = Date.now() - startTime;
 		log.success(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`);
 
@@ -228,12 +382,6 @@ export async function runLangsmithEvaluation(
 		// Display results information
 		log.info('\nView detailed results in Langsmith dashboard');
 		log.info(`Experiment name: ${finalExperimentName}-${new Date().toISOString().split('T')[0]}`);
-
-		// Log summary of results if available
-		if (results) {
-			log.dim('Evaluation run completed successfully');
-			log.dim(`Dataset: ${datasetName}`);
-		}
 	} catch (error) {
 		log.error(
 			`✗ Langsmith evaluation failed: ${error instanceof Error ? error.message : String(error)}`,

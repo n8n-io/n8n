@@ -6,7 +6,7 @@ import type { EvalLogger } from '../utils/logger.js';
  * Large state fields that should be filtered from traces.
  * These contribute most to payload bloat.
  */
-const LARGE_STATE_FIELDS = ['cachedTemplates', 'parsedNodeTypes'] as const;
+const LARGE_STATE_FIELDS = ['cachedTemplates', 'parsedNodeTypes', 'messages'] as const;
 
 /**
  * Keys that indicate a LangChain serializable object.
@@ -40,7 +40,8 @@ function hasFilterableFields(obj: KVMap): boolean {
 		LARGE_STATE_FIELDS.some((field) => field in obj) ||
 		'workflowContext' in obj ||
 		'workflowJSON' in obj ||
-		'workflow' in obj
+		'workflow' in obj ||
+		'input' in obj // LangChain model inputs can be large
 	);
 }
 
@@ -101,6 +102,30 @@ function summarizeCachedTemplates(templates: unknown[]): Array<Record<string, un
 }
 
 /**
+ * Summarize messages array - just count and types, not full content.
+ */
+function summarizeMessages(messages: unknown[]): string {
+	if (!messages.length) return '[0 messages]';
+
+	// Count message types
+	const typeCounts: Record<string, number> = {};
+	for (const msg of messages) {
+		if (msg && typeof msg === 'object') {
+			const msgObj = msg as Record<string, unknown>;
+			const type =
+				(msgObj._getType as () => string)?.() ??
+				(msgObj.type as string) ??
+				msgObj.constructor?.name ??
+				'unknown';
+			typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+		}
+	}
+
+	const parts = Object.entries(typeCounts).map(([type, count]) => `${type}:${count}`);
+	return `[${messages.length} messages: ${parts.join(', ')}]`;
+}
+
+/**
  * Filter large state fields in-place (mutates the object).
  * Shared logic for both input and output filtering.
  */
@@ -111,6 +136,8 @@ function filterLargeStateFields(obj: KVMap): void {
 				obj[field] = summarizeCachedTemplates(obj[field] as unknown[]);
 			} else if (field === 'parsedNodeTypes' && Array.isArray(obj[field])) {
 				obj[field] = `[${(obj[field] as unknown[]).length} node types]`;
+			} else if (field === 'messages' && Array.isArray(obj[field])) {
+				obj[field] = summarizeMessages(obj[field] as unknown[]);
 			}
 		}
 	}
@@ -287,6 +314,11 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 		// Handle workflowJSON if present at top level
 		if (filtered.workflowJSON && typeof filtered.workflowJSON === 'object') {
 			filtered.workflowJSON = summarizeLargeWorkflow(filtered.workflowJSON);
+		}
+
+		// Handle large 'input' field (LangChain model inputs with system prompts)
+		if (filtered.input && typeof filtered.input === 'string' && filtered.input.length > 1000) {
+			filtered.input = `[input truncated: ${filtered.input.length} chars]`;
 		}
 
 		// Track stats for final summary

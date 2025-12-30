@@ -11,11 +11,11 @@ import { loadNodesFromFile } from '../load-nodes.js';
 import { createTraceFilters, isMinimalTracingEnabled, type TraceFilters } from './trace-filters.js';
 import type { EvalLogger } from '../utils/logger.js';
 
-/** Maximum batch size in bytes for trace uploads (10MB) */
-const TRACE_BATCH_SIZE_LIMIT = 10_000_000;
+/** Maximum batch size in bytes for trace uploads (2MB - reduced to avoid 403 errors) */
+const TRACE_BATCH_SIZE_LIMIT = 2_000_000;
 
 /** Number of concurrent trace batch uploads */
-const TRACE_BATCH_CONCURRENCY = 2;
+const TRACE_BATCH_CONCURRENCY = 1;
 
 export interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -89,6 +89,7 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 		hideOutputs: traceFilters.filterOutputs,
 		// Reduce batch size and concurrency for high-volume scenarios
 		batchSizeBytesLimit: TRACE_BATCH_SIZE_LIMIT,
+		batchSizeLimit: 10, // Limit runs per batch (default 100) to avoid 403 multipart errors
 		traceBatchConcurrency: TRACE_BATCH_CONCURRENCY,
 	});
 
