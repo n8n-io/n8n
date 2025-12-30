@@ -73,7 +73,10 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
+		if (this.instanceSettings.isLeader) {
+			this.scheduleQueueRecovery(0);
+			this.startQueueMetricsListeners();
+		}
 
 		this.scheduleQueueMetrics();
 
@@ -149,7 +152,10 @@ export class ScalingService {
 		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
-		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
+		if (this.isQueueMetricsEnabled) {
+			this.stopQueueMetrics();
+			this.stopQueueMetricsListeners();
+		}
 	}
 
 	private async stopWorker() {
@@ -362,11 +368,6 @@ export class ScalingService {
 					assertNever(msg);
 			}
 		});
-
-		if (this.isQueueMetricsEnabled) {
-			this.queue.on('global:completed', () => this.jobCounters.completed++);
-			this.queue.on('global:failed', () => this.jobCounters.failed++);
-		}
 	}
 
 	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
@@ -412,11 +413,48 @@ export class ScalingService {
 	/** Interval for collecting queue metrics to expose via Prometheus. */
 	private queueMetricsInterval: NodeJS.Timeout | undefined;
 
+	/** Bound event handlers for queue metrics (needed for removeListener) */
+	private readonly onJobCompleted = () => this.jobCounters.completed++;
+
+	private readonly onJobFailed = () => this.jobCounters.failed++;
+
 	get isQueueMetricsEnabled() {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
 			this.instanceSettings.instanceType === 'main'
 		);
+	}
+
+	/**
+	 * Register queue metrics event listeners. Leader-only to prevent
+	 * duplicate counting in multi-main setups where all mains receive
+	 * global:completed and global:failed events via Redis pub/sub.
+	 */
+	@OnLeaderTakeover()
+	private startQueueMetricsListeners() {
+		if (!this.isQueueMetricsEnabled || !this.queue) return;
+
+		this.queue.on('global:completed', this.onJobCompleted);
+		this.queue.on('global:failed', this.onJobFailed);
+
+		this.logger.debug('Queue metrics event listeners started (leader)');
+	}
+
+	/**
+	 * Unregister queue metrics event listeners when stepping down from leader.
+	 */
+	@OnLeaderStepdown()
+	private stopQueueMetricsListeners() {
+		if (!this.queue) return;
+
+		this.queue.off('global:completed', this.onJobCompleted);
+		this.queue.off('global:failed', this.onJobFailed);
+
+		// Reset counters to avoid stale data from previous leadership period
+		this.jobCounters.completed = 0;
+		this.jobCounters.failed = 0;
+
+		this.logger.debug('Queue metrics event listeners stopped (leader stepdown)');
 	}
 
 	/** Set up an interval to collect queue metrics and emit them in an event. */

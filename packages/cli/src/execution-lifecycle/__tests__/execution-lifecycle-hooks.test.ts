@@ -37,6 +37,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	handleExecutionSaveDecision,
 } from '../execution-lifecycle-hooks';
 
 describe('Execution Lifecycle Hooks', () => {
@@ -1067,6 +1068,251 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 				expect(binaryDataService.duplicateBinaryData).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('handleExecutionSaveDecision', () => {
+		const createContext = (mode: WorkflowExecuteMode = 'manual') => ({
+			executionId,
+			workflowId,
+			mode,
+			workflowData,
+		});
+
+		const createSaveSettings = (overrides = {}) => ({
+			manual: true,
+			success: true,
+			error: true,
+			progress: false,
+			...overrides,
+		});
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		describe('manual executions', () => {
+			it('should soft delete manual executions when manual saving is disabled', async () => {
+				const saveSettings = createSaveSettings({ manual: false });
+				const context = createContext('manual');
+
+				const result = await handleExecutionSaveDecision(
+					successfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
+			});
+
+			it('should not soft delete manual executions with waitTill', async () => {
+				const saveSettings = createSaveSettings({ manual: false });
+				const context = createContext('manual');
+
+				const result = await handleExecutionSaveDecision(
+					waitingRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(true);
+				expect(executionRepository.softDelete).not.toHaveBeenCalled();
+			});
+
+			it('should save manual executions when manual saving is enabled', async () => {
+				const saveSettings = createSaveSettings({ manual: true });
+				const context = createContext('manual');
+
+				const result = await handleExecutionSaveDecision(
+					successfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(true);
+				expect(executionRepository.softDelete).not.toHaveBeenCalled();
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('successful executions', () => {
+			it('should hard delete successful executions when success saving is disabled', async () => {
+				const saveSettings = createSaveSettings({ success: false });
+				const context = createContext('webhook');
+
+				const result = await handleExecutionSaveDecision(
+					successfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+					workflowId,
+					executionId,
+				});
+			});
+
+			it('should save successful executions when success saving is enabled', async () => {
+				const saveSettings = createSaveSettings({ success: true });
+				const context = createContext('webhook');
+
+				const result = await handleExecutionSaveDecision(
+					successfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(true);
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+
+			it('should not hard delete successful executions with waitTill even when success saving is disabled', async () => {
+				const saveSettings = createSaveSettings({ success: false });
+				const context = createContext('webhook');
+				const waitingSuccessfulRun = mock<IRun>({
+					status: 'success',
+					finished: true,
+					waitTill: new Date(),
+				});
+
+				const result = await handleExecutionSaveDecision(
+					waitingSuccessfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(true);
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('failed executions', () => {
+			it('should hard delete failed executions when error saving is disabled', async () => {
+				const saveSettings = createSaveSettings({ error: false });
+				const context = createContext('webhook');
+
+				const result = await handleExecutionSaveDecision(failedRun, saveSettings, context, retryOf);
+
+				expect(result).toBe(false);
+				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+					workflowId,
+					executionId,
+				});
+			});
+
+			it('should save failed executions when error saving is enabled', async () => {
+				const saveSettings = createSaveSettings({ error: true });
+				const context = createContext('webhook');
+
+				const result = await handleExecutionSaveDecision(failedRun, saveSettings, context, retryOf);
+
+				expect(result).toBe(true);
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+
+			it('should not hard delete failed executions with waitTill even when error saving is disabled', async () => {
+				const saveSettings = createSaveSettings({ error: false });
+				const context = createContext('webhook');
+				const waitingFailedRun = mock<IRun>({
+					status: 'error',
+					finished: true,
+					waitTill: new Date(),
+				});
+
+				const result = await handleExecutionSaveDecision(
+					waitingFailedRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(true);
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('manual mode precedence', () => {
+			it('should prioritize manual mode logic over success/error settings for manual executions', async () => {
+				const saveSettings = createSaveSettings({ manual: false, success: true, error: true });
+				const context = createContext('manual');
+
+				const result = await handleExecutionSaveDecision(
+					successfulRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
+				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('edge cases', () => {
+			it('should handle unknown execution status as error case', async () => {
+				const saveSettings = createSaveSettings({ error: false });
+				const context = createContext('webhook');
+				const unknownStatusRun = mock<IRun>({
+					status: 'unknown',
+					finished: true,
+					waitTill: undefined,
+					data: {
+						resultData: {
+							runData: {},
+						},
+					},
+				});
+
+				const result = await handleExecutionSaveDecision(
+					unknownStatusRun,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+					workflowId,
+					executionId,
+				});
+			});
+
+			it('should handle null waitTill as undefined', async () => {
+				const saveSettings = createSaveSettings({ success: false });
+				const context = createContext('webhook');
+				const runWithNullWaitTill = mock<IRun>({
+					status: 'success',
+					finished: true,
+					waitTill: null,
+					data: {
+						resultData: {
+							runData: {},
+						},
+					},
+				});
+
+				const result = await handleExecutionSaveDecision(
+					runWithNullWaitTill,
+					saveSettings,
+					context,
+					retryOf,
+				);
+
+				expect(result).toBe(false);
+				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+					workflowId,
+					executionId,
+				});
 			});
 		});
 	});
