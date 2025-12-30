@@ -24,6 +24,36 @@ function isDateLike(v: unknown): v is DateLike {
 	);
 }
 
+// Helper function to resolve data table ID from resourceLocator
+async function resolveDataTableId(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions,
+	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
+	index?: number,
+): Promise<string> {
+	if (resourceLocator.mode === 'name') {
+		// Look up table by name
+		const aggregateProxy = await getDataTableAggregateProxy(ctx);
+		const response = await aggregateProxy.getManyAndCount({
+			filter: { name: resourceLocator.value.toLowerCase() },
+			take: 1,
+		});
+
+		if (response.data.length === 0) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Data table with name "${resourceLocator.value}" not found`,
+			);
+		}
+
+		return response.data[0].id;
+	} else {
+		// For 'list' and 'id' modes, extract the value directly
+		return ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
+			extractValue: true,
+		}) as string;
+	}
+}
+
 // We need two functions here since the available getNodeParameter
 // overloads vary with the index
 export async function getDataTableProxyExecute(
@@ -36,9 +66,12 @@ export async function getDataTableProxyExecute(
 			'Attempted to use Data table node but the module is disabled',
 		);
 
-	const dataTableId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
-		extractValue: true,
-	}) as string;
+	const resourceLocator = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index) as {
+		mode: 'list' | 'id' | 'name';
+		value: string;
+	};
+
+	const dataTableId = await resolveDataTableId(ctx, resourceLocator, index);
 
 	return await ctx.helpers.getDataTableProxy(dataTableId);
 }
@@ -52,13 +85,16 @@ export async function getDataTableProxyLoadOptions(
 			'Attempted to use Data table node but the module is disabled',
 		);
 
-	const dataTableId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, undefined, {
-		extractValue: true,
-	}) as string;
+	const resourceLocator = ctx.getNodeParameter(DATA_TABLE_ID_FIELD) as {
+		mode: 'list' | 'id' | 'name';
+		value: string;
+	};
 
-	if (!dataTableId) {
+	if (!resourceLocator || !resourceLocator.value) {
 		return;
 	}
+
+	const dataTableId = await resolveDataTableId(ctx, resourceLocator);
 
 	return await ctx.helpers.getDataTableProxy(dataTableId);
 }

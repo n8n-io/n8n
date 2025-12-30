@@ -12,7 +12,7 @@ async function setupPerformanceTest(n8n: n8nPage, size: number) {
 }
 
 test.use({
-	addContainerCapability: {
+	capability: {
 		resourceQuota: {
 			memory: 0.75,
 			cpu: 0.5,

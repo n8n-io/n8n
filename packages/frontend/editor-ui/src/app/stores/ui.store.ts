@@ -551,6 +551,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 		workflowListEventBus: EventBus,
 	) => {

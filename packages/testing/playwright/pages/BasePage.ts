@@ -1,11 +1,13 @@
 import type { Page } from '@playwright/test';
 
 import { BaseModal } from './components/BaseModal';
+import { FloatingUiHelper } from './components/FloatingUiHelper';
 
-export abstract class BasePage {
+export abstract class BasePage extends FloatingUiHelper {
 	protected readonly baseModal: BaseModal;
 
 	constructor(protected readonly page: Page) {
+		super(page);
 		this.baseModal = new BaseModal(this.page);
 	}
 
