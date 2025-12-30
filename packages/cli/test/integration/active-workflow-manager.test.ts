@@ -142,7 +142,6 @@ describe('init()', () => {
 	});
 
 	it('should activate workflow with deprecated Start node during init', async () => {
-		// Create a workflow with a deprecated Start node and a trigger
 		const dbWorkflow = await createActiveWorkflow({
 			nodes: [
 				{
@@ -166,7 +165,6 @@ describe('init()', () => {
 
 		await activeWorkflowManager.init();
 
-		// Workflow should be activated despite having a Start node
 		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
 		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
@@ -204,19 +202,15 @@ describe('init()', () => {
 
 		expect(addSpy).toHaveBeenCalled();
 
-		// Verify the workflow was modified and activated
 		const [workflowId, activationMode, existingWorkflow] = addSpy.mock.calls[0];
 		expect(workflowId).toBe(dbWorkflow.id);
 		expect(activationMode).toBe('init');
 
-		// After filtering, the workflow should only have the Schedule Trigger (Start was removed)
 		expect(existingWorkflow).toBeDefined();
 		expect(existingWorkflow!.nodes).toHaveLength(1);
 		expect(existingWorkflow!.nodes[0].type).toBe('n8n-nodes-base.scheduleTrigger');
-		// Connections from Start should also be removed
 		expect(existingWorkflow!.connections.Start).toBeUndefined();
 
-		// Workflow should be active in memory
 		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
 
@@ -230,7 +224,7 @@ describe('init()', () => {
 					type: 'n8n-nodes-base.start',
 					typeVersion: 1,
 					position: [250, 300],
-					disabled: true, // Disabled Start node
+					disabled: true,
 				},
 				{
 					id: 'uuid-trigger',
@@ -247,10 +241,8 @@ describe('init()', () => {
 
 		await activeWorkflowManager.init();
 
-		// Verify disabled Start node was NOT filtered out
 		const [, , existingWorkflow] = addSpy.mock.calls[0];
 		expect(existingWorkflow).toBeDefined();
-		// Both nodes should still be in the array (disabled Start is not filtered)
 		expect(existingWorkflow!.nodes).toHaveLength(2);
 		const startNode = existingWorkflow!.nodes.find((n) => n.name === 'Start');
 		expect(startNode).toBeDefined();
