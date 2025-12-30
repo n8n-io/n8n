@@ -207,8 +207,8 @@ describe('array-to-parameters.utils', () => {
 		it('should handle path with empty segment (consecutive dots)', () => {
 			const obj: Record<string, unknown> = {};
 			setAtPath(obj, 'a..b', 'value');
-			// Empty segment creates an empty string key
-			expect(obj).toEqual({ a: { '': { b: 'value' } } });
+			// Empty segments are skipped, so 'a..b' is treated as 'a.b'
+			expect(obj).toEqual({ a: { b: 'value' } });
 		});
 
 		it('should handle single segment path', () => {
@@ -221,6 +221,38 @@ describe('array-to-parameters.utils', () => {
 			const obj: Record<string, unknown> = {};
 			setAtPath(obj, 'matrix.0.0', 'value');
 			expect(obj).toEqual({ matrix: [['value']] });
+		});
+
+		it('should handle bracket notation for arrays', () => {
+			const obj: Record<string, unknown> = {};
+			setAtPath(obj, 'values[0].name', 'first');
+			expect(obj).toEqual({ values: [{ name: 'first' }] });
+		});
+
+		it('should handle bracket notation with nested arrays', () => {
+			const obj: Record<string, unknown> = {};
+			setAtPath(obj, 'rules.values[0].conditions[0].value', 'test');
+			expect(obj).toEqual({
+				rules: {
+					values: [{ conditions: [{ value: 'test' }] }],
+				},
+			});
+		});
+
+		it('should handle mixed dot and bracket notation', () => {
+			const obj: Record<string, unknown> = {};
+			setAtPath(obj, 'data.items[2].nested.list[1].value', 'deep');
+			expect(obj).toEqual({
+				data: {
+					items: [undefined, undefined, { nested: { list: [undefined, { value: 'deep' }] } }],
+				},
+			});
+		});
+
+		it('should handle bracket notation at path end', () => {
+			const obj: Record<string, unknown> = {};
+			setAtPath(obj, 'items[3]', 'value');
+			expect(obj).toEqual({ items: [undefined, undefined, undefined, 'value'] });
 		});
 	});
 

@@ -67,17 +67,70 @@ function isArrayIndex(segment: string): boolean {
 }
 
 /**
+ * Parse a path string into an array of segments, handling both dot notation
+ * and bracket notation for arrays.
+ *
+ * Examples:
+ * - "method" -> ["method"]
+ * - "options.timeout" -> ["options", "timeout"]
+ * - "headers.0.name" -> ["headers", "0", "name"]
+ * - "rules.values[0].name" -> ["rules", "values", "0", "name"]
+ * - "rules.values[0].conditions[1].operator" -> ["rules", "values", "0", "conditions", "1", "operator"]
+ */
+function parsePathSegments(path: string): string[] {
+	const segments: string[] = [];
+	let current = '';
+
+	for (let i = 0; i < path.length; i++) {
+		const char = path[i];
+
+		if (char === '.') {
+			if (current) {
+				segments.push(current);
+				current = '';
+			}
+		} else if (char === '[') {
+			if (current) {
+				segments.push(current);
+				current = '';
+			}
+			// Parse the array index
+			let indexStr = '';
+			i++; // Skip '['
+			while (i < path.length && path[i] !== ']') {
+				indexStr += path[i];
+				i++;
+			}
+			// i now points to ']', loop will increment past it
+			segments.push(indexStr);
+		} else if (char === ']') {
+			// Skip, handled in '[' case
+		} else {
+			current += char;
+		}
+	}
+
+	if (current) {
+		segments.push(current);
+	}
+
+	return segments;
+}
+
+/**
  * Set a value at a dot notation path in an object.
  * Handles array indices (numeric path segments) by creating arrays.
+ * Supports both dot notation (headers.0.name) and bracket notation (values[0].name).
  *
  * Examples:
  * - "method" -> { method: value }
  * - "options.timeout" -> { options: { timeout: value } }
  * - "headers.0.name" -> { headers: [{ name: value }] }
  * - "headers.1.name" -> { headers: [undefined, { name: value }] }
+ * - "rules.values[0].name" -> { rules: { values: [{ name: value }] } }
  */
 export function setAtPath(obj: Record<string, unknown>, path: string, value: unknown): void {
-	const segments = path.split('.');
+	const segments = parsePathSegments(path);
 
 	let current: Record<string, unknown> | unknown[] = obj;
 
