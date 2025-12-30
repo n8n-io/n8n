@@ -100,6 +100,8 @@ const MigrationReportView = async () =>
 const MigrationRuleReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
 
+const CRDTTestView = async () => await import('@/features/crdt/views/CRDTTestView.vue');
+
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
@@ -114,6 +116,17 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
 		redirect: '/home/workflows',
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/crdt-test',
+		name: VIEWS.CRDT_TEST,
+		components: {
+			default: CRDTTestView,
+			sidebar: MainSidebar,
+		},
 		meta: {
 			middleware: ['authenticated'],
 		},
