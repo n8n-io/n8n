@@ -17,6 +17,7 @@ import {
 	createConsoleLifecycle,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -118,6 +119,11 @@ export async function runV2Evaluation(): Promise<void> {
 
 	if (args.mode === 'llm-judge-langsmith' || args.mode === 'llm-judge-local') {
 		evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes) as Evaluator<unknown>);
+		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
+	} else if (args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') {
+		evaluators.push(
+			createPairwiseEvaluator(env.llm, { numJudges: args.numJudges }) as Evaluator<unknown>,
+		);
 		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
 	}
 

@@ -7,3 +7,8 @@
 
 export { createLLMJudgeEvaluator, type LLMJudgeContext } from './llm-judge';
 export { createProgrammaticEvaluator, type ProgrammaticContext } from './programmatic';
+export {
+	createPairwiseEvaluator,
+	type PairwiseContext,
+	type PairwiseEvaluatorOptions,
+} from './pairwise';

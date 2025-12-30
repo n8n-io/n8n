@@ -1,5 +1,7 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import { evaluate } from 'langsmith/evaluation';
+import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
 
 import type {
@@ -12,6 +14,7 @@ import type {
 	EvaluationLifecycle,
 } from './types.js';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import { extractMessageContent } from '../types/langsmith';
 
 /** Pass/fail threshold for overall score */
 const PASS_THRESHOLD = 0.7;
@@ -111,8 +114,11 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 			const genDurationMs = Date.now() - genStartTime;
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
-			// Build context
-			const context = buildContext(globalContext, testCase.context);
+			// Build context - include prompt so LLM-judge evaluator can access it
+			const context = buildContext(globalContext, {
+				prompt: testCase.prompt,
+				...testCase.context,
+			});
 
 			// Run evaluators in parallel
 			const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
@@ -184,11 +190,31 @@ interface LangsmithTargetOutput {
 
 /**
  * Input from LangSmith dataset.
+ * Supports both direct prompt string and messages array format.
  */
 interface LangsmithDatasetInput {
-	prompt: string;
+	prompt?: string;
+	messages?: BaseMessage[];
 	evals?: Record<string, unknown>;
 	[key: string]: unknown;
+}
+
+/**
+ * Extract prompt from dataset input.
+ * Supports both direct prompt and messages array format.
+ */
+function extractPrompt(inputs: LangsmithDatasetInput): string {
+	// Direct prompt string
+	if (inputs.prompt && typeof inputs.prompt === 'string') {
+		return inputs.prompt;
+	}
+
+	// Messages array format
+	if (inputs.messages && Array.isArray(inputs.messages) && inputs.messages.length > 0) {
+		return extractMessageContent(inputs.messages[0]);
+	}
+
+	throw new Error('No prompt found in inputs - expected "prompt" string or "messages" array');
 }
 
 /**
@@ -215,13 +241,17 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 	// This is the key fix for "Run not created by target function" error
 	const target = traceable(
 		async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
-			const { prompt, evals: datasetContext, ...rest } = inputs;
+			// Extract prompt from inputs (supports both direct prompt and messages array)
+			const prompt = extractPrompt(inputs);
+			const { evals: datasetContext, ...rest } = inputs;
 
 			// Generate workflow
 			const workflow = await generateWorkflow(prompt);
 
 			// Build context - merge global context with dataset-level context
+			// IMPORTANT: Include prompt so LLM-judge evaluator can access it
 			const context = buildContext(globalContext, {
+				prompt,
 				...datasetContext,
 				...rest,
 			} as Record<string, unknown>);
@@ -240,10 +270,11 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 
 	// Create LangSmith evaluator that extracts pre-computed feedback
 	// This does NOT do any LLM calls - just returns outputs.feedback
-	const feedbackExtractor = async (rootRun: {
-		outputs?: LangsmithTargetOutput;
-	}): Promise<LangsmithEvaluationResult[]> => {
-		const outputs = rootRun.outputs;
+	const feedbackExtractor = async (
+		rootRun: Run,
+		_example?: Example,
+	): Promise<LangsmithEvaluationResult[]> => {
+		const outputs = rootRun.outputs as LangsmithTargetOutput | undefined;
 
 		if (!outputs?.feedback) {
 			return [

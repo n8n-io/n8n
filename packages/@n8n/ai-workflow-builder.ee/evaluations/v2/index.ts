@@ -38,6 +38,9 @@ export {
 export {
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
 	type LLMJudgeContext,
 	type ProgrammaticContext,
+	type PairwiseContext,
+	type PairwiseEvaluatorOptions,
 } from './evaluators';

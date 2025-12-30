@@ -32,6 +32,28 @@ function formatDuration(ms: number): string {
 }
 
 /**
+ * Critical metrics to always show in verbose mode.
+ */
+const CRITICAL_METRICS = [
+	'functionality',
+	'connections',
+	'expressions',
+	'nodeConfiguration',
+	'overallScore',
+	'overall', // programmatic uses 'overall' not 'overallScore'
+	'trigger',
+];
+
+/**
+ * Get color based on score.
+ */
+function scoreColor(score: number): (s: string) => string {
+	if (score >= 0.9) return pc.green;
+	if (score >= 0.7) return pc.yellow;
+	return pc.red;
+}
+
+/**
  * Options for creating a console lifecycle.
  */
 export interface ConsoleLifecycleOptions {
@@ -83,7 +105,45 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			const avgScore =
 				feedback.length > 0 ? feedback.reduce((sum, f) => sum + f.score, 0) / feedback.length : 0;
 
-			console.log(pc.dim(`    ${name}: ${formatScore(avgScore)} (${feedback.length} metrics)`));
+			const colorFn = scoreColor(avgScore);
+			console.log(
+				pc.dim(`    ${name}: `) +
+					colorFn(formatScore(avgScore)) +
+					pc.dim(` (${feedback.length} metrics)`),
+			);
+
+			// Show critical metrics (handle both prefixed and non-prefixed keys)
+			const criticalFeedback = feedback.filter((f) => {
+				const keyParts = f.key.split('.');
+				const metricName = keyParts.length > 1 ? keyParts[1] : keyParts[0];
+				return CRITICAL_METRICS.includes(metricName);
+			});
+			if (criticalFeedback.length > 0) {
+				const metricsLine = criticalFeedback
+					.map((f) => {
+						const keyParts = f.key.split('.');
+						const shortKey = keyParts.length > 1 ? keyParts[1] : keyParts[0];
+						const color = scoreColor(f.score);
+						return `${shortKey}: ${color(formatScore(f.score))}`;
+					})
+					.join(pc.dim(' | '));
+				console.log(pc.dim('      ') + metricsLine);
+			}
+
+			// Show violations (feedback items with comments that indicate issues)
+			const violations = feedback.filter(
+				(f) => f.comment && f.score < 1.0 && !f.key.endsWith('.error'),
+			);
+			if (violations.length > 0) {
+				console.log(pc.dim('      Violations:'));
+				for (const v of violations.slice(0, 5)) {
+					// Limit to 5 violations
+					console.log(pc.dim(`        - [${v.key}] `) + pc.red(v.comment ?? ''));
+				}
+				if (violations.length > 5) {
+					console.log(pc.dim(`        ... and ${violations.length - 5} more`));
+				}
+			}
 		},
 
 		onEvaluatorError(name: string, error: Error): void {
