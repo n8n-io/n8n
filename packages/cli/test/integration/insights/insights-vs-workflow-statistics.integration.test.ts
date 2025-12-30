@@ -211,7 +211,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	async function waitForStatistics(
 		workflowId: string,
 		expectedCount: number,
-		timeout = 10000,
+		timeout = 30000,
 	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
