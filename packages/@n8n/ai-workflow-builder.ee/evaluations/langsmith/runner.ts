@@ -317,6 +317,9 @@ export async function runLangsmithEvaluation(
 			throw new Error('LANGSMITH_API_KEY environment variable not set');
 		}
 
+		// Enable tracing (required in langsmith 0.4.x for evaluate() to work)
+		process.env.LANGSMITH_TRACING = 'true';
+
 		// Setup test environment
 		const { parsedNodeTypes, llm, lsClient, traceFilters } = await setupTestEnvironment(log);
 		// Note: Don't use the tracer from setupTestEnvironment() here.
