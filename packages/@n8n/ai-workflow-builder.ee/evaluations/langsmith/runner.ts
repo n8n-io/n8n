@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { Client } from 'langsmith/client';
 import { evaluate } from 'langsmith/evaluation';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { traceable } from 'langsmith/traceable';
@@ -97,6 +98,39 @@ function createWorkflowGenerator(
 }
 
 /**
+ * Verify dataset exists and optionally count examples for verbose output.
+ */
+async function verifyDatasetAndCountExamples(
+	lsClient: Client,
+	datasetName: string,
+	countExamples: boolean,
+): Promise<number> {
+	try {
+		const dataset = await lsClient.readDataset({ datasetName });
+
+		if (countExamples) {
+			let count = 0;
+			for await (const _ of lsClient.listExamples({ datasetId: dataset.id })) {
+				count++;
+			}
+			return count;
+		}
+		return 0;
+	} catch {
+		// List available datasets for helpful error message
+		const availableDatasets: string[] = [];
+		for await (const dataset of lsClient.listDatasets()) {
+			availableDatasets.push(`${dataset.name} (${dataset.id})`);
+		}
+
+		throw new Error(
+			`Dataset "${datasetName}" not found. Available datasets: ${availableDatasets.join(', ') || 'none'}. ` +
+				'Set LANGSMITH_DATASET_NAME environment variable to use a different dataset.',
+		);
+	}
+}
+
+/**
  * Runs evaluation using Langsmith
  * @param repetitions - Number of times to run each example (default: 1)
  * @param featureFlags - Optional feature flags to pass to the agent
@@ -149,20 +183,16 @@ export async function runLangsmithEvaluation(
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
 		log.info(`➔ Using dataset: ${datasetName}`);
 
-		// Verify dataset exists
-		try {
-			await lsClient.readDataset({ datasetName });
-		} catch {
-			// List available datasets for helpful error message
-			const availableDatasets: string[] = [];
-			for await (const dataset of lsClient.listDatasets()) {
-				availableDatasets.push(`${dataset.name} (${dataset.id})`);
-			}
+		// Verify dataset exists and get stats
+		const exampleCount = await verifyDatasetAndCountExamples(lsClient, datasetName, verbose);
 
-			throw new Error(
-				`Dataset "${datasetName}" not found. Available datasets: ${availableDatasets.join(', ') || 'none'}. ` +
-					'Set LANGSMITH_DATASET_NAME environment variable to use a different dataset.',
+		// Verbose: dataset statistics
+		if (verbose && exampleCount > 0) {
+			log.verbose(`➔ Dataset contains ${exampleCount} example(s)`);
+			log.verbose(
+				`➔ Total runs: ${exampleCount * repetitions} (${exampleCount} examples × ${repetitions} reps)`,
 			);
+			log.verbose('➔ Concurrency: 7 parallel evaluations');
 		}
 
 		console.log();

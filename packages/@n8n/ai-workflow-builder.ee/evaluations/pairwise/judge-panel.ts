@@ -12,11 +12,20 @@ export interface EvalCriteria {
 	donts: string;
 }
 
+export interface JudgePanelTiming {
+	/** Total time for all judges in milliseconds */
+	totalMs: number;
+	/** Time per judge in milliseconds */
+	perJudgeMs: number[];
+}
+
 export interface JudgePanelResult {
 	judgeResults: PairwiseEvaluationResult[];
 	primaryPasses: number;
 	majorityPass: boolean;
 	avgDiagnosticScore: number;
+	/** Timing information (only populated when timing is tracked) */
+	timing?: JudgePanelTiming;
 }
 
 export interface GenerationResult extends JudgePanelResult {
@@ -82,11 +91,14 @@ export async function runJudgePanel(
 	options?: JudgePanelOptions,
 ): Promise<JudgePanelResult> {
 	const { generationIndex, experimentName } = options ?? {};
+	const panelStartTime = Date.now();
 
-	// Run all judges in parallel
+	// Run all judges in parallel, tracking timing for each
+	const judgeTimings: number[] = [];
 	const judgeResults = await Promise.all(
 		Array.from({ length: numJudges }, async (_, judgeIndex) => {
-			return await evaluateWorkflowPairwise(
+			const judgeStartTime = Date.now();
+			const result = await evaluateWorkflowPairwise(
 				llm,
 				{ workflowJSON: workflow, evalCriteria },
 				{
@@ -97,10 +109,21 @@ export async function runJudgePanel(
 					},
 				},
 			);
+			judgeTimings[judgeIndex] = Date.now() - judgeStartTime;
+			return result;
 		}),
 	);
 
-	return aggregateJudgeResults(judgeResults, numJudges);
+	const totalMs = Date.now() - panelStartTime;
+	const aggregated = aggregateJudgeResults(judgeResults, numJudges);
+
+	return {
+		...aggregated,
+		timing: {
+			totalMs,
+			perJudgeMs: judgeTimings,
+		},
+	};
 }
 
 /**

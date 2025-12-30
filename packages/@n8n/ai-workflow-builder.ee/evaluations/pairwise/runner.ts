@@ -3,8 +3,15 @@ import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
 import { createPairwiseTarget, generateWorkflow } from './generator';
-import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
+import type { PairwiseEvaluationResult } from './judge-chain';
+import {
+	aggregateGenerations,
+	runJudgePanel,
+	type GenerationResult,
+	type JudgePanelResult,
+} from './judge-panel';
 import { pairwiseLangsmithEvaluator } from './metrics-builder';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
@@ -15,6 +22,79 @@ import { createLogger, type EvalLogger } from '../utils/logger';
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * Create a compact summary of workflow node types.
+ * Example: "5 nodes (Webhook, Set, IF, HTTP Request x2)"
+ */
+function summarizeWorkflowNodes(workflow: SimpleWorkflow): string {
+	if (!workflow.nodes?.length) return '0 nodes';
+
+	const types = workflow.nodes.map((n) => {
+		// Strip common prefixes for readability
+		return n.type
+			.replace('n8n-nodes-base.', '')
+			.replace('@n8n/n8n-nodes-langchain.', '')
+			.replace('n8n-nodes-', '');
+	});
+
+	// Count occurrences of each type
+	const counts = new Map<string, number>();
+	for (const t of types) {
+		counts.set(t, (counts.get(t) ?? 0) + 1);
+	}
+
+	// Format as "Type" or "Type x2" for multiples
+	const parts = [...counts.entries()].map(([type, count]) =>
+		count > 1 ? `${type} x${count}` : type,
+	);
+
+	return `${workflow.nodes.length} nodes (${parts.join(', ')})`;
+}
+
+/**
+ * Get a brief summary of a judge result for verbose logging.
+ */
+function getJudgeSummary(result: PairwiseEvaluationResult): string {
+	if (result.primaryPass) {
+		return 'All criteria met';
+	}
+	// Show first violation, truncated
+	const firstViolation = result.violations[0];
+	if (firstViolation) {
+		const justification = firstViolation.justification.slice(0, 60);
+		return justification + (firstViolation.justification.length > 60 ? '...' : '');
+	}
+	return 'Failed (no details)';
+}
+
+/**
+ * Log detailed judge results in verbose mode.
+ */
+function logJudgeDetails(log: EvalLogger, panelResult: JudgePanelResult): void {
+	for (const [i, judge] of panelResult.judgeResults.entries()) {
+		const status = judge.primaryPass ? pc.green('PASS') : pc.red('FAIL');
+		const summary = getJudgeSummary(judge);
+		log.verbose(`      Judge ${i + 1}: ${status} - ${summary}`);
+	}
+}
+
+/**
+ * Format timing information for verbose output.
+ */
+function formatTiming(genTimeMs: number, panelResult: JudgePanelResult): string {
+	const genSec = (genTimeMs / 1000).toFixed(1);
+	if (panelResult.timing) {
+		const judgeSec = (panelResult.timing.totalMs / 1000).toFixed(1);
+		const avgJudgeSec = (
+			panelResult.timing.perJudgeMs.reduce((a, b) => a + b, 0) /
+			panelResult.timing.perJudgeMs.length /
+			1000
+		).toFixed(1);
+		return `${genSec}s gen, ${judgeSec}s judge (${avgJudgeSec}s/judge avg)`;
+	}
+	return `${genSec}s gen`;
+}
 
 /** Extract notion_id from metadata if present */
 function getNotionId(metadata: unknown): string | undefined {
@@ -206,12 +286,9 @@ function displayLocalResults(
 		}
 	}
 
-	// Show workflow summary
-	if (verbose && generationResults[0].workflow.nodes) {
-		log.info(pc.dim('\nWorkflow nodes (Gen 1):'));
-		for (const node of generationResults[0].workflow.nodes) {
-			log.info(pc.dim(`  - ${node.name} (${node.type})`));
-		}
+	// Show workflow summary (compact format)
+	if (verbose && generationResults[0].workflow) {
+		log.info(pc.dim(`\nWorkflow: ${summarizeWorkflowNodes(generationResults[0].workflow)}`));
 	}
 }
 
@@ -311,6 +388,7 @@ export async function runPairwiseLangsmithEvaluation(
 			numGenerations,
 			featureFlags,
 			experimentName,
+			logger: verbose ? log : undefined,
 		});
 		const evaluator = pairwiseLangsmithEvaluator;
 
@@ -415,18 +493,26 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 
 				// Generate workflow
 				const workflow = await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags);
-				const genTime = (Date.now() - genStartTime) / 1000;
-
-				log.verbose(
-					`  Gen ${genIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
-				);
+				const genTimeMs = Date.now() - genStartTime;
 
 				// Run judge panel
 				const panelResult = await runJudgePanel(llm, workflow, criteria, numJudges);
 
+				// Verbose logging: generation result with timing
+				const status = panelResult.majorityPass ? pc.green('PASS') : pc.red('FAIL');
+				const score = (panelResult.avgDiagnosticScore * 100).toFixed(0);
 				log.verbose(
-					`  Gen ${genIndex + 1}: ${panelResult.majorityPass ? '✓ PASS' : '✗ FAIL'} (${panelResult.primaryPasses}/${numJudges} judges, ${(panelResult.avgDiagnosticScore * 100).toFixed(0)}%)`,
+					`  Gen ${genIndex + 1}: ${status} (${panelResult.primaryPasses}/${numJudges} judges, ${score}%)`,
 				);
+
+				// Verbose logging: timing breakdown
+				log.verbose(`    Timing: ${formatTiming(genTimeMs, panelResult)}`);
+
+				// Verbose logging: workflow summary
+				log.verbose(`    Workflow: ${summarizeWorkflowNodes(workflow)}`);
+
+				// Verbose logging: judge details
+				logJudgeDetails(log, panelResult);
 
 				return { workflow, ...panelResult };
 			}),
