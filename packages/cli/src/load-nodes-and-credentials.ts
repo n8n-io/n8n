@@ -87,6 +87,7 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'intento-nodes-base');
 		}
 
 		for (const dir of this.moduleRegistry.loadDirs) {
@@ -121,10 +122,7 @@ export class LoadNodesAndCredentials {
 		return this.known.nodes;
 	}
 
-	private async loadNodesFromNodeModules(
-		nodeModulesDir: string,
-		packageName?: string,
-	): Promise<void> {
+	private async loadNodesFromNodeModules(nodeModulesDir: string, packageName?: string): Promise<void> {
 		const globOptions = {
 			cwd: nodeModulesDir,
 			onlyDirectories: true,
@@ -132,17 +130,11 @@ export class LoadNodesAndCredentials {
 		};
 		const installedPackagePaths = packageName
 			? await glob(packageName, globOptions)
-			: [
-					...(await glob('n8n-nodes-*', globOptions)),
-					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-				];
+			: [...(await glob('n8n-nodes-*', globOptions)), ...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 }))];
 
 		for (const packagePath of installedPackagePaths) {
 			try {
-				await this.runDirectoryLoader(
-					LazyPackageDirectoryLoader,
-					path.join(nodeModulesDir, packagePath),
-				);
+				await this.runDirectoryLoader(LazyPackageDirectoryLoader, path.join(nodeModulesDir, packagePath));
 			} catch (error) {
 				this.logger.error((error as Error).message);
 				this.errorReporter.error(error);
@@ -210,11 +202,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	async loadPackage(packageName: string) {
-		const finalNodeUnpackedPath = path.join(
-			this.instanceSettings.nodesDownloadDir,
-			'node_modules',
-			packageName,
-		);
+		const finalNodeUnpackedPath = path.join(this.instanceSettings.nodesDownloadDir, 'node_modules', packageName);
 		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 
@@ -235,18 +223,14 @@ export class LoadNodesAndCredentials {
 		return description.credentials.some(({ name }) => {
 			const credType = this.types.credentials.find((t) => t.name === name);
 			if (!credType) {
-				this.logger.warn(
-					`Failed to load Custom API options for the node "${description.name}": Unknown credential name "${name}"`,
-				);
+				this.logger.warn(`Failed to load Custom API options for the node "${description.name}": Unknown credential name "${name}"`);
 				return false;
 			}
 			if (credType.authenticate !== undefined) return true;
 
 			return (
 				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
+				credType.extends.some((parentType) => ['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType))
 			);
 		});
 	}
@@ -257,8 +241,7 @@ export class LoadNodesAndCredentials {
 	 */
 	private injectCustomApiCallOptions() {
 		this.types.nodes.forEach((node: INodeTypeDescription) => {
-			const isLatestVersion =
-				node.defaultVersion === undefined || node.defaultVersion === node.version;
+			const isLatestVersion = node.defaultVersion === undefined || node.defaultVersion === node.version;
 
 			if (isLatestVersion) {
 				if (!this.supportsProxyAuth(node)) return;
@@ -289,9 +272,7 @@ export class LoadNodesAndCredentials {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
 			throw new UserError(
-				picocolors.red(
-					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
-				),
+				picocolors.red(`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`),
 			);
 		}
 		await loader.loadAll();
@@ -306,9 +287,7 @@ export class LoadNodesAndCredentials {
 	 * the connected tools.
 	 */
 	createAiTools() {
-		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter(
-			(nodeType) => nodeType.usableAsTool,
-		);
+		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter((nodeType) => nodeType.usableAsTool);
 
 		for (const usableNode of usableNodes) {
 			const description =
@@ -327,9 +306,7 @@ export class LoadNodesAndCredentials {
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
 				.map(([credentialName]) => credentialName);
 
-			credentialNames.forEach((name) =>
-				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
-			);
+			credentialNames.forEach((name) => this.known.credentials[name]?.supportedNodes?.push(wrapped.name));
 		}
 	}
 
@@ -351,9 +328,7 @@ export class LoadNodesAndCredentials {
 			const processedCredentials = types.credentials.map((credential) => {
 				if (this.shouldAddDomainRestrictions(credential)) {
 					const clonedCredential = { ...credential };
-					clonedCredential.properties = this.injectDomainRestrictionFields([
-						...(clonedCredential.properties ?? []),
-					]);
+					clonedCredential.properties = this.injectDomainRestrictionFields([...(clonedCredential.properties ?? [])]);
 					return {
 						...clonedCredential,
 						supportedNodes:
@@ -378,9 +353,7 @@ export class LoadNodesAndCredentials {
 				const credentialType = loader.credentialTypes[credentialTypeName];
 				if (this.shouldAddDomainRestrictions(credentialType)) {
 					// Access properties through the type field
-					credentialType.type.properties = this.injectDomainRestrictionFields([
-						...(credentialType.type.properties ?? []),
-					]);
+					credentialType.type.properties = this.injectDomainRestrictionFields([...(credentialType.type.properties ?? [])]);
 				}
 			}
 
@@ -393,19 +366,12 @@ export class LoadNodesAndCredentials {
 			}
 
 			for (const type in known.credentials) {
-				const {
-					className,
-					sourcePath,
-					supportedNodes,
-					extends: extendsArr,
-				} = known.credentials[type];
+				const { className, sourcePath, supportedNodes, extends: extendsArr } = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
 					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
+						loader instanceof PackageDirectoryLoader ? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`) : undefined,
 					extends: extendsArr,
 				};
 			}
@@ -459,9 +425,7 @@ export class LoadNodesAndCredentials {
 	 * as an AI Agent Tool.
 	 * Returns the modified item (not copied)
 	 */
-	convertNodeToAiTool<
-		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
-	>(item: T): T {
+	convertNodeToAiTool<T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription }>(item: T): T {
 		// quick helper function for type-guard down below
 		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
 			return typeof obj === 'object' && obj !== null && 'properties' in obj;
@@ -581,14 +545,8 @@ export class LoadNodesAndCredentials {
 				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
 				const realCustomNodesPaths = await Promise.all(
 					customNodeEntries
-						.filter(
-							(entry) =>
-								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
-						)
-						.map(
-							async (entry) =>
-								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
-						),
+						.filter((entry) => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'))
+						.map(async (entry) => await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null)),
 				);
 
 				watchPaths.push.apply(
@@ -605,9 +563,7 @@ export class LoadNodesAndCredentials {
 			for (const watchPath of watchPaths) {
 				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
 					if (events.some((event) => event.type !== 'delete')) {
-						const modules = Object.keys(require.cache).filter((module) =>
-							module.startsWith(watchPath),
-						);
+						const modules = Object.keys(require.cache).filter((module) => module.startsWith(watchPath));
 
 						for (const module of modules) {
 							delete require.cache[module];
@@ -624,9 +580,7 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	private shouldAddDomainRestrictions(
-		credential: ICredentialType | LoadedClass<ICredentialType>,
-	): boolean {
+	private shouldAddDomainRestrictions(credential: ICredentialType | LoadedClass<ICredentialType>): boolean {
 		// Handle both credential types by extracting the actual ICredentialType
 		const credentialType = 'type' in credential ? credential.type : credential;
 

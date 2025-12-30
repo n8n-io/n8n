@@ -1,11 +1,19 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": ["@n8n/typescript-config/tsconfig.common.json", "@n8n/typescript-config/tsconfig.backend.json"],
 	"compilerOptions": {
+		"lib": ["es2022"],
 		"rootDir": ".",
-		"types": ["node", "jest"],
 		"baseUrl": "src",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"paths": {
+			"context/*": ["context/*"],
+			"supply/*": ["supply/*"],
+			"tracing/*": ["tracing/*"],
+			"types/*": ["types/*"],
+			"utils/*": ["utils/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true
 	},
-	"include": ["src/**/*.ts"],
-	"references": [{ "path": "../../../workflow/tsconfig.build.esm.json" }]
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

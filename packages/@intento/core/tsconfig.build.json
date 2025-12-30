@@ -1,11 +1,18 @@
 {
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
+		"paths": {
+			"context/*": ["context/*"],
+			"supply/*": ["supply/*"],
+			"tracing/*": ["tracing/*"],
+			"types/*": ["types/*"],
+			"utils/*": ["utils/*"]
+		},
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"],
-	"exclude": ["src/**/__tests__/**", "**/\\*\\.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["test/**", "src/**/__tests__/**"]
 }

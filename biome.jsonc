@@ -24,7 +24,7 @@
 		"indentStyle": "tab",
 		"indentWidth": 2,
 		"lineEnding": "lf",
-		"lineWidth": 100,
+		"lineWidth": 140,
 		"attributePosition": "auto",
 		"ignore": [
 			// Handled by prettier

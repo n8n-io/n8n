@@ -1,0 +1,19 @@
+{
+	"extends": ["@n8n/typescript-config/tsconfig.common.json", "@n8n/typescript-config/tsconfig.backend.json"],
+	"compilerOptions": {
+		"lib": ["es2022"],
+		"rootDir": ".",
+		"baseUrl": "src",
+		"paths": {
+			"context/*": ["context/*"],
+			"supply/*": ["supply/*"],
+			"suppliers/*": ["suppliers/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

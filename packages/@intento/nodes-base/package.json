@@ -1,0 +1,47 @@
+{
+  "name": "intento-nodes-base",
+  "version": "1.0.0",
+  "description": "Base nodes of intento platform",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "copy-nodes-json": "node scripts/copy-nodes-json.js .",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint nodes agents credentials utils test --quiet && node ./scripts/validate-load-options-methods.js",
+    "lint:fix": "eslint nodes agents credentials utils test --fix",
+    "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
+    "test": "jest",
+    "test:dev": "jest --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "credentials": [
+
+    ],
+    "nodes": [
+      "dist/nodes/agents/TranslationAgent/TranslationAgent.node.js",
+      "dist/nodes/providers/DryRunProvider/DryRunProvider.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "eslint-plugin-n8n-nodes-base": "^1.16.3",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "intento-core": "workspace:*",
+    "intento-translation": "workspace:*"
+  },
+  "dependencies": {
+    "n8n-workflow": "workspace:*",
+    "n8n-core": "workspace:*",
+    "intento-core": "workspace:*",
+    "intento-translation": "workspace:*"
+  }
+}

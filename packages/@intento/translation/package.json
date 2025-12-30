@@ -1,0 +1,35 @@
+{
+  "name": "intento-translation",
+  "version": "1.0.0",
+  "description": "Translation functionality of intento extension for n8n",
+  "main": "dist/index",
+  "types": "dist/index.d.ts",
+
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:^",
+    "n8n-workflow": "workspace:^",
+    "intento-core": "workspace:^"
+  },
+  "dependencies": {
+    "n8n-workflow": "workspace:^",
+    "intento-core": "workspace:^"
+  }
+}
