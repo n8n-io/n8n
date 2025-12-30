@@ -4,10 +4,12 @@ import { MemorySaver } from '@langchain/langgraph';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
+import { getModel, type ModelKey } from '../../src/llm-registry.js';
+import type { BuilderFeatureFlags, ModelOverrides } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
+
+const DEFAULT_MODEL: ModelKey = 'claude-sonnet';
 
 export interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -17,16 +19,60 @@ export interface TestEnvironment {
 }
 
 /**
- * Sets up the LLM with proper configuration
- * @returns Configured LLM instance
- * @throws Error if N8N_AI_ANTHROPIC_KEY environment variable is not set
+ * Configuration for model selection in evaluations.
+ */
+export interface ModelConfig {
+	/** Default model for generation (defaults to 'claude-sonnet') */
+	defaultModel?: ModelKey;
+	/** Model for judging (defaults to defaultModel) */
+	judgeModel?: ModelKey;
+	/** Per-stage model overrides */
+	stageOverrides?: Partial<Record<keyof ModelOverrides, ModelKey>>;
+}
+
+/**
+ * Resolved model instances ready for use.
+ */
+export interface ResolvedModels {
+	defaultModel: BaseChatModel;
+	judgeModel: BaseChatModel;
+	modelOverrides?: ModelOverrides;
+}
+
+/**
+ * Sets up models based on configuration.
+ * @param config - Model configuration (all optional, uses defaults if not provided)
+ * @returns Resolved model instances
+ */
+export async function setupModels(config?: ModelConfig): Promise<ResolvedModels> {
+	const modelKey = config?.defaultModel ?? DEFAULT_MODEL;
+	const judgeKey = config?.judgeModel ?? modelKey;
+
+	const defaultModel = await getModel(modelKey);
+	const judgeModel = judgeKey === modelKey ? defaultModel : await getModel(judgeKey);
+
+	// Resolve stage overrides if provided
+	let modelOverrides: ModelOverrides | undefined;
+	if (config?.stageOverrides && Object.keys(config.stageOverrides).length > 0) {
+		modelOverrides = {};
+		for (const [stage, key] of Object.entries(config.stageOverrides)) {
+			if (key) {
+				(modelOverrides as Record<string, BaseChatModel>)[stage] = await getModel(key as ModelKey);
+			}
+		}
+	}
+
+	return { defaultModel, judgeModel, modelOverrides };
+}
+
+/**
+ * Sets up the LLM with default configuration.
+ * @deprecated Use setupModels() for new code. This is kept for backward compatibility.
+ * @returns Configured LLM instance using default model
  */
 export async function setupLLM(): Promise<BaseChatModel> {
-	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY;
-	if (!apiKey) {
-		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
-	}
-	return await anthropicClaudeSonnet45({ apiKey });
+	const { defaultModel } = await setupModels();
+	return defaultModel;
 }
 
 /**
@@ -70,6 +116,7 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 export interface CreateAgentOptions {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	modelOverrides?: ModelOverrides;
 	tracer?: LangChainTracer;
 	featureFlags?: BuilderFeatureFlags;
 	experimentName?: string;
@@ -81,11 +128,12 @@ export interface CreateAgentOptions {
  * @returns Configured WorkflowBuilderAgent
  */
 export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
-	const { parsedNodeTypes, llm, tracer, featureFlags, experimentName } = options;
+	const { parsedNodeTypes, llm, modelOverrides, tracer, featureFlags, experimentName } = options;
 
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		defaultModel: llm,
+		modelOverrides,
 		checkpointer: new MemorySaver(),
 		tracer,
 		featureFlags,

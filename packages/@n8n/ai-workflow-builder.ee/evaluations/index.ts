@@ -1,9 +1,10 @@
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import type { BuilderFeatureFlags, ModelOverrides } from '@/workflow-builder-agent';
 
 import { runCliEvaluation } from './cli/runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
 import { runLocalPairwiseEvaluation, runPairwiseLangsmithEvaluation } from './pairwise/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
+import { validateModelKey, type ModelKey } from '../src/llm-registry.js';
 
 // Re-export for external use if needed
 export { runCliEvaluation } from './cli/runner.js';
@@ -34,7 +35,77 @@ const VALID_FLAGS = [
 	'--donts',
 	'--template-examples',
 	'--multi-agent',
+	'--model',
+	'--judge-model',
+	'--stage-model',
 ] as const;
+
+/** Valid stage keys for model overrides */
+const VALID_STAGE_KEYS: Array<keyof ModelOverrides> = [
+	'supervisor',
+	'responder',
+	'discovery',
+	'builder',
+	'configurator',
+	'parameterUpdater',
+	'categorizePrompt',
+	'workflowName',
+	'conversationCompact',
+	'legacyAgent',
+];
+
+/**
+ * Validate a stage key and return it typed, or throw with available options.
+ */
+function validateStageKey(key: string): keyof ModelOverrides {
+	if (!VALID_STAGE_KEYS.includes(key as keyof ModelOverrides)) {
+		throw new Error(
+			`Invalid stage key: "${key}"\nAvailable stages: ${VALID_STAGE_KEYS.join(', ')}`,
+		);
+	}
+	return key as keyof ModelOverrides;
+}
+
+/**
+ * Parse stage model overrides from CLI flags and environment variables.
+ * CLI: --stage-model builder=gpt52 --stage-model configurator=gpt41
+ * ENV: EVAL_STAGE_MODELS=builder:gpt52,configurator:gpt41
+ */
+function parseStageModels(): Record<string, ModelKey> | undefined {
+	const result: Record<string, ModelKey> = {};
+
+	// From CLI: --stage-model builder=gpt52 --stage-model configurator=gpt41
+	for (let i = 0; i < process.argv.length; i++) {
+		if (process.argv[i] === '--stage-model' && process.argv[i + 1]) {
+			const value = process.argv[i + 1];
+			const [stage, model] = value.split('=');
+			if (stage && model) {
+				validateStageKey(stage);
+				validateModelKey(model);
+				result[stage] = model as ModelKey;
+			} else {
+				throw new Error(
+					`Invalid --stage-model format: "${value}". Expected: --stage-model <stage>=<model>`,
+				);
+			}
+		}
+	}
+
+	// From env: EVAL_STAGE_MODELS=builder:gpt52,configurator:gpt41
+	const envModels = process.env.EVAL_STAGE_MODELS;
+	if (envModels) {
+		for (const pair of envModels.split(',')) {
+			const [stage, model] = pair.split(':');
+			if (stage && model && !result[stage]) {
+				validateStageKey(stage);
+				validateModelKey(model);
+				result[stage] = model as ModelKey;
+			}
+		}
+	}
+
+	return Object.keys(result).length > 0 ? result : undefined;
+}
 
 /** Validate that all provided CLI flags are recognized */
 function validateCliArgs(): void {
@@ -66,6 +137,15 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 /** Parse all CLI arguments */
 function parseCliArgs() {
 	validateCliArgs();
+
+	// Parse and validate model keys
+	const model = getFlagValue('--model') ?? process.env.EVAL_DEFAULT_MODEL;
+	const judgeModel = getFlagValue('--judge-model') ?? process.env.EVAL_JUDGE_MODEL;
+
+	// Validate model keys if provided
+	if (model) validateModelKey(model);
+	if (judgeModel) validateModelKey(judgeModel);
+
 	return {
 		testCaseId: process.argv.includes('--test-case')
 			? process.argv[process.argv.indexOf('--test-case') + 1]
@@ -84,6 +164,10 @@ function parseCliArgs() {
 		prompt: getFlagValue('--prompt'),
 		dos: getFlagValue('--dos'),
 		donts: getFlagValue('--donts'),
+		// Model configuration
+		model: model as ModelKey | undefined,
+		judgeModel: judgeModel as ModelKey | undefined,
+		stageModels: parseStageModels(),
 	};
 }
 
@@ -114,6 +198,10 @@ async function main(): Promise<void> {
 				verbose: args.verbose,
 				outputDir: args.outputDir,
 				featureFlags,
+				// Model configuration
+				model: args.model,
+				judgeModel: args.judgeModel,
+				stageModels: args.stageModels,
 			});
 		} else {
 			// LangSmith mode
@@ -127,6 +215,10 @@ async function main(): Promise<void> {
 				concurrency: args.concurrency,
 				maxExamples: args.maxExamples,
 				featureFlags,
+				// Model configuration
+				model: args.model,
+				judgeModel: args.judgeModel,
+				stageModels: args.stageModels,
 			});
 		}
 	} else if (useLangsmith) {

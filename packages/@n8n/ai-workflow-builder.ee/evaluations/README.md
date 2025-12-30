@@ -335,6 +335,9 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
 | `--multi-agent` | Enable multi-agent architecture (see [Feature Flags](#feature-flags)) | false |
 | `--template-examples` | Enable template-based examples (see [Feature Flags](#feature-flags)) | false |
+| `--model <key>` | Model key for workflow generation (see [Model Configuration](#model-configuration)) | `claude-sonnet` |
+| `--judge-model <key>` | Model key for judging (defaults to `--model`) | same as `--model` |
+| `--stage-model <stage>=<key>` | Override model for specific stage (repeatable) | - |
 
 #### Local Mode (No LangSmith Required)
 
@@ -505,6 +508,11 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `EVAL_FEATURE_MULTI_AGENT` - Set to "true" to enable multi-agent mode
 - `EVAL_FEATURE_TEMPLATE_EXAMPLES` - Set to "true" to enable template examples
 - `N8N_EVALS_DISABLED_NODES` - Comma-separated list of node types to disable (e.g., `n8n-nodes-base.slack,@n8n/n8n-nodes-langchain.agent`)
+- `EVAL_DEFAULT_MODEL` - Model key for workflow generation (default: `claude-sonnet`)
+- `EVAL_JUDGE_MODEL` - Model key for judging (defaults to `EVAL_DEFAULT_MODEL`)
+- `EVAL_STAGE_MODELS` - Stage model overrides in format `stage:model,stage:model` (e.g., `builder:gpt52,configurator:gpt41`)
+- `N8N_AI_OPENAI_API_KEY` - Required for OpenAI models (gpt52, gpt41, o4-mini)
+- `OPENROUTER_API_KEY` - Required for OpenRouter models (gemini-flash, gemini-pro)
 
 ### Feature Flags
 
@@ -570,6 +578,84 @@ pnpm eval:pairwise --prompt "Create a Slack workflow" --dos "Use Slack node" --m
 When feature flags are enabled, they are logged at the start of the evaluation:
 ```
 ➔ Feature flags enabled: multiAgent, templateExamples
+```
+
+### Model Configuration
+
+The evaluation framework supports configurable LLM models for both workflow generation and judging. Models can be specified via CLI flags or environment variables.
+
+#### Available Model Keys
+
+| Key | Model | Provider | Required Env Var |
+|-----|-------|----------|------------------|
+| `claude-sonnet` | Claude Sonnet 4.5 | Anthropic | `N8N_AI_ANTHROPIC_KEY` |
+| `claude-haiku` | Claude Haiku 4.5 | Anthropic | `N8N_AI_ANTHROPIC_KEY` |
+| `gpt52` | GPT-5.2 (reasoning off) | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `gpt52-low` | GPT-5.2 (reasoning low) | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `gpt52-high` | GPT-5.2 (reasoning high) | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `gpt41` | GPT-4.1 | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `gpt41-mini` | GPT-4.1 Mini | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `o4-mini` | o4-mini | OpenAI | `N8N_AI_OPENAI_API_KEY` |
+| `gemini-flash` | Gemini 3 Flash | OpenRouter | `OPENROUTER_API_KEY` |
+| `gemini-pro` | Gemini 3 Pro | OpenRouter | `OPENROUTER_API_KEY` |
+
+#### Stage Override Keys
+
+The `--stage-model` flag allows overriding the model for specific stages of workflow generation:
+
+| Stage Key | Description |
+|-----------|-------------|
+| `supervisor` | Multi-agent supervisor |
+| `responder` | Response generation |
+| `discovery` | Node discovery subgraph |
+| `builder` | Workflow building subgraph |
+| `configurator` | Node configuration subgraph |
+| `parameterUpdater` | Parameter update tool |
+| `categorizePrompt` | Prompt categorization tool |
+| `workflowName` | Workflow naming chain |
+| `conversationCompact` | Conversation compaction chain |
+| `legacyAgent` | Legacy agent (non-multi-agent mode) |
+
+#### Usage Examples
+
+**Via CLI Flags:**
+```bash
+# Use GPT-5.2 for everything
+pnpm eval:pairwise --model gpt52 --prompt "Create a workflow..."
+
+# Use Claude for generation, Haiku for judging (cheaper)
+pnpm eval:pairwise --model claude-sonnet --judge-model claude-haiku --prompt "..."
+
+# Default Claude, but GPT-5.2 for builder subgraph only
+pnpm eval:pairwise --model claude-sonnet --stage-model builder=gpt52 --prompt "..."
+
+# Multiple stage overrides
+pnpm eval:pairwise --model claude-sonnet --stage-model builder=gpt52 --stage-model configurator=gpt41 --prompt "..."
+```
+
+**Via Environment Variables:**
+```bash
+# Use GPT-5.2 as default
+EVAL_DEFAULT_MODEL=gpt52 pnpm eval:pairwise
+
+# Different models for generation and judging
+EVAL_DEFAULT_MODEL=claude-sonnet EVAL_JUDGE_MODEL=claude-haiku pnpm eval:pairwise
+
+# Stage overrides (colon-separated pairs, comma-separated list)
+EVAL_STAGE_MODELS=builder:gpt52,configurator:gpt41 pnpm eval:pairwise
+```
+
+**Error Handling:**
+
+Invalid model keys or stage keys will produce helpful error messages:
+```
+$ pnpm eval:pairwise --model invalid-model
+Error: Invalid model key: "invalid-model"
+Available models: claude-sonnet, claude-haiku, gpt52, gpt52-low, gpt52-high, gpt41, gpt41-mini, o4-mini, gemini-flash, gemini-pro
+
+$ pnpm eval:pairwise --stage-model invalid-stage=gpt52
+Error: Invalid stage key: "invalid-stage"
+Available stages: supervisor, responder, discovery, builder, configurator, parameterUpdater, categorizePrompt, workflowName, conversationCompact, legacyAgent
 ```
 
 ## Output

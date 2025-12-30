@@ -196,6 +196,34 @@ export const gptOss20b = async (config: LLMProviderConfig) => {
 		},
 	});
 };
+export const gptOss120b = async (config: LLMProviderConfig) => {
+	const { ChatOpenAI } = await import('@langchain/openai');
+	return new ChatOpenAI({
+		model: 'openai/gpt-oss-120b',
+		apiKey: config.apiKey,
+		configuration: {
+			baseURL: 'https://openrouter.ai/api/v1',
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl ?? 'https://openrouter.ai/api/v1'),
+			},
+		},
+	});
+};
+export const groqKimiK2 = async (config: LLMProviderConfig) => {
+	const { ChatOpenAI } = await import('@langchain/openai');
+	return new ChatOpenAI({
+		model: 'moonshotai/kimi-k2-instruct-0905',
+		apiKey: config.apiKey,
+		configuration: {
+			baseURL: 'https://api.groq.com/openai/v1',
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.groq.com/openai/v1'),
+			},
+		},
+	});
+};
 
 export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await import('@langchain/anthropic');

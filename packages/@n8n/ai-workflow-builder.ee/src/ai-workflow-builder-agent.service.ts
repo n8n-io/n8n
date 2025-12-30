@@ -10,7 +10,7 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45, gemini3Flash, gpt52ReasoningOff } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import {
 	BuilderFeatureFlags,
@@ -164,7 +164,10 @@ export class AiWorkflowBuilderService {
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
 		const { tracingClient, authHeaders } = await this.setupModels(user, userMessageId);
 
-		const defaultModel = await gemini3Flash({ apiKey: process.env.N8N_OPEN_ROUTER_API_KEY ?? '' });
+		// const defaultModel = await groqKimiK2({ apiKey: process.env.GROQ_KEY ?? '' });
+		const defaultModel = await anthropicClaudeSonnet45({
+			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+		});
 		// const defaultModel = await gpt52ReasoningOff({ apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '' });
 
 		// Flatten feature flags for better Langsmith filtering (e.g., feature_myFlag: true)

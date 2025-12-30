@@ -7,7 +7,7 @@ import { runJudgePanel, aggregateGenerations, type GenerationResult } from './ju
 import { buildSingleGenerationResults, buildMultiGenerationResults } from './metrics-builder';
 import type { PairwiseDatasetInput, PairwiseTargetOutput } from './types';
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
+import type { BuilderFeatureFlags, ModelOverrides } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
@@ -20,6 +20,10 @@ import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 export interface CreatePairwiseTargetOptions {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	/** Model to use for judging (defaults to llm) */
+	judgeLlm?: BaseChatModel;
+	/** Per-stage model overrides for generation */
+	modelOverrides?: ModelOverrides;
 	numJudges: number;
 	numGenerations: number;
 	featureFlags?: BuilderFeatureFlags;
@@ -36,7 +40,19 @@ export interface CreatePairwiseTargetOptions {
  * This avoids 403 errors from nested traceable in evaluator context.
  */
 export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
-	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName } = options;
+	const {
+		parsedNodeTypes,
+		llm,
+		judgeLlm,
+		modelOverrides,
+		numJudges,
+		numGenerations,
+		featureFlags,
+		experimentName,
+	} = options;
+
+	// Use judgeLlm if provided, otherwise fall back to llm
+	const judgeModel = judgeLlm ?? llm;
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
@@ -48,7 +64,8 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					const generationIndex = i + 1;
 					// Wrap each generation in traceable for proper visibility
 					const generate = traceable(
-						async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+						async () =>
+							await generateWorkflow(parsedNodeTypes, llm, modelOverrides, prompt, featureFlags),
 						{
 							name: `generation_${generationIndex}`,
 							run_type: 'chain',
@@ -58,7 +75,7 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 						},
 					);
 					const workflow = await generate();
-					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+					const panelResult = await runJudgePanel(judgeModel, workflow, evalCriteria, numJudges, {
 						generationIndex,
 						experimentName,
 					});
@@ -90,12 +107,13 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 export async function generateWorkflow(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
+	modelOverrides: ModelOverrides | undefined,
 	prompt: string,
 	featureFlags?: BuilderFeatureFlags,
 ): Promise<SimpleWorkflow> {
 	const runId = generateRunId();
 
-	const agent = createAgent({ parsedNodeTypes, llm, featureFlags });
+	const agent = createAgent({ parsedNodeTypes, llm, modelOverrides, featureFlags });
 
 	await consumeGenerator(
 		agent.chat(
