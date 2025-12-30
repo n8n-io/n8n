@@ -282,8 +282,12 @@ export const mockChain = <
 };
 
 // Convenience factory for parameter updater chain
+// Updated to use new array format with { path, type, value } entries
 export const mockParameterUpdaterChain = () => {
-	return mockChain<Record<string, unknown>, { parameters: Record<string, unknown> }>();
+	return mockChain<
+		Record<string, unknown>,
+		{ parameters: Array<{ path: string; type: string; value: string }> }
+	>();
 };
 
 // Helper to assert node parameters
@@ -501,16 +505,20 @@ export const buildAddNodeInput = (overrides: {
 	nodeType: string;
 	nodeVersion?: number;
 	name?: string;
-	connectionParametersReasoning?: string;
-	connectionParameters?: Record<string, unknown>;
+	initialParametersReasoning?: string;
+	initialParameters?: Array<{
+		path: string;
+		type: 'string' | 'number' | 'boolean';
+		value: string;
+	}>;
 }) => ({
 	nodeType: overrides.nodeType,
 	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
-	connectionParametersReasoning:
-		overrides.connectionParametersReasoning ??
-		'Standard node with static inputs/outputs, no connection parameters needed',
-	connectionParameters: overrides.connectionParameters ?? {},
+	initialParametersReasoning:
+		overrides.initialParametersReasoning ??
+		'Standard node with static inputs/outputs, no initial parameters needed',
+	initialParameters: overrides.initialParameters ?? [],
 });
 
 // Build connect nodes input

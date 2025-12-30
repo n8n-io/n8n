@@ -24,21 +24,23 @@ import {
 } from './update-node-parameters.tool';
 import { createValidateWorkflowTool, VALIDATE_WORKFLOW_TOOL } from './validate-workflow.tool';
 
+export type ModelGetter = (component: 'categorizePrompt' | 'parameterUpdater') => BaseChatModel;
+
 export function getBuilderTools({
 	parsedNodeTypes,
 	logger,
-	llmComplexTask,
+	getModel,
 	instanceUrl,
 	featureFlags,
 }: {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmComplexTask: BaseChatModel;
+	getModel: ModelGetter;
 	logger?: Logger;
 	instanceUrl?: string;
 	featureFlags?: BuilderFeatureFlags;
 }): BuilderTool[] {
 	const tools: BuilderTool[] = [
-		createCategorizePromptTool(llmComplexTask, logger),
+		createCategorizePromptTool(getModel('categorizePrompt'), logger),
 		createGetBestPracticesTool(),
 	];
 
@@ -56,7 +58,12 @@ export function getBuilderTools({
 		createConnectNodesTool(parsedNodeTypes, logger),
 		createRemoveConnectionTool(logger),
 		createRemoveNodeTool(logger),
-		createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
+		createUpdateNodeParametersTool(
+			parsedNodeTypes,
+			getModel('parameterUpdater'),
+			logger,
+			instanceUrl,
+		),
 		createGetNodeParameterTool(),
 		createValidateWorkflowTool(parsedNodeTypes, logger),
 	);

@@ -5,12 +5,20 @@ import pc from 'picocolors';
 import { createPairwiseTarget, generateWorkflow } from './generator';
 import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
 import { pairwiseLangsmithEvaluator } from './metrics-builder';
+import type { ModelKey } from '../../src/llm-registry';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
-import { setupTestEnvironment } from '../core/environment';
+import {
+	setupModels,
+	createLangsmithClient,
+	createTracer,
+	type ModelConfig,
+} from '../core/environment';
+import { logFilteringStats, resetFilteringStats } from '../core/trace-filters';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
 import { createLogger, type EvalLogger } from '../utils/logger';
+import { loadNodesFromFile } from '../load-nodes';
 
 // ============================================================================
 // Helpers
@@ -230,6 +238,12 @@ export interface PairwiseEvaluationOptions {
 	concurrency?: number;
 	maxExamples?: number;
 	featureFlags?: BuilderFeatureFlags;
+	/** Model key for generation (defaults to 'claude-sonnet') */
+	model?: ModelKey;
+	/** Model key for judging (defaults to model) */
+	judgeModel?: ModelKey;
+	/** Per-stage model overrides */
+	stageModels?: Record<string, ModelKey>;
 }
 
 /**
@@ -250,6 +264,9 @@ export async function runPairwiseLangsmithEvaluation(
 		concurrency = DEFAULTS.CONCURRENCY,
 		maxExamples,
 		featureFlags,
+		model,
+		judgeModel,
+		stageModels,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -257,6 +274,16 @@ export async function runPairwiseLangsmithEvaluation(
 	logPairwiseConfig(log, { experimentName, numGenerations, numJudges, repetitions, concurrency });
 
 	logFeatureFlags(log, featureFlags);
+
+	// Log model configuration if custom
+	if (model || judgeModel || stageModels) {
+		log.info(
+			`➔ Models: generation=${model ?? 'claude-sonnet'}, judge=${judgeModel ?? model ?? 'claude-sonnet'}`,
+		);
+		if (stageModels) {
+			log.verbose(`   Stage overrides: ${JSON.stringify(stageModels)}`);
+		}
+	}
 
 	try {
 		validatePairwiseInputs(numJudges, numGenerations);
@@ -271,11 +298,29 @@ export async function runPairwiseLangsmithEvaluation(
 			log.verbose('➔ Enabled LANGSMITH_TRACING=true');
 		}
 
-		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		// Setup models with configuration
+		const modelConfig: ModelConfig = {
+			defaultModel: model,
+			judgeModel,
+			stageOverrides: stageModels as ModelConfig['stageOverrides'],
+		};
+		const {
+			defaultModel,
+			judgeModel: resolvedJudgeModel,
+			modelOverrides,
+		} = await setupModels(modelConfig);
+		const parsedNodeTypes = loadNodesFromFile();
+		const lsClient = createLangsmithClient();
 
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
 		}
+
+		// Reset filtering stats for accurate per-run statistics
+		resetFilteringStats();
+
+		// Create tracer with filtering for agent execution
+		const tracer = createTracer(lsClient, experimentName);
 
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? DEFAULTS.DATASET_NAME;
 		log.info(`➔ Dataset: ${datasetName}`);
@@ -303,7 +348,10 @@ export async function runPairwiseLangsmithEvaluation(
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
 		const target = createPairwiseTarget({
 			parsedNodeTypes,
-			llm,
+			llm: defaultModel,
+			judgeLlm: resolvedJudgeModel,
+			modelOverrides,
+			tracer,
 			numJudges,
 			numGenerations,
 			featureFlags,
@@ -314,12 +362,14 @@ export async function runPairwiseLangsmithEvaluation(
 		const evalStartTime = Date.now();
 
 		// Run evaluation using LangSmith's built-in features
+		// IMPORTANT: Pass our custom lsClient to use hideInputs/hideOutputs filtering
 		await evaluate(target, {
 			data,
 			evaluators: [evaluator],
 			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
 			numRepetitions: repetitions,
+			client: lsClient,
 			metadata: {
 				numJudges,
 				numGenerations,
@@ -330,6 +380,9 @@ export async function runPairwiseLangsmithEvaluation(
 		});
 
 		const totalEvalTime = Date.now() - evalStartTime;
+
+		// Log filtering statistics
+		logFilteringStats();
 
 		log.success('\n✓ Pairwise evaluation completed');
 		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);
@@ -354,6 +407,12 @@ export interface LocalPairwiseOptions {
 	verbose?: boolean;
 	outputDir?: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Model key for generation (defaults to 'claude-sonnet') */
+	model?: ModelKey;
+	/** Model key for judging (defaults to model) */
+	judgeModel?: ModelKey;
+	/** Per-stage model overrides */
+	stageModels?: Record<string, ModelKey>;
 }
 
 /**
@@ -369,6 +428,9 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		verbose = false,
 		outputDir,
 		featureFlags,
+		model,
+		judgeModel,
+		stageModels,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -377,6 +439,17 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
 	}
+
+	// Log model configuration if custom
+	if (model || judgeModel || stageModels) {
+		log.info(
+			`➔ Models: generation=${model ?? 'claude-sonnet'}, judge=${judgeModel ?? model ?? 'claude-sonnet'}`,
+		);
+		if (stageModels) {
+			log.verbose(`   Stage overrides: ${JSON.stringify(stageModels)}`);
+		}
+	}
+
 	log.verbose(`➔ Prompt: ${prompt.slice(0, 80)}${prompt.length > 80 ? '...' : ''}`);
 	log.verbose(`➔ Dos: ${criteria.dos.slice(0, 60)}${criteria.dos.length > 60 ? '...' : ''}`);
 	if (criteria.donts) {
@@ -390,7 +463,18 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	try {
 		validatePairwiseInputs(numJudges, numGenerations);
 
-		const { parsedNodeTypes, llm } = await setupTestEnvironment();
+		// Setup models with configuration
+		const modelConfig: ModelConfig = {
+			defaultModel: model,
+			judgeModel,
+			stageOverrides: stageModels as ModelConfig['stageOverrides'],
+		};
+		const {
+			defaultModel,
+			judgeModel: resolvedJudgeModel,
+			modelOverrides,
+		} = await setupModels(modelConfig);
+		const parsedNodeTypes = loadNodesFromFile();
 
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
@@ -407,15 +491,21 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				const genStartTime = Date.now();
 
 				// Generate workflow
-				const workflow = await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags);
+				const workflow = await generateWorkflow(
+					parsedNodeTypes,
+					defaultModel,
+					modelOverrides,
+					prompt,
+					featureFlags,
+				);
 				const genTime = (Date.now() - genStartTime) / 1000;
 
 				log.verbose(
 					`  Gen ${genIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
 				);
 
-				// Run judge panel
-				const panelResult = await runJudgePanel(llm, workflow, criteria, numJudges);
+				// Run judge panel with judge model
+				const panelResult = await runJudgePanel(resolvedJudgeModel, workflow, criteria, numJudges);
 
 				log.verbose(
 					`  Gen ${genIndex + 1}: ${panelResult.majorityPass ? '✓ PASS' : '✗ FAIL'} (${panelResult.primaryPasses}/${numJudges} judges, ${(panelResult.avgDiagnosticScore * 100).toFixed(0)}%)`,

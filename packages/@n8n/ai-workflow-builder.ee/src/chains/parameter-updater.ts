@@ -15,6 +15,8 @@ import {
 	COMMON_PATTERNS,
 	OUTPUT_FORMAT,
 } from '@/prompts/chains/parameter-updater';
+import { ParameterEntrySchema } from '@/schemas/parameter-entry.schema';
+import { isAnthropicModel } from '@/utils/cache-control';
 
 import { LLMServiceError } from '../errors';
 import type { ParameterUpdaterOptions } from '../types/config';
@@ -22,14 +24,14 @@ import type { ParameterUpdaterOptions } from '../types/config';
 export const parametersSchema = z
 	.object({
 		parameters: z
-			.object({})
-			.passthrough()
+			.array(ParameterEntrySchema)
+			.min(1)
 			.describe(
-				"The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes.",
+				'Array of parameter updates using dot notation paths. Each entry specifies: path (e.g., "method", "headers.0.name"), type (string|number|boolean), and value (as string).',
 			),
 	})
 	.describe(
-		'The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { "parameters": { "method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] } } }}',
+		'Parameter updates as an array of entries. Example: [{ "path": "method", "type": "string", "value": "POST" }, { "path": "headers.0.name", "type": "string", "value": "Content-Type" }]',
 	);
 
 const nodeDefinitionPrompt = `
@@ -113,32 +115,44 @@ export const createParameterUpdaterChain = (
 	const tokenEstimate = builder.estimateTokens();
 	logger?.debug(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
 
-	// Cache system prompt and node definition prompt
+	// Check if we should apply cache control (Anthropic only)
+	const shouldApplyCacheControl = isAnthropicModel(llm);
+
+	// Build system message content block with optional cache control
+	const systemContentBlock: { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } } =
+		{
+			type: 'text',
+			text: systemPromptContent,
+		};
+	if (shouldApplyCacheControl) {
+		systemContentBlock.cache_control = { type: 'ephemeral' };
+	}
+
 	const systemPrompt = new SystemMessage({
-		content: [
-			{
-				type: 'text',
-				text: systemPromptContent,
-				cache_control: { type: 'ephemeral' },
-			},
-		],
+		content: [systemContentBlock],
 	});
-	const nodeDefinitionMessage = ChatPromptTemplate.fromMessages([
-		[
-			'human',
-			[
-				{
-					type: 'text',
-					text: nodeDefinitionPrompt,
-					cache_control: { type: 'ephemeral' },
-				},
-				{
-					type: 'text',
-					text: instanceUrlPrompt,
-				},
-			],
-		],
-	]);
+
+	// Build node definition message blocks with optional cache control
+	const nodeDefContentBlocks: Array<{
+		type: 'text';
+		text: string;
+		cache_control?: { type: 'ephemeral' };
+	}> = [
+		{
+			type: 'text',
+			text: nodeDefinitionPrompt,
+		},
+		{
+			type: 'text',
+			text: instanceUrlPrompt,
+		},
+	];
+	if (shouldApplyCacheControl) {
+		// Add cache control to the first block (node definition)
+		nodeDefContentBlocks[0].cache_control = { type: 'ephemeral' };
+	}
+
+	const nodeDefinitionMessage = ChatPromptTemplate.fromMessages([['human', nodeDefContentBlocks]]);
 	// Do not cache workflow context prompt as it is dynamic
 	const workflowContextMessage = HumanMessagePromptTemplate.fromTemplate(workflowContextPrompt);
 
@@ -147,6 +161,7 @@ export const createParameterUpdaterChain = (
 		nodeDefinitionMessage,
 		workflowContextMessage,
 	]);
+
 	const llmWithStructuredOutput = llm.withStructuredOutput(parametersSchema);
 	const modelWithStructure = prompt.pipe(llmWithStructuredOutput);
 

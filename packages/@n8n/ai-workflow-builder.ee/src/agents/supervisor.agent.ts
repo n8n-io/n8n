@@ -5,25 +5,27 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 
 import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
+import { isAnthropicModel } from '@/utils/cache-control';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
 import { buildWorkflowSummary } from '../utils/context-builders';
 import { summarizeCoordinationLog } from '../utils/coordination-log';
 
-const systemPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
-		[
-			{
-				type: 'text',
-				text: buildSupervisorPrompt(),
-				cache_control: { type: 'ephemeral' },
-			},
-		],
-	],
-	['placeholder', '{messages}'],
-]);
+function createSystemPrompt(llm: BaseChatModel) {
+	const systemMessageBlock: { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } } =
+		{
+			type: 'text',
+			text: buildSupervisorPrompt(),
+		};
+	if (isAnthropicModel(llm)) {
+		systemMessageBlock.cache_control = { type: 'ephemeral' };
+	}
+	return ChatPromptTemplate.fromMessages([
+		['system', [systemMessageBlock]],
+		['placeholder', '{messages}'],
+	]);
+}
 
 /**
  * Schema for supervisor routing decision
@@ -106,7 +108,7 @@ export class SupervisorAgent {
 	 * Invoke the supervisor to get routing decision
 	 */
 	async invoke(context: SupervisorContext): Promise<SupervisorRouting> {
-		const agent = systemPrompt.pipe<SupervisorRouting>(
+		const agent = createSystemPrompt(this.llm).pipe<SupervisorRouting>(
 			this.llm.withStructuredOutput(supervisorRoutingSchema, {
 				name: 'routing_decision',
 			}),

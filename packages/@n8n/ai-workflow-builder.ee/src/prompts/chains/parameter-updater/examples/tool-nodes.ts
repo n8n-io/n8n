@@ -8,37 +8,34 @@ export const TOOL_NODE_EXAMPLES: NodeTypeExamples = {
 #### Example 1: Gmail Tool - Send Email with AI
 Current Parameters: {}
 Requested Changes: Let AI determine recipient, subject, and message
-Expected Output:
+Output:
 {
-  "sendTo": "={{ $fromAI('to') }}",
-  "subject": "={{ $fromAI('subject') }}",
-  "message": "={{ $fromAI('message_html') }}",
-  "options": {}
+  "parameters": [
+    { "path": "sendTo", "type": "string", "value": "={{ $fromAI('to') }}" },
+    { "path": "subject", "type": "string", "value": "={{ $fromAI('subject') }}" },
+    { "path": "message", "type": "string", "value": "={{ $fromAI('message_html') }}" }
+  ]
 }
 
 #### Example 2: Google Calendar Tool - Filter by Date
 Current Parameters:
 {
   "operation": "getAll",
-  "calendar": {
-    "__rl": true,
-    "value": "primary",
-    "mode": "list"
-  }
+  "calendar": { "__rl": true, "value": "primary", "mode": "list" }
 }
 
 Requested Changes: Let AI determine date range for filtering
 
-Expected Output:
+Output:
 {
-  "operation": "getAll",
-  "calendar": {
-    "__rl": true,
-    "value": "primary",
-    "mode": "list"
-  },
-  "timeMin": "={{ $fromAI('After', '', 'string') }}",
-  "timeMax": "={{ $fromAI('Before', '', 'string') }}"
+  "parameters": [
+    { "path": "operation", "type": "string", "value": "getAll" },
+    { "path": "calendar.__rl", "type": "boolean", "value": "true" },
+    { "path": "calendar.value", "type": "string", "value": "primary" },
+    { "path": "calendar.mode", "type": "string", "value": "list" },
+    { "path": "timeMin", "type": "string", "value": "={{ $fromAI('After', '', 'string') }}" },
+    { "path": "timeMax", "type": "string", "value": "={{ $fromAI('Before', '', 'string') }}" }
+  ]
 }
 
 #### Example 3: Slack Tool - Send Message
@@ -49,11 +46,13 @@ Current Parameters:
 
 Requested Changes: Let AI determine channel and message content
 
-Expected Output:
+Output:
 {
-  "resource": "message",
-  "channelId": "={{ $fromAI('channel') }}",
-  "messageText": "={{ $fromAI('message') }}"
+  "parameters": [
+    { "path": "resource", "type": "string", "value": "message" },
+    { "path": "channelId", "type": "string", "value": "={{ $fromAI('channel') }}" },
+    { "path": "messageText", "type": "string", "value": "={{ $fromAI('message') }}" }
+  ]
 }
 
 #### Example 4: Tool Node with Mixed Content
@@ -64,9 +63,11 @@ Current Parameters:
 
 Requested Changes: Keep admin email but let AI add additional recipients and determine subject
 
-Expected Output:
+Output:
 {
-  "sendTo": "=admin@company.com, {{ $fromAI('additional_recipients') }}",
-  "subject": "={{ $fromAI('subject') }} - Automated Report"
+  "parameters": [
+    { "path": "sendTo", "type": "string", "value": "=admin@company.com, {{ $fromAI('additional_recipients') }}" },
+    { "path": "subject", "type": "string", "value": "={{ $fromAI('subject') }} - Automated Report" }
+  ]
 }`,
 };

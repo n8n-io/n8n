@@ -81,20 +81,14 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response
+			// Mock chain response - array format with dot notation paths
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					method: 'POST',
-					url: 'https://api.example.com',
-					headers: {
-						pairs: [
-							{
-								name: 'Content-Type',
-								value: 'application/json',
-							},
-						],
-					},
-				},
+				parameters: [
+					{ path: 'method', type: 'string', value: 'POST' },
+					{ path: 'url', type: 'string', value: 'https://api.example.com' },
+					{ path: 'headers.pairs.0.name', type: 'string', value: 'Content-Type' },
+					{ path: 'headers.pairs.0.value', type: 'string', value: 'application/json' },
+				],
 			});
 
 			const mockConfig = createToolConfigWithWriter('update_node_parameters', 'test-call-1');
@@ -152,19 +146,12 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response with expression
+			// Mock chain response with expression - array format
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					values: {
-						// eslint-disable-next-line id-denylist
-						string: [
-							{
-								name: 'status',
-								value: '={{ $json.response.status }}',
-							},
-						],
-					},
-				},
+				parameters: [
+					{ path: 'values.string.0.name', type: 'string', value: 'status' },
+					{ path: 'values.string.0.value', type: 'string', value: '={{ $json.response.status }}' },
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-2');
@@ -208,12 +195,12 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response - removing authentication
+			// Mock chain response - removing authentication (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					method: 'GET',
-					url: 'https://api.example.com/v2',
-				},
+				parameters: [
+					{ path: 'method', type: 'string', value: 'GET' },
+					{ path: 'url', type: 'string', value: 'https://api.example.com/v2' },
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-3');
@@ -272,9 +259,9 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain returning invalid response
+			// Mock chain returning invalid response (not an array)
 			mockChain.invoke.mockResolvedValue({ parameters: null } as unknown as {
-				parameters: Record<string, unknown>;
+				parameters: Array<{ path: string; type: string; value: string }>;
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-6');
@@ -285,7 +272,10 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Invalid parameters structure returned from LLM');
+			expectToolError(
+				content,
+				'Error: Invalid parameters structure returned from LLM - expected array',
+			);
 		});
 
 		it('should handle validation errors', async () => {
@@ -341,19 +331,12 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response with missing = prefix
+			// Mock chain response with missing = prefix (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					values: {
-						// eslint-disable-next-line id-denylist
-						string: [
-							{
-								name: 'value',
-								value: '{{ $json.data }}', // Missing = prefix
-							},
-						],
-					},
-				},
+				parameters: [
+					{ path: 'values.string.0.name', type: 'string', value: 'value' },
+					{ path: 'values.string.0.value', type: 'string', value: '{{ $json.data }}' }, // Missing = prefix
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-9');
@@ -396,28 +379,30 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock complex nested response
+			// Mock complex nested response (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					method: 'POST',
-					url: 'https://api.example.com',
-					headers: {
-						pairs: [
-							{
-								name: 'Authorization',
-								value: 'Bearer {{$credentials.apiKey}}',
-							},
-							{
-								name: 'X-Custom-Header',
-								value: '={{ $node["Webhook"].json.customValue }}',
-							},
-						],
+				parameters: [
+					{ path: 'method', type: 'string', value: 'POST' },
+					{ path: 'url', type: 'string', value: 'https://api.example.com' },
+					{ path: 'headers.pairs.0.name', type: 'string', value: 'Authorization' },
+					{
+						path: 'headers.pairs.0.value',
+						type: 'string',
+						value: 'Bearer {{$credentials.apiKey}}',
 					},
-					body: {
-						contentType: 'json',
-						jsonBody: '={{ JSON.stringify({\n  "user": $json.user,\n  "action": "update"\n}) }}',
+					{ path: 'headers.pairs.1.name', type: 'string', value: 'X-Custom-Header' },
+					{
+						path: 'headers.pairs.1.value',
+						type: 'string',
+						value: '={{ $node["Webhook"].json.customValue }}',
 					},
-				},
+					{ path: 'body.contentType', type: 'string', value: 'json' },
+					{
+						path: 'body.jsonBody',
+						type: 'string',
+						value: '={{ JSON.stringify({\n  "user": $json.user,\n  "action": "update"\n}) }}',
+					},
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-10');
@@ -480,13 +465,12 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock response that removes the required URL parameter
+			// Mock response that removes the required URL parameter (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					method: 'POST',
-					// URL will be removed during merge, making it invalid
-					url: '', // Empty string for required field
-				},
+				parameters: [
+					{ path: 'method', type: 'string', value: 'POST' },
+					{ path: 'url', type: 'string', value: '' }, // Empty string for required field
+				],
 			});
 
 			const mockConfig = createToolConfigWithWriter('update_node_parameters', 'test-call-11');
@@ -593,7 +577,7 @@ describe('UpdateNodeParametersTool', () => {
 			});
 
 			mockChain.invoke.mockResolvedValue({
-				parameters: { url: 'https://new.example.com' },
+				parameters: [{ path: 'url', type: 'string', value: 'https://new.example.com' }],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-13');
@@ -666,13 +650,13 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response
+			// Mock chain response (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					path: 'api/v2/webhook',
-					httpMethod: 'POST',
-					responseMode: 'onReceived',
-				},
+				parameters: [
+					{ path: 'path', type: 'string', value: 'api/v2/webhook' },
+					{ path: 'httpMethod', type: 'string', value: 'POST' },
+					{ path: 'responseMode', type: 'string', value: 'onReceived' },
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-14');
@@ -699,7 +683,9 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			mockChain.invoke.mockResolvedValue({ parameters: { jsCode: 'console.log("test");' } });
+			mockChain.invoke.mockResolvedValue({
+				parameters: [{ path: 'jsCode', type: 'string', value: 'console.log("test");' }],
+			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-15');
 
@@ -849,12 +835,12 @@ describe('UpdateNodeParametersTool', () => {
 
 			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
 
-			// Mock the chain to return valid parameters for v2 (including authentication which is only in v2)
+			// Mock the chain to return valid parameters for v2 (array format)
 			mockChain.invoke.mockResolvedValue({
-				parameters: {
-					authentication: 'basicAuth',
-					method: 'POST',
-				},
+				parameters: [
+					{ path: 'authentication', type: 'string', value: 'basicAuth' },
+					{ path: 'method', type: 'string', value: 'POST' },
+				],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-version-match');
@@ -892,7 +878,7 @@ describe('UpdateNodeParametersTool', () => {
 			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
 
 			mockChain.invoke.mockResolvedValue({
-				parameters: { newParam: 'value' },
+				parameters: [{ path: 'newParam', type: 'string', value: 'value' }],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-no-version-match');
@@ -947,7 +933,7 @@ describe('UpdateNodeParametersTool', () => {
 			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
 
 			mockChain.invoke.mockResolvedValue({
-				parameters: { mode: 'python' },
+				parameters: [{ path: 'mode', type: 'string', value: 'python' }],
 			});
 
 			const mockConfig = createToolConfig('update_node_parameters', 'test-array-version');
@@ -968,6 +954,125 @@ describe('UpdateNodeParametersTool', () => {
 					mode: 'python',
 				}),
 			});
+		});
+
+		it('should log warning when validation fails but still apply parameters', async () => {
+			// Create a node type with a required parameter
+			const strictNodeType = {
+				...nodeTypes.httpRequest,
+				properties: [
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string' as const,
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const mockLogger = {
+				warn: jest.fn(),
+				debug: jest.fn(),
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+
+			const testTool = createUpdateNodeParametersTool(
+				[strictNodeType as INodeTypeDescription],
+				mockLLM,
+				mockLogger as unknown as Parameters<typeof createUpdateNodeParametersTool>[2],
+			).tool;
+
+			const existingWorkflow = createWorkflow([
+				createNode({
+					id: 'strict-node',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { url: 'https://example.com' },
+				}),
+			]);
+			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
+
+			// Mock response that clears the required URL
+			mockChain.invoke.mockResolvedValue({
+				parameters: [{ path: 'url', type: 'string', value: '' }],
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-validation-warning');
+
+			const result = await testTool.invoke(
+				buildUpdateNodeInput('strict-node', ['Clear the URL']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			// Should still succeed even with validation issues
+			expectToolSuccess(content, 'Successfully updated parameters');
+
+			// The parameter update should still happen
+			expectNodeUpdated(content, 'strict-node', {
+				parameters: expect.objectContaining({
+					url: '',
+				}),
+			});
+		});
+
+		it('should handle ParameterParseError from arrayToNodeParameters', async () => {
+			const existingWorkflow = createWorkflow([
+				createNode({
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { method: 'GET' },
+				}),
+			]);
+			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
+
+			// Mock chain to return invalid data that causes parse error
+			mockChain.invoke.mockResolvedValue({
+				parameters: [{ path: 'timeout', type: 'number', value: 'not-a-number' }],
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-parse-error');
+
+			const result = await updateNodeParametersTool.invoke(
+				buildUpdateNodeInput('node1', ['Set timeout']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			// Should return error response with parse error message
+			expectToolError(content, /Invalid number value/);
+		});
+
+		it('should handle invalid boolean in parameter array', async () => {
+			const existingWorkflow = createWorkflow([
+				createNode({
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {},
+				}),
+			]);
+			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
+
+			mockChain.invoke.mockResolvedValue({
+				parameters: [{ path: 'followRedirects', type: 'boolean', value: 'maybe' }],
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-invalid-boolean');
+
+			const result = await updateNodeParametersTool.invoke(
+				buildUpdateNodeInput('node1', ['Set follow redirects']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectToolError(content, /Invalid boolean value/);
 		});
 	});
 });

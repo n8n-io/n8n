@@ -162,16 +162,22 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
-			user,
-			userMessageId,
+		const { tracingClient, authHeaders } = await this.setupModels(user, userMessageId);
+
+		// const defaultModel = await groqKimiK2({ apiKey: process.env.GROQ_KEY ?? '' });
+		const defaultModel = await anthropicClaudeSonnet45({
+			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+		});
+		// const defaultModel = await gpt52ReasoningOff({ apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '' });
+
+		// Flatten feature flags for better Langsmith filtering (e.g., feature_myFlag: true)
+		const flattenedFeatureFlags = Object.fromEntries(
+			Object.entries(featureFlags ?? {}).map(([key, value]) => [`feature_${key}`, value]),
 		);
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			defaultModel,
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
@@ -183,7 +189,7 @@ export class AiWorkflowBuilderService {
 			},
 			runMetadata: {
 				n8nVersion: this.n8nVersion,
-				featureFlags: featureFlags ?? {},
+				...flattenedFeatureFlags,
 			},
 		});
 

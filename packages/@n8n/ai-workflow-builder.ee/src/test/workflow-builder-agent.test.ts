@@ -80,8 +80,7 @@ import type { WorkflowState } from '@/workflow-state';
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
-	let mockLlmSimple: BaseChatModel;
-	let mockLlmComplex: BaseChatModel;
+	let mockLlm: BaseChatModel;
 	let mockLogger: Logger;
 	let mockCheckpointer: MemorySaver;
 	let parsedNodeTypes: INodeTypeDescription[];
@@ -92,14 +91,8 @@ describe('WorkflowBuilderAgent', () => {
 	>;
 
 	beforeEach(() => {
-		mockLlmSimple = mock<BaseChatModel>({
+		mockLlm = mock<BaseChatModel>({
 			_llmType: jest.fn().mockReturnValue('test-llm'),
-			bindTools: jest.fn().mockReturnThis(),
-			invoke: jest.fn(),
-		});
-
-		mockLlmComplex = mock<BaseChatModel>({
-			_llmType: jest.fn().mockReturnValue('test-llm-complex'),
 			bindTools: jest.fn().mockReturnThis(),
 			invoke: jest.fn(),
 		});
@@ -132,8 +125,7 @@ describe('WorkflowBuilderAgent', () => {
 
 		config = {
 			parsedNodeTypes,
-			llmSimpleTask: mockLlmSimple,
-			llmComplexTask: mockLlmComplex,
+			defaultModel: mockLlm,
 			logger: mockLogger,
 			checkpointer: mockCheckpointer,
 		};
@@ -196,7 +188,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateStreamProcessor.mockReturnValue(mockAsyncGenerator);
 
 			// Mock the LLM to return a simple response
-			(mockLlmSimple.invoke as jest.Mock).mockResolvedValue({
+			(mockLlm.invoke as jest.Mock).mockResolvedValue({
 				content: 'Mocked response',
 				tool_calls: [],
 			});
@@ -231,7 +223,7 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
+			(mockLlm.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
@@ -500,7 +492,9 @@ describe('WorkflowBuilderAgent', () => {
 			});
 			await generator.next();
 
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: true });
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ includeExamplesPhase: true }),
+			);
 		});
 
 		it('should pass includeExamplesPhase: false when templateExamples flag is disabled', async () => {
@@ -521,7 +515,9 @@ describe('WorkflowBuilderAgent', () => {
 			});
 			await generator.next();
 
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ includeExamplesPhase: false }),
+			);
 		});
 
 		it('should pass includeExamplesPhase: false when featureFlags is not provided', async () => {
@@ -541,7 +537,9 @@ describe('WorkflowBuilderAgent', () => {
 			});
 			await generator.next();
 
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ includeExamplesPhase: false }),
+			);
 		});
 	});
 });

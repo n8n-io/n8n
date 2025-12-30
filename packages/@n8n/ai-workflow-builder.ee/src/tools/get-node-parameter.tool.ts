@@ -24,7 +24,11 @@ const DISPLAY_TITLE = 'Getting node parameter';
  * Schema for getting specific node parameter
  */
 const getNodeParameterSchema = z.object({
-	nodeId: z.string().describe('The ID of the node to extract parameter value'),
+	nodeId: z
+		.string()
+		.describe(
+			'REQUIRED: The node UUID (e.g., "e9f71f78-40c5-4109-b742-11feca4ca0b1"). Do NOT use node names - only UUIDs work. Get the UUID from add_node response or workflow state.',
+		),
 	path: z
 		.string()
 		.describe('Path to the specific parameter to extract, e.g., "url" or "options.baseUrl"'),
@@ -94,7 +98,17 @@ export function createGetNodeParameterTool(logger?: Logger): BuilderTool {
 				const node = validateNodeExists(nodeId, workflow.nodes);
 				if (!node) {
 					logger?.debug(`Node with ID ${nodeId} not found`);
-					const error = createNodeNotFoundError(nodeId);
+
+					// Check if the ID looks like a UUID (helps detect when names are used instead)
+					const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+					const isLikelyNodeName = !uuidPattern.test(nodeId);
+
+					const baseError = createNodeNotFoundError(nodeId);
+					const errorMessage = isLikelyNodeName
+						? `${baseError.message}. HINT: "${nodeId}" looks like a node name, not a UUID. You must use the node's UUID (e.g., "e9f71f78-40c5-4109-b742-11feca4ca0b1") from the add_node response.`
+						: baseError.message;
+
+					const error = { ...baseError, message: errorMessage };
 					reporter.error(error);
 					return createErrorResponse(config, error);
 				}
@@ -103,10 +117,18 @@ export function createGetNodeParameterTool(logger?: Logger): BuilderTool {
 				const parameterValue = extractParameterValue(node, path);
 				if (parameterValue === undefined) {
 					logger?.debug(`Parameter path ${path} not found in node ${node.name}`);
+
+					// Get available parameter paths for better error message
+					const availableParams = Object.keys(node.parameters || {});
+					const availableParamsHint =
+						availableParams.length > 0
+							? `Available top-level parameters: ${availableParams.join(', ')}`
+							: 'This node has no parameters set yet';
+
 					const error = new ValidationError(
-						`Parameter path "${path}" not found in node "${node.name}"`,
+						`Parameter path "${path}" not found in node "${node.name}". ${availableParamsHint}. IMPORTANT: Only use get_node_parameter when the workflow JSON shows "[TRIMMED]" for a parameter value. If the parameter doesn't exist, you cannot retrieve it - the node may not have this parameter configured yet.`,
 						{
-							extra: { nodeId, path },
+							extra: { nodeId, path, availableParams },
 						},
 					);
 					reporter.error(error);
@@ -154,8 +176,18 @@ export function createGetNodeParameterTool(logger?: Logger): BuilderTool {
 		},
 		{
 			name: GET_NODE_PARAMETER_TOOL.toolName,
-			description:
-				'Get the value of a specific parameter of a specific node. Use this ONLY to retrieve parameters omitted in the workflow JSON context because of the size.',
+			description: `Retrieve a specific parameter value from a node.
+
+WHEN TO USE THIS TOOL:
+- ONLY when the workflow JSON shows "[TRIMMED]" as a parameter value
+- This indicates the parameter was too large and was omitted from the context
+
+WHEN NOT TO USE THIS TOOL:
+- If the parameter is already visible in the workflow JSON - just read it directly
+- If the node was just created and hasn't been configured yet - parameters don't exist yet
+- If you're guessing parameter names - check the workflow JSON first to see what parameters exist
+
+COMMON MISTAKE: Calling this tool for parameters that don't exist. If a node hasn't been configured with a parameter, this tool cannot retrieve it. The parameter must already exist in the node's configuration.`,
 			schema: getNodeParameterSchema,
 		},
 	);

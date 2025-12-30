@@ -477,11 +477,8 @@ export function inferConnectionType(
 		targetInputTypes.includes(outputType),
 	);
 
-	// console.log(`Matching types: [${matchingTypes.join(', ')}]`);
-
 	// Handle AI connections (sub-node to main node)
 	if (sourceIsSubNode && !targetIsSubNode) {
-		// console.log('Scenario: Sub-node to main node (AI connection)');
 		// Find AI connection types in the matches
 		const aiConnectionTypes = matchingTypes.filter((type) => type.startsWith('ai_'));
 
@@ -498,14 +495,13 @@ export function inferConnectionType(
 
 	// Handle reversed AI connections (main node to sub-node - needs swap)
 	if (!sourceIsSubNode && targetIsSubNode) {
-		// console.log('Scenario: Main node to sub-node (needs swap)');
 		// Check if target has any AI outputs that source accepts as inputs
 		const targetOutputTypes = getNodeOutputTypes(targetNodeType);
-		const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
+		const sourceInputTypesForSwap = getNodeInputTypes(sourceNodeType, sourceNode);
 
 		const reverseAiMatches = targetOutputTypes
 			.filter((type) => type.startsWith('ai_'))
-			.filter((type) => sourceInputTypes.includes(type));
+			.filter((type) => sourceInputTypesForSwap.includes(type));
 
 		if (reverseAiMatches.length === 1) {
 			return {

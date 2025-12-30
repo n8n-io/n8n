@@ -1,4 +1,7 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+
+import { isAnthropicModel } from '@/utils/cache-control';
 
 import { instanceUrlPrompt } from './chains/parameter-updater/instance-url';
 
@@ -16,6 +19,8 @@ interface PhaseConfig {
  */
 export interface MainAgentPromptOptions {
 	includeExamplesPhase?: boolean;
+	/** LLM to check for Anthropic-specific features like cache_control */
+	llm?: BaseChatModel;
 }
 
 /**
@@ -191,12 +196,12 @@ Step 4 - Validate workflow:
 </parallel_node_creation_example>
 </workflow_creation_sequence>
 
-<connection_parameters_rules>
+<initial_parameters_rules>
 Every node addition requires both reasoning and parameters. Each add_nodes call adds a single node.
-This two-step process ensures proper connections:
+This two-step process ensures proper configuration:
 
 <reasoning_first>
-Always determine connectionParametersReasoning before setting connectionParameters. Ask yourself:
+Always determine initialParametersReasoning before setting initialParameters. Ask yourself:
 - Does this node have dynamic inputs/outputs?
 - Which parameters affect the connection structure?
 - What mode or operation changes the available connections?
@@ -214,7 +219,7 @@ Dynamic nodes (parameter-dependent connections):
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Document Loader binary: reasoning="Binary mode for processing files instead of JSON", parameters={{ dataType: "binary" }}
 </parameter_examples>
-</connection_parameters_rules>
+</initial_parameters_rules>
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).
@@ -620,6 +625,16 @@ const PREVIOUS_SUMMARY = `<previous_summary>
  */
 export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 	const systemPrompt = generateSystemPrompt(options);
+	const shouldApplyCacheControl = options.llm ? isAnthropicModel(options.llm) : false;
+
+	// Build message blocks with optional cache control for Anthropic models
+	const lastMessageBlock: { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } } = {
+		type: 'text',
+		text: PREVIOUS_SUMMARY,
+	};
+	if (shouldApplyCacheControl) {
+		lastMessageBlock.cache_control = { type: 'ephemeral' };
+	}
 
 	return ChatPromptTemplate.fromMessages([
 		[
@@ -628,7 +643,7 @@ export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 				{ type: 'text', text: systemPrompt },
 				{ type: 'text', text: instanceUrlPrompt },
 				{ type: 'text', text: RESPONSE_PATTERNS },
-				{ type: 'text', text: PREVIOUS_SUMMARY, cache_control: { type: 'ephemeral' } },
+				lastMessageBlock,
 			],
 		],
 		['placeholder', '{messages}'],

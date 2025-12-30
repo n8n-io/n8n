@@ -1,14 +1,47 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, ToolMessage, AIMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
+import { mock } from 'jest-mock-extended';
 
 import {
 	findUserToolMessageIndices,
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,
 	applySubgraphCacheMarkers,
+	isAnthropicModel,
 } from '../helpers';
 
+// Create mock LLMs for testing
+const createMockAnthropicLlm = () => {
+	const mockLlm = mock<BaseChatModel>();
+	mockLlm._llmType.mockReturnValue('anthropic');
+	return mockLlm;
+};
+
+const createMockOpenAILlm = () => {
+	const mockLlm = mock<BaseChatModel>();
+	mockLlm._llmType.mockReturnValue('openai');
+	return mockLlm;
+};
+
 describe('Cache Control Helpers', () => {
+	describe('isAnthropicModel', () => {
+		it('should return true for Anthropic models', () => {
+			const mockLlm = createMockAnthropicLlm();
+			expect(isAnthropicModel(mockLlm)).toBe(true);
+		});
+
+		it('should return false for OpenAI models', () => {
+			const mockLlm = createMockOpenAILlm();
+			expect(isAnthropicModel(mockLlm)).toBe(false);
+		});
+
+		it('should return false when _llmType returns undefined', () => {
+			const mockLlm = mock<BaseChatModel>();
+			mockLlm._llmType.mockReturnValue(undefined as unknown as string);
+			expect(isAnthropicModel(mockLlm)).toBe(false);
+		});
+	});
 	describe('findUserToolMessageIndices', () => {
 		it('should return empty array for empty messages', () => {
 			const messages: BaseMessage[] = [];
@@ -189,11 +222,17 @@ describe('Cache Control Helpers', () => {
 	});
 
 	describe('applyCacheControlMarkers', () => {
+		let mockAnthropicLlm: BaseChatModel;
+
+		beforeEach(() => {
+			mockAnthropicLlm = createMockAnthropicLlm();
+		});
+
 		it('should do nothing for empty indices', () => {
 			const messages = [new HumanMessage('test')];
 			const originalContent = messages[0].content;
 
-			applyCacheControlMarkers(messages, [], 'workflow context');
+			applyCacheControlMarkers(messages, [], 'workflow context', mockAnthropicLlm);
 
 			expect(messages[0].content).toBe(originalContent);
 		});
@@ -202,7 +241,7 @@ describe('Cache Control Helpers', () => {
 			const messages = [new HumanMessage('user message')];
 			const workflowContext = '\n<workflow>test</workflow>';
 
-			applyCacheControlMarkers(messages, [0], workflowContext);
+			applyCacheControlMarkers(messages, [0], workflowContext, mockAnthropicLlm);
 
 			// applyCacheControlMarkers converts string content to array format
 			const content = messages[0].content as Array<{
@@ -217,7 +256,7 @@ describe('Cache Control Helpers', () => {
 		it('should apply cache marker to last message when only one user/tool message', () => {
 			const messages = [new HumanMessage('user message')];
 
-			applyCacheControlMarkers(messages, [0], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0], '\n<workflow/>', mockAnthropicLlm);
 
 			const content = messages[0].content as Array<{
 				type: string;
@@ -232,7 +271,7 @@ describe('Cache Control Helpers', () => {
 		it('should apply cache markers to last two messages', () => {
 			const messages = [new HumanMessage('first message'), new HumanMessage('second message')];
 
-			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>', mockAnthropicLlm);
 
 			// Check first message (second-to-last) has cache marker
 			const content0 = messages[0].content as Array<{
@@ -257,7 +296,7 @@ describe('Cache Control Helpers', () => {
 			];
 			const messages = [message0, new HumanMessage('second message')];
 
-			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>', mockAnthropicLlm);
 
 			const content0 = messages[0].content as Array<{
 				type: string;
@@ -277,7 +316,7 @@ describe('Cache Control Helpers', () => {
 			];
 			const messages = [new HumanMessage('first message'), message1];
 
-			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>', mockAnthropicLlm);
 
 			const content1 = messages[1].content as Array<{
 				cache_control?: { type: string };
@@ -294,7 +333,7 @@ describe('Cache Control Helpers', () => {
 				new HumanMessage('msg 5'),
 			];
 
-			applyCacheControlMarkers(messages, [0, 1, 2, 3, 4], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0, 1, 2, 3, 4], '\n<workflow/>', mockAnthropicLlm);
 
 			// Messages 0-2 should not have cache markers
 			expect(typeof messages[0].content).toBe('string');
@@ -325,7 +364,7 @@ describe('Cache Control Helpers', () => {
 			const messages = [message0];
 			const workflowContext = '\n<workflow>new</workflow>';
 
-			applyCacheControlMarkers(messages, [0], workflowContext);
+			applyCacheControlMarkers(messages, [0], workflowContext, mockAnthropicLlm);
 
 			// Workflow context is only added to string content, not array content
 			const content = messages[0].content as Array<{ text: string }>;
@@ -338,7 +377,7 @@ describe('Cache Control Helpers', () => {
 				new ToolMessage({ content: 'tool result 2', tool_call_id: '2' }),
 			];
 
-			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>');
+			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>', mockAnthropicLlm);
 
 			// Both should have cache markers applied
 			const content0 = messages[0].content as unknown as Array<{
@@ -351,16 +390,35 @@ describe('Cache Control Helpers', () => {
 			expect(content0[0].cache_control).toEqual({ type: 'ephemeral' });
 			expect(content1[0].cache_control).toEqual({ type: 'ephemeral' });
 		});
+
+		it('should skip cache markers for non-Anthropic models but still add workflow context', () => {
+			const mockOpenAILlm = createMockOpenAILlm();
+			const messages = [new HumanMessage('user message')];
+			const workflowContext = '\n<workflow>test</workflow>';
+
+			applyCacheControlMarkers(messages, [0], workflowContext, mockOpenAILlm);
+
+			// Workflow context should still be added
+			expect(messages[0].content).toBe(`user message${workflowContext}`);
+			// But content should remain as string (no cache marker conversion)
+			expect(typeof messages[0].content).toBe('string');
+		});
 	});
 
 	describe('Integration: Full cache control flow', () => {
+		let mockAnthropicLlm: BaseChatModel;
+
+		beforeEach(() => {
+			mockAnthropicLlm = createMockAnthropicLlm();
+		});
+
 		it('should correctly implement sliding window pattern', () => {
 			const workflowContext = '\n<workflow>current state</workflow>';
 
 			// Iteration 1: First request
 			const messages1 = [new HumanMessage('Create a workflow')];
 
-			applyCacheControlMarkers(messages1, [0], workflowContext);
+			applyCacheControlMarkers(messages1, [0], workflowContext, mockAnthropicLlm);
 
 			expect((messages1[0].content as Array<{ cache_control?: unknown }>)[0].cache_control).toEqual(
 				{ type: 'ephemeral' },
@@ -380,7 +438,7 @@ describe('Cache Control Helpers', () => {
 
 			const indices2 = findUserToolMessageIndices(messages2);
 			cleanStaleWorkflowContext(messages2, indices2);
-			applyCacheControlMarkers(messages2, indices2, workflowContext);
+			applyCacheControlMarkers(messages2, indices2, workflowContext, mockAnthropicLlm);
 
 			// First message: workflow stays in array content (only string content gets cleaned)
 			// AND it gets a cache marker again because it's now the second-to-last message!
@@ -405,7 +463,7 @@ describe('Cache Control Helpers', () => {
 			const messages = [new HumanMessage('msg 1'), new AIMessage('response 1')];
 
 			let indices = findUserToolMessageIndices(messages);
-			applyCacheControlMarkers(messages, indices, workflowV1);
+			applyCacheControlMarkers(messages, indices, workflowV1, mockAnthropicLlm);
 
 			// First message is now array format after applyCacheControlMarkers
 			const content0Initial = messages[0].content as Array<{ text: string }>;
@@ -416,7 +474,7 @@ describe('Cache Control Helpers', () => {
 			messages.push(new HumanMessage('msg 2'));
 			indices = findUserToolMessageIndices(messages);
 			cleanStaleWorkflowContext(messages, indices);
-			applyCacheControlMarkers(messages, indices, workflowV2);
+			applyCacheControlMarkers(messages, indices, workflowV2, mockAnthropicLlm);
 
 			// Verify first message: workflow stays in array content (only string content gets cleaned)
 			// AND it gets a cache marker again because with 2 user messages, it's the second-to-last!
@@ -433,7 +491,7 @@ describe('Cache Control Helpers', () => {
 			messages.push(new HumanMessage('msg 3'));
 			indices = findUserToolMessageIndices(messages);
 			cleanStaleWorkflowContext(messages, indices);
-			applyCacheControlMarkers(messages, indices, workflowV3);
+			applyCacheControlMarkers(messages, indices, workflowV3, mockAnthropicLlm);
 
 			// Verify old messages: workflow stays in array content, but cache markers move
 			const content0NoMarker = messages[0].content as Array<{
@@ -457,21 +515,27 @@ describe('Cache Control Helpers', () => {
 	});
 
 	describe('applySubgraphCacheMarkers', () => {
+		let mockAnthropicLlm: BaseChatModel;
+
+		beforeEach(() => {
+			mockAnthropicLlm = createMockAnthropicLlm();
+		});
+
 		it('should do nothing for empty messages', () => {
 			const messages: BaseMessage[] = [];
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 			expect(messages).toHaveLength(0);
 		});
 
 		it('should do nothing when no user/tool messages exist', () => {
 			const messages = [new AIMessage('response')];
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 			expect(messages[0].content).toBe('response');
 		});
 
 		it('should apply cache marker to single user message', () => {
 			const messages = [new HumanMessage('user request')];
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 
 			const content = messages[0].content as Array<{
 				type: string;
@@ -489,7 +553,7 @@ describe('Cache Control Helpers', () => {
 				new ToolMessage({ content: 'tool result', tool_call_id: '1' }),
 			];
 
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 
 			// First message should NOT have cache marker (stays string)
 			expect(typeof messages[0].content).toBe('string');
@@ -518,7 +582,7 @@ describe('Cache Control Helpers', () => {
 				new ToolMessage({ content: 'tool result', tool_call_id: '1' }),
 			];
 
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 
 			// First message's cache marker should be removed
 			const content0 = messages[0].content as Array<{ cache_control?: unknown }>;
@@ -536,7 +600,7 @@ describe('Cache Control Helpers', () => {
 			toolMessage.content = [{ type: 'text' as const, text: 'result' }];
 
 			const messages = [toolMessage];
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 
 			const content = messages[0].content as Array<{
 				text: string;
@@ -552,7 +616,7 @@ describe('Cache Control Helpers', () => {
 				new ToolMessage({ content: 'tool 3', tool_call_id: '3' }),
 			];
 
-			applySubgraphCacheMarkers(messages);
+			applySubgraphCacheMarkers(messages, mockAnthropicLlm);
 
 			// Only the last tool message should have the marker
 			expect(typeof messages[0].content).toBe('string');
@@ -562,6 +626,17 @@ describe('Cache Control Helpers', () => {
 				cache_control?: { type: string };
 			}>;
 			expect(lastContent[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should skip all cache operations for non-Anthropic models', () => {
+			const mockOpenAILlm = createMockOpenAILlm();
+			const messages = [new HumanMessage('user request')];
+
+			applySubgraphCacheMarkers(messages, mockOpenAILlm);
+
+			// Content should remain as string (no cache marker conversion)
+			expect(messages[0].content).toBe('user request');
+			expect(typeof messages[0].content).toBe('string');
 		});
 	});
 });

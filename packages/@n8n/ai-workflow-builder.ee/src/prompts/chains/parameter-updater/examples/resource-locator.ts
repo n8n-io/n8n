@@ -10,48 +10,39 @@ export const RESOURCE_LOCATOR_EXAMPLES: NodeTypeExamples = {
 Current Parameters:
 {
   "select": "channel",
-  "channelId": {
-    "__rl": true,
-    "value": "",
-    "mode": "list"
-  },
+  "channelId": { "__rl": true, "value": "", "mode": "list" },
   "otherOptions": {}
 }
 
 Requested Changes: Send to channel C0122KQ70S7E
 
-Expected Output:
+Output:
 {
-  "select": "channel",
-  "channelId": {
-    "__rl": true,
-    "mode": "id",
-    "value": "C0122KQ70S7E"
-  },
-  "otherOptions": {}
+  "parameters": [
+    { "path": "select", "type": "string", "value": "channel" },
+    { "path": "channelId.__rl", "type": "boolean", "value": "true" },
+    { "path": "channelId.mode", "type": "string", "value": "id" },
+    { "path": "channelId.value", "type": "string", "value": "C0122KQ70S7E" }
+  ]
 }
 
 #### Example 2: Google Drive Node - File by URL
 Current Parameters:
 {
   "operation": "download",
-  "fileId": {
-    "__rl": true,
-    "value": "",
-    "mode": "list"
-  }
+  "fileId": { "__rl": true, "value": "", "mode": "list" }
 }
 
 Requested Changes: Use file https://drive.google.com/file/d/1ABC123XYZ/view
 
-Expected Output:
+Output:
 {
-  "operation": "download",
-  "fileId": {
-    "__rl": true,
-    "mode": "url",
-    "value": "https://drive.google.com/file/d/1ABC123XYZ/view"
-  }
+  "parameters": [
+    { "path": "operation", "type": "string", "value": "download" },
+    { "path": "fileId.__rl", "type": "boolean", "value": "true" },
+    { "path": "fileId.mode", "type": "string", "value": "url" },
+    { "path": "fileId.value", "type": "string", "value": "https://drive.google.com/file/d/1ABC123XYZ/view" }
+  ]
 }
 
 #### Example 3: Notion Node - Page ID from Expression
@@ -59,23 +50,19 @@ Current Parameters:
 {
   "resource": "databasePage",
   "operation": "get",
-  "pageId": {
-    "__rl": true,
-    "value": "hardcoded-page-id",
-    "mode": "id"
-  }
+  "pageId": { "__rl": true, "value": "hardcoded-page-id", "mode": "id" }
 }
 
 Requested Changes: Use page ID from the previous node's output
 
-Expected Output:
+Output:
 {
-  "resource": "databasePage",
-  "operation": "get",
-  "pageId": {
-    "__rl": true,
-    "mode": "id",
-    "value": "={{ $('Previous Node').item.json.pageId }}"
-  }
+  "parameters": [
+    { "path": "resource", "type": "string", "value": "databasePage" },
+    { "path": "operation", "type": "string", "value": "get" },
+    { "path": "pageId.__rl", "type": "boolean", "value": "true" },
+    { "path": "pageId.mode", "type": "string", "value": "id" },
+    { "path": "pageId.value", "type": "string", "value": "={{ $('Previous Node').item.json.pageId }}" }
+  ]
 }`,
 };

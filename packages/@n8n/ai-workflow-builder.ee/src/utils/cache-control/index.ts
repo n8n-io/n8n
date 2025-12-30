@@ -8,6 +8,7 @@
  */
 
 export {
+	isAnthropicModel,
 	findUserToolMessageIndices,
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,

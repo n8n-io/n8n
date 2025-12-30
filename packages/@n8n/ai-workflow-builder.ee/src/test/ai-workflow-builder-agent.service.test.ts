@@ -9,7 +9,7 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, gemini3Flash } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
@@ -40,6 +40,7 @@ jest.mock('@/workflow-builder-agent');
 jest.mock('@/session-manager.service');
 jest.mock('@/llm-config', () => ({
 	anthropicClaudeSonnet45: jest.fn(),
+	gemini3Flash: jest.fn(),
 }));
 jest.mock('@/utils/stream-processor', () => ({
 	formatMessages: jest.fn(),
@@ -58,6 +59,7 @@ const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
 const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as jest.MockedFunction<
 	typeof anthropicClaudeSonnet45
 >;
+const gemini3FlashMock = gemini3Flash as jest.MockedFunction<typeof gemini3Flash>;
 const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMessages>;
 
 describe('AiWorkflowBuilderService', () => {
@@ -195,6 +197,9 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
+		// Mock the default model (gemini3Flash) used by the agent
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		gemini3FlashMock.mockResolvedValue(mockChatAnthropic as any);
 
 		// Mock onCreditsUpdated callback
 		mockOnCreditsUpdated = jest.fn();

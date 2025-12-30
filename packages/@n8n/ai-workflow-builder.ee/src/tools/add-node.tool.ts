@@ -2,18 +2,30 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ParameterEntry } from '@/schemas/parameter-entry.schema';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { NodeTypeNotFoundError, ValidationError } from '../errors';
-import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
-import { calculateNodePosition } from './utils/node-positioning.utils';
+import { arrayToNodeParameters } from './utils/array-to-parameters.utils';
 import { isSubNode } from '../utils/node-helpers';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
+import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
+import { calculateNodePosition } from './utils/node-positioning.utils';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
+
+/**
+ * Schema for initial parameter entries
+ * Note: No 'json' type - initial parameters are simple key-value pairs
+ */
+const initialParameterEntrySchema = z.object({
+	path: z.string().min(1).describe('Parameter name like "mode", "operation", "resource"'),
+	type: z.enum(['string', 'number', 'boolean']).describe('The value type'),
+	value: z.string().describe('The parameter value as string'),
+});
 
 const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
@@ -21,16 +33,15 @@ const baseSchema = {
 	name: z
 		.string()
 		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
-	connectionParametersReasoning: z
+	initialParametersReasoning: z
 		.string()
 		.describe(
-			'REQUIRED: Explain your reasoning about connection parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "HTTP Request has static inputs, so no special parameters needed"',
+			'REQUIRED: Explain your reasoning about initial parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation/resource parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "Gmail needs resource:message and operation:send to send emails"',
 		),
-	connectionParameters: z
-		.object({})
-		.passthrough()
+	initialParameters: z
+		.array(initialParameterEntrySchema)
 		.describe(
-			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
+			'Initial parameters to set on the node as array of entries. This includes: (1) connection-affecting parameters like mode, hasOutputParser, textSplittingMode; (2) resource/operation for nodes with multiple resources (Gmail, Notion, Google Sheets, etc.). Example: [{ "path": "mode", "type": "string", "value": "insert" }]. Pass empty array [] if no initial parameters are needed.',
 		),
 };
 
@@ -61,7 +72,7 @@ function createNode(
 	customName: string,
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
-	connectionParameters?: INodeParameters,
+	initialParameters?: INodeParameters,
 	id?: string,
 ): INode {
 	// Generate unique name
@@ -71,8 +82,8 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, typeVersion, uniqueName, position, connectionParameters, id);
+	// Create the node instance with initial parameters
+	return createNodeInstance(nodeType, typeVersion, uniqueName, position, initialParameters, id);
 }
 
 /**
@@ -134,7 +145,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					validatedInput = nodeCreationSchema.parse(input);
 				}
 
-				const { nodeType, nodeVersion, name, connectionParametersReasoning, connectionParameters } =
+				const { nodeType, nodeVersion, name, initialParametersReasoning, initialParameters } =
 					validatedInput;
 
 				// Report tool start
@@ -145,7 +156,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				const workflow = getCurrentWorkflow(state);
 
 				// Report progress with reasoning
-				reporter.progress(`Adding ${name} (${connectionParametersReasoning})`);
+				reporter.progress(`Adding ${name} (${initialParametersReasoning})`);
 
 				// Find the node type
 				const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
@@ -160,6 +171,12 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					return createErrorResponse(config, error);
 				}
 
+				// Convert initial parameters array to INodeParameters object
+				const initialParamsObject =
+					initialParameters && initialParameters.length > 0
+						? arrayToNodeParameters(initialParameters as ParameterEntry[])
+						: undefined;
+
 				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
@@ -167,7 +184,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					name,
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
-					connectionParameters as INodeParameters,
+					initialParamsObject as INodeParameters,
 					id,
 				);
 
@@ -226,32 +243,36 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 To add multiple nodes, call this tool multiple times in parallel.
 
 CRITICAL: You MUST provide:
-1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using {}
-2. connectionParameters - The actual parameters (use {} for nodes without special needs)
+1. initialParametersReasoning - Explain why you're choosing specific initial parameters or using []
+2. initialParameters - Array of parameter entries (use [] for nodes without special needs)
 
-IMPORTANT: DO NOT rely on default values! Always explicitly set connection-affecting parameters when they exist.
+IMPORTANT: DO NOT rely on default values! Always explicitly set parameters that affect connections or define the node's behavior.
 
 REASONING EXAMPLES:
 - "Vector Store has dynamic inputs that change based on mode parameter, setting mode:insert to accept document inputs"
-- "HTTP Request has static inputs/outputs, no connection parameters needed"
-- "Document Loader needs textSplittingMode:custom to accept text splitter connections"
+- "HTTP Request has static inputs/outputs, no initial parameters needed"
+- "Gmail needs resource:message and operation:send to send emails"
 - "AI Agent has dynamic inputs, setting hasOutputParser:true to enable output parser connections"
 - "Set node has standard main connections only, using empty parameters"
 
-CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
-- AI Agent (@n8n/n8n-nodes-langchain.agent):
-  - For output parser support: { hasOutputParser: true }
-  - Without output parser: { hasOutputParser: false }
-- Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
-  - For document input: { mode: "insert" }
-  - For querying: { mode: "retrieve" }
-  - For AI Agent and tool use: { mode: "retrieve-as-tool" }
-- Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
-  - For text splitter input: { textSplittingMode: "custom" }
-  - For built-in splitting: { textSplittingMode: "simple" }
-- Regular nodes (HTTP Request, Set, Code, etc.): {}
+INITIAL PARAMETERS FORMAT: [{ "path": "paramName", "type": "string|number|boolean", "value": "valueAsString" }]
 
-Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
+INITIAL PARAMETERS (NEVER rely on defaults - always set explicitly):
+- AI Agent (@n8n/n8n-nodes-langchain.agent):
+  - For output parser: [{ "path": "hasOutputParser", "type": "boolean", "value": "true" }]
+  - Without output parser: [{ "path": "hasOutputParser", "type": "boolean", "value": "false" }]
+- Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
+  - For document input: [{ "path": "mode", "type": "string", "value": "insert" }]
+  - For querying: [{ "path": "mode", "type": "string", "value": "retrieve" }]
+  - For AI Agent/tool: [{ "path": "mode", "type": "string", "value": "retrieve-as-tool" }]
+- Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
+  - Text splitter input: [{ "path": "textSplittingMode", "type": "string", "value": "custom" }]
+  - Built-in splitting: [{ "path": "textSplittingMode", "type": "string", "value": "simple" }]
+- Nodes with resource/operation (Gmail, Notion, Google Sheets, etc.):
+  - Set resource AND operation: [{ "path": "resource", "type": "string", "value": "message" }, { "path": "operation", "type": "string", "value": "send" }]
+- Regular nodes (HTTP Request, Set, Code, etc.): []
+
+Think through the initialParametersReasoning FIRST, then set initialParameters based on your reasoning.`,
 			schema: nodeCreationSchema,
 		},
 	);
