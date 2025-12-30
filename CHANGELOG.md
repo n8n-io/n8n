@@ -1,3 +1,18 @@
+## [2.1.5](https://github.com/n8n-io/n8n/compare/n8n@2.1.4...n8n@2.1.5) (2025-12-30)
+
+
+### Bug Fixes
+
+* **core:**  Modify path validation to work cross platforms ([#23737](https://github.com/n8n-io/n8n/issues/23737)) ([f31b7c6](https://github.com/n8n-io/n8n/commit/f31b7c62e730c10cceb4258dcb5390f9dfc5924b))
+* **Stripe Trigger Node:** Add Stripe signature verification ([#22764](https://github.com/n8n-io/n8n/issues/22764)) ([4a8948a](https://github.com/n8n-io/n8n/commit/4a8948aecf77ad830f9b4c85992759495ddba74f))
+
+
+### Features
+
+* **core:** Use draft sub-workflow version for manual execution, published for production ([#23166](https://github.com/n8n-io/n8n/issues/23166)) ([61d02a3](https://github.com/n8n-io/n8n/commit/61d02a382dc77f1815b212098bf368bae4649a4a))
+
+
+
 ## [2.1.4](https://github.com/n8n-io/n8n/compare/n8n@2.1.3...n8n@2.1.4) (2025-12-23)
 
 
