@@ -1235,14 +1235,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where.workflowId = query.workflowId;
 		}
 
-		const startedAtConditions = [
-			query.startedAfter
-				? MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)))
-				: [],
-			query.startedBefore
-				? LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)))
-				: [],
-		].flat();
+		const startedAtConditions = [];
+
+		if (query.startedAfter)
+			startedAtConditions.push(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
+			);
+
+		if (query.startedBefore)
+			startedAtConditions.push(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
+			);
 
 		if (startedAtConditions.length > 0) {
 			where.startedAt = And(...startedAtConditions);

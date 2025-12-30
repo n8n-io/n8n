@@ -11,6 +11,7 @@ import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '../constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import type { RenderResult } from '@testing-library/vue';
+import { reactive } from 'vue';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -31,6 +32,12 @@ vi.mock('@/app/composables/useTelemetry', () => {
 		}),
 	};
 });
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({}),
+	useRoute: () => reactive({}),
+	RouterLink: vi.fn(),
+}));
 
 const ModalStub = {
 	template: `
@@ -88,22 +95,25 @@ describe('StopManyExecutionsModal', () => {
 	it('should render modal', async () => {
 		const { getByTestId } = renderModal();
 
-		const cancelButton = getByTestId('stop-executions-submit-button');
+		const cancelButton = getByTestId('sme-close-button');
 		expect(cancelButton).toBeEnabled();
 
-		const submitButton = getByTestId('stop-executions-submit-button');
-		expect(submitButton).toBeDisabled();
+		const submitButton = getByTestId('sme-submit-button');
+		expect(submitButton).toBeEnabled();
 	});
 
-	it('should enable submit button when any form is checked', async () => {
+	it('should disable submit button if no boxes are checked', async () => {
 		const { getByTestId } = renderModal();
 
-		const textarea = getByTestId('workflow-description-input');
-		await userEvent.clear(textarea);
-		await userEvent.type(textarea, 'Updated description');
+		for (const testId of ['running', 'waiting', 'queued']) {
+			const form = getByTestId(`sme-check-${testId}`);
+			await userEvent.click(form);
+		}
 
-		await userEvent.type(textarea, '{Esc}');
+		const cancelButton = getByTestId('sme-close-button');
+		expect(cancelButton).toBeEnabled();
 
-		expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
+		const submitButton = getByTestId('sme-submit-button');
+		expect(submitButton).toBeDisabled();
 	});
 });

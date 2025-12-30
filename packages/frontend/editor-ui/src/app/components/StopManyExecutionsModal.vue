@@ -108,6 +108,7 @@ function closeModal() {
 					v-model="checkQueued"
 					type="checkbox"
 					:label="i18n.baseText('executionStopManyModal.queued')"
+					data-test-id="sme-check-queued"
 				/>
 			</ElRow>
 			<ElRow>
@@ -115,6 +116,7 @@ function closeModal() {
 					v-model="checkRunning"
 					type="checkbox"
 					:label="i18n.baseText('executionStopManyModal.running')"
+					data-test-id="sme-check-running"
 				/>
 			</ElRow>
 			<ElRow>
@@ -122,6 +124,7 @@ function closeModal() {
 					v-model="checkWaiting"
 					type="checkbox"
 					:label="i18n.baseText('executionStopManyModal.waiting')"
+					data-test-id="sme-check-waiting"
 				/>
 			</ElRow>
 			<ElRow v-if="activeFilterHint">
@@ -140,13 +143,13 @@ function closeModal() {
 				<N8nButton
 					type="tertiary"
 					label="Close"
-					data-test-id="stop-executions-close-button"
+					data-test-id="sme-close-button"
 					@click="closeModal"
 				/>
 				<N8nButton
 					:disabled="!checkWaiting && !checkRunning && !checkQueued"
 					label="Stop Executions"
-					data-test-id="stop-executions-submit-button"
+					data-test-id="sme-submit-button"
 					@click="onSubmit"
 				/>
 			</div>
