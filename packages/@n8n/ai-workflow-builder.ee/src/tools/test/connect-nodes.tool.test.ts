@@ -290,7 +290,7 @@ describe('ConnectNodesTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Node with ID "nonexistent" not found in workflow');
+			expectToolError(content, /Node with ID "nonexistent" not found in workflow/);
 		});
 
 		it('should handle non-existent target node', async () => {
@@ -310,7 +310,7 @@ describe('ConnectNodesTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Node with ID "nonexistent" not found in workflow');
+			expectToolError(content, /Node with ID "nonexistent" not found in workflow/);
 		});
 
 		it('should handle invalid connection between incompatible nodes', async () => {

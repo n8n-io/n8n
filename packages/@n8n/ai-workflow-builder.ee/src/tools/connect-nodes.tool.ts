@@ -30,12 +30,12 @@ export const nodeConnectionSchema = z.object({
 	sourceNodeId: z
 		.string()
 		.describe(
-			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+			'REQUIRED: The node UUID (e.g., "e9f71f78-40c5-4109-b742-11feca4ca0b1"). Do NOT use node names - only UUIDs work. Get the UUID from add_node response or workflow state. For ai_* connections, this is the sub-node (provider). For main connections, this is the output producer.',
 		),
 	targetNodeId: z
 		.string()
 		.describe(
-			'The UUID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+			'REQUIRED: The node UUID (e.g., "2fdeeba2-9d10-43b6-bb8c-7005bc6b05b8"). Do NOT use node names - only UUIDs work. Get the UUID from add_node response or workflow state. For ai_* connections, this is the main node (consumer). For main connections, this is the input receiver.',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -72,12 +72,22 @@ export function createConnectNodesTool(
 				// Validate input using Zod schema
 				const validatedInput = nodeConnectionSchema.parse(input);
 
+				// DEBUG: Log tool call input
+				console.log('\n=== DEBUG: connect_nodes Tool Called ===');
+				console.log('Input:', JSON.stringify(validatedInput, null, 2));
+
 				// Report tool start
 				reporter.start(validatedInput);
 
 				// Get current state
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
+
+				// DEBUG: Log available nodes
+				console.log(
+					'Available nodes:',
+					workflow.nodes.map((n) => `${n.name} (${n.id})`).join(', '),
+				);
 
 				// Report progress
 				reportProgress(reporter, 'Finding nodes to connect...');
@@ -91,15 +101,27 @@ export function createConnectNodesTool(
 					const missingNodeId = !matchedSourceNode
 						? validatedInput.sourceNodeId
 						: validatedInput.targetNodeId;
+
+					// Check if the ID looks like a UUID (helps detect when names are used instead)
+					const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+					const isLikelyNodeName = !uuidPattern.test(missingNodeId);
+
 					const nodeError = new NodeNotFoundError(missingNodeId);
+					const errorMessage = isLikelyNodeName
+						? `${nodeError.message}. HINT: "${missingNodeId}" looks like a node name, not a UUID. You must use the node's UUID (e.g., "e9f71f78-40c5-4109-b742-11feca4ca0b1") from the add_node response.`
+						: nodeError.message;
+
 					const error = {
-						message: nodeError.message,
+						message: errorMessage,
 						code: 'NODES_NOT_FOUND',
 						details: {
 							sourceNodeId: validatedInput.sourceNodeId,
 							targetNodeId: validatedInput.targetNodeId,
 							foundSource: !!matchedSourceNode,
 							foundTarget: !!matchedTargetNode,
+							hint: isLikelyNodeName
+								? 'Use node UUIDs, not node names'
+								: 'Node may not exist yet - ensure add_node was called first',
 						},
 					};
 					reporter.error(error);
@@ -139,6 +161,9 @@ export function createConnectNodesTool(
 					sourceNodeType,
 					targetNodeType,
 				);
+
+				// DEBUG: Log inference result
+				console.log('Inference result:', JSON.stringify(inferResult, null, 2));
 
 				if (inferResult.error) {
 					const connectionError = new ConnectionError(inferResult.error, {
@@ -271,6 +296,15 @@ export function createConnectNodesTool(
 						targetNode: true,
 					},
 				};
+
+				// DEBUG: Log final connection result
+				console.log('\n=== DEBUG: Connection Created ===');
+				console.log(
+					`Final: ${actualSourceNode.name} → ${actualTargetNode.name} (${connectionType})`,
+				);
+				console.log(`Swapped: ${swapped}`);
+				console.log('Connection object:', JSON.stringify(newConnection, null, 2));
+
 				reporter.complete(output);
 
 				// Return success with state updates
