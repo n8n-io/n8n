@@ -11,21 +11,14 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
  * - This caused insights to fail for workflows with 21-char IDs
  *
  * The fix aligns with the codebase standard of varchar(36) for workflowId columns.
- *
- * Note: SQLite does not enforce VARCHAR length limits, so no migration is needed for SQLite.
  */
 export class ExpandInsightsWorkflowIdLength1766500000000 implements IrreversibleMigration {
-	async up({ isPostgres, escape, queryRunner }: MigrationContext) {
-		// Only PostgreSQL needs this migration:
-		// - SQLite does not enforce VARCHAR length constraints
-		// - MySQL is no longer supported in n8n 2.0+
-		if (isPostgres) {
-			const tableName = escape.tableName('insights_metadata');
-			const columnName = escape.columnName('workflowId');
+	async up({ escape, queryRunner }: MigrationContext) {
+		const tableName = escape.tableName('insights_metadata');
+		const columnName = escape.columnName('workflowId');
 
-			await queryRunner.query(
-				`ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE VARCHAR(36);`,
-			);
-		}
+		await queryRunner.query(
+			`ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE VARCHAR(36);`,
+		);
 	}
 }
