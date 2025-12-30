@@ -42,6 +42,8 @@ interface DocumentState {
 	serverUrl: string;
 	unsubscribeDoc: (() => void) | null;
 	unsubscribeBroadcast: (() => void) | null;
+	/** Whether initial sync from server has been received */
+	initialSyncReceived: boolean;
 }
 
 // Track documents and their state
@@ -73,6 +75,7 @@ function getOrCreateDocument(docId: string, serverUrl: string): DocumentState {
 			serverUrl,
 			unsubscribeDoc: null,
 			unsubscribeBroadcast: null,
+			initialSyncReceived: false,
 		};
 
 		// Subscribe to document updates
@@ -153,6 +156,12 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 		if (docState.broadcastTransport?.connected) {
 			docState.broadcastTransport.send(data);
 		}
+
+		// On first message from server, notify main thread that initial sync is complete
+		if (!docState.initialSyncReceived) {
+			docState.initialSyncReceived = true;
+			sendToMain({ type: 'initial-sync', docId });
+		}
 	});
 
 	// Handle connection state changes
@@ -164,9 +173,7 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 			// Send initial state to server
 			const state = docState.doc.encodeState();
 			transport.send(state);
-
-			// Notify main thread that initial sync is complete
-			sendToMain({ type: 'initial-sync', docId });
+			// Note: initial-sync is sent when we receive the first message from server
 		}
 	});
 

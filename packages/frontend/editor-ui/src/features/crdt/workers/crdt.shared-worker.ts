@@ -44,6 +44,8 @@ interface DocumentState {
 	serverUrl: string;
 	unsubscribeDoc: (() => void) | null;
 	unsubscribeTransport: (() => void) | null;
+	/** Whether initial sync from server has been received */
+	initialSyncReceived: boolean;
 }
 
 // Track all connected tabs
@@ -83,6 +85,7 @@ function getOrCreateDocument(docId: string, serverUrl: string): DocumentState {
 			serverUrl,
 			unsubscribeDoc: null,
 			unsubscribeTransport: null,
+			initialSyncReceived: false,
 		};
 
 		// Subscribe to document updates and broadcast to all tabs + server
@@ -135,6 +138,12 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 		for (const tab of docState.tabs) {
 			tab.port.postMessage({ type: 'sync', docId, data });
 		}
+
+		// On first message from server, notify tabs that initial sync is complete
+		if (!docState.initialSyncReceived) {
+			docState.initialSyncReceived = true;
+			broadcastToTabs(docId, { type: 'initial-sync', docId });
+		}
 	});
 
 	// Handle connection state changes
@@ -146,9 +155,7 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 			// Send initial state to server
 			const state = docState.doc.encodeState();
 			transport.send(state);
-
-			// Notify tabs that initial sync is complete
-			broadcastToTabs(docId, { type: 'initial-sync', docId });
+			// Note: initial-sync is broadcast when we receive the first message from server
 		}
 	});
 
@@ -291,7 +298,10 @@ function handleTabConnect(port: MessagePort): void {
 				} else if (docState.serverTransport?.connected) {
 					// Already connected, notify tab
 					port.postMessage({ type: 'connected', docId });
-					port.postMessage({ type: 'initial-sync', docId });
+					// Only send initial-sync if we've already received data from server
+					if (docState.initialSyncReceived) {
+						port.postMessage({ type: 'initial-sync', docId });
+					}
 				}
 
 				console.log('[CRDT SharedWorker] Tab subscribed to document:', docId);
