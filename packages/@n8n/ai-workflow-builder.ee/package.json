@@ -59,7 +59,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "csv-parse": "5.5.0",
-    "langsmith": "^0.3.45",
+    "langsmith": "^0.4.2",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
