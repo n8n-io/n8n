@@ -1,8 +1,9 @@
 import userEvent from '@testing-library/user-event';
 import { configure, render } from '@testing-library/vue';
 
-import N8nMenuItem from './MenuItem.vue';
 import type { IMenuItem } from '@n8n/design-system/types';
+
+import N8nMenuItem from './MenuItem.vue';
 
 configure({ testIdAttribute: 'data-test-id' });
 
