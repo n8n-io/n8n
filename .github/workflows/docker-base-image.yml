@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+      - '.github/workflows/docker-base-image.yml' # TODO: Remove after testing
   workflow_dispatch:
     inputs:
       push:
@@ -32,6 +33,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
+      # TODO: Remove after testing - pre-pull always for PR test
+      - name: Pre-pull attestation scanner (before authenticated login)
+        # if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+        run: docker pull docker/buildkit-syft-scanner:stable-1
+
       - name: Login to DHI Registry (for pulling base images)
         uses: ./.github/actions/docker-registry-login
         with:
@@ -40,8 +46,9 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # TODO: Remove after testing - login always for PR test
       - name: Login to Docker registries (for pushing)
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+        # if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: 'true'
@@ -49,6 +56,7 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # TODO: Remove after testing - attestations enabled but push disabled
       - name: Build and push
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
@@ -57,9 +65,9 @@ jobs:
           build-args: |
             NODE_VERSION=${{ matrix.node_version }}
           platforms: linux/amd64,linux/arm64
-          provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
-          sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
-          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          provenance: true
+          sbom: true
+          push: false
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}-${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}
