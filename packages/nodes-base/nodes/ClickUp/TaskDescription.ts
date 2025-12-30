@@ -213,6 +213,18 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
+				displayName: 'User Groups Assignee Names or IDs',
+				name: 'group_assignees',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+					loadOptionsDependsOn: ['list'],
+				},
+				default: [],
+			},
+			{
 				displayName: 'Custom Fields JSON',
 				name: 'customFieldsJson',
 				type: 'json',
@@ -351,7 +363,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma.',
+				description: 'Assignees IDs. Multiple can be added separated by comma.',
+			},
+			{
+				displayName: 'Add User Groups Assignees',
+				name: 'addGroupAssignees',
+				type: 'string',
+				default: '',
+				description: 'Group Assignees IDs. Multiple can be added separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -411,7 +430,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma.',
+				description: 'Assignees IDs. Multiple can be added separated by comma.',
+			},
+			{
+				displayName: 'Remove Group Users Assignees',
+				name: 'removeGroupAssignees',
+				type: 'string',
+				default: '',
+				description: 'Group Assignees IDs. Multiple can be added separated by comma.',
 			},
 			{
 				displayName: 'Status',
