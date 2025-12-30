@@ -196,7 +196,7 @@ export namespace ExecutionSummaries {
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
 		FilterFields,
-		'startedAfter' | 'startedBefore' | 'mode' | 'workflowId' | 'status'
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
 	>; // parsed from query params
 
 	type AccessFields = {

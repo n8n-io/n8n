@@ -1224,13 +1224,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return data;
 	}
 
-	async findByStopExecutionsFilter(query: ExecutionSummaries.StopExecutionFilterQuery) {
-		const findBy: FindOptionsWhere<ExecutionEntity> = {
+	async findByStopExecutionsFilter(
+		query: ExecutionSummaries.StopExecutionFilterQuery,
+	): Promise<Array<{ id: string }>> {
+		const where: FindOptionsWhere<ExecutionEntity> = {
 			status: In(query.status ?? []),
 		};
 
 		if (query.workflowId !== 'all') {
-			findBy.workflowId = query.workflowId;
+			where.workflowId = query.workflowId;
 		}
 
 		const startedAtConditions = [
@@ -1243,9 +1245,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		].flat();
 
 		if (startedAtConditions.length > 0) {
-			findBy.startedAt = And(...startedAtConditions);
+			where.startedAt = And(...startedAtConditions);
 		}
 
-		return await this.findBy(findBy);
+		return await this.find({ select: ['id'], where });
 	}
 }

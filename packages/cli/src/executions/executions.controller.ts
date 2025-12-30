@@ -34,17 +34,6 @@ export class ExecutionsController {
 		}
 	}
 
-	/**
-	 * Stops executions based on the provided filter
-	 *
-	 * @returns The amount of actually stopped executions, potentially lower if some executions finished naturally.
-	 */
-	@Post('/stopMany')
-	async stopMany(req: ExecutionRequest.StopMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
-		return await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
-	}
-
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
@@ -122,6 +111,22 @@ export class ExecutionsController {
 		const executionId = req.params.id;
 
 		return await this.executionService.stop(executionId, workflowIds);
+	}
+
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns { stop: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+
+		// Return early to avoid expensive db query
+		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
+
+		const stopped = await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return { stopped };
 	}
 
 	@Post('/:id/retry')

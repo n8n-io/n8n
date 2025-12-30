@@ -493,12 +493,12 @@ export class ExecutionService {
 	}
 
 	async stopMany(query: ExecutionSummaries.StopExecutionFilterQuery, sharedWorkflowIds: string[]) {
-		const ids = await this.executionRepository.findByStopExecutionsFilter(query);
+		const executions = await this.executionRepository.findByStopExecutionsFilter(query);
 		let stopped = 0;
-		for (const id of ids) {
+		for (const { id } of executions) {
 			try {
-				await this.stop(id.id, sharedWorkflowIds);
-				this.logger.debug(`Stopped execution ${id.id}`);
+				await this.stop(id, sharedWorkflowIds);
+				this.logger.debug(`Stopped execution ${id}`);
 				stopped++;
 			} catch (e) {
 				// the throwing code already logs the failure otherwise
