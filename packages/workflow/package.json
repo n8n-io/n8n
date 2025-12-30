@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
