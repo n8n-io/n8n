@@ -33,7 +33,7 @@ This allows you to:
 
 ```bash
 # By Mode
-pnpm test:container:standard    # Sqlite
+pnpm test:container:sqlite      # SQLite (default)
 pnpm test:container:postgres    # PostgreSQL
 pnpm test:container:queue       # Queue mode
 pnpm test:container:multi-main  # HA setup
