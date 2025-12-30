@@ -28,7 +28,11 @@ const LogsPanel = defineAsyncComponent(
 				<AppSidebar />
 			</Suspense>
 		</template>
-		<slot />
+		<RouterView v-slot="{ Component }">
+			<KeepAlive include="NodeView" :max="1">
+				<Component :is="Component" />
+			</KeepAlive>
+		</RouterView>
 		<template v-if="layoutProps.logs" #footer>
 			<Suspense>
 				<LogsPanel />

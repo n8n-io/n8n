@@ -9,7 +9,7 @@ const DemoFooter = defineAsyncComponent(
 
 <template>
 	<BaseLayout>
-		<slot />
+		<RouterView />
 		<template #footer>
 			<Suspense>
 				<DemoFooter />

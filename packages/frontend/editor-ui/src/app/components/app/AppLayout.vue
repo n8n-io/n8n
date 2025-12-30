@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRoute } from 'vue-router';
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 
 const route = useRoute();
 
@@ -38,8 +38,10 @@ const layout = computed(() => {
 	return layouts[route.meta.layout ?? 'default'] ?? layouts.default;
 });
 
-onMounted(() => {
-	emit('load', layoutRef.value);
+watch(layoutRef, (value) => {
+	if (value) {
+		emit('load', value);
+	}
 });
 </script>
 <template>

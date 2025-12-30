@@ -42,7 +42,7 @@ onMounted(() => {
 
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<slot />
+				<RouterView />
 			</div>
 		</div>
 	</BaseLayout>

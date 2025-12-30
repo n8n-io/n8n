@@ -14,6 +14,6 @@ const AppSidebar = defineAsyncComponent(
 				<AppSidebar />
 			</Suspense>
 		</template>
-		<slot />
+		<RouterView />
 	</BaseLayout>
 </template>

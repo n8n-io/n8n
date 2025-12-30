@@ -102,9 +102,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<AppBanners />
-		<AppLayout @load="setLayoutRef">
-			<RouterView />
-		</AppLayout>
+		<AppLayout @load="setLayoutRef" />
 		<AppModals />
 		<AppCommandBar />
 		<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
