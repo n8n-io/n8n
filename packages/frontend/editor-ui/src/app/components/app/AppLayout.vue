@@ -22,9 +22,7 @@ const WorkflowLayout = defineAsyncComponent(
 	async () => await import('@/app/layouts/WorkflowLayout.vue'),
 );
 
-const UnauthenticatedLayout = defineAsyncComponent(
-	async () => await import('@/app/layouts/UnauthenticatedLayout.vue'),
-);
+const BlankLayout = defineAsyncComponent(async () => await import('@/app/layouts/BlankLayout.vue'));
 
 const DemoLayout = defineAsyncComponent(async () => await import('@/app/layouts/DemoLayout.vue'));
 
@@ -33,7 +31,7 @@ const layout = computed(() => {
 		default: DefaultLayout,
 		settings: SettingsLayout,
 		workflow: WorkflowLayout,
-		unauthenticated: UnauthenticatedLayout,
+		blank: BlankLayout,
 		demo: DemoLayout,
 	};
 

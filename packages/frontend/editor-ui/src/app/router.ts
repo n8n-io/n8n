@@ -34,9 +34,7 @@ const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthori
 const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
-const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
-const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
-const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
+
 const NodeView = async () => await import('@/app/views/NodeView.vue');
 const WorkflowExecutionsView = async () =>
 	await import('@/features/execution/executions/views/WorkflowExecutionsView.vue');
@@ -120,10 +118,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
-		components: {
-			default: TemplatesCollectionView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesCollectionView,
 		meta: {
 			templatesEnabled: true,
 			telemetry: {
@@ -142,10 +137,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/templates/agents',
 		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
-		components: {
-			default: PrebuiltAgentTemplatesView,
-			sidebar: MainSidebar,
-		},
+		component: PrebuiltAgentTemplatesView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -168,10 +160,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
-		components: {
-			default: TemplatesWorkflowView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesWorkflowView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -193,10 +182,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
-		components: {
-			default: SetupWorkflowFromTemplateView,
-			sidebar: MainSidebar,
-		},
+		component: SetupWorkflowFromTemplateView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -228,10 +214,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/templates/',
 		name: VIEWS.TEMPLATES,
-		components: {
-			default: TemplatesSearchView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesSearchView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -262,13 +245,10 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated', 'enterprise'],
@@ -282,12 +262,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
-		components: {
-			default: WorkflowExecutionsView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowExecutionsView,
 		meta: {
+			layout: 'workflow',
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
@@ -319,15 +296,10 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:name/evaluation',
 		name: VIEWS.EVALUATION,
-		components: {
-			default: EvaluationRootView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		props: {
-			default: true,
-		},
+		component: EvaluationRootView,
+		props: true,
 		meta: {
+			layout: 'workflow',
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
@@ -349,10 +321,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
-		components: {
-			default: WorkflowHistory,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowHistory,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -360,12 +329,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
@@ -375,12 +341,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflows/onboarding/:id',
 		name: VIEWS.WORKFLOW_ONBOARDING,
-		components: {
-			default: WorkflowOnboardingView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowOnboardingView,
 		meta: {
+			layout: 'workflow',
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
@@ -390,13 +353,10 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -432,13 +392,10 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:name/:nodeId?',
 		name: VIEWS.WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -453,7 +410,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNIN,
 		component: SigninView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -465,7 +422,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNUP,
 		component: SignupView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -477,7 +434,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNOUT,
 		component: SignoutView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -487,9 +444,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/oauth/consent',
 		name: VIEWS.OAUTH_CONSENT,
-		components: {
-			default: OAuthConsentView,
-		},
+		component: OAuthConsentView,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -499,7 +454,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SETUP,
 		component: SetupView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -511,7 +466,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.FORGOT_PASSWORD,
 		component: ForgotMyPasswordView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -523,7 +478,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.CHANGE_PASSWORD,
 		component: ChangePasswordView,
 		meta: {
-			layout: 'unauthenticated',
+			layout: 'blank',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -843,10 +798,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,
-		components: {
-			default: SamlOnboarding,
-		},
+		component: SamlOnboarding,
 		meta: {
+			layout: 'blank',
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
 				custom: () => {
@@ -865,19 +819,13 @@ export const routes: RouteRecordRaw[] = [
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,
 		name: VIEWS.ENTITY_NOT_FOUND,
-		components: {
-			default: EntityNotFound,
-			sidebar: MainSidebar,
-		},
+		component: EntityNotFound,
 	},
 	{
 		path: '/entity-not-authorized/:entityType(credential|workflow)',
 		props: true,
 		name: VIEWS.ENTITY_UNAUTHORIZED,
-		components: {
-			default: EntityUnAuthorised,
-			sidebar: MainSidebar,
-		},
+		component: EntityUnAuthorised,
 	},
 	{
 		path: '/:pathMatch(.*)*',

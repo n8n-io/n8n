@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import { defineAsyncComponent } from 'vue';
 import BaseLayout from './BaseLayout.vue';
+import { useLayoutProps } from '@/app/composables/useLayoutProps';
+
+const { layoutProps } = useLayoutProps();
 
 const AppHeader = defineAsyncComponent(
 	async () => await import('@/app/components/app/AppHeader.vue'),
@@ -25,8 +28,8 @@ const LogsPanel = defineAsyncComponent(
 				<AppSidebar />
 			</Suspense>
 		</template>
-		<RouterView />
-		<template #footer>
+		<slot />
+		<template v-if="layoutProps.logs" #footer>
 			<Suspense>
 				<LogsPanel />
 			</Suspense>
