@@ -15,6 +15,8 @@ import type {
 } from './types.js';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { extractMessageContent } from '../types/langsmith';
+import { createArtifactSaver } from './output';
+import { createTraceFilters, isMinimalTracingEnabled } from '../core/trace-filters';
 
 /** Pass/fail threshold for overall score */
 const PASS_THRESHOLD = 0.7;
@@ -93,10 +95,20 @@ function buildContext(globalContext: unknown, testCaseContext?: Record<string, u
  * Run evaluation in local mode.
  */
 async function runLocal(config: RunConfig): Promise<RunSummary> {
-	const { dataset, generateWorkflow, evaluators, context: globalContext, lifecycle } = config;
+	const {
+		dataset,
+		generateWorkflow,
+		evaluators,
+		context: globalContext,
+		lifecycle,
+		outputDir,
+	} = config;
 
 	const testCases = dataset as TestCase[];
 	const results: ExampleResult[] = [];
+
+	// Create artifact saver if outputDir is provided
+	const artifactSaver = outputDir ? createArtifactSaver({ outputDir, verbose: true }) : null;
 
 	lifecycle?.onStart?.(config);
 
@@ -138,6 +150,7 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 			};
 
 			results.push(result);
+			artifactSaver?.saveExample(result);
 			lifecycle?.onExampleComplete?.(index, result);
 		} catch (error) {
 			const durationMs = Date.now() - startTime;
@@ -151,6 +164,7 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 			};
 
 			results.push(result);
+			artifactSaver?.saveExample(result);
 			lifecycle?.onExampleComplete?.(index, result);
 		}
 	}
@@ -172,6 +186,9 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 		averageScore,
 		totalDurationMs,
 	};
+
+	// Save summary to disk if outputDir is provided
+	artifactSaver?.saveSummary(summary, results);
 
 	lifecycle?.onEnd?.(summary);
 	lastResults = results;
@@ -237,6 +254,10 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 
 	lifecycle?.onStart?.(config);
 
+	// Set up trace filtering if enabled (default: true)
+	const enableFiltering = langsmithOptions.enableTraceFiltering ?? isMinimalTracingEnabled();
+	const traceFilters = enableFiltering ? createTraceFilters() : null;
+
 	// Create target function that does ALL work (generation + evaluation)
 	// This is the key fix for "Run not created by target function" error
 	const target = traceable(
@@ -265,7 +286,14 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 				feedback,
 			};
 		},
-		{ name: 'workflow_evaluation', run_type: 'chain' },
+		{
+			name: 'workflow_evaluation',
+			run_type: 'chain',
+			...(traceFilters && {
+				processInputs: traceFilters.filterInputs,
+				processOutputs: traceFilters.filterOutputs,
+			}),
+		},
 	);
 
 	// Create LangSmith evaluator that extracts pre-computed feedback
@@ -298,6 +326,9 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		numRepetitions: langsmithOptions.repetitions,
 		maxConcurrency: langsmithOptions.concurrency,
 	});
+
+	// Log trace filtering statistics if enabled
+	traceFilters?.logStats();
 
 	// Return placeholder summary - LangSmith handles actual results
 	const summary: RunSummary = {

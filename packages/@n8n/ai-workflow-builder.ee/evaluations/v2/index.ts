@@ -39,8 +39,21 @@ export {
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
+	createSimilarityEvaluator,
 	type LLMJudgeContext,
 	type ProgrammaticContext,
 	type PairwiseContext,
 	type PairwiseEvaluatorOptions,
+	type SimilarityContext,
+	type SimilarityEvaluatorOptions,
 } from './evaluators';
+
+// Output
+export { createArtifactSaver, type ArtifactSaver, type ArtifactSaverOptions } from './output';
+
+// Trace filtering (re-exported from v1 for convenience)
+export {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from '../core/trace-filters';

@@ -58,6 +58,8 @@ export interface LangsmithOptions {
 	experimentName: string;
 	repetitions: number;
 	concurrency: number;
+	/** Enable trace filtering to reduce payload sizes (default: true) */
+	enableTraceFiltering?: boolean;
 }
 
 /**

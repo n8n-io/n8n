@@ -12,3 +12,8 @@ export {
 	type PairwiseContext,
 	type PairwiseEvaluatorOptions,
 } from './pairwise';
+export {
+	createSimilarityEvaluator,
+	type SimilarityContext,
+	type SimilarityEvaluatorOptions,
+} from './similarity';
