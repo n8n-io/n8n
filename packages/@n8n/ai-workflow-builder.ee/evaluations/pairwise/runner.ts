@@ -8,7 +8,13 @@ import { pairwiseLangsmithEvaluator } from './metrics-builder';
 import type { ModelKey } from '../../src/llm-registry';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
-import { setupModels, createLangsmithClient, type ModelConfig } from '../core/environment';
+import {
+	setupModels,
+	createLangsmithClient,
+	createTracer,
+	type ModelConfig,
+} from '../core/environment';
+import { logFilteringStats, resetFilteringStats } from '../core/trace-filters';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
 import { createLogger, type EvalLogger } from '../utils/logger';
@@ -269,6 +275,12 @@ export async function runPairwiseLangsmithEvaluation(
 			throw new Error('Langsmith client not initialized');
 		}
 
+		// Reset filtering stats for accurate per-run statistics
+		resetFilteringStats();
+
+		// Create tracer with filtering for agent execution
+		const tracer = createTracer(lsClient, experimentName);
+
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? DEFAULTS.DATASET_NAME;
 		log.info(`➔ Dataset: ${datasetName}`);
 
@@ -298,6 +310,7 @@ export async function runPairwiseLangsmithEvaluation(
 			llm: defaultModel,
 			judgeLlm: resolvedJudgeModel,
 			modelOverrides,
+			tracer,
 			numJudges,
 			numGenerations,
 			featureFlags,
@@ -308,12 +321,14 @@ export async function runPairwiseLangsmithEvaluation(
 		const evalStartTime = Date.now();
 
 		// Run evaluation using LangSmith's built-in features
+		// IMPORTANT: Pass our custom lsClient to use hideInputs/hideOutputs filtering
 		await evaluate(target, {
 			data,
 			evaluators: [evaluator],
 			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
 			numRepetitions: repetitions,
+			client: lsClient,
 			metadata: {
 				numJudges,
 				numGenerations,
@@ -324,6 +339,9 @@ export async function runPairwiseLangsmithEvaluation(
 		});
 
 		const totalEvalTime = Date.now() - evalStartTime;
+
+		// Log filtering statistics
+		logFilteringStats();
 
 		log.success('\n✓ Pairwise evaluation completed');
 		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);

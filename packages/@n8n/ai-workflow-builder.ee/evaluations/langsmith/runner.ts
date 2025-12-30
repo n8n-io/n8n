@@ -10,6 +10,7 @@ import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
 import { DEFAULTS, EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { setupTestEnvironment, createAgent } from '../core/environment';
+import { logFilteringStats, resetFilteringStats } from '../core/trace-filters';
 import {
 	generateRunId,
 	safeExtractUsage,
@@ -140,6 +141,9 @@ export async function runLangsmithEvaluation(
 			throw new Error('Langsmith client not initialized');
 		}
 
+		// Reset filtering stats for accurate per-run statistics
+		resetFilteringStats();
+
 		// Get dataset name from env or use default
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
 		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
@@ -177,6 +181,7 @@ export async function runLangsmithEvaluation(
 			maxConcurrency: 7,
 			experimentPrefix: finalExperimentName,
 			numRepetitions: repetitions,
+			client: lsClient,
 			metadata: {
 				evaluationType: 'llm-based',
 				modelName: process.env.LLM_MODEL ?? 'default',
@@ -185,6 +190,9 @@ export async function runLangsmithEvaluation(
 
 		const totalTime = Date.now() - startTime;
 		console.log(pc.green(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`));
+
+		// Log filtering statistics
+		logFilteringStats();
 
 		// Display results information
 		console.log('\nView detailed results in Langsmith dashboard');

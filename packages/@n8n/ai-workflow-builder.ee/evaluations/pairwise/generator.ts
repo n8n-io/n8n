@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -24,6 +25,8 @@ export interface CreatePairwiseTargetOptions {
 	judgeLlm?: BaseChatModel;
 	/** Per-stage model overrides for generation */
 	modelOverrides?: ModelOverrides;
+	/** Tracer for LangSmith tracing (with filtering) */
+	tracer?: LangChainTracer;
 	numJudges: number;
 	numGenerations: number;
 	featureFlags?: BuilderFeatureFlags;
@@ -45,6 +48,7 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 		llm,
 		judgeLlm,
 		modelOverrides,
+		tracer,
 		numJudges,
 		numGenerations,
 		featureFlags,
@@ -65,7 +69,14 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					// Wrap each generation in traceable for proper visibility
 					const generate = traceable(
 						async () =>
-							await generateWorkflow(parsedNodeTypes, llm, modelOverrides, prompt, featureFlags),
+							await generateWorkflow(
+								parsedNodeTypes,
+								llm,
+								modelOverrides,
+								prompt,
+								featureFlags,
+								tracer,
+							),
 						{
 							name: `generation_${generationIndex}`,
 							run_type: 'chain',
@@ -103,6 +114,13 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 /**
  * Generate a single workflow.
  * Used for local evaluation and regeneration in multi-generation mode.
+ * @param parsedNodeTypes - Available n8n node type definitions
+ * @param llm - Language model for workflow generation
+ * @param modelOverrides - Optional per-stage model overrides
+ * @param prompt - User prompt describing the workflow to generate
+ * @param featureFlags - Optional feature flags for the builder
+ * @param tracer - Optional LangChain tracer for monitoring execution
+ * @returns Generated workflow JSON
  */
 export async function generateWorkflow(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -110,10 +128,11 @@ export async function generateWorkflow(
 	modelOverrides: ModelOverrides | undefined,
 	prompt: string,
 	featureFlags?: BuilderFeatureFlags,
+	tracer?: LangChainTracer,
 ): Promise<SimpleWorkflow> {
 	const runId = generateRunId();
 
-	const agent = createAgent({ parsedNodeTypes, llm, modelOverrides, featureFlags });
+	const agent = createAgent({ parsedNodeTypes, llm, modelOverrides, tracer, featureFlags });
 
 	await consumeGenerator(
 		agent.chat(

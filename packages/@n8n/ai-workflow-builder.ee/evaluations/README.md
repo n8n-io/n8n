@@ -513,6 +513,7 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `EVAL_STAGE_MODELS` - Stage model overrides in format `stage:model,stage:model` (e.g., `builder:gpt52,configurator:gpt41`)
 - `N8N_AI_OPENAI_API_KEY` - Required for OpenAI models (gpt52, gpt41, o4-mini)
 - `OPENROUTER_API_KEY` - Required for OpenRouter models (gemini-flash, gemini-pro)
+- `LANGSMITH_MINIMAL_TRACING` - Controls trace payload filtering (default: `true`). Set to `false` to get full unfiltered traces. When enabled, large fields like `cachedTemplates`, `parsedNodeTypes`, and `workflowContext` are summarized to reduce payload size and avoid 403 errors.
 
 ### Feature Flags
 
