@@ -541,6 +541,7 @@ export interface PaginationOptions {
 	request: IRequestOptionsSimplifiedAuth;
 	requestInterval: number;
 	maxRequests?: number;
+	allowedStatusCodes?: number[];
 }
 
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
