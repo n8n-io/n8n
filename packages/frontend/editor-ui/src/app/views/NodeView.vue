@@ -141,6 +141,7 @@ import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { onUnmounted } from 'vue';
 
 defineOptions({
 	name: 'NodeView',
@@ -1957,14 +1958,14 @@ onBeforeRouteLeave(async (to, from, next) => {
  */
 
 onBeforeMount(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushConnect();
-	}
-
 	addPostMessageEventBindings();
 });
 
 onMounted(() => {
+	if (!isDemoRoute.value) {
+		pushConnectionStore.pushConnect();
+	}
+
 	canvasStore.startLoading();
 
 	documentTitle.reset();
@@ -2032,6 +2033,9 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+});
+
+onUnmounted(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
 	}
