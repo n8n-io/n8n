@@ -14,6 +14,8 @@ const props = defineProps<{
 	modalName: string;
 }>();
 
+const isLoading = ref(false);
+
 const executionsStore = useExecutionsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -65,12 +67,13 @@ const onSubmit = async () => {
 			queuedExecutions: checkQueued.value,
 		});
 		const { startedBefore, startedAfter } = executionsStore.executionsFilters;
-
+		isLoading.value = true;
 		const { stopped: count } = await executionsStore.stopManyExecutions({
 			status,
 			startedBefore,
 			startedAfter,
 		});
+		isLoading.value = false;
 		toast.showMessage({
 			title: i18n.baseText('executionStopManyModal.success', { interpolate: { count } }),
 			type: count > 0 ? 'success' : 'info',
@@ -94,20 +97,19 @@ function closeModal() {
 		:event-bus="modalBus"
 		:name="props.modalName"
 		:center="true"
-		:close-on-click-modal="false"
 	>
 		<template #content>
-			<ElRow v-if="activeFilterHint">
+			<ElRow v-if="activeFilterHint" :class="$style.vertPadding">
 				<N8nCallout theme="info">
 					{{ activeFilterHint }}
 				</N8nCallout>
 			</ElRow>
-			<ElRow v-if="allWorkflowsHint">
+			<ElRow v-if="allWorkflowsHint" :class="$style.vertPadding">
 				<N8nCallout theme="warning">
 					{{ allWorkflowsHint }}
 				</N8nCallout>
 			</ElRow>
-			<ElRow :class="$style.description">
+			<ElRow :class="$style.vertPadding">
 				<N8nText color="text-base">
 					{{ i18n.baseText('executionStopManyModal.description') }}
 				</N8nText>
@@ -148,6 +150,7 @@ function closeModal() {
 				<N8nButton
 					:disabled="!checkWaiting && !checkRunning && !checkQueued"
 					:label="i18n.baseText('executionStopManyModal.button.submit')"
+					:loading="isLoading"
 					data-test-id="sme-submit-button"
 					@click="onSubmit"
 				/>
@@ -171,7 +174,7 @@ function closeModal() {
 	gap: var(--spacing--xs);
 }
 
-.description {
+.vertPadding {
 	padding-bottom: var(--spacing--sm);
 }
 </style>
