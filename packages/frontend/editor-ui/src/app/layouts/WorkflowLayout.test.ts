@@ -21,6 +21,12 @@ const renderComponent = createComponentRenderer(WorkflowLayout, {
 			LogsPanel: {
 				template: '<div data-test-id="logs-panel">Logs Panel</div>',
 			},
+			RouterView: {
+				template: '<div><slot /></div>',
+			},
+			Suspense: {
+				template: '<div><slot /></div>',
+			},
 		},
 	},
 });
@@ -42,10 +48,26 @@ describe('WorkflowLayout', () => {
 		expect(gridElement).toBeInTheDocument();
 	});
 
-	it('should render default slot content', () => {
+	it('should render RouterView content', () => {
 		const { getByText } = renderComponent({
-			slots: {
-				default: '<div>Workflow Content</div>',
+			global: {
+				stubs: {
+					AppHeader: {
+						template: '<div data-test-id="app-header">App Header</div>',
+					},
+					AppSidebar: {
+						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+					},
+					LogsPanel: {
+						template: '<div data-test-id="logs-panel">Logs Panel</div>',
+					},
+					RouterView: {
+						template: '<div>Workflow Content</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByText('Workflow Content')).toBeInTheDocument();
@@ -82,8 +104,24 @@ describe('WorkflowLayout', () => {
 
 	it('should render all header, sidebar and content together', () => {
 		const { getByText, getByTestId } = renderComponent({
-			slots: {
-				default: '<div>Workflow Canvas</div>',
+			global: {
+				stubs: {
+					AppHeader: {
+						template: '<div data-test-id="app-header">App Header</div>',
+					},
+					AppSidebar: {
+						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+					},
+					LogsPanel: {
+						template: '<div data-test-id="logs-panel">Logs Panel</div>',
+					},
+					RouterView: {
+						template: '<div>Workflow Canvas</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByTestId('app-header')).toBeInTheDocument();
@@ -107,8 +145,24 @@ describe('WorkflowLayout', () => {
 
 	it('should render complete workflow layout structure', () => {
 		const { container, getByText, getByTestId } = renderComponent({
-			slots: {
-				default: '<div>Workflow Editor</div>',
+			global: {
+				stubs: {
+					AppHeader: {
+						template: '<div data-test-id="app-header">App Header</div>',
+					},
+					AppSidebar: {
+						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+					},
+					LogsPanel: {
+						template: '<div data-test-id="logs-panel">Logs Panel</div>',
+					},
+					RouterView: {
+						template: '<div>Workflow Editor</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(container.querySelector('.app-grid')).toBeInTheDocument();

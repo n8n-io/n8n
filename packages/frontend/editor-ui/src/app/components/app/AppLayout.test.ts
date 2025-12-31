@@ -78,6 +78,9 @@ const renderComponent = (router = createTestRouter()) => {
 				WorkflowLayout: mockLayouts.WorkflowLayout,
 				BlankLayout: mockLayouts.BlankLayout,
 				DemoLayout: mockLayouts.DemoLayout,
+				Suspense: {
+					template: '<div><slot /></div>',
+				},
 			},
 		},
 	});
@@ -147,19 +150,6 @@ describe('AppLayout', () => {
 		expect(getByTestId('default-layout')).toBeInTheDocument();
 	});
 
-	it('should render slot content within the layout', async () => {
-		const router = createTestRouter();
-		await router.push('/');
-		const { getByText } = renderComponent(router)({
-			slots: {
-				default: '<div>Slot Content</div>',
-			},
-		});
-		await flushPromises();
-
-		expect(getByText('Slot Content')).toBeInTheDocument();
-	});
-
 	it('should emit load event on mount with layout element', async () => {
 		const router = createTestRouter();
 		await router.push('/');
@@ -207,48 +197,17 @@ describe('AppLayout', () => {
 
 		// Test default layout
 		await router.push('/');
-		const { getByTestId: getByTestId1 } = renderComponent(router)();
+		const result1 = renderComponent(router)();
 		await flushPromises();
-		expect(getByTestId1('default-layout')).toBeInTheDocument();
+		expect(result1.getByTestId('default-layout')).toBeInTheDocument();
+		result1.unmount();
 
 		// Test settings layout in a new instance
 		await router.push('/settings');
-		const { getByTestId: getByTestId2 } = renderComponent(router)();
+		const result2 = renderComponent(router)();
 		await flushPromises();
-		expect(getByTestId2('settings-layout')).toBeInTheDocument();
-	});
-
-	it('should render multiple slot items', async () => {
-		const router = createTestRouter();
-		await router.push('/');
-		const { getByText } = renderComponent(router)({
-			slots: {
-				default: `
-					<div>First Item</div>
-					<div>Second Item</div>
-					<div>Third Item</div>
-				`,
-			},
-		});
-		await flushPromises();
-
-		expect(getByText('First Item')).toBeInTheDocument();
-		expect(getByText('Second Item')).toBeInTheDocument();
-		expect(getByText('Third Item')).toBeInTheDocument();
-	});
-
-	it('should pass slot content to the layout component', async () => {
-		const router = createTestRouter();
-		await router.push('/workflow');
-		const { getByText, getByTestId } = renderComponent(router)({
-			slots: {
-				default: '<div>Persistent Content</div>',
-			},
-		});
-		await flushPromises();
-
-		expect(getByTestId('workflow-layout')).toBeInTheDocument();
-		expect(getByText('Persistent Content')).toBeInTheDocument();
+		expect(result2.getByTestId('settings-layout')).toBeInTheDocument();
+		result2.unmount();
 	});
 
 	it('should compute the correct layout component from route meta', async () => {
@@ -259,11 +218,13 @@ describe('AppLayout', () => {
 		const result1 = renderComponent(router)();
 		await flushPromises();
 		expect(result1.getByTestId('default-layout')).toBeInTheDocument();
+		result1.unmount();
 
 		// Test blank layout
 		await router.push('/blank');
 		const result2 = renderComponent(router)();
 		await flushPromises();
 		expect(result2.getByTestId('blank-layout')).toBeInTheDocument();
+		result2.unmount();
 	});
 });

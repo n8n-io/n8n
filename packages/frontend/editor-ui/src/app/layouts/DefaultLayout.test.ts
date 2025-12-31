@@ -8,6 +8,12 @@ const renderComponent = createComponentRenderer(DefaultLayout, {
 			AppSidebar: {
 				template: '<div data-test-id="app-sidebar">App Sidebar</div>',
 			},
+			RouterView: {
+				template: '<div><slot /></div>',
+			},
+			Suspense: {
+				template: '<div><slot /></div>',
+			},
 		},
 	},
 });
@@ -29,10 +35,20 @@ describe('DefaultLayout', () => {
 		expect(gridElement).toBeInTheDocument();
 	});
 
-	it('should render default slot content', () => {
+	it('should render RouterView content', () => {
 		const { getByText } = renderComponent({
-			slots: {
-				default: '<div>Default Layout Content</div>',
+			global: {
+				stubs: {
+					AppSidebar: {
+						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+					},
+					RouterView: {
+						template: '<div>Default Layout Content</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByText('Default Layout Content')).toBeInTheDocument();
@@ -63,11 +79,7 @@ describe('DefaultLayout', () => {
 	});
 
 	it('should not render footer', () => {
-		const { container } = renderComponent({
-			slots: {
-				default: '<div>Content</div>',
-			},
-		});
+		const { container } = renderComponent();
 		// Footer should not be rendered as there's no footer slot content
 		const footerWrapper = container.querySelector('[class*="contentFooter"]');
 		expect(footerWrapper?.textContent).toBeFalsy();
@@ -75,8 +87,18 @@ describe('DefaultLayout', () => {
 
 	it('should render sidebar and content together', () => {
 		const { getByText, getByTestId } = renderComponent({
-			slots: {
-				default: '<div>Main Content Area</div>',
+			global: {
+				stubs: {
+					AppSidebar: {
+						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+					},
+					RouterView: {
+						template: '<div>Main Content Area</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();

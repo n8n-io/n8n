@@ -8,6 +8,12 @@ const renderComponent = createComponentRenderer(DemoLayout, {
 			DemoFooter: {
 				template: '<div data-test-id="demo-footer">Demo Footer</div>',
 			},
+			RouterView: {
+				template: '<div><slot /></div>',
+			},
+			Suspense: {
+				template: '<div><slot /></div>',
+			},
 		},
 	},
 });
@@ -29,10 +35,14 @@ describe('DemoLayout', () => {
 		expect(gridElement).toBeInTheDocument();
 	});
 
-	it('should render default slot content', () => {
+	it('should render RouterView content', () => {
 		const { getByText } = renderComponent({
-			slots: {
-				default: '<div>Demo Layout Content</div>',
+			global: {
+				stubs: {
+					RouterView: {
+						template: '<div>Demo Layout Content</div>',
+					},
+				},
 			},
 		});
 		expect(getByText('Demo Layout Content')).toBeInTheDocument();
@@ -64,22 +74,44 @@ describe('DemoLayout', () => {
 
 	it('should render content and footer together', () => {
 		const { getByText, getByTestId } = renderComponent({
-			slots: {
-				default: '<div>Main Content Area</div>',
+			global: {
+				stubs: {
+					DemoFooter: {
+						template: '<div data-test-id="demo-footer">Demo Footer</div>',
+					},
+					RouterView: {
+						template: '<div>Main Content Area</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByText('Main Content Area')).toBeInTheDocument();
 		expect(getByTestId('demo-footer')).toBeInTheDocument();
 	});
 
-	it('should render multiple content items in default slot', () => {
+	it('should render multiple content items via RouterView', () => {
 		const { getByText, getByTestId } = renderComponent({
-			slots: {
-				default: `
-					<div>First Content</div>
-					<div>Second Content</div>
-					<div>Third Content</div>
-				`,
+			global: {
+				stubs: {
+					DemoFooter: {
+						template: '<div data-test-id="demo-footer">Demo Footer</div>',
+					},
+					RouterView: {
+						template: `
+							<div>
+								<div>First Content</div>
+								<div>Second Content</div>
+								<div>Third Content</div>
+							</div>
+						`,
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByText('First Content')).toBeInTheDocument();

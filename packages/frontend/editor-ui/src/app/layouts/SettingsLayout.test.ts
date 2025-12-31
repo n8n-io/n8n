@@ -78,6 +78,12 @@ const renderComponent = createComponentRenderer(SettingsLayout, {
 				template:
 					'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
 			},
+			RouterView: {
+				template: '<div><slot /></div>',
+			},
+			Suspense: {
+				template: '<div><slot /></div>',
+			},
 		},
 	},
 });
@@ -99,10 +105,21 @@ describe('SettingsLayout', () => {
 		expect(gridElement).toBeInTheDocument();
 	});
 
-	it('should render default slot content', () => {
+	it('should render RouterView content', () => {
 		const { getByText } = renderComponent({
-			slots: {
-				default: '<div>Settings Content</div>',
+			global: {
+				stubs: {
+					SettingsSidebar: {
+						template:
+							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
+					},
+					RouterView: {
+						template: '<div>Settings Content</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByText('Settings Content')).toBeInTheDocument();
@@ -130,8 +147,19 @@ describe('SettingsLayout', () => {
 
 	it('should render content with proper CSS module classes', () => {
 		const { container } = renderComponent({
-			slots: {
-				default: '<div>Test Content</div>',
+			global: {
+				stubs: {
+					SettingsSidebar: {
+						template:
+							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
+					},
+					RouterView: {
+						template: '<div>Test Content</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		const contentContainer = container.querySelector('[class*="contentContainer"]');
@@ -163,8 +191,19 @@ describe('SettingsLayout', () => {
 
 	it('should render sidebar and content together', () => {
 		const { getByText, getByTestId } = renderComponent({
-			slots: {
-				default: '<div>Settings Page Content</div>',
+			global: {
+				stubs: {
+					SettingsSidebar: {
+						template:
+							'<div data-test-id="settings-sidebar"><button data-test-id="back" @click="$emit(\'return\')">Back</button></div>',
+					},
+					RouterView: {
+						template: '<div>Settings Page Content</div>',
+					},
+					Suspense: {
+						template: '<div><slot /></div>',
+					},
+				},
 			},
 		});
 		expect(getByTestId('settings-sidebar')).toBeInTheDocument();

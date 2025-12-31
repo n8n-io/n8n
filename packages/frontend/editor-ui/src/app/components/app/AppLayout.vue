@@ -46,8 +46,6 @@ watch(layoutRef, (value) => {
 </script>
 <template>
 	<Suspense>
-		<Component :is="layout" ref="layoutRef">
-			<slot />
-		</Component>
+		<Component :is="layout" ref="layoutRef" />
 	</Suspense>
 </template>
