@@ -1,10 +1,13 @@
 import * as Automerge from '@automerge/automerge';
 
+import { AutomergeAwareness } from '../awareness/automerge-awareness';
 import type {
 	ArrayChangeEvent,
 	ArrayDelta,
+	AwarenessState,
 	ChangeOrigin,
 	CRDTArray,
+	CRDTAwareness,
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
@@ -667,6 +670,7 @@ class AutomergeDocHolder {
  */
 class AutomergeDocImpl implements CRDTDoc {
 	private readonly docHolder: AutomergeDocHolder;
+	private awareness: AutomergeAwareness | null = null;
 
 	constructor(readonly id: string) {
 		this.docHolder = new AutomergeDocHolder(id);
@@ -714,7 +718,16 @@ class AutomergeDocImpl implements CRDTDoc {
 		};
 	}
 
+	getAwareness<T extends AwarenessState = AwarenessState>(): CRDTAwareness<T> {
+		this.awareness ??= new AutomergeAwareness(this.id);
+		return this.awareness as unknown as CRDTAwareness<T>;
+	}
+
 	destroy(): void {
+		if (this.awareness) {
+			this.awareness.destroy();
+			this.awareness = null;
+		}
 		this.docHolder.destroy();
 	}
 }

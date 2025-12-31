@@ -36,6 +36,7 @@
   ],
   "dependencies": {
     "@automerge/automerge": "^2.2.8",
+    "y-protocols": "^1.0.7",
     "yjs": "^13.6.20"
   },
   "devDependencies": {

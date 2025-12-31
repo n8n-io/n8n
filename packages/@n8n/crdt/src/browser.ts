@@ -21,6 +21,11 @@ export type {
 	CRDTDoc,
 	CRDTProvider,
 	CRDTConfig,
+	// Awareness types
+	AwarenessClientId,
+	AwarenessState,
+	AwarenessChangeEvent,
+	CRDTAwareness,
 } from './types';
 
 // Constants
@@ -31,6 +36,9 @@ export { isMapChange, isArrayChange } from './types';
 
 // Yjs Provider only (no Automerge)
 export { YjsProvider } from './providers/yjs';
+
+// Yjs Awareness only (no Automerge)
+export { YjsAwareness } from './awareness/yjs-awareness';
 
 // Transports
 export type { SyncTransport } from './transports';
@@ -45,6 +53,9 @@ export type { WebSocketTransportConfig } from './transports';
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';
 export { BaseSyncProvider, createSyncProvider } from './sync';
+
+// Protocol
+export { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from './protocol';
 
 /**
  * Creates a CRDT provider for browser environments (Yjs only).
