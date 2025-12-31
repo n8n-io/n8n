@@ -21,8 +21,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale, N8nCommandBar } from '@n8n/design-system';
-import { setLanguage } from '@n8n/i18n';
-// Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { loadLanguage, setLanguage, useI18n, type LocaleMessages } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -62,6 +61,10 @@ useHistoryHelper(route);
 
 // Initialize workflow diff routing management
 useWorkflowDiffRouting();
+
+// Connect design-system locale to i18n
+const i18n = useI18n();
+locale.i18n((key, options) => i18n.baseText(key as Parameters<typeof i18n.baseText>[0], options));
 
 useTelemetryInitializer();
 
@@ -124,7 +127,17 @@ watch(route, (r) => {
 watch(
 	defaultLocale,
 	async (newLocale) => {
-		setLanguage(newLocale);
+		if (newLocale !== 'en') {
+			try {
+				const messages = await import(`@n8n/i18n/locales/${newLocale}.json`);
+				loadLanguage(newLocale, messages.default as LocaleMessages);
+			} catch (error) {
+				console.warn(`Failed to load locale ${newLocale}, falling back to English`, error);
+				setLanguage('en');
+			}
+		} else {
+			setLanguage(newLocale);
+		}
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 

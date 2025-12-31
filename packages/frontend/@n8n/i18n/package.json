@@ -18,11 +18,12 @@
       "types": "./dist/*.d.mts",
       "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
-    }
+    },
+    "./locales/*": "./dist/locales/*"
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown",
+    "build": "tsdown && cp -r src/locales dist/locales",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
