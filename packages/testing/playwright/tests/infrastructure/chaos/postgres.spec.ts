@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 // @CATS team to look at this.  This works locally, but not in CI. Maybe IP table rules are not working in CI?
 // eslint-disable-next-line playwright/no-skipped-test

@@ -11,11 +11,7 @@ import { ObservabilityHelper } from 'n8n-containers';
 
 import { test, expect } from '../../../../fixtures/base';
 
-test.use({
-	addContainerCapability: {
-		observability: true,
-	},
-});
+test.use({ capability: 'observability' });
 
 test.describe('Log Streaming UI E2E @capability:observability', () => {
 	test.beforeEach(async ({ n8n }) => {

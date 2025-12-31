@@ -53,12 +53,11 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				</slot>
 			</N8nText>
 		</div>
-		<N8nTooltip :disabled="!buttonDisabled">
+		<N8nTooltip v-if="buttonText" :disabled="!buttonDisabled">
 			<template #content>
 				<slot name="disabledButtonTooltip"></slot>
 			</template>
 			<N8nButton
-				v-if="buttonText"
 				:label="buttonText"
 				:type="buttonType"
 				:disabled="buttonDisabled"

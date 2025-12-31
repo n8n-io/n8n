@@ -253,15 +253,6 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language' && node.value?.type === 'n8n-nodes-base.code') {
-		if (settingsStore.isNativePythonRunnerEnabled) {
-			return safeOptions.filter((o) => o.value !== 'python');
-		} else {
-			return safeOptions.filter((o) => o.value !== 'pythonNative');
-		}
-	}
-
 	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
