@@ -75,6 +75,7 @@ export type CanvasNodeDefaultRender = {
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
+		placeholder?: boolean;
 	}>;
 };
 

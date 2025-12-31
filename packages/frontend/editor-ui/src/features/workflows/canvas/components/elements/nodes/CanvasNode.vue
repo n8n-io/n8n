@@ -65,6 +65,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'replace:node': [id: string];
 }>();
 
 const style = useCssModule();
@@ -282,6 +283,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
 	nodeClasses.value = add
 		? [...new Set([...nodeClasses.value, className])]
@@ -418,6 +423,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 			@delete="onDelete"
+			@replace:node="onReplaceNode"
 		/>
 
 		<CanvasNodeTrigger
