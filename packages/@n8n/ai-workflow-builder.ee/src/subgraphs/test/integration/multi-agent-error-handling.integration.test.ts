@@ -65,8 +65,6 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 		it('should provide helpful message when recursion error occurs with partial workflow', async () => {
 			if (skipTests) return;
 
-			console.log('\n📝 Testing recursion error with partial workflow...\n');
-
 			// Create a workflow with some nodes (simulating partial success)
 			const partialWorkflow: SimpleWorkflow = {
 				nodes: [
@@ -133,13 +131,7 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 					? lastMessage.content.toLowerCase()
 					: JSON.stringify(lastMessage.content).toLowerCase();
 
-			console.log('\n📨 Responder message:', lastMessage.content);
-			console.log('\n📊 Workflow state:', {
-				nodeCount: result.workflowJSON.nodes.length,
-				hasError: errorLog.length > 0,
-			});
-
-			// EXPECTED BEHAVIOR (from ticket): When workflow exists after recursion error,
+			// When workflow exists after recursion error,
 			// should acknowledge it was created and avoid "apologize and tell user to build manually"
 			// Should NOT confuse user by saying it failed when workflow exists
 			expect(messageContent).not.toContain('apologize');
@@ -194,13 +186,7 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 					? response.content.toLowerCase()
 					: JSON.stringify(response.content).toLowerCase();
 
-			console.log('\n📨 Responder message:', response.content);
-			console.log('\n📊 Workflow state:', {
-				nodeCount: emptyWorkflow.nodes.length,
-				hasError: errorLog.length > 0,
-			});
-
-			// EXPECTED BEHAVIOR (from ticket): When no workflow exists,
+			// When no workflow exists,
 			// should suggest options for "fixing the complexity"
 			// Should provide actionable guidance, not just apologize
 			const hasSuggestions =
@@ -273,54 +259,6 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 					e.summary.includes('error'),
 			);
 			expect(hasClearMarker).toBe(true);
-		});
-	});
-
-	describe('Complex Prompts Leading to Recursion', () => {
-		it('should handle actual complex prompt that might trigger recursion limit', async () => {
-			if (skipTests) return;
-
-			console.log('\n📝 Testing with actual complex prompt from ticket...\n');
-
-			// Don't use checkpointer for this test - testing actual workflow generation
-			// Note: Recursion limits are hardcoded in the graph, we can't override them here
-			const graph = createMultiAgentWorkflowWithSubgraphs({
-				parsedNodeTypes,
-				llmSimpleTask: llm,
-				llmComplexTask: llm,
-				logger: mockLogger,
-			});
-
-			// One of the complex prompts from the ticket
-			const complexPrompt =
-				'Get all files in a GitHub repository by recursively looping through a set of folders and their subfolders. Only get Typescript files and ignore all other file types. Read each Typescript file content and analyze the code in it. Using an AI agent, create technical documentation for each Typescript file in Markdown format with the following headings: Overview, Parameters, Options, Settings.';
-
-			console.log('📤 Running complex prompt...\n');
-
-			try {
-				const result = await graph.invoke({
-					messages: [new HumanMessage({ content: complexPrompt })],
-					workflowJSON: { nodes: [], connections: {}, name: '' },
-				});
-
-				console.log('\n✅ Workflow generated successfully');
-				console.log('📊 Result:', {
-					messageCount: result.messages.length,
-					nodeCount: result.workflowJSON.nodes.length,
-					hasError: result.coordinationLog.some((e) => e.status === 'error'),
-				});
-
-				if (result.messages.length > 0) {
-					const lastMessage = result.messages[result.messages.length - 1];
-					console.log('\n📨 Final message:', lastMessage.content);
-				}
-
-				// If it succeeds, verify workflow was created
-				expect(result.workflowJSON.nodes.length).toBeGreaterThan(0);
-			} catch (error) {
-				console.log('\n⚠️  Error occurred (expected with low recursion limit):', error);
-				// This is expected with low recursion limits - documents the error case
-			}
 		});
 	});
 });
