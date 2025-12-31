@@ -59,21 +59,21 @@ describe('WorkflowHistoryRepository', () => {
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
 
-			const tenDaysAgo = new Date();
-			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+			const tenMinsAgo = new Date();
+			tenMinsAgo.setMinutes(tenMinsAgo.getMinutes() - 10);
 
-			const aDayAgo = new Date();
-			aDayAgo.setDate(aDayAgo.getDate() - 1);
+			const aMinAgo = new Date();
+			aMinAgo.setMinutes(aMinAgo.getMinutes() - 1);
 
-			const nextDay = new Date();
-			nextDay.setDate(nextDay.getDate() + 1);
+			const nextMin = new Date();
+			nextMin.setMinutes(nextMin.getMinutes() + 1);
 
-			const inTenDays = new Date();
-			inTenDays.setDate(inTenDays.getDate() + 10);
+			const inTenMins = new Date();
+			inTenMins.setDate(inTenMins.getMinutes() + 10);
 
 			{
 				// Don't touch workflows younger than range
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, tenDaysAgo, aDayAgo);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, tenMinsAgo, aMinAgo);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -83,7 +83,7 @@ describe('WorkflowHistoryRepository', () => {
 
 			{
 				// Don't touch workflows older
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, nextDay, inTenDays);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, nextMin, inTenMins);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -92,7 +92,7 @@ describe('WorkflowHistoryRepository', () => {
 			}
 
 			{
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, aMinAgo, nextMin);
 				expect(deleted).toBe(2);
 				expect(seen).toBe(4);
 

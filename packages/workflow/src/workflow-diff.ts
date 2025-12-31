@@ -13,6 +13,7 @@ export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;
+	updatedAt: Date;
 };
 
 export const enum NodeDiffStatus {
@@ -145,8 +146,10 @@ function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	if (!compareNodes({ ...prev, parameters: {} }, { ...next, parameters: {} })) return false;
 
 	const params = Object.keys(prevParams);
-	// abort if prev has some field next does not have
+	// abort if fields differ
 	if (params.some((x) => !Object.prototype.hasOwnProperty.call(nextParams, x))) return false;
+	if (Object.keys(nextParams).some((x) => !Object.prototype.hasOwnProperty.call(prevParams, x)))
+		return false;
 
 	for (const key of params) {
 		const left = prevParams[key];
@@ -179,8 +182,21 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	return true;
 }
 
+function skipTimeDifference<N extends DiffableNode = DiffableNode>(
+	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+) {
+	const timeDifference = next.to.updatedAt.getTime() - prev.from.updatedAt.getTime();
+
+	return Math.abs(timeDifference) > 30 * 60 * 1000;
+}
+
 export const RULES = {
 	mergeAdditiveChanges,
+};
+
+export const SKIP_RULES = {
+	skipTimeDifference,
 };
 
 export type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {

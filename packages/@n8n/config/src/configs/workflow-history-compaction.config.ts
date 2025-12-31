@@ -12,7 +12,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * and `compactingMinimumAgeHours`
 
 	 */
-	compactingMinimumAgeHours: number = 24;
+	compactingMinimumAgeHours: number = 3;
 
 	/**
 	 * The time window we consider when compacting versions.
@@ -32,7 +32,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * before continuing with the next workflowId
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_BATCH_SIZE')
-	batchSize: number = 1_000;
+	batchSize: number = 100;
 
 	/**
 	 * Delay in milliseconds before continuing with the next workflowId to compact

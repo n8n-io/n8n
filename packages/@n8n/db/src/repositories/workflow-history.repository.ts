@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
-import { GroupedWorkflowHistory, groupWorkflows, RULES } from 'n8n-workflow';
+import { GroupedWorkflowHistory, groupWorkflows, RULES, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
@@ -102,7 +102,10 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			[RULES.mergeAdditiveChanges],
-			[this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId))],
+			[
+				SKIP_RULES.skipTimeDifference,
+				this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId)),
+			],
 		);
 		for (const group of grouped) {
 			for (const wf of group.groupedWorkflows) {

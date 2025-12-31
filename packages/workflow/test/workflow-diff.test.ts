@@ -9,9 +9,12 @@ import {
 	hasNonPositionalChanges,
 	NodeDiffStatus,
 	RULES,
+	SKIP_RULES,
 	WorkflowChangeSet,
 	type DiffableNode,
+	type DiffableWorkflow,
 	type DiffRule,
+	type GroupedWorkflowHistory,
 } from '../src/workflow-diff';
 import { compareConnections } from '../src/connections-diff';
 
@@ -447,6 +450,7 @@ describe('groupWorkflows', () => {
 					id,
 					nodes,
 					connections: {},
+					updatedAt: new Date(),
 				} as IWorkflowBase;
 			};
 
@@ -454,10 +458,16 @@ describe('groupWorkflows', () => {
 				{
 					description: 'should return true when all changes are additive',
 					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: true,
+				},
+				{
+					description: 'should return false if a new parameter is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
 					nextWorkflow: createWorkflow('1', [
 						{ id: '1', parameters: { a: 'value1', b: 'value2' }, name: 'n1' },
 					]),
-					expected: true,
+					expected: false,
 				},
 				{
 					description: 'should return false when a node is deleted',
@@ -514,6 +524,90 @@ describe('groupWorkflows', () => {
 				);
 
 				expect(result).toEqual(expected);
+			});
+		});
+		describe('skipTimeDifference', () => {
+			const createWorkflowHistory = (
+				updatedAt: Date,
+			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
+				from: {
+					nodes: [],
+					connections: {},
+					updatedAt,
+				},
+				to: {
+					nodes: [],
+					connections: {},
+					updatedAt,
+				},
+				groupedWorkflows: [],
+				workflowChangeSet: new WorkflowChangeSet(
+					{
+						nodes: [],
+						connections: {},
+						updatedAt,
+					},
+					{
+						nodes: [],
+						connections: {},
+						updatedAt,
+					},
+				),
+			});
+
+			it('should return false when time difference is within 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:29:59Z'));
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return true when time difference exceeds 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:01Z'));
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return true when time difference is exactly 30 minutes and 1 millisecond', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00.001Z'));
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when time difference is exactly 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with the same timestamp', () => {
+				const timestamp = new Date('2023-01-01T12:00:00Z');
+				const prev = createWorkflowHistory(timestamp);
+				const next = createWorkflowHistory(timestamp);
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with negative time difference', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+
+				const result = SKIP_RULES.skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
 			});
 		});
 	});
