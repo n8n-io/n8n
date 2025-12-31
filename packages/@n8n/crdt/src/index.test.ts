@@ -584,4 +584,82 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(Array.isArray(node.connections)).toBe(true);
 		});
 	});
+
+	describe('CRDTDoc sync state', () => {
+		it('should start with synced = false', () => {
+			expect(doc.synced).toBe(false);
+		});
+
+		it('should update synced state via setSynced()', () => {
+			expect(doc.synced).toBe(false);
+
+			doc.setSynced(true);
+			expect(doc.synced).toBe(true);
+
+			doc.setSynced(false);
+			expect(doc.synced).toBe(false);
+		});
+
+		it('should notify handlers when sync state changes', () => {
+			const states: boolean[] = [];
+			doc.onSync((isSynced) => states.push(isSynced));
+
+			doc.setSynced(true);
+			doc.setSynced(false);
+			doc.setSynced(true);
+
+			expect(states).toEqual([true, false, true]);
+		});
+
+		it('should not notify handlers when sync state is set to same value', () => {
+			const states: boolean[] = [];
+			doc.onSync((isSynced) => states.push(isSynced));
+
+			doc.setSynced(true);
+			doc.setSynced(true); // Same value, should not trigger
+			doc.setSynced(true); // Same value, should not trigger
+
+			expect(states).toEqual([true]);
+		});
+
+		it('should stop notifying after unsubscribe', () => {
+			const states: boolean[] = [];
+			const unsubscribe = doc.onSync((isSynced) => states.push(isSynced));
+
+			doc.setSynced(true);
+			expect(states).toEqual([true]);
+
+			unsubscribe();
+
+			doc.setSynced(false);
+			expect(states).toEqual([true]); // No new notifications
+		});
+
+		it('should support multiple handlers', () => {
+			const states1: boolean[] = [];
+			const states2: boolean[] = [];
+
+			doc.onSync((isSynced) => states1.push(isSynced));
+			doc.onSync((isSynced) => states2.push(isSynced));
+
+			doc.setSynced(true);
+
+			expect(states1).toEqual([true]);
+			expect(states2).toEqual([true]);
+		});
+
+		it('should reset synced to false on destroy', () => {
+			doc.setSynced(true);
+			expect(doc.synced).toBe(true);
+
+			doc.destroy();
+
+			// After destroy, synced should be false
+			expect(doc.synced).toBe(false);
+
+			// Create new doc for cleanup (afterEach expects doc to exist)
+			const provider = createCRDTProvider({ engine });
+			doc = provider.createDoc('test-replacement');
+		});
+	});
 });

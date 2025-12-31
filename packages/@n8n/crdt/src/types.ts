@@ -149,6 +149,11 @@ export interface CRDTMap<T = unknown> {
 export interface CRDTDoc {
 	/** Unique document identifier */
 	readonly id: string;
+	/**
+	 * Whether the document has completed initial sync with remote peers.
+	 * True when SyncStep2 has been received (like y-websocket's synced property).
+	 */
+	readonly synced: boolean;
 	/** Get or create a named Map at the document root */
 	getMap<T = unknown>(name: string): CRDTMap<T>;
 	/** Get or create a named Array at the document root */
@@ -165,6 +170,17 @@ export interface CRDTDoc {
 	applyUpdate(update: Uint8Array): void;
 	/** Subscribe to outgoing updates. Only fires for local changes (origin='local'). */
 	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe;
+	/**
+	 * Subscribe to sync state changes.
+	 * Like y-websocket's 'sync' event - fires when initial sync completes or connection is lost.
+	 * @param handler Called with true when synced, false when disconnected
+	 */
+	onSync(handler: (isSynced: boolean) => void): Unsubscribe;
+	/**
+	 * Mark the document as synced or not synced.
+	 * Called by transport/provider when sync state changes.
+	 */
+	setSynced(synced: boolean): void;
 	/**
 	 * Get the awareness instance for this document.
 	 * Awareness is created lazily on first access.
