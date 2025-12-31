@@ -1,6 +1,13 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
-import { Node, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	Node,
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertParamIsBoolean,
+	validateNodeParameters,
+	assertParamIsString,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -11,11 +18,12 @@ import type {
 	IBinaryData,
 	INodeProperties,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
-import type { LoadPreviousSessionChatOption } from './types';
+import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 const allowFileUploadsOption: INodeProperties = {
@@ -56,8 +64,7 @@ const streamingResponseMode = {
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
 	value: 'responseNodes',
-	description:
-		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
+	description: "Send responses to the chat by using 'Respond to Chat' node",
 };
 
 const commonOptionsFields: INodeProperties[] = [
@@ -212,8 +219,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -270,7 +277,8 @@ export class ChatTrigger extends Node {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
+				responseMode:
+					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
 				ndvHideUrl: '={{ !$parameter.public }}',
@@ -316,7 +324,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+					'Chat will be live at the URL above once this workflow is published. Live executions will show up in the ‘executions’ tab',
 				name: 'hostedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -329,7 +337,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you publish this workflow',
 				name: 'embeddedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -384,6 +392,73 @@ export class ChatTrigger extends Node {
 				},
 				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Make Available in n8n Chat',
+				name: 'availableInChat',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to make the agent available in n8n Chat',
+			},
+			{
+				displayName:
+					'Your Chat Trigger node is out of date. To update, delete this node and insert a new Chat Trigger node.',
+				name: 'availableInChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName:
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it. Currently, only streaming response mode is supported.',
+				name: 'availableInChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Agent Name',
+				name: 'agentName',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description:
+					'The name of the agent on n8n Chat. Name of the workflow is used if left empty.',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Description',
+				name: 'agentDescription',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+				noDataExpression: true,
+				description: 'The description of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -448,6 +523,16 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, respondToWebhookResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
 					},
 				],
 			},
@@ -470,9 +555,19 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
 					},
 				],
 			},
@@ -495,10 +590,19 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
 						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
-						displayOptions: { show: { '/mode': ['webhook'] } },
+						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [false] } },
 					},
 					{
 						displayName: 'Response Mode',
@@ -507,7 +611,7 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
-						displayOptions: { show: { '/mode': ['hostedChat'] } },
+						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [false] } },
 					},
 				],
 			},
@@ -516,6 +620,7 @@ export class ChatTrigger extends Node {
 
 	private async handleFormData(context: IWebhookFunctions) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
+		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
@@ -579,8 +684,12 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false) as boolean;
-		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat') as string;
+		const isPublic = ctx.getNodeParameter('public', false);
+		assertParamIsBoolean('public', isPublic, ctx.getNode());
+
+		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
+		assertParamIsString('mode', nodeMode, ctx.getNode());
+
 		if (!isPublic) {
 			res.status(404).end();
 			return {
@@ -588,20 +697,31 @@ export class ChatTrigger extends Node {
 			};
 		}
 
-		const options = ctx.getNodeParameter('options', {}) as {
-			getStarted?: string;
-			inputPlaceholder?: string;
-			loadPreviousSession?: LoadPreviousSessionChatOption;
-			showWelcomeScreen?: boolean;
-			subtitle?: string;
-			title?: string;
-			allowFileUploads?: boolean;
-			allowedFilesMimeTypes?: string;
-			customCss?: string;
-			responseMode?: string;
-		};
+		const availableInChat = ctx.getNodeParameter('availableInChat', false);
+		const options = ctx.getNodeParameter('options', {});
+		validateNodeParameters(
+			options,
+			{
+				getStarted: { type: 'string' },
+				inputPlaceholder: { type: 'string' },
+				loadPreviousSession: { type: 'string' },
+				showWelcomeScreen: { type: 'boolean' },
+				subtitle: { type: 'string' },
+				title: { type: 'string' },
+				allowFileUploads: { type: 'boolean' },
+				allowedFilesMimeTypes: { type: 'string' },
+				customCss: { type: 'string' },
+				responseMode: { type: 'string' },
+			},
+			ctx.getNode(),
+		);
 
-		const enableStreaming = options.responseMode === 'streaming';
+		const loadPreviousSession = options.loadPreviousSession;
+		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
+
+		const enableStreaming = availableInChat
+			? !options.responseMode || options.responseMode === 'streaming'
+			: options.responseMode === 'streaming';
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
@@ -623,29 +743,36 @@ export class ChatTrigger extends Node {
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
-				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;
+				const webhookUrlRaw = ctx.getNodeWebhookUrl('default');
+				if (!webhookUrlRaw) {
+					throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
+				}
+
 				const webhookUrl =
 					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
 					| 'n8nUserAuth';
-				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '') as string;
-				const initialMessages = initialMessagesRaw
-					.split('\n')
-					.filter((line) => line)
-					.map((line) => line.trim());
+				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
+				assertParamIsString('initialMessage', initialMessagesRaw, ctx.getNode());
 				const instanceId = ctx.getInstanceId();
 
-				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
+				const i18nConfig: Record<string, string> = {};
+				const keys = ['getStarted', 'inputPlaceholder', 'subtitle', 'title'] as const;
+				for (const key of keys) {
+					if (options[key] !== undefined) {
+						i18nConfig[key] = options[key];
+					}
+				}
 
 				const page = createPage({
 					i18n: {
 						en: i18nConfig,
 					},
 					showWelcomeScreen: options.showWelcomeScreen,
-					loadPreviousSession: options.loadPreviousSession,
-					initialMessages,
+					loadPreviousSession,
+					initialMessages: initialMessagesRaw,
 					webhookUrl,
 					mode,
 					instanceId,

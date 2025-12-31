@@ -1,6 +1,19 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 
+import {
+	getMailpitApiBaseUrl,
+	mailpitWaitForMessage,
+	mailpitList,
+	mailpitClear,
+	mailpitGet,
+	type MailpitQuery,
+	type MailpitMessage,
+	type MailpitMessageSummary,
+} from './n8n-test-container-mailpit';
+import type { ObservabilityStack } from './n8n-test-container-observability';
+import { VictoriaLogsHelper, escapeLogsQL } from './n8n-test-container-victoria-helpers';
+
 export interface LogMatch {
 	container: StartedTestContainer;
 	containerName: string;
@@ -12,11 +25,17 @@ interface WaitForLogOptions {
 	namePattern?: string | RegExp;
 	timeoutMs?: number;
 	caseSensitive?: boolean;
+	throwOnTimeout?: boolean;
 }
 
 interface StreamLogMatch {
 	line: string;
 	date: Date | null;
+}
+
+interface ContainerTestHelpersOptions {
+	/** Observability stack for enhanced log queries */
+	observability?: ObservabilityStack;
 }
 
 /**
@@ -30,8 +49,26 @@ export class ContainerTestHelpers {
 	// Containers
 	private containers: StartedTestContainer[];
 
-	constructor(containers: StartedTestContainer[]) {
+	private _mailHelper?: MailHelper;
+
+	private observability?: ObservabilityStack;
+
+	private victoriaLogs?: VictoriaLogsHelper;
+
+	constructor(containers: StartedTestContainer[], options?: ContainerTestHelpersOptions) {
 		this.containers = containers;
+		this.observability = options?.observability;
+		if (this.observability) {
+			this.victoriaLogs = VictoriaLogsHelper.from(this.observability.victoriaLogs);
+		}
+	}
+
+	/**
+	 * Mail helper facade for Mailpit interactions
+	 */
+	get mail(): MailHelper {
+		this._mailHelper ??= new MailHelper(this.containers);
+		return this._mailHelper;
 	}
 
 	/**
@@ -49,24 +86,40 @@ export class ContainerTestHelpers {
 
 	/**
 	 * Wait for a log message matching pattern (case-insensitive by default)
-	 * Uses streaming approach for immediate detection
+	 * Uses VictoriaLogs when observability is enabled, otherwise uses container log streaming
+	 *
+	 * @returns LogMatch if found, null if timeout reached and throwOnTimeout is false
+	 * @throws Error if timeout reached and throwOnTimeout is true (default)
 	 */
 	async waitForLog(
 		messagePattern: string | RegExp,
 		options: WaitForLogOptions = {},
-	): Promise<LogMatch> {
+	): Promise<LogMatch | null> {
 		const {
 			namePattern,
 			timeoutMs = ContainerTestHelpers.DEFAULT_TIMEOUT_MS,
 			caseSensitive = false,
+			throwOnTimeout = true,
 		} = options;
 
+		// Use VictoriaLogs when available for faster and more reliable log queries
+		if (this.victoriaLogs) {
+			return await this.waitForLogViaVictoriaLogs(
+				messagePattern,
+				namePattern,
+				timeoutMs,
+				throwOnTimeout,
+				caseSensitive,
+			);
+		}
+
+		// Fallback to container log streaming
 		const messageRegex = this.createRegex(messagePattern, caseSensitive);
 		const targetContainers = namePattern ? this.findContainers(namePattern) : this.containers;
 		const startTime = Date.now();
 
 		console.log(
-			`🔍 Waiting for log pattern: ${messageRegex} in ${targetContainers.length} containers (timeout: ${timeoutMs}ms)`,
+			`🔍 Waiting for log pattern: ${messageRegex} in ${targetContainers.length} containers (timeout: ${timeoutMs}ms, throwOnTimeout: ${throwOnTimeout})`,
 		);
 
 		// First check: scan existing logs quickly
@@ -77,7 +130,68 @@ export class ContainerTestHelpers {
 		}
 
 		// Monitor new logs with streaming approach
-		return await this.pollForNewLogs(targetContainers, messageRegex, startTime, timeoutMs);
+		return await this.pollForNewLogs(
+			targetContainers,
+			messageRegex,
+			startTime,
+			timeoutMs,
+			throwOnTimeout,
+		);
+	}
+
+	/**
+	 * Wait for log via VictoriaLogs (faster and more reliable than container streaming)
+	 */
+	private async waitForLogViaVictoriaLogs(
+		messagePattern: string | RegExp,
+		namePattern: string | RegExp | undefined,
+		timeoutMs: number,
+		throwOnTimeout: boolean,
+		caseSensitive: boolean,
+	): Promise<LogMatch | null> {
+		const patternStr = typeof messagePattern === 'string' ? messagePattern : messagePattern.source;
+		// LogsQL regex is case-sensitive by default; use (?i) prefix for case-insensitive
+		const regexPrefix = caseSensitive ? '' : '(?i)';
+
+		// Build LogsQL query - search for the pattern in the message field
+		// If namePattern is provided, also filter by container name
+		// Escape special characters to prevent query injection
+		let query = `_msg:~"${regexPrefix}${escapeLogsQL(patternStr)}"`;
+		if (namePattern) {
+			const containerPattern = typeof namePattern === 'string' ? namePattern : namePattern.source;
+			query = `container:~"${regexPrefix}${escapeLogsQL(containerPattern)}" AND ${query}`;
+		}
+
+		console.log(
+			`🔍 [VictoriaLogs] Waiting for log pattern: ${patternStr} (timeout: ${timeoutMs}ms)`,
+		);
+
+		const logEntry = await this.victoriaLogs!.waitForLog(query, {
+			timeoutMs,
+		});
+
+		if (logEntry) {
+			// Find the matching container for the LogMatch response
+			const containerName = logEntry.container ?? 'unknown';
+			const matchingContainer = this.containers.find((c) => c.getName().includes(containerName));
+
+			console.log(`✅ [VictoriaLogs] Found log in container: ${containerName}`);
+
+			return {
+				container: matchingContainer ?? this.containers[0],
+				containerName,
+				message: logEntry.message,
+				timestamp: new Date(logEntry._time),
+			};
+		}
+
+		console.log(`❌ [VictoriaLogs] Timeout reached after ${timeoutMs}ms`);
+
+		if (throwOnTimeout) {
+			throw new Error(`Timeout waiting for log pattern: ${patternStr} after ${timeoutMs}ms`);
+		}
+
+		return null;
 	}
 
 	/**
@@ -113,7 +227,8 @@ export class ContainerTestHelpers {
 		messageRegex: RegExp,
 		startTime: number,
 		timeoutMs: number,
-	): Promise<LogMatch> {
+		throwOnTimeout: boolean,
+	): Promise<LogMatch | null> {
 		let currentCheckTime = Math.floor(Date.now() / 1000);
 		let iteration = 0;
 
@@ -149,7 +264,12 @@ export class ContainerTestHelpers {
 		}
 
 		console.log(`❌ Timeout reached after ${timeoutMs}ms`);
-		throw new Error(`Timeout reached after ${timeoutMs}ms`);
+
+		if (throwOnTimeout) {
+			throw new Error(`Timeout reached after ${timeoutMs}ms`);
+		}
+
+		return null;
 	}
 
 	/**
@@ -372,5 +492,39 @@ export class ContainerTestHelpers {
 		}
 
 		return matches;
+	}
+}
+
+class MailHelper {
+	constructor(private containers: StartedTestContainer[]) {}
+
+	private getMailpitContainer(): StartedTestContainer {
+		const container = this.containers.find((c) => /mailpit/i.test(c.getName()));
+		if (!container) throw new Error('Mailpit container not found');
+		return container;
+	}
+
+	private get apiBaseUrl(): string {
+		const mailpit = this.getMailpitContainer();
+		return getMailpitApiBaseUrl(mailpit);
+	}
+
+	async waitForMessage(
+		query: MailpitQuery,
+		options?: { timeoutMs?: number; pollMs?: number },
+	): Promise<MailpitMessageSummary> {
+		return await mailpitWaitForMessage(this.apiBaseUrl, query, options);
+	}
+
+	async list(): Promise<MailpitMessageSummary[]> {
+		return await mailpitList(this.apiBaseUrl);
+	}
+
+	async clear(): Promise<void> {
+		await mailpitClear(this.apiBaseUrl);
+	}
+
+	async get(id: string): Promise<MailpitMessage> {
+		return await mailpitGet(this.apiBaseUrl, id);
 	}
 }

@@ -8,7 +8,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	MultiPartFormData,
 	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
@@ -33,6 +32,7 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	handleFormData,
 	isIpWhitelisted,
 	setupOutputConnection,
 	validateWebhookAuthentication,
@@ -59,7 +59,7 @@ export class Webhook extends Node {
 			header: '',
 			executionsHelp: {
 				inactive:
-					'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key="activate">Activate</a> the workflow, then make requests to the production URL. These executions will show up in the executions list, but not in the editor.',
+					"Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'listen' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. These executions will show up in the executions list, but not in the editor.",
 				active:
 					'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Since the workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key="executions">executions list</a>, but not in the editor.',
 			},
@@ -251,7 +251,7 @@ export class Webhook extends Node {
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return await this.handleFormData(context, prepareOutput);
+			return await handleFormData(context, prepareOutput);
 		}
 
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
@@ -309,65 +309,6 @@ export class Webhook extends Node {
 
 	private async validateAuth(context: IWebhookFunctions) {
 		return await validateWebhookAuthentication(context, this.authPropertyName);
-	}
-
-	private async handleFormData(
-		context: IWebhookFunctions,
-		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
-	) {
-		const req = context.getRequestObject() as MultiPartFormData.Request;
-		const options = context.getNodeParameter('options', {}) as IDataObject;
-		const { data, files } = req.body;
-
-		const returnItem: INodeExecutionData = {
-			json: {
-				headers: req.headers,
-				params: req.params,
-				query: req.query,
-				body: data,
-			},
-		};
-
-		if (files && Object.keys(files).length) {
-			returnItem.binary = {};
-		}
-
-		let count = 0;
-
-		for (const key of Object.keys(files)) {
-			const processFiles: MultiPartFormData.File[] = [];
-			let multiFile = false;
-			if (Array.isArray(files[key])) {
-				processFiles.push(...files[key]);
-				multiFile = true;
-			} else {
-				processFiles.push(files[key]);
-			}
-
-			let fileCount = 0;
-			for (const file of processFiles) {
-				let binaryPropertyName = key;
-				if (binaryPropertyName.endsWith('[]')) {
-					binaryPropertyName = binaryPropertyName.slice(0, -2);
-				}
-				if (multiFile) {
-					binaryPropertyName += fileCount++;
-				}
-				if (options.binaryPropertyName) {
-					binaryPropertyName = `${options.binaryPropertyName}${count}`;
-				}
-
-				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-					file.filepath,
-					file.originalFilename ?? file.newFilename,
-					file.mimetype,
-				);
-
-				count += 1;
-			}
-		}
-
-		return { workflowData: prepareOutput(returnItem) };
 	}
 
 	private async handleBinaryData(

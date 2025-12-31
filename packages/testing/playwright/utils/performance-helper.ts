@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 
 export async function measurePerformance(
 	page: Page,
@@ -26,5 +26,23 @@ export async function getAllPerformanceMetrics(page: Page) {
 		const measures = performance.getEntriesByType('measure') as PerformanceMeasure[];
 		measures.forEach((m) => (metrics[m.name] = m.duration));
 		return metrics;
+	});
+}
+
+/**
+ * Attach a performance metric for collection by the metrics reporter
+ * @param testInfo - The Playwright TestInfo object
+ * @param metricName - Name of the metric (will be prefixed with 'metric:')
+ * @param value - The numeric value to track
+ * @param unit - The unit of measurement (e.g., 'ms', 'bytes', 'count')
+ */
+export async function attachMetric(
+	testInfo: TestInfo,
+	metricName: string,
+	value: number,
+	unit?: string,
+): Promise<void> {
+	await testInfo.attach(`metric:${metricName}`, {
+		body: JSON.stringify({ value, unit }),
 	});
 }

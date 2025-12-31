@@ -1,13 +1,17 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { ProjectRole, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
+
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -15,13 +19,11 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
-import { NodeMailer } from './node-mailer';
-
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
 	| 'password-reset-requested'
+	| 'workflow-deactivated'
 	| 'workflow-shared'
 	| 'credentials-shared'
 	| 'project-shared';
@@ -101,7 +103,7 @@ export class UserManagementMailer {
 				return await this.mailer!.sendMail({
 					emailRecipients: recipient.email,
 					subject: subjectBuilder(),
-					body: populateTemplate(templateData),
+					body: populateTemplate({ ...this.basePayload, ...templateData }),
 				});
 			});
 
@@ -135,6 +137,29 @@ export class UserManagementMailer {
 			const error = toError(e);
 			throw new InternalServerError(`Please contact your administrator: ${error.message}`, e);
 		}
+	}
+
+	async notifyWorkflowAutodeactivated({
+		recipient,
+		workflow,
+	}: {
+		recipient: User;
+		workflow: IWorkflowBase;
+	}): Promise<SendEmailResult> {
+		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
+		return await this.sendNotificationEmails({
+			mailerTemplate: 'workflow-deactivated',
+			recipients,
+			sharer: recipient,
+			getTemplateData: () => ({
+				workflowName: workflow.name,
+				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+			}),
+			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
+			messageType: 'Workflow auto-deactivated',
+		});
 	}
 
 	async notifyWorkflowShared({
@@ -193,7 +218,7 @@ export class UserManagementMailer {
 		project,
 	}: {
 		sharer: User;
-		newSharees: Array<{ userId: string; role: ProjectRole }>;
+		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
 	}): Promise<SendEmailResult> {
 		const recipients = await this.userRepository.getEmailsByIds(newSharees.map((s) => s.userId));
@@ -244,6 +269,8 @@ export class UserManagementMailer {
 	private get basePayload() {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const domain = new URL(baseUrl).hostname;
-		return { baseUrl, domain };
+		const currentYear = new Date().getFullYear();
+
+		return { baseUrl, domain, currentYear };
 	}
 }

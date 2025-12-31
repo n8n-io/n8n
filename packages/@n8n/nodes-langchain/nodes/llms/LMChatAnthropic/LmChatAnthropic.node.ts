@@ -1,5 +1,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
+import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodePropertyOptions,
@@ -9,9 +11,6 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -153,8 +152,8 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-sonnet-4-20250514',
-					cachedResultName: 'Claude 4 Sonnet',
+					value: 'claude-sonnet-4-5-20250929',
+					cachedResultName: 'Claude Sonnet 4.5',
 				},
 				required: true,
 				modes: [
@@ -265,9 +264,13 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{ url?: string; apiKey?: string }>(
-			'anthropicApi',
-		);
+		const credentials = await this.getCredentials<{
+			url?: string;
+			apiKey?: string;
+			header?: boolean;
+			headerName?: string;
+			headerValue?: string;
+		}>('anthropicApi');
 		const baseURL = credentials.url ?? 'https://api.anthropic.com';
 		const version = this.getNode().typeVersion;
 		const modelName =
@@ -320,6 +323,26 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		const clientOptions: {
+			fetchOptions?: { dispatcher: any };
+			defaultHeaders?: Record<string, string>;
+		} = {
+			fetchOptions: {
+				dispatcher: getProxyAgent(baseURL),
+			},
+		};
+
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
+			clientOptions.defaultHeaders = {
+				[credentials.headerName]: credentials.headerValue,
+			};
+		}
+
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
@@ -331,12 +354,18 @@ export class LmChatAnthropic implements INodeType {
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
-			clientOptions: {
-				fetchOptions: {
-					dispatcher: getProxyAgent(baseURL),
-				},
-			},
+			clientOptions,
 		});
+
+		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
+		if (options.topP === undefined) {
+			delete model.topP;
+		}
+
+		// If topP is set to a value and temperature is not, unset default Langchain temperature
+		if (options.topP !== undefined && options.temperature === undefined) {
+			delete model.temperature;
+		}
 
 		return {
 			response: model,

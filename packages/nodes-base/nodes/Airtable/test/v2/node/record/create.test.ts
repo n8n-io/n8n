@@ -154,4 +154,55 @@ describe('Test AirtableV2, create operation', () => {
 			typecast: false,
 		});
 	});
+
+	it('should skip validation if typecast option is true', async () => {
+		const nodeParameters = {
+			operation: 'create',
+			columns: {
+				mappingMode: 'defineBelow',
+				value: {
+					bar: 'bar 1',
+					foo: 'foo 1',
+				},
+				matchingColumns: [],
+				schema: [
+					{
+						id: 'foo',
+						displayName: 'foo',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
+					},
+					{
+						id: 'bar',
+						displayName: 'bar',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
+					},
+				],
+			},
+			options: {
+				typecast: true,
+			},
+		};
+
+		const mockExecuteFunctions = createMockExecuteFunction(nodeParameters);
+		await create.execute.call(mockExecuteFunctions, [{ json: {} }], 'appYoLbase', 'tblltable');
+
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, [], {
+			skipValidation: true,
+		});
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
+			fields: {
+				foo: 'foo 1',
+				bar: 'bar 1',
+			},
+			typecast: true,
+		});
+	});
 });

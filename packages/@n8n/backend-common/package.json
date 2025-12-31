@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "0.16.0",
+  "version": "1.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
@@ -21,12 +22,12 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@n8n/config": "workspace:^",
-    "@n8n/constants": "workspace:^",
-    "@n8n/decorators": "workspace:^",
-    "@n8n/di": "workspace:^",
+    "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
     "callsites": "catalog:",
-    "n8n-workflow": "workspace:^",
+    "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
     "reflect-metadata": "catalog:",
     "winston": "3.14.2",

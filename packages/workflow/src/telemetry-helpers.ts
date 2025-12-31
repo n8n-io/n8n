@@ -12,11 +12,13 @@ import {
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
+	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -26,6 +28,7 @@ import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,
+	IConnections,
 	INode,
 	INodeNameIndex,
 	INodesGraph,
@@ -40,8 +43,9 @@ import type {
 	INodeParameterResourceLocator,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
-import { getNodeParameters } from './node-helpers';
+import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -238,6 +242,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -414,15 +423,35 @@ export function generateNodesGraph(
 			options?.isCloudDeployment &&
 			node.parameters?.operation === 'setMetrics'
 		) {
-			const metrics = node.parameters?.metrics as IDataObject;
+			const metrics = node.parameters?.metrics as IDataObject | undefined;
 
-			nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
-				(metric: { name: string }) => metric.name,
-			);
+			// If metrics are not defined, it means the node is using preconfigured metric
+			if (!metrics) {
+				const predefinedMetricKey =
+					(node.parameters?.metric as string | undefined) ?? DEFAULT_EVALUATION_METRIC;
+				nodeItem.metric_names = [predefinedMetricKey];
+			} else {
+				nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
+					(metric: { name: string }) => metric.name,
+				);
+			}
 		} else if (node.type === CODE_NODE_TYPE) {
 			const { language } = node.parameters;
 			nodeItem.language =
-				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
+				language === undefined
+					? 'javascript'
+					: language === 'pythonNative'
+						? 'pythonNative'
+						: 'unknown';
+		} else if (node.type === GUARDRAILS_NODE_TYPE) {
+			nodeItem.operation = node.parameters.operation as string;
+			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
+			nodeItem.used_guardrails = usedGuardrails;
+		} else if (node.type === OPENAI_CHAT_LANGCHAIN_NODE_TYPE) {
+			const enabledDefault = node.typeVersion >= 1.3 ? true : false;
+			// For 1.3+ node version by default it is true and isn't stored in parameters
+			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
+				enabledDefault) as boolean;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -450,7 +479,13 @@ export function generateNodesGraph(
 					}
 				}
 			} catch (e: unknown) {
-				if (!(e instanceof Error && e.message.includes('Unrecognized node type'))) {
+				if (
+					!(
+						e instanceof Error &&
+						typeof e.message === 'string' &&
+						e.message.includes('Unrecognized node type')
+					)
+				) {
 					throw e;
 				}
 			}
@@ -539,7 +574,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 
@@ -772,4 +806,95 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 	}
 
 	return info;
+}
+
+export type NodeRole = 'trigger' | 'terminal' | 'internal';
+
+/**
+ * Determines the role of a node in a workflow based on its connections.
+ *
+ * @param nodeName - The name of the node to check
+ * @param connections - The workflow connections (connectionsBySourceNode format)
+ * @param nodeTypes - The node types registry
+ * @param nodes - The workflow nodes
+ * @returns The role of the node:
+ *   - 'trigger': Has no incoming main connections and is not a subnode
+ *   - 'terminal': Has no outgoing connections
+ *   - 'internal': Has both incoming and outgoing connections, or is a subnode
+ */
+export function getNodeRole(
+	nodeName: string,
+	connections: IConnections,
+	nodeTypes: INodeTypes,
+	nodes: INode[],
+): NodeRole {
+	// partial executions of tools get a special name
+	if (nodeName === 'PartialExecutionToolExecutor') {
+		return 'internal';
+	}
+
+	// Check if node is a subnode based on its type description
+	const node = nodes.find((n) => n.name === nodeName);
+	const nodeTypeDescription = node
+		? (nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description ?? null)
+		: null;
+	const isSubnode = isSubNodeType(nodeTypeDescription);
+
+	// Subnodes are always internal (they connect via AI connection types, not main)
+	if (isSubnode) {
+		return 'internal';
+	}
+
+	const hasOutgoingConnections = hasOutgoing(nodeName, connections);
+	const hasIncomingMainConnections = hasIncomingMain(nodeName, connections);
+
+	// A trigger has no incoming main connections
+	if (!hasIncomingMainConnections) {
+		return 'trigger';
+	}
+
+	// A terminal node has no outgoing connections
+	if (!hasOutgoingConnections) {
+		return 'terminal';
+	}
+
+	// Otherwise it's internal
+	return 'internal';
+}
+
+function hasOutgoing(nodeName: string, connections: IConnections): boolean {
+	const mainConnections = connections[nodeName]?.[NodeConnectionTypes.Main];
+	if (!mainConnections) {
+		return false;
+	}
+
+	for (const outputIndex of mainConnections) {
+		if (outputIndex && outputIndex.length > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function hasIncomingMain(nodeName: string, connections: IConnections): boolean {
+	// Check all source nodes to see if any connect to this node via main connection
+	for (const sourceNode of Object.keys(connections)) {
+		const sourceConnections = connections[sourceNode];
+		const mainConnections = sourceConnections?.[NodeConnectionTypes.Main];
+
+		if (!mainConnections) continue;
+
+		for (const outputIndex of mainConnections) {
+			if (!outputIndex) continue;
+
+			for (const conn of outputIndex) {
+				if (conn.node === nodeName) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }

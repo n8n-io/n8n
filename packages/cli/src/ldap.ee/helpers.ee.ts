@@ -7,6 +7,7 @@ import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
 	UserRepository,
+	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
@@ -91,6 +92,22 @@ export const getAuthIdentityByLdapId = async (
 	});
 };
 
+/**
+ * Retrieve user by LDAP ID from database
+ * @param idAttributeValue - LDAP ID value
+ */
+export const getUserByLdapId = async (idAttributeValue: string) => {
+	return await Container.get(UserRepository).findOne({
+		relations: { role: true },
+		where: {
+			authIdentities: {
+				providerId: idAttributeValue,
+				providerType: 'ldap',
+			},
+		},
+	});
+};
+
 export const getUserByEmail = async (email: string): Promise<User | null> => {
 	return await Container.get(UserRepository).findOne({
 		where: { email },
@@ -150,7 +167,7 @@ export const mapLdapUserToDbUser = (
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (toCreate) {
-		user.role = 'global:member';
+		user.role = GLOBAL_MEMBER_ROLE;
 		user.password = randomString(8);
 		user.disabled = false;
 	} else {
@@ -270,7 +287,7 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
 	const { user } = await Container.get(UserRepository).createUserWithProject({
 		password: randomString(8),
-		role: 'global:member',
+		role: GLOBAL_MEMBER_ROLE,
 		...data,
 	});
 	await createLdapAuthIdentity(user, ldapId);

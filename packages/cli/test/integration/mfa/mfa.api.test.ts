@@ -30,6 +30,11 @@ beforeEach(async () => {
 
 	owner = await createOwner();
 
+	owner = await Container.get(UserRepository).findOneOrFail({
+		where: { id: owner.id },
+		relations: ['role'],
+	});
+
 	externalHooks.run.mockReset();
 
 	config.set('userManagement.disabled', false);

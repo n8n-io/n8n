@@ -33,9 +33,6 @@
         "ContactStatus": {
             "type": "string"
         },
-        "DefaultCurrency": {
-            "type": "string"
-        },
         "EmailAddress": {
             "type": "string"
         },
@@ -78,5 +75,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

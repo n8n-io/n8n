@@ -5,7 +5,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertParamIsBoolean,
+	assertParamIsString,
+} from 'n8n-workflow';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -13,12 +18,16 @@ import { URL } from 'url';
 import {
 	addConfigFields,
 	addFields,
+	ALLOWED_CONFIG_KEYS,
 	cloneFields,
 	commitFields,
 	logFields,
 	pushFields,
+	switchBranchFields,
 	tagFields,
 } from './descriptions';
+import { Container } from '@n8n/di';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +35,7 @@ export class Git implements INodeType {
 		name: 'git',
 		icon: 'file:git.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Control git.',
 		defaults: {
 			name: 'Git',
@@ -142,6 +151,12 @@ export class Git implements INodeType {
 						action: 'Return status of current repository',
 					},
 					{
+						name: 'Switch Branch',
+						value: 'switchBranch',
+						description: 'Switch to a different branch',
+						action: 'Switch to a different branch',
+					},
+					{
 						name: 'Tag',
 						value: 'tag',
 						description: 'Create a new tag',
@@ -191,6 +206,7 @@ export class Git implements INodeType {
 			...commitFields,
 			...logFields,
 			...pushFields,
+			...switchBranchFields,
 			...tagFields,
 			// ...userSetupFields,
 		],
@@ -215,24 +231,100 @@ export class Git implements INodeType {
 			return repositoryPath;
 		};
 
+		interface CheckoutBranchOptions {
+			branchName: string;
+			createBranch?: boolean;
+			startPoint?: string;
+			force?: boolean;
+			setUpstream?: boolean;
+			remoteName?: string;
+		}
+
+		const checkoutBranch = async (
+			git: SimpleGit,
+			options: CheckoutBranchOptions,
+		): Promise<void> => {
+			const {
+				branchName,
+				createBranch = true,
+				startPoint,
+				force = false,
+				setUpstream = false,
+				remoteName = 'origin',
+			} = options;
+			try {
+				if (force) {
+					await git.checkout(['-f', branchName]);
+				} else {
+					await git.checkout(branchName);
+				}
+			} catch (error) {
+				if (createBranch) {
+					// Try to create the branch when checkout fails
+					if (startPoint) {
+						await git.checkoutBranch(branchName, startPoint);
+					} else {
+						await git.checkoutLocalBranch(branchName);
+					}
+					// If we reach here, branch creation succeeded
+				} else {
+					// Don't create branch, throw original error
+					throw error;
+				}
+			}
+
+			if (setUpstream) {
+				try {
+					await git.addConfig(`branch.${branchName}.remote`, remoteName);
+					await git.addConfig(`branch.${branchName}.merge`, `refs/heads/${branchName}`);
+				} catch (upstreamError) {
+					// Upstream setup failed but that's non-fatal
+				}
+			}
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
+				if (isFilePathBlocked) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Access to the repository path is not allowed',
+					);
+				}
+
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
 					// Create repository folder if it does not exist
 					try {
-						await access(repositoryPath);
+						await access(resolvedRepositoryPath);
 					} catch (error) {
-						await mkdir(repositoryPath);
+						await mkdir(resolvedRepositoryPath);
 					}
 				}
 
+				const gitConfig: string[] = [];
+				const deploymentConfig = Container.get(DeploymentConfig);
+				const isCloud = deploymentConfig.type === 'cloud';
+				const securityConfig = Container.get(SecurityConfig);
+				const disableBareRepos = securityConfig.disableBareRepos;
+				if (isCloud || disableBareRepos) {
+					gitConfig.push('safe.bareRepository=explicit');
+				}
+
+				const enableHooks = securityConfig.enableGitNodeHooks;
+				if (!enableHooks) {
+					gitConfig.push('core.hooksPath=/dev/null');
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: repositoryPath,
+					baseDir: resolvedRepositoryPath,
+					config: gitConfig,
 				};
 
 				const git: SimpleGit = simpleGit(gitOptions)
@@ -265,7 +357,15 @@ export class Git implements INodeType {
 
 					const key = this.getNodeParameter('key', itemIndex, '') as string;
 					const value = this.getNodeParameter('value', itemIndex, '') as string;
+					const securityConfig = Container.get(SecurityConfig);
+					const enableGitNodeAllConfigKeys = securityConfig.enableGitNodeAllConfigKeys;
 					let append = false;
+					if (!enableGitNodeAllConfigKeys && !ALLOWED_CONFIG_KEYS.includes(key)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The provided git config key '${key}' is not allowed`,
+						);
+					}
 
 					if (options.mode === 'append') {
 						append = true;
@@ -304,6 +404,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
+					const branch = options.branch;
+					if (branch !== undefined && branch !== '') {
+						assertParamIsString('branch', branch, this.getNode());
+						await checkoutBranch(git, {
+							branchName: branch,
+							setUpstream: true,
+						});
+					}
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
@@ -378,6 +486,16 @@ export class Git implements INodeType {
 					// ----------------------------------
 					//         push
 					// ----------------------------------
+
+					const branch = options.branch;
+					if (branch !== undefined && branch !== '') {
+						assertParamIsString('branch', branch, this.getNode());
+						await checkoutBranch(git, {
+							branchName: branch,
+							createBranch: false,
+							setUpstream: true,
+						});
+					}
 
 					if (options.repository) {
 						const targetRepository = await prepareRepository(options.targetRepository as string);
@@ -464,6 +582,56 @@ export class Git implements INodeType {
 							};
 						}),
 					);
+				} else if (operation === 'switchBranch') {
+					// ----------------------------------
+					//         switchBranch
+					// ----------------------------------
+
+					const branchName = this.getNodeParameter('branchName', itemIndex);
+					assertParamIsString('branchName', branchName, this.getNode());
+
+					const createBranch = options.createBranch;
+					if (createBranch !== undefined) {
+						assertParamIsBoolean('createBranch', createBranch, this.getNode());
+					}
+					const remoteName =
+						typeof options.remoteName === 'string' && options.remoteName
+							? options.remoteName
+							: 'origin';
+
+					const startPoint = options.startPoint;
+					if (startPoint !== undefined) {
+						assertParamIsString('startPoint', startPoint, this.getNode());
+					}
+
+					const setUpstream = options.setUpstream;
+					if (setUpstream !== undefined) {
+						assertParamIsBoolean('setUpstream', setUpstream, this.getNode());
+					}
+
+					const force = options.force;
+					if (force !== undefined) {
+						assertParamIsBoolean('force', force, this.getNode());
+					}
+
+					await checkoutBranch(git, {
+						branchName,
+						createBranch,
+						startPoint,
+						force,
+						setUpstream,
+						remoteName,
+					});
+
+					returnItems.push({
+						json: {
+							success: true,
+							branch: branchName,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else if (operation === 'tag') {
 					// ----------------------------------
 					//         tag
