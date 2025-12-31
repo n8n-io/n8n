@@ -102,24 +102,24 @@ type SlotUiProps = { class: string };
 
 export interface DropdownMenuSlots<T = string> {
 	/** Custom trigger element (replaces default button) */
-	trigger: () => void;
+	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
-	content: () => void;
+	content?: () => void;
 	/** Custom item rendering (replaces default N8nDropdownMenuItem) */
-	item: (props: { item: DropdownMenuItemProps<T> }) => void;
+	item?: (props: { item: DropdownMenuItemProps<T> }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
-	'item-leading': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-leading'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
-	'item-trailing': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-trailing'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Custom loading state */
-	loading: () => void;
+	loading?: () => void;
 	/** Custom empty state when no items */
-	empty: () => void;
+	empty?: () => void;
 }
 
 export interface DropdownMenuItemSlots<T = string> {
 	/** Content before the label (default: icon if provided) */
-	'item-leading': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-leading'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Content after the label (badges, shortcuts, etc.) */
-	'item-trailing': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-trailing'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 }
