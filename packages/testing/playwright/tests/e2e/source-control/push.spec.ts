@@ -3,11 +3,7 @@ import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
-test.use({
-	addContainerCapability: {
-		sourceControl: true,
-	},
-});
+test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
 	expect(
