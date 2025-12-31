@@ -15,6 +15,11 @@ export type {
 	CRDTDoc,
 	CRDTProvider,
 	CRDTConfig,
+	// Awareness types
+	AwarenessClientId,
+	AwarenessState,
+	AwarenessChangeEvent,
+	CRDTAwareness,
 } from './types';
 
 // Constants (also exports corresponding types via declaration merging)
@@ -22,6 +27,10 @@ export { ChangeAction, ChangeOrigin, CRDTEngine } from './types';
 
 // Type guards
 export { isMapChange, isArrayChange } from './types';
+
+// Awareness implementations
+export { YjsAwareness } from './awareness/yjs-awareness';
+export { AutomergeAwareness } from './awareness/automerge-awareness';
 
 // Providers
 export { YjsProvider } from './providers/yjs';
@@ -40,6 +49,9 @@ export type { WebSocketTransportConfig } from './transports';
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';
 export { BaseSyncProvider, createSyncProvider } from './sync';
+
+// Protocol
+export { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from './protocol';
 
 /**
  * Creates a CRDT provider based on the given configuration.

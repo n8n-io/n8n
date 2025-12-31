@@ -165,6 +165,12 @@ export interface CRDTDoc {
 	applyUpdate(update: Uint8Array): void;
 	/** Subscribe to outgoing updates. Only fires for local changes (origin='local'). */
 	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe;
+	/**
+	 * Get the awareness instance for this document.
+	 * Awareness is created lazily on first access.
+	 * Used for ephemeral state like presence and cursors.
+	 */
+	getAwareness<T extends AwarenessState = AwarenessState>(): CRDTAwareness<T>;
 	/** Clean up resources */
 	destroy(): void;
 }
@@ -195,4 +201,122 @@ export type CRDTEngine = (typeof CRDTEngine)[keyof typeof CRDTEngine];
 export interface CRDTConfig {
 	/** Which CRDT engine to use */
 	engine: CRDTEngine;
+}
+
+// =============================================================================
+// Awareness Types
+// =============================================================================
+
+/**
+ * Unique identifier for a client/user in the awareness system.
+ * Each browser tab or connection gets its own client ID.
+ */
+export type AwarenessClientId = number;
+
+/**
+ * User-defined awareness state. Typically includes user info and cursor/selection.
+ * The shape is defined by the application.
+ *
+ * @example
+ * ```typescript
+ * interface MyAwarenessState {
+ *   user: { name: string; color: string };
+ *   cursor?: { nodeId: string; position: { x: number; y: number } };
+ * }
+ * ```
+ */
+export type AwarenessState = Record<string, unknown>;
+
+/**
+ * Event emitted when awareness states change.
+ * Contains arrays of client IDs that were added, updated, or removed.
+ */
+export interface AwarenessChangeEvent {
+	/** Clients that came online or became visible */
+	added: AwarenessClientId[];
+	/** Clients whose state was updated */
+	updated: AwarenessClientId[];
+	/** Clients that went offline or were removed */
+	removed: AwarenessClientId[];
+}
+
+/**
+ * CRDT Awareness - ephemeral state for user presence and cursors.
+ *
+ * Awareness is separate from the persistent CRDT document. It's used for:
+ * - User presence (who is online)
+ * - Cursor positions
+ * - Selection highlights
+ * - Typing indicators
+ *
+ * Unlike document state, awareness is ephemeral and not persisted.
+ * Clients are automatically marked offline after a timeout (typically 30s).
+ */
+export interface CRDTAwareness<T extends AwarenessState = AwarenessState> {
+	/** This client's unique identifier */
+	readonly clientId: AwarenessClientId;
+
+	/**
+	 * Get this client's current awareness state.
+	 * Returns null if the client has been marked offline.
+	 */
+	getLocalState(): T | null;
+
+	/**
+	 * Set this client's awareness state.
+	 * Pass null to mark this client as offline.
+	 * State is immediately broadcast to other clients.
+	 */
+	setLocalState(state: T | null): void;
+
+	/**
+	 * Update a single field in the local awareness state.
+	 * Does nothing if local state is null.
+	 * More efficient than setLocalState for partial updates.
+	 */
+	setLocalStateField<K extends keyof T>(field: K, value: T[K]): void;
+
+	/**
+	 * Get all awareness states (local and remote).
+	 * Maps from client ID to their awareness state.
+	 * Clients marked offline are not included.
+	 */
+	getStates(): Map<AwarenessClientId, T>;
+
+	/**
+	 * Subscribe to awareness changes.
+	 * Called when clients come online, update state, or go offline.
+	 * The 'origin' parameter indicates the source of the change.
+	 */
+	onChange(handler: (event: AwarenessChangeEvent, origin: ChangeOrigin) => void): Unsubscribe;
+
+	/**
+	 * Encode awareness state for specific clients as binary.
+	 * Used for sending awareness updates over the network.
+	 * If no clients specified, encodes all known clients.
+	 */
+	encodeState(clients?: AwarenessClientId[]): Uint8Array;
+
+	/**
+	 * Apply an awareness update received from the network.
+	 */
+	applyUpdate(update: Uint8Array): void;
+
+	/**
+	 * Subscribe to outgoing awareness updates.
+	 * Fires when local state changes and needs to be sent to peers.
+	 */
+	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe;
+
+	/**
+	 * Mark specific clients as offline/removed.
+	 * Useful when a peer disconnects.
+	 */
+	removeStates(clients: AwarenessClientId[]): void;
+
+	/**
+	 * Clean up resources.
+	 * Marks this client as offline and removes all handlers.
+	 */
+	destroy(): void;
 }

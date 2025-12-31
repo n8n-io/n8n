@@ -1,8 +1,11 @@
 import * as Y from 'yjs';
 
+import { YjsAwareness } from '../awareness/yjs-awareness';
 import type {
 	ArrayChangeEvent,
+	AwarenessState,
 	CRDTArray,
+	CRDTAwareness,
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
@@ -243,6 +246,7 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
  */
 class YjsDoc implements CRDTDoc {
 	private readonly yDoc: Y.Doc;
+	private awareness: YjsAwareness | null = null;
 
 	constructor(readonly id: string) {
 		this.yDoc = new Y.Doc({ guid: id });
@@ -291,7 +295,16 @@ class YjsDoc implements CRDTDoc {
 		};
 	}
 
+	getAwareness<T extends AwarenessState = AwarenessState>(): CRDTAwareness<T> {
+		this.awareness ??= new YjsAwareness(this.yDoc);
+		return this.awareness as unknown as CRDTAwareness<T>;
+	}
+
 	destroy(): void {
+		if (this.awareness) {
+			this.awareness.destroy();
+			this.awareness = null;
+		}
 		this.yDoc.destroy();
 	}
 }
