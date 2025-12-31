@@ -188,7 +188,7 @@ describe('InvitationController', () => {
 			expect(storedMember.password).not.toBe(memberProps.password);
 
 			const comparisonResult = await Container.get(PasswordUtility).compare(
-				member.password,
+				member.password!,
 				storedMember.password,
 			);
 

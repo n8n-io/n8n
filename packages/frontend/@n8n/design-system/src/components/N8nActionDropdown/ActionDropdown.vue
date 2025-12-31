@@ -28,6 +28,7 @@ interface ActionDropdownProps {
 	hideArrow?: boolean;
 	teleported?: boolean;
 	disabled?: boolean;
+	extraPopperClass?: string;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -67,7 +68,8 @@ defineSlots<{
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
-	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+	() =>
+		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
 );
 
 const onSelect = (action: string) => emit('select', action);
@@ -127,7 +129,12 @@ defineExpose({ open, close });
 									{{ item.label }}
 								</slot>
 							</span>
-							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
+							<N8nIcon
+								v-if="item.checked"
+								:class="$style.checkIcon"
+								icon="check"
+								:size="iconSize"
+							/>
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}
@@ -198,6 +205,11 @@ defineExpose({ open, close });
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.checkIcon {
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 
 .shortcut {

@@ -9,7 +9,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { PublicUser, User } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
@@ -52,6 +52,7 @@ describe('GET /users', () => {
 	let member1: User;
 	let member2: User;
 	let ownerAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
 	let userRepository: UserRepository;
 
 	beforeAll(async () => {
@@ -91,6 +92,7 @@ describe('GET /users', () => {
 		}
 
 		ownerAgent = testServer.authAgentFor(owner);
+		memberAgent = testServer.authAgentFor(member1);
 	});
 
 	test('should return all users', async () => {
@@ -570,51 +572,62 @@ describe('GET /users', () => {
 		});
 
 		describe('inviteAcceptUrl', () => {
-			test('should include inviteAcceptUrl for pending users', async () => {
-				// Create a pending user
-				const pendingUser = await createUser({
+			let pendingUser: User;
+			beforeAll(async () => {
+				pendingUser = await createUser({
 					role: 'global:member',
 					email: 'pending@n8n.io',
 					firstName: 'PendingFirstName',
 					lastName: 'PendingLastName',
+					password: null,
 				});
+			});
 
-				await userRepository.update(
-					{ id: pendingUser.id },
-					{
-						password: null as unknown as string,
-					},
+			afterAll(async () => {
+				await userRepository.delete({ id: pendingUser.id });
+			});
+
+			test('should include inviteAcceptUrl for pending users', async () => {
+				const response = await ownerAgent.get('/users').expect(200);
+
+				const responseData = response.body.data as {
+					count: number;
+					items: PublicUser[];
+				};
+
+				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
+
+				expect(pendingUserInResponse).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).toMatch(
+					new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
 				);
 
-				try {
-					const response = await ownerAgent.get('/users').expect(200);
+				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
 
-					expect(response.body.data).toHaveProperty('count');
-					expect(response.body.data).toHaveProperty('items');
+				expect(nonPendingUser).toBeDefined();
+				expect(nonPendingUser!.isPending).toBe(false);
+				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
+			});
 
-					// Find the pending user in the response
-					const pendingUserInResponse = response.body.data.items.find(
-						(user: any) => user.id === pendingUser.id,
-					);
+			test('should not include inviteAcceptUrl for pending users, if member requests it', async () => {
+				const response = await memberAgent.get('/users').expect(200);
 
-					expect(pendingUserInResponse).toBeDefined();
-					expect(pendingUserInResponse.inviteAcceptUrl).toBeDefined();
-					expect(pendingUserInResponse.inviteAcceptUrl).toMatch(
-						new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
-					);
+				const responseData = response.body.data as {
+					count: number;
+					items: PublicUser[];
+				};
 
-					// Verify that non-pending users don't have inviteAcceptUrl
-					const nonPendingUser = response.body.data.items.find(
-						(user: any) => user.id === member1.id,
-					);
+				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
 
-					expect(nonPendingUser).toBeDefined();
-					expect(nonPendingUser.isPending).toBe(false);
-					expect(nonPendingUser.inviteAcceptUrl).toBeUndefined();
-				} finally {
-					// Clean up
-					await userRepository.delete({ id: pendingUser.id });
-				}
+				expect(pendingUserInResponse).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).not.toBeDefined();
+
+				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
+
+				expect(nonPendingUser).toBeDefined();
+				expect(nonPendingUser!.isPending).toBe(false);
+				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
 			});
 		});
 

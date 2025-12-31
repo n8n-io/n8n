@@ -535,6 +535,10 @@ describe('Node Creator', () => {
 
 			// Loop over all vector stores and check if they have the three actions
 			vectorStores.each((_i, vectorStore) => {
+				if (vectorStore.includes('RAG starter template')) {
+					return;
+				}
+
 				nodeCreatorFeature.getters.getCreatorItem(vectorStore).click();
 				actions.forEach((action) => {
 					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible').realHover();

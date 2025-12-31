@@ -26,6 +26,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -33,18 +34,15 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 
-	const {
-		getWorkflowDataToSave,
-		checkConflictingWebhooks,
-		getWorkflowProjectRole,
-		getCurrentWorkflow,
-	} = useWorkflowHelpers();
+	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
+		useWorkflowHelpers();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -346,6 +344,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			workflowsStore.addWorkflow(workflowData);
 
+			focusPanelStore.onNewWorkflowSave(workflowData.id);
+
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
@@ -410,7 +410,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			uiStore.stateIsDirty = false;
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
-			getCurrentWorkflow(true); // refresh cache
 			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');

@@ -17,6 +17,7 @@ const {
 	disabled,
 	readOnly,
 	class: cls,
+	isExperimentalNdvActive,
 } = defineProps<{
 	name: string;
 	type: string;
@@ -24,6 +25,7 @@ const {
 	disabled?: boolean;
 	readOnly?: boolean;
 	class?: string;
+	isExperimentalNdvActive: boolean;
 }>();
 
 const style = useCssModule();
@@ -32,6 +34,7 @@ const containerClass = computed(() => ({
 	[style.container]: true,
 	[style.interactive]: !disabled && !readOnly,
 	[style.hovered]: !!hovered,
+	[style.isExperimentalNdvActive]: isExperimentalNdvActive,
 }));
 
 const router = useRouter();
@@ -126,12 +129,18 @@ async function handleClickExecute() {
 		transition:
 			translate 0.1s ease-in,
 			opacity 0.1s ease-in;
+		transform: scale(var(--canvas-zoom-compensation-factor, 1));
+		transform-origin: center right;
 	}
 
 	&.interactive.hovered button {
 		opacity: 1;
 		translate: 0 0;
 		pointer-events: all;
+	}
+
+	&.isExperimentalNdvActive {
+		height: var(--spacing-2xl);
 	}
 }
 

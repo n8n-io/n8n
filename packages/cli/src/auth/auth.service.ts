@@ -268,9 +268,9 @@ export class AuthService {
 		return createHash('sha256').update(input).digest('base64');
 	}
 
-	/** How many **milliseconds** before expiration should a JWT be renewed */
+	/** How many **milliseconds** before expiration should a JWT be renewed. */
 	get jwtRefreshTimeout() {
-		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = config.get('userManagement');
+		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = this.globalConfig.userManagement;
 		if (jwtRefreshTimeoutHours === 0) {
 			return Math.floor(jwtSessionDurationHours * 0.25 * Time.hours.toMilliseconds);
 		} else {
@@ -278,8 +278,8 @@ export class AuthService {
 		}
 	}
 
-	/** How many **seconds** is an issued JWT valid for */
+	/** How many **seconds** is an issued JWT valid for. */
 	get jwtExpiration() {
-		return config.get('userManagement.jwtSessionDurationHours') * Time.hours.toSeconds;
+		return this.globalConfig.userManagement.jwtSessionDurationHours * Time.hours.toSeconds;
 	}
 }

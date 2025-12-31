@@ -334,7 +334,7 @@ export class GoogleSheet {
 			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
 				if (key) {
-					item[key] = sheet[rowIndex][columnIndex] || '';
+					item[key] = sheet[rowIndex][columnIndex] ?? '';
 				}
 			}
 

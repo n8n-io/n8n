@@ -9,17 +9,19 @@ export default defineConfig(
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',
-			'import-x/extensions': 'warn',
-			'prefer-spread': 'warn',
 			'no-case-declarations': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-empty': 'warn',
 			'no-prototype-builtins': 'warn',
-			'import-x/order': 'warn',
-			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'no-async-promise-executor': 'warn',
 			'no-useless-escape': 'warn',
 
+			'import-x/order': 'warn',
+			'import-x/extensions': 'warn',
+
+			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+
+			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 			'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
 			'@typescript-eslint/no-non-null-assertion': 'warn', //665 errors, better to fix in separate PR

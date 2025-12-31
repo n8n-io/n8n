@@ -1,0 +1,16 @@
+[project]
+name = "task-runner-python"
+version = "0.1.0"
+description = "Native Python task runner for n8n"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "nanoid>=2.0.0",
+    "websockets>=15.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.8",
+    "ty>=0.0.1a17",
+]

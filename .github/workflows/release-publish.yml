@@ -37,7 +37,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Set release version in env
-        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
       - name: Build
         run: pnpm build
@@ -67,7 +67,7 @@ jobs:
         continue-on-error: true
 
       - id: set-release
-        run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
+        run: echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
 
   publish-to-docker-hub:
     name: Publish to DockerHub

@@ -11,7 +11,7 @@ const locale = useI18n();
 
 <template>
 	<div class="entity-not-found-view">
-		<N8nCard style="" class="entity-card">
+		<N8nCard class="entity-card">
 			<div class="text-center mb-l">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -22,7 +22,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint src --quiet",
-    "lintfix": "eslint src --fix",
+    "lint:fix": "eslint src --fix",
     "build:types": "tsc -p tsconfig.types.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",
     "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",

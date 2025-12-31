@@ -14,10 +14,11 @@ import {
 export * from './types';
 
 export const i18nInstance = createI18n({
+	legacy: false,
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
-	warnHtmlInMessage: 'off',
+	warnHtmlMessage: false,
 });
 
 type BaseTextOptions = {
@@ -45,7 +46,7 @@ export class I18nClass {
 	}
 
 	get locale() {
-		return i18nInstance.global.locale;
+		return i18nInstance.global.locale.value;
 	}
 
 	// ----------------------------------
@@ -377,14 +378,14 @@ export class I18nClass {
 const loadedLanguages = ['en'];
 
 async function setLanguage(language: string) {
-	i18nInstance.global.locale = language as 'en';
+	i18nInstance.global.locale.value = language as 'en';
 	document.querySelector('html')!.setAttribute('lang', language);
 
 	return language;
 }
 
 export async function loadLanguage(language: string) {
-	if (i18nInstance.global.locale === language) {
+	if (i18nInstance.global.locale.value === language) {
 		return await setLanguage(language);
 	}
 

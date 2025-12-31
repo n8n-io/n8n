@@ -6,21 +6,23 @@ import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
-import type { BaseTextKey } from '@n8n/i18n';
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
+import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
 
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
+type UIConfig = {
+	searchEnabled: boolean;
+	showFiltersDropdown: boolean;
+	sortEnabled: boolean;
+};
 
 const route = useRoute();
 const router = useRouter();
-const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
@@ -28,7 +30,7 @@ const n8nLocalStorage = useN8nLocalStorage();
 
 const props = withDefaults(
 	defineProps<{
-		resourceKey: ResourceKeyType;
+		resourceKey: string;
 		displayName?: (resource: ResourceType) => string;
 		resources: ResourceType[];
 		disabled: boolean;
@@ -40,7 +42,6 @@ const props = withDefaults(
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
-		showFiltersDropdown?: boolean;
 		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
 		sortOptions?: string[];
 		type?: 'datatable' | 'list-full' | 'list-paginated';
@@ -53,6 +54,7 @@ const props = withDefaults(
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
+		uiConfig?: UIConfig;
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -64,7 +66,6 @@ const props = withDefaults(
 		typeProps: () => ({ itemSize: 80 }),
 		loading: true,
 		additionalFiltersHandler: undefined,
-		showFiltersDropdown: true,
 		shareable: true,
 		customPageSize: 25,
 		availablePageSizeOptions: () => [10, 25, 50, 100],
@@ -72,8 +73,15 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
 		hasEmptyState: true,
+		uiConfig: () => ({
+			searchEnabled: true,
+			showFiltersDropdown: true,
+			sortEnabled: true,
+		}),
 	},
 );
+
+const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
 const sortBy = ref(props.sortOptions[0]);
 const hasFilters = ref(false);
@@ -564,23 +572,20 @@ defineExpose({
 						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="
-							i18n.baseText(
-								usersStore.currentUser?.firstName
-									? (`${resourceKey}.empty.heading` as BaseTextKey)
-									: (`${resourceKey}.empty.heading.userNotSetup` as BaseTextKey),
-								{
-									interpolate: { name: usersStore.currentUser?.firstName ?? '' },
-								},
+							getResourceText(
+								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
+								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
+								{ name: usersStore.currentUser?.firstName ?? '' },
 							)
 						"
-						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
-						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
+						:description="getResourceText('empty.description')"
+						:button-text="getResourceText('empty.button')"
 						button-type="secondary"
 						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
 					>
 						<template #disabledButtonTooltip>
-							{{ i18n.baseText(`${resourceKey}.empty.button.disabled.tooltip` as BaseTextKey) }}
+							{{ getResourceText('empty.button.disabled.tooltip') }}
 						</template>
 					</n8n-action-box>
 				</slot>
@@ -591,10 +596,11 @@ defineExpose({
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
 							<n8n-input
+								v-if="props.uiConfig.searchEnabled"
 								ref="search"
 								:model-value="filtersModel.search"
 								:class="$style.search"
-								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
 								size="small"
 								clearable
 								data-test-id="resources-list-search"
@@ -604,7 +610,7 @@ defineExpose({
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="sortBy"
 									size="small"
@@ -616,13 +622,12 @@ defineExpose({
 										:key="sortOption"
 										data-test-id="resources-list-sort-item"
 										:value="sortOption"
-										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}` as BaseTextKey)"
+										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
 									/>
 								</n8n-select>
 							</div>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown
-									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:model-value="filtersModel"
@@ -643,7 +648,7 @@ defineExpose({
 					<slot name="callout"></slot>
 
 					<div
-						v-if="showFiltersDropdown"
+						v-if="props.uiConfig.showFiltersDropdown"
 						v-show="hasFilters"
 						class="mt-xs"
 						data-test-id="resources-list-filters-applied-info"
@@ -651,11 +656,11 @@ defineExpose({
 						<n8n-info-tip :bold="false">
 							{{
 								hasOnlyFiltersThatShowMoreResults
-									? i18n.baseText(`${resourceKey}.filters.active.shortText` as BaseTextKey)
-									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
+									? getResourceText('filters.active.shortText', 'filters.active.shortText')
+									: getResourceText('filters.active', 'filters.active')
 							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
-								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
+								{{ getResourceText('filters.active.reset', 'filters.active.reset') }}
 							</n8n-link>
 						</n8n-info-tip>
 					</div>
@@ -737,7 +742,7 @@ defineExpose({
 					size="medium"
 					data-test-id="resources-list-empty"
 				>
-					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
+					{{ getResourceText('noResults', 'noResults') }}
 				</n8n-text>
 
 				<slot name="postamble" />
@@ -785,9 +790,7 @@ defineExpose({
 	input {
 		height: 30px;
 	}
-}
 
-.search {
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}

@@ -1,0 +1,174 @@
+{
+	"createdAt": "2021-05-12T08:49:01.587Z",
+	"updatedAt": "2021-05-12T08:49:01.587Z",
+	"id": "202",
+	"name": "Beeminder:Datapoint:create getAll update delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "b22f554d-032b-49a3-8d93-72bdf0e14c89"
+		},
+		{
+			"parameters": {
+				"goalName": "testing",
+				"additionalFields": {}
+			},
+			"name": "Beeminder",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [490, 300],
+			"credentials": {
+				"beeminderApi": {
+					"id": "175",
+					"name": "Beeminder API creds"
+				}
+			},
+			"id": "7a4b7543-ff45-418a-921c-ceec717d1350"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"goalName": "testing",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Beeminder1",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"credentials": {
+				"beeminderApi": {
+					"id": "175",
+					"name": "Beeminder API creds"
+				}
+			},
+			"id": "625eea7d-b4cd-4f48-a939-379f20e92d88"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"goalName": "testing",
+				"datapointId": "={{$node[\"Beeminder\"].json[\"id\"]}}",
+				"updateFields": {
+					"value": 10
+				}
+			},
+			"name": "Beeminder2",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [800, 300],
+			"credentials": {
+				"beeminderApi": {
+					"id": "175",
+					"name": "Beeminder API creds"
+				}
+			},
+			"id": "92817af4-a51b-49ee-a4d9-8839330b5f94"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"goalName": "testing",
+				"datapointId": "={{$node[\"Beeminder4\"].json[\"id\"]}}"
+			},
+			"name": "Beeminder3",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [1100, 350],
+			"credentials": {
+				"beeminderApi": {
+					"id": "175",
+					"name": "Beeminder API creds"
+				}
+			},
+			"id": "085ad031-f3d0-48d9-b1d0-f9bc3d5b9a1b"
+		},
+		{
+			"parameters": {
+				"goalName": "testing",
+				"value": 3,
+				"additionalFields": {}
+			},
+			"name": "Beeminder4",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [950, 350],
+			"credentials": {
+				"beeminderApi": {
+					"id": "175",
+					"name": "Beeminder API creds"
+				}
+			},
+			"id": "fbd1b086-506b-42cd-8b1c-cad5a3401fe7"
+		}
+	],
+	"connections": {
+		"Beeminder": {
+			"main": [
+				[
+					{
+						"node": "Beeminder1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Beeminder1": {
+			"main": [
+				[
+					{
+						"node": "Beeminder2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Beeminder2": {
+			"main": [
+				[
+					{
+						"node": "Beeminder4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Beeminder4": {
+			"main": [
+				[
+					{
+						"node": "Beeminder3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Beeminder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

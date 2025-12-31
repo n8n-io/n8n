@@ -19,7 +19,7 @@ export class ProjectComposer {
 		const projectNameUnique = projectName ?? `Project ${Date.now()}`;
 		await this.n8n.projectSettings.fillProjectName(projectNameUnique);
 		await this.n8n.projectSettings.clickSaveButton();
-		const projectId = await this.extractProjectIdFromPage('projects', 'settings');
+		const projectId = this.extractProjectIdFromPage('projects', 'settings');
 		return { projectName: projectNameUnique, projectId };
 	}
 
@@ -50,7 +50,7 @@ export class ProjectComposer {
 		return match?.[1] ?? '';
 	}
 
-	async extractProjectIdFromPage(beforeWord: string, afterWord: string): Promise<string> {
+	extractProjectIdFromPage(beforeWord: string, afterWord: string): string {
 		return this.extractIdFromUrl(this.n8n.page.url(), beforeWord, afterWord);
 	}
 }

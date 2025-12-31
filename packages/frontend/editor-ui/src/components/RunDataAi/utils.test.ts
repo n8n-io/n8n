@@ -89,8 +89,12 @@ describe(getTreeNodeData, () => {
 		expect(
 			getTreeNodeData(
 				'A',
-				workflow,
-				createAiData('A', workflow, (name) => taskDataByNodeName[name] ?? null),
+				workflow.connectionsBySourceNode,
+				createAiData(
+					'A',
+					workflow.connectionsBySourceNode,
+					(name) => taskDataByNodeName[name] ?? null,
+				),
 				0,
 			),
 		).toEqual([
@@ -215,10 +219,14 @@ describe(getTreeNodeData, () => {
 				}),
 			],
 		};
-		const aiData = createAiData('A', workflow, (name) => taskDataByNodeName[name] ?? null);
+		const aiData = createAiData(
+			'A',
+			workflow.connectionsBySourceNode,
+			(name) => taskDataByNodeName[name] ?? null,
+		);
 
-		const treeRun0 = getTreeNodeData('A', workflow, aiData, 0);
-		const treeRun1 = getTreeNodeData('A', workflow, aiData, 1);
+		const treeRun0 = getTreeNodeData('A', workflow.connectionsBySourceNode, aiData, 0);
+		const treeRun1 = getTreeNodeData('A', workflow.connectionsBySourceNode, aiData, 1);
 
 		expect(treeRun0).toHaveLength(1);
 		expect(treeRun0[0].node).toBe('A');
@@ -293,13 +301,23 @@ describe(getTreeNodeData, () => {
 		const aiData = [sharedSubNodeData1, sharedSubNodeData2];
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
-		const rootNode1Tree = getTreeNodeData('RootNode1', workflowWithSharedSubNode, aiData, 0);
+		const rootNode1Tree = getTreeNodeData(
+			'RootNode1',
+			workflowWithSharedSubNode.connectionsBySourceNode,
+			aiData,
+			0,
+		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
-		const rootNode2Tree = getTreeNodeData('RootNode2', workflowWithSharedSubNode, aiData, 0);
+		const rootNode2Tree = getTreeNodeData(
+			'RootNode2',
+			workflowWithSharedSubNode.connectionsBySourceNode,
+			aiData,
+			0,
+		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -352,13 +370,13 @@ describe(getTreeNodeData, () => {
 		const aiData = [subNodeData1, subNodeData2];
 
 		// Test for run #1 of RootNode - should only show SubNode with source run index 0
-		const rootNode1Tree = getTreeNodeData('RootNode', workflow, aiData, 0);
+		const rootNode1Tree = getTreeNodeData('RootNode', workflow.connectionsBySourceNode, aiData, 0);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node).toBe('SubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for run #2 of RootNode - should only show SubNode with source run index 1
-		const rootNode2Tree = getTreeNodeData('RootNode', workflow, aiData, 1);
+		const rootNode2Tree = getTreeNodeData('RootNode', workflow.connectionsBySourceNode, aiData, 1);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node).toBe('SubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -395,7 +413,7 @@ describe(getTreeNodeData, () => {
 		const aiData = [subNodeData];
 
 		// Test for RootNode - should still show SubNode even without source info
-		const rootNodeTree = getTreeNodeData('RootNode', workflow, aiData, 0);
+		const rootNodeTree = getTreeNodeData('RootNode', workflow.connectionsBySourceNode, aiData, 0);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -432,7 +450,7 @@ describe(getTreeNodeData, () => {
 		const aiData = [subNodeData];
 
 		// Test for RootNode - should still show SubNode even with empty source array
-		const rootNodeTree = getTreeNodeData('RootNode', workflow, aiData, 0);
+		const rootNodeTree = getTreeNodeData('RootNode', workflow.connectionsBySourceNode, aiData, 0);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -468,7 +486,7 @@ describe(getTreeNodeData, () => {
 		// Create test AI data array
 		const aiData = [subNodeData];
 
-		const rootNodeTree = getTreeNodeData('RootNode', workflow, aiData, 0);
+		const rootNodeTree = getTreeNodeData('RootNode', workflow.connectionsBySourceNode, aiData, 0);
 
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node).toBe('SubNode');
@@ -564,7 +582,7 @@ describe(getTreeNodeData, () => {
 		const aiData = [sharedSubNodeData1, sharedSubNodeData2, deepSubNodeData1, deepSubNodeData2];
 
 		// Test filtering for RootNode1
-		const rootNode1Tree = getTreeNodeData('RootNode1', workflow, aiData, 0);
+		const rootNode1Tree = getTreeNodeData('RootNode1', workflow.connectionsBySourceNode, aiData, 0);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
@@ -573,7 +591,7 @@ describe(getTreeNodeData, () => {
 		expect(rootNode1Tree[0].children[0].children[0].runIndex).toBe(0);
 
 		// Test filtering for RootNode2
-		const rootNode2Tree = getTreeNodeData('RootNode2', workflow, aiData, 0);
+		const rootNode2Tree = getTreeNodeData('RootNode2', workflow.connectionsBySourceNode, aiData, 0);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);

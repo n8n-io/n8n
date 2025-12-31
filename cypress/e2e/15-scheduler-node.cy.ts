@@ -3,7 +3,9 @@ import { WorkflowPage, NDV } from '../pages';
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
-describe('Schedule Trigger node', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Schedule Trigger node', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});

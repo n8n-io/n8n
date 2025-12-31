@@ -44,6 +44,12 @@ describe('ScalingService', () => {
 				queueMetricsInterval: 20,
 			},
 		},
+		executions: {
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);

@@ -108,6 +108,34 @@ export class OAuth2Api implements ICredentialType {
 			default: 'header',
 		},
 		{
+			displayName: 'Send Additional Body Properties',
+			name: 'sendAdditionalBodyProperties',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					grantType: ['clientCredentials'],
+					authentication: ['body'],
+				},
+			},
+		},
+		{
+			displayName: 'Additional Body Properties',
+			name: 'additionalBodyProperties',
+			type: 'json',
+			typeOptions: {
+				rows: 5,
+			},
+			displayOptions: {
+				show: {
+					grantType: ['clientCredentials'],
+					authentication: ['body'],
+					sendAdditionalBodyProperties: [true],
+				},
+			},
+			default: '',
+		},
+		{
 			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'ignoreSSLIssues',
 			type: 'boolean',

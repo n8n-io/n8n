@@ -139,6 +139,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 	}
 
+	// Find all executions that are in the 'new' state but do not have associated execution data.
+	// These executions are considered invalid and will be marked as 'crashed'.
+	// Since there is no join in this query the returned ids are unique.
+	async findQueuedExecutionsWithoutData(): Promise<ExecutionEntity[]> {
+		return await this.createQueryBuilder('execution')
+			.where('execution.status = :status', { status: 'new' })
+			.andWhere(
+				'NOT EXISTS (' +
+					this.manager
+						.createQueryBuilder()
+						.select('1')
+						.from(ExecutionData, 'execution_data')
+						.where('execution_data.executionId = execution.id')
+						.getQuery() +
+					')',
+			)
+			.select('execution.id')
+			.getMany();
+	}
+
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
@@ -219,7 +239,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		this.errorReporter.error(
 			new UnexpectedError('Found executions without executionData', {
-				extra: { executionIds: executions.map(({ id }) => id) },
+				extra: {
+					executionIds: executions.map(({ id }) => id),
+					isLegacySqlite: this.globalConfig.database.isLegacySqlite,
+				},
 			}),
 		);
 	}
@@ -922,7 +945,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async getLiveExecutionRowsOnPostgres() {
 		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
-		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
+		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}' and schemaname = '${this.globalConfig.database.postgresdb.schema}';`;
 
 		try {
 			const rows = (await this.query(pgSql)) as Array<{ result: string }>;

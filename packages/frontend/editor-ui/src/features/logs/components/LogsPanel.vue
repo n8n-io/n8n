@@ -16,16 +16,19 @@ import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
 import { type KeyMap } from '@/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
-const pipContainer = useTemplateRef('pipContainer');
-const pipContent = useTemplateRef('pipContent');
+const popOutContainer = useTemplateRef('popOutContainer');
+const popOutContent = useTemplateRef('popOutContent');
 
 const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const workflowName = computed(() => workflowsStore.workflow.name);
 
 const {
 	height,
@@ -36,7 +39,7 @@ const {
 	isPoppedOut,
 	isCollapsingDetailsPanel,
 	isOverviewPanelFullWidth,
-	pipWindow,
+	popOutWindow,
 	onResize,
 	onResizeEnd,
 	onToggleOpen,
@@ -45,7 +48,7 @@ const {
 	onChatPanelResizeEnd,
 	onOverviewPanelResize,
 	onOverviewPanelResizeEnd,
-} = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
+} = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const {
 	currentSessionId,
@@ -136,20 +139,20 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 </script>
 
 <template>
-	<div ref="pipContainer">
-		<!-- force re-create with key for shortcuts to work in PiP window -->
+	<div ref="popOutContainer">
+		<!-- force re-create with key for shortcuts to work in pop-out window -->
 		<LogsViewKeyboardEventListener
-			:key="String(!!pipWindow)"
+			:key="String(!!popOutWindow)"
 			:key-map="keyMap"
 			:container="container"
 		/>
-		<div ref="pipContent" :class="$style.pipContent">
+		<div ref="popOutContent" :class="[$style.popOutContent, isPoppedOut ? $style.poppedOut : '']">
 			<N8nResizeWrapper
-				:height="height"
+				:height="isPoppedOut ? undefined : height"
 				:supported-directions="['top']"
 				:is-resizing-enabled="!isPoppedOut"
 				:class="$style.resizeWrapper"
-				:style="{ height: isOpen ? `${height}px` : 'auto' }"
+				:style="{ height: isOpen && !isPoppedOut ? `${height}px` : 'auto' }"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
@@ -161,12 +164,12 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 						:width="chatPanelWidth"
 						:style="{ width: `${chatPanelWidth}px` }"
 						:class="$style.chat"
-						:window="pipWindow"
+						:window="popOutWindow"
 						@resize="onChatPanelResize"
 						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
-							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pip' : ''}`"
+							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pop-out' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
@@ -189,7 +192,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
 							:is-resizing-enabled="isLogDetailsOpen"
-							:window="pipWindow"
+							:window="popOutWindow"
 							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
@@ -222,7 +225,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selected"
-							:window="pipWindow"
+							:window="popOutWindow"
 							:latest-info="latestNodeNameById[selected.node.id]"
 							:panels="logsStore.detailsState"
 							:collapsing-input-table-column-name="inputCollapsingColumnName"
@@ -245,14 +248,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 </template>
 
 <style lang="scss" module>
-@media all and (display-mode: picture-in-picture) {
-	.resizeWrapper {
-		height: 100% !important;
-		max-height: 100vh !important;
-	}
-}
-
-.pipContent {
+.popOutContent {
 	height: 100%;
 	position: relative;
 	overflow: hidden;
@@ -264,6 +260,10 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	flex-basis: 0;
 	border-top: var(--border-base);
 	background-color: var(--color-background-light);
+
+	.poppedOut & {
+		border-top: none;
+	}
 }
 
 .container {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "files": [
     "dist",
@@ -31,6 +31,9 @@
     "cleanup": "rimraf dist",
     "dev": "vite",
     "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "typecheck": "vue-tsc --noEmit",
     "build:backend": "tsup",
     "build:frontend": "vite build",
@@ -45,6 +48,7 @@
     "@n8n/extension-sdk": "workspace:*"
   },
   "devDependencies": {
+    "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",

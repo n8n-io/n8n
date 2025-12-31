@@ -1,3 +1,4 @@
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -14,7 +15,6 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -62,7 +62,11 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+
+import { ChatServer } from './chat/chat-server';
+
 import { MfaService } from './mfa/mfa.service';
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class Server extends AbstractServer {
@@ -115,9 +119,9 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/community-packages.controller');
-			await import('@/controllers/community-node-types.controller');
+		if (Container.get(CommunityPackagesConfig).enabled) {
+			await import('@/community-packages/community-packages.controller');
+			await import('@/community-packages/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
@@ -149,6 +153,10 @@ export class Server extends AbstractServer {
 			await import('@/sso.ee/saml/routes/saml.controller.ee');
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		}
+
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
 		}
 
 		// ----------------------------------------
@@ -278,19 +286,20 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
-			// Return Sentry config as a static file
-			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
-				res.type('js');
-				res.write('window.sentry=');
-				res.write(
-					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontendDsn,
-						environment: process.env.ENVIRONMENT || 'development',
-						serverName: process.env.DEPLOYMENT_NAME,
-						release: `n8n@${N8N_VERSION}`,
-					}),
-				);
-				res.end();
+			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
+				const frontendSentryConfig = JSON.stringify({
+					dsn: this.globalConfig.sentry.frontendDsn,
+					environment: process.env.ENVIRONMENT || 'development',
+					serverName: process.env.DEPLOYMENT_NAME,
+					release: `n8n@${N8N_VERSION}`,
+				});
+				const frontendConfig = [
+					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
+					`window.sentry = ${frontendSentryConfig};`,
+				].join('\n');
+
+				res.type('application/javascript');
+				res.send(frontendConfig);
 			});
 		}
 
@@ -369,7 +378,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -472,5 +481,6 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatServer).setup(server, app);
 	}
 }

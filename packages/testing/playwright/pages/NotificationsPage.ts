@@ -8,14 +8,50 @@ export class NotificationsPage {
 	}
 
 	/**
-	 * Gets the main container locator for a notification by its visible text.
+	 * Gets the main container locator for a notification by searching in its title text.
 	 * @param text The text or a regular expression to find within the notification's title.
 	 * @returns A Locator for the notification container element.
 	 */
-	notificationContainerByText(text: string | RegExp): Locator {
+	getNotificationByTitle(text: string | RegExp): Locator {
 		return this.page.getByRole('alert').filter({
 			has: this.page.locator('.el-notification__title').filter({ hasText: text }),
 		});
+	}
+
+	/**
+	 * Gets the main container locator for a notification by searching in its content/body text.
+	 * This is useful for finding notifications where the detailed message is in the content
+	 * rather than the title (e.g., error messages with detailed descriptions).
+	 * @param text The text or a regular expression to find within the notification's content.
+	 * @returns A Locator for the notification container element.
+	 */
+	getNotificationByContent(text: string | RegExp): Locator {
+		return this.page.getByRole('alert').filter({
+			has: this.page.locator('.el-notification__content').filter({ hasText: text }),
+		});
+	}
+
+	/**
+	 * Gets the main container locator for a notification by searching in both title and content.
+	 * This is the most flexible method as it will find notifications regardless of whether
+	 * the text appears in the title or content section.
+	 * @param text The text or a regular expression to find within the notification's title or content.
+	 * @returns A Locator for the notification container element.
+	 */
+	getNotificationByTitleOrContent(text: string | RegExp): Locator {
+		return this.page.getByRole('alert').filter({ hasText: text });
+	}
+
+	/**
+	 * Gets the main container locator for a notification by searching in both title and content,
+	 * filtered to a specific node name. This is useful when multiple notifications might be present
+	 * and you want to ensure you're checking the right one for a specific node.
+	 * @param text The text or a regular expression to find within the notification's title or content.
+	 * @param nodeName The name of the node to filter notifications for.
+	 * @returns A Locator for the notification container element.
+	 */
+	getNotificationByTitleOrContentForNode(text: string | RegExp, nodeName: string): Locator {
+		return this.page.getByRole('alert').filter({ hasText: text }).filter({ hasText: nodeName });
 	}
 
 	/**
@@ -31,7 +67,7 @@ export class NotificationsPage {
 		const { timeout = 2000 } = options;
 
 		try {
-			const notification = this.notificationContainerByText(text).first();
+			const notification = this.getNotificationByTitle(text).first();
 			await notification.waitFor({ state: 'visible', timeout });
 
 			const closeBtn = notification.locator('.el-notification__closeBtn');
@@ -61,7 +97,7 @@ export class NotificationsPage {
 
 		while (retries < maxRetries) {
 			try {
-				const notifications = this.notificationContainerByText(text);
+				const notifications = this.getNotificationByTitle(text);
 				const count = await notifications.count();
 
 				if (count === 0) {
@@ -105,7 +141,7 @@ export class NotificationsPage {
 		const { timeout = 500 } = options;
 
 		try {
-			const notification = this.notificationContainerByText(text).first();
+			const notification = this.getNotificationByTitle(text).first();
 			await notification.waitFor({ state: 'visible', timeout });
 			return true;
 		} catch {
@@ -126,7 +162,7 @@ export class NotificationsPage {
 		const { timeout = 5000 } = options;
 
 		try {
-			const notification = this.notificationContainerByText(text).first();
+			const notification = this.getNotificationByTitle(text).first();
 			await notification.waitFor({ state: 'visible', timeout });
 			return true;
 		} catch {
@@ -186,9 +222,7 @@ export class NotificationsPage {
 	 */
 	async getNotificationCount(text?: string | RegExp): Promise<number> {
 		try {
-			const notifications = text
-				? this.notificationContainerByText(text)
-				: this.page.getByRole('alert');
+			const notifications = text ? this.getNotificationByTitle(text) : this.page.getByRole('alert');
 			return await notifications.count();
 		} catch {
 			return 0;
@@ -202,7 +236,7 @@ export class NotificationsPage {
 	 */
 	async quickClose(text: string | RegExp): Promise<void> {
 		try {
-			const notification = this.notificationContainerByText(text).first();
+			const notification = this.getNotificationByTitle(text).first();
 			if (await notification.isVisible({ timeout: 100 })) {
 				await notification.locator('.el-notification__closeBtn').click({ timeout: 200 });
 			}

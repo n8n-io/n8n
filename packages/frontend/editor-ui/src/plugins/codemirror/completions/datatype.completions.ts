@@ -28,6 +28,7 @@ import {
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
+	TARGET_NODE_PARAMETER_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -56,11 +57,13 @@ import {
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 /**
  * Resolution-based completions offered according to datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
+	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -86,7 +89,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = secretProvidersOptions();
 	} else {
 		const resolved = attempt(
-			(): Resolved => resolveAutocompleteExpression(`={{ ${base} }}`),
+			(): Resolved =>
+				resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext?.nodeName),
 			(error) => {
 				if (!isPairedItemIntermediateNodesError(error)) {
 					return null;
@@ -94,7 +98,10 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 				// Fallback on first item to provide autocomplete when intermediate nodes have not run
 				return attempt(() =>
-					resolveAutocompleteExpression(`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`),
+					resolveAutocompleteExpression(
+						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+						targetNodeParameterContext?.nodeName,
+					),
 				);
 			},
 		);
@@ -116,7 +123,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = explicitDataTypeOptions(word.text);
+		options = explicitDataTypeOptions(word.text, targetNodeParameterContext);
 		from = word.to;
 	}
 
@@ -134,10 +141,16 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function explicitDataTypeOptions(expression: string): Completion[] {
+function explicitDataTypeOptions(
+	expression: string,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+): Completion[] {
 	return attempt(
 		() => {
-			const resolved = resolveAutocompleteExpression(`={{ ${expression} }}`);
+			const resolved = resolveAutocompleteExpression(
+				`={{ ${expression} }}`,
+				targetNodeParameterContext?.nodeName,
+			);
 			return datatypeOptions({
 				resolved,
 				base: expression,

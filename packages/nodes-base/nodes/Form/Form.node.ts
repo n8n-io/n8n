@@ -268,7 +268,9 @@ export class Form extends Node {
 		name: 'form',
 		icon: 'file:form.svg',
 		group: ['input'],
-		version: 1,
+		// since trigger and node are sharing descriptions and logic we need to sync the versions
+		// and keep them aligned in both nodes
+		version: [1, 2.3],
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',

@@ -1,6 +1,8 @@
 const url = '/settings';
 
-describe('Admin user', { disableAutoLogin: true }, () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Admin user', { disableAutoLogin: true }, () => {
 	it('should see same Settings sub menu items as instance owner', () => {
 		cy.signinAsOwner();
 		cy.visit(url);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import RunsSection from '@/components/Evaluations.ee/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
@@ -18,6 +18,9 @@ const toast = useToast();
 const evaluationStore = useEvaluationStore();
 
 const selectedMetric = ref<string>('');
+const cancellingTestRun = ref<boolean>(false);
+
+const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
 async function runTest() {
 	try {
@@ -33,6 +36,22 @@ async function runTest() {
 	}
 }
 
+async function stopTest() {
+	if (!runningTestRun.value) {
+		return;
+	}
+
+	try {
+		cancellingTestRun.value = true;
+		await evaluationStore.cancelTestRun(runningTestRun.value.workflowId, runningTestRun.value.id);
+		// we don't reset cancellingTestRun flag here, because we want the button to stay disabled
+		// until the "running" testRun is updated and cancelled in the list of test runs
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStopTestRun'));
+		cancellingTestRun.value = false;
+	}
+}
+
 const runs = computed(() => {
 	const testRuns = Object.values(evaluationStore.testRunsById ?? {}).filter(
 		({ workflowId }) => workflowId === props.name,
@@ -44,29 +63,36 @@ const runs = computed(() => {
 	}));
 });
 
-const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
-const isRunTestEnabled = computed(() => !isRunning.value);
+watch(runningTestRun, (run) => {
+	if (!run) {
+		// reset to ensure next run can be stopped
+		cancellingTestRun.value = false;
+	}
+});
 </script>
 
 <template>
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
-			<N8nTooltip :disabled="isRunTestEnabled" :placement="'left'">
-				<N8nButton
-					:disabled="!isRunTestEnabled"
-					:class="$style.runTestButton"
-					size="small"
-					data-test-id="run-test-button"
-					:label="locale.baseText('evaluation.runTest')"
-					type="primary"
-					@click="runTest"
-				/>
-				<template #content>
-					<template v-if="isRunning">
-						{{ locale.baseText('evaluation.testIsRunning') }}
-					</template>
-				</template>
-			</N8nTooltip>
+			<N8nButton
+				v-if="runningTestRun"
+				:disabled="cancellingTestRun"
+				:class="$style.runOrStopTestButton"
+				size="small"
+				data-test-id="stop-test-button"
+				:label="locale.baseText('evaluation.stopTest')"
+				type="secondary"
+				@click="stopTest"
+			/>
+			<N8nButton
+				v-else
+				:class="$style.runOrStopTestButton"
+				size="small"
+				data-test-id="run-test-button"
+				:label="locale.baseText('evaluation.runTest')"
+				type="primary"
+				@click="runTest"
+			/>
 		</div>
 		<div :class="$style.wrapper">
 			<div :class="$style.content">
@@ -112,7 +138,7 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 	padding-left: 58px;
 }
 
-.runTestButton {
+.runOrStopTestButton {
 	white-space: nowrap;
 }
 

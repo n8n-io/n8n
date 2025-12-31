@@ -11,7 +11,11 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
-		nodes.value.filter((node) => node.type.includes('langchain')),
+		nodes.value.filter(
+			(node) =>
+				node.type.includes('langchain') ||
+				(node.type === 'n8n-nodes-base.evaluation' && node.parameters?.operation === 'setMetrics'),
+		),
 	);
 	const hasRangeSelection = ref(false);
 

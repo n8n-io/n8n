@@ -136,7 +136,7 @@ watch(
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
 		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
-			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath">
+			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath" scope="global">
 				<template #status>
 					<N8nText :color="isError ? 'danger' : undefined" :bold="isError" size="small">
 						<AnimatedSpinner v-if="isRunning" :class="$style.statusTextIcon" />

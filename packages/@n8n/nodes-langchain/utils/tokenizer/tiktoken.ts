@@ -1,30 +1,40 @@
+import { readFileSync } from 'fs';
 import type { TiktokenBPE, TiktokenEncoding, TiktokenModel } from 'js-tiktoken/lite';
 import { Tiktoken, getEncodingNameForModel } from 'js-tiktoken/lite';
+import { jsonParse } from 'n8n-workflow';
+import { join } from 'path';
 
-import cl100k_base from './cl100k_base.json';
-import o200k_base from './o200k_base.json';
+const cache: Record<string, Tiktoken> = {};
 
-export async function getEncoding(encoding: TiktokenEncoding) {
-	const encodings = {
-		cl100k_base: cl100k_base as TiktokenBPE,
-		o200k_base: o200k_base as TiktokenBPE,
-	};
-	const encodingsMap: Record<TiktokenEncoding, TiktokenBPE> = {
-		cl100k_base: encodings.cl100k_base,
-		p50k_base: encodings.cl100k_base,
-		r50k_base: encodings.cl100k_base,
-		gpt2: encodings.cl100k_base,
-		p50k_edit: encodings.cl100k_base,
-		o200k_base: encodings.o200k_base,
-	};
+const loadJSONFile = (filename: string): TiktokenBPE => {
+	const filePath = join(__dirname, filename);
+	const content = readFileSync(filePath, 'utf-8');
+	return jsonParse(content);
+};
 
-	if (!(encoding in encodingsMap)) {
-		return new Tiktoken(cl100k_base);
+export function getEncoding(encoding: TiktokenEncoding): Tiktoken {
+	if (cache[encoding]) {
+		return cache[encoding];
 	}
 
-	return new Tiktoken(encodingsMap[encoding]);
+	let jsonData: TiktokenBPE;
+
+	switch (encoding) {
+		case 'o200k_base':
+			jsonData = loadJSONFile('./o200k_base.json');
+			break;
+		case 'cl100k_base':
+			jsonData = loadJSONFile('./cl100k_base.json');
+			break;
+		default:
+			// Fall back to cl100k_base for unsupported encodings
+			jsonData = loadJSONFile('./cl100k_base.json');
+	}
+
+	cache[encoding] = new Tiktoken(jsonData);
+	return cache[encoding];
 }
 
-export async function encodingForModel(model: TiktokenModel) {
-	return await getEncoding(getEncodingNameForModel(model));
+export function encodingForModel(model: TiktokenModel): Tiktoken {
+	return getEncoding(getEncodingNameForModel(model));
 }

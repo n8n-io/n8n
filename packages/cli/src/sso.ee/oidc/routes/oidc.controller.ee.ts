@@ -57,7 +57,7 @@ export class OidcController {
 
 		const user = await this.oidcService.loginUser(callbackUrl);
 
-		this.authService.issueCookie(res, user, false);
+		this.authService.issueCookie(res, user, true);
 
 		res.redirect('/');
 	}

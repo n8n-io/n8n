@@ -1,0 +1,137 @@
+{
+	"name": "Always Output Data Multiple Outputs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b7c1c0d1-ff36-4899-8f95-4405bbbcfad0",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "8bc8b97d-2d13-4267-80e4-5947cb0c61db",
+							"leftValue": false,
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [448, 0],
+			"id": "8d02b70d-d24f-4f38-ad68-588ef3479d3e",
+			"name": "If",
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "40ee7f65-691d-40e8-99cc-ccdc0632319e",
+							"name": "foo",
+							"value": "bar",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [224, 0],
+			"id": "41e24bec-18b6-4d73-9737-98294117a41a",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [704, 0],
+			"id": "1ce47245-adc0-4352-8435-ab6b563ce76f",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"foo": "bar"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a60cd1b6-d52d-408c-9cc0-dd91c1477ee1",
+	"meta": {
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
+	},
+	"id": "25lWZUaSQnoiwP7h",
+	"tags": []
+}

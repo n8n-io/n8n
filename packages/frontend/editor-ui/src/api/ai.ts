@@ -13,6 +13,7 @@ export function chatWithBuilder(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
@@ -21,6 +22,8 @@ export function chatWithBuilder(
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 
@@ -79,5 +82,20 @@ export async function claimFreeAiCredits(
 ): Promise<ICredentialsResponse> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', {
 		projectId,
+	} as IDataObject);
+}
+
+export async function getAiSessions(
+	ctx: IRestApiContext,
+	workflowId?: string,
+): Promise<{
+	sessions: Array<{
+		sessionId: string;
+		messages: ChatRequest.MessageResponse[];
+		lastUpdated: string;
+	}>;
+}> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
+		workflowId,
 	} as IDataObject);
 }

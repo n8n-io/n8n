@@ -1,6 +1,7 @@
 import { DynamicTool } from 'langchain/tools';
 import {
 	NodeConnectionTypes,
+	nodeNameToToolName,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -22,7 +23,7 @@ export class ToolThink implements INodeType {
 		icon: 'fa:brain',
 		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Invite the AI agent to do some thinking',
 		defaults: {
 			name: 'Think',
@@ -62,9 +63,14 @@ export class ToolThink implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const node = this.getNode();
+		const { typeVersion } = node;
+
+		const name = typeVersion === 1 ? 'thinking_tool' : nodeNameToToolName(node);
 		const description = this.getNodeParameter('description', itemIndex) as string;
+
 		const tool = new DynamicTool({
-			name: 'thinking_tool',
+			name,
 			description,
 			func: async (subject: string) => {
 				return subject;

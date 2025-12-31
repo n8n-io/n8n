@@ -1,0 +1,36 @@
+{
+  "private": true,
+  "name": "@n8n/stylelint-config",
+  "type": "module",
+  "version": "0.0.1",
+  "exports": {
+    "./base": {
+      "default": "./dist/configs/base.js",
+      "types": "./dist/configs/base.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "stylelint": "^16.23.0",
+    "stylelint-config-standard-scss": "^15.0.1",
+    "stylelint-scss": "^6.12.1",
+    "postcss-html": "^1.8.0",
+    "postcss-scss": "^4.0.9"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:",
+    "rimraf": "catalog:"
+  },
+  "peerDependencies": {
+    "stylelint": ">= 16"
+  }
+}

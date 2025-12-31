@@ -1,14 +1,40 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
+import {
+	isExtraTemplateLinksExperimentEnabled,
+	TemplateClickSource,
+	trackTemplatesClick,
+} from '@/utils/experiments';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useI18n } from '@n8n/i18n';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
+const templatesStore = useTemplatesStore();
 
 const isTooltipVisible = ref(false);
+
+const templateRepository = computed(() => {
+	if (templatesStore.hasCustomTemplatesHost) {
+		return {
+			to: { name: VIEWS.TEMPLATES },
+		};
+	}
+
+	return {
+		to: templatesStore.websiteTemplateRepositoryURL,
+		target: '_blank',
+	};
+});
+
+const templatesLinkEnabled = computed(() => {
+	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
+});
 
 onMounted(() => {
 	nodeViewEventBus.on('runWorkflowButton:mouseenter', onShowTooltip);
@@ -50,7 +76,20 @@ function onClick() {
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</N8nTooltip>
-		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
+		<p :class="$style.label">
+			{{ i18n.baseText('nodeView.canvasAddButton.addFirstStep') }}
+			<N8nLink
+				v-if="templatesLinkEnabled"
+				:to="templateRepository.to"
+				:target="templateRepository.target"
+				:underline="true"
+				size="small"
+				data-test-id="canvas-template-link"
+				@click="trackTemplatesClick(TemplateClickSource.emptyWorkflowLink)"
+			>
+				{{ i18n.baseText('nodeView.templateLink') }}
+			</N8nLink>
+		</p>
 	</div>
 </template>
 
@@ -86,5 +125,7 @@ function onClick() {
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 	margin-top: var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
 }
 </style>

@@ -7,9 +7,12 @@ import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useRouter } from 'vue-router';
+import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nextTick } from 'vue';
+import { mock } from 'vitest-mock-extended';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 const ModalStub = {
 	template: `
@@ -63,10 +66,14 @@ const mockRunData = {
 	},
 };
 
-const mockWorkflow = {
+const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
+});
+
+const mockWorkflowObject = mock<Workflow>({
+	id: mockWorkflow.id,
 	getChildNodes: () => ['Parent Node'],
-};
+});
 
 const mockTools = [
 	{
@@ -106,6 +113,7 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
+					workflowObject: mockWorkflowObject,
 					workflowExecutionData: mockRunData,
 				},
 			},
@@ -121,7 +129,6 @@ describe('FromAiParametersModal', () => {
 					return mockParentNode;
 			}
 		});
-		workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
 		agentRequestStore = useAgentRequestStore();
 		agentRequestStore.clearAgentRequests = vi.fn();
 		agentRequestStore.setAgentRequestForNode = vi.fn();

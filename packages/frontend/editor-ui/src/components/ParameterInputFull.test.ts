@@ -1,4 +1,4 @@
-import { renderComponent } from '@/__tests__/render';
+import { nextTick } from 'vue';
 import type { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -6,6 +6,8 @@ import type { useSettingsStore } from '@/stores/settings.store';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import ParameterInputFull from './ParameterInputFull.vue';
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
+import { fireEvent } from '@testing-library/vue';
+import { createComponentRenderer } from '@/__tests__/render';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
@@ -26,9 +28,15 @@ beforeEach(() => {
 		},
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
+		ndvInputDataWithPinnedData: [],
+		getHoveringItem: undefined,
+		expressionOutputItemIndex: 0,
+		isTableHoverOnboarded: false,
+		setHighlightDraggables: vi.fn(),
 	};
 	mockNodeTypesState = {
 		allNodeTypes: [],
+		getNodeType: vi.fn().mockReturnValue({}),
 	};
 	mockSettingsState = {
 		settings: {
@@ -57,6 +65,19 @@ vi.mock('@/stores/settings.store', () => {
 	};
 });
 
+const renderComponent = createComponentRenderer(ParameterInputFull, {
+	pinia: createTestingPinia(),
+	props: {
+		path: 'myParam',
+		value: '',
+		parameter: {
+			displayName: 'My Param',
+			name: 'myParam',
+			type: 'string',
+		},
+	},
+});
+
 describe('ParameterInputFull.vue', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -68,18 +89,7 @@ describe('ParameterInputFull.vue', () => {
 	});
 
 	it('should render basic parameter', async () => {
-		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({});
-		const { getByTestId } = renderComponent(ParameterInputFull, {
-			pinia: createTestingPinia(),
-			props: {
-				path: 'myParam',
-				parameter: {
-					displayName: 'My Param',
-					name: 'myParam',
-					type: 'string',
-				},
-			},
-		});
+		const { getByTestId } = renderComponent();
 		expect(getByTestId('parameter-input')).toBeInTheDocument();
 	});
 
@@ -90,18 +100,7 @@ describe('ParameterInputFull.vue', () => {
 				subcategories: { AI: ['Tools'] },
 			},
 		});
-		const { getByTestId } = renderComponent(ParameterInputFull, {
-			pinia: createTestingPinia(),
-			props: {
-				path: 'myParam',
-				parameter: {
-					displayName: 'My Param',
-					name: 'myParam',
-					type: 'string',
-				},
-				value: '',
-			},
-		});
+		const { getByTestId } = renderComponent();
 		expect(getByTestId('parameter-input')).toBeInTheDocument();
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
@@ -113,15 +112,8 @@ describe('ParameterInputFull.vue', () => {
 				subcategories: { AI: ['Tools'] },
 			},
 		});
-		const { getByTestId } = renderComponent(ParameterInputFull, {
-			pinia: createTestingPinia(),
+		const { getByTestId } = renderComponent({
 			props: {
-				path: 'myParam',
-				parameter: {
-					displayName: 'My Param',
-					name: 'myParam',
-					type: 'string',
-				},
 				value: `={{
 					'and the air is free'
 
@@ -140,19 +132,27 @@ describe('ParameterInputFull.vue', () => {
 				subcategories: { AI: ['Tools'] },
 			},
 		});
-		const { queryByTestId, getByTestId } = renderComponent(ParameterInputFull, {
-			pinia: createTestingPinia(),
+		const { queryByTestId, getByTestId } = renderComponent({
 			props: {
-				path: 'myParam',
 				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
-				parameter: {
-					displayName: 'My Param',
-					name: 'myParam',
-					type: 'string',
-				},
 			},
 		});
 		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
 		expect(queryByTestId('override-button')).not.toBeInTheDocument();
+	});
+
+	it('should emit on wrapper hover', async () => {
+		const { getByTestId, emitted } = renderComponent();
+		const wrapper = getByTestId('input-label');
+
+		await fireEvent.mouseEnter(wrapper);
+		await nextTick();
+
+		expect(emitted().hover).toEqual([[true]]);
+
+		await fireEvent.mouseLeave(wrapper);
+		await nextTick();
+
+		expect(emitted().hover).toEqual([[true], [false]]);
 	});
 });

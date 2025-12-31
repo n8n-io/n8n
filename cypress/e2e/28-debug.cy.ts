@@ -10,7 +10,9 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const executionsTab = new WorkflowExecutionsTab();
 
-describe('Debug', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Debug', () => {
 	beforeEach(() => {
 		cy.enableFeature('debugInEditor');
 	});

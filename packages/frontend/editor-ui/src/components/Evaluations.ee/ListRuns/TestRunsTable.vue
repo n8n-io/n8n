@@ -8,6 +8,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import TestTableBase from '../shared/TestTableBase.vue';
 import { statusDictionary } from '../shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { I18nT } from 'vue-i18n';
 const emit = defineEmits<{
 	rowClick: [run: TestRunRecord & { index: number }];
 }>();
@@ -88,7 +89,7 @@ const runSummaries = computed(() => {
 					<template v-else-if="row.status === 'error'">
 						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
-								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
+								<I18nT :keypath="`${getErrorBaseKey(row.errorCode)}`" scope="global">
 									<template
 										v-if="
 											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
@@ -106,11 +107,11 @@ const runSummaries = computed(() => {
 											)
 										}}
 									</template>
-								</i18n-t>
+								</I18nT>
 							</template>
 
 							<N8nText :class="[$style.alertText, $style.errorText]">
-								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
+								<I18nT :keypath="`${getErrorBaseKey(row.errorCode)}`" scope="global">
 									<template
 										v-if="
 											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
@@ -125,7 +126,7 @@ const runSummaries = computed(() => {
 											}}
 										</p>
 									</template>
-								</i18n-t>
+								</I18nT>
 							</N8nText>
 						</N8nTooltip>
 					</template>

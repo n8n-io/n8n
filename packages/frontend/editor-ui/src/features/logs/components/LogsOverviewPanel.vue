@@ -218,7 +218,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
+@use '@/styles/variables' as vars;
 
 .container {
 	flex-grow: 1;
@@ -263,6 +263,8 @@ watch(
 
 .tree {
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
+	scroll-behavior: smooth;
 
 	.container:not(.staticScrollBar) & {
 		scroll-padding-block: var(--spacing-3xs);
@@ -286,9 +288,6 @@ watch(
 		}
 	}
 
-	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
-	scroll-behavior: smooth;
-
 	& :global(.el-icon) {
 		display: none;
 	}
@@ -302,7 +301,7 @@ watch(
 	margin: var(--spacing-4xs) var(--spacing-2xs);
 	visibility: hidden;
 	opacity: 0;
-	transition: opacity 0.3s $ease-out-expo;
+	transition: opacity 0.3s vars.$ease-out-expo;
 
 	.content:hover & {
 		visibility: visible;

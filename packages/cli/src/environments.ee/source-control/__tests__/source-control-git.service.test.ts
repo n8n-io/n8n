@@ -68,4 +68,41 @@ describe('SourceControlGitService', () => {
 			});
 		});
 	});
+
+	describe('getFileContent', () => {
+		it('should return file content at HEAD version', async () => {
+			// Arrange
+			const filePath = 'workflows/12345.json';
+			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
+			const git = mock<SimpleGit>();
+			const showSpy = jest.spyOn(git, 'show');
+			showSpy.mockResolvedValue(expectedContent);
+			sourceControlGitService.git = git;
+
+			// Act
+			const content = await sourceControlGitService.getFileContent(filePath);
+
+			// Assert
+			expect(showSpy).toHaveBeenCalledWith([`HEAD:${filePath}`]);
+			expect(content).toBe(expectedContent);
+		});
+
+		it('should return file content at specific commit', async () => {
+			// Arrange
+			const filePath = 'workflows/12345.json';
+			const commitHash = 'abc123';
+			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
+			const git = mock<SimpleGit>();
+			const showSpy = jest.spyOn(git, 'show');
+			showSpy.mockResolvedValue(expectedContent);
+			sourceControlGitService.git = git;
+
+			// Act
+			const content = await sourceControlGitService.getFileContent(filePath, commitHash);
+
+			// Assert
+			expect(showSpy).toHaveBeenCalledWith([`${commitHash}:${filePath}`]);
+			expect(content).toBe(expectedContent);
+		});
+	});
 });

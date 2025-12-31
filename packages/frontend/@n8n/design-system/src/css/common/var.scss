@@ -22,8 +22,6 @@ $color-white: var(--color-foreground-xlight);
 $color-black: var(--color-foreground-dark);
 
 $color-primary-light-1: var(--color-primary);
-$color-primary-light-2: var(--prim-color-primary-tint-100); // ! TODO Token should be used here
-$color-primary-light-3: var(--prim-color-primary-tint-100); // ! TODO Token should be used here
 $color-primary-light-4: var(--color-primary-tint-1);
 $color-primary-light-5: var(--color-primary-tint-1);
 $color-primary-light-6: var(--color-primary-tint-2);
@@ -42,14 +40,10 @@ $color-warning-light: var(--color-warning-tint-2);
 $color-warning-lighter: var(--color-warning-tint-2);
 
 $color-danger-light-1: var(--color-danger);
-$color-danger-light-3: var(--prim-color-alt-c-tint-150); // ! TODO Token should be used here
-$color-danger-light-5: var(--prim-color-alt-c-tint-150); // ! TODO Token should be used here
 $color-danger-light: var(--color-danger-tint-1);
 $color-danger-lighter: var(--color-danger-tint-2);
 
 $color-info-light-1: var(-color-info);
-$color-info-light-3: var(--prim-gray-320); // ! TODO Token should be used here
-$color-info-light-5: var(--prim-gray-200); // ! TODO Token should be used here
 $color-info-lighter: var(--color-info-tint-2);
 
 // Background

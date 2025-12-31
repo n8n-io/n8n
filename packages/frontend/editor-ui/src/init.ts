@@ -22,6 +22,11 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
+import {
+	registerModuleProjectTabs,
+	registerModuleResources,
+	registerModuleModals,
+} from '@/moduleInitializer/moduleInitializer';
 
 export const state = {
 	initialized: false,
@@ -148,21 +153,22 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isCloudDeployment) {
-		try {
-			await cloudPlanStore.initialize();
-
-			if (cloudPlanStore.userIsTrialing) {
-				if (cloudPlanStore.trialExpired) {
-					uiStore.pushBannerToStack('TRIAL_OVER');
-				} else {
-					uiStore.pushBannerToStack('TRIAL');
+		void cloudPlanStore
+			.initialize()
+			.then(() => {
+				if (cloudPlanStore.userIsTrialing) {
+					if (cloudPlanStore.trialExpired) {
+						uiStore.pushBannerToStack('TRIAL_OVER');
+					} else {
+						uiStore.pushBannerToStack('TRIAL');
+					}
+				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
+					uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
 				}
-			} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
-				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
-			}
-		} catch (e) {
-			console.error('Failed to initialize cloud plan store:', e);
-		}
+			})
+			.catch((error) => {
+				console.error('Failed to initialize cloud plan store:', error);
+			});
 	}
 
 	if (insightsStore.isSummaryEnabled) {
@@ -179,6 +185,11 @@ export async function initializeAuthenticatedFeatures(
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
 	]);
+
+	// Initialize modules
+	registerModuleResources();
+	registerModuleProjectTabs();
+	registerModuleModals();
 
 	authenticatedFeaturesInitialized = true;
 }

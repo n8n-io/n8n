@@ -47,7 +47,7 @@ export class ScenarioRunner {
 
 		console.log('Loading and importing data');
 		const testData = await this.dataLoader.loadDataForScenario(scenario);
-		await testDataImporter.importTestScenarioData(testData.workflows);
+		await testDataImporter.importTestScenarioData(testData);
 
 		// Wait for 1s before executing the scenario to ensure that the workflows are activated.
 		// In multi-main mode it can take some time before the workflow becomes active.

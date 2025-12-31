@@ -96,8 +96,17 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		updatePackageObject(updatedPackage);
 	};
 
+	const getInstalledPackage = async (packageName: string) => {
+		if (!getInstalledPackages.value.length) {
+			await fetchInstalledPackages();
+		}
+
+		return getInstalledPackages.value.find((p) => p.packageName === packageName);
+	};
+
 	return {
 		installedPackages,
+		getInstalledPackage,
 		getInstalledPackages,
 		availablePackageCount,
 		fetchAvailableCommunityPackageCount,

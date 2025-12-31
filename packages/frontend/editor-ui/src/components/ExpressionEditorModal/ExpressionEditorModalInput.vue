@@ -26,6 +26,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -85,7 +86,7 @@ onMounted(() => {
 	focus();
 });
 
-defineExpose({ editor });
+defineExpose({ editor, focus });
 </script>
 
 <template>

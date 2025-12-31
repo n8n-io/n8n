@@ -25,6 +25,7 @@ import type {
 	INodeInputConfiguration,
 	NodeParameterValueType,
 	NodeConnectionType,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -65,6 +66,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const allNodeCreatorNodes = computed(() =>
 		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
 	);
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function setMergeNodes(nodes: SimplifiedNodeType[]) {
 		mergedNodes.value = nodes;
@@ -263,13 +266,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 		let filter;
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = workflow.getNode(nodeName);
+		const workflowNode = workflowObject.value.getNode(nodeName);
 		if (!workflowNode) return { nodes: [] };
 
 		const nodeType = nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion);
 		if (nodeType) {
-			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+			const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
 
 			const filterFound = inputs.filter((input) => {
 				if (typeof input === 'string' || input.type !== outputType || !input.filter) {
@@ -412,6 +414,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		workflow_id: string;
 		drag_and_drop?: boolean;
 		input_node_type?: string;
+		resource?: string;
+		operation?: string;
+		action?: string;
 	}) {
 		trackNodeCreatorEvent('User added node to workflow canvas', properties);
 	}

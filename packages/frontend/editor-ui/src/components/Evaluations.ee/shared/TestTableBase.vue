@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="T extends object">
+import { SHORT_TABLE_CELL_MIN_WIDTH } from '@/views/Evaluations.ee/utils';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { TableInstance } from 'element-plus';
+import type { ColumnCls, TableInstance } from 'element-plus';
 import { ElTable, ElTableColumn } from 'element-plus';
 import isEqual from 'lodash/isEqual';
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, ref, useCssModule, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
@@ -28,6 +30,7 @@ export type TestTableColumn<TRow> = {
 	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
+	minWidth?: number;
 };
 
 type TableRow = T & { id: string };
@@ -39,13 +42,17 @@ const props = withDefaults(
 		defaultSort?: { prop: string; order: 'ascending' | 'descending' };
 		selectable?: boolean;
 		selectableFilter?: (row: TableRow) => boolean;
+		expandedRows?: Set<string>;
 	}>(),
 	{
 		defaultSort: () => ({ prop: 'date', order: 'descending' }),
 		selectable: false,
 		selectableFilter: () => true,
+		expandedRows: () => new Set(),
 	},
 );
+
+const $style = useCssModule();
 
 const tableRef = ref<TableInstance>();
 const selectedRows = ref<TableRow[]>([]);
@@ -98,8 +105,21 @@ const handleColumnResize = (
 	}
 };
 
+const getCellClassName: ColumnCls<TableRow> = ({ row }) => {
+	return `${props.expandedRows?.has(row.id) ? $style.expandedCell : $style.baseCell}`;
+};
+
+const getRowClassName: ColumnCls<TableRow> = ({ row }) => {
+	const baseClass =
+		'status' in row && row?.status === 'error' ? $style.customDisabledRow : $style.customRow;
+
+	const expandedClass = props.expandedRows?.has(row.id) ? $style.expandedRow : '';
+	return `${baseClass} ${expandedClass}`;
+};
+
 defineSlots<{
 	id(props: { row: TableRow }): unknown;
+	index(props: { row: TableRow }): unknown;
 	status(props: { row: TableRow }): unknown;
 }>();
 </script>
@@ -111,10 +131,8 @@ defineSlots<{
 		:default-sort="defaultSort"
 		:data="localData"
 		:border="true"
-		:cell-class-name="$style.customCell"
-		:row-class-name="
-			({ row }) => (row?.status === 'error' ? $style.customDisabledRow : $style.customRow)
-		"
+		:cell-class-name="getCellClassName"
+		:row-class-name="getRowClassName"
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
@@ -135,7 +153,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="125"
+			:min-width="column.minWidth ?? SHORT_TABLE_CELL_MIN_WIDTH"
 		>
 			<template #header="headerProps">
 				<N8nTooltip
@@ -161,6 +179,7 @@ defineSlots<{
 			</template>
 			<template #default="{ row }">
 				<slot v-if="column.prop === 'id'" name="id" v-bind="{ row }"></slot>
+				<slot v-if="column.prop === 'index'" name="index" v-bind="{ row }"></slot>
 				<slot v-if="column.prop === 'status'" name="status" v-bind="{ row }"></slot>
 			</template>
 		</ElTableColumn>
@@ -168,22 +187,32 @@ defineSlots<{
 </template>
 
 <style module lang="scss">
-.customCell {
+.baseCell {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	border-bottom: 1px solid var(--border-color-light) !important;
+	vertical-align: top !important;
+
+	> div {
+		white-space: nowrap !important;
+	}
 }
 
-.cell {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.expandedCell {
+	white-space: normal;
+	background: var(--color-background-light-base);
+	border-bottom: 1px solid var(--border-color-light) !important;
+	vertical-align: top !important;
+
+	> div {
+		white-space: normal !important;
+	}
 }
 
 .customRow {
 	cursor: pointer;
-	--color-table-row-hover-background: var(--color-background-light);
+	--color-table-row-hover-background: var(--color-background-base);
 }
 
 .customDisabledRow {
@@ -213,10 +242,6 @@ defineSlots<{
 .table {
 	border-radius: 12px;
 
-	:global(.el-scrollbar__wrap) {
-		overflow: hidden;
-	}
-
 	:global(.el-table__column-resize-proxy) {
 		background-color: var(--color-primary);
 		width: 3px;
@@ -236,6 +261,17 @@ defineSlots<{
 
 	:global(.el-scrollbar__bar) {
 		opacity: 1;
+	}
+
+	* {
+		// hide browser scrollbars completely
+		// but still allow mouse gestures to scroll
+		&::-webkit-scrollbar {
+			display: none;
+		}
+
+		-ms-overflow-style: none;
+		scrollbar-width: none;
 	}
 }
 </style>

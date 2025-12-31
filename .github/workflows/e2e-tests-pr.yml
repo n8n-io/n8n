@@ -24,56 +24,21 @@ jobs:
     with:
       pr_number: ${{ github.event.pull_request.number }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    secrets: inherit
+
+  run-playwright-tests:
+    name: Playwright
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
+    secrets: inherit
 
   post-e2e-tests:
     name: E2E - Checks
     runs-on: ubuntu-latest
-    needs: [eligibility_check, run-e2e-tests]
+    needs: [eligibility_check, run-e2e-tests, run-playwright-tests]
     if: always() && needs.eligibility_check.result != 'skipped'
     steps:
-      - name: Determine Outcome and Comment Message
-        id: determine_outcome
-        run: |
-          JOB_OUTCOME="success"
-          COMMENT_BODY=""
-          SHOULD_POST_COMMENT="false"
-
-          if [[ "${{ needs.eligibility_check.outputs.should_run }}" == "false" ]]; then
-            COMMENT_BODY="ℹ️ E2E tests were not run for this PR based on the eligibility criteria."
-            SHOULD_POST_COMMENT="true"
-            JOB_OUTCOME="success"
-          elif [[ "${{ needs.run-e2e-tests.result }}" == "success" ]]; then
-            COMMENT_BODY=":white_check_mark: All Cypress E2E specs passed"
-            SHOULD_POST_COMMENT="true"
-            JOB_OUTCOME="success"
-          elif [[ "${{ needs.run-e2e-tests.result }}" == "failure" ]]; then
-            COMMENT_BODY=":warning: Some Cypress E2E specs are failing, please fix them before merging"
-            SHOULD_POST_COMMENT="true"
-            JOB_OUTCOME="failure"
-          else
-            COMMENT_BODY="ℹ️ E2E tests were scheduled but did not complete as expected (Result: ${{ needs.run-e2e-tests.result }})."
-            SHOULD_POST_COMMENT="true"
-            JOB_OUTCOME="failure"
-          fi
-
-          echo "comment_body=$COMMENT_BODY" >> $GITHUB_OUTPUT
-          echo "should_post_comment=$SHOULD_POST_COMMENT" >> $GITHUB_OUTPUT
-          echo "job_outcome=$JOB_OUTCOME" >> $GITHUB_OUTPUT
-
-      - name: Create or Update PR Comment
-        if: steps.determine_outcome.outputs.should_post_comment == 'true' && needs.eligibility_check.outputs.should_run == 'true'
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.determine_outcome.outputs.comment_body }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Finalize Job Status
-        run: |
-          if [[ "${{ steps.determine_outcome.outputs.job_outcome }}" == "failure" ]]; then
-            exit 1
-          else
-            exit 0
-          fi
+      - name: Fail if tests failed
+        if: needs.run-e2e-tests.result == 'failure' || needs.run-playwright-tests.result == 'failure'
+        run: exit 1

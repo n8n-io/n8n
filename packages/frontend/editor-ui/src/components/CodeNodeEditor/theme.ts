@@ -1,5 +1,6 @@
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/constants';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorView } from '@codemirror/view';
+import { EditorView, tooltips } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
 /**
@@ -259,4 +260,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 	}),
 	codeEditorSyntaxHighlighting,
+	tooltips({
+		parent: document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
+	}),
 ];

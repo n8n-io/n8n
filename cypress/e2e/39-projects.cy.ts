@@ -34,7 +34,9 @@ const credentialsModal = new CredentialsModal();
 const ndv = new NDV();
 const mainSidebar = new MainSidebar();
 
-describe('Projects', { disableAutoLogin: true }, () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Projects', { disableAutoLogin: true }, () => {
 	describe('when starting from scratch', () => {
 		beforeEach(() => {
 			cy.resetDatabase();

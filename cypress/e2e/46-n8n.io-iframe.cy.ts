@@ -2,7 +2,9 @@ import { WorkflowsPage } from '../pages';
 
 const workflowsPage = new WorkflowsPage();
 
-describe('n8n.io iframe', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('n8n.io iframe', () => {
 	describe('when telemetry is disabled', () => {
 		it('should not load the iframe when visiting /home/workflows', () => {
 			cy.overrideSettings({ telemetry: { enabled: false } });

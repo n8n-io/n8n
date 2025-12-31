@@ -3,6 +3,7 @@ import { type MockProxy, mock } from 'jest-mock-extended';
 import { type INode, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
+import * as utils from '../utils/utils';
 
 describe('formCompletionUtils', () => {
 	let mockWebhookFunctions: MockProxy<IWebhookFunctions>;
@@ -112,6 +113,38 @@ describe('formCompletionUtils', () => {
 				responseText: '',
 				title: 'Form Completion',
 			});
+		});
+
+		it('should call sanitizeHtml on completionMessage', async () => {
+			const sanitizeHtmlSpy = jest.spyOn(utils, 'sanitizeHtml');
+			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: maliciousMessage,
+					responseText: 'Response text',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(sanitizeHtmlSpy).toHaveBeenCalledWith(maliciousMessage);
+			expect(sanitizeHtmlSpy).toHaveBeenCalledWith('Response text');
+			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: undefined,
+				formTitle: 'Form Title',
+				message: 'Safe message<b>bold</b>',
+				redirectUrl: undefined,
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseText: 'Response text',
+				title: 'Form Completion',
+				dangerousCustomCss: undefined,
+			});
+
+			sanitizeHtmlSpy.mockRestore();
 		});
 
 		it('throw an error if no binary data with the field name is found', async () => {

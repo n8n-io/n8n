@@ -1,4 +1,4 @@
-name: Callable Test Workflows
+name: Test Workflows - Reusable
 
 on:
   workflow_call:
@@ -7,208 +7,47 @@ on:
         description: 'The Git ref (branch, tag, or SHA) to checkout and test.'
         required: true
         type: string
-      send_webhook_report:
-        description: 'Set to true to send test results to the webhook.'
+      compare_schemas:
+        description: 'Set to "true" to enable schema comparison during tests.'
         required: false
-        type: boolean
-        default: false
-      pr_number:
-        description: 'The PR number, if applicable (for context in webhook).'
-        required: false
+        default: 'true'
         type: string
-        default: ''
     secrets:
       ENCRYPTION_KEY:
         description: 'Encryption key for n8n operations.'
         required: true
-      CI_SENTRY_DSN:
-        description: 'Sentry DSN for CI test runs.'
-        required: false
-      WORKFLOW_TESTS_RESULT_DESTINATION:
-        description: 'Webhook URL to send test results to (if enabled).'
-        required: false
+      CURRENTS_RECORD_KEY:
+        description: 'Currents record key for uploading test results.'
+        required: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
 
 jobs:
-  build_and_test:
-    name: Install, Build, and Test Workflows
+  run_workflow_tests:
+    name: Run Workflow Tests with Snapshots
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    timeout-minutes: 10
-    env:
-      N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ inputs.git_ref }}
 
-      - name: Setup Environment and Build Project
-        uses: n8n-io/n8n/.github/actions/setup-and-build@7e870b8f7f5a39bb8bf82d1f42b6d44febc0082c # v1.100.1
-        with:
-          node-version: '22.x'
-          cache-suffix: 'workflow-test'
+      - name: Set up Environment
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
-      - name: Install OS dependencies
-        run: |
-          sudo apt update -y
-          echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
-          echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends graphicsmagick
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-
-      - name: Import credentials
-        run: ./packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
-
-      - name: Import workflows
-        run: ./packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
-
-      - name: Copy static assets
-        run: |
-          mkdir -p /tmp/testData/pdfs
-          cp assets/n8n-logo.png /tmp/n8n-logo.png
-          cp assets/n8n-screenshot.png /tmp/n8n-screenshot.png
-          cp test-workflows/testData/pdfs/*.pdf /tmp/testData/pdfs/
-
-      - name: Run tests
-        id: tests
-        run: ./packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.json --githubWorkflow --shortOutput --output=test-results.json --concurrency=16 --compare=test-workflows/snapshots
-        continue-on-error: true
+      - name: Set up Workflow Tests
+        run: pnpm --filter=n8n-playwright test:workflows:setup
         env:
-          SKIP_STATISTICS_EVENTS: 'true'
-          DB_SQLITE_POOL_SIZE: '4'
-          N8N_SENTRY_DSN: ${{ secrets.CI_SENTRY_DSN }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
-      - name: Report test outcome
-        if: always()
-        run: |
-          echo "Test step outcome was: ${{ steps.tests.outcome }}"
-          if [[ "${{ steps.tests.outcome }}" == "failure" ]]; then
-            echo "Workflow tests failed but the workflow will continue."
-          elif [[ "${{ steps.tests.outcome }}" == "success" ]]; then
-            echo "Workflow tests passed."
-          else
-            echo "Workflow tests outcome: ${{ steps.tests.outcome }}"
-          fi
-
-      - name: Prepare and Send Test Results to Webhook
-        if: inputs.send_webhook_report == true
-        shell: bash
+      - name: Run Workflow Tests
+        run: pnpm --filter=n8n-playwright test:workflows --workers 4
         env:
-          WEBHOOK_URL: ${{ secrets.WORKFLOW_TESTS_RESULT_DESTINATION }}
-          TEST_RESULTS_FILE: ./test-results.json
-          GH_REPOSITORY: ${{ github.repository }}
-          GH_RUN_ID: ${{ github.run_id }}
-          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
-          GH_REF_TESTED: ${{ inputs.git_ref }}
-          GH_EVENT_NAME: ${{ github.event_name }}
-          GH_PR_NUMBER_INPUT: ${{ inputs.pr_number }}
-          GH_WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          GH_ACTOR: ${{ github.actor }}
-        run: |
-          echo "Attempting to send test results to webhook..."
-          echo "Test results file expected at: $TEST_RESULTS_FILE"
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
-          if [ ! -f "$TEST_RESULTS_FILE" ]; then
-            echo "::warning::Test results file ($TEST_RESULTS_FILE) not found. Skipping webhook."
-            exit 0
-          fi
-
-          if ! command -v jq &> /dev/null; then
-            echo "jq not found. Installing jq..."
-            sudo apt-get update -qq && sudo apt-get install -y -qq jq
-            if ! command -v jq &> /dev/null; then
-              echo "::error::Failed to install jq. Cannot process JSON."
-              exit 1
-            fi
-          fi
-
-          pr_number_to_send="$GH_PR_NUMBER_INPUT"
-
-          echo "Preparing JSON payload..."
-          if [ ! -s "$TEST_RESULTS_FILE" ]; then
-            echo "::warning::Test results file ($TEST_RESULTS_FILE) is empty. Sending only GitHub context."
-            enriched_payload=$(jq -n \
-              --arg repository "$GH_REPOSITORY" \
-              --arg run_id "$GH_RUN_ID" \
-              --arg run_attempt "$GH_RUN_ATTEMPT" \
-              --arg ref_tested "$GH_REF_TESTED" \
-              --arg event_name "$GH_EVENT_NAME" \
-              --arg pr_num "$pr_number_to_send" \
-              --arg workflow_run_url "$GH_WORKFLOW_RUN_URL" \
-              --arg actor "$GH_ACTOR" \
-              '{
-                githubWorkflowContext: {
-                  repository: $repository,
-                  runId: $run_id,
-                  runAttempt: $run_attempt,
-                  gitRefTested: $ref_tested,
-                  triggeringEventName: $event_name,
-                  prNumber: (if $pr_num == "" then null else $pr_num | tonumber? // $pr_num end),
-                  workflowRunUrl: $workflow_run_url,
-                  triggeredBy: $actor
-                }
-              }')
-          else
-            enriched_payload=$(jq \
-              --arg repository "$GH_REPOSITORY" \
-              --arg run_id "$GH_RUN_ID" \
-              --arg run_attempt "$GH_RUN_ATTEMPT" \
-              --arg ref_tested "$GH_REF_TESTED" \
-              --arg event_name "$GH_EVENT_NAME" \
-              --arg pr_num "$pr_number_to_send" \
-              --arg workflow_run_url "$GH_WORKFLOW_RUN_URL" \
-              --arg actor "$GH_ACTOR" \
-              '. + {
-                githubWorkflowContext: {
-                  repository: $repository,
-                  runId: $run_id,
-                  runAttempt: $run_attempt,
-                  gitRefTested: $ref_tested,
-                  triggeringEventName: $event_name,
-                  prNumber: (if $pr_num == "" then null else $pr_num | tonumber? // $pr_num end),
-                  workflowRunUrl: $workflow_run_url,
-                  triggeredBy: $actor
-                }
-              }' "$TEST_RESULTS_FILE")
-          fi
-
-          jq_exit_code=$?
-          if [ $jq_exit_code -ne 0 ] || [ -z "$enriched_payload" ]; then
-            echo "::error::Failed to process JSON with jq (exit code: $jq_exit_code). Input file: $TEST_RESULTS_FILE"
-            if [ -s "$TEST_RESULTS_FILE" ]; then
-              echo "Contents of $TEST_RESULTS_FILE that may have caused an error:"
-              head -c 1000 "$TEST_RESULTS_FILE" # Print first 1000 chars
-              echo "" # Newline after head
-            elif [ -f "$TEST_RESULTS_FILE" ]; then
-              echo "$TEST_RESULTS_FILE exists but is empty."
-            fi
-            exit 1
-          fi
-
-          echo "Enriched payload to send (first 500 chars):"
-          echo "$enriched_payload" | head -c 500
-          echo ""
-
-          echo "Sending data to webhook: $WEBHOOK_URL"
-          http_response_code=$(curl -s -w "%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-GitHub-Event: $GH_EVENT_NAME" \
-            -H "X-GitHub-Run-Id: $GH_RUN_ID" \
-            --data "$enriched_payload" \
-            "$WEBHOOK_URL" \
-            -o curl_response_body.txt 2>curl_stderr.txt)
-
-          curl_stderr_content=$(cat curl_stderr.txt)
-          if [ -n "$curl_stderr_content" ]; then
-            echo "::warning::curl stderr: $curl_stderr_content"
-          fi
-          echo "Webhook response code: $http_response_code"
-          echo "Webhook response body:"
-          cat curl_response_body.txt
-          if [[ "$http_response_code" -ge 200 && "$http_response_code" -lt 300 ]]; then
-            echo "Successfully sent data to webhook."
-          else
-            echo "::error::Webhook call failed with status code $http_response_code."
-          fi
+      - name: Run Workflow Schema Tests
+        if: ${{ inputs.compare_schemas == 'true' }}
+        run: pnpm --filter=n8n-playwright test:workflows:schema
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}

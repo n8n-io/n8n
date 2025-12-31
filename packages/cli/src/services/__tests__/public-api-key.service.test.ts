@@ -36,7 +36,7 @@ const securitySchema = mock<OpenAPIV3.ApiKeySecurityScheme>({
 	name: 'X-N8N-API-KEY',
 });
 
-const jwtService = new JwtService(instanceSettings);
+const jwtService = new JwtService(instanceSettings, mock());
 
 let userRepository: UserRepository;
 let apiKeyRepository: ApiKeyRepository;

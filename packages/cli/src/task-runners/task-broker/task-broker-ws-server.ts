@@ -99,7 +99,11 @@ export class TaskBrokerWsServer {
 
 		const onMessage = async (data: WebSocket.RawData) => {
 			try {
-				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+				const buffer = Array.isArray(data)
+					? Buffer.concat(data)
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
 
 				const message: RunnerMessage.ToBroker.All = JSON.parse(
 					buffer.toString('utf8'),

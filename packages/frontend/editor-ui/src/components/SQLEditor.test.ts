@@ -55,6 +55,14 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.NDV]: {
 					activeNodeName: 'Test Node',
+					hasInputData: true,
+					isInputPanelEmpty: false,
+					isOutputPanelEmpty: false,
+					ndvInputDataWithPinnedData: [],
+					getHoveringItem: undefined,
+					expressionOutputItemIndex: 0,
+					isTableHoverOnboarded: false,
+					setHighlightDraggables: vi.fn(),
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
@@ -185,10 +193,22 @@ describe('SqlEditor.vue', () => {
 		// Does not hide output when clicking inside the output
 		await focusEditor(container);
 		await userEvent.click(getByTestId(EXPRESSION_OUTPUT_TEST_ID));
-		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).toBeInTheDocument());
+
+		await waitFor(() =>
+			expect(
+				queryByTestId(EXPRESSION_OUTPUT_TEST_ID)?.closest('[aria-hidden=false]'),
+			).toBeInTheDocument(),
+		);
 
 		// Does hide output when clicking outside the container
 		await userEvent.click(baseElement);
-		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).not.toBeInTheDocument());
+
+		// NOTE: in testing, popover persists regardless of persist option.
+		// See https://github.com/element-plus/element-plus/blob/2.4.3/packages/components/tooltip/src/content.vue#L83-L90
+		await waitFor(() =>
+			expect(
+				queryByTestId(EXPRESSION_OUTPUT_TEST_ID)?.closest('[aria-hidden=true]'),
+			).toBeInTheDocument(),
+		);
 	});
 });

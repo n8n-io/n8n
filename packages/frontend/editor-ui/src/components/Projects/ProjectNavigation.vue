@@ -8,6 +8,7 @@ import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { ElMenu } from 'element-plus';
 
 type Props = {
 	collapsed: boolean;
@@ -128,12 +129,12 @@ onBeforeMount(async () => {
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 			<N8nTooltip
+				v-if="projectsStore.canCreateProjects"
 				placement="right"
 				:disabled="projectsStore.hasPermissionToCreateProjects"
 				:content="locale.baseText('projects.create.permissionDenied')"
 			>
 				<N8nButton
-					v-if="projectsStore.canCreateProjects"
 					icon="plus"
 					text
 					data-test-id="project-plus-button"
@@ -162,12 +163,12 @@ onBeforeMount(async () => {
 			/>
 		</ElMenu>
 		<N8nTooltip
+			v-if="showAddFirstProject"
 			placement="right"
 			:disabled="projectsStore.hasPermissionToCreateProjects"
 			:content="locale.baseText('projects.create.permissionDenied')"
 		>
 			<N8nButton
-				v-if="showAddFirstProject"
 				:class="[
 					$style.addFirstProjectBtn,
 					{

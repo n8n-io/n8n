@@ -608,6 +608,440 @@ describe('FormTrigger, prepareFormData', () => {
 	});
 });
 
+describe('FormTrigger, prepareFormData - Checkbox and Radio Fields', () => {
+	it('should correctly handle checkbox fields', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Hobbies',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Reading' }, { option: 'Gaming' }, { option: 'Sports' }],
+				},
+			},
+		];
+
+		const query = { Hobbies: 'Reading,Gaming' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].isMultiSelect).toBe(true);
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Reading' },
+			{ id: 'option1_field-0', label: 'Gaming' },
+			{ id: 'option2_field-0', label: 'Sports' },
+		]);
+	});
+
+	it('should correctly handle radio fields', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Preferred Contact Method',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Email' }, { option: 'Phone' }, { option: 'Text Message' }],
+				},
+			},
+		];
+
+		const query = { 'Preferred Contact Method': 'Email' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].radioSelect).toBe('radio');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Email' },
+			{ id: 'option1_field-0', label: 'Phone' },
+			{ id: 'option2_field-0', label: 'Text Message' },
+		]);
+		expect(result.formFields[0].defaultValue).toBe('Email');
+	});
+
+	it('should handle checkbox fields with no default selection', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Newsletter Subscriptions',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Tech News' }, { option: 'Product Updates' }],
+				},
+			},
+		];
+
+		const query = {};
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].isMultiSelect).toBe(true);
+		expect(result.formFields[0].defaultValue).toBe('');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Tech News' },
+			{ id: 'option1_field-0', label: 'Product Updates' },
+		]);
+	});
+
+	it('should handle radio fields with no default selection', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Experience Level',
+				fieldType: 'radio',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Beginner' }, { option: 'Intermediate' }, { option: 'Advanced' }],
+				},
+			},
+		];
+
+		const query = {};
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].radioSelect).toBe('radio');
+		expect(result.formFields[0].defaultValue).toBe('');
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Beginner' },
+			{ id: 'option1_field-0', label: 'Intermediate' },
+			{ id: 'option2_field-0', label: 'Advanced' },
+		]);
+	});
+
+	it('should handle mixed form with checkbox, radio, and other field types', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+			},
+			{
+				fieldLabel: 'Skills',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }, { option: 'Java' }],
+				},
+			},
+			{
+				fieldLabel: 'Employment Status',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Full-time' }, { option: 'Part-time' }, { option: 'Freelancer' }],
+				},
+			},
+		];
+
+		const query = {
+			Name: 'John Doe',
+			Skills: 'JavaScript,Python',
+			'Employment Status': 'Full-time',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Developer Survey',
+			formDescription: 'Tell us about yourself',
+			formSubmittedText: 'Thank you for participating',
+			redirectUrl: 'example.com/thanks',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0]).toEqual({
+			id: 'field-0',
+			errorId: 'error-field-0',
+			label: 'Name',
+			inputRequired: 'form-required',
+			defaultValue: 'John Doe',
+			placeholder: 'Enter your name',
+			isInput: true,
+			type: 'text',
+		});
+
+		expect(result.formFields[1].isMultiSelect).toBe(true);
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'JavaScript' },
+			{ id: 'option1_field-1', label: 'Python' },
+			{ id: 'option2_field-1', label: 'Java' },
+		]);
+
+		expect(result.formFields[2].radioSelect).toBe('radio');
+		expect(result.formFields[2].defaultValue).toBe('Full-time');
+		expect(result.formFields[2].multiSelectOptions).toEqual([
+			{ id: 'option0_field-2', label: 'Full-time' },
+			{ id: 'option1_field-2', label: 'Part-time' },
+			{ id: 'option2_field-2', label: 'Freelancer' },
+		]);
+	});
+
+	it('should handle checkbox fields with unique IDs when multiple checkbox fields exist', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Programming Languages',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }],
+				},
+			},
+			{
+				fieldLabel: 'Frameworks',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'React' }, { option: 'Vue' }],
+				},
+			},
+		];
+
+		const query = {
+			'Programming Languages': 'JavaScript',
+			Frameworks: 'React,Vue',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Tech Survey',
+			formDescription: 'Your tech preferences',
+			formSubmittedText: 'Thanks!',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'JavaScript' },
+			{ id: 'option1_field-0', label: 'Python' },
+		]);
+
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'React' },
+			{ id: 'option1_field-1', label: 'Vue' },
+		]);
+	});
+
+	it('should handle radio fields with unique IDs when multiple radio fields exist', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Experience Level',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Junior' }, { option: 'Senior' }],
+				},
+			},
+			{
+				fieldLabel: 'Work Preference',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Remote' }, { option: 'Office' }],
+				},
+			},
+		];
+
+		const query = {
+			'Experience Level': 'Senior',
+			'Work Preference': 'Remote',
+		};
+
+		const result = prepareFormData({
+			formTitle: 'Job Survey',
+			formDescription: 'Your work preferences',
+			formSubmittedText: 'Thanks!',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].multiSelectOptions).toEqual([
+			{ id: 'option0_field-0', label: 'Junior' },
+			{ id: 'option1_field-0', label: 'Senior' },
+		]);
+
+		expect(result.formFields[1].multiSelectOptions).toEqual([
+			{ id: 'option0_field-1', label: 'Remote' },
+			{ id: 'option1_field-1', label: 'Office' },
+		]);
+	});
+});
+
+describe('addFormResponseDataToReturnItem - Checkbox and Radio Fields', () => {
+	it('should process checkbox field data correctly', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Hobbies',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Reading' }, { option: 'Gaming' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["Reading", "Gaming"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Hobbies).toEqual(['Reading', 'Gaming']);
+	});
+
+	it('should process radio field data correctly', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Preferred Contact',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Email' }, { option: 'Phone' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["Email"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Preferred Contact']).toBe('Email');
+	});
+
+	it('should handle radio field with array value by taking first element', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Priority Level',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'High' }, { option: 'Medium' }, { option: 'Low' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': '["High", "Medium"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Priority Level']).toBe('High');
+	});
+
+	it('should handle checkbox field with null value', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Optional Features',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'Feature A' }, { option: 'Feature B' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json['Optional Features']).toBeNull();
+	});
+
+	it('should handle radio field with null value', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Rating',
+				fieldType: 'radio',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: '1 Star' }, { option: '2 Stars' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Rating).toBeNull();
+	});
+
+	it('should process mixed form data with checkbox, radio, and other fields', () => {
+		const returnItem: INodeExecutionData = { json: {} };
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+			{
+				fieldLabel: 'Skills',
+				fieldType: 'checkbox',
+				requiredField: false,
+				fieldOptions: {
+					values: [{ option: 'JavaScript' }, { option: 'Python' }],
+				},
+			},
+			{
+				fieldLabel: 'Experience',
+				fieldType: 'radio',
+				requiredField: true,
+				fieldOptions: {
+					values: [{ option: 'Junior' }, { option: 'Senior' }],
+				},
+			},
+		];
+		const bodyData: IDataObject = {
+			'field-0': 'John Doe',
+			'field-1': '["JavaScript", "Python"]',
+			'field-2': '["Senior"]',
+		};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+
+		expect(returnItem.json.Name).toBe('John Doe');
+		expect(returnItem.json.Skills).toEqual(['JavaScript', 'Python']);
+		expect(returnItem.json.Experience).toBe('Senior');
+	});
+});
+
 jest.mock('luxon', () => ({
 	DateTime: {
 		fromFormat: jest.fn().mockReturnValue({
@@ -1123,6 +1557,22 @@ describe('addFormResponseDataToReturnItem', () => {
 
 		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 		expect(returnItem.json['Text Field']).toBe('hello world');
+	});
+
+	it('should parse radio field from JSON', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Radio Field', fieldType: 'radio' }];
+		const bodyData: IDataObject = { 'field-0': '["option1"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Radio Field']).toEqual('option1');
+	});
+
+	it('should parse checkboxes fields from JSON', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Checkboxes', fieldType: 'checkbox' }];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Checkboxes']).toEqual(['option1', 'option2']);
 	});
 
 	it('should parse multiselect fields from JSON', () => {

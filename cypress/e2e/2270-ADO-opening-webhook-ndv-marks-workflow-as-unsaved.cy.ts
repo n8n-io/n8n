@@ -4,7 +4,9 @@ import { NDV, WorkflowPage } from '../pages';
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
-describe('ADO-2270 Save button resets on webhook node open', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('ADO-2270 Save button resets on webhook node open', () => {
 	it('should not reset the save button if webhook node is opened and closed', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.addInitialNodeToCanvas(WEBHOOK_NODE_NAME);

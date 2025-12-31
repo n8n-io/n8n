@@ -1,5 +1,5 @@
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -30,5 +30,12 @@ export class InsightsModule implements ModuleInterface {
 		const { InsightsService } = await import('./insights.service');
 
 		return Container.get(InsightsService).settings();
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { InsightsService } = await import('./insights.service');
+
+		await Container.get(InsightsService).shutdown();
 	}
 }

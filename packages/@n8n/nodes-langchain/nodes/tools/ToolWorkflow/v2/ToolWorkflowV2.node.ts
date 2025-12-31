@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { nodeNameToToolName } from '@utils/helpers';
+import { nodeNameToToolName } from 'n8n-workflow';
 
 import { localResourceMapping } from './methods';
 import { WorkflowToolService } from './utils/WorkflowToolService';

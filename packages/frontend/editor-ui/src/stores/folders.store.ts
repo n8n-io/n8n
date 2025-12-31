@@ -100,7 +100,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	async function fetchTotalWorkflowsAndFoldersCount(projectId?: string): Promise<number> {
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			{ projectId, isArchived: false },
+			{ projectId },
 			{ skip: 0, take: 1 },
 			true,
 		);
@@ -292,13 +292,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 					// Add all descendants of this child
 					if (child.children?.length) {
-						childResult.push(...processFolderWithChildren(child).slice(1));
+						childResult.push.apply(childResult, processFolderWithChildren(child).slice(1));
 					}
 
 					return childResult;
 				});
 
-				result.push(...childItems);
+				result.push.apply(result, childItems);
 			}
 			return result;
 		};

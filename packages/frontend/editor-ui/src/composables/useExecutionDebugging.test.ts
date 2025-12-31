@@ -40,10 +40,10 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.getNodes.mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
-		workflowStore.getCurrentWorkflow.mockReturnValue({
+		workflowStore.workflowObject = {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
-		} as unknown as Workflow);
+		} as unknown as Workflow;
 
 		await expect(executionDebugging.applyExecutionData('1')).resolves.not.toThrowError();
 	});
@@ -66,10 +66,10 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.getNodes.mockReturnValue([{ name: 'testNode2' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
-		workflowStore.getCurrentWorkflow.mockReturnValue({
+		workflowStore.workflowObject = {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
-		} as unknown as Workflow);
+		} as unknown as Workflow;
 
 		await executionDebugging.applyExecutionData('1');
 
@@ -96,10 +96,10 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.getNodes.mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
-		workflowStore.getCurrentWorkflow.mockReturnValue({
+		workflowStore.workflowObject = {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
-		} as unknown as Workflow);
+		} as unknown as Workflow;
 
 		await executionDebugging.applyExecutionData('1');
 

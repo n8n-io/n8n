@@ -5,6 +5,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './common';
 export * from './cron';
 export * from './deferred-promise';
 export * from './global-state';
@@ -15,6 +16,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
@@ -65,6 +67,8 @@ export { ExpressionExtensions } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
+export * from './node-parameters/parameter-type-validation';
+export * from './evaluation-helpers';
 
 export type {
 	DocMetadata,

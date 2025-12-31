@@ -7,7 +7,9 @@ import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 
 const WorkflowsPage = new WorkflowsPageClass();
 
-describe('Become creator CTA', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Become creator CTA', () => {
 	it('should not show the CTA if user is not eligible', () => {
 		interceptCtaRequestWithResponse(false).as('cta');
 		cy.visit(WorkflowsPage.url);

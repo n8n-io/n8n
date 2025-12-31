@@ -27,6 +27,7 @@ import { SourceControlExportService } from '@/environments.ee/source-control/sou
 import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
@@ -428,6 +429,7 @@ describe('SourceControlService', () => {
 			sourceControlPreferencesService,
 			Container.get(SourceControlExportService),
 			Container.get(SourceControlImportService),
+			Container.get(SourceControlScopedService),
 			Container.get(TagRepository),
 			Container.get(FolderRepository),
 			Container.get(EventService),

@@ -268,12 +268,10 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				if (data.executionMode !== 'manual') {
-					lifecycleHooks.addHandler('sendChunk', (chunk) => {
-						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-						data.httpResponse?.flush?.();
-					});
-				}
+				lifecycleHooks.addHandler('sendChunk', (chunk) => {
+					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+					data.httpResponse?.flush?.();
+				});
 			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
@@ -307,10 +305,21 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
-				executionTimeout = setTimeout(() => {
-					void this.activeExecutions.stopExecution(executionId);
-				}, timeout);
+				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as milliseconds
+				if (data.startedAt && data.startedAt instanceof Date) {
+					// If startedAt is set, we calculate the timeout based on the startedAt time
+					// This is useful for executions that were waiting in a waiting state
+					// and we want to ensure the timeout is relative to when the execution started.
+					const now = Date.now();
+					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
+				}
+				if (timeout === 0) {
+					this.activeExecutions.stopExecution(executionId);
+				} else {
+					executionTimeout = setTimeout(() => {
+						void this.activeExecutions.stopExecution(executionId);
+					}, timeout);
+				}
 			}
 
 			workflowExecution

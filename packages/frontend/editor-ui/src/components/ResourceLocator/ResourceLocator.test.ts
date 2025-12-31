@@ -9,9 +9,11 @@ import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
 	TEST_NODE_SINGLE_MODE,
+	TEST_NODE_NO_CREDENTIALS,
 	TEST_PARAMETER_ADD_RESOURCE,
 	TEST_PARAMETER_MULTI_MODE,
 	TEST_PARAMETER_SINGLE_MODE,
+	TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
 } from './ResourceLocator.test.constants';
 
 vi.mock('vue-router', async () => {
@@ -195,6 +197,101 @@ describe('ResourceLocator', () => {
 				name: 'Test Resource',
 			},
 		});
+	});
+
+	it('renders error when credentials are required and skipCredentialsCheckInRLC is false', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [
+				{
+					name: 'Test Resource',
+					value: 'test-resource',
+					url: 'https://test.com/test-resource',
+				},
+			],
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'Test Node',
+			credentials: [
+				{
+					name: 'testAuth',
+					required: true,
+				},
+			],
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_MULTI_MODE,
+				path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+				node: TEST_NODE_NO_CREDENTIALS,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+				isValueExpression: false,
+			},
+		});
+
+		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		expect(getByTestId('rlc-error-container')).toBeInTheDocument();
+		expect(getByTestId('permission-error-link')).toBeInTheDocument();
+		expect(queryByTestId('rlc-item')).not.toBeInTheDocument();
+	});
+
+	it('renders list items when skipCredentialsCheckInRLC is true even without credentials', async () => {
+		const TEST_ITEMS = [
+			{ name: 'Test Resource', value: 'test-resource', url: 'https://test.com/test-resource' },
+			{
+				name: 'Test Resource 2',
+				value: 'test-resource-2',
+				url: 'https://test.com/test-resource-2',
+			},
+		];
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: TEST_ITEMS,
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'Test Node',
+			credentials: [
+				{
+					name: 'testAuth',
+					required: true,
+				},
+			],
+		});
+
+		const { getByTestId, getByText, getAllByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
+				path: `parameters.${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`,
+				node: TEST_NODE_NO_CREDENTIALS,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+				isValueExpression: false,
+			},
+		});
+
+		expect(
+			getByTestId(`resource-locator-${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`),
+		).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+		});
+
+		expect(getAllByTestId('rlc-item')).toHaveLength(TEST_ITEMS.length);
+		TEST_ITEMS.forEach((item) => {
+			expect(getByText(item.name)).toBeInTheDocument();
+		});
+		expect(queryByTestId('rlc-error-container')).not.toBeInTheDocument();
+		expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 	});
 
 	// Testing error message deduplication

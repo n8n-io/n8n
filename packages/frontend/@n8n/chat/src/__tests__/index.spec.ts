@@ -4,6 +4,7 @@ import {
 	createFetchResponse,
 	createGetLatestMessagesResponse,
 	createSendMessageResponse,
+	createMockStreamingFetchResponse,
 	getChatInputSendButton,
 	getChatInputTextarea,
 	getChatMessage,
@@ -215,5 +216,157 @@ describe('createChat()', () => {
 				expect(lastMessage.querySelector('code')).toHaveTextContent('console.log("Hello World!");');
 			},
 		);
+	});
+
+	describe('streaming', () => {
+		it('should handle streaming responses when enableStreaming is true', async () => {
+			const input = 'Tell me a story!';
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
+				},
+				{
+					type: 'item',
+					content: 'Once upon ',
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
+				},
+				{
+					type: 'item',
+					content: 'a time, ',
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
+				},
+				{
+					type: 'item',
+					content: 'there was a test.',
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
+				},
+				{
+					type: 'end',
+					metadata: {
+						nodeId: 'node-1',
+						itemIndex: 0,
+						runIndex: 0,
+						nodeName: 'Test Node',
+						timestamp: Date.now(),
+					},
+				},
+			];
+
+			const fetchSpy = vi.spyOn(window, 'fetch');
+			fetchSpy
+				.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
+				.mockImplementationOnce(createMockStreamingFetchResponse(chunks));
+
+			app = createChat({
+				mode: 'fullscreen',
+				enableStreaming: true,
+			});
+
+			await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
+
+			const textarea = getChatInputTextarea();
+			const sendButton = getChatInputSendButton();
+			await fireEvent.update(textarea as HTMLElement, input);
+			await fireEvent.click(sendButton as HTMLElement);
+
+			expect(getChatMessageByText(input)).toBeInTheDocument();
+			expect(getChatMessages().length).toBe(3);
+
+			await waitFor(() => expect(getChatMessageTyping()).not.toBeInTheDocument());
+
+			const expectedOutput = 'Once upon a time, there was a test.';
+			await waitFor(() => expect(getChatMessageByText(expectedOutput)).toBeInTheDocument());
+
+			expect(fetchSpy.mock.calls[1][1]).toEqual(
+				expect.objectContaining({
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'text/plain',
+					},
+					body: expect.stringMatching(/"action":"sendMessage"/) as unknown,
+				}),
+			);
+		});
+
+		it('should fall back to regular API when enableStreaming is false', async () => {
+			const input = 'Hello!';
+			const output = 'Hello Bot World!';
+
+			const fetchSpy = vi.spyOn(window, 'fetch');
+			fetchSpy
+				.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
+				.mockImplementationOnce(createFetchResponse(createSendMessageResponse(output)));
+
+			app = createChat({
+				mode: 'fullscreen',
+				enableStreaming: false,
+			});
+
+			await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
+
+			const textarea = getChatInputTextarea();
+			const sendButton = getChatInputSendButton();
+			await fireEvent.update(textarea as HTMLElement, input);
+			await fireEvent.click(sendButton as HTMLElement);
+
+			expect(getChatMessageByText(input)).toBeInTheDocument();
+
+			await waitFor(() => expect(getChatMessageTyping()).not.toBeInTheDocument());
+			expect(getChatMessageByText(output)).toBeInTheDocument();
+		});
+
+		it('should handle streaming errors gracefully', async () => {
+			const input = 'This should fail!';
+
+			const fetchSpy = vi.spyOn(window, 'fetch');
+			fetchSpy
+				.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
+				.mockImplementationOnce(async () => {
+					throw new Error('Network error');
+				});
+
+			app = createChat({
+				mode: 'fullscreen',
+				enableStreaming: true,
+			});
+
+			await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
+
+			const textarea = getChatInputTextarea();
+			const sendButton = getChatInputSendButton();
+			await fireEvent.update(textarea as HTMLElement, input);
+			await fireEvent.click(sendButton as HTMLElement);
+
+			expect(getChatMessageByText(input)).toBeInTheDocument();
+
+			await waitFor(() => expect(getChatMessageTyping()).not.toBeInTheDocument());
+			expect(getChatMessageByText('Error: Failed to receive response')).toBeInTheDocument();
+		});
 	});
 });

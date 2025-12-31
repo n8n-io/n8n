@@ -61,7 +61,7 @@ type ExternalHooksMap = {
 		payload: UserUpdateRequestDto,
 	];
 	'user.profile.update': [currentEmail: string, publicUser: PublicUser];
-	'user.password.update': [updatedEmail: string, updatedPassword: string];
+	'user.password.update': [updatedEmail: string, updatedPassword: string | null];
 	'user.invited': [emails: string[]];
 
 	'workflow.create': [createdWorkflow: IWorkflowBase];

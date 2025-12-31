@@ -1,16 +1,36 @@
+import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import watcher from '@parcel/watcher';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { Service } from '@n8n/di';
+
+jest.mock('lodash/debounce', () => (fn: () => void) => fn);
+
+jest.mock('@parcel/watcher', () => ({
+	subscribe: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('fs/promises');
+
+jest.mock('@/push', () => {
+	@Service()
+	class Push {
+		broadcast = jest.fn();
+	}
+
+	return { Push };
+});
 
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});
@@ -38,7 +58,7 @@ describe('LoadNodesAndCredentials', () => {
 	});
 
 	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 
 		let fullNodeWrapper: { description: INodeTypeDescription };
 
@@ -84,6 +104,36 @@ describe('LoadNodesAndCredentials', () => {
 			expect(toolDescriptionProp).toBeDefined();
 			expect(toolDescriptionProp?.type).toBe('string');
 			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+		});
+
+		it('should add toolDescription property after callout property', () => {
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Callout 1',
+					name: 'callout1',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Callout 2',
+					name: 'callout2',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Another',
+					name: 'another',
+					type: 'boolean',
+					default: true,
+				},
+			] satisfies INodeProperties[];
+
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionPropIndex = result.description.properties.findIndex(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionPropIndex).toBe(2);
+			expect(result.description.properties).toHaveLength(4);
 		});
 
 		it('should set codex categories correctly', () => {
@@ -240,7 +290,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.knownNodes['n8n-nodes-base.test'] = {
 				className: 'Test',
 				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
@@ -280,7 +330,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.types.nodes = [
 				{
 					name: 'testNode',
@@ -390,6 +440,70 @@ describe('LoadNodesAndCredentials', () => {
 					resources: {},
 				},
 			});
+		});
+	});
+
+	describe('setupHotReload', () => {
+		let instance: LoadNodesAndCredentials;
+
+		const mockLoader = mock<DirectoryLoader>({
+			packageName: 'CUSTOM',
+			directory: '/some/custom/path',
+			isLazyLoaded: false,
+			reset: jest.fn(),
+			loadAll: jest.fn(),
+		});
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance.loaders = { CUSTOM: mockLoader };
+
+			// Allow access to directory
+			(fs.access as jest.Mock).mockResolvedValue(undefined);
+
+			// Simulate custom node dir structure
+			(fs.readdir as jest.Mock).mockResolvedValue([
+				{ name: 'test-node', isDirectory: () => true, isSymbolicLink: () => false },
+			]);
+
+			// Simulate symlink resolution
+			(fs.realpath as jest.Mock).mockResolvedValue('/resolved/test-node');
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should subscribe to file changes and reload on changes', async () => {
+			const postProcessSpy = jest
+				.spyOn(instance, 'postProcessLoaders')
+				.mockResolvedValue(undefined);
+			const subscribe = jest.mocked(watcher.subscribe);
+
+			await instance.setupHotReload();
+
+			console.log(subscribe);
+			expect(subscribe).toHaveBeenCalledTimes(2);
+			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+			expect(subscribe).toHaveBeenCalledWith('/resolved/test-node', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+
+			const [watchPath, onFileUpdate] = subscribe.mock.calls[0];
+
+			expect(watchPath).toBe('/some/custom/path');
+
+			// Simulate file change
+			const fakeModule = '/some/custom/path/some-module.js';
+			require.cache[fakeModule] = mock<NodeJS.Module>({ filename: fakeModule });
+			await onFileUpdate(null, [{ type: 'update', path: fakeModule }]);
+
+			expect(require.cache[fakeModule]).toBeUndefined(); // cache should be cleared
+			expect(mockLoader.reset).toHaveBeenCalled();
+			expect(mockLoader.loadAll).toHaveBeenCalled();
+			expect(postProcessSpy).toHaveBeenCalled();
 		});
 	});
 });

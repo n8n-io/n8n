@@ -1,7 +1,8 @@
 import vue from '@vitejs/plugin-vue';
 import { posix as pathPosix, resolve } from 'path';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
@@ -63,9 +64,14 @@ const alias = [
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash/$1',
 	},
+	{
+		// For sanitize-html
+		find: 'source-map-js',
+		replacement: resolve(__dirname, 'src/source-map-js-shim'),
+	},
 ];
 
-const plugins = [
+const plugins: UserConfig['plugins'] = [
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
@@ -104,6 +110,8 @@ const plugins = [
 						overrides: {
 							// disable a default plugin
 							cleanupIds: false,
+							// preserve viewBox for scalability
+							removeViewBox: false,
 						},
 					},
 				},
@@ -114,6 +122,20 @@ const plugins = [
 		modernTargets: browsers,
 		modernPolyfills: true,
 		renderLegacyChunks: false,
+	}),
+	{
+		name: 'Insert config script',
+		transformIndexHtml: (html, ctx) => {
+			const replacement = ctx.server
+				? '' // Skip when using Vite dev server
+				: '<script src="/{{BASE_PATH}}/{{REST_ENDPOINT}}/config.js"></script>';
+
+			return html.replace('%CONFIG_SCRIPT%', replacement);
+		},
+	},
+	// For sanitize-html
+	nodePolyfills({
+		include: ['fs', 'path', 'url', 'util', 'timers'],
 	}),
 ];
 
@@ -131,7 +153,7 @@ export default mergeConfig(
 		plugins,
 		resolve: { alias },
 		base: publicPath,
-		envPrefix: 'VUE',
+		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
 			preprocessorOptions: {
 				scss: {

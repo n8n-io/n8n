@@ -1,3 +1,4 @@
+import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 
 export interface LogMatch {
@@ -118,14 +119,15 @@ export class ContainerTestHelpers {
 
 		while (Date.now() - startTime < timeoutMs) {
 			iteration++;
-			await this.sleep(ContainerTestHelpers.POLL_INTERVAL_MS);
+			await wait(ContainerTestHelpers.POLL_INTERVAL_MS);
 
 			// Capture the timestamp for this iteration to avoid race conditions
 			const checkTimestamp = currentCheckTime;
 
 			// Check all containers concurrently
-			const matchPromises = targetContainers.map((container) =>
-				this.checkContainerForMatch(container, messageRegex, checkTimestamp),
+			const matchPromises = targetContainers.map(
+				async (container) =>
+					await this.checkContainerForMatch(container, messageRegex, checkTimestamp),
 			);
 
 			const results = await Promise.all(matchPromises);
@@ -228,6 +230,7 @@ export class ContainerTestHelpers {
 	 * Strip ANSI escape codes from log text
 	 */
 	private stripAnsiCodes(text: string): string {
+		// eslint-disable-next-line no-control-regex
 		return text.replace(/\x1B\[[0-9;]*[mGKH]/g, '');
 	}
 
@@ -248,7 +251,7 @@ export class ContainerTestHelpers {
 		since?: number,
 	): Promise<StreamLogMatch | null> {
 		try {
-			const logOptions: any = {};
+			const logOptions: { since?: number } = {};
 			if (since !== undefined) {
 				logOptions.since = since;
 			}
@@ -311,7 +314,7 @@ export class ContainerTestHelpers {
 		since?: number,
 	): Promise<string> {
 		try {
-			const logOptions: any = {};
+			const logOptions: { since?: number } = {};
 			if (since !== undefined) {
 				logOptions.since = since;
 			}
@@ -369,9 +372,5 @@ export class ContainerTestHelpers {
 		}
 
 		return matches;
-	}
-
-	private sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }

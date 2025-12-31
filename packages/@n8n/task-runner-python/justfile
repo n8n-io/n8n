@@ -1,0 +1,20 @@
+run:
+    uv run python -m src.main
+
+sync:
+    uv sync
+
+lint:
+    uv run ruff check
+
+lintfix:
+    uv run ruff check --fix
+
+format:
+    uv run ruff format
+
+test:
+    @echo "No tests yet"
+
+typecheck:
+    uv run ty check src/

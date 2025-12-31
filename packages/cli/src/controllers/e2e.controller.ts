@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { SettingsRepository, UserRepository } from '@n8n/db';
-import { Patch, Post, RestController } from '@n8n/decorators';
+import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
@@ -17,6 +17,7 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
+import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {
@@ -107,6 +108,7 @@ export class E2EController {
 		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
 		[LICENSE_FEATURES.OIDC]: false,
 		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
+		[LICENSE_FEATURES.WORKFLOW_DIFFS]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -154,6 +156,7 @@ export class E2EController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
+		private readonly frontendService: FrontendService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -207,6 +210,47 @@ export class E2EController {
 		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
 	}
 
+	@Get('/env-feature-flags', { skipAuth: true })
+	async getEnvFeatureFlags() {
+		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
+		return currentFlags;
+	}
+
+	@Patch('/env-feature-flags', { skipAuth: true })
+	async setEnvFeatureFlags(req: Request<{}, {}, { flags: Record<string, string> }>) {
+		const { flags } = req.body;
+
+		// Validate that all flags start with N8N_ENV_FEAT_
+		for (const key of Object.keys(flags)) {
+			if (!key.startsWith('N8N_ENV_FEAT_')) {
+				return {
+					success: false,
+					message: `Invalid flag key: ${key}. Must start with N8N_ENV_FEAT_`,
+				};
+			}
+		}
+
+		// Clear existing N8N_ENV_FEAT_ environment variables
+		for (const key of Object.keys(process.env)) {
+			if (key.startsWith('N8N_ENV_FEAT_')) {
+				delete process.env[key];
+			}
+		}
+
+		// Set new environment variables
+		for (const [key, value] of Object.entries(flags)) {
+			process.env[key] = value;
+		}
+
+		// Return the current environment feature flags
+		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
+		return {
+			success: true,
+			message: 'Environment feature flags updated',
+			flags: currentFlags,
+		};
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
@@ -226,6 +270,7 @@ export class E2EController {
 	private async resetLogStreaming() {
 		for (const id in this.eventBus.destinations) {
 			await this.eventBus.removeDestination(id, false);
+			await this.eventBus.deleteDestination(id);
 		}
 	}
 

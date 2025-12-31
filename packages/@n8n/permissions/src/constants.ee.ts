@@ -26,6 +26,7 @@ export const RESOURCES = {
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
+	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

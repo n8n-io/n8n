@@ -15,7 +15,7 @@ describe('Workflow tags', () => {
 		wf.actions.addTags(TEST_TAGS.slice(0, 2));
 		wf.getters.tagPills().should('have.length', 2);
 		wf.getters.nthTagPill(1).click();
-		wf.actions.addTags(TEST_TAGS[1].toUpperCase());
+		wf.actions.addTags(TEST_TAGS[2]);
 		wf.getters.tagPills().should('have.length', 3);
 		wf.getters.isWorkflowSaved();
 	});

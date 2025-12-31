@@ -16,22 +16,35 @@ const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 			'router-link': {
 				template: '<div><slot /></div>',
 			},
+			N8nTooltip: {
+				template: '<div><slot /><slot name="content" /></div>',
+			},
+			N8nIconButton: true,
+			N8nLink: {
+				template: '<a @click="$emit(\'click\')"><slot /></a>',
+			},
+			I18nT: {
+				template: '<span><slot name="link" /></span>',
+			},
 		},
 	},
 });
 
 describe('WorkflowHistoryButton', () => {
 	it('should be disabled if the feature is disabled', async () => {
-		const { getByRole, emitted } = renderComponent({
+		const { getByRole, queryByTestId, emitted } = renderComponent({
 			props: {
 				workflowId: '1',
 				isNewWorkflow: false,
 				isFeatureEnabled: false,
 			},
 		});
-		expect(getByRole('button')).toBeDisabled();
-
-		await userEvent.hover(getByRole('button'));
+		const button = queryByTestId('workflow-history-button');
+		expect(button).toHaveAttribute('disabled', 'true');
+		if (!button) {
+			throw new Error('Button does not exist');
+		}
+		await userEvent.hover(button);
 		expect(getByRole('tooltip')).toBeVisible();
 
 		within(getByRole('tooltip')).getByText('View plans').click();
@@ -40,24 +53,25 @@ describe('WorkflowHistoryButton', () => {
 	});
 
 	it('should be disabled if the feature is enabled but the workflow is new', async () => {
-		const { getByRole } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			props: {
 				workflowId: '1',
 				isNewWorkflow: true,
 				isFeatureEnabled: true,
 			},
 		});
-		expect(getByRole('button')).toBeDisabled();
+		expect(queryByTestId('workflow-history-button')).toHaveAttribute('disabled', 'true');
 	});
 
 	it('should be enabled if the feature is enabled and the workflow is not new', async () => {
-		const { getByRole } = renderComponent({
+		const { container, queryByTestId } = renderComponent({
 			props: {
 				workflowId: '1',
 				isNewWorkflow: false,
 				isFeatureEnabled: true,
 			},
 		});
-		expect(getByRole('button')).toBeEnabled();
+		expect(queryByTestId('workflow-history-button')).toHaveAttribute('disabled', 'false');
+		expect(container).toMatchSnapshot();
 	});
 });

@@ -1,5 +1,5 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { createCanvasGraphEdge, createCanvasGraphNode } from '../__tests__/data';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
@@ -36,7 +36,10 @@ describe('useCanvasLayout', () => {
 
 		vi.mocked(useVueFlow).mockReturnValue(vueFlowStoreMock);
 
-		const { layout } = useCanvasLayout();
+		const { layout } = useCanvasLayout(
+			'test-canvas-id',
+			computed(() => false),
+		);
 
 		return { layout };
 	}
@@ -167,5 +170,169 @@ describe('useCanvasLayout', () => {
 		const result = layout('all');
 		expect(result).toMatchSnapshot();
 		expect(matchesGrid(result)).toBe(true);
+	});
+
+	test('should handle nodes with missing dimensions', () => {
+		const nodes = [
+			createCanvasGraphNode({
+				id: 'node1',
+				dimensions: undefined,
+			}),
+			createCanvasGraphNode({
+				id: 'node2',
+				dimensions: { width: 0, height: 0 },
+			}),
+			createCanvasGraphNode({
+				id: 'node3',
+				dimensions: { width: 100, height: 100 },
+			}),
+		];
+
+		const connections: Array<[string, string]> = [
+			['node1', 'node2'],
+			['node2', 'node3'],
+		];
+
+		const { layout } = createTestSetup(nodes, connections);
+		const result = layout('all');
+
+		// Should complete without errors
+		expect(result).toBeDefined();
+		expect(result.nodes).toHaveLength(3);
+
+		// All nodes should have valid positions
+		result.nodes.forEach((node) => {
+			expect(node.x).toBeDefined();
+			expect(node.y).toBeDefined();
+			expect(typeof node.x).toBe('number');
+			expect(typeof node.y).toBe('number');
+			expect(isFinite(node.x)).toBe(true);
+			expect(isFinite(node.y)).toBe(true);
+		});
+
+		const node1 = result.nodes.find((n) => n.id === 'node1');
+		const node2 = result.nodes.find((n) => n.id === 'node2');
+		const node3 = result.nodes.find((n) => n.id === 'node3');
+
+		assert(node1);
+		assert(node2);
+		assert(node3);
+
+		// Nodes should be positioned in a logical order (node1 -> node2 -> node3)
+		expect(node2.x).toBeGreaterThan(node1.x);
+		expect(node3.x).toBeGreaterThan(node2.x);
+	});
+
+	test('should calculate dimensions for configurable nodes with missing dimensions', () => {
+		const nodes = [
+			createCanvasGraphNode({
+				id: 'configurableNode',
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configurable: true },
+					},
+					inputs: [
+						{ type: 'main', index: 0 },
+						{ type: 'main', index: 1 },
+						{ type: 'ai_tool', index: 0 },
+					],
+					outputs: [{ type: 'main', index: 0 }],
+				},
+				dimensions: undefined,
+			}),
+			createCanvasGraphNode({
+				id: 'configurationNode',
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configuration: true },
+					},
+					inputs: [{ type: 'main', index: 0 }],
+					outputs: [{ type: 'main', index: 0 }],
+				},
+				dimensions: { width: 0, height: 0 },
+			}),
+		];
+
+		const connections: Array<[string, string]> = [['configurationNode', 'configurableNode']];
+
+		const { layout } = createTestSetup(nodes, connections);
+		const result = layout('all');
+
+		expect(result).toBeDefined();
+		expect(result.nodes).toHaveLength(2);
+
+		// All nodes should have valid positions
+		result.nodes.forEach((node) => {
+			expect(node.x).toBeDefined();
+			expect(node.y).toBeDefined();
+			expect(typeof node.x).toBe('number');
+			expect(typeof node.y).toBe('number');
+			expect(isFinite(node.x)).toBe(true);
+			expect(isFinite(node.y)).toBe(true);
+		});
+
+		// Both nodes should be positioned correctly
+		const configNode = result.nodes.find((n) => n.id === 'configurationNode');
+		const configurableNode = result.nodes.find((n) => n.id === 'configurableNode');
+
+		assert(configNode);
+		assert(configurableNode);
+
+		expect(configNode).toBeDefined();
+		expect(configurableNode).toBeDefined();
+
+		// The layout should work despite missing dimensions
+		// The exact positioning depends on whether they're recognized as AI nodes
+		expect(
+			Math.abs(configNode.x - configurableNode.x) + Math.abs(configNode.y - configurableNode.y),
+		).toBeGreaterThan(0);
+	});
+
+	test('should handle mixed scenarios with sticky notes and missing dimensions', () => {
+		const nodes = [
+			createCanvasGraphNode({
+				id: 'node1',
+			}),
+			createCanvasGraphNode({
+				id: 'node2',
+				dimensions: { width: 100, height: 100 },
+			}),
+			createCanvasGraphNode({
+				id: 'sticky',
+				data: { type: STICKY_NODE_TYPE },
+				dimensions: { width: 500, height: 400 },
+				position: { x: 0, y: -100 },
+			}),
+		];
+
+		const connections: Array<[string, string]> = [['node1', 'node2']];
+
+		const { layout } = createTestSetup(nodes, connections);
+		const result = layout('all');
+
+		expect(result).toBeDefined();
+		// Should include both regular nodes and sticky
+		expect(result.nodes.length).toBeGreaterThanOrEqual(2);
+
+		// All nodes should have valid positions
+		result.nodes.forEach((node) => {
+			expect(node.x).toBeDefined();
+			expect(node.y).toBeDefined();
+			expect(typeof node.x).toBe('number');
+			expect(typeof node.y).toBe('number');
+			expect(isFinite(node.x)).toBe(true);
+			expect(isFinite(node.y)).toBe(true);
+		});
+
+		// Non-sticky nodes should be positioned correctly
+		const node1 = result.nodes.find((n) => n.id === 'node1');
+		const node2 = result.nodes.find((n) => n.id === 'node2');
+
+		assert(node1);
+		assert(node2);
+
+		expect(node2.x).toBeGreaterThan(node1.x);
 	});
 });

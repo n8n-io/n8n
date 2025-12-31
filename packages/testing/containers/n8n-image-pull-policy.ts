@@ -1,4 +1,5 @@
-import { ImagePullPolicy, PullPolicy } from 'testcontainers';
+import type { ImagePullPolicy } from 'testcontainers';
+import { PullPolicy } from 'testcontainers';
 
 /**
  * Custom pull policy for n8n images:
@@ -8,7 +9,7 @@ import { ImagePullPolicy, PullPolicy } from 'testcontainers';
 export class N8nImagePullPolicy implements ImagePullPolicy {
 	constructor(private readonly image: string) {}
 
-	public shouldPull(): boolean {
+	shouldPull(): boolean {
 		if (this.image === 'n8nio/n8n:local') {
 			return false;
 		}

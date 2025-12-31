@@ -49,7 +49,6 @@ const emit = defineEmits<{
 		connectionType: NodeConnectionType,
 		connectionIndex?: number,
 	];
-	redrawNode: [nodeName: string];
 	stopExecution: [];
 }>();
 
@@ -81,7 +80,6 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const selectedInput = ref<string | undefined>();
@@ -205,14 +203,6 @@ const showTriggerPanel = computed(() => {
 	return (
 		!props.readOnly && isTriggerNode.value && (isWebhookBasedNode || isPollingNode || override)
 	);
-});
-
-const hasOutputConnection = computed(() => {
-	if (!activeNode.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(activeNode.value.name);
-
-	// Check if there's at-least one output connection
-	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
 const isExecutableTriggerNode = computed(() => {
@@ -498,18 +488,6 @@ const close = async () => {
 		return;
 	}
 
-	if (
-		activeNode.value &&
-		(typeof activeNodeType.value?.outputs === 'string' ||
-			typeof activeNodeType.value?.inputs === 'string' ||
-			redrawRequired.value)
-	) {
-		const nodeName = activeNode.value.name;
-		setTimeout(() => {
-			emit('redrawNode', nodeName);
-		}, 1);
-	}
-
 	if (outputPanelEditMode.value.enabled && activeNode.value) {
 		const shouldPinDataBeforeClosing = await message.confirm(
 			'',
@@ -726,7 +704,6 @@ onBeforeUnmount(() => {
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		data-test-id="ndv"
 		:z-index="APP_Z_INDEXES.NDV"
-		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -779,16 +756,19 @@ onBeforeUnmount(() => {
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
+						:active-node-name="activeNode.name"
 						:current-node-name="inputNodeName"
 						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
 						:display-mode="inputPanelDisplayMode"
+						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+						:focused-mappable-input="ndvStore.focusedMappableInput"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"
@@ -805,7 +785,7 @@ onBeforeUnmount(() => {
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
@@ -839,7 +819,6 @@ onBeforeUnmount(() => {
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
-						@redraw-required="redrawRequired = true"
 						@activate="onWorkflowActivate"
 						@switch-selected-node="onSwitchSelectedNode"
 						@open-connection-node-creator="onOpenConnectionNodeCreator"
@@ -860,10 +839,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
-}
 .ndv-wrapper {
 	overflow: visible;
 	margin-top: 0;

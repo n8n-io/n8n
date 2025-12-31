@@ -240,20 +240,20 @@ export class MessageEventBus extends EventEmitter {
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
-	async removeDestination(
-		id: string,
-		notifyWorkers: boolean = true,
-	): Promise<DeleteResult | undefined> {
-		let result;
+	async removeDestination(id: string, notifyWorkers: boolean = true) {
 		if (Object.keys(this.destinations).includes(id)) {
 			await this.destinations[id].close();
-			result = await this.destinations[id].deleteFromDb();
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
 			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
-		return result;
+	}
+
+	async deleteDestination(id: string): Promise<DeleteResult | undefined> {
+		return await this.eventDestinationsRepository.delete({
+			id,
+		});
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {

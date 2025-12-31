@@ -8,6 +8,7 @@ import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { captureException } from '@sentry/vue';
 import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 const { activeViewStack } = useViewStacks();
 
@@ -21,6 +22,8 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
+
 const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -42,17 +45,22 @@ async function fetchPackageInfo(packageName: string) {
 		activeViewStack.communityNodeDetails?.key || '',
 	);
 
+	if (communityNodeDetails?.installed) {
+		installedPackage.value = await communityNodesStore.getInstalledPackage(
+			communityNodeDetails.packageName,
+		);
+	}
+
 	if (communityNodeAttributes) {
 		publisherName.value = communityNodeAttributes.companyName ?? communityNodeAttributes.authorName;
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		official.value = communityNodeAttributes.isOfficialNode;
-		const packageInfo = communityNodesStore.getInstalledPackages.find(
-			(p) => p.packageName === communityNodeAttributes.packageName,
-		);
-		if (!packageInfo) {
+
+		if (!installedPackage.value) {
 			verified.value = true;
 		} else {
-			verified.value = packageInfo.installedVersion === communityNodeAttributes.npmVersion;
+			const verifiedVersions = communityNodeAttributes.nodeVersions?.map((v) => v.npmVersion) ?? [];
+			verified.value = verifiedVersions.includes(installedPackage.value.installedVersion);
 		}
 
 		return;
@@ -107,7 +115,11 @@ onMounted(async () => {
 		<N8nText :class="$style.description" color="text-base" size="medium">
 			{{ communityNodeDetails?.description }}
 		</N8nText>
-		<div :class="$style.separator"></div>
+		<CommunityNodeUpdateInfo
+			v-if="isOwner && installedPackage?.updateAvailable"
+			data-test-id="update-available"
+		/>
+		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">
 			<N8nTooltip v-if="verified" placement="top">
 				<template #content>{{

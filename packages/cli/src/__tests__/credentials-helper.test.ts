@@ -1,5 +1,6 @@
 import { CredentialsEntity, type CredentialsRepository } from '@n8n/db';
 import { EntityNotFoundError } from '@n8n/typeorm';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	IAuthenticateGeneric,
@@ -9,8 +10,10 @@ import type {
 	INode,
 	INodeProperties,
 	INodeTypes,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
+import { type InstanceSettings, Cipher } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -21,6 +24,10 @@ describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
 	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const credentialsRepository = mock<CredentialsRepository>();
+
+	// Setup cipher for testing
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }));
+	Container.set(Cipher, cipher);
 
 	const credentialsHelper = new CredentialsHelper(
 		new CredentialTypes(mockNodesAndCredentials),
@@ -282,5 +289,96 @@ describe('CredentialsHelper', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+	});
+
+	describe('updateCredentialsOauthTokenData', () => {
+		test('only updates oauthTokenData field while preserving other credential fields', async () => {
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: 'cred-123',
+				name: 'Test OAuth2 Credential',
+			};
+
+			const existingCredentialData = {
+				clientId: 'existing-client-id',
+				clientSecret: 'existing-client-secret',
+				scope: 'read write',
+				customField: 'custom-value',
+				oauthTokenData: {
+					access_token: 'old-access-token',
+					refresh_token: 'old-refresh-token',
+					expires_in: 3600,
+				},
+			};
+
+			const newOauthTokenData = {
+				oauthTokenData: {
+					access_token: 'new-access-token',
+					refresh_token: 'new-refresh-token',
+					expires_in: 7200,
+					token_type: 'Bearer',
+				},
+			};
+
+			const mockCredentialEntity = {
+				id: 'cred-123',
+				name: 'Test OAuth2 Credential',
+				type: 'oAuth2Api',
+				data: cipher.encrypt(existingCredentialData),
+			};
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				mockCredentialEntity as CredentialsEntity,
+			);
+
+			const beforeUpdateTime = new Date();
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				newOauthTokenData,
+			);
+
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				{ id: 'cred-123', type: 'oAuth2Api' },
+				expect.objectContaining({
+					id: 'cred-123',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: expect.any(String),
+					updatedAt: expect.any(Date),
+				}),
+			);
+
+			const updateCall = credentialsRepository.update.mock.calls[0];
+			const updatedCredentialData = updateCall[1];
+			const updatedAt = updatedCredentialData.updatedAt as Date;
+
+			expect(updatedAt).toBeInstanceOf(Date);
+			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
+
+			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
+			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
+
+			expect(parsedUpdatedData).toEqual({
+				clientId: 'existing-client-id',
+				clientSecret: 'existing-client-secret',
+				scope: 'read write',
+				customField: 'custom-value',
+				oauthTokenData: {
+					access_token: 'new-access-token',
+					refresh_token: 'new-refresh-token',
+					expires_in: 7200,
+					token_type: 'Bearer',
+				},
+			});
+
+			expect(parsedUpdatedData.clientId).toBe('existing-client-id');
+			expect(parsedUpdatedData.clientSecret).toBe('existing-client-secret');
+			expect(parsedUpdatedData.scope).toBe('read write');
+			expect(parsedUpdatedData.customField).toBe('custom-value');
+			expect(parsedUpdatedData.oauthTokenData.access_token).toBe('new-access-token');
+			expect(parsedUpdatedData.oauthTokenData.refresh_token).toBe('new-refresh-token');
+			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
+			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
+		});
 	});
 });

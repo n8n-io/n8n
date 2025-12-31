@@ -1,12 +1,21 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { VIEWS } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { vi } from 'vitest';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+
+const getInstalledPackage = vi.fn();
 
 const push = vi.fn();
+
+const communityNodesStore: {
+	getInstalledPackage: (packageName: string) => Promise<PublicInstalledPackage>;
+} = {
+	getInstalledPackage,
+};
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -17,6 +26,10 @@ vi.mock('vue-router', async (importOriginal) => {
 		})),
 	};
 });
+
+vi.mock('@/stores/communityNodes.store', () => ({
+	useCommunityNodesStore: vi.fn(() => communityNodesStore),
+}));
 
 describe('CommunityNodeInfo - links & bugs URL', () => {
 	beforeEach(() => {
@@ -54,5 +67,37 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		});
 
 		expect(queryByText('Manage')).not.toBeInTheDocument();
+	});
+
+	it('displays "Legacy" when updateAvailable', async () => {
+		getInstalledPackage.mockResolvedValue({
+			installedVersion: '1.0.0',
+			updateAvailable: '1.0.1',
+		} as PublicInstalledPackage);
+		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
+			props: {
+				packageName: 'n8n-nodes-test',
+				showManage: false,
+			},
+		});
+		await waitFor(() => expect(getInstalledPackage).toHaveBeenCalled());
+
+		expect(getByText('Package version 1.0.0 (Legacy)')).toBeInTheDocument();
+	});
+
+	it('displays "Latest" when not updateAvailable', async () => {
+		getInstalledPackage.mockResolvedValue({
+			installedVersion: '1.0.0',
+		} as PublicInstalledPackage);
+		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
+			props: {
+				packageName: 'n8n-nodes-test',
+				showManage: false,
+			},
+		});
+
+		await waitFor(() => expect(getInstalledPackage).toHaveBeenCalled());
+
+		expect(getByText('Package version 1.0.0 (Latest)')).toBeInTheDocument();
 	});
 });

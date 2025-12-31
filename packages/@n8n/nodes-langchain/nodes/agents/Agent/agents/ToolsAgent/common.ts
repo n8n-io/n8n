@@ -7,7 +7,7 @@ import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output
 import type { BaseChatMemory } from 'langchain/memory';
 import { DynamicStructuredTool, type Tool } from 'langchain/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
@@ -42,7 +42,7 @@ export function getOutputParserSchema(
  * @returns A HumanMessage containing the binary image messages.
  */
 export async function extractBinaryMessages(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
@@ -263,7 +263,7 @@ export const getAgentStepsParser =
  * @returns The validated chat model
  */
 export async function getChatModel(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	index: number = 0,
 ): Promise<BaseChatModel | undefined> {
 	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
@@ -297,7 +297,7 @@ export async function getChatModel(
  * @returns The connected memory (if any)
  */
 export async function getOptionalMemory(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<BaseChatMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
@@ -313,7 +313,7 @@ export async function getOptionalMemory(
  * @returns The array of connected tools
  */
 export async function getTools(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	outputParser?: N8nOutputParser,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
@@ -343,7 +343,7 @@ export async function getTools(
  * @returns The array of prompt messages
  */
 export async function prepareMessages(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	options: {
 		systemMessage?: string;

@@ -1,6 +1,7 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -29,8 +30,9 @@ import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
+
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { isContainedWithin } from '@/utils/path-util';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -56,6 +58,7 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async init() {
@@ -88,12 +91,16 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+		if (!Container.get(CommunityPackagesConfig).preventLoading) {
 			// Load nodes from any other `n8n-nodes-*` packages in the download directory
 			// This includes the community nodes
 			await this.loadNodesFromNodeModules(
 				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
 			);
+		}
+
+		for (const dir of this.moduleRegistry.loadDirs) {
+			await this.loadNodesFromNodeModules(dir);
 		}
 
 		await this.loadNodesFromCustomDirectories();
@@ -185,6 +192,14 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
 
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	}
+
+	findLastCalloutIndex(properties: INodeProperties[]): number {
+		for (let i = properties.length - 1; i >= 0; i--) {
+			if (properties[i].type === 'callout') return i;
+		}
+
+		return -1;
 	}
 
 	getCustomDirectories(): string[] {
@@ -485,12 +500,14 @@ export class LoadNodesAndCredentials {
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 				};
 
-				item.description.properties.unshift(descProp);
+				const lastCallout = this.findLastCalloutIndex(item.description.properties);
+
+				item.description.properties.splice(lastCallout + 1, 0, descProp);
 
 				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
+				// so we add the descriptionType property as the first property after possible callout param(s).
 				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
+					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
 
 					descProp.displayOptions = {
 						show: {
@@ -517,39 +534,84 @@ export class LoadNodesAndCredentials {
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
 
-		const { watch } = await import('chokidar');
+		const { subscribe } = await import('@parcel/watcher');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
-		Object.values(this.loaders).forEach(async (loader) => {
+		for (const loader of Object.values(this.loaders)) {
 			const { directory } = loader;
 			try {
 				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
-				return;
+				continue;
 			}
 
 			const reloader = debounce(async () => {
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				try {
+					loader.reset();
+					await loader.loadAll();
+					await this.postProcessLoaders();
+					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				} catch (error) {
+					this.logger.error(`Hot reload failed for ${loader.packageName}`);
+				}
 			}, 100);
 
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			const files = await glob(toWatch, {
-				cwd: directory,
-				ignore: ['node_modules/**'],
+			// For lazy loaded packages, we need to watch the dist directory
+			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
+			const customNodesRoot = path.join(directory, 'node_modules');
+
+			if (loader.packageName === 'CUSTOM') {
+				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
+					withFileTypes: true,
+				});
+
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
+				const realCustomNodesPaths = await Promise.all(
+					customNodeEntries
+						.filter(
+							(entry) =>
+								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
+						)
+						.map(
+							async (entry) =>
+								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
+						),
+				);
+
+				watchPaths.push.apply(
+					watchPaths,
+					realCustomNodesPaths.filter((path): path is string => !!path),
+				);
+			}
+
+			this.logger.debug('Watching node folders for hot reload', {
+				loader: loader.packageName,
+				paths: watchPaths,
 			});
-			const watcher = watch(files, {
-				cwd: directory,
-				ignoreInitial: true,
-			});
-			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
-		});
+
+			for (const watchPath of watchPaths) {
+				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
+					if (events.some((event) => event.type !== 'delete')) {
+						const modules = Object.keys(require.cache).filter((module) =>
+							module.startsWith(watchPath),
+						);
+
+						for (const module of modules) {
+							delete require.cache[module];
+						}
+						await reloader();
+					}
+				};
+
+				// Ignore nested node_modules folders
+				const ignore = ['**/node_modules/**/node_modules/**'];
+
+				await subscribe(watchPath, onFileEvent, { ignore });
+			}
+		}
 	}
 }

@@ -5,7 +5,6 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import type {
-	IDataObject,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
 	INodeParameters,
@@ -252,7 +251,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	nodeParameters.value = deepCopy(nodeParametersCopy);
 	workflowsStore.updateNodeProperties({
 		name: node.value.name,
-		properties: { parameters: nodeParameters.value as unknown as IDataObject, position: [0, 0] },
+		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
 	if (hasOnceBeenSaved.value) {
 		logStreamingStore.updateDestination(nodeParameters.value);

@@ -1,4 +1,4 @@
-import { PiPWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
@@ -30,8 +30,8 @@ export const useKeybindings = (
 		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
-	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
-	const activeElement = useActiveElement({ window: pipWindow?.value });
+	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+	const activeElement = useActiveElement({ window: popOutWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const isDisabled = computed(() => toValue(options?.disabled));
@@ -150,5 +150,5 @@ export const useKeybindings = (
 		}
 	}
 
-	useEventListener(pipWindow?.value?.document ?? document, 'keydown', onKeyDown);
+	useEventListener(popOutWindow?.value?.document ?? document, 'keydown', onKeyDown);
 };

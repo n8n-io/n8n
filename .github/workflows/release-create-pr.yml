@@ -48,7 +48,7 @@ jobs:
 
       - name: Bump package versions
         run: |
-          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> $GITHUB_ENV
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release-type }}
 

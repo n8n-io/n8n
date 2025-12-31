@@ -12,7 +12,7 @@ describe('Execute Wait Node', () => {
 
 	beforeAll(() => {
 		timer = setInterval(() => jest.advanceTimersByTime(1000), 10);
-		jest.useFakeTimers();
+		jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
 	});
 
 	afterAll(() => {
@@ -66,6 +66,72 @@ describe('Execute Wait Node', () => {
 			}
 		},
 	);
+
+	describe('Validation', () => {
+		describe('Time interval', () => {
+			it.each([
+				{
+					unit: 'seconds',
+					amount: 300,
+					expectedWaitTill: () => DateTime.now().plus({ seconds: 300 }).toJSDate(),
+				},
+				{
+					unit: 'minutes',
+					amount: 2,
+					expectedWaitTill: () => DateTime.now().plus({ minutes: 2 }).toJSDate(),
+				},
+				{
+					unit: 'hours',
+					amount: 1,
+					expectedWaitTill: () => DateTime.now().plus({ hours: 1 }).toJSDate(),
+				},
+				{
+					unit: 'days',
+					amount: 10,
+					expectedWaitTill: () => DateTime.now().plus({ days: 10 }).toJSDate(),
+				},
+				{
+					unit: 'seconds',
+					amount: -10,
+					error: 'Invalid wait amount. It must be a positive number.',
+				},
+				{
+					unit: 'years',
+					amount: 10,
+					error: "Invalid wait unit. Valid units are 'seconds', 'minutes', 'hours', or 'days'.",
+				},
+				{
+					unit: 'minutes',
+					amount: 'test',
+					error: 'Invalid wait amount. It must be a positive number.',
+				},
+			])(
+				'Validate wait unit: $unit, amount: $amount',
+				async ({ unit, amount, expectedWaitTill, error }) => {
+					const putExecutionToWaitSpy = jest.fn();
+					const waitNode = new Wait();
+					const executeFunctionsMock = mock<IExecuteFunctions>({
+						getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+							if (paramName === 'resume') return 'timeInterval';
+							if (paramName === 'amount') return amount;
+							if (paramName === 'unit') return unit;
+						}),
+						getTimezone: jest.fn().mockReturnValue('UTC'),
+						putExecutionToWait: putExecutionToWaitSpy,
+						getInputData: jest.fn(),
+						getNode: jest.fn(),
+					});
+
+					if (!error) {
+						await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
+						expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
+					} else {
+						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
+					}
+				},
+			);
+		});
+	});
 
 	new NodeTestHarness().setupTests();
 });

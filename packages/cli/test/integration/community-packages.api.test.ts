@@ -3,7 +3,7 @@ import type { InstalledNodes, InstalledPackages } from '@n8n/db';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { createOwner } from './shared/db/users';

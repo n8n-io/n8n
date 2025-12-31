@@ -22,6 +22,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { I18nT } from 'vue-i18n';
 
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
@@ -364,14 +365,14 @@ onMounted(async () => {
 
 				<div v-if="isTransferringOwnership" :class="$style.block">
 					<N8nText>
-						<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+						<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
 							<template #note
 								><strong>{{
 									i18n.baseText('projects.move.resource.modal.message.note')
 								}}</strong></template
 							>
 							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
-						</i18n-t>
+						</I18nT>
 						<span
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
 							:class="$style.textBlock"
@@ -411,12 +412,13 @@ onMounted(async () => {
 				:class="$style.textBlock"
 				data-test-id="move-modal-share-credentials-checkbox"
 			>
-				<i18n-t
+				<I18nT
 					:keypath="
 						data.resourceType === 'workflow'
 							? 'folders.move.modal.message.usedCredentials.workflow'
 							: 'folders.move.modal.message.usedCredentials.folder'
 					"
+					scope="global"
 				>
 					<template #usedCredentials>
 						<N8nTooltip placement="top">
@@ -436,7 +438,7 @@ onMounted(async () => {
 							</template>
 						</N8nTooltip>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
@@ -447,7 +449,10 @@ onMounted(async () => {
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
 			</N8nCallout>
 			<span v-if="unShareableCredentials.length" :class="$style.textBlock">
-				<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
+				<I18nT
+					keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
+					scope="global"
+				>
 					<template #credentials>
 						<N8nTooltip placement="top">
 							<span :class="$style.tooltipText">{{
@@ -461,7 +466,7 @@ onMounted(async () => {
 							</template>
 						</N8nTooltip>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</span>
 		</template>
 		<template #footer="{ close }">

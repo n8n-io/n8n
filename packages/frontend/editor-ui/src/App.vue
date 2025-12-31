@@ -10,7 +10,12 @@ import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
 import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
 import { loadLanguage } from '@n8n/i18n';
-import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
+import {
+	APP_MODALS_ELEMENT_ID,
+	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
+	HIRING_BANNER,
+	VIEWS,
+} from '@/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -18,6 +23,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
 import axios from 'axios';
@@ -35,10 +41,16 @@ const { setAppZIndexes } = useStyles();
 // Initialize undo/redo
 useHistoryHelper(route);
 
+// Initialize workflow diff routing management
+useWorkflowDiffRouting();
+
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
-const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
+const showAssistantFloatingButton = computed(
+	() =>
+		assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.hideAssistantFloatingButton,
+);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
@@ -129,9 +141,10 @@ watch(
 				<Modals />
 			</div>
 			<Telemetry />
-			<AskAssistantFloatingButton v-if="showAssistantButton" />
+			<AskAssistantFloatingButton v-if="showAssistantFloatingButton" />
 		</div>
 		<AssistantsHub />
+		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 	</div>
 </template>
 

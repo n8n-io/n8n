@@ -8,7 +8,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PiPWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 
-const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(
@@ -74,8 +74,9 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
-		:key="`run-data${pipWindow ? '-pip' : ''}`"
-		:workflow="logEntry.workflow"
+		:key="`run-data${popOutWindow ? '-pop-out' : ''}`"
+		:class="$style.component"
+		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
@@ -86,6 +87,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
+		:disable-settings-hint="true"
 		:display-mode="displayMode"
 		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"
@@ -118,7 +120,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template v-if="isMultipleInput" #callout-message>
-			<I18nT keypath="logs.details.body.multipleInputs">
+			<I18nT keypath="logs.details.body.multipleInputs" scope="global">
 				<template #button>
 					<N8nLink size="small" @click="handleClickOpenNdv">
 						{{ locale.baseText('logs.details.body.multipleInputs.openingTheNode') }}
@@ -130,6 +132,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 </template>
 
 <style lang="scss" module>
+.component {
+	--color-run-data-background: var(--color-background-light);
+}
+
 .title {
 	text-transform: uppercase;
 	letter-spacing: 3px;

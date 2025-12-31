@@ -19,6 +19,8 @@ export const baseConfig = tseslint.config(
 		'tsup.config.ts',
 		'jest.config.js',
 		'cypress.config.js',
+		'vite.config.ts',
+		'vitest.config.ts',
 	]),
 	eslint.configs.recommended,
 	tseslint.configs.recommended,
@@ -367,7 +369,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://eslint.org/docs/rules/prefer-spread
 			 */
-			'prefer-spread': 'error',
+			'prefer-spread': 'off',
 
 			// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 			'no-unused-vars': 'off',
@@ -409,6 +411,7 @@ export const baseConfig = tseslint.config(
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
+			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 		},
 	},

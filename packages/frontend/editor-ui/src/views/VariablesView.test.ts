@@ -11,7 +11,8 @@ import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import type { IUser, EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
 
 const router = createRouter({

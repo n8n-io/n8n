@@ -22,7 +22,20 @@ import {
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
+	type CronContext,
+	type Cron,
 } from 'n8n-workflow';
+
+const logger = mock({
+	scoped: jest.fn().mockReturnValue(
+		mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
+	),
+});
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
 
@@ -70,12 +83,25 @@ export async function testTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
 	});
 
 	const triggerFunctions = mock<ITriggerFunctions>({
@@ -130,11 +156,24 @@ export async function testWebhookTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
 	});
 
