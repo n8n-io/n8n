@@ -93,6 +93,7 @@ describe('ProjectsNavigation', () => {
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
 		projectsStore.teamProjectsLimit = -1;
 		projectsStore.myProjects = [...personalProjects, ...teamProjects];
+		projectsStore.personalProject = personalProjects[0];
 
 		const { getAllByTestId, getByTestId, queryByText } = renderComponent({
 			props: {
@@ -133,6 +134,7 @@ describe('ProjectsNavigation', () => {
 	it('should show Personal project when folders are enabled but projects are disabled', async () => {
 		projectsStore.teamProjectsLimit = 0;
 		settingsStore.isFoldersFeatureEnabled = true;
+		projectsStore.personalProject = createProjectListItem();
 
 		const { queryByText, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -149,6 +151,7 @@ describe('ProjectsNavigation', () => {
 
 	it('should show project icons when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
+		projectsStore.personalProject = createProjectListItem();
 
 		const { getByTestId } = renderComponent({
 			props: {
