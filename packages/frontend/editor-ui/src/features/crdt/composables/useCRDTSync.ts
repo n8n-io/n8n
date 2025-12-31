@@ -1,8 +1,32 @@
 import { ref, onScopeDispose, type Ref } from 'vue';
-import { createCRDTProvider, CRDTEngine, ChangeOrigin, type CRDTDoc } from '@n8n/crdt/browser';
+import { createEventHook, type EventHookOn } from '@vueuse/core';
+import {
+	createCRDTProvider,
+	CRDTEngine,
+	ChangeOrigin,
+	WorkerTransport,
+	WebSocketTransport,
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	MESSAGE_INITIAL_SYNC,
+	MESSAGE_DISCONNECTED,
+	encodeMessage,
+	decodeMessage,
+	type SyncTransport,
+	type CRDTDoc,
+	type CRDTAwareness,
+	type AwarenessState,
+} from '@n8n/crdt/browser';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 export type CRDTSyncState = 'idle' | 'connecting' | 'ready' | 'disconnected' | 'error';
+
+/**
+ * Transport type for CRDT sync.
+ * - 'worker': Uses SharedWorker for cross-tab sync + server connection (default)
+ * - 'websocket': Direct WebSocket connection to server (no cross-tab sync)
+ */
+export type CRDTTransportType = 'worker' | 'websocket';
 
 export interface UseCRDTSyncOptions {
 	docId: string;
@@ -10,8 +34,12 @@ export interface UseCRDTSyncOptions {
 	immediate?: boolean;
 	/** Sync to server. When false, only syncs between tabs (local-only mode). Default: true */
 	serverSync?: boolean;
-	/** Callback fired when initial sync is complete and doc is ready to use */
-	onReady?: (doc: CRDTDoc) => void;
+	/**
+	 * Transport type for syncing. Default: 'worker'
+	 * - 'worker': Uses SharedWorker for cross-tab sync + server connection
+	 * - 'websocket': Direct WebSocket connection to server (no cross-tab sync)
+	 */
+	transport?: CRDTTransportType;
 }
 
 export interface UseCRDTSyncReturn {
@@ -21,26 +49,23 @@ export interface UseCRDTSyncReturn {
 	error: Ref<string | null>;
 	/** The CRDT document. Returns null if not ready. Not reactive - use state to track readiness. */
 	readonly doc: CRDTDoc | null;
+	/** The awareness instance for this document. Returns null if not ready. */
+	readonly awareness: CRDTAwareness<AwarenessState> | null;
 	/** Connect to server. Returns doc when ready. */
 	connect: () => Promise<CRDTDoc>;
 	/** Disconnect from server */
 	disconnect: () => void;
-}
-
-/**
- * Worker message types for communication between main thread and worker.
- */
-interface WorkerMessage {
-	type: 'subscribe' | 'unsubscribe' | 'sync' | 'connected' | 'disconnected' | 'initial-sync';
-	docId: string;
-	serverUrl?: string;
-	data?: Uint8Array;
+	/** Register handler for when doc is ready (initial sync complete). Auto-cleanup on scope dispose. */
+	onReady: EventHookOn<CRDTDoc>;
+	/** Register handler for errors. Auto-cleanup on scope dispose. */
+	onError: EventHookOn<Error>;
+	/** Register handler for disconnection. Auto-cleanup on scope dispose. */
+	onDisconnected: EventHookOn<void>;
 }
 
 // Singleton worker instance (shared across all useCRDTSync instances)
 let sharedWorker: SharedWorker | null = null;
 let fallbackWorker: Worker | null = null;
-const workerMessageHandlers = new Map<string, Set<(message: WorkerMessage) => void>>();
 
 /**
  * Detect if SharedWorker is supported (Safari doesn't support it).
@@ -50,79 +75,27 @@ function supportsSharedWorker(): boolean {
 }
 
 /**
- * Get or create the worker instance.
+ * Get or create the worker port.
+ * Returns a MessagePort for SharedWorker or the Worker itself for fallback.
  */
-function getWorker(): { port: MessagePort | Worker; isShared: boolean } {
+function getWorkerPort(): MessagePort | Worker {
 	if (supportsSharedWorker()) {
-		if (!sharedWorker) {
-			sharedWorker = new SharedWorker(
-				new URL('../workers/crdt.shared-worker.ts', import.meta.url),
-				{ type: 'module', name: 'crdt-sync' },
-			);
-
-			sharedWorker.port.onmessage = (event) => {
-				const message = event.data as WorkerMessage;
-				const handlers = workerMessageHandlers.get(message.docId);
-				if (handlers) {
-					for (const handler of handlers) {
-						handler(message);
-					}
-				}
-			};
-
-			sharedWorker.port.start();
-		}
-		return { port: sharedWorker.port, isShared: true };
+		sharedWorker ??= new SharedWorker(
+			new URL('../workers/crdt.shared-worker.ts', import.meta.url),
+			{ type: 'module', name: 'crdt-sync' },
+		);
+		return sharedWorker.port;
 	} else {
-		if (!fallbackWorker) {
-			fallbackWorker = new Worker(new URL('../workers/crdt.worker.ts', import.meta.url), {
-				type: 'module',
-				name: 'crdt-sync-fallback',
-			});
-
-			fallbackWorker.onmessage = (event) => {
-				const message = event.data as WorkerMessage;
-				const handlers = workerMessageHandlers.get(message.docId);
-				if (handlers) {
-					for (const handler of handlers) {
-						handler(message);
-					}
-				}
-			};
-		}
-		return { port: fallbackWorker, isShared: false };
+		fallbackWorker ??= new Worker(new URL('../workers/crdt.worker.ts', import.meta.url), {
+			type: 'module',
+			name: 'crdt-sync-fallback',
+		});
+		return fallbackWorker;
 	}
 }
 
 /**
- * Register a message handler for a specific document.
- */
-function registerHandler(docId: string, handler: (message: WorkerMessage) => void): () => void {
-	let handlers = workerMessageHandlers.get(docId);
-	if (!handlers) {
-		handlers = new Set();
-		workerMessageHandlers.set(docId, handlers);
-	}
-	handlers.add(handler);
-
-	return () => {
-		handlers?.delete(handler);
-		if (handlers?.size === 0) {
-			workerMessageHandlers.delete(docId);
-		}
-	};
-}
-
-/**
- * Send a message to the worker.
- */
-function sendToWorker(message: WorkerMessage): void {
-	const { port } = getWorker();
-	port.postMessage(message);
-}
-
-/**
- * Extended message types for execution control.
+ * Extended message types for execution control (legacy JSON protocol).
  */
 interface ExecutionMessage {
 	type: 'simulate-execution' | 'clear-executions';
@@ -131,26 +104,22 @@ interface ExecutionMessage {
 }
 
 /**
- * Send an execution control message to the worker.
- */
-function sendExecutionMessage(message: ExecutionMessage): void {
-	const { port } = getWorker();
-	port.postMessage(message);
-}
-
-/**
  * Simulate execution for nodes in the worker.
  * The worker will update the execution doc which syncs to all tabs.
  */
 export function simulateExecutionInWorker(workflowDocId: string, nodeIds: string[]): void {
-	sendExecutionMessage({ type: 'simulate-execution', workflowDocId, nodeIds });
+	const port = getWorkerPort();
+	const message: ExecutionMessage = { type: 'simulate-execution', workflowDocId, nodeIds };
+	port.postMessage(message);
 }
 
 /**
  * Clear all executions for a workflow in the worker.
  */
 export function clearExecutionsInWorker(workflowDocId: string): void {
-	sendExecutionMessage({ type: 'clear-executions', workflowDocId });
+	const port = getWorkerPort();
+	const message: ExecutionMessage = { type: 'clear-executions', workflowDocId };
+	port.postMessage(message);
 }
 
 /**
@@ -163,11 +132,17 @@ export function clearExecutionsInWorker(workflowDocId: string): void {
  * ```ts
  * const crdt = useCRDTSync({ docId: 'workflow-123' });
  *
- * // Option 1: Watch state for readiness, then access doc
- * watch(() => crdt.state.value, (state) => {
- *   if (state === 'ready' && crdt.doc) {
- *     const nodesMap = crdt.doc.getMap('nodes');
- *   }
+ * // Option 1: Use event hooks (VueUse pattern - auto-cleanup on unmount)
+ * crdt.onReady((doc) => {
+ *   const nodesMap = doc.getMap('nodes');
+ * });
+ *
+ * crdt.onError((err) => {
+ *   console.error('CRDT error:', err);
+ * });
+ *
+ * crdt.onDisconnected(() => {
+ *   console.log('Disconnected from server');
  * });
  *
  * // Option 2: Use the promise-based API
@@ -176,10 +151,20 @@ export function clearExecutionsInWorker(workflowDocId: string): void {
  * ```
  */
 export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
-	const { docId, immediate = true, serverSync = true, onReady } = options;
+	const {
+		docId,
+		immediate = true,
+		serverSync = true,
+		transport: transportType = 'worker',
+	} = options;
 	const rootStore = useRootStore();
 
 	const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
+
+	// Event hooks (VueUse pattern - auto-cleanup on scope dispose)
+	const readyHook = createEventHook<CRDTDoc>();
+	const errorHook = createEventHook<Error>();
+	const disconnectedHook = createEventHook<void>();
 
 	// Reactive state
 	const state = ref<CRDTSyncState>('idle');
@@ -187,8 +172,12 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 
 	// Internal state (not reactive - CRDTDoc is a class that shouldn't be wrapped in Vue reactivity)
 	let currentDoc: CRDTDoc | null = null;
+	let currentAwareness: CRDTAwareness<AwarenessState> | null = null;
+	let transport: SyncTransport | null = null;
 	let unsubscribeDoc: (() => void) | null = null;
-	let unsubscribeWorker: (() => void) | null = null;
+	let unsubscribeAwareness: (() => void) | null = null;
+	let unsubscribeTransportReceive: (() => void) | null = null;
+	let unsubscribeDocSync: (() => void) | null = null;
 	let connectPromiseResolve: ((resolvedDoc: CRDTDoc) => void) | null = null;
 	let connectPromiseReject: ((rejectedError: Error) => void) | null = null;
 
@@ -202,46 +191,78 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 	}
 
 	/**
-	 * Handle messages from the worker.
+	 * Handle incoming messages from the transport.
+	 * Includes sync/awareness data and control messages (initial-sync, disconnected).
 	 */
-	function handleWorkerMessage(message: WorkerMessage): void {
+	function handleTransportMessage(data: Uint8Array): void {
 		if (!currentDoc) return;
 
-		switch (message.type) {
-			case 'sync':
-				if (message.data && message.data.length > 0) {
-					currentDoc.applyUpdate(message.data);
-				}
-				break;
+		const { messageType, payload } = decodeMessage(data);
 
-			case 'connected':
-				// Connected but waiting for initial sync
-				break;
-
-			case 'disconnected':
-				state.value = 'disconnected';
-				break;
-
-			case 'initial-sync':
-				state.value = 'ready';
-				if (currentDoc) {
-					onReady?.(currentDoc);
-					if (connectPromiseResolve) {
-						connectPromiseResolve(currentDoc);
-						connectPromiseResolve = null;
-						connectPromiseReject = null;
+		switch (messageType) {
+			case MESSAGE_SYNC:
+				if (payload.length > 0) {
+					currentDoc.applyUpdate(payload);
+					// For WebSocket transport, mark synced on first sync message
+					// (Worker transport sends explicit MESSAGE_INITIAL_SYNC)
+					if (transportType === 'websocket' && !currentDoc.synced) {
+						currentDoc.setSynced(true);
 					}
 				}
+				break;
+
+			case MESSAGE_AWARENESS:
+				if (payload.length > 0 && currentAwareness) {
+					currentAwareness.applyUpdate(payload);
+				}
+				break;
+
+			case MESSAGE_INITIAL_SYNC:
+				// Initial sync complete - mark doc as synced (from Worker transport)
+				currentDoc.setSynced(true);
+				break;
+
+			case MESSAGE_DISCONNECTED:
+				// Connection lost - mark doc as not synced (from Worker transport)
+				currentDoc.setSynced(false);
 				break;
 		}
 	}
 
 	/**
-	 * Handle local document updates - send to worker for broadcast.
+	 * Handle doc sync state changes - update reactive state, trigger hooks, resolve promises.
+	 */
+	function handleDocSyncChange(isSynced: boolean): void {
+		if (isSynced) {
+			state.value = 'ready';
+			if (currentDoc) {
+				void readyHook.trigger(currentDoc);
+				if (connectPromiseResolve) {
+					connectPromiseResolve(currentDoc);
+					connectPromiseResolve = null;
+					connectPromiseReject = null;
+				}
+			}
+		} else {
+			state.value = 'disconnected';
+			void disconnectedHook.trigger();
+		}
+	}
+
+	/**
+	 * Handle local document updates - send to transport for broadcast.
 	 */
 	function handleDocUpdate(update: Uint8Array, origin: ChangeOrigin): void {
-		if (origin !== ChangeOrigin.local) return;
-		sendToWorker({ type: 'sync', docId, data: update });
+		if (origin !== ChangeOrigin.local || !transport?.connected) return;
+		transport.send(encodeMessage(MESSAGE_SYNC, update));
+	}
+
+	/**
+	 * Handle local awareness updates - send to transport for broadcast.
+	 */
+	function handleAwarenessUpdate(update: Uint8Array, origin: ChangeOrigin): void {
+		if (origin !== ChangeOrigin.local || !transport?.connected) return;
+		transport.send(encodeMessage(MESSAGE_AWARENESS, update));
 	}
 
 	/**
@@ -282,20 +303,47 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 				// Create local document
 				currentDoc = provider.createDoc(docId);
 
+				// Get awareness instance
+				currentAwareness = currentDoc.getAwareness();
+
 				// Subscribe to local document changes
 				unsubscribeDoc = currentDoc.onUpdate(handleDocUpdate);
 
-				// Register handler for worker messages
-				unsubscribeWorker = registerHandler(docId, handleWorkerMessage);
+				// Subscribe to local awareness changes
+				unsubscribeAwareness = currentAwareness.onUpdate(handleAwarenessUpdate);
 
-				// Subscribe to document in worker
-				// Empty serverUrl means local-only (cross-tab sync only, no server)
+				// Subscribe to doc sync state changes
+				unsubscribeDocSync = currentDoc.onSync(handleDocSyncChange);
+
+				// Create transport based on type
 				const serverUrl = serverSync ? getServerUrl() : '';
-				sendToWorker({ type: 'subscribe', docId, serverUrl });
+
+				if (transportType === 'websocket') {
+					// Direct WebSocket connection (no cross-tab sync)
+					transport = new WebSocketTransport({
+						url: serverUrl,
+						reconnect: true,
+					});
+				} else {
+					// Worker transport (cross-tab sync via SharedWorker)
+					transport = new WorkerTransport({
+						port: getWorkerPort(),
+						docId,
+						serverUrl,
+					});
+				}
+
+				// Wire up transport to receive messages
+				unsubscribeTransportReceive = transport.onReceive(handleTransportMessage);
+
+				// Connect transport
+				void transport.connect();
 			} catch (caughtError) {
 				state.value = 'error';
-				error.value = caughtError instanceof Error ? caughtError.message : String(caughtError);
-				reject(caughtError instanceof Error ? caughtError : new Error(String(caughtError)));
+				const err = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+				error.value = err.message;
+				void errorHook.trigger(err);
+				reject(err);
 				connectPromiseResolve = null;
 				connectPromiseReject = null;
 			}
@@ -306,13 +354,26 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 	 * Disconnect and cleanup.
 	 */
 	function disconnect(): void {
-		sendToWorker({ type: 'unsubscribe', docId });
+		// Disconnect transport (sends UNSUBSCRIBE message)
+		transport?.disconnect();
+		transport = null;
 
-		unsubscribeWorker?.();
-		unsubscribeWorker = null;
+		unsubscribeTransportReceive?.();
+		unsubscribeTransportReceive = null;
+
+		unsubscribeDocSync?.();
+		unsubscribeDocSync = null;
 
 		unsubscribeDoc?.();
 		unsubscribeDoc = null;
+
+		unsubscribeAwareness?.();
+		unsubscribeAwareness = null;
+
+		if (currentAwareness) {
+			currentAwareness.destroy();
+			currentAwareness = null;
+		}
 
 		if (currentDoc) {
 			currentDoc.destroy();
@@ -345,7 +406,13 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		get doc() {
 			return currentDoc;
 		},
+		get awareness() {
+			return currentAwareness;
+		},
 		connect,
 		disconnect,
+		onReady: readyHook.on,
+		onError: errorHook.on,
+		onDisconnected: disconnectedHook.on,
 	};
 }

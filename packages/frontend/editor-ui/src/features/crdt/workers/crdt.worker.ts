@@ -10,16 +10,17 @@
  * - Each Worker maintains its own server connection (but only one will "win" for sending)
  * - The first tab to connect becomes the "leader" for server communication
  *
- * Message Protocol (same as SharedWorker):
- * - From Tab: { type: 'subscribe', docId: string, serverUrl: string }
- * - From Tab: { type: 'unsubscribe', docId: string }
- * - From Tab: { type: 'sync', docId: string, data: Uint8Array }
- * - From Tab: { type: 'simulate-execution', workflowDocId: string, nodeIds: string[] }
- * - From Tab: { type: 'clear-executions', workflowDocId: string }
- * - To Tab: { type: 'sync', docId: string, data: Uint8Array }
- * - To Tab: { type: 'connected', docId: string }
- * - To Tab: { type: 'disconnected', docId: string }
- * - To Tab: { type: 'initial-sync', docId: string }
+ * Binary Message Protocol:
+ * Format: [messageType: u8, docIdLen: u16, docId: utf8, payload]
+ *
+ * Message Types:
+ * - 0 (SYNC): CRDT document update (payload = Yjs update bytes)
+ * - 1 (AWARENESS): Presence/cursor update (payload = awareness bytes)
+ * - 2 (SUBSCRIBE): Subscribe to document (payload = serverUrl as utf8)
+ * - 3 (UNSUBSCRIBE): Unsubscribe from document (payload = empty)
+ * - 4 (CONNECTED): Server connected notification (worker → tab)
+ * - 5 (DISCONNECTED): Server disconnected notification (worker → tab)
+ * - 6 (INITIAL_SYNC): Initial sync complete notification (worker → tab)
  */
 
 /// <reference lib="webworker" />
@@ -29,6 +30,18 @@ import {
 	CRDTEngine,
 	WebSocketTransport,
 	BroadcastChannelTransport,
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	MESSAGE_SUBSCRIBE,
+	MESSAGE_UNSUBSCRIBE,
+	MESSAGE_CONNECTED,
+	MESSAGE_DISCONNECTED,
+	MESSAGE_INITIAL_SYNC,
+	encodeMessage,
+	decodeMessage,
+	encodeWithDocId,
+	decodeWithDocId,
+	decodeString,
 	type CRDTDoc,
 	type CRDTMap,
 } from '@n8n/crdt/browser';
@@ -39,9 +52,11 @@ interface DocumentState {
 	doc: CRDTDoc;
 	serverTransport: WebSocketTransport | null;
 	broadcastTransport: BroadcastChannelTransport | null;
+	awarenessBroadcastTransport: BroadcastChannelTransport | null;
 	serverUrl: string;
 	unsubscribeDoc: (() => void) | null;
 	unsubscribeBroadcast: (() => void) | null;
+	unsubscribeAwarenessBroadcast: (() => void) | null;
 	/** Whether initial sync from server has been received */
 	initialSyncReceived: boolean;
 }
@@ -53,10 +68,11 @@ const documents = new Map<string, DocumentState>();
 const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
 /**
- * Send a message to the main thread.
+ * Send a binary message to the main thread.
  */
-function sendToMain(message: unknown, transfer?: Transferable[]): void {
-	self.postMessage(message, { transfer });
+function sendToMain(messageType: number, docId: string, payload?: Uint8Array): void {
+	const message = encodeWithDocId(messageType, docId, payload);
+	self.postMessage(message);
 }
 
 /**
@@ -72,9 +88,11 @@ function getOrCreateDocument(docId: string, serverUrl: string): DocumentState {
 			doc,
 			serverTransport: null,
 			broadcastTransport: null,
+			awarenessBroadcastTransport: null,
 			serverUrl,
 			unsubscribeDoc: null,
 			unsubscribeBroadcast: null,
+			unsubscribeAwarenessBroadcast: null,
 			initialSyncReceived: false,
 		};
 
@@ -86,17 +104,17 @@ function getOrCreateDocument(docId: string, serverUrl: string): DocumentState {
 			const state = documents.get(docId);
 			if (!state) return;
 
-			// Send to main thread (no transfer - structured clone copies safely)
-			sendToMain({ type: 'sync', docId, data: update });
+			// Send to main thread
+			sendToMain(MESSAGE_SYNC, docId, update);
 
 			// Broadcast to other tabs via BroadcastChannel
 			if (state.broadcastTransport?.connected) {
 				state.broadcastTransport.send(update);
 			}
 
-			// Send to server if connected
+			// Send to server if connected (with message prefix)
 			if (state.serverTransport?.connected) {
-				state.serverTransport.send(update);
+				state.serverTransport.send(encodeMessage(MESSAGE_SYNC, update));
 			}
 		});
 
@@ -120,12 +138,31 @@ async function setupBroadcastChannel(docState: DocumentState, docId: string): Pr
 		// Apply to local doc
 		docState.doc.applyUpdate(data);
 
-		// Forward to main thread (no transfer - structured clone copies safely)
-		sendToMain({ type: 'sync', docId, data });
+		// Forward to main thread
+		sendToMain(MESSAGE_SYNC, docId, data);
 	});
 
 	await transport.connect();
 	console.log('[CRDT Worker] BroadcastChannel connected:', channelName);
+
+	// Set up awareness BroadcastChannel (separate channel for awareness updates)
+	const awarenessChannelName = `crdt-awareness-${docId}`;
+	const awarenessTransport = new BroadcastChannelTransport(awarenessChannelName);
+
+	docState.awarenessBroadcastTransport = awarenessTransport;
+
+	// Handle incoming awareness updates from other tabs
+	docState.unsubscribeAwarenessBroadcast = awarenessTransport.onReceive((data) => {
+		// Apply to local awareness
+		const awareness = docState.doc.getAwareness();
+		awareness.applyUpdate(data);
+
+		// Forward to main thread
+		sendToMain(MESSAGE_AWARENESS, docId, data);
+	});
+
+	await awarenessTransport.connect();
+	console.log('[CRDT Worker] Awareness BroadcastChannel connected:', awarenessChannelName);
 }
 
 /**
@@ -144,35 +181,59 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 
 	docState.serverTransport = transport;
 
-	// Handle incoming server updates
+	// Handle incoming server messages (with type prefix)
 	transport.onReceive((data) => {
-		// Apply to local doc
-		docState.doc.applyUpdate(data);
+		const { messageType, payload } = decodeMessage(data);
 
-		// Send to main thread (no transfer - structured clone copies safely)
-		sendToMain({ type: 'sync', docId, data });
+		if (messageType === MESSAGE_SYNC) {
+			// Apply sync update to local doc
+			docState.doc.applyUpdate(payload);
 
-		// Broadcast to other tabs (they may not have server connection yet)
-		if (docState.broadcastTransport?.connected) {
-			docState.broadcastTransport.send(data);
-		}
+			// Send to main thread
+			sendToMain(MESSAGE_SYNC, docId, payload);
 
-		// On first message from server, notify main thread that initial sync is complete
-		if (!docState.initialSyncReceived) {
-			docState.initialSyncReceived = true;
-			sendToMain({ type: 'initial-sync', docId });
+			// Broadcast to other tabs (they may not have server connection yet)
+			if (docState.broadcastTransport?.connected) {
+				docState.broadcastTransport.send(payload);
+			}
+
+			// On first message from server, notify main thread that initial sync is complete
+			if (!docState.initialSyncReceived) {
+				docState.initialSyncReceived = true;
+				sendToMain(MESSAGE_INITIAL_SYNC, docId);
+			}
+		} else if (messageType === MESSAGE_AWARENESS) {
+			// Apply awareness update
+			const awareness = docState.doc.getAwareness();
+			awareness.applyUpdate(payload);
+
+			// Send to main thread
+			sendToMain(MESSAGE_AWARENESS, docId, payload);
+
+			// Broadcast to other tabs via awareness BroadcastChannel
+			if (docState.awarenessBroadcastTransport?.connected) {
+				docState.awarenessBroadcastTransport.send(payload);
+			}
+		} else {
+			console.warn('[CRDT Worker] Unknown message type from server:', messageType);
 		}
 	});
 
 	// Handle connection state changes
 	transport.onConnectionChange((connected) => {
-		const messageType = connected ? 'connected' : 'disconnected';
-		sendToMain({ type: messageType, docId });
+		sendToMain(connected ? MESSAGE_CONNECTED : MESSAGE_DISCONNECTED, docId);
 
 		if (connected) {
-			// Send initial state to server
+			// Send initial state to server (with sync message prefix)
 			const state = docState.doc.encodeState();
-			transport.send(state);
+			transport.send(encodeMessage(MESSAGE_SYNC, state));
+
+			// Send initial awareness state to server
+			const awareness = docState.doc.getAwareness();
+			const awarenessState = awareness.encodeState();
+			if (awarenessState.length > 0) {
+				transport.send(encodeMessage(MESSAGE_AWARENESS, awarenessState));
+			}
 			// Note: initial-sync is sent when we receive the first message from server
 		}
 	});
@@ -267,23 +328,14 @@ function clearExecutions(workflowDocId: string): void {
 }
 
 /**
- * Handle messages from main thread.
+ * Handle a binary message from the main thread.
  */
-function handleMessage(event: MessageEvent): void {
-	const message = event.data as {
-		type: string;
-		docId?: string;
-		serverUrl?: string;
-		data?: Uint8Array;
-		workflowDocId?: string;
-		nodeIds?: string[];
-	};
+function handleBinaryMessage(data: Uint8Array): void {
+	const { messageType, docId, payload } = decodeWithDocId(data);
 
-	switch (message.type) {
-		case 'subscribe': {
-			if (!message.docId) break;
-
-			const { docId, serverUrl = '' } = message;
+	switch (messageType) {
+		case MESSAGE_SUBSCRIBE: {
+			const serverUrl = decodeString(payload);
 
 			const docState = getOrCreateDocument(docId, serverUrl);
 
@@ -293,12 +345,19 @@ function handleMessage(event: MessageEvent): void {
 			// Send current document state to main thread (if not empty)
 			const state = docState.doc.encodeState();
 			if (state.length > 0) {
-				sendToMain({ type: 'sync', docId, data: state });
+				sendToMain(MESSAGE_SYNC, docId, state);
+			}
+
+			// Send current awareness state to main thread
+			const awareness = docState.doc.getAwareness();
+			const awarenessState = awareness.encodeState();
+			if (awarenessState.length > 0) {
+				sendToMain(MESSAGE_AWARENESS, docId, awarenessState);
 			}
 
 			// For local-only docs (no serverUrl), mark as ready immediately
 			if (!serverUrl) {
-				sendToMain({ type: 'initial-sync', docId });
+				sendToMain(MESSAGE_INITIAL_SYNC, docId);
 				console.log('[CRDT Worker] Subscribed to local-only document:', docId);
 				break;
 			}
@@ -310,17 +369,16 @@ function handleMessage(event: MessageEvent): void {
 			break;
 		}
 
-		case 'unsubscribe': {
-			if (!message.docId) break;
-
-			const { docId } = message;
+		case MESSAGE_UNSUBSCRIBE: {
 			const docState = documents.get(docId);
 
 			if (docState) {
 				docState.serverTransport?.disconnect();
 				docState.broadcastTransport?.disconnect();
+				docState.awarenessBroadcastTransport?.disconnect();
 				docState.unsubscribeDoc?.();
 				docState.unsubscribeBroadcast?.();
+				docState.unsubscribeAwarenessBroadcast?.();
 				docState.doc.destroy();
 				documents.delete(docId);
 			}
@@ -329,34 +387,78 @@ function handleMessage(event: MessageEvent): void {
 			break;
 		}
 
-		case 'sync': {
-			if (!message.docId || !message.data) break;
-
-			const { docId, data } = message;
+		case MESSAGE_SYNC: {
 			const docState = documents.get(docId);
 			if (!docState) break;
 
 			// Apply update to local doc
-			docState.doc.applyUpdate(data);
+			docState.doc.applyUpdate(payload);
 
-			// Manually broadcast (applyUpdate doesn't trigger onUpdate for local origin)
 			// Broadcast to other tabs via BroadcastChannel
 			if (docState.broadcastTransport?.connected) {
-				docState.broadcastTransport.send(data);
+				docState.broadcastTransport.send(payload);
 			}
 
-			// Send to server if connected
+			// Send to server if connected (with message prefix)
 			if (docState.serverTransport?.connected) {
-				docState.serverTransport.send(data);
+				docState.serverTransport.send(encodeMessage(MESSAGE_SYNC, payload));
 			}
 
 			console.log('[CRDT Worker] Applied update from main:', {
 				docId,
-				size: data.length,
+				size: payload.length,
 			});
 			break;
 		}
 
+		case MESSAGE_AWARENESS: {
+			const docState = documents.get(docId);
+			if (!docState) break;
+
+			// Apply awareness update to local doc
+			const awareness = docState.doc.getAwareness();
+			awareness.applyUpdate(payload);
+
+			// Broadcast to other tabs via BroadcastChannel
+			if (docState.awarenessBroadcastTransport?.connected) {
+				docState.awarenessBroadcastTransport.send(payload);
+			}
+
+			// Send to server if connected (with message prefix)
+			if (docState.serverTransport?.connected) {
+				docState.serverTransport.send(encodeMessage(MESSAGE_AWARENESS, payload));
+			}
+
+			console.log('[CRDT Worker] Applied awareness update from main:', {
+				docId,
+				size: payload.length,
+			});
+			break;
+		}
+	}
+}
+
+/**
+ * Handle messages from main thread.
+ */
+function handleMessage(event: MessageEvent): void {
+	const data = event.data;
+
+	// Handle binary messages
+	if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+		const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+		handleBinaryMessage(bytes);
+		return;
+	}
+
+	// Legacy JSON message support for simulate-execution and clear-executions
+	const message = data as {
+		type: string;
+		workflowDocId?: string;
+		nodeIds?: string[];
+	};
+
+	switch (message.type) {
 		case 'simulate-execution': {
 			if (!message.workflowDocId || !message.nodeIds) break;
 			simulateExecution(message.workflowDocId, message.nodeIds);

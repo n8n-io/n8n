@@ -7,16 +7,17 @@
  * - Local changes from any tab are broadcast to all other tabs AND to the server
  * - Server updates are broadcast to all connected tabs
  *
- * Message Protocol:
- * - From Tab: { type: 'subscribe', docId: string } - Subscribe to a document
- * - From Tab: { type: 'unsubscribe', docId: string } - Unsubscribe from a document
- * - From Tab: { type: 'sync', docId: string, data: Uint8Array } - Send update
- * - From Tab: { type: 'simulate-execution', workflowDocId: string, nodeIds: string[] } - Simulate execution
- * - From Tab: { type: 'clear-executions', workflowDocId: string } - Clear all executions
- * - To Tab: { type: 'sync', docId: string, data: Uint8Array } - Receive update
- * - To Tab: { type: 'connected', docId: string } - Server connection established
- * - To Tab: { type: 'disconnected', docId: string } - Server connection lost
- * - To Tab: { type: 'initial-sync', docId: string } - Initial sync complete
+ * Binary Message Protocol:
+ * Format: [messageType: u8, docIdLen: u16, docId: utf8, payload]
+ *
+ * Message Types:
+ * - 0 (SYNC): CRDT document update (payload = Yjs update bytes)
+ * - 1 (AWARENESS): Presence/cursor update (payload = awareness bytes)
+ * - 2 (SUBSCRIBE): Subscribe to document (payload = serverUrl as utf8)
+ * - 3 (UNSUBSCRIBE): Unsubscribe from document (payload = empty)
+ * - 4 (CONNECTED): Server connected notification (worker → tab)
+ * - 5 (DISCONNECTED): Server disconnected notification (worker → tab)
+ * - 6 (INITIAL_SYNC): Initial sync complete notification (worker → tab)
  */
 
 /// <reference lib="webworker" />
@@ -25,6 +26,18 @@ import {
 	createCRDTProvider,
 	CRDTEngine,
 	WebSocketTransport,
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	MESSAGE_SUBSCRIBE,
+	MESSAGE_UNSUBSCRIBE,
+	MESSAGE_CONNECTED,
+	MESSAGE_DISCONNECTED,
+	MESSAGE_INITIAL_SYNC,
+	encodeMessage,
+	decodeMessage,
+	encodeWithDocId,
+	decodeWithDocId,
+	decodeString,
 	type CRDTDoc,
 	type CRDTMap,
 } from '@n8n/crdt/browser';
@@ -58,14 +71,35 @@ const documents = new Map<string, DocumentState>();
 const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
 /**
- * Broadcast a message to all tabs subscribed to a document.
+ * Send a binary message to a tab.
  */
-function broadcastToTabs(docId: string, message: unknown): void {
+function sendToTab(
+	port: MessagePort,
+	messageType: number,
+	docId: string,
+	payload?: Uint8Array,
+): void {
+	const message = encodeWithDocId(messageType, docId, payload);
+	port.postMessage(message);
+}
+
+/**
+ * Broadcast a binary message to all tabs subscribed to a document.
+ */
+function broadcastToTabs(
+	docId: string,
+	messageType: number,
+	payload?: Uint8Array,
+	excludePort?: MessagePort,
+): void {
 	const docState = documents.get(docId);
 	if (!docState) return;
 
+	const message = encodeWithDocId(messageType, docId, payload);
 	for (const tab of docState.tabs) {
-		tab.port.postMessage(message);
+		if (tab.port !== excludePort) {
+			tab.port.postMessage(message);
+		}
 	}
 }
 
@@ -97,13 +131,11 @@ function getOrCreateDocument(docId: string, serverUrl: string): DocumentState {
 			if (!state) return;
 
 			// Broadcast to all tabs
-			for (const tab of state.tabs) {
-				tab.port.postMessage({ type: 'sync', docId, data: update });
-			}
+			broadcastToTabs(docId, MESSAGE_SYNC, update);
 
-			// Send to server if connected
+			// Send to server if connected (with message prefix)
 			if (state.serverTransport?.connected) {
-				state.serverTransport.send(update);
+				state.serverTransport.send(encodeMessage(MESSAGE_SYNC, update));
 			}
 		});
 
@@ -129,32 +161,49 @@ async function connectToServer(docState: DocumentState, docId: string): Promise<
 
 	docState.serverTransport = transport;
 
-	// Handle incoming server updates
+	// Handle incoming server messages (with type prefix)
 	transport.onReceive((data) => {
-		// Apply to local doc
-		docState.doc.applyUpdate(data);
+		const { messageType, payload } = decodeMessage(data);
 
-		// Broadcast to all tabs
-		for (const tab of docState.tabs) {
-			tab.port.postMessage({ type: 'sync', docId, data });
-		}
+		if (messageType === MESSAGE_SYNC) {
+			// Apply sync update to local doc
+			docState.doc.applyUpdate(payload);
 
-		// On first message from server, notify tabs that initial sync is complete
-		if (!docState.initialSyncReceived) {
-			docState.initialSyncReceived = true;
-			broadcastToTabs(docId, { type: 'initial-sync', docId });
+			// Broadcast to all tabs
+			broadcastToTabs(docId, MESSAGE_SYNC, payload);
+
+			// On first message from server, notify tabs that initial sync is complete
+			if (!docState.initialSyncReceived) {
+				docState.initialSyncReceived = true;
+				broadcastToTabs(docId, MESSAGE_INITIAL_SYNC);
+			}
+		} else if (messageType === MESSAGE_AWARENESS) {
+			// Apply awareness update
+			const awareness = docState.doc.getAwareness();
+			awareness.applyUpdate(payload);
+
+			// Broadcast to all tabs
+			broadcastToTabs(docId, MESSAGE_AWARENESS, payload);
+		} else {
+			console.warn('[CRDT SharedWorker] Unknown message type from server:', messageType);
 		}
 	});
 
 	// Handle connection state changes
 	docState.unsubscribeTransport = transport.onConnectionChange((connected) => {
-		const messageType = connected ? 'connected' : 'disconnected';
-		broadcastToTabs(docId, { type: messageType, docId });
+		broadcastToTabs(docId, connected ? MESSAGE_CONNECTED : MESSAGE_DISCONNECTED);
 
 		if (connected) {
-			// Send initial state to server
+			// Send initial state to server (with sync message prefix)
 			const state = docState.doc.encodeState();
-			transport.send(state);
+			transport.send(encodeMessage(MESSAGE_SYNC, state));
+
+			// Send initial awareness state to server
+			const awareness = docState.doc.getAwareness();
+			const awarenessState = awareness.encodeState();
+			if (awarenessState.length > 0) {
+				transport.send(encodeMessage(MESSAGE_AWARENESS, awarenessState));
+			}
 			// Note: initial-sync is broadcast when we receive the first message from server
 		}
 	});
@@ -249,6 +298,129 @@ function clearExecutions(workflowDocId: string): void {
 }
 
 /**
+ * Handle a binary message from a tab.
+ */
+function handleBinaryMessage(
+	data: Uint8Array,
+	port: MessagePort,
+	tabConnection: TabConnection,
+): void {
+	const { messageType, docId, payload } = decodeWithDocId(data);
+
+	switch (messageType) {
+		case MESSAGE_SUBSCRIBE: {
+			const serverUrl = decodeString(payload);
+			tabConnection.docIds.add(docId);
+
+			const docState = getOrCreateDocument(docId, serverUrl);
+			docState.tabs.add(tabConnection);
+
+			// Send current document state to the new tab (if not empty)
+			const state = docState.doc.encodeState();
+			if (state.length > 0) {
+				sendToTab(port, MESSAGE_SYNC, docId, state);
+			}
+
+			// Send current awareness state to the new tab
+			const awareness = docState.doc.getAwareness();
+			const awarenessState = awareness.encodeState();
+			if (awarenessState.length > 0) {
+				sendToTab(port, MESSAGE_AWARENESS, docId, awarenessState);
+			}
+
+			// For local-only docs (no serverUrl), mark as ready immediately
+			if (!serverUrl) {
+				sendToTab(port, MESSAGE_INITIAL_SYNC, docId);
+				console.log('[CRDT SharedWorker] Tab subscribed to local-only document:', docId);
+				break;
+			}
+
+			// Connect to server if this is the first tab for this document
+			if (docState.tabs.size === 1 && !docState.serverTransport) {
+				void connectToServer(docState, docId);
+			} else if (docState.serverTransport?.connected) {
+				// Already connected, notify tab
+				sendToTab(port, MESSAGE_CONNECTED, docId);
+				// Only send initial-sync if we've already received data from server
+				if (docState.initialSyncReceived) {
+					sendToTab(port, MESSAGE_INITIAL_SYNC, docId);
+				}
+			}
+
+			console.log('[CRDT SharedWorker] Tab subscribed to document:', docId);
+			break;
+		}
+
+		case MESSAGE_UNSUBSCRIBE: {
+			tabConnection.docIds.delete(docId);
+
+			const docState = documents.get(docId);
+			if (docState) {
+				docState.tabs.delete(tabConnection);
+
+				// If no more tabs are subscribed, clean up
+				if (docState.tabs.size === 0) {
+					docState.serverTransport?.disconnect();
+					docState.unsubscribeDoc?.();
+					docState.unsubscribeTransport?.();
+					docState.doc.destroy();
+					documents.delete(docId);
+					console.log('[CRDT SharedWorker] Document cleaned up:', docId);
+				}
+			}
+
+			console.log('[CRDT SharedWorker] Tab unsubscribed from document:', docId);
+			break;
+		}
+
+		case MESSAGE_SYNC: {
+			const docState = documents.get(docId);
+			if (!docState) break;
+
+			// Apply update to local doc
+			docState.doc.applyUpdate(payload);
+
+			// Broadcast to other tabs (exclude sender)
+			broadcastToTabs(docId, MESSAGE_SYNC, payload, port);
+
+			// Send to server if connected (with message prefix)
+			if (docState.serverTransport?.connected) {
+				docState.serverTransport.send(encodeMessage(MESSAGE_SYNC, payload));
+			}
+
+			console.log('[CRDT SharedWorker] Applied update from tab:', {
+				docId,
+				size: payload.length,
+			});
+			break;
+		}
+
+		case MESSAGE_AWARENESS: {
+			const docState = documents.get(docId);
+			if (!docState) break;
+
+			// Apply awareness update to local doc
+			const awareness = docState.doc.getAwareness();
+			awareness.applyUpdate(payload);
+
+			// Broadcast to other tabs (exclude sender)
+			broadcastToTabs(docId, MESSAGE_AWARENESS, payload, port);
+
+			// Send to server if connected (with message prefix)
+			if (docState.serverTransport?.connected) {
+				docState.serverTransport.send(encodeMessage(MESSAGE_AWARENESS, payload));
+			}
+
+			console.log('[CRDT SharedWorker] Applied awareness update from tab:', {
+				docId,
+				size: payload.length,
+			});
+			break;
+		}
+	}
+}
+
+/**
  * Handle a new tab connection.
  */
 function handleTabConnect(port: MessagePort): void {
@@ -260,108 +432,24 @@ function handleTabConnect(port: MessagePort): void {
 	tabs.set(port, tabConnection);
 
 	port.onmessage = (event) => {
-		const message = event.data as {
+		const data = event.data;
+
+		// Handle binary messages
+		if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+			const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+			handleBinaryMessage(bytes, port, tabConnection);
+			return;
+		}
+
+		// Legacy JSON message support for simulate-execution and clear-executions
+		// These don't need to go through the transport abstraction
+		const message = data as {
 			type: string;
-			docId?: string;
-			serverUrl?: string;
-			data?: Uint8Array;
 			workflowDocId?: string;
 			nodeIds?: string[];
 		};
 
 		switch (message.type) {
-			case 'subscribe': {
-				if (!message.docId) break;
-
-				const { docId, serverUrl = '' } = message;
-				tabConnection.docIds.add(docId);
-
-				const docState = getOrCreateDocument(docId, serverUrl);
-				docState.tabs.add(tabConnection);
-
-				// Send current document state to the new tab (if not empty)
-				const state = docState.doc.encodeState();
-				if (state.length > 0) {
-					port.postMessage({ type: 'sync', docId, data: state });
-				}
-
-				// For local-only docs (no serverUrl), mark as ready immediately
-				if (!serverUrl) {
-					port.postMessage({ type: 'initial-sync', docId });
-					console.log('[CRDT SharedWorker] Tab subscribed to local-only document:', docId);
-					break;
-				}
-
-				// Connect to server if this is the first tab for this document
-				if (docState.tabs.size === 1 && !docState.serverTransport) {
-					void connectToServer(docState, docId);
-				} else if (docState.serverTransport?.connected) {
-					// Already connected, notify tab
-					port.postMessage({ type: 'connected', docId });
-					// Only send initial-sync if we've already received data from server
-					if (docState.initialSyncReceived) {
-						port.postMessage({ type: 'initial-sync', docId });
-					}
-				}
-
-				console.log('[CRDT SharedWorker] Tab subscribed to document:', docId);
-				break;
-			}
-
-			case 'unsubscribe': {
-				if (!message.docId) break;
-
-				const { docId } = message;
-				tabConnection.docIds.delete(docId);
-
-				const docState = documents.get(docId);
-				if (docState) {
-					docState.tabs.delete(tabConnection);
-
-					// If no more tabs are subscribed, clean up
-					if (docState.tabs.size === 0) {
-						docState.serverTransport?.disconnect();
-						docState.unsubscribeDoc?.();
-						docState.unsubscribeTransport?.();
-						docState.doc.destroy();
-						documents.delete(docId);
-						console.log('[CRDT SharedWorker] Document cleaned up:', docId);
-					}
-				}
-
-				console.log('[CRDT SharedWorker] Tab unsubscribed from document:', docId);
-				break;
-			}
-
-			case 'sync': {
-				if (!message.docId || !message.data) break;
-
-				const { docId, data } = message;
-				const docState = documents.get(docId);
-				if (!docState) break;
-
-				// Apply update to local doc
-				docState.doc.applyUpdate(data);
-
-				// Manually broadcast to other tabs (applyUpdate doesn't trigger onUpdate for local origin)
-				for (const tab of docState.tabs) {
-					if (tab.port !== port) {
-						tab.port.postMessage({ type: 'sync', docId, data });
-					}
-				}
-
-				// Send to server if connected
-				if (docState.serverTransport?.connected) {
-					docState.serverTransport.send(data);
-				}
-
-				console.log('[CRDT SharedWorker] Applied update from tab:', {
-					docId,
-					size: data.length,
-				});
-				break;
-			}
-
 			case 'simulate-execution': {
 				if (!message.workflowDocId || !message.nodeIds) break;
 				simulateExecution(message.workflowDocId, message.nodeIds);

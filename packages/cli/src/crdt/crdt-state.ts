@@ -76,6 +76,25 @@ export class CRDTState {
 	}
 
 	/**
+	 * Get the current awareness state as Uint8Array
+	 */
+	getAwarenessBytes(docId: string): Uint8Array {
+		const doc = this.getOrCreateDoc(docId);
+		const awareness = doc.getAwareness();
+		return awareness.encodeState();
+	}
+
+	/**
+	 * Apply an awareness update (Uint8Array) to a document
+	 */
+	applyAwarenessBytes(docId: string, update: Uint8Array): void {
+		const doc = this.getOrCreateDoc(docId);
+		const awareness = doc.getAwareness();
+		awareness.applyUpdate(update);
+		this.logger.debug('Applied awareness update', { docId, size: update.length });
+	}
+
+	/**
 	 * Add a subscriber to a document
 	 */
 	addSubscriber(docId: string, userId: User['id'], pushRef: string): void {
