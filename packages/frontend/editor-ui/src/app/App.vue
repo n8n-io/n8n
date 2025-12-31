@@ -81,7 +81,7 @@ watch(
 	{ immediate: true },
 );
 
-const setLayoutRef = (el: Element | null) => {
+const setLayoutRef = (el: Element) => {
 	layoutRef.value = el;
 };
 
@@ -100,7 +100,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<AppBanners />
-		<AppLayout @load="setLayoutRef" />
+		<AppLayout @mounted="setLayoutRef" />
 		<AppModals />
 		<AppCommandBar />
 		<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />

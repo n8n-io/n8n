@@ -1,14 +1,12 @@
 <script lang="ts" setup>
 import { useRoute } from 'vue-router';
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 
 const route = useRoute();
 
 const emit = defineEmits<{
-	load: [element: Element | null];
+	mounted: [element: Element];
 }>();
-
-const layoutRef = ref<Element | null>(null);
 
 const DefaultLayout = defineAsyncComponent(
 	async () => await import('@/app/layouts/DefaultLayout.vue'),
@@ -38,14 +36,12 @@ const layout = computed(() => {
 	return layouts[route.meta.layout ?? 'default'] ?? layouts.default;
 });
 
-watch(layoutRef, (value) => {
-	if (value) {
-		emit('load', value);
-	}
-});
+function onMounted(element: Element) {
+	emit('mounted', element);
+}
 </script>
 <template>
 	<Suspense>
-		<Component :is="layout" ref="layoutRef" />
+		<Component :is="layout" @mounted="onMounted" />
 	</Suspense>
 </template>

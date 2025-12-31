@@ -1,5 +1,19 @@
+<script setup lang="ts">
+import { onMounted, useTemplateRef } from 'vue';
+
+const layoutRef = useTemplateRef('layout');
+
+const emit = defineEmits<{
+	mounted: [Element];
+}>();
+
+onMounted(() => {
+	if (layoutRef.value) emit('mounted', layoutRef.value);
+});
+</script>
+
 <template>
-	<div class="app-grid" :class="$style.appGrid">
+	<div ref="layout" class="app-grid" :class="$style.appGrid">
 		<header v-if="$slots.header" id="header" :class="$style.header">
 			<slot name="header" />
 		</header>
