@@ -1227,8 +1227,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findByStopExecutionsFilter(
 		query: ExecutionSummaries.StopExecutionFilterQuery,
 	): Promise<Array<{ id: string }>> {
+		if (!query.status || query.status.length === 0) return [];
+
 		const where: FindOptionsWhere<ExecutionEntity> = {
-			status: In(query.status ?? []),
+			status: In(query.status),
 		};
 
 		if (query.workflowId !== 'all') {

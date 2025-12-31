@@ -90,13 +90,23 @@ function closeModal() {
 <template>
 	<Modal
 		max-width="540px"
-		title="Stop Executions"
+		:title="i18n.baseText('executionStopManyModal.title')"
 		:event-bus="modalBus"
 		:name="props.modalName"
 		:center="true"
 		:close-on-click-modal="false"
 	>
 		<template #content>
+			<ElRow v-if="activeFilterHint">
+				<N8nCallout theme="info">
+					{{ activeFilterHint }}
+				</N8nCallout>
+			</ElRow>
+			<ElRow v-if="allWorkflowsHint">
+				<N8nCallout theme="warning">
+					{{ allWorkflowsHint }}
+				</N8nCallout>
+			</ElRow>
 			<ElRow :class="$style.description">
 				<N8nText color="text-base">
 					{{ i18n.baseText('executionStopManyModal.description') }}
@@ -126,28 +136,18 @@ function closeModal() {
 					data-test-id="sme-check-waiting"
 				/>
 			</ElRow>
-			<ElRow v-if="activeFilterHint">
-				<N8nCallout theme="info">
-					{{ activeFilterHint }}
-				</N8nCallout>
-			</ElRow>
-			<ElRow v-if="allWorkflowsHint">
-				<N8nCallout theme="warning">
-					{{ allWorkflowsHint }}
-				</N8nCallout>
-			</ElRow>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
 					type="tertiary"
-					label="Close"
+					:label="i18n.baseText('executionStopManyModal.button.close')"
 					data-test-id="sme-close-button"
 					@click="closeModal"
 				/>
 				<N8nButton
 					:disabled="!checkWaiting && !checkRunning && !checkQueued"
-					label="Stop Executions"
+					:label="i18n.baseText('executionStopManyModal.button.submit')"
 					data-test-id="sme-submit-button"
 					@click="onSubmit"
 				/>

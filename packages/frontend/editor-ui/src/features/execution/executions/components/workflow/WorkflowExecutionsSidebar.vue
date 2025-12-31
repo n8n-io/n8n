@@ -178,11 +178,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div
-		ref="sidebarContainerRef"
-		:class="['executions-sidebar', $style.container]"
-		data-test-id="executions-sidebar"
-	>
+	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
 			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}

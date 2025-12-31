@@ -116,7 +116,7 @@ export class ExecutionsController {
 	/**
 	 * Stops executions based on the provided filter
 	 *
-	 * @returns { stop: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 * @returns { stopped: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
 	 */
 	@Post('/stopMany')
 	async stopMany(req: ExecutionRequest.StopMany) {

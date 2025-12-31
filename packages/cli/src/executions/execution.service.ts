@@ -504,7 +504,7 @@ export class ExecutionService {
 				// the throwing code already logs the failure otherwise
 				if (!(e instanceof MissingExecutionStopError)) {
 					this.logger.warn(
-						`Unexpected error while attempting to stop executions of wf ${id}: ${ensureError(e).message}`,
+						`Unexpected error while attempting to stop execution ${id}: ${ensureError(e).message}`,
 					);
 				}
 			}
