@@ -362,6 +362,17 @@ watch(
 	{ immediate: true },
 );
 
+// Focus prompt when streaming is completed
+watch(
+	isResponding,
+	(responding, wasResponding) => {
+		if (!responding && wasResponding) {
+			inputRef.value?.focus();
+		}
+	},
+	{ immediate: true },
+);
+
 watch(
 	currentConversationTitle,
 	(title) => {
