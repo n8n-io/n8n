@@ -573,6 +573,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
+
+		return streaming.value;
 	}
 
 	async function editMessage(
