@@ -247,9 +247,30 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 class YjsDoc implements CRDTDoc {
 	private readonly yDoc: Y.Doc;
 	private awareness: YjsAwareness | null = null;
+	private _synced = false;
+	private syncHandlers = new Set<(isSynced: boolean) => void>();
 
 	constructor(readonly id: string) {
 		this.yDoc = new Y.Doc({ guid: id });
+	}
+
+	get synced(): boolean {
+		return this._synced;
+	}
+
+	setSynced(synced: boolean): void {
+		if (this._synced === synced) return;
+		this._synced = synced;
+		for (const handler of this.syncHandlers) {
+			handler(synced);
+		}
+	}
+
+	onSync(handler: (isSynced: boolean) => void): () => void {
+		this.syncHandlers.add(handler);
+		return () => {
+			this.syncHandlers.delete(handler);
+		};
 	}
 
 	getMap<T = unknown>(name: string): CRDTMap<T> {
@@ -305,6 +326,8 @@ class YjsDoc implements CRDTDoc {
 			this.awareness.destroy();
 			this.awareness = null;
 		}
+		this.syncHandlers.clear();
+		this._synced = false;
 		this.yDoc.destroy();
 	}
 }

@@ -9,6 +9,8 @@ import type {
 import { ChangeAction } from '../types';
 import { AutomergeProvider } from './automerge';
 
+// Note: CRDTDoc sync state tests are in index.test.ts (multi-engine conformance tests)
+
 describe('AutomergeProvider', () => {
 	describe('CRDTMap basic operations', () => {
 		let doc: CRDTDoc;

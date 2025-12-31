@@ -9,6 +9,8 @@ import type {
 import { ChangeAction, ChangeOrigin as ChangeOriginConst } from '../types';
 import { YjsProvider } from './yjs';
 
+// Note: CRDTDoc sync state tests are in index.test.ts (multi-engine conformance tests)
+
 describe('YjsProvider', () => {
 	describe('CRDTMap basic operations', () => {
 		let doc: CRDTDoc;
