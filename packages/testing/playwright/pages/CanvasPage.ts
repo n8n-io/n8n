@@ -987,10 +987,16 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

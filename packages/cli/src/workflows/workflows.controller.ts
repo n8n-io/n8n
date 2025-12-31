@@ -704,11 +704,7 @@ export class WorkflowsController {
 	) {
 		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
 
-		if (lastExecution === undefined) {
-			throw new NotFoundError('No successful execution found for the workflow');
-		}
-
-		return lastExecution;
+		return lastExecution ?? null;
 	}
 
 	@Post('/with-node-types')
