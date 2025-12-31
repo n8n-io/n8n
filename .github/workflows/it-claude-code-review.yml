@@ -1,0 +1,67 @@
+name: IT - Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - stg # stgブランチへのPRの時のみ実行
+    # Optional: Only run on specific file changes
+    # paths:
+    #   - "src/**/*.ts"
+    #   - "src/**/*.tsx"
+    #   - "src/**/*.js"
+    #   - "src/**/*.jsx"
+
+jobs:
+  claude-review:
+    # Optional: Filter by PR author
+    # if: |
+    #   github.event.pull_request.user.login == 'external-contributor' ||
+    #   github.event.pull_request.user.login == 'new-developer' ||
+    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            このプルリクエストをレビューしてください。
+
+            ## レビュー手順
+            1. CLAUDE.md の「Code Review Guidelines」セクションを必ず読み、そのガイドラインに従ってレビューを実施してください
+            2. 指摘事項には必ずプレフィックス（must./imo./nits./q.）を付けてください
+            3. 優先度順（must → imo → nits）でレビューを行ってください
+
+            ## レビュー観点（CLAUDE.md に詳細あり）
+            - must.: セキュリティ脆弱性、データ損失リスク、システム安定性、境界値処理、並行性の問題、リソースリーク
+            - imo.: ビジネスロジック、コード品質、アーキテクチャ、型の整合性、エラー処理、状態の一貫性、API の堅牢性
+            - nits.: スタイル・規約、ドキュメント、テスタビリティ、デバッグ情報の管理
+            - q.: 仕様確認、環境特有の確認
+
+            ## 注意事項
+            - 日本語で応答し、日本語と半角英数字間に半角スペースを挿入してください
+            - 推測での指摘や架空のメソッドの提案は禁止です
+            - Linter が既に指摘している内容は繰り返さないでください
+
+            Bash ツールで `gh pr comment` を使用して、PR にコメントとしてレビューを残してください。
+
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
