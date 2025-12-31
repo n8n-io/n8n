@@ -1,34 +1,26 @@
+import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+
 /**
- * Shared container capability configurations.
- *
- * IMPORTANT: Import these instead of defining inline objects in test.use().
- * Using the same object reference enables Playwright worker reuse across
- * test files with identical configurations, avoiding redundant container creation.
- *
- * @example
- * ```ts
- * import { capabilities } from '../fixtures/capabilities';
- * test.use({ addContainerCapability: capabilities.email });
- * ```
+ * Capability definitions for `test.use({ capability: 'email' })`.
+ * Add `@capability:X` tag to tests for orchestration grouping.
  */
-export const capabilities = {
-	/** Email testing with Mailpit SMTP server */
+export const CAPABILITIES = {
 	email: { email: true },
-
-	/** Mock HTTP server for external API testing */
 	proxy: { proxyServerEnabled: true },
-
-	/** Git-based source control testing */
-	sourceControl: { sourceControl: true },
-
-	/** External task runner container */
-	taskRunner: { taskRunner: true },
-
-	/** OIDC/SSO testing with Keycloak (includes postgres) */
+	'source-control': { sourceControl: true },
+	'task-runner': { taskRunner: true },
 	oidc: { oidc: true },
-
-	/** Observability stack (VictoriaLogs + VictoriaMetrics) */
 	observability: { observability: true },
-} as const;
+} as const satisfies Record<string, Partial<N8NConfig>>;
 
-export type CapabilityName = keyof typeof capabilities;
+export type Capability = keyof typeof CAPABILITIES;
+
+/**
+ * Infrastructure modes (`@mode:X` tags). Most tests run against ALL modes via projects.
+ * Use @mode:X only for tests requiring specific infrastructure.
+ */
+export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const;
+
+// Used by playwright-projects.ts to filter container-only tests in local mode
+export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];
+export const CONTAINER_ONLY_MODES = INFRASTRUCTURE_MODES;

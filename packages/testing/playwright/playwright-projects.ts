@@ -1,22 +1,16 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
+import { CONTAINER_ONLY_CAPABILITIES, CONTAINER_ONLY_MODES } from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
-// Tags that require test containers environment
-// These tests won't be run against local
-const CONTAINER_ONLY_TAGS = [
-	'proxy',
-	'postgres',
-	'queue',
-	'multi-main',
-	'task-runner',
-	'source-control',
-	'email',
-	'oidc',
-	'observability',
-];
-const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
+// Tests that require container environment (won't run against local n8n).
+// Matches both:
+// - @capability:X - add-on features (email, proxy, source-control, etc.)
+// - @mode:X - infrastructure modes (postgres, queue, multi-main)
+const CONTAINER_ONLY = new RegExp(
+	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
+);
 
 // Tags that need serial execution
 // These tests will be run AFTER the first run of the E2E tests
@@ -28,7 +22,7 @@ const SERIAL_EXECUTION = /@db:reset/;
 const ISOLATED_ONLY = /@isolated/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 }, observability: true } },
@@ -65,7 +59,7 @@ export function getProjects(): Project[] {
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
-					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
+					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
 				},
