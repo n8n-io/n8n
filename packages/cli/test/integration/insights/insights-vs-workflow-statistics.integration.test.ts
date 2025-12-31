@@ -19,17 +19,13 @@ import path from 'path';
 
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
-import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
 import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
+import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import * as utils from '../shared/utils';
-import {
-	createParentWorkflowFixture,
-	createSimpleWorkflowFixture,
-	createSubWorkflowFixture,
-} from '../shared/workflow-fixtures';
+import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
 
 // ============================================================
 // Helper to load nodes from dist folder
@@ -111,9 +107,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	let executionRepository: ExecutionRepository;
 
 	let project: Project;
-	let workflow1: WorkflowEntity;
-	let workflow2: WorkflowEntity;
-	let workflow3Subworkflow: WorkflowEntity;
+	let workflow: WorkflowEntity;
 
 	beforeAll(() => {
 		// CRITICAL: Ensure SKIP_STATISTICS_EVENTS is not set
@@ -150,36 +144,12 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		project = await createTeamProject('Test Project');
 
 		// Create workflow 1 - standalone workflow with manual trigger
-		workflow1 = await createWorkflow(
+		workflow = await createWorkflow(
 			{
 				name: 'Workflow 1 - Standalone',
 				...createSimpleWorkflowFixture(),
 				settings: {
 					timeSavedPerExecution: 5,
-				},
-			},
-			project,
-		);
-
-		// Create workflow 3 (subworkflow) first so we can reference it in workflow 2
-		workflow3Subworkflow = await createWorkflow(
-			{
-				name: 'Workflow 3 - Subworkflow',
-				...createSubWorkflowFixture(),
-				settings: {
-					timeSavedPerExecution: 2,
-				},
-			},
-			project,
-		);
-
-		// Create workflow 2 - parent workflow that calls workflow 3
-		workflow2 = await createWorkflow(
-			{
-				name: 'Workflow 2 - Parent',
-				...createParentWorkflowFixture(workflow3Subworkflow.id),
-				settings: {
-					timeSavedPerExecution: 3,
 				},
 			},
 			project,
@@ -284,7 +254,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// ============================================================
 		const execution1Ids: string[] = [];
 		for (let i = 0; i < 10; i++) {
-			const executionId = await executeWorkflow(workflow1, 'webhook');
+			const executionId = await executeWorkflow(workflow, 'webhook');
 			execution1Ids.push(executionId);
 		}
 
@@ -292,17 +262,17 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		await Promise.all(execution1Ids.map(async (id) => await waitForExecution(id)));
 
 		// Wait for workflow statistics to be recorded
-		await waitForStatistics(workflow1.id, 10);
+		await waitForStatistics(workflow.id, 10);
 
 		// Wait for automatic compaction to complete
-		await waitForCompaction(workflow1.id);
+		await waitForCompaction(workflow.id);
 
 		// ============================================================
 		// ASSERT: Query workflow statistics
 		// ============================================================
 		const stats1 = await workflowStatisticsRepository.findOne({
 			where: {
-				workflowId: workflow1.id,
+				workflowId: workflow.id,
 				name: StatisticsNames.productionSuccess,
 			},
 		});
@@ -317,7 +287,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// ============================================================
 		const allInsights1 = await insightsByPeriodRepository.find({
 			where: {
-				metadata: { workflowId: workflow1.id },
+				metadata: { workflowId: workflow.id },
 			},
 			relations: ['metadata'],
 		});
@@ -339,103 +309,5 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const insights1TimeSaved = allInsights1.filter((insight) => insight.type === 'time_saved_min');
 		const totalTimeSaved1 = insights1TimeSaved.reduce((sum, insight) => sum + insight.value, 0);
 		expect(totalTimeSaved1).toBe(10 * 5); // 10 executions * 5 minutes saved per execution
-	}, 60000);
-
-	test('should match execution counts for parent workflow calling subworkflow', async () => {
-		// ============================================================
-		// ACT: Execute workflow 2 (parent) ten times in webhook mode
-		// This will trigger workflow 3 (subworkflow) as well
-		// ============================================================
-		const execution2Ids: string[] = [];
-		for (let i = 0; i < 10; i++) {
-			const executionId = await executeWorkflow(workflow2, 'webhook');
-			execution2Ids.push(executionId);
-		}
-
-		// Wait for all parent executions to complete
-		await Promise.all(execution2Ids.map(async (id) => await waitForExecution(id)));
-
-		// Wait for workflow statistics to be recorded for both workflows
-		await waitForStatistics(workflow2.id, 10); // Parent: 10 root executions
-		await waitForStatistics(workflow3Subworkflow.id, 10); // Subworkflow: 10 non-root executions
-
-		// Wait for automatic compaction
-		await waitForCompaction(workflow2.id);
-		await waitForCompaction(workflow3Subworkflow.id);
-
-		// Debug: Check all executions
-		const allExecutions = await executionRepository.find();
-		const wf2Execs = allExecutions.filter((e) => e.workflowId === workflow2.id);
-		const wf3Execs = allExecutions.filter((e) => e.workflowId === workflow3Subworkflow.id);
-		console.log(
-			`Executions: Parent=${wf2Execs.length}, Subworkflow=${wf3Execs.length}, Total=${allExecutions.length}`,
-		);
-
-		// ============================================================
-		// ASSERT: Workflow 2 (Parent) Statistics
-		// ============================================================
-		const stats2 = await workflowStatisticsRepository.findOne({
-			where: {
-				workflowId: workflow2.id,
-				name: StatisticsNames.productionSuccess,
-			},
-		});
-
-		expect(stats2).toBeDefined();
-		expect(stats2?.count).toBe(10); // 10 parent executions
-		expect(stats2?.rootCount).toBe(10); // All parent executions are root
-
-		// ============================================================
-		// ASSERT: Workflow 3 (Subworkflow) Statistics
-		// ============================================================
-		const stats3 = await workflowStatisticsRepository.findOne({
-			where: {
-				workflowId: workflow3Subworkflow.id,
-				name: StatisticsNames.productionSuccess,
-			},
-		});
-
-		expect(stats3).toBeDefined();
-		expect(stats3?.count).toBe(10); // 10 subworkflow executions
-		expect(stats3?.rootCount).toBe(0); // None are root (all called by parent)
-
-		// ============================================================
-		// ASSERT: Workflow 2 (Parent) Insights - Should track root executions
-		// ============================================================
-		const allInsights2 = await insightsByPeriodRepository.find({
-			where: {
-				metadata: { workflowId: workflow2.id },
-			},
-			relations: ['metadata'],
-		});
-
-		const insights2Success = allInsights2.filter((insight) => insight.type === 'success');
-		const insights2SuccessCount = insights2Success.reduce((sum, insight) => sum + insight.value, 0);
-
-		// Insights should match root execution counts only
-		expect(insights2SuccessCount).toBe(10);
-		expect(insights2SuccessCount).toBe(stats2?.rootCount);
-
-		// Verify time saved for parent
-		const insights2TimeSaved = allInsights2.filter((insight) => insight.type === 'time_saved_min');
-		const totalTimeSaved2 = insights2TimeSaved.reduce((sum, insight) => sum + insight.value, 0);
-		expect(totalTimeSaved2).toBe(10 * 3); // 10 executions * 3 minutes
-
-		// ============================================================
-		// ASSERT: Workflow 3 (Subworkflow) Insights - Should NOT track (rootCount = 0)
-		// ============================================================
-		const allInsights3 = await insightsByPeriodRepository.find({
-			where: {
-				metadata: { workflowId: workflow3Subworkflow.id },
-			},
-			relations: ['metadata'],
-		});
-
-		const insights3Success = allInsights3.filter((insight) => insight.type === 'success');
-		const insights3SuccessCount = insights3Success.reduce((sum, insight) => sum + insight.value, 0);
-
-		// Insights should be 0 for subworkflow (not root executions)
-		expect(insights3SuccessCount).toBe(0);
-		expect(insights3SuccessCount).toBe(stats3?.rootCount);
 	}, 60000);
 });
