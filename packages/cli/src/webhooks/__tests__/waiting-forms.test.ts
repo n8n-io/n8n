@@ -249,6 +249,28 @@ describe('WaitingForms', () => {
 			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
 
+		it('should not override existing Access-Control-Allow-Origin header', async () => {
+			const execution = mock<IExecutionResponse>({
+				status: 'success',
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: { origin: 'null' },
+				params: {
+					path: '123',
+					suffix: WAITING_FORMS_EXECUTION_STATUS,
+				},
+			});
+
+			const res = mock<express.Response>();
+			res.header.mockImplementation(() => res);
+			res.getHeader.mockReturnValue('https://example.com');
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+		});
 		it('should not set CORS headers when origin header is missing for status endpoint', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
