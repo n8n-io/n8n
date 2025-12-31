@@ -220,7 +220,7 @@ export const taskFields: INodeProperties[] = [
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
-					loadOptionsDependsOn: ['list'],
+					loadOptionsDependsOn: ['team'],
 				},
 				default: [],
 			},
