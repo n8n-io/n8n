@@ -49,8 +49,8 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local
-      shards: 5
+      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
+      shards: 6
       runner: ubuntu-latest
       workers: '2'
 
@@ -62,6 +62,6 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local:isolated
-      shards: 1
+      shards: 2
       runner: ubuntu-latest
       workers: '1'
