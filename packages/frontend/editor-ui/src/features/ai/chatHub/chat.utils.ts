@@ -24,6 +24,7 @@ import type {
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import { v4 as uuidv4 } from 'uuid';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -289,7 +290,6 @@ export function buildUiMessages(
 	streaming?: ChatStreamingState,
 ): ChatMessage[] {
 	const messagesToShow: ChatMessage[] = [];
-	let foundRunning = false;
 
 	for (let index = 0; index < conversation.activeMessageChain.length; index++) {
 		const id = conversation.activeMessageChain[index];
@@ -299,36 +299,37 @@ export function buildUiMessages(
 			continue;
 		}
 
-		foundRunning = foundRunning || message.status === 'running';
+		messagesToShow.push(message);
 
-		if (foundRunning || streaming?.sessionId !== sessionId || message.type !== 'ai') {
-			messagesToShow.push(message);
-			continue;
+		if (message.status === 'running') {
+			// If a running status message is encountered, it's the end of the chain
+			break;
 		}
 
-		if (streaming.retryOfMessageId === id && !streaming.messageId) {
+		if (
+			streaming?.sessionId === sessionId &&
+			!!streaming.retryOfMessageId &&
+			!streaming.messageId &&
+			id === streaming.promptId
+		) {
 			// While waiting for streaming to start on regeneration, show previously generated message
 			// in running state as an immediate feedback
-			messagesToShow.push({
-				...message,
-				content: '',
-				status: 'running',
-				...flattenModel(streaming.agent.model),
-			});
-			foundRunning = true;
-			continue;
+			messagesToShow.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
+			break;
 		}
 
-		if (streaming.messageId && index === conversation.activeMessageChain.length - 1) {
+		if (
+			streaming?.sessionId === sessionId &&
+			message.type === 'ai' &&
+			streaming.messageId &&
+			index === conversation.activeMessageChain.length - 1
+		) {
 			// When agent responds multiple messages (e.g. when tools are used),
 			// there's a noticeable time gap between messages.
-			// In order to indicate that agent is still responding, show the last AI message as running
-			messagesToShow.push({ ...message, status: 'running' });
-			foundRunning = true;
-			continue;
+			// In order to indicate that agent is still responding, add an AI message in running status
+			messagesToShow.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
+			break;
 		}
-
-		messagesToShow.push(message);
 	}
 
 	return messagesToShow;
