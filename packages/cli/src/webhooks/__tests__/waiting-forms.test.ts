@@ -246,7 +246,7 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'null');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
 
 		it('should not set CORS headers when origin header is missing for status endpoint', async () => {
