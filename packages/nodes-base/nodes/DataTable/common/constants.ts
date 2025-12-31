@@ -1,4 +1,4 @@
-import type { DataStoreColumnJsType } from 'n8n-workflow';
+import type { DataTableColumnJsType } from 'n8n-workflow';
 
 export const ANY_CONDITION = 'anyCondition';
 export const ALL_CONDITIONS = 'allConditions';
@@ -14,6 +14,6 @@ export type FieldEntry =
 	  }
 	| {
 			keyName: string;
-			condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
-			keyValue: DataStoreColumnJsType;
+			condition?: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+			keyValue: DataTableColumnJsType;
 	  };

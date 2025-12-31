@@ -5,9 +5,9 @@ export default defineConfig(
 	globalIgnores(['src/template/templates/**/template', 'src/template/templates/shared']),
 	nodeConfig,
 	{
-		ignores: ['**/*.test.ts'],
+		files: ['**/*.test.ts', 'src/test-utils/**/*'],
 		rules: {
-			'import-x/no-extraneous-dependencies': ['error', { devDependencies: false }],
+			'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
 		},
 	},
 	{

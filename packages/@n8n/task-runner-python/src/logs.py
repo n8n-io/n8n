@@ -1,7 +1,7 @@
 import sys
 import logging
 import os
-from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT
+from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_LAUNCHER_LOG_LEVEL
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -52,7 +52,7 @@ class ColorFormatter(logging.Formatter):
 def setup_logging():
     logger = logging.getLogger()
 
-    log_level_str = os.getenv("N8N_RUNNERS_LAUNCHER_LOG_LEVEL", "INFO").upper()
+    log_level_str = os.getenv(ENV_LAUNCHER_LOG_LEVEL, "INFO").upper()
     log_level = getattr(logging, log_level_str, logging.INFO)
     logger.setLevel(log_level)
 

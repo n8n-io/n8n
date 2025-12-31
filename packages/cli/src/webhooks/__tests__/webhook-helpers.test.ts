@@ -19,6 +19,8 @@ import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	WorkflowConfigurationError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -29,6 +31,7 @@ import {
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
+	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -151,6 +154,50 @@ describe('handleFormRedirectionCase', () => {
 		});
 		const result = handleFormRedirectionCase(data, workflowStartNode);
 		expect(result).toEqual(data);
+	});
+
+	test('should block javascript: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'javascript:alert(document.domain)' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should block data: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'data:text/html,<script>alert(1)</script>' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should allow https: URLs', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'https://example.com/callback' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toEqual({ redirectURL: 'https://example.com/callback' });
 	});
 });
 
@@ -393,10 +440,13 @@ describe('prepareExecutionData', () => {
 			webhookResultData,
 			undefined,
 			{},
-			'targetNode',
+			{ nodeName: 'targetNode', mode: 'inclusive' },
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+		expect(runExecutionData.startData?.destinationNode).toEqual({
+			nodeName: 'targetNode',
+			mode: 'inclusive',
+		});
 	});
 
 	test('should update execution data with execution data merge', () => {
@@ -447,5 +497,20 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+});
+
+describe('getWebhookErrorMessage', () => {
+	const workflowStartNode = mock<INode>({ name: 'Start' });
+	it('should surface WorkflowConfigurationError', () => {
+		const err = new WorkflowConfigurationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toEqual(err.message);
+	});
+
+	it('should obfuscate other errors', () => {
+		const err = new NodeOperationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
+			'Error: Workflow could not be started',
+		);
 	});
 });

@@ -18,9 +18,11 @@ export type PubSubEventName =
 	| 'reload-license'
 	| 'reload-oidc-config'
 	| 'reload-saml-config'
+	| 'reload-overwrite-credentials'
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
-	| 'relay-execution-lifecycle-event';
+	| 'relay-execution-lifecycle-event'
+	| 'reload-sso-provisioning-configuration';
 
 export type PubSubEventFilter =
 	| {

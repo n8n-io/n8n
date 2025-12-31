@@ -49,6 +49,7 @@ test('should report risky official nodes', async () => {
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

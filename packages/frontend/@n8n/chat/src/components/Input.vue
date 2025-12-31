@@ -25,9 +25,14 @@ export interface ArrowKeyDownPayload {
 	currentInputValue: string;
 }
 
+export interface EscapeKeyDownPayload {
+	currentInputValue: string;
+}
+
 const { t } = useI18n();
 const emit = defineEmits<{
 	arrowKeyDown: [value: ArrowKeyDownPayload];
+	escapeKeyDown: [value: EscapeKeyDownPayload];
 }>();
 
 const { options } = useOptions();
@@ -291,6 +296,12 @@ function onKeyDown(event: KeyboardEvent) {
 			key: event.key,
 			currentInputValue: input.value,
 		});
+	} else if (event.key === 'Escape') {
+		event.preventDefault();
+
+		emit('escapeKeyDown', {
+			currentInputValue: input.value,
+		});
 	}
 }
 
@@ -410,7 +421,7 @@ function adjustTextAreaHeight() {
 	width: var(--chat--textarea--height);
 	background: var(--chat--input--send--button--background, white);
 	cursor: pointer;
-	color: var(--chat--input--send--button--color, var(--chat--color-secondary));
+	color: var(--chat--input--send--button--color, var(--chat--color--secondary));
 	border: 0;
 	font-size: 24px;
 	display: inline-flex;

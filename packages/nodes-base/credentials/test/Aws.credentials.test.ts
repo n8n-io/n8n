@@ -1,7 +1,8 @@
 import { sign, type Request } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { Aws, type AwsCredentialsType } from '../Aws.credentials';
+import { Aws } from '../Aws.credentials';
+import type { AwsIamCredentialsType } from '../common/aws/types';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -21,7 +22,7 @@ describe('Aws Credential', () => {
 
 	it('should have correct properties', () => {
 		expect(aws.name).toBe('aws');
-		expect(aws.displayName).toBe('AWS');
+		expect(aws.displayName).toBe('AWS (IAM)');
 		expect(aws.documentationUrl).toBe('aws');
 		expect(aws.icon).toEqual({ light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' });
 		expect(aws.properties.length).toBeGreaterThan(0);
@@ -34,7 +35,7 @@ describe('Aws Credential', () => {
 	});
 
 	describe('authenticate', () => {
-		const credentials: AwsCredentialsType = {
+		const credentials: AwsIamCredentialsType = {
 			region: 'eu-central-1',
 			accessKeyId: 'hakuna',
 			secretAccessKey: 'matata',
@@ -183,7 +184,7 @@ describe('Aws Credential', () => {
 		});
 
 		describe('China regions', () => {
-			const chinaCredentials: AwsCredentialsType = {
+			const chinaCredentials: AwsIamCredentialsType = {
 				region: 'cn-north-1',
 				accessKeyId: 'hakuna',
 				secretAccessKey: 'matata',
@@ -277,6 +278,124 @@ describe('Aws Credential', () => {
 					},
 				);
 				expect(result.url).toBe('https://s3.eu-central-1.amazonaws.com/');
+			});
+		});
+
+		describe('Body handling', () => {
+			it('should stringify object body content', async () => {
+				const objectBody = { key: 'value', nested: { prop: 'test' } };
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: objectBody,
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: JSON.stringify(objectBody),
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(JSON.stringify(objectBody));
+			});
+
+			it('should not stringify object body content when Content-Length header is present', async () => {
+				const objectBody = { key: 'value', nested: { prop: 'test' } };
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: objectBody,
+					headers: {
+						'Content-Length': '100',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: objectBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(objectBody);
+			});
+
+			it('should not stringify object body content when content-length header is present (lowercase)', async () => {
+				const objectBody = { key: 'value', nested: { prop: 'test' } };
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: objectBody,
+					headers: {
+						'content-length': '100',
+					},
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: objectBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(objectBody);
+			});
+
+			it('should not stringify string body content', async () => {
+				const stringBody = 'test string body';
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: stringBody,
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: stringBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(stringBody);
+			});
+
+			it('should not stringify Buffer body content', async () => {
+				const bufferBody = Buffer.from('test buffer');
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: bufferBody,
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: bufferBody,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(bufferBody);
+			});
+
+			it('should handle null body content', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: null,
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: null,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(null);
+			});
+
+			it('should handle undefined body content', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					body: undefined,
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						body: undefined,
+					}),
+					securityHeaders,
+				);
+				expect(result.body).toBe(undefined);
 			});
 		});
 	});

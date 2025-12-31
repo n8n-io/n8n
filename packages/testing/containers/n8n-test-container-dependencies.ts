@@ -5,6 +5,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 export async function setupRedis({
 	redisImage,
@@ -53,6 +54,7 @@ export async function setupPostgres({
 			'com.docker.compose.service': 'postgres',
 		})
 		.withName(`${projectName}-postgres`)
+		.withAddedCapabilities('NET_ADMIN') // Allows us to drop IP tables and block traffic
 		.withReuse()
 		.start();
 
@@ -208,8 +210,9 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Enable sticky sessions using cookie
-    lb_policy cookie
+    # Use first available backend for simpler debugging
+    # (cookie-based sticky sessions can cause issues with separate API/browser contexts)
+    lb_policy first
 
     # Health check (optional)
     health_uri /healthz
@@ -243,11 +246,14 @@ export async function setupCaddyLoadBalancer({
 	projectName,
 	mainCount,
 	network,
+	hostPort,
 }: {
 	caddyImage?: string;
 	projectName: string;
 	mainCount: number;
 	network: StartedNetwork;
+	/** Optional pre-allocated host port (for OIDC callback URL consistency) */
+	hostPort?: number;
 }): Promise<StartedTestContainer> {
 	// Generate upstream server addresses
 	const upstreamServers = Array.from(
@@ -263,7 +269,7 @@ export async function setupCaddyLoadBalancer({
 	try {
 		return await new GenericContainer(caddyImage)
 			.withNetwork(network)
-			.withExposedPorts(80)
+			.withExposedPorts(hostPort ? { container: 80, host: hostPort } : 80)
 			.withCopyContentToContainer([{ content: caddyConfig, target: '/etc/caddy/Caddyfile' }])
 			.withWaitStrategy(Wait.forListeningPorts())
 			.withLabels({
@@ -351,7 +357,7 @@ export async function setupProxyServer({
 	}
 }
 
-const TASK_RUNNER_IMAGE = 'n8nio/runners:nightly';
+const TASK_RUNNER_IMAGE = TEST_CONTAINER_IMAGES.taskRunner;
 
 export async function setupTaskRunner({
 	projectName,
@@ -389,6 +395,3 @@ export async function setupTaskRunner({
 		return throwWithLogs(error);
 	}
 }
-
-// TODO: Look at Ollama container?
-// TODO: Look at MariaDB container?

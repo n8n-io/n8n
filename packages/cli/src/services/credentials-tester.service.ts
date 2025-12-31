@@ -18,7 +18,6 @@ import type {
 	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
-	IRunExecutionData,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	INodeTypeData,
@@ -27,15 +26,21 @@ import type {
 	IDataObject,
 	IExecuteData,
 } from 'n8n-workflow';
-import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
+import {
+	VersionedNodeType,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
+
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsHelper } from '../credentials-helper';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -200,7 +205,10 @@ export class CredentialsTester {
 		let credentialsDataSecretKeys: string[] = [];
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					projectId: credentialsDecrypted.homeProject?.id,
+				});
 
 				// Keep all credentials data keys which have a secret value
 				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
@@ -318,13 +326,13 @@ export class CredentialsTester {
 			main: [[{ json: {} }]],
 		};
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runExecutionData = createEmptyRunExecutionData();
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId,
+			projectId: credentialsDecrypted.homeProject?.id,
+			currentNodeParameters: node.parameters,
+		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(

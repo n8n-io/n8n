@@ -47,7 +47,7 @@
 	.el-range__icon {
 		font-size: 14px;
 		margin-left: -5px;
-		color: var(--color-text-lighter);
+		color: var(--color--text--tint-2);
 		float: left;
 		line-height: 32px;
 	}
@@ -63,10 +63,10 @@
 		width: 39%;
 		text-align: center;
 		font-size: var.$font-size-base;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 
 		&::placeholder {
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 		}
 	}
 
@@ -79,12 +79,12 @@
 		line-height: 32px;
 		font-size: 14px;
 		width: 5%;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.el-range__close-icon {
 		font-size: 14px;
-		color: var(--color-text-lighter);
+		color: var(--color--text--tint-2);
 		width: 25px;
 		display: inline-block;
 		float: right;
@@ -104,10 +104,10 @@
 	}
 
 	@include mixins.when(active) {
-		border-color: var(--color-primary);
+		border-color: var(--color--primary);
 
 		&:hover {
-			border-color: var(--color-primary);
+			border-color: var(--color--primary);
 		}
 	}
 

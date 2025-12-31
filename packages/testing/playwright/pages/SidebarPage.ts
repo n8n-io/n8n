@@ -11,13 +11,37 @@ export class SidebarPage {
 		await this.page.getByTestId('project-plus-button').click();
 	}
 
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async universalAdd() {
 		await this.page.getByTestId('universal-add').click();
+	}
+
+	async clickHomeMenuItem() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
+	async clickPersonalMenuItem() {
+		await this.page.getByTestId('project-personal-menu-item').click();
+	}
+
+	async clickWorkflowsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
+	}
+
+	async clickCredentialsLink(): Promise<void> {
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	async addProjectFromUniversalAdd() {
 		await this.universalAdd();
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
+	}
+
+	getProjectButtonInUniversalAdd(): Locator {
+		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
@@ -37,6 +61,7 @@ export class SidebarPage {
 	}
 
 	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
@@ -44,14 +69,100 @@ export class SidebarPage {
 		return this.page.getByTestId('add-first-project-button');
 	}
 
-	async expand() {
-		const collapseButton = this.page.locator('#collapse-change-button');
-		const chevronRight = this.page.locator(
-			'#collapse-change-button svg[data-icon="chevron-right"]',
-		);
+	getSettings(): Locator {
+		return this.page.getByTestId('main-sidebar-settings');
+	}
 
-		await expect(collapseButton).toBeVisible();
-		if (await chevronRight.isVisible()) {
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('main-sidebar-log-out');
+	}
+
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	getHelp(): Locator {
+		return this.page.getByTestId('main-sidebar-help');
+	}
+
+	async clickHelpMenuItem(): Promise<void> {
+		await this.getHelp().click();
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.getHelp().click();
+		await this.page.getByTestId('about').click();
+	}
+
+	async openAboutModalViaShortcut(): Promise<void> {
+		await this.page.keyboard.press('Alt+Meta+o');
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.page.getByTestId('close-about-modal-button').click();
+	}
+
+	getAdminPanel(): Locator {
+		return this.page.getByTestId('main-sidebar-cloud-admin');
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getMainSidebarTrialUpgrade(): Locator {
+		return this.page.getByTestId('main-sidebar-trial-upgrade');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.page.getByTestId('main-sidebar-templates').locator('a');
+	}
+
+	getVersionUpdateItem(): Locator {
+		return this.page.getByTestId('version-update-cta-button');
+	}
+
+	getSourceControlPushButton(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-push');
+	}
+
+	getSourceControlPullButton(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-pull');
+	}
+
+	getSourceControlConnectedIndicator(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-connected');
+	}
+
+	async openSettings(): Promise<void> {
+		await this.getSettings().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openSettings();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+	}
+
+	async expand() {
+		// First ensure the sidebar is visible before checking if it is expanded
+		await expect(this.getSettings()).toBeVisible();
+
+		const logo = this.page.getByTestId('n8n-logo');
+		const isExpanded = await logo.isVisible();
+
+		if (!isExpanded) {
+			const collapseButton = this.page.locator('#toggle-sidebar-button');
+			await expect(collapseButton).toBeVisible();
 			await collapseButton.click();
 		}
 	}

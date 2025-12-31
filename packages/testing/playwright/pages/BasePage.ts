@@ -1,7 +1,15 @@
 import type { Page } from '@playwright/test';
 
-export abstract class BasePage {
-	constructor(protected readonly page: Page) {}
+import { BaseModal } from './components/BaseModal';
+import { FloatingUiHelper } from './components/FloatingUiHelper';
+
+export abstract class BasePage extends FloatingUiHelper {
+	protected readonly baseModal: BaseModal;
+
+	constructor(protected readonly page: Page) {
+		super(page);
+		this.baseModal = new BaseModal(this.page);
+	}
 
 	protected async clickByTestId(testId: string) {
 		await this.page.getByTestId(testId).click();

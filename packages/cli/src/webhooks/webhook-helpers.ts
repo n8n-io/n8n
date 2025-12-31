@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
@@ -29,17 +30,21 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 	WebhookResponseData,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createDeferredPromise,
+	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
+	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
@@ -91,7 +96,7 @@ export function handleHostedChatResponse(
 export function getWorkflowWebhooks(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 	ignoreRestartWebhooks = false,
 ): IWebhookData[] {
 	// Check all the nodes in the workflow if they have webhooks
@@ -100,9 +105,11 @@ export function getWorkflowWebhooks(
 
 	let parentNodes: string[] | undefined;
 	if (destinationNode !== undefined) {
-		parentNodes = workflow.getParentNodes(destinationNode);
+		parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 		// Also add the destination node in case it itself is a webhook node
-		parentNodes.push(destinationNode);
+		if (destinationNode.mode === 'inclusive') {
+			parentNodes.push(destinationNode.nodeName);
+		}
 	}
 
 	for (const node of Object.values(workflow.nodes)) {
@@ -228,10 +235,20 @@ export const handleFormRedirectionCase = (
 		(data?.headers as IDataObject)?.location &&
 		String(data?.responseCode).startsWith('3')
 	) {
+		const locationUrl = String((data?.headers as IDataObject)?.location);
+		let validatedUrl: string | undefined;
+		try {
+			validatedUrl = tryToParseUrl(locationUrl);
+		} catch {
+			// Invalid URL, don't redirect
+		}
+
 		data.responseCode = 200;
-		data.data = {
-			redirectURL: (data?.headers as IDataObject)?.location,
-		};
+		if (validatedUrl) {
+			data.data = {
+				redirectURL: validatedUrl,
+			};
+		}
 		(data.headers as IDataObject).location = undefined;
 	}
 
@@ -295,7 +312,7 @@ export function prepareExecutionData(
 	webhookResultData: IWebhookResponseData,
 	runExecutionData: IRunExecutionData | undefined,
 	runExecutionDataMerge: object = {},
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 	executionId?: string,
 	workflowData?: IWorkflowBase,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
@@ -310,17 +327,11 @@ export function prepareExecutionData(
 		},
 	];
 
-	runExecutionData ??= {
-		startData: {},
-		resultData: {
-			runData: {},
-		},
+	runExecutionData ??= createRunExecutionData({
 		executionData: {
-			contextData: {},
 			nodeExecutionStack,
-			waitingExecution: {},
 		},
-	} as IRunExecutionData;
+	});
 
 	if (destinationNode && runExecutionData.startData) {
 		runExecutionData.startData.destinationNode = destinationNode;
@@ -367,7 +378,7 @@ export async function executeWebhook(
 		error: Error | null,
 		data: IWebhookResponseCallbackData | WebhookResponse,
 	) => void,
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -395,13 +406,15 @@ export async function executeWebhook(
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase({
+		projectId: project?.id,
+	});
 
 	if (executionId) {
 		additionalData.executionId = executionId;
 	}
 
-	const { responseMode, responseCode, responseData } = evaluateResponseOptions(
+	const { responseMode, responseCode, responseData, checkAllMainOutputs } = evaluateResponseOptions(
 		workflowStartNode,
 		workflow,
 		req,
@@ -448,18 +461,12 @@ export async function executeWebhook(
 				source: null,
 			});
 			runExecutionData =
-				runExecutionData ||
-				({
-					startData: {},
-					resultData: {
-						runData: {},
-					},
+				runExecutionData ??
+				createRunExecutionData({
 					executionData: {
-						contextData: {},
 						nodeExecutionStack,
-						waitingExecution: {},
 					},
-				} as IRunExecutionData);
+				});
 		}
 
 		try {
@@ -480,12 +487,7 @@ export async function executeWebhook(
 			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
 				? 'Form'
 				: 'Webhook';
-			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
-
-			// if workflow started manually, show an actual error message
-			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
-				errorMessage = err.message;
-			}
+			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
 
 			Container.get(ErrorReporter).error(err, {
 				extra: {
@@ -652,12 +654,26 @@ export async function executeWebhook(
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
-		if (parentExecution) {
+		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void executePromise.then(() => {
-				const waitTracker = Container.get(WaitTracker);
-				void waitTracker.startExecution(parentExecution.executionId);
-			});
+			const executionRepository = Container.get(ExecutionRepository);
+			void executePromise
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					await WorkflowHelpers.updateParentExecutionWithChildResults(
+						executionRepository,
+						parentExecution.executionId,
+						subworkflowResults,
+					);
+					return subworkflowResults;
+				})
+				.then((subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					const waitTracker = Container.get(WaitTracker);
+					void waitTracker.startExecution(parentExecution.executionId);
+				});
 		}
 
 		if (!didSendResponse) {
@@ -722,7 +738,9 @@ export async function executeWebhook(
 						context,
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
+						checkAllMainOutputs,
 					);
+
 					if (!result.ok) {
 						responseCallback(result.error, {});
 						didSendResponse = true;
@@ -817,7 +835,12 @@ function evaluateResponseOptions(
 		'firstEntryJson',
 	) as WebhookResponseData | string | undefined;
 
-	return { responseMode, responseCode, responseData };
+	// This is needed for backward compatibility, where only the first main output was checked for data.
+	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
+	// We can unify the behavior in the next major release and get rid of this flag
+	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
+
+	return { responseMode, responseCode, responseData, checkAllMainOutputs };
 }
 
 /**
@@ -895,4 +918,26 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 	}
 
 	return headers;
+}
+
+/**
+ * Either return the original message, or a generic one if we don't want to surface the underlying cause.
+ *
+ * ONLY EXPORTED FOR TESTING.
+ *
+ * @param err the error being handled
+ */
+export function _privateGetWebhookErrorMessage(
+	err: unknown,
+	webhookType: 'Form' | 'Webhook',
+): string {
+	// if workflow started manually, show an actual error message
+	if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
+		return err.message;
+	}
+	// if the error relates to a configuration error on the workflow, surface it
+	if (err instanceof WorkflowConfigurationError) {
+		return err.message;
+	}
+	return `Workflow ${webhookType} Error: Workflow could not be started!`;
 }

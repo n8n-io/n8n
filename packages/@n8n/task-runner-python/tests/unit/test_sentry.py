@@ -3,12 +3,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytest.importorskip("sentry_sdk")
+
 from src.config.sentry_config import SentryConfig
-from src.errors.task_runtime_error import TaskRuntimeError
 from src.sentry import TaskRunnerSentry, setup_sentry
 from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    IGNORED_ERROR_TYPES,
     LOG_SENTRY_MISSING,
     SENTRY_TAG_SERVER_TYPE_KEY,
     SENTRY_TAG_SERVER_TYPE_VALUE,
@@ -72,14 +74,47 @@ class TestTaskRunnerSentry:
 
             mock_flush.assert_called_once_with(timeout=2.0)
 
-    def test_filter_out_task_runtime_errors(self, sentry_config):
+    @pytest.mark.parametrize(
+        "error_type",
+        IGNORED_ERROR_TYPES,
+    )
+    def test_filter_out_ignored_errors(self, sentry_config, error_type):
         sentry = TaskRunnerSentry(sentry_config)
         event = {"exception": {"values": []}}
-        hint = {"exc_info": (TaskRuntimeError, None, None)}
+        hint = {"exc_info": (error_type, None, None)}
 
         result = sentry._filter_out_ignored_errors(event, hint)
 
         assert result is None
+
+    def test_filter_out_syntax_error_subclasses(self, sentry_config):
+        sentry = TaskRunnerSentry(sentry_config)
+        event = {"exception": {"values": []}}
+        hint = {"exc_info": (IndentationError, None, None)}
+
+        result = sentry._filter_out_ignored_errors(event, hint)
+
+        assert result is None
+
+    def test_filter_out_errors_by_type_name(self, sentry_config):
+        sentry = TaskRunnerSentry(sentry_config)
+
+        for ignored_type in IGNORED_ERROR_TYPES:
+            event = {
+                "exception": {
+                    "values": [
+                        {
+                            "type": ignored_type.__name__,
+                            "stacktrace": {"frames": [{"filename": "some_file.py"}]},
+                        }
+                    ]
+                }
+            }
+            hint = {}  # No exc_info, so it falls back to type name matching
+
+            result = sentry._filter_out_ignored_errors(event, hint)
+
+            assert result is None
 
     def test_filter_out_user_code_errors_from_executors(self, sentry_config):
         sentry = TaskRunnerSentry(sentry_config)

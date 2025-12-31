@@ -10,6 +10,7 @@ describe('UsersController', () => {
 	const eventService = mock<EventService>();
 	const userRepository = mock<UserRepository>();
 	const projectService = mock<ProjectService>();
+
 	const controller = new UsersController(
 		mock(),
 		mock(),

@@ -8,7 +8,7 @@ export default {
 	component: N8nFormInputs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 
