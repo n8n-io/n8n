@@ -2,6 +2,8 @@ import type { IExecutionResponse } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
+const AI_TOOL = 'ai_tool';
+
 /**
  * Returns the message to be sent of the last executed node
  */
@@ -10,9 +12,19 @@ export function getMessage(execution: IExecutionResponse) {
 	if (typeof lastNodeExecuted !== 'string') return undefined;
 
 	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-	const nodeExecutionData =
-		execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main?.[0];
-	return nodeExecutionData?.[0] ? nodeExecutionData[0].sendMessage : undefined;
+	const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;
+	const outputs = data?.main ?? data?.[AI_TOOL];
+
+	// Check all main output branches for a message
+	if (outputs && Array.isArray(outputs)) {
+		for (const branch of outputs) {
+			if (branch && Array.isArray(branch) && branch.length > 0 && branch[0].sendMessage) {
+				return branch[0].sendMessage;
+			}
+		}
+	}
+
+	return undefined;
 }
 
 /**

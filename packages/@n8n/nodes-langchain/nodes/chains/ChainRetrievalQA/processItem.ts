@@ -6,8 +6,8 @@ import {
 	SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
-import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { createStuffDocumentsChain } from '@langchain/classic/chains/combine_documents';
+import { createRetrievalChain } from '@langchain/classic/chains/retrieval';
 import { type IExecuteFunctions, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getPromptInputByType, isChatInstance } from '@utils/helpers';

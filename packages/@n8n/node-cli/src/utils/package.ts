@@ -1,24 +1,28 @@
-import { jsonParse } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import prettier from 'prettier';
 
 import { writeFileSafe } from './filesystem';
+import { jsonParse } from './json';
 
-type N8nPackageJson = {
+export type N8nPackageJson = {
 	name: string;
 	version: string;
 	n8n?: {
 		nodes?: string[];
 		credentials?: string[];
+		strict?: boolean;
 	};
 };
+
 export async function updatePackageJson(
 	dirPath: string,
 	updater: (packageJson: N8nPackageJson) => N8nPackageJson,
 ) {
 	const packageJsonPath = path.resolve(dirPath, 'package.json');
 	const packageJson = jsonParse<N8nPackageJson>(await fs.readFile(packageJsonPath, 'utf-8'));
+
+	if (!packageJson) return;
 
 	const updatedPackageJson = updater(packageJson);
 
@@ -43,7 +47,7 @@ export async function isN8nNodePackage(dirPath = process.cwd()) {
 
 export async function getPackageJsonNodes(dirPath: string) {
 	const packageJson = await getPackageJson(dirPath);
-	return packageJson.n8n?.nodes ?? [];
+	return packageJson?.n8n?.nodes ?? [];
 }
 
 export async function setNodesPackageJson(dirPath: string, nodes: string[]) {

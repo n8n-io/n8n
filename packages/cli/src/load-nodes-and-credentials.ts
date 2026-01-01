@@ -14,6 +14,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -29,8 +30,6 @@ import type {
 import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-
-import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
@@ -59,6 +58,7 @@ export class LoadNodesAndCredentials {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly executionContextHookRegistry: ExecutionContextHookRegistry,
 	) {}
 
 	async init() {
@@ -89,14 +89,6 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
-		}
-
-		if (!Container.get(CommunityPackagesConfig).preventLoading) {
-			// Load nodes from any other `n8n-nodes-*` packages in the download directory
-			// This includes the community nodes
-			await this.loadNodesFromNodeModules(
-				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-			);
 		}
 
 		for (const dir of this.moduleRegistry.loadDirs) {
@@ -289,6 +281,137 @@ export class LoadNodesAndCredentials {
 		});
 	}
 
+	private shouldInjectContextEstablishmentHooks() {
+		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+	}
+
+	private injectContextEstablishmentHooks() {
+		// Check if the feature is enabled via environment variable
+		const isEnabled = this.shouldInjectContextEstablishmentHooks();
+
+		if (!isEnabled) {
+			this.logger.debug('Context establishment hooks feature is disabled');
+			return;
+		}
+
+		const triggerNodes = this.types.nodes.filter((node: INodeTypeDescription) =>
+			node.group.includes('trigger'),
+		);
+
+		this.logger.debug(
+			`Injecting context establishment hooks for ${triggerNodes.length} trigger nodes`,
+		);
+
+		triggerNodes.forEach(this.augmentNodeTypeDescription);
+	}
+
+	private augmentNodeTypeDescription = (node: INodeTypeDescription) => {
+		const hooks = this.executionContextHookRegistry.getHookForTriggerType(node.name);
+
+		if (hooks.length > 0) {
+			this.logger.debug(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
+		}
+
+		// Only inject hook properties if there are applicable hooks
+		if (hooks.length === 0) return;
+
+		// This prevents double-injection if the function is called multiple times on the same node
+		if (node.properties.some((p) => p.name === 'executionsHooksVersion')) return;
+
+		// Create a fixedCollection with multipleValues for multiple hook selection
+		// Each hook becomes a separate item that can be added multiple times
+		const allHookValues: INodeProperties[] = [
+			{
+				displayName: 'Hook',
+				name: 'hookName',
+				type: 'options',
+				options: hooks.map((hook) => {
+					const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
+					return {
+						name: displayName,
+						value: hook.hookDescription.name,
+						description: `Use ${displayName} hook`,
+					};
+				}),
+				// No default - force user to explicitly select a hook
+				// This ensures hookName is always serialized in the workflow JSON
+				default: '',
+				description: 'Select which context establishment hook to use',
+				required: true,
+			},
+			{
+				displayName: 'Allow Failure',
+				name: 'isAllowedToFail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to continue workflow execution if this hook fails',
+			},
+		];
+
+		// Add all hook-specific options with display conditions
+		for (const hook of hooks) {
+			const hookOptions = hook.hookDescription.options ?? [];
+			if (hookOptions.length > 0) {
+				for (const hookOption of hookOptions) {
+					// Add display condition to show only when this specific hook is selected
+					const enhancedOption: INodeProperties = {
+						...hookOption,
+						displayOptions: {
+							...hookOption.displayOptions,
+							show: {
+								...hookOption.displayOptions?.show,
+								hookName: [hook.hookDescription.name],
+							},
+						},
+					};
+					allHookValues.push(enhancedOption);
+				}
+			}
+		}
+
+		// Create a hidden version property to track the hooks format version
+		const executionsHooksVersion: INodeProperties = {
+			displayName: 'Executions Hooks Version',
+			name: 'executionsHooksVersion',
+			type: 'hidden',
+			default: 1,
+		};
+
+		// Create the main context establishment hooks property as a fixedCollection
+		const contextHooksProperty: INodeProperties = {
+			displayName: 'Context Establishment Hooks',
+			name: 'contextEstablishmentHooks',
+			type: 'fixedCollection',
+			placeholder: 'Add Hook',
+			default: {},
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					name: 'hooks',
+					displayName: 'Hooks',
+					values: allHookValues,
+				},
+			],
+			description:
+				'Add and configure context establishment hooks to extract data from trigger items. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+		};
+
+		// Create a notice that always appears after the hooks collection
+		const contextHooksNotice: INodeProperties = {
+			displayName:
+				'Context establishment hooks allow you to extract data from trigger items to use in subsequent nodes. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+			name: 'contextHooksNotice',
+			type: 'notice',
+			default: '',
+		};
+
+		node.properties.push(executionsHooksVersion);
+		node.properties.push(contextHooksProperty);
+		node.properties.push(contextHooksNotice);
+	};
+
 	/**
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
@@ -316,16 +439,17 @@ export class LoadNodesAndCredentials {
 	 * the connected tools.
 	 */
 	createAiTools() {
-		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodeType) => nodeType.usableAsTool);
+		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter(
+			(nodeType) => nodeType.usableAsTool,
+		);
 
 		for (const usableNode of usableNodes) {
 			const description =
 				typeof usableNode.usableAsTool === 'object'
-					? ({
+					? {
 							...deepCopy(usableNode),
 							...usableNode.usableAsTool?.replacements,
-						} as INodeTypeBaseDescription)
+						}
 					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
@@ -356,23 +480,41 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(
-				types.credentials.map(({ supportedNodes, ...rest }) => ({
-					...rest,
+
+			const processedCredentials = types.credentials.map((credential) => {
+				if (this.shouldAddDomainRestrictions(credential)) {
+					const clonedCredential = { ...credential };
+					clonedCredential.properties = this.injectDomainRestrictionFields([
+						...(clonedCredential.properties ?? []),
+					]);
+					return {
+						...clonedCredential,
+						supportedNodes:
+							loader instanceof PackageDirectoryLoader
+								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+								: undefined,
+					};
+				}
+				return {
+					...credential,
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
-				})),
-			);
+				};
+			});
 
-			// Nodes and credentials that have been loaded immediately
-			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
-			}
+			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
+			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in loader.credentialTypes) {
-				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+				const credentialType = loader.credentialTypes[credentialTypeName];
+				if (this.shouldAddDomainRestrictions(credentialType)) {
+					// Access properties through the type field
+					credentialType.type.properties = this.injectDomainRestrictionFields([
+						...(credentialType.type.properties ?? []),
+					]);
+				}
 			}
 
 			for (const type in known.nodes) {
@@ -406,6 +548,8 @@ export class LoadNodesAndCredentials {
 
 		this.injectCustomApiCallOptions();
 
+		this.injectContextEstablishmentHooks();
+
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
@@ -425,7 +569,14 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
-		return loader.getNode(nodeType);
+		const loadedNode = loader.getNode(nodeType);
+		if (
+			this.shouldInjectContextEstablishmentHooks() &&
+			'properties' in loadedNode.type.description
+		) {
+			this.augmentNodeTypeDescription(loadedNode.type.description);
+		}
+		return loadedNode;
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
@@ -613,5 +764,68 @@ export class LoadNodesAndCredentials {
 				await subscribe(watchPath, onFileEvent, { ignore });
 			}
 		}
+	}
+
+	private shouldAddDomainRestrictions(
+		credential: ICredentialType | LoadedClass<ICredentialType>,
+	): boolean {
+		// Handle both credential types by extracting the actual ICredentialType
+		const credentialType = 'type' in credential ? credential.type : credential;
+
+		return (
+			credentialType.authenticate !== undefined ||
+			credentialType.genericAuth === true ||
+			(Array.isArray(credentialType.extends) &&
+				(credentialType.extends.includes('oAuth2Api') ||
+					credentialType.extends.includes('oAuth1Api') ||
+					credentialType.extends.includes('googleOAuth2Api')))
+		);
+	}
+
+	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
+		// Check if fields already exist to avoid duplicates
+		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
+			return properties;
+		}
+		const domainFields: INodeProperties[] = [
+			{
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Allow all requests when used in the HTTP Request node',
+					},
+					{
+						name: 'Specific Domains',
+						value: 'domains',
+						description: 'Restrict requests to specific domains',
+					},
+					{
+						name: 'None',
+						value: 'none',
+						description: 'Block all requests when used in the HTTP Request node',
+					},
+				],
+				default: 'all',
+				description: 'Control which domains this credential can be used with in HTTP Request nodes',
+			},
+			{
+				displayName: 'Allowed Domains',
+				name: 'allowedDomains',
+				type: 'string',
+				default: '',
+				placeholder: 'example.com, *.subdomain.com',
+				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
+				displayOptions: {
+					show: {
+						allowedHttpRequestDomains: ['domains'],
+					},
+				},
+			},
+		];
+		return [...properties, ...domainFields];
 	}
 }

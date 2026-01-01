@@ -3,7 +3,6 @@ import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
-	type INodeProperties,
 	NodeConnectionTypes,
 	UserError,
 	type CodeExecutionMode,
@@ -20,13 +19,12 @@ import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescript
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
-import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
-import { PythonSandbox } from './PythonSandbox';
+import { PythonRunnerUnavailableError } from './python-runner-unavailable.error';
 import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
-const { CODE_ENABLE_STDOUT, N8N_NATIVE_PYTHON_RUNNER } = process.env;
+const { CODE_ENABLE_STDOUT } = process.env;
 
 class PythonDisabledError extends UserError {
 	constructor() {
@@ -35,40 +33,6 @@ class PythonDisabledError extends UserError {
 		);
 	}
 }
-
-const getV2LanguageProperty = (): INodeProperties => {
-	const options = [
-		{
-			name: 'JavaScript',
-			value: 'javaScript',
-		},
-		{
-			name: 'Python (Beta)',
-			value: 'python',
-		},
-	];
-
-	if (N8N_NATIVE_PYTHON_RUNNER === 'true') {
-		options.push({
-			name: 'Python (Native) (Beta)',
-			value: 'pythonNative',
-		});
-	}
-
-	return {
-		displayName: 'Language',
-		name: 'language',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				'@version': [2],
-			},
-		},
-		options,
-		default: 'javaScript',
-	};
-};
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,7 +69,30 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-			getV2LanguageProperty(),
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+						action: 'Code in JavaScript',
+					},
+					{
+						name: 'Python',
+						value: 'pythonNative',
+						action: 'Code in Python',
+					},
+				],
+				default: 'javaScript',
+			},
 			{
 				displayName: 'Language',
 				name: 'language',
@@ -130,19 +117,20 @@ export class Code implements INodeType {
 				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
 				: 'javaScript';
 
-		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
+		const isJsLang = language === 'javaScript';
+		const isPyLang = language === 'pythonNative';
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isJsRunner = runnersConfig.enabled;
+
+		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
 			throw new PythonDisabledError();
 		}
 
-		const runnersConfig = Container.get(TaskRunnersConfig);
-		const isRunnerEnabled = runnersConfig.enabled;
-
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
-		const codeParameterName =
-			language === 'python' || language === 'pythonNative' ? 'pythonCode' : 'jsCode';
+		const codeParameterName = language === 'pythonNative' ? 'pythonCode' : 'jsCode';
 
-		if (language === 'javaScript' && isRunnerEnabled) {
+		if (isJsLang && isJsRunner) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
@@ -152,9 +140,14 @@ export class Code implements INodeType {
 				: [await sandbox.runCodeForEachItem(numInputItems)];
 		}
 
-		if (language === 'pythonNative' && !isRunnerEnabled) throw new NativePythonWithoutRunnerError();
+		if (isPyLang) {
+			const runnerStatus = this.getRunnerStatus('python');
+			if (!runnerStatus.available) {
+				throw new PythonRunnerUnavailableError(
+					runnerStatus.reason as 'python' | 'venv' | undefined,
+				);
+			}
 
-		if (language === 'pythonNative') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 
@@ -171,8 +164,7 @@ export class Code implements INodeType {
 				context.item = context.$input.item;
 			}
 
-			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, this.helpers);
+			const sandbox = new JavaScriptSandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'

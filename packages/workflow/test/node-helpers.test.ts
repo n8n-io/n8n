@@ -4866,6 +4866,205 @@ describe('NodeHelpers', () => {
 				},
 				false,
 			],
+			[
+				'Should return true if @feature is enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is not enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition eq is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition eq is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition not is met (feature disabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition not is not met (feature enabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature with multiple conditions (OR logic)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+							useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }, { _cnd: { eq: 'useFeatureB' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is checked but node has no features',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: undefined,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
 		];
 
 		for (const [description, input, expected] of tests) {
@@ -5630,6 +5829,38 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('Create user in Test Node');
 		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['pythonNative', 'Code in Python'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python',
+								value: 'pythonNative',
+								action: 'Code in Python',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
 	});
 	describe('isTool', () => {
 		it('should return true for a node with AiTool output', () => {

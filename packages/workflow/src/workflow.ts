@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
 import {
-	getNodeByName,
 	getConnectedNodes,
 	getChildNodes,
 	getParentNodes,
@@ -36,7 +35,6 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
-	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -44,10 +42,7 @@ import * as NodeHelpers from './node-helpers';
 import { renameFormFields } from './node-parameters/rename-node-utils';
 import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
-
-function dedupe<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
-}
+import { dedupe } from './utils';
 
 export interface WorkflowParameters {
 	id?: string;
@@ -304,7 +299,7 @@ export class Workflow {
 	 * @param {string} nodeName Name of the node to return
 	 */
 	getNode(nodeName: string): INode | null {
-		return getNodeByName(this.nodes, nodeName);
+		return this.nodes[nodeName] ?? null;
 	}
 
 	/**
@@ -692,36 +687,46 @@ export class Workflow {
 	getParentMainInputNode(node: INode): INode {
 		if (node) {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			if (!nodeType?.description.outputs) {
+				return node;
+			}
 
-			if (
-				outputs.find(
-					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
-				)
-			) {
-				// Get the first node which is connected to a non-main output
-				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(
-						node.name,
-						(outputName as INodeOutputConfiguration)?.type ?? outputName,
-					);
-					if (parentNodes.length > 0) {
-						acc.push(...parentNodes);
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			const nonMainConnectionTypes: NodeConnectionType[] = [];
+
+			for (const output of outputs) {
+				const type = typeof output === 'string' ? output : output.type;
+				if (type !== NodeConnectionTypes.Main) {
+					nonMainConnectionTypes.push(type);
+				}
+			}
+
+			// Sort for deterministic behavior: prevents non-deterministic selection when multiple
+			// non-main outputs exist (AI agents with multiple tools). Object.keys() ordering
+			// can vary across runs, causing inconsistent first-choice selection.
+			nonMainConnectionTypes.sort();
+
+			if (nonMainConnectionTypes.length > 0) {
+				const nonMainNodesConnected: string[] = [];
+				const nodeConnections = this.connectionsBySourceNode[node.name];
+
+				for (const type of nonMainConnectionTypes) {
+					// Only include connection types that exist in actual execution data
+					if (nodeConnections?.[type]) {
+						const childNodes = this.getChildNodes(node.name, type);
+						if (childNodes.length > 0) {
+							nonMainNodesConnected.push(...childNodes);
+						}
 					}
-					return acc;
-				}, [] as string[]);
+				}
 
 				if (nonMainNodesConnected.length) {
+					// Sort for deterministic behavior, then get first node
+					nonMainNodesConnected.sort();
 					const returnNode = this.getNode(nonMainNodesConnected[0]);
-					if (returnNode === null) {
-						// This should theoretically never happen as the node is connected
-						// but who knows and it makes TS happy
+					if (!returnNode) {
 						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
 					}
-
-					// The chain of non-main nodes is potentially not finished yet so
-					// keep on going
 					return this.getParentMainInputNode(returnNode);
 				}
 			}
@@ -737,80 +742,66 @@ export class Workflow {
 	 * @param {string} nodeName The node to check how it is connected with parent node
 	 * @param {string} parentNodeName The parent node to get the output index of
 	 * @param {string} [type='main']
-	 * @param {*} [depth=-1]
 	 */
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
 		type: NodeConnectionType = NodeConnectionTypes.Main,
-		depth = -1,
-		checkedNodes?: string[],
 	): INodeConnection | undefined {
-		const node = this.getNode(parentNodeName);
-		if (node === null) {
+		// This method has been optimized for performance. If you make any changes to it,
+		// make sure the performance is not degraded.
+		const parentNode = this.getNode(parentNodeName);
+		if (parentNode === null) {
 			return undefined;
 		}
 
-		depth = depth === -1 ? -1 : depth;
-		const newDepth = depth === -1 ? depth : depth - 1;
-		if (depth === 0) {
-			// Reached max depth
-			return undefined;
-		}
+		const visitedNodes = new Set<string>();
+		const queue: string[] = [nodeName];
 
-		if (!this.connectionsByDestinationNode.hasOwnProperty(nodeName)) {
-			// Node does not have incoming connections
-			return undefined;
-		}
+		// Cache the connections by destination node to avoid reference lookups
+		const connectionsByDest = this.connectionsByDestinationNode;
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(type)) {
-			// Node does not have incoming connections of given type
-			return undefined;
-		}
+		while (queue.length > 0) {
+			const currentNodeName = queue.shift()!;
 
-		checkedNodes = checkedNodes || [];
+			if (visitedNodes.has(currentNodeName)) {
+				continue;
+			}
 
-		if (checkedNodes.includes(nodeName)) {
-			// Node got checked already before
-			return undefined;
-		}
+			visitedNodes.add(currentNodeName);
 
-		checkedNodes.push(nodeName);
-
-		let outputIndex: INodeConnection | undefined;
-		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
-			if (!connectionsByIndex) {
+			const typeConnections = connectionsByDest[currentNodeName]?.[type];
+			if (!typeConnections) {
 				continue;
 			}
 
 			for (
-				let destinationIndex = 0;
-				destinationIndex < connectionsByIndex.length;
-				destinationIndex++
+				let typedConnectionIdx = 0;
+				typedConnectionIdx < typeConnections.length;
+				typedConnectionIdx++
 			) {
-				const connection = connectionsByIndex[destinationIndex];
-				if (parentNodeName === connection.node) {
-					return {
-						sourceIndex: connection.index,
-						destinationIndex,
-					};
-				}
-
-				if (checkedNodes.includes(connection.node)) {
-					// Node got checked already before so continue with the next one
+				const connectionsByIndex = typeConnections[typedConnectionIdx];
+				if (!connectionsByIndex) {
 					continue;
 				}
 
-				outputIndex = this.getNodeConnectionIndexes(
-					connection.node,
-					parentNodeName,
-					type,
-					newDepth,
-					checkedNodes,
-				);
+				for (
+					let destinationIndex = 0;
+					destinationIndex < connectionsByIndex.length;
+					destinationIndex++
+				) {
+					const connection = connectionsByIndex[destinationIndex];
 
-				if (outputIndex !== undefined) {
-					return outputIndex;
+					if (parentNodeName === connection.node) {
+						return {
+							sourceIndex: connection.index,
+							destinationIndex,
+						};
+					}
+
+					if (!visitedNodes.has(connection.node)) {
+						queue.push(connection.node);
+					}
 				}
 			}
 		}

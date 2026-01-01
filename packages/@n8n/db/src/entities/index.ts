@@ -3,6 +3,7 @@ import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
+import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -11,8 +12,6 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
-import { InstalledNodes } from './installed-nodes';
-import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -28,20 +27,23 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
+import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
+	SourceTypeSchema,
+	type SourceType,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -54,12 +56,14 @@ export {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -72,13 +76,12 @@ export {
 
 export const entities = {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -90,12 +93,14 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

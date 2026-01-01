@@ -1,6 +1,12 @@
 import { DateTime, Settings } from 'luxon';
 
-import { getValueDescription, tryToParseDateTime, validateFieldType } from '../src/type-validation';
+import {
+	getValueDescription,
+	tryToParseDateTime,
+	tryToParseJsonToFormFields,
+	tryToParseUrl,
+	validateFieldType,
+} from '../src/type-validation';
 
 describe('Type Validation', () => {
 	describe('string-alphanumeric', () => {
@@ -357,6 +363,66 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('Asia/Tokyo');
 			expect(result.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
+		});
+	});
+
+	describe('tryToParseJsonToFormFields', () => {
+		it('should parse html field', () => {
+			const json = '[{"fieldType": "html", "html": "<div>test</div>"}]';
+			const fields = tryToParseJsonToFormFields(json);
+			expect(fields).toEqual([{ fieldType: 'html', html: '<div>test</div>' }]);
+		});
+	});
+
+	describe('tryToParseUrl', () => {
+		it('should accept valid http URLs', () => {
+			expect(tryToParseUrl('http://example.com')).toBe('http://example.com');
+			expect(tryToParseUrl('http://example.com/path')).toBe('http://example.com/path');
+			expect(tryToParseUrl('http://example.com:8080')).toBe('http://example.com:8080');
+		});
+
+		it('should accept valid https URLs', () => {
+			expect(tryToParseUrl('https://example.com')).toBe('https://example.com');
+			expect(tryToParseUrl('https://example.com/path?query=1')).toBe(
+				'https://example.com/path?query=1',
+			);
+		});
+
+		it('should accept ftp URLs', () => {
+			expect(tryToParseUrl('ftp://ftp.example.com/file.txt')).toBe(
+				'ftp://ftp.example.com/file.txt',
+			);
+		});
+
+		it('should accept file URLs', () => {
+			expect(tryToParseUrl('file:///path/to/file.txt')).toBe('file:///path/to/file.txt');
+		});
+
+		it('should add https:// prefix when protocol is missing', () => {
+			expect(tryToParseUrl('example.com')).toBe('https://example.com');
+			expect(tryToParseUrl('example.com/path')).toBe('https://example.com/path');
+		});
+
+		it('should allow URLs with username and password', () => {
+			expect(tryToParseUrl('http://user:pass@example.com')).toBe('http://user:pass@example.com');
+			expect(tryToParseUrl('ftp://user:pass@ftp.example.com')).toBe(
+				'ftp://user:pass@ftp.example.com',
+			);
+		});
+
+		it('should reject javascript: protocol URLs', () => {
+			expect(() => tryToParseUrl('javascript:alert(1)')).toThrow('is not a valid url');
+		});
+
+		it('should reject data: protocol URLs', () => {
+			expect(() => tryToParseUrl('data:text/html,<script>alert(1)</script>')).toThrow(
+				'is not a valid url',
+			);
+		});
+
+		it('should reject invalid URLs', () => {
+			expect(() => tryToParseUrl('not a url at all')).toThrow('is not a valid url');
+			expect(() => tryToParseUrl('')).toThrow('is not a valid url');
 		});
 	});
 });

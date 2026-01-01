@@ -30,7 +30,7 @@ properties:
       $ref: './node.yml'
   connections:
     type: object
-    example: { main: [{ node: 'Jira', type: 'main', index: 0 }] }
+    example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
   settings:
     $ref: './workflowSettings.yml'
   staticData:
@@ -50,3 +50,5 @@ properties:
     type: array
     items:
       $ref: './sharedWorkflow.yml'
+  activeVersion:
+    $ref: './activeVersion.yml'

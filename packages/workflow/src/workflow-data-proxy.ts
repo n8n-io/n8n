@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
+import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -29,6 +28,7 @@ import type {
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -402,12 +402,17 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError('Referenced node is unexecuted', {
+				throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
+					messageTemplate:
+						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+					functionality: 'pairedItem',
+					descriptionKey: isScriptingNode(nodeName, that.workflow)
+						? 'pairedItemNoConnectionCodeNode'
+						: 'pairedItemNoConnection',
+					type: 'no_execution_data',
+					nodeCause: nodeName,
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
-					type: 'no_node_execution_data',
-					descriptionKey: 'noNodeExecutionData',
-					nodeCause: nodeName,
 				});
 			}
 
@@ -496,11 +501,16 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (!node) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError('Referenced node does not exist', {
+							messageTemplate: 'Make sure to double-check the node name for typos',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'paired_item_no_connection',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -514,31 +524,36 @@ export class WorkflowDataProxy {
 							return undefined;
 						}
 
+						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							if (that.workflow.getParentNodes(nodeName).length === 0) {
-								throw new ExpressionError('No execution data available', {
-									messageTemplate:
-										'No execution data available to expression under ‘%%PARAMETER%%’',
-									descriptionKey: 'noInputConnection',
-									nodeCause: nodeName,
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-									type: 'no_input_connection',
-								});
-							}
-
-							throw new ExpressionError('No execution data available', {
+							throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
+								messageTemplate:
+									'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+								functionality: 'pairedItem',
+								descriptionKey: isScriptingNode(nodeName, that.workflow)
+									? 'pairedItemNoConnectionCodeNode'
+									: 'pairedItemNoConnection',
+								type: 'no_execution_data',
+								nodeCause: nodeName,
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
-								type: 'no_execution_data',
 							});
 						}
 
 						if (executionData.length <= that.itemIndex) {
-							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-							});
+							throw new ExpressionError(
+								`"${nodeName}" node has ${executionData.length} item(s) but you're trying to access item ${that.itemIndex}`,
+								{
+									messageTemplate:
+										'Adjust your expression to access an existing item index (0-{{maxIndex}})',
+									functionality: 'pairedItem',
+									descriptionKey: 'pairedItemInvalidIndex',
+									type: 'no_execution_data',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+								},
+							);
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -779,19 +794,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
@@ -947,7 +949,7 @@ export class WorkflowDataProxy {
 			// Done: reached the destination node in the ancestry chain
 			if (sourceData.previousNode === destinationNodeName) {
 				if (pairedItem.item >= outputData.length) {
-					throw createInvalidPairedItemError({ nodeName: sourceData.previousNode });
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
 				return item;
@@ -1025,10 +1027,19 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData?.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
@@ -1066,12 +1077,17 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
+						throw createExpressionError(`Node '${nodeName}' hasn't been executed`, {
+							messageTemplate:
+								'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'no_execution_data',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							type: 'no_node_execution_data',
-							descriptionKey: 'noNodeExecutionData',
-							nodeCause: nodeName,
 						});
 					}
 				};
@@ -1114,11 +1130,24 @@ export class WorkflowDataProxy {
 								let contextNode = that.contextNodeName;
 								if (activeNode) {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
-									contextNode = parentMainInputNode.name ?? contextNode;
+									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+								// Check if the node has any children and check parents for them instead of the activeNodeName
+								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
+								if (children.length === 0) {
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
+								} else {
+									// Node has children, check parent of children
+									const parents = children.flatMap((child) =>
+										that.workflow.getParentNodes(child, 'ALL'),
+									);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
 								}
 
 								ensureNodeExecutionData();

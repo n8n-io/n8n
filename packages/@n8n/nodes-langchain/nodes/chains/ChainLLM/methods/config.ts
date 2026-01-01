@@ -6,7 +6,12 @@ import {
 import type { IDataObject, INodeInputConfiguration, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	promptTypeOptionsDeprecated,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+} from '@utils/descriptions';
 import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 /**
@@ -25,7 +30,7 @@ export function getInputs(parameters: IDataObject) {
 
 	const needsFallback = parameters?.needsFallback;
 
-	if (needsFallback === undefined || needsFallback === true) {
+	if (needsFallback === true) {
 		inputs.push({
 			displayName: 'Fallback Model',
 			maxConnections: 1,
@@ -91,12 +96,24 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		...promptTypeOptions,
+		...promptTypeOptionsDeprecated,
 		displayOptions: {
 			hide: {
-				'@version': [1, 1.1, 1.2, 1.3],
+				'@version': [{ _cnd: { lte: 1.3 } }, { _cnd: { gte: 1.8 } }],
 			},
 		},
+	},
+	{
+		...promptTypeOptions,
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.8 } }],
+			},
+		},
+	},
+	{
+		...textFromGuardrailsNode,
+		displayOptions: { show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 	},
 	{
 		...textFromPreviousNode,

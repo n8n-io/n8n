@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
@@ -14,6 +15,7 @@ import { Readable } from 'stream';
 
 import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import type { ErrorReporter } from '@/errors';
 
 import {
 	assertBinaryData,
@@ -44,11 +46,13 @@ describe('test binary data helper methods', () => {
 		availableModes: ['default', 'filesystem'],
 		localStoragePath: temporaryDir,
 	});
+	const errorReporter = mock<ErrorReporter>();
+	const logger = mock<Logger>();
 	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		binaryDataService = new BinaryDataService(binaryDataConfig);
+		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
@@ -151,6 +155,179 @@ describe('test binary data helper methods', () => {
 		);
 
 		expect(getBinaryDataBufferResponse).toEqual(inputData);
+	});
+
+	describe('getBinaryDataBuffer with IBinaryData parameter', () => {
+		it('should return buffer when passed IBinaryData directly in default mode', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			const inputBuffer = Buffer.from('direct binary data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/octet-stream', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			// Empty input data since we're passing binary data directly
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should return buffer when passed IBinaryData directly in filesystem mode', async () => {
+			binaryDataConfig.mode = 'filesystem';
+			await binaryDataService.init();
+
+			const inputBuffer = Buffer.from('filesystem binary data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should handle IBinaryData with different mime types', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			const jsonBuffer = Buffer.from('{"test": "json"}', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/json', data: '', fileName: 'test.json' },
+				jsonBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(jsonBuffer);
+		});
+
+		it('should handle IBinaryData with all properties', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			const inputBuffer = Buffer.from('comprehensive test data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{
+					mimeType: 'text/plain',
+					data: '',
+					fileName: 'test.txt',
+					fileExtension: 'txt',
+					fileType: 'text',
+					directory: '/tmp',
+				},
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should handle empty buffer with IBinaryData', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			const emptyBuffer = Buffer.alloc(0);
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/octet-stream', data: '' },
+				emptyBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(emptyBuffer);
+			expect(result.length).toBe(0);
+		});
+
+		it('should handle large binary data with IBinaryData', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			// Create a 1MB buffer
+			const largeBuffer = Buffer.alloc(1024 * 1024, 'A');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/octet-stream', data: '' },
+				largeBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(largeBuffer);
+			expect(result.length).toBe(1024 * 1024);
+		});
+
+		it('should handle binary data with special characters using IBinaryData', async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+
+			const specialBuffer = Buffer.from('Hello 世界! 🚀 Special chars: àáâãäå', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				specialBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = { main: [] };
+
+			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
+			expect(result).toEqual(specialBuffer);
+		});
+
+		it('should throw UnexpectedError for invalid parameter types', async () => {
+			const inputData: ITaskDataConnections = { main: [] };
+
+			// Test with number
+			await expect(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				getBinaryDataBuffer(inputData, 0, 123 as any, 0),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
+
+			// Test with null
+			await expect(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				getBinaryDataBuffer(inputData, 0, null as any, 0),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
+
+			// Test with undefined
+			await expect(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				getBinaryDataBuffer(inputData, 0, undefined as any, 0),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
+
+			// Test with plain object (not IBinaryData)
+			await expect(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				getBinaryDataBuffer(inputData, 0, { notBinary: true } as any, 0),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
+
+			// Test with array
+			await expect(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				getBinaryDataBuffer(inputData, 0, [] as any, 0),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
+		});
 	});
 });
 
@@ -323,6 +500,78 @@ describe('assertBinaryData', () => {
 		const result = assertBinaryData(inputData, mockNode, 0, 'testFile', 0);
 		expect(result).toBe(binaryData);
 	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData', () => {
+		const binaryData = mock<IBinaryData>({
+			fileName: 'test.txt',
+			mimeType: 'text/plain',
+			data: 'base64data',
+		});
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData with minimal properties', () => {
+		const binaryData: IBinaryData = {
+			mimeType: 'application/octet-stream',
+			data: 'somedata',
+		};
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData with all properties', () => {
+		const binaryData: IBinaryData = {
+			fileName: 'document.pdf',
+			mimeType: 'application/pdf',
+			data: 'pdfbase64data',
+			fileExtension: 'pdf',
+			fileType: 'pdf',
+			directory: '/tmp',
+		};
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+		expect(result.fileName).toBe('document.pdf');
+		expect(result.mimeType).toBe('application/pdf');
+		expect(result.fileExtension).toBe('pdf');
+		expect(result.fileType).toBe('pdf');
+		expect(result.directory).toBe('/tmp');
+	});
+
+	it('should throw error when parameterData is neither string nor IBinaryData', () => {
+		const inputData = { main: [[{ json: {} }]] };
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, 123 as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, null as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, undefined as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, {} as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, [] as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+	});
 });
 
 describe('copyBinaryFile', () => {
@@ -347,8 +596,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'txt',
@@ -369,8 +617,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'bin',
@@ -390,7 +637,7 @@ describe('prepareBinaryData', () => {
 		jest.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 
-		binaryDataService.store.mockImplementation(async (_w, _e, _b, binaryData) => binaryData);
+		binaryDataService.store.mockImplementation(async (_l, _b, binaryData) => binaryData);
 	});
 
 	it('parses filenames correctly', async () => {
@@ -399,13 +646,17 @@ describe('prepareBinaryData', () => {
 		const result = await prepareBinaryData(buffer, executionId, workflowId, fileName);
 
 		expect(result.fileName).toEqual(fileName);
-		expect(binaryDataService.store).toHaveBeenCalledWith(workflowId, executionId, buffer, {
-			data: '',
-			fileExtension: undefined,
-			fileName,
-			fileType: 'text',
-			mimeType: 'text/plain',
-		});
+		expect(binaryDataService.store).toHaveBeenCalledWith(
+			{ type: 'execution', executionId, workflowId },
+			buffer,
+			{
+				data: '',
+				fileExtension: undefined,
+				fileName,
+				fileType: 'text',
+				mimeType: 'text/plain',
+			},
+		);
 	});
 
 	it('handles IncomingMessage with responseUrl', async () => {

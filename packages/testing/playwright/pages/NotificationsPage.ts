@@ -91,7 +91,7 @@ export class NotificationsPage {
 		text: string | RegExp,
 		options: { timeout?: number; maxRetries?: number } = {},
 	): Promise<number> {
-		const { timeout = 1500, maxRetries = 15 } = options;
+		const { maxRetries = 15 } = options;
 		let closedCount = 0;
 		let retries = 0;
 
@@ -176,9 +176,11 @@ export class NotificationsPage {
 		options: { timeout?: number } = {},
 	): Promise<boolean> {
 		const { timeout = 3000 } = options;
-		await this.waitForNotification(text, { timeout });
-		await this.closeNotificationByText(text, { timeout });
-		return true;
+		const isVisible = await this.waitForNotification(text, { timeout });
+		if (!isVisible) {
+			return false;
+		}
+		return await this.closeNotificationByText(text, { timeout });
 	}
 
 	/**
@@ -264,5 +266,21 @@ export class NotificationsPage {
 		} catch {
 			// Silent fail
 		}
+	}
+
+	getErrorNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--error)');
+	}
+
+	getSuccessNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--success)');
+	}
+
+	getWarningNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--warning)');
+	}
+
+	getInfoNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--info)');
 	}
 }

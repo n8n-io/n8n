@@ -35,6 +35,7 @@ on:
             - '!.vscode/**'
             - '!docker/**'
             - '!packages/@n8n/benchmark/**'
+            - '!packages/@n8n/task-runner-python/**'
             - '!**/*.md'
       excluded_source_branch_patterns:
         description: 'Newline-separated list of glob patterns for source branches to EXCLUDE.'

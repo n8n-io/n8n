@@ -2,14 +2,21 @@ import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_CHAT_USER_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { inE2ETests } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { FeatureReturnType } from '@/license';
@@ -19,6 +26,7 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { ExecutionsConfig } from '@n8n/config';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -35,6 +43,7 @@ const tablesToTruncate = [
 	'installed_packages',
 	'project',
 	'project_relation',
+	'role',
 	'settings',
 	'shared_credentials',
 	'shared_workflow',
@@ -64,6 +73,7 @@ type ResetRequest = Request<
 		owner: UserSetupPayload;
 		members: UserSetupPayload[];
 		admin: UserSetupPayload;
+		chat: UserSetupPayload;
 	}
 >;
 
@@ -78,6 +88,7 @@ type PushRequest = Request<
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
+		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
 		[LICENSE_FEATURES.SAML]: false,
@@ -88,7 +99,6 @@ export class E2EController {
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
 		[LICENSE_FEATURES.SHOW_NON_PROD_BANNER]: false,
-		[LICENSE_FEATURES.WORKFLOW_HISTORY]: false,
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
@@ -109,6 +119,8 @@ export class E2EController {
 		[LICENSE_FEATURES.OIDC]: false,
 		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 		[LICENSE_FEATURES.WORKFLOW_DIFFS]: false,
+		[LICENSE_FEATURES.CUSTOM_ROLES]: false,
+		[LICENSE_FEATURES.AI_BUILDER]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -157,6 +169,7 @@ export class E2EController {
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -181,8 +194,9 @@ export class E2EController {
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
+		await this.reseedRolesAndScopes();
 		await this.resetCache();
-		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
+		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin, req.body.chat);
 	}
 
 	@Post('/push', { skipAuth: true })
@@ -205,15 +219,13 @@ export class E2EController {
 
 	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
-		const { enabled } = req.body;
-		config.set('executions.mode', enabled ? 'queue' : 'regular');
-		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
+		this.executionsConfig.mode = req.body.enabled ? 'queue' : 'regular';
+		return { success: true, message: `Queue mode set to ${this.executionsConfig.mode}` };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })
 	async getEnvFeatureFlags() {
-		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
-		return currentFlags;
+		return (await this.frontendService.getSettings()).envFeatureFlags;
 	}
 
 	@Patch('/env-feature-flags', { skipAuth: true })
@@ -243,7 +255,7 @@ export class E2EController {
 		}
 
 		// Return the current environment feature flags
-		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
+		const currentFlags = (await this.frontendService.getSettings()).envFeatureFlags;
 		return {
 			success: true,
 			message: 'Environment feature flags updated',
@@ -295,17 +307,27 @@ export class E2EController {
 		}
 	}
 
+	private async reseedRolesAndScopes() {
+		// Re-initialize scopes and roles after truncation so that foreign keys
+		// from users and project relations can be created safely, especially
+		// on databases that strictly enforce foreign keys like Postgres.
+		await Container.get(AuthRolesService).init();
+	}
+
 	private async setupUserManagement(
 		owner: UserSetupPayload,
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
+		chat: UserSetupPayload,
 	) {
 		const userCreatePromises = [
 			this.userRepository.createUserWithProject({
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
-				role: 'global:owner',
+				role: {
+					slug: GLOBAL_OWNER_ROLE.slug,
+				},
 			}),
 		];
 
@@ -314,7 +336,9 @@ export class E2EController {
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
-				role: 'global:admin',
+				role: {
+					slug: GLOBAL_ADMIN_ROLE.slug,
+				},
 			}),
 		);
 
@@ -324,10 +348,23 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					role: 'global:member',
+					role: {
+						slug: GLOBAL_MEMBER_ROLE.slug,
+					},
 				}),
 			);
 		}
+
+		userCreatePromises.push(
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...chat,
+				password: await this.passwordUtility.hash(chat.password),
+				role: {
+					slug: GLOBAL_CHAT_USER_ROLE.slug,
+				},
+			}),
+		);
 
 		const [newOwner] = await Promise.all(userCreatePromises);
 
@@ -340,13 +377,6 @@ export class E2EController {
 				mfaRecoveryCodes: encryptedRecoveryCodes,
 			});
 		}
-
-		await this.settingsRepo.update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'true' },
-		);
-
-		config.set('userManagement.isInstanceOwnerSetUp', true);
 	}
 
 	private async resetCache() {
