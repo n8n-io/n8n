@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createRouter, createWebHistory, type RouteMeta } from 'vue-router';
+import type { ComponentOptions } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import AppLayout from './AppLayout.vue';
 
@@ -10,31 +11,31 @@ const mockLayouts = {
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
-	},
+	} as ComponentOptions,
 	SettingsLayout: {
 		template: '<div data-test-id="settings-layout"><slot /></div>',
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
-	},
+	} as ComponentOptions,
 	WorkflowLayout: {
 		template: '<div data-test-id="workflow-layout"><slot /></div>',
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
-	},
+	} as ComponentOptions,
 	AuthLayout: {
 		template: '<div data-test-id="auth-layout"><slot /></div>',
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
-	},
+	} as ComponentOptions,
 	DemoLayout: {
 		template: '<div data-test-id="demo-layout"><slot /></div>',
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
-	},
+	} as ComponentOptions,
 };
 
 const component = { template: '<div>Page Content</div>' };
