@@ -15,6 +15,7 @@ on:
   push:
     branches:
       - master
+      - claude/**
     paths:
       - 'packages/**'
       - 'docker/**'
