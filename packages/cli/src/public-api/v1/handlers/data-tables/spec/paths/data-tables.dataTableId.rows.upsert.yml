@@ -36,7 +36,8 @@ post:
             oneOf:
               - type: boolean
                 description: True when returnData is false
-              - $ref: '../schemas/dataTableRow.yml'
+              - allOf:
+                  - $ref: '../schemas/dataTableRow.yml'
                 description: Upserted row when returnData is true
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'

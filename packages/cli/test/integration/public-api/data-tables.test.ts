@@ -396,7 +396,7 @@ describe('Filter Parameter Validation', () => {
 
 			expect(response.statusCode).toBe(200);
 			// Note: SQLite LIKE is case-insensitive by default, so ilike behaves the same
-			expect(response.body.count).toBeGreaterThanOrEqual(0);
+			expect(response.body.count).toBe(1); // Only Alice contains 'ALI'
 		});
 	});
 
