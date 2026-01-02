@@ -143,6 +143,25 @@ When working with webhook or chat trigger nodes, use this URL as the base for co
 </instance_url>
 `;
 
+/**
+ * Builds recovery mode context for workflows that hit recursion errors (AI-1812)
+ * Used when configurator receives a workflow that was partially built before builder hit recursion limit
+ */
+export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[]): string {
+	return (
+		'=== CRITICAL: RECOVERY MODE ===\n\n' +
+		'WORKFLOW RECOVERY SCENARIO:\n' +
+		`The builder created ${nodeCount} node${nodeCount === 1 ? '' : 's'} (${nodeNames.join(', ')}) before hitting a recursion limit.\n\n` +
+		'REQUIRED ACTIONS - DO NOT SKIP:\n' +
+		'1. Call update_node_parameters for EVERY node listed above to ensure proper configuration\n' +
+		'2. Call validate_configuration to check for issues\n' +
+		'3. Scan the workflow for placeholders (format: <__PLACEHOLDER_VALUE__*__>) and missing credentials\n' +
+		'4. List ALL placeholders and missing credentials in your final response\n\n' +
+		'DO NOT respond with "workflow already exists" or "no changes needed". ' +
+		'You MUST use tools to analyze this recovered workflow.'
+	);
+}
+
 export function buildConfiguratorPrompt(): string {
 	return prompt()
 		.section('role', CONFIGURATOR_ROLE)
