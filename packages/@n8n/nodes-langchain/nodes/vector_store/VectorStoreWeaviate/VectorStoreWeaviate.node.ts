@@ -311,11 +311,6 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			queryProperties: string;
 			maxVectorDistance: number;
 			fusionType: 'Ranked' | 'RelativeScore';
-			alpha: undefined;
-			autoCutLimit: undefined;
-			queryProperties: string;
-			maxVectorDistance: number;
-			fusionType: 'Ranked' | 'RelativeScore';
 			alpha?: number;
 			autoCutLimit?: number;
 			hybridQuery?: string;
