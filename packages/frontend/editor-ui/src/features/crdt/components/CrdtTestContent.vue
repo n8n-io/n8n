@@ -104,6 +104,10 @@ const onNodeCreatorClose = () => {
 </script>
 
 <template>
+	<div :class="$style.toolbar">
+		<button :disabled="!doc.canUndo.value" :class="$style.button" @click="doc.undo()">Undo</button>
+		<button :disabled="!doc.canRedo.value" :class="$style.button" @click="doc.redo()">Redo</button>
+	</div>
 	<WorkflowCanvas v-if="doc.isReady.value" />
 	<div v-else-if="doc.state.value === 'connecting'" :class="$style.loading">
 		Connecting to workflow...
@@ -123,6 +127,34 @@ const onNodeCreatorClose = () => {
 </template>
 
 <style lang="scss" module>
+.toolbar {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 100;
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
+.button {
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border: 1px solid var(--color--foreground);
+	border-radius: var(--radius);
+	background: var(--color--background);
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	cursor: pointer;
+
+	&:hover:not(:disabled) {
+		background: var(--color--foreground--tint-1);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
 .loading {
 	display: flex;
 	align-items: center;

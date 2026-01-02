@@ -50,6 +50,12 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	const error = ref<string | null>(null);
 	const isReady = computed(() => state.value === 'ready');
 
+	// Undo/redo not supported in REST mode
+	const canUndo = ref(false);
+	const canRedo = ref(false);
+	const undo = () => false;
+	const redo = () => false;
+
 	// Transform n8n INodeUi to WorkflowNode format
 	function transformNode(node: INodeUi): WorkflowNode {
 		return {
@@ -155,6 +161,10 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		state,
 		error,
 		isReady,
+		canUndo,
+		canRedo,
+		undo,
+		redo,
 		connect,
 		disconnect,
 		getNodes,

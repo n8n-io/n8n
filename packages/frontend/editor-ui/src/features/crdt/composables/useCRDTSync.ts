@@ -16,6 +16,8 @@ import {
 	type CRDTDoc,
 	type CRDTAwareness,
 	type AwarenessState,
+	type CRDTUndoManager,
+	type UndoStackChangeEvent,
 } from '@n8n/crdt/browser';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -51,6 +53,14 @@ export interface UseCRDTSyncReturn {
 	readonly doc: CRDTDoc | null;
 	/** The awareness instance for this document. Returns null if not ready. */
 	readonly awareness: CRDTAwareness<AwarenessState> | null;
+	/** Whether undo is possible (reactive) */
+	canUndo: Ref<boolean>;
+	/** Whether redo is possible (reactive) */
+	canRedo: Ref<boolean>;
+	/** Undo the last change. Returns true if undo was performed. */
+	undo: () => boolean;
+	/** Redo the last undone change. Returns true if redo was performed. */
+	redo: () => boolean;
 	/** Connect to server. Returns doc when ready. */
 	connect: () => Promise<CRDTDoc>;
 	/** Disconnect from server */
@@ -169,15 +179,19 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 	// Reactive state
 	const state = ref<CRDTSyncState>('idle');
 	const error = ref<string | null>(null);
+	const canUndo = ref(false);
+	const canRedo = ref(false);
 
 	// Internal state (not reactive - CRDTDoc is a class that shouldn't be wrapped in Vue reactivity)
 	let currentDoc: CRDTDoc | null = null;
 	let currentAwareness: CRDTAwareness<AwarenessState> | null = null;
+	let currentUndoManager: CRDTUndoManager | null = null;
 	let transport: SyncTransport | null = null;
 	let unsubscribeDoc: (() => void) | null = null;
 	let unsubscribeAwareness: (() => void) | null = null;
 	let unsubscribeTransportReceive: (() => void) | null = null;
 	let unsubscribeDocSync: (() => void) | null = null;
+	let unsubscribeUndoStackChange: (() => void) | null = null;
 	let connectPromiseResolve: ((resolvedDoc: CRDTDoc) => void) | null = null;
 	let connectPromiseReject: ((rejectedError: Error) => void) | null = null;
 
@@ -236,11 +250,30 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		if (isSynced) {
 			state.value = 'ready';
 			if (currentDoc) {
+				console.log('[useCRDTSync] Doc synced, triggering onReady...');
+				// Trigger onReady FIRST so consumers can access doc.getMap('nodes') etc.
+				// This ensures the types exist in yDoc.share before undo manager is created.
 				void readyHook.trigger(currentDoc);
 				if (connectPromiseResolve) {
 					connectPromiseResolve(currentDoc);
 					connectPromiseResolve = null;
 					connectPromiseReject = null;
+				}
+
+				// Create undo manager AFTER onReady handlers have run
+				// The Yjs UndoManager scopes to types that exist at creation time,
+				// so we need the 'nodes' map to be accessed first
+				if (!currentUndoManager) {
+					console.log('[useCRDTSync] Creating undo manager...');
+					currentUndoManager = currentDoc.createUndoManager({ captureTimeout: 500 });
+					console.log('[useCRDTSync] Undo manager created, subscribing to stack changes...');
+					unsubscribeUndoStackChange = currentUndoManager.onStackChange(
+						(event: UndoStackChangeEvent) => {
+							console.log('[useCRDTSync] Stack change:', event);
+							canUndo.value = event.canUndo;
+							canRedo.value = event.canRedo;
+						},
+					);
 				}
 			}
 		} else {
@@ -306,6 +339,9 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 				// Get awareness instance
 				currentAwareness = currentDoc.getAwareness();
 
+				// Note: Undo manager is created in handleDocSyncChange AFTER initial sync
+				// because Yjs UndoManager scopes to types that exist at creation time
+
 				// Subscribe to local document changes
 				unsubscribeDoc = currentDoc.onUpdate(handleDocUpdate);
 
@@ -370,6 +406,14 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		unsubscribeAwareness?.();
 		unsubscribeAwareness = null;
 
+		unsubscribeUndoStackChange?.();
+		unsubscribeUndoStackChange = null;
+
+		if (currentUndoManager) {
+			currentUndoManager.destroy();
+			currentUndoManager = null;
+		}
+
 		if (currentAwareness) {
 			currentAwareness.destroy();
 			currentAwareness = null;
@@ -379,6 +423,10 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 			currentDoc.destroy();
 			currentDoc = null;
 		}
+
+		// Reset undo/redo state
+		canUndo.value = false;
+		canRedo.value = false;
 
 		state.value = 'disconnected';
 
@@ -400,6 +448,20 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		void connect();
 	}
 
+	/**
+	 * Undo the last change.
+	 */
+	function undo(): boolean {
+		return currentUndoManager?.undo() ?? false;
+	}
+
+	/**
+	 * Redo the last undone change.
+	 */
+	function redo(): boolean {
+		return currentUndoManager?.redo() ?? false;
+	}
+
 	return {
 		state,
 		error,
@@ -409,6 +471,10 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		get awareness() {
 			return currentAwareness;
 		},
+		canUndo,
+		canRedo,
+		undo,
+		redo,
 		connect,
 		disconnect,
 		onReady: readyHook.on,

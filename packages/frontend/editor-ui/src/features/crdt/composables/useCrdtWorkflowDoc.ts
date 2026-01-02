@@ -1,7 +1,7 @@
 import { computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { CRDTDoc, CRDTMap, DeepChange } from '@n8n/crdt/browser';
-import { isMapChange } from '@n8n/crdt/browser';
+import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin } from '@n8n/crdt/browser';
+import { isMapChange, ChangeOrigin as CO } from '@n8n/crdt/browser';
 import { useCRDTSync } from './useCRDTSync';
 import type {
 	WorkflowDocument,
@@ -86,7 +86,17 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 
 	// --- Change Handling ---
 
-	function handleChanges(changes: DeepChange[], origin: 'local' | 'remote'): void {
+	/**
+	 * Check if origin requires UI update.
+	 * - remote: changes from other users → need UI update
+	 * - undoRedo: local undo/redo → need UI update (CRDT changed but Vue Flow didn't)
+	 * - local: normal local changes → Vue Flow already updated, skip
+	 */
+	function needsUIUpdate(origin: ChangeOrigin): boolean {
+		return origin === CO.remote || origin === CO.undoRedo;
+	}
+
+	function handleChanges(changes: DeepChange[], origin: ChangeOrigin): void {
 		if (!doc) return;
 
 		const nodesMap = doc.getMap('nodes');
@@ -100,18 +110,19 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			if (rest.length === 0) {
 				// Top-level node change (add/delete entire node)
 				if (change.action === 'add') {
-					// Add: trigger for both local + remote (local needs Vue Flow update)
+					// Add: trigger for both local + remote + undoRedo (all need Vue Flow update)
 					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
 					if (crdtNode) {
 						const node = crdtNodeToWorkflowNode(nodeId, crdtNode);
 						void nodeAddedHook.trigger(node);
 					}
-				} else if (change.action === 'delete' && origin === 'remote') {
-					// Delete: only remote (local already removed from Vue Flow)
+				} else if (change.action === 'delete' && needsUIUpdate(origin)) {
+					// Delete: remote/undoRedo (local already removed from Vue Flow)
 					void nodeRemovedHook.trigger(nodeId);
 				}
-			} else if (origin === 'remote') {
-				// Nested property changes: only remote (local UI already updated)
+			} else if (needsUIUpdate(origin)) {
+				// Nested property changes: remote/undoRedo need UI update
+				// Local changes already reflected in Vue Flow
 				const prop = rest[0];
 
 				if (prop === 'position' && Array.isArray(change.value)) {
@@ -127,9 +138,11 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 
 	// Handle CRDT document ready
 	crdt.onReady((crdtDoc) => {
+		console.log('[useCrdtWorkflowDoc] onReady callback - accessing nodes map...');
 		doc = crdtDoc;
 
 		const nodesMap = doc.getMap('nodes');
+		console.log('[useCrdtWorkflowDoc] Got nodes map');
 
 		// Subscribe to deep changes on nodes map
 		// Local add needs Vue Flow update; remote changes need Vue Flow update
@@ -249,6 +262,10 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		state,
 		error: crdt.error,
 		isReady,
+		canUndo: crdt.canUndo,
+		canRedo: crdt.canRedo,
+		undo: crdt.undo,
+		redo: crdt.redo,
 		connect,
 		disconnect,
 		getNodes,

@@ -53,6 +53,20 @@ export interface WorkflowDocument {
 	readonly error: Ref<string | null>;
 	readonly isReady: ComputedRef<boolean>;
 
+	// --- Undo/Redo ---
+
+	/** Whether undo is possible (reactive) */
+	readonly canUndo: Ref<boolean>;
+
+	/** Whether redo is possible (reactive) */
+	readonly canRedo: Ref<boolean>;
+
+	/** Undo the last change. Returns true if undo was performed. */
+	undo(): boolean;
+
+	/** Redo the last undone change. Returns true if redo was performed. */
+	redo(): boolean;
+
 	// --- Lifecycle ---
 
 	/** Connect to data source */

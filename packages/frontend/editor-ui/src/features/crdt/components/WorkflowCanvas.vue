@@ -11,27 +11,10 @@ const instance = useVueFlow(doc.workflowId);
 
 // Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes
 const initialNodes = useCanvasSync(doc, instance);
-
-function handleAddNode() {
-	const position: [number, number] = [Math.random() * 300, Math.random() * 300];
-	doc.addNode({
-		id: crypto.randomUUID(),
-		position,
-		name: 'New Node',
-		type: 'unknown',
-		parameters: {},
-	});
-}
 </script>
 
 <template>
-	<VueFlow :id="doc.workflowId" :nodes="initialNodes" fit-view-on-init>
-		<template #default>
-			<div :class="$style.toolbar">
-				<button type="button" :class="$style.button" @click="handleAddNode">Add Node</button>
-			</div>
-		</template>
-	</VueFlow>
+	<VueFlow :id="doc.workflowId" :nodes="initialNodes" fit-view-on-init> </VueFlow>
 </template>
 
 <style lang="scss" module>
