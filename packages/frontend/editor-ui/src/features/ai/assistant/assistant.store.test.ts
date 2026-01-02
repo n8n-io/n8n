@@ -460,7 +460,7 @@ describe('AI Assistant store', () => {
 		});
 	});
 
-	it('should call telemetry for opening assistant with build_with_ai source on existing workflow', () => {
+	it('should call telemetry for opening assistant on existing workflow', () => {
 		const assistantStore = useAssistantStore();
 		const workflowsStore = useWorkflowsStore();
 
@@ -478,12 +478,12 @@ describe('AI Assistant store', () => {
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
-			source: 'build_with_ai',
+			source: 'canvas',
 			has_existing_session: false,
 		});
 
 		expect(track).toHaveBeenCalledWith('User opened assistant', {
-			source: 'build_with_ai',
+			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
