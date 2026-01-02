@@ -1,13 +1,12 @@
 import { RunnableConfig } from '@langchain/core/runnables';
-import { MemorySaver } from '@langchain/langgraph';
+import { type Checkpoint, MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
+import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions';
 import { formatMessages } from '@/utils/stream-processor';
-
-import { getBuilderToolsForDisplay } from './tools/builder-tools';
-import { isLangchainMessagesArray, LangchainMessage, Session } from './types/sessions';
 
 @Service()
 export class SessionManagerService {
@@ -66,14 +65,16 @@ export class SessionManagerService {
 						? rawMessages
 						: [];
 
+					const formattedMessages = formatMessages(
+						messages,
+						getBuilderToolsForDisplay({
+							nodeTypes: this.parsedNodeTypes,
+						}),
+					);
+
 					sessions.push({
 						sessionId: threadId,
-						messages: formatMessages(
-							messages,
-							getBuilderToolsForDisplay({
-								nodeTypes: this.parsedNodeTypes,
-							}),
-						),
+						messages: formattedMessages,
 						lastUpdated: checkpoint.checkpoint.ts,
 					});
 				}
@@ -84,5 +85,86 @@ export class SessionManagerService {
 		}
 
 		return { sessions };
+	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified messageId in metadata.
+	 * Used when restoring to a previous version.
+	 *
+	 * @param workflowId - The workflow ID
+	 * @param userId - The user ID
+	 * @param messageId - The messageId to find in HumanMessage's additional_kwargs. Messages from this
+	 *                    point onward (including the message with this messageId) will be removed.
+	 * @returns True if truncation was successful, false if thread or message not found
+	 */
+	async truncateMessagesAfter(
+		workflowId: string,
+		userId: string | undefined,
+		messageId: string,
+	): Promise<boolean> {
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		const threadConfig: RunnableConfig = {
+			configurable: {
+				thread_id: threadId,
+			},
+		};
+
+		try {
+			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
+
+			if (!checkpointTuple?.checkpoint) {
+				this.logger?.debug('No checkpoint found for truncation', { threadId, messageId });
+				return false;
+			}
+
+			const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
+			if (!isLangchainMessagesArray(rawMessages)) {
+				this.logger?.debug('No valid messages found for truncation', { threadId, messageId });
+				return false;
+			}
+
+			// Find the index of the message with the target messageId in additional_kwargs
+			const msgIndex = rawMessages.findIndex(
+				(msg) => msg.additional_kwargs?.messageId === messageId,
+			);
+
+			if (msgIndex === -1) {
+				this.logger?.debug('Message with messageId not found', { threadId, messageId });
+				return false;
+			}
+
+			// Keep messages before the target message (excluding the target message)
+			const truncatedMessages = rawMessages.slice(0, msgIndex);
+
+			// Create updated checkpoint with truncated messages
+			const updatedCheckpoint: Checkpoint = {
+				...checkpointTuple.checkpoint,
+				channel_values: {
+					...checkpointTuple.checkpoint.channel_values,
+					messages: truncatedMessages,
+				},
+			};
+
+			// Put the updated checkpoint back with metadata indicating this is an update
+			const metadata = checkpointTuple.metadata ?? {
+				source: 'update' as const,
+				step: -1,
+				parents: {},
+			};
+
+			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+
+			this.logger?.debug('Messages truncated successfully', {
+				threadId,
+				messageId,
+				originalCount: rawMessages.length,
+				newCount: truncatedMessages.length,
+			});
+
+			return true;
+		} catch (error) {
+			this.logger?.error('Failed to truncate messages', { threadId, messageId, error });
+			return false;
+		}
 	}
 }

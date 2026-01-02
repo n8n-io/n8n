@@ -462,8 +462,8 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 			});
 
-			// Open filter dropdown
-			const filterButton = screen.getByTestId('migration-rule-filters');
+			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
+			const filterButton = screen.getByTestId('resources-list-filters-trigger');
 			await user.click(filterButton);
 
 			await waitFor(() => {
@@ -487,8 +487,8 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
 			});
 
-			// Open filter dropdown
-			const filterButton = screen.getByTestId('migration-rule-filters');
+			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
+			const filterButton = screen.getByTestId('resources-list-filters-trigger');
 			await user.click(filterButton);
 
 			await waitFor(() => {

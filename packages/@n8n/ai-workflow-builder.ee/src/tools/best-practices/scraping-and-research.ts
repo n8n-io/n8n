@@ -43,6 +43,16 @@ Pitfalls:
 Fail" feature
 - Refresh expired tokens, verify API keys, and ensure correct permissions to avoid authentication failures
 
+### SerpAPI (@n8n/n8n-nodes-langchain.toolSerpApi)
+
+Purpose: Give an agent the ability to search for research materials and fact-checking results that have been retrieved
+from other sources.
+
+### Perplexity (n8n-nodes-base.perplexityTool)
+
+Purpose: Give an agent the ability to search utilising Perplexity, a powerful tool for finding sources/material for
+generating reports and information.
+
 ### HTML Extract (n8n-nodes-base.htmlExtract)
 
 Purpose: Parses HTML and extracts data using CSS selectors for web scraping
@@ -93,6 +103,10 @@ Pitfalls:
 ### Wait (n8n-nodes-base.wait)
 
 Purpose: Introduces delays to respect rate limits and avoid overloading servers
+
+### Data Tables (n8n-nodes-base.dataTable)
+
+Purpose: Stores scraped data in n8n's built-in persistent data storage
 
 ### Google Sheets (n8n-nodes-base.googleSheets)
 

@@ -12,9 +12,6 @@ import { assertDir, doesNotExist, FileLocation } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
-const EXECUTION_ID_EXTRACTOR =
-	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
-
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\//;
 
 export class FileSystemManager implements BinaryData.Manager {
@@ -78,27 +75,6 @@ export class FileSystemManager implements BinaryData.Manager {
 
 	async deleteMany(locations: BinaryData.FileLocation[]) {
 		if (locations.length === 0) return;
-
-		// binary files stored in single dir - `filesystem`
-
-		const executionIds = locations.flatMap((location) =>
-			location.type === 'execution' ? [location.executionId] : [],
-		);
-
-		const set = new Set(executionIds);
-		const fileNames = await fs.readdir(this.storagePath);
-
-		for (const fileName of fileNames) {
-			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
-
-			if (executionId && set.has(executionId)) {
-				const filePath = this.resolvePath(fileName);
-
-				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
-			}
-		}
-
-		// binary files stored in nested dirs - `filesystem-v2`
 
 		const binaryDataDirs = locations.map((location) =>
 			this.resolvePath(this.toRelativePath(location)),
@@ -181,12 +157,6 @@ export class FileSystemManager implements BinaryData.Manager {
 	//         private methods
 	// ----------------------------------
 
-	/**
-	 * Generate an ID for a binary data file.
-	 *
-	 * The legacy ID format `{executionId}{uuid}` for `filesystem` mode is
-	 * no longer used on write, only when reading old stored execution data.
-	 */
 	private toFileId(location: BinaryData.FileLocation) {
 		return `${this.toRelativePath(location)}/binary_data/${uuid()}`;
 	}

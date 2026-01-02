@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
@@ -8,7 +8,12 @@ import type { LogMetadata } from 'n8n-workflow';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
-import { IMMEDIATE_COMMANDS, SELF_SEND_COMMANDS } from '../constants';
+import {
+	COMMAND_PUBSUB_CHANNEL,
+	IMMEDIATE_COMMANDS,
+	SELF_SEND_COMMANDS,
+	WORKER_RESPONSE_PUBSUB_CHANNEL,
+} from '../constants';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.
@@ -17,6 +22,10 @@ import { IMMEDIATE_COMMANDS, SELF_SEND_COMMANDS } from '../constants';
 export class Publisher {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
+	private readonly commandChannel: string;
+
+	private readonly workerResponseChannel: string;
+
 	// #region Lifecycle
 
 	constructor(
@@ -24,11 +33,17 @@ export class Publisher {
 		private readonly redisClientService: RedisClientService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, assert in the next line.
 		if (this.executionsConfig.mode !== 'queue') return;
 
 		this.logger = this.logger.scoped(['scaling', 'pubsub']);
+
+		// Build prefixed channel names for proper isolation between deployments
+		const prefix = this.globalConfig.redis.prefix;
+		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
+		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
@@ -46,13 +61,13 @@ export class Publisher {
 
 	// #region Publishing
 
-	/** Publish a command into the `n8n.commands` channel. */
+	/** Publish a command into the commands channel. */
 	async publishCommand(msg: PubSub.Command) {
 		// @TODO: Once this class is only ever used in scaling mode, remove next line.
 		if (this.executionsConfig.mode !== 'queue') return;
 
 		await this.client.publish(
-			'n8n.commands',
+			this.commandChannel,
 			JSON.stringify({
 				...msg,
 				senderId: this.instanceSettings.hostId,
@@ -63,7 +78,7 @@ export class Publisher {
 
 		let msgName = msg.command;
 
-		const metadata: LogMetadata = { msg: msg.command, channel: 'n8n.commands' };
+		const metadata: LogMetadata = { msg: msg.command, channel: this.commandChannel };
 
 		if (msg.command === 'relay-execution-lifecycle-event') {
 			const { data, type } = msg.payload;
@@ -75,9 +90,9 @@ export class Publisher {
 		this.logger.debug(`Published pubsub msg: ${msgName}`, metadata);
 	}
 
-	/** Publish a response to a command into the `n8n.worker-response` channel. */
+	/** Publish a response to a command into the worker response channel. */
 	async publishWorkerResponse(msg: PubSub.WorkerResponse) {
-		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
+		await this.client.publish(this.workerResponseChannel, JSON.stringify(msg));
 
 		this.logger.debug(`Published ${msg.response} to worker response channel`);
 	}
