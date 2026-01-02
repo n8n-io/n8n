@@ -181,7 +181,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	async function waitForStatistics(
 		workflowId: string,
 		expectedCount: number,
-		timeout = 30000,
+		timeout = 10000,
 	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
@@ -204,7 +204,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	/**
 	 * Helper to wait for insights to be compacted (raw insights cleared and compacted data available)
 	 */
-	async function waitForCompaction(workflowId: string, timeout = 30000): Promise<void> {
+	async function waitForCompaction(workflowId: string, timeout = 10000): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
 			// Check if raw insights have been compacted (should be low or zero)
