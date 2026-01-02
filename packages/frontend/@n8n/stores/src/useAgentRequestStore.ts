@@ -1,6 +1,6 @@
 import { useLocalStorage } from '@vueuse/core';
-import { defineStore } from 'pinia';
 import type { AgentRequestQuery } from 'n8n-workflow';
+import { defineStore } from 'pinia';
 
 const LOCAL_STORAGE_AGENT_REQUESTS = 'N8N_AGENT_REQUESTS';
 

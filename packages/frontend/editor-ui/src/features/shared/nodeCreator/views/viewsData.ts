@@ -1,23 +1,10 @@
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import {
-	AI_TRANSFORM_NODE_TYPE,
-	CORE_NODES_CATEGORY,
-	WEBHOOK_NODE_TYPE,
-	OTHER_TRIGGER_NODES_SUBCATEGORY,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	REGULAR_NODE_CREATOR_VIEW,
-	TRANSFORM_DATA_SUBCATEGORY,
-	FLOWS_CONTROL_SUBCATEGORY,
-	TRIGGER_NODE_CREATOR_VIEW,
-	EMAIL_IMAP_NODE_TYPE,
-	DEFAULT_SUBCATEGORY,
-	AI_NODE_CREATOR_VIEW,
+	AGGREGATE_NODE_TYPE,
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
 	AI_CATEGORY_DOCUMENT_LOADERS,
+	AI_CATEGORY_EMBEDDING,
 	AI_CATEGORY_LANGUAGE_MODELS,
 	AI_CATEGORY_MEMORY,
 	AI_CATEGORY_OUTPUTPARSER,
@@ -25,54 +12,67 @@ import {
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
-	AI_SUBCATEGORY,
-	AI_CATEGORY_EMBEDDING,
-	AI_OTHERS_NODE_CREATOR_VIEW,
-	AI_UNCATEGORIZED_CATEGORY,
-	CONVERT_TO_FILE_NODE_TYPE,
-	EXTRACT_FROM_FILE_NODE_TYPE,
-	SET_NODE_TYPE,
-	CODE_NODE_TYPE,
-	DATETIME_NODE_TYPE,
-	FILTER_NODE_TYPE,
-	REMOVE_DUPLICATES_NODE_TYPE,
-	SPLIT_OUT_NODE_TYPE,
-	LIMIT_NODE_TYPE,
-	SUMMARIZE_NODE_TYPE,
-	AGGREGATE_NODE_TYPE,
-	MERGE_NODE_TYPE,
-	HTML_NODE_TYPE,
-	MARKDOWN_NODE_TYPE,
-	XML_NODE_TYPE,
-	CRYPTO_NODE_TYPE,
-	IF_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HELPERS_SUBCATEGORY,
-	RSS_READ_NODE_TYPE,
-	EMAIL_SEND_NODE_TYPE,
-	EDIT_IMAGE_NODE_TYPE,
-	COMPRESSION_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_SUBCATEGORY,
+	AI_TRANSFORM_NODE_TYPE,
+	AI_UNCATEGORIZED_CATEGORY,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
-	HUMAN_IN_THE_LOOP_CATEGORY,
-	TEMPLATE_CATEGORY_AI,
+	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
+	COMPRESSION_NODE_TYPE,
+	CONVERT_TO_FILE_NODE_TYPE,
+	CORE_NODES_CATEGORY,
+	CRYPTO_NODE_TYPE,
 	DATA_TABLE_NODE_TYPE,
+	DATETIME_NODE_TYPE,
+	DEFAULT_SUBCATEGORY,
+	EDIT_IMAGE_NODE_TYPE,
+	EMAIL_IMAP_NODE_TYPE,
+	EMAIL_SEND_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	EXTRACT_FROM_FILE_NODE_TYPE,
+	FILTER_NODE_TYPE,
+	FLOWS_CONTROL_SUBCATEGORY,
+	FORM_TRIGGER_NODE_TYPE,
+	HELPERS_SUBCATEGORY,
 	HITL_SUBCATEGORY,
+	HTML_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HUMAN_IN_THE_LOOP_CATEGORY,
+	IF_NODE_TYPE,
+	LIMIT_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MARKDOWN_NODE_TYPE,
+	MERGE_NODE_TYPE,
+	OTHER_TRIGGER_NODES_SUBCATEGORY,
+	REGULAR_NODE_CREATOR_VIEW,
+	REMOVE_DUPLICATES_NODE_TYPE,
+	RSS_READ_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+	SPLIT_OUT_NODE_TYPE,
+	SUMMARIZE_NODE_TYPE,
+	TEMPLATE_CATEGORY_AI,
+	TRANSFORM_DATA_SUBCATEGORY,
+	TRIGGER_NODE_CREATOR_VIEW,
+	WEBHOOK_NODE_TYPE,
+	XML_NODE_TYPE,
 } from '@/app/constants';
-import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { SimplifiedNodeType } from '@/Interface';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
+import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import type { BaseTextKey } from '@n8n/i18n';
-import camelCase from 'lodash/camelCase';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { NodeIconSource } from '@/app/utils/nodeIcon';
 
 export interface NodeViewItemSection {
 	key: string;
