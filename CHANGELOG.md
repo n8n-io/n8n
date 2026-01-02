@@ -1,3 +1,19 @@
+## [2.2.2](https://github.com/n8n-io/n8n/compare/n8n@2.2.1...n8n@2.2.2) (2025-12-30)
+
+
+### Bug Fixes
+
+* Add data insight metadata  migration ([#23694](https://github.com/n8n-io/n8n/issues/23694)) ([c8f5a1b](https://github.com/n8n-io/n8n/commit/c8f5a1be576b4648f60831065937e3b6a8e140d1))
+* **core:**  Modify path validation to work cross platforms ([#23737](https://github.com/n8n-io/n8n/issues/23737)) ([f1953cb](https://github.com/n8n-io/n8n/commit/f1953cb8d1588a00ffe2c634f21dc4e9e8582108))
+* **Stripe Trigger Node:** Add Stripe signature verification ([#22764](https://github.com/n8n-io/n8n/issues/22764)) ([a61a599](https://github.com/n8n-io/n8n/commit/a61a5991093c41863506888336e808ac1eff8d59))
+
+
+### Features
+
+* **core:** Use draft sub-workflow version for manual execution, published for production ([#23166](https://github.com/n8n-io/n8n/issues/23166)) ([4f10759](https://github.com/n8n-io/n8n/commit/4f10759e71df60687496178ccaeaf45c4b53f778))
+
+
+
 ## [2.2.1](https://github.com/n8n-io/n8n/compare/n8n@2.2.0...n8n@2.2.1) (2025-12-23)
 
 
