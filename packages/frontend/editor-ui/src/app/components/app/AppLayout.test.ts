@@ -7,18 +7,33 @@ import AppLayout from './AppLayout.vue';
 const mockLayouts = {
 	DefaultLayout: {
 		template: '<div data-test-id="default-layout"><slot /></div>',
+		mounted() {
+			this.$emit('mounted', this.$el);
+		},
 	},
 	SettingsLayout: {
 		template: '<div data-test-id="settings-layout"><slot /></div>',
+		mounted() {
+			this.$emit('mounted', this.$el);
+		},
 	},
 	WorkflowLayout: {
 		template: '<div data-test-id="workflow-layout"><slot /></div>',
+		mounted() {
+			this.$emit('mounted', this.$el);
+		},
 	},
 	BlankLayout: {
 		template: '<div data-test-id="blank-layout"><slot /></div>',
+		mounted() {
+			this.$emit('mounted', this.$el);
+		},
 	},
 	DemoLayout: {
 		template: '<div data-test-id="demo-layout"><slot /></div>',
+		mounted() {
+			this.$emit('mounted', this.$el);
+		},
 	},
 };
 
@@ -150,35 +165,35 @@ describe('AppLayout', () => {
 		expect(getByTestId('default-layout')).toBeInTheDocument();
 	});
 
-	it('should emit load event on mount with layout element', async () => {
+	it('should emit mounted event on mount with layout element', async () => {
 		const router = createTestRouter();
 		await router.push('/');
-		const onLoad = vi.fn();
+		const onMounted = vi.fn();
 		renderComponent(router)({
 			attrs: {
-				onLoad,
+				onMounted,
 			},
 		});
 		await flushPromises();
 
-		expect(onLoad).toHaveBeenCalledTimes(1);
+		expect(onMounted).toHaveBeenCalledTimes(1);
 		// The emitted value should be the layoutRef element or null
-		const emittedValue = onLoad.mock.calls[0][0];
+		const emittedValue = onMounted.mock.calls[0][0];
 		expect(emittedValue === null || emittedValue instanceof Object).toBe(true);
 	});
 
-	it('should emit load event with null if layoutRef is not set', async () => {
+	it('should emit mounted event with null if layoutRef is not set', async () => {
 		const router = createTestRouter();
 		await router.push('/');
-		const onLoad = vi.fn();
+		const onMounted = vi.fn();
 		renderComponent(router)({
 			attrs: {
-				onLoad,
+				onMounted,
 			},
 		});
 		await flushPromises();
 
-		expect(onLoad).toHaveBeenCalled();
+		expect(onMounted).toHaveBeenCalled();
 	});
 
 	it('should use Suspense to handle async component loading', async () => {
