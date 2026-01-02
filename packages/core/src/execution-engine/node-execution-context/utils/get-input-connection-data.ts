@@ -335,11 +335,10 @@ function fillToolMetadata(targetTool: unknown, sourceNodeName: string) {
 
 	if (targetTool instanceof StructuredToolkit) {
 		for (const tool of targetTool.tools) {
-				tool.metadata ??= {};
-				tool.metadata.sourceNodeName = sourceNodeName;
+			tool.metadata ??= {};
+			tool.metadata.sourceNodeName = sourceNodeName;
 		}
 	}
-
 }
 
 export async function getInputConnectionData(
