@@ -12,10 +12,9 @@
 import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
 
 import { test, expect } from '../../../../fixtures/base';
-import { capabilities } from '../../../../fixtures/capabilities';
 
 // Worker-scoped fixtures must be at top level
-test.use({ addContainerCapability: capabilities.observability });
+test.use({ capability: 'observability' });
 
 test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 	test.beforeEach(async ({ n8n }) => {
