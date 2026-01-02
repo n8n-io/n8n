@@ -17,15 +17,16 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+
 const selectedOption = ref<string | undefined>(undefined);
+
 export interface Props {
 	hideDelete?: boolean;
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeParameters;
+	values?: INodeParameters;
 	isReadOnly?: boolean;
 }
 const emit = defineEmits<{

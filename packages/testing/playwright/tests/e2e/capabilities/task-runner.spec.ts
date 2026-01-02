@@ -1,8 +1,7 @@
 import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
-import { capabilities } from '../../../fixtures/capabilities';
 
-test.use({ addContainerCapability: capabilities.taskRunner });
+test.use({ capability: 'task-runner' });
 
 /**
  * Task Runner Capability Tests
@@ -26,7 +25,7 @@ test.describe('Task Runner Capability @capability:task-runner', () => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, {
-			action: 'Code in Python (Native)',
+			action: 'Code in Python',
 			closeNDV: true,
 		});
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(

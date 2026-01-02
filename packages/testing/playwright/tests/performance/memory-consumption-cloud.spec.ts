@@ -4,7 +4,7 @@ import { test, expect } from '../../fixtures/base';
 import { attachMetric } from '../../utils/performance-helper';
 
 test.use({
-	addContainerCapability: {
+	capability: {
 		resourceQuota: {
 			memory: 0.75,
 			cpu: 0.5,
