@@ -413,8 +413,8 @@ describe('GlobalConfig', () => {
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
-			batchSize: 1_000,
-			compactingMinimumAgeHours: 24,
+			batchSize: 100,
+			compactingMinimumAgeHours: 3,
 			compactingTimeWindowHours: 2,
 			compactOnStartUp: false,
 		},
