@@ -26,6 +26,10 @@ export type {
 	AwarenessState,
 	AwarenessChangeEvent,
 	CRDTAwareness,
+	// Undo manager types
+	UndoManagerOptions,
+	UndoStackChangeEvent,
+	CRDTUndoManager,
 } from './types';
 
 // Constants
