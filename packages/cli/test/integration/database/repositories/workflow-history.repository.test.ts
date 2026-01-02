@@ -69,7 +69,7 @@ describe('WorkflowHistoryRepository', () => {
 			nextMin.setMinutes(nextMin.getMinutes() + 1);
 
 			const inTenMins = new Date();
-			inTenMins.setDate(inTenMins.getMinutes() + 10);
+			inTenMins.setMinutes(inTenMins.getMinutes() + 10);
 
 			{
 				// Don't touch workflows younger than range
