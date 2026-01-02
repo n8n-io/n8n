@@ -246,7 +246,7 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
 
 		it('should not override existing Access-Control-Allow-Origin header', async () => {
@@ -264,14 +264,14 @@ describe('WaitingForms', () => {
 			});
 
 			const res = mock<express.Response>();
-			res.header.mockImplementation(() => res);
+			res.setHeader.mockImplementation(() => res);
 			res.getHeader.mockReturnValue('https://example.com');
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.setHeader).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
-		it('should not set CORS headers when origin header is missing for status endpoint', async () => {
+		it('should set CORS headers to wildcard when origin header is missing for status endpoint', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
@@ -289,7 +289,7 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', expect.anything());
+			expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
 
 		it('should not set CORS headers for non-status endpoints', async () => {
@@ -339,7 +339,10 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', expect.anything());
+			expect(res.setHeader).not.toHaveBeenCalledWith(
+				'Access-Control-Allow-Origin',
+				expect.anything(),
+			);
 		});
 
 		it('should handle old executions with missing activeVersionId field when active=true', () => {
