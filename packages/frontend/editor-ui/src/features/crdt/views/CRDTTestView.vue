@@ -1,23 +1,20 @@
 <script lang="ts" setup>
-import { VueFlow } from '@vue-flow/core';
-import CrdtWorkflowLoader from '../components/CrdtWorkflowLoader.vue';
+import CrdtTestContent from '../components/CrdtTestContent.vue';
+import CrdtWorkflowProvider from '../components/CrdtWorkflowProvider.vue';
+import RestWorkflowProvider from '../components/RestWorkflowProvider.vue';
+
+const workflowId = 'olaBF64OShV5q70u';
+const test = 'Rj2O3ipqLBlwS11w';
 </script>
 
 <template>
 	<div :class="$style.container">
-		<CrdtWorkflowLoader :workflow-id="'olaBF64OShV5q70u'">
-			<template #default="props">
-				<VueFlow v-bind="props">
-					<template #default>
-						<button type="button">execute</button>
-					</template>
-				</VueFlow>
-			</template>
-			<template #error="{ error }">
-				<h2>Error Loading CRDT Workflow</h2>
-				<p>{{ error }}</p>
-			</template>
-		</CrdtWorkflowLoader>
+		<CrdtWorkflowProvider :doc-id="workflowId">
+			<CrdtTestContent />
+		</CrdtWorkflowProvider>
+		<RestWorkflowProvider :workflow-id="test">
+			<CrdtTestContent />
+		</RestWorkflowProvider>
 	</div>
 </template>
 

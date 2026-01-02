@@ -164,7 +164,7 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 	// Event hooks (VueUse pattern - auto-cleanup on scope dispose)
 	const readyHook = createEventHook<CRDTDoc>();
 	const errorHook = createEventHook<Error>();
-	const disconnectedHook = createEventHook<void>();
+	const disconnectedHook = createEventHook();
 
 	// Reactive state
 	const state = ref<CRDTSyncState>('idle');
