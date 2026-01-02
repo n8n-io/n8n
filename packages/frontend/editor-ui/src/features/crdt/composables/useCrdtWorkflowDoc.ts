@@ -257,6 +257,12 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		disconnect();
 	});
 
+	function findNode(nodeId: string): WorkflowNode | undefined {
+		const crdtNode = getCrdtNode(nodeId);
+		if (!crdtNode) return undefined;
+		return crdtNodeToWorkflowNode(nodeId, crdtNode);
+	}
+
 	return {
 		workflowId: docId,
 		state,
@@ -279,5 +285,6 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
+		findNode,
 	};
 }

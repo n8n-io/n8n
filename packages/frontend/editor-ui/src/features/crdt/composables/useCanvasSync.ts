@@ -9,6 +9,7 @@ import type { WorkflowDocument, WorkflowNode } from '../types/workflowDocument.t
 function toVueFlowNode(node: WorkflowNode): Node {
 	return {
 		id: node.id,
+		type: 'crdt-node',
 		position: { x: node.position[0], y: node.position[1] },
 		data: { label: node.name },
 	};

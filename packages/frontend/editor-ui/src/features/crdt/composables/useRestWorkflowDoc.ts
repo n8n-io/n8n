@@ -140,6 +140,10 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		}
 	}
 
+	function findNode(nodeId: string): WorkflowNode | undefined {
+		return nodesCache.value.find((n) => n.id === nodeId);
+	}
+
 	// Event hooks for remote changes (never fire for REST - single user mode)
 	const nodeAddedHook = createEventHook<WorkflowNode>();
 	const nodeRemovedHook = createEventHook<string>();
@@ -178,5 +182,6 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
+		findNode,
 	};
 }

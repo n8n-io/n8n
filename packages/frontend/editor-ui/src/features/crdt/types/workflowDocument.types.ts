@@ -115,4 +115,7 @@ export interface WorkflowDocument {
 
 	/** Subscribe to node parameter changes (future) */
 	onNodeParamsChange: EventHookOn<NodeParamsChange>;
+
+	/** Find a node by ID */
+	findNode(nodeId: string): WorkflowNode | undefined;
 }
