@@ -45,13 +45,13 @@ import { test, expect } from '../../../fixtures/base';
 
 // Configure test to run with multi-main queue mode and observability stack
 test.use({
-	addContainerCapability: {
+	capability: {
 		observability: true,
 		queueMode: { mains: 2, workers: 1 },
 	},
 });
 
-test.describe('Multi-main Observability @capability:observability @capability:multi-main', () => {
+test.describe('Multi-main Observability @capability:observability @mode:multi-main', () => {
 	/**
 	 * Test: Metrics scraping from multi-main cluster
 	 *
