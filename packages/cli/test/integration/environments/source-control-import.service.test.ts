@@ -107,6 +107,9 @@ describe('SourceControlImportService', () => {
 			sourceControlScopedService,
 			mock(),
 			workflowHistoryService,
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 

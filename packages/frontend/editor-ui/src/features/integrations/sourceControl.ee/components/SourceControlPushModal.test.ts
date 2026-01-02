@@ -352,7 +352,7 @@ describe('SourceControlPushModal', () => {
 
 		expect(getByRole('alert').textContent).toContain(
 			[
-				'Changes to variables, tags, folders and projects',
+				'Changes to variables, data tables, tags, folders and projects',
 				'Variables : at least one new or modified.',
 				'Tags : at least one new or modified.',
 				'Folders : at least one new or modified.',

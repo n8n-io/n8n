@@ -23,6 +23,9 @@ import {
 	WorkflowTagMappingRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
@@ -47,6 +50,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FILE,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
@@ -64,6 +68,7 @@ import type {
 	ExportableCredential,
 	StatusExportableCredential,
 } from './types/exportable-credential';
+import type { ExportableDataTable } from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
@@ -160,6 +165,9 @@ export class SourceControlImportService {
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly dataTableRepository: DataTableRepository,
+		private readonly dataTableColumnRepository: DataTableColumnRepository,
+		private readonly dataTableDDLService: DataTableDDLService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -452,6 +460,49 @@ export class SourceControlImportService {
 
 	async getLocalGlobalVariablesFromDb(): Promise<Variables[]> {
 		return await this.variablesService.getAllCached({ globalOnly: true });
+	}
+
+	async getRemoteDataTablesFromFile(): Promise<ExportableDataTable[]> {
+		const dataTablesFile = await glob(SOURCE_CONTROL_DATATABLES_EXPORT_FILE, {
+			cwd: this.gitFolder,
+			absolute: true,
+		});
+		if (dataTablesFile.length > 0) {
+			return jsonParse<ExportableDataTable[]>(
+				await fsReadFile(dataTablesFile[0], { encoding: 'utf8' }),
+				{
+					fallbackValue: [],
+				},
+			);
+		}
+		return [];
+	}
+
+	async getLocalDataTablesFromDb(): Promise<ExportableDataTable[]> {
+		try {
+			const dataTables = await this.dataTableRepository.find({
+				relations: ['columns'],
+			});
+			return dataTables.map((table) => ({
+				id: table.id,
+				name: table.name,
+				projectId: table.projectId,
+				columns: (table.columns || []).map((col) => ({
+					id: col.id,
+					name: col.name,
+					type: col.type,
+					index: col.index,
+				})),
+				createdAt: table.createdAt.toISOString(),
+				updatedAt: table.updatedAt.toISOString(),
+			}));
+		} catch (error) {
+			// Return empty array if DataTable entity is not registered (e.g., in test environments)
+			if (error instanceof Error && error.message.includes('No metadata for "DataTable"')) {
+				return [];
+			}
+			throw error;
+		}
 	}
 
 	async getRemoteFoldersAndMappingsFromFile(context: SourceControlContext): Promise<{
@@ -1088,6 +1139,121 @@ export class SourceControlImportService {
 		return await this.importVariables(importedVariables, valueOverrides);
 	}
 
+	async importDataTablesFromWorkFolder(candidate: SourceControlledFile, userId: string) {
+		const importedDataTables = jsonParse<ExportableDataTable[]>(
+			await fsReadFile(candidate.file, { encoding: 'utf8' }),
+			{ fallbackValue: [] },
+		);
+
+		if (importedDataTables.length === 0) {
+			return;
+		}
+
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+		const projects = await this.projectRepository.find({ select: ['id'] });
+		const existingProjectIds = new Set(projects.map((p) => p.id));
+
+		// Get database type from the repository's connection
+		const dbType = this.dataTableRepository.manager.connection.options.type;
+
+		const result: { imported: string[] } = { imported: [] };
+
+		for (const dataTable of importedDataTables) {
+			try {
+				// Use personal project as fallback if referenced project doesn't exist
+				const targetProjectId = existingProjectIds.has(dataTable.projectId)
+					? dataTable.projectId
+					: personalProject.id;
+
+				if (targetProjectId !== dataTable.projectId) {
+					this.logger.info(
+						`Project ${dataTable.projectId} not found for data table ${dataTable.name}, using personal project ${personalProject.id} instead`,
+					);
+				}
+
+				// Check if data table already exists
+				const existingDataTable = await this.dataTableRepository.findOne({
+					where: { id: dataTable.id },
+					relations: ['columns'],
+				});
+
+				const isNewTable = !existingDataTable;
+
+				// Upsert data table
+				await this.dataTableRepository.upsert(
+					{
+						id: dataTable.id,
+						name: dataTable.name,
+						project: { id: targetProjectId },
+					},
+					['id'],
+				);
+
+				// Get existing columns for this table to handle deletions/updates
+				const existingColumns = await this.dataTableColumnRepository.find({
+					where: { dataTable: { id: dataTable.id } },
+					select: ['id', 'name'],
+				});
+				const existingColumnIds = new Set(existingColumns.map((c) => c.id));
+				const existingColumnNameMap = new Map(existingColumns.map((c) => [c.id, c.name]));
+				const importedColumnIds = new Set(dataTable.columns.map((c) => c.id));
+
+				// Delete columns that no longer exist in the imported data
+				const columnsToDelete = Array.from(existingColumnIds).filter(
+					(id) => !importedColumnIds.has(id),
+				);
+				if (columnsToDelete.length > 0) {
+					if (!isNewTable) {
+						// Drop columns from physical table
+						for (const columnId of columnsToDelete) {
+							const columnName = existingColumnNameMap.get(columnId);
+							if (columnName) {
+								await this.dataTableDDLService.dropColumnFromTable(
+									dataTable.id,
+									columnName,
+									dbType,
+								);
+							}
+						}
+					}
+					await this.dataTableColumnRepository.delete({ id: In(columnsToDelete) });
+				}
+
+				// Upsert columns
+				const columnEntities = [];
+				for (const column of dataTable.columns) {
+					const columnEntity = await this.dataTableColumnRepository.save({
+						id: column.id,
+						name: column.name,
+						type: column.type as 'string' | 'number' | 'boolean' | 'date',
+						index: column.index,
+						dataTable: { id: dataTable.id },
+					});
+					columnEntities.push(columnEntity);
+
+					// Add new columns to existing physical table
+					if (!isNewTable && !existingColumnIds.has(column.id)) {
+						await this.dataTableDDLService.addColumn(dataTable.id, columnEntity, dbType);
+					}
+				}
+
+				// Create physical table for new data tables
+				if (isNewTable) {
+					await this.dataTableDDLService.createTableWithColumns(dataTable.id, columnEntities);
+				}
+
+				result.imported.push(dataTable.name);
+			} catch (error) {
+				this.logger.error(`Failed to import data table ${dataTable.name}`, {
+					error: ensureError(error),
+				});
+			}
+		}
+
+		this.logger.info(`Imported ${result.imported.length} data tables`);
+		return result;
+	}
+
 	/**
 	 * Reads project files candidates from the work folder and imports them into the database.
 	 *
@@ -1201,6 +1367,18 @@ export class SourceControlImportService {
 		for (const candidate of candidates) {
 			await this.variablesService.delete(candidate.id);
 		}
+	}
+
+	async deleteDataTablesNotInWorkfolder(candidates: SourceControlledFile[]) {
+		if (candidates.length === 0) {
+			return;
+		}
+		const candidateIds = candidates.map((c) => c.id);
+
+		// Columns will be cascade deleted when data table is deleted
+		await this.dataTableRepository.delete({
+			id: In(candidateIds),
+		});
 	}
 
 	async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {

@@ -21,6 +21,7 @@ import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
@@ -43,6 +44,7 @@ describe('SourceControlExportService', () => {
 	const variablesService = mock<VariablesService>();
 	const folderRepository = mock<FolderRepository>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const dataTableRepository = mock<DataTableRepository>();
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -56,6 +58,7 @@ describe('SourceControlExportService', () => {
 		folderRepository,
 		sourceControlScopedService,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		dataTableRepository,
 	);
 
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');

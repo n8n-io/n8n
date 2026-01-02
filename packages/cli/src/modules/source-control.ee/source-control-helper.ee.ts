@@ -12,6 +12,7 @@ import path from 'path';
 import { License } from '@/license';
 
 import {
+	SOURCE_CONTROL_DATATABLES_EXPORT_FILE,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -44,6 +45,10 @@ export function getCredentialExportPath(
 
 export function getVariablesPath(gitFolder: string): string {
 	return safeJoinPath(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+}
+
+export function getDataTablesPath(gitFolder: string): string {
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FILE);
 }
 
 export function getTagsPath(gitFolder: string): string {
@@ -164,11 +169,12 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 }
 
 function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
-	return (
-		files.filter((file, index, self) => {
-			return self.findIndex((f) => f.id === file.id) === index;
-		}) || []
-	);
+	if (!files || !Array.isArray(files)) {
+		return [];
+	}
+	return files.filter((file, index, self) => {
+		return self.findIndex((f) => f.id === file.id) === index;
+	});
 }
 
 export function getTrackingInformationFromPullResult(

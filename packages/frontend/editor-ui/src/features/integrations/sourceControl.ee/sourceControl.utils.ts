@@ -96,6 +96,7 @@ const pullMessage = ({
 	credential,
 	tags,
 	variables,
+	datatable,
 	workflow,
 	folders,
 	project,
@@ -122,6 +123,15 @@ const pullMessage = ({
 
 	if (variables?.length) {
 		messages.push(i18n.baseText('generic.variable_plural'));
+	}
+
+	if (datatable?.length) {
+		messages.push(
+			i18n.baseText('generic.datatable', {
+				adjustToNumber: datatable.length,
+				interpolate: { count: datatable.length },
+			}),
+		);
 	}
 
 	if (tags?.length) {
@@ -156,14 +166,17 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow, folders, project } = groupBy(files, 'type');
+	const { credential, tags, variables, datatable, workflow, folders, project } = groupBy(
+		files,
+		'type',
+	);
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow, folders, project }),
+			message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
 			type: 'success' as const,
 		},
 	];

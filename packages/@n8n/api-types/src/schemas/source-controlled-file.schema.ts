@@ -8,6 +8,7 @@ const FileTypeSchema = z.enum([
 	'file',
 	'folders',
 	'project',
+	'datatable',
 ]);
 export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.Values;
 
