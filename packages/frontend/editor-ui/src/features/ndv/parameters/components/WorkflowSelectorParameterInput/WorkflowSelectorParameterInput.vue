@@ -341,7 +341,7 @@ const onAddResourceClicked = async () => {
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
-			:disable-inactive-items="true"
+			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
@@ -355,20 +355,16 @@ const onAddResourceClicked = async () => {
 				</div>
 			</template>
 			<template #item-badge="{ item, isHovered }">
-				<N8nTooltip
-					v-if="!item.active && isHovered"
-					:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
-					placement="top"
-				>
-					<span
-						:class="[
-							$style.inactiveBadge,
-							!item.isArchived ? $style.inactiveBadgeAlone : $style.inactiveBadgeWithArchived,
-						]"
+				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
+					<N8nTooltip
+						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+						placement="top"
 					>
-						<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
-					</span>
-				</N8nTooltip>
+						<span :class="$style.inactiveBadge">
+							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
+						</span>
+					</N8nTooltip>
+				</span>
 			</template>
 			<div
 				:class="{
@@ -489,17 +485,15 @@ const onAddResourceClicked = async () => {
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
 
+.inactiveBadgeWrapper {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
 .inactiveBadge {
 	display: inline-flex;
 	align-items: center;
 	color: var(--color--warning);
-}
-
-.inactiveBadgeAlone {
-	margin-left: auto;
-}
-
-.inactiveBadgeWithArchived {
-	margin-left: var(--spacing--3xs);
 }
 </style>

@@ -11,7 +11,7 @@ import {
 	realpath as fsRealpath,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { resolve, posix } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -50,13 +50,16 @@ async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
 function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	const { blockFilePatterns } = Container.get(SecurityConfig);
 
+	// Normalize path separators for cross-platform compatibility
+	const normalizedPath = posix.normalize(resolvedFilePath.replace(/\\/g, '/'));
+
 	return blockFilePatterns
 		.split(';')
 		.map((pattern) => pattern.trim())
 		.filter((pattern) => pattern)
 		.some((pattern) => {
 			try {
-				return new RegExp(pattern, 'mi').test(resolvedFilePath);
+				return new RegExp(pattern, 'mi').test(normalizedPath);
 			} catch {
 				return true;
 			}

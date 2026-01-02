@@ -1,5 +1,6 @@
 {
 	"globalEnv": ["CI", "COVERAGE_ENABLED", "BUILD_WITH_COVERAGE"],
+	"globalPassThroughEnv": ["CODECOV_TOKEN"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {

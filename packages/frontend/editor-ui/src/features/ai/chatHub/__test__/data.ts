@@ -10,6 +10,17 @@ import type {
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import type { ChatMessage } from '../chat.types';
 
+export type SimulateStreamChunkFn = (
+	type: EnrichedStructuredChunk['type'],
+	content: string,
+	metadata: Partial<EnrichedStructuredChunk['metadata']>,
+) => void;
+
+export function wrapOnMessageUpdate(fn: (chunk: EnrichedStructuredChunk) => void) {
+	return (...[type, content, metadata]: Parameters<SimulateStreamChunkFn>) =>
+		fn(createMockStreamChunk({ type, content, metadata }));
+}
+
 export function createMockAgent(overrides: Partial<ChatModelDto> = {}): ChatModelDto {
 	return {
 		name: 'Test Agent',

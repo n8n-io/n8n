@@ -349,6 +349,8 @@ export class ChatHubEditMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	newAttachments: z.array(chatAttachmentSchema),
+	keepAttachmentIndices: z.array(z.number()),
 	timeZone: TimeZoneSchema,
 }) {}
 

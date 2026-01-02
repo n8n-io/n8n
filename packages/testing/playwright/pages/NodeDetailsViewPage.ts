@@ -225,11 +225,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.webhook-url').textContent();
 	}
 
-	getVisiblePoppers() {
-		// Match Reka UI popovers (data-side is unique to Reka UI positioned content)
-		return this.page.locator('[data-state="open"][data-side]');
-	}
-
 	async clearExpressionEditor(parameterName?: string) {
 		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
@@ -282,11 +277,6 @@ export class NodeDetailsViewPage extends BasePage {
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
 		await this.selectFromVisibleDropdown(optionName);
-	}
-
-	getVisiblePopper() {
-		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
-		return this.page.locator('.el-popper:visible, [data-state="open"][role="dialog"]');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {

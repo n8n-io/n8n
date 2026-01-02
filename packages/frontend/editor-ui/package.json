@@ -109,6 +109,7 @@
     "xss": "catalog:"
   },
   "devDependencies": {
+    "@codecov/vite-plugin": "^1.9.1",
     "@faker-js/faker": "^8.0.2",
     "@iconify/json": "^2.2.349",
     "@n8n/eslint-config": "workspace:*",

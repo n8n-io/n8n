@@ -65,7 +65,7 @@ const BASE_ENV: Record<string, string> = {
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	N8N_METRICS: 'true',
-	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
+	NODE_ENV: 'development',
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 	N8N_LICENSE_CERT: process.env.N8N_LICENSE_CERT ?? '',
