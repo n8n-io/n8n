@@ -36,6 +36,7 @@ import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -315,6 +316,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
+		Container.get(WorkflowHistoryCompactionService).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();

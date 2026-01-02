@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -391,94 +390,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('Save button state', () => {
-		it('should show "Saved" label when workflow is saved', () => {
-			uiStore.stateIsDirty = false;
-
-			const { getByText } = renderComponent();
-
-			expect(getByText('Saved')).toBeInTheDocument();
-		});
-
-		it('should show save button when workflow has unsaved changes', () => {
-			uiStore.stateIsDirty = true;
-
-			const { queryByText, getByTestId } = renderComponent();
-
-			expect(queryByText('Saved')).not.toBeInTheDocument();
-			expect(getByTestId('workflow-save-button')).toBeInTheDocument();
-		});
-
-		it('should emit workflow:saved event when save button is clicked', async () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId, emitted } = renderComponent();
-
-			await userEvent.click(getByTestId('workflow-save-button'));
-
-			expect(emitted('workflow:saved')).toBeTruthy();
-		});
-
-		it('should contain disabled save button when update permission is missing', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, update: false },
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButton).toBeDisabled();
-		});
-
-		it('should contain disabled save button when workflow is saving', () => {
-			uiStore.stateIsDirty = true;
-			uiStore.isActionActive.workflowSaving = true;
-
-			const { getByTestId } = renderComponent();
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButton).toBeDisabled();
-		});
-	});
-
 	describe('Read-only mode', () => {
-		it('should render save button when not read-only and has update permission', () => {
-			uiStore.stateIsDirty = true;
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					readOnly: false,
-					workflowPermissions: { update: true },
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).not.toBeDisabled();
-		});
-
-		it('should render disabled save button when read-only', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					readOnly: true,
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).toBeDisabled();
-		});
-
 		it('should render publish button when read-only', () => {
 			const { getByTestId } = renderComponent({
 				props: {
@@ -502,22 +414,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
-		});
-
-		it('should render disabled save button when workflow is archived', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					isArchived: true,
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).toBeDisabled();
 		});
 	});
 });

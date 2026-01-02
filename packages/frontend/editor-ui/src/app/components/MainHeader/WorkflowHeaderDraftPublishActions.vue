@@ -5,16 +5,16 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import {
 	getLastPublishedVersion,
 	generateVersionName,
@@ -34,18 +34,16 @@ const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
 
-defineEmits<{
-	'workflow:saved': [];
-}>();
-
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
-// We're dropping the save button soon with the autosave so this will also be dropped
+
+const autosaveStore = useWorkflowAutosaveStore();
+const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
+
 const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
@@ -54,14 +52,50 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
+/**
+ * Cancel autosave if scheduled or wait for it to finish if in progress
+ * Save immediately if autosave idle or cancelled
+ */
+const saveBeforePublish = async () => {
+	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
+		console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
+		autoSaveForPublish.value = true;
+		try {
+			await autosaveStore.pendingAutoSave;
+			console.log('[Publish] ✅ Autosave completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else if (autosaveStore.autoSaveState === AutoSaveState.Scheduled) {
+		console.log('[Publish] ⏹️ Cancelling scheduled autosave');
+		cancelAutoSave();
+	}
+
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		console.log('[Publish] ⏳ Saving unsaved changes before publish');
+		autoSaveForPublish.value = true;
+		try {
+			const saved = await saveCurrentWorkflow({}, true);
+			if (!saved) {
+				console.log('[Publish] ❌ Save failed');
+				throw new Error('Failed to save workflow before publish');
+			}
+			console.log('[Publish] ✅ Save completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else {
+		console.log('[Publish] No unsaved changes, skipping save');
+	}
+};
+
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		autoSaveForPublish.value = true;
-		const saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
-		if (!saved) {
-			// If save failed, don't open the modal
+		try {
+			await saveBeforePublish();
+		} catch (error) {
+			console.error('[Publish] ❌ Error saving workflow before publish:', error);
 			return;
 		}
 	}
@@ -78,10 +112,6 @@ const foundTriggers = computed(() =>
 
 const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
-});
-
-const isWorkflowSaved = computed(() => {
-	return !uiStore.stateIsDirty && !props.isNewWorkflow;
 });
 
 const publishButtonEnabled = computed(() => {
@@ -192,21 +222,6 @@ defineExpose({
 				</N8nButton>
 			</N8nTooltip>
 		</div>
-		<SaveButton
-			type="primary"
-			:saved="isWorkflowSaved"
-			:disabled="
-				isWorkflowSaving ||
-				readOnly ||
-				isArchived ||
-				(!isNewWorkflow && !workflowPermissions.update)
-			"
-			:is-saving="isWorkflowSaving"
-			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-			data-test-id="workflow-save-button"
-			@click="$emit('workflow:saved')"
-		/>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu
 			:id="id"
@@ -219,7 +234,6 @@ defineExpose({
 			:tags="tags"
 			:current-folder="currentFolder"
 			:meta="meta"
-			@workflow:saved="$emit('workflow:saved')"
 		/>
 	</div>
 </template>

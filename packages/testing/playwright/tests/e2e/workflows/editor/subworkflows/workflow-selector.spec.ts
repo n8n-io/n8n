@@ -1,6 +1,5 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
-import { n8nPage } from '../../../../../pages/n8nPage';
 
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
@@ -87,18 +86,11 @@ test.describe('Workflow Selector Parameter', () => {
 		await expect(addResourceItem).toHaveCount(1);
 		await expect(addResourceItem.getByText(/Create a/)).toBeVisible();
 
-		const { request, page } = await n8n.ndvComposer.createNewSubworkflowWithRedirect('workflowId');
-		const requestBody = request.postDataJSON();
-
-		expect(requestBody).toHaveProperty('name');
-		expect(requestBody.name).toContain('Sub-Workflow');
-		expect(requestBody.nodes).toBeInstanceOf(Array);
-		expect(requestBody.nodes).toHaveLength(2);
-		expect(requestBody.nodes[0]).toHaveProperty('name', 'When Executed by Another Workflow');
-		expect(requestBody.nodes[1]).toHaveProperty('name', 'Replace me with your logic');
-
-		const newPage = new n8nPage(page);
-		expect(newPage.page.url()).toMatch(/\/workflow\/.+/);
-		await newPage.page.close();
+		const secondPage = await n8n.start.fromNewPage(async () => {
+			await n8n.ndvComposer.createNewSubworkflow('workflowId');
+		});
+		await expect(secondPage.canvas.nodeByName('When Executed by Another Workflow')).toBeVisible();
+		await expect(secondPage.canvas.nodeByName('Replace me with your logic')).toBeVisible();
+		await expect(secondPage.page).toHaveURL(/\/workflow\/.+/);
 	});
 });

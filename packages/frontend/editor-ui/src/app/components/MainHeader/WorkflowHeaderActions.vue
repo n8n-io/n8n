@@ -9,7 +9,6 @@ import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
-import SaveButton from '@/app/components/SaveButton.vue';
 import { I18nT } from 'vue-i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -42,12 +41,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'workflow:deactivated': [];
-	'workflow:saved': [];
 }>();
-
-const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive.workflowSaving;
-});
 
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsMenu>>('actionsMenu');
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
@@ -131,21 +125,6 @@ defineExpose({
 			</template>
 		</EnterpriseEdition>
 		<div :class="$style.group">
-			<SaveButton
-				type="primary"
-				:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-				:disabled="
-					isWorkflowSaving ||
-					readOnly ||
-					isArchived ||
-					(!isNewWorkflow && !workflowPermissions.update)
-				"
-				:is-saving="isWorkflowSaving"
-				:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-				:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-				data-test-id="workflow-save-button"
-				@click="$emit('workflow:saved')"
-			/>
 			<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 			<ActionsMenu
 				:id="id"
@@ -158,7 +137,6 @@ defineExpose({
 				:tags="tags"
 				:current-folder="currentFolder"
 				:meta="meta"
-				@workflow:saved="$emit('workflow:saved')"
 			/>
 		</div>
 	</div>

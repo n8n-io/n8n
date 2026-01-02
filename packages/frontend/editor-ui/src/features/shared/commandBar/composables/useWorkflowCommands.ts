@@ -10,7 +10,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
@@ -33,7 +32,6 @@ const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
 	OPEN_SUB_WORKFLOW: 'open-sub-workflow',
 	TEST_WORKFLOW: 'test-workflow',
-	SAVE_WORKFLOW: 'save-workflow',
 	SELECT_ALL: 'select-all',
 	OPEN_WORKFLOW_SETTINGS: 'open-workflow-settings',
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
@@ -65,10 +63,8 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
-	const workflowSaving = useWorkflowSaving({ router });
 
 	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
-	const isWorkflowSaving = computed(() => uiStore.isActionActive.workflowSaving);
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
@@ -116,37 +112,6 @@ export function useWorkflowCommands(): CommandGroup {
 	const canvasActions = computed<CommandBarItem[]>(() => [
 		...(hasPermission('update') && !isArchived.value
 			? [
-					...(!isWorkflowSaving.value
-						? [
-								{
-									id: ITEM_ID.SAVE_WORKFLOW,
-									title: {
-										component: CommandBarItemTitle,
-										props: {
-											title: i18n.baseText('commandBar.workflow.save'),
-											shortcut: {
-												metaKey: true,
-												keys: ['s'],
-											},
-										},
-									},
-									keywords: [i18n.baseText('commandBar.workflow.save')],
-									section: i18n.baseText('commandBar.sections.workflow'),
-									handler: async () => {
-										const saved = await workflowSaving.saveCurrentWorkflow();
-										if (saved) {
-											canvasEventBus.emit('saved:workflow');
-										}
-									},
-									icon: {
-										component: N8nIcon,
-										props: {
-											icon: 'save',
-										},
-									},
-								},
-							]
-						: []),
 					{
 						id: ITEM_ID.PUBLISH_WORKFLOW,
 						title: i18n.baseText('commandBar.workflow.publish'),
