@@ -622,7 +622,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
 				agentRequest: {
-					query: 'query',
+					query: { 'Test node': { query: 'query' } },
 					tool: {
 						name: 'tool',
 					},
