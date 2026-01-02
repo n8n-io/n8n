@@ -37,6 +37,8 @@ onMounted(() => {
 	position: relative;
 	display: grid;
 	height: 100vh;
+	width: 100%;
+	grid-area: layout;
 	grid-template-areas:
 		'banners banners'
 		'sidebar header'

@@ -116,6 +116,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 	height: 100vh;
 	overflow: hidden;
 	display: grid;
-	grid-template-columns: 1fr auto;
+	grid-template-rows: auto 1fr;
+	grid-template-areas:
+		'banners'
+		'layout';
 }
 </style>

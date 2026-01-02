@@ -410,7 +410,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNIN,
 		component: SigninView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -422,7 +422,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNUP,
 		component: SignupView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -434,7 +434,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SIGNOUT,
 		component: SignoutView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -454,7 +454,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SETUP,
 		component: SetupView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -466,7 +466,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.FORGOT_PASSWORD,
 		component: ForgotMyPasswordView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -478,7 +478,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.CHANGE_PASSWORD,
 		component: ChangePasswordView,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -800,7 +800,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SAML_ONBOARDING,
 		component: SamlOnboarding,
 		meta: {
-			layout: 'blank',
+			layout: 'auth',
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
 				custom: () => {

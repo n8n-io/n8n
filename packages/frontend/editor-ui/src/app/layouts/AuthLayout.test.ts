@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import BlankLayout from './BlankLayout.vue';
+import AuthLayout from './AuthLayout.vue';
 
-const renderComponent = createComponentRenderer(BlankLayout, {
+const renderComponent = createComponentRenderer(AuthLayout, {
 	global: {
 		stubs: {
 			RouterView: {
@@ -12,7 +12,7 @@ const renderComponent = createComponentRenderer(BlankLayout, {
 	},
 });
 
-describe('BlankLayout', () => {
+describe('AuthLayout', () => {
 	it('should render the layout without throwing', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
