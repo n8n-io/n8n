@@ -20,17 +20,7 @@ export const cssVariables = `
   --chat--spacing: 1rem;
   --chat--border-radius: 0.25rem;
   --chat--transition-duration: 0.15s;
-  --chat--font-family: (
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen-Sans,
-    Ubuntu,
-    Cantarell,
-    'Helvetica Neue',
-    sans-serif
-  );
+  --chat--font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
 
   /* Window Dimensions */
   --chat--window--width: 400px;

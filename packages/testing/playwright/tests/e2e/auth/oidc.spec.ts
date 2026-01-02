@@ -8,9 +8,7 @@ import {
 import { test, expect } from '../../../fixtures/base';
 
 test.use({
-	addContainerCapability: {
-		oidc: true,
-	},
+	capability: 'oidc',
 	ignoreHTTPSErrors: true, // Keycloak uses self-signed certs
 });
 

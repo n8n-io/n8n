@@ -2230,7 +2230,7 @@
 	"resourceLocator.placeholder.searchOrCreate": "Search or create...",
 	"resourceLocator.placeholder.search": "Search...",
 	"resourceLocator.url.placeholder": "Enter URL...",
-	"resourceLocator.workflow.inactive.tooltip": "Must be published before using",
+	"resourceLocator.workflow.inactive.tooltip": "Not published. Can be used for manual testing, but must be published before running in production.",
 	"resourceMapper.autoMappingNotice": "In this mode, make sure the incoming data fields are named the same as the {fieldWord} in {serviceName}. (Use an 'Edit Fields' node before this node to change them if required.)",
 	"resourceMapper.mappingMode.label": "Mapping Column Mode",
 	"resourceMapper.mappingMode.defineBelow.name": "Map Each Column Manually",
