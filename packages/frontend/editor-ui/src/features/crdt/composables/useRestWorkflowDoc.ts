@@ -57,6 +57,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 			position: [node.position[0], node.position[1]],
 			name: node.name,
 			type: node.type,
+			typeVersion: node.typeVersion,
 			parameters: node.parameters,
 		};
 	}
@@ -107,6 +108,10 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		nodesCache.value = [...nodesCache.value, node];
 	}
 
+	function addNodes(nodes: WorkflowNode[]): void {
+		nodesCache.value = [...nodesCache.value, ...nodes];
+	}
+
 	function removeNode(nodeId: string): void {
 		nodesCache.value = nodesCache.value.filter((n) => n.id !== nodeId);
 	}
@@ -155,6 +160,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		getNodes,
 		getEdges,
 		addNode,
+		addNodes,
 		removeNode,
 		updateNodePosition,
 		updateNodeParams,

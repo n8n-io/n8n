@@ -18,7 +18,7 @@ function toVueFlowNode(node: WorkflowNode): Node {
  * Canvas sync adapter - bridges WorkflowDocument with Vue Flow.
  *
  * Handles:
- * - Initial nodes for Vue Flow render
+ * - Initial nodes returned for VueFlow :nodes prop
  * - Local changes: Vue Flow events → document mutations
  * - Remote changes: document events → Vue Flow updates
  *
@@ -29,17 +29,15 @@ function toVueFlowNode(node: WorkflowNode): Node {
  * const doc = useCrdtWorkflowDoc({ docId: 'workflow-123' });
  * const instance = useVueFlow('workflow-123');
  *
- * const { initialNodes } = useCanvasSync(doc, instance);
+ * // Wire up sync and get initial nodes
+ * const initialNodes = useCanvasSync(doc, instance);
  *
- * // Pass initialNodes to <VueFlow :nodes="initialNodes" />
+ * // Pass initial nodes to VueFlow
+ * // <VueFlow :id="doc.workflowId" :nodes="initialNodes" fit-view-on-init />
  * ```
  */
-export function useCanvasSync(
-	doc: WorkflowDocument,
-	instance: VueFlowStore,
-): { initialNodes: Node[] } {
+export function useCanvasSync(doc: WorkflowDocument, instance: VueFlowStore): Node[] {
 	// --- Initial nodes for Vue Flow ---
-	// Only computed once when doc is ready
 	const initialNodes = doc.getNodes().map(toVueFlowNode);
 
 	// --- Local → Document ---
@@ -84,5 +82,5 @@ export function useCanvasSync(
 		offNodePosition();
 	});
 
-	return { initialNodes };
+	return initialNodes;
 }

@@ -71,6 +71,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		const position = crdtNode.get('position') as [number, number] | undefined;
 		const name = crdtNode.get('name') as string | undefined;
 		const type = crdtNode.get('type') as string | undefined;
+		const typeVersion = crdtNode.get('typeVersion') as number | undefined;
 		const parameters = crdtNode.get('parameters') as Record<string, unknown> | undefined;
 
 		return {
@@ -78,6 +79,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			position: position ?? [0, 0],
 			name: name ?? id,
 			type: type ?? 'unknown',
+			typeVersion: typeVersion ?? 1,
 			parameters: parameters ?? {},
 		};
 	}
@@ -169,10 +171,28 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			crdtNode.set('position', node.position);
 			crdtNode.set('name', node.name);
 			crdtNode.set('type', node.type);
+			crdtNode.set('typeVersion', node.typeVersion);
 			crdtNode.set('parameters', node.parameters);
 			nodesMap.set(node.id, crdtNode);
 		});
 		// Hook triggers via onDeepChange subscription (handles both local + remote)
+	}
+
+	function addNodes(nodes: WorkflowNode[]): void {
+		if (!doc || nodes.length === 0) return;
+
+		doc.transact(() => {
+			const nodesMap = doc!.getMap('nodes');
+			for (const node of nodes) {
+				const crdtNode = doc!.createMap();
+				crdtNode.set('position', node.position);
+				crdtNode.set('name', node.name);
+				crdtNode.set('type', node.type);
+				crdtNode.set('typeVersion', node.typeVersion);
+				crdtNode.set('parameters', node.parameters);
+				nodesMap.set(node.id, crdtNode);
+			}
+		});
 	}
 
 	function removeNode(nodeId: string): void {
@@ -234,6 +254,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		getNodes,
 		getEdges,
 		addNode,
+		addNodes,
 		removeNode,
 		updateNodePosition,
 		updateNodeParams,

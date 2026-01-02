@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import CrdtTestContent from '../components/CrdtTestContent.vue';
 import CrdtWorkflowProvider from '../components/CrdtWorkflowProvider.vue';
-import RestWorkflowProvider from '../components/RestWorkflowProvider.vue';
+// import RestWorkflowProvider from '../components/RestWorkflowProvider.vue';
 
 const workflowId = 'olaBF64OShV5q70u';
-const test = 'Rj2O3ipqLBlwS11w';
+// const test = 'ser/Rj2O3ipqLBlwS11w';
 </script>
 
 <template>
@@ -12,9 +12,6 @@ const test = 'Rj2O3ipqLBlwS11w';
 		<CrdtWorkflowProvider :doc-id="workflowId">
 			<CrdtTestContent />
 		</CrdtWorkflowProvider>
-		<RestWorkflowProvider :workflow-id="test">
-			<CrdtTestContent />
-		</RestWorkflowProvider>
 	</div>
 </template>
 

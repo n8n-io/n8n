@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { VueFlow, useVueFlow } from '@vue-flow/core';
-import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import { useCanvasSync } from '../composables/useCanvasSync';
+import { useWorkflowDoc } from '../composables/useWorkflowSync';
 
 // Get injected document
 const doc = useWorkflowDoc();
@@ -9,8 +9,8 @@ const doc = useWorkflowDoc();
 // Get VueFlow instance
 const instance = useVueFlow(doc.workflowId);
 
-// Wire document ↔ Vue Flow (bidirectional sync)
-const { initialNodes } = useCanvasSync(doc, instance);
+// Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes
+const initialNodes = useCanvasSync(doc, instance);
 
 function handleAddNode() {
 	const position: [number, number] = [Math.random() * 300, Math.random() * 300];

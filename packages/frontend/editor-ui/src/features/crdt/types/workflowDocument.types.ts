@@ -15,6 +15,7 @@ export interface WorkflowNode {
 	position: [number, number];
 	name: string;
 	type: string;
+	typeVersion: number;
 	parameters: Record<string, unknown>;
 }
 
@@ -72,6 +73,9 @@ export interface WorkflowDocument {
 
 	/** Add a new node */
 	addNode(node: WorkflowNode): void;
+
+	/** Add multiple nodes in a single transaction */
+	addNodes(nodes: WorkflowNode[]): void;
 
 	/** Remove a node by ID */
 	removeNode(nodeId: string): void;
