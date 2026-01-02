@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
@@ -106,6 +107,11 @@ export async function userHasScopes(
 	}
 
 	if (dataTableId) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (!moduleRegistry.isActive('data-table')) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
 		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
