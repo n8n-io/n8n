@@ -46,7 +46,7 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 				const { skip, take, sortBy, search } = req.query;
-				const filterString = req.query.filter as string | undefined;
+				const filterString = typeof req.query.filter === 'string' ? req.query.filter : undefined;
 				const filter = filterString ? JSON.parse(filterString) : undefined;
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
