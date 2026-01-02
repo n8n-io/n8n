@@ -285,8 +285,12 @@ const getRegularToolParameters = (toolNode: INode, omitFallbackField = false) =>
 		const type = value.type ?? 'string';
 		const initialValue = inputQuery?.[value.key]
 			? inputQuery[value.key]
-			: (agentRequestStore.getQueryValue(workflowsStore.workflowId, toolNode.id, value.key) ??
-				mapTypes[type]?.defaultValue);
+			: (agentRequestStore.getQueryValue(
+					workflowsStore.workflowId,
+					toolNode.id,
+					toolNode.name,
+					value.key,
+				) ?? mapTypes[type]?.defaultValue);
 
 		result.push({
 			name: 'query.' + value.key,
@@ -311,7 +315,7 @@ const getRegularToolParameters = (toolNode: INode, omitFallbackField = false) =>
 		const inputQuery = inputOverrides?.[key];
 		const queryValue =
 			inputQuery ??
-			agentRequestStore.getQueryValue(workflowsStore.workflowId, toolNode.id, key) ??
+			agentRequestStore.getQueryValue(workflowsStore.workflowId, toolNode.id, toolNode.name, key) ??
 			'';
 
 		result.unshift({
