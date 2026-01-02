@@ -1,3 +1,14 @@
+## [1.123.10](https://github.com/n8n-io/n8n/compare/n8n@1.123.9...n8n@1.123.10) (2025-12-31)
+
+
+### Bug Fixes
+
+* **core:**  Modify path validation to work cross platforms ([#23740](https://github.com/n8n-io/n8n/issues/23740)) ([f7cf22f](https://github.com/n8n-io/n8n/commit/f7cf22f92c8e79fad65692d3ce201543c1cd1127))
+* Sharepoint file selection correctly applies filter ([#23742](https://github.com/n8n-io/n8n/issues/23742)) ([cbbd64f](https://github.com/n8n-io/n8n/commit/cbbd64f0eb32740a73cde0e61229b0724ee5dc4c))
+* **Stripe Trigger Node:** Add Stripe signature verification ([#23741](https://github.com/n8n-io/n8n/issues/23741)) ([5a3d556](https://github.com/n8n-io/n8n/commit/5a3d556ce256bac060549f6070370900a362a43d))
+
+
+
 ## [1.123.9](https://github.com/n8n-io/n8n/compare/n8n@1.123.8...n8n@1.123.9) (2025-12-23)
 
 
