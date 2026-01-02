@@ -566,7 +566,7 @@ describe('useRunWorkflow({ router })', () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 			const dataCaptor = captor();
 			const agentRequest = {
-				query: 'query',
+				query: { 'Test node': { query: 'query' } },
 				toolName: 'tool',
 			};
 

@@ -269,10 +269,14 @@ describe('ManualExecutionService', () => {
 				executionId,
 			);
 
-			expect(mockRun.mock.calls[0][0]).toBe(workflow);
-			expect(mockRun.mock.calls[0][1]).toBeUndefined(); // startNode
-			expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-			expect(mockRun.mock.calls[0][3]).toBeUndefined(); // pinData
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode: undefined,
+				destinationNode: undefined,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should use execution start node when available for full execution', async () => {
@@ -311,10 +315,14 @@ describe('ManualExecutionService', () => {
 
 			expect(manualExecutionService.getExecutionStartNode).toHaveBeenCalledWith(data, workflow);
 
-			expect(mockRun.mock.calls[0][0]).toBe(workflow);
-			expect(mockRun.mock.calls[0][1]).toBe(startNode); // startNode
-			expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-			expect(mockRun.mock.calls[0][3]).toBe(data.pinData); // pinData
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode,
+				destinationNode: undefined,
+				pinData: data.pinData,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should pass the triggerToStartFrom to workflowExecute.run for full execution', async () => {
@@ -354,14 +362,14 @@ describe('ManualExecutionService', () => {
 				executionId,
 			);
 
-			expect(mockRun).toHaveBeenCalledWith(
+			expect(mockRun).toHaveBeenCalledWith({
 				workflow,
-				startNode, // startNode
-				undefined, // destinationNode
-				undefined, // pinData
-				data.triggerToStartFrom, // triggerToStartFrom
-				[],
-			);
+				startNode,
+				destinationNode: undefined,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should not call `runPartialWorkflow2` when destinationNode is undefined', async () => {
@@ -587,11 +595,14 @@ describe('ManualExecutionService', () => {
 
 		await manualExecutionService.runManually(data, workflow, additionalData, executionId);
 
-		expect(mockRun.mock.calls[0][0]).toBe(workflow);
-		expect(mockRun.mock.calls[0][1]).toBeUndefined(); // startNode
-		expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
-		expect(mockRun.mock.calls[0][3]).toBe(data.pinData); // pinData
-		expect(mockRun.mock.calls[0][4]).toBeUndefined(); // triggerToStartFrom
+		expect(mockRun).toHaveBeenCalledWith({
+			workflow,
+			startNode: undefined,
+			destinationNode: undefined,
+			pinData: data.pinData,
+			triggerToStartFrom: undefined,
+			additionalRunFilterNodes: [],
+		});
 	});
 
 	describe('tool partial execution', () => {
@@ -684,14 +695,14 @@ describe('ManualExecutionService', () => {
 
 			expect(data.executionData?.startData?.originalDestinationNode).toEqual(destinationNode);
 
-			expect(mockRun).toHaveBeenCalledWith(
+			expect(mockRun).toHaveBeenCalledWith({
 				workflow,
-				undefined, // startNode
-				{ nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' }, // destinationNode
-				undefined, // pinData
-				data.triggerToStartFrom, // triggerToStartFrom
-				[], // additionalRunFilterNodes
-			);
+				startNode: undefined,
+				destinationNode: { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' },
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should add connected tools to additionalRunFilterNodes when tool is connected through HITL node', async () => {
@@ -762,14 +773,14 @@ describe('ManualExecutionService', () => {
 
 			expect(workflow.getParentNodes).toHaveBeenCalledWith(TOOL_EXECUTOR_NODE_NAME, 'ALL_NON_MAIN');
 
-			expect(mockRun).toHaveBeenCalledWith(
+			expect(mockRun).toHaveBeenCalledWith({
 				workflow,
-				undefined, // startNode
-				{ nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' }, // destinationNode
-				undefined, // pinData
-				data.triggerToStartFrom, // triggerToStartFrom
-				[connectedTool1, connectedTool2], // additionalRunFilterNodes
-			);
+				startNode: undefined,
+				destinationNode: { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' },
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [connectedTool1, connectedTool2],
+			});
 		});
 
 		it('should not rewire graph when destination node is not a tool', async () => {
@@ -829,14 +840,14 @@ describe('ManualExecutionService', () => {
 
 			expect(core.rewireGraph).not.toHaveBeenCalled();
 			expect(data.destinationNode).toEqual(destinationNode);
-			expect(mockRun).toHaveBeenCalledWith(
+			expect(mockRun).toHaveBeenCalledWith({
 				workflow, // original workflow, not rewired
-				undefined, // startNode
-				destinationNode, // original destinationNode
-				undefined, // pinData
-				data.triggerToStartFrom, // triggerToStartFrom
-				[], // additionalRunFilterNodes
-			);
+				startNode: undefined,
+				destinationNode,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
 		});
 
 		it('should save originalDestinationNode even when executionData.startData is undefined', async () => {
