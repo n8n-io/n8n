@@ -313,6 +313,19 @@ export async function runPairwiseLangsmithEvaluation(
 
 		const evalStartTime = Date.now();
 
+		// Determine run type for metadata
+		let runType: 'full' | 'by-category' | 'by-id';
+		let filterValue: string | undefined;
+		if (notionId) {
+			runType = 'by-id';
+			filterValue = notionId;
+		} else if (technique) {
+			runType = 'by-category';
+			filterValue = technique;
+		} else {
+			runType = 'full';
+		}
+
 		// Run evaluation using LangSmith's built-in features
 		await evaluate(target, {
 			data,
@@ -326,6 +339,8 @@ export async function runPairwiseLangsmithEvaluation(
 				repetitions,
 				concurrency,
 				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
+				runType,
+				...(filterValue && { filterValue }),
 			},
 		});
 
