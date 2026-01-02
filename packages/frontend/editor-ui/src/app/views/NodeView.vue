@@ -1958,14 +1958,14 @@ onBeforeRouteLeave(async (to, from, next) => {
  */
 
 onBeforeMount(() => {
-	addPostMessageEventBindings();
-});
-
-onMounted(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
 
+	addPostMessageEventBindings();
+});
+
+onMounted(() => {
 	canvasStore.startLoading();
 
 	documentTitle.reset();
@@ -2025,6 +2025,10 @@ onDeactivated(() => {
 });
 
 onBeforeUnmount(() => {
+	if (!isDemoRoute.value) {
+		pushConnectionStore.pushDisconnect();
+	}
+
 	removeSourceControlEventBindings();
 	removePostMessageEventBindings();
 	removeWorkflowSavedEventBindings();
@@ -2033,12 +2037,6 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
-});
-
-onUnmounted(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushDisconnect();
-	}
 });
 </script>
 

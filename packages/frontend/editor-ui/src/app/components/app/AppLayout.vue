@@ -1,28 +1,18 @@
 <script lang="ts" setup>
 import { useRoute } from 'vue-router';
-import { computed, defineAsyncComponent } from 'vue';
+import { computed } from 'vue';
+
+import DefaultLayout from '@/app/layouts/DefaultLayout.vue';
+import SettingsLayout from '@/app/layouts/SettingsLayout.vue';
+import WorkflowLayout from '@/app/layouts/WorkflowLayout.vue';
+import BlankLayout from '@/app/layouts/BlankLayout.vue';
+import DemoLayout from '@/app/layouts/DemoLayout.vue';
 
 const route = useRoute();
 
 const emit = defineEmits<{
 	mounted: [element: Element];
 }>();
-
-const DefaultLayout = defineAsyncComponent(
-	async () => await import('@/app/layouts/DefaultLayout.vue'),
-);
-
-const SettingsLayout = defineAsyncComponent(
-	async () => await import('@/app/layouts/SettingsLayout.vue'),
-);
-
-const WorkflowLayout = defineAsyncComponent(
-	async () => await import('@/app/layouts/WorkflowLayout.vue'),
-);
-
-const BlankLayout = defineAsyncComponent(async () => await import('@/app/layouts/BlankLayout.vue'));
-
-const DemoLayout = defineAsyncComponent(async () => await import('@/app/layouts/DemoLayout.vue'));
 
 const layout = computed(() => {
 	const layouts = {
@@ -41,7 +31,5 @@ function onMounted(element: Element) {
 }
 </script>
 <template>
-	<Suspense>
-		<Component :is="layout" @mounted="onMounted" />
-	</Suspense>
+	<Component :is="layout" @mounted="onMounted" />
 </template>
