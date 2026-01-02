@@ -1699,6 +1699,26 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		if (includeHitl) {
+			return true;
+		}
+		return !node.endsWith('HitlTool');
+	}
+	return false;
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,

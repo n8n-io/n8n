@@ -1494,6 +1494,7 @@
 	"node.enable": "Activate",
 	"node.delete": "Delete",
 	"node.add": "Add",
+	"node.add-human-review-step": "Add human review step",
 	"node.issues": "Issues",
 	"node.install-to-use": "Install the package to use this node",
 	"node.dirty": "Node configuration changed. Output data may change when this node is run again",

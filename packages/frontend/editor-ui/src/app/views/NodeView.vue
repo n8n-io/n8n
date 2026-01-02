@@ -68,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -257,6 +258,7 @@ const {
 	fitView,
 	openWorkflowTemplate,
 	openWorkflowTemplateFromJSON,
+	requireNodeTypeDescription,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
@@ -1149,10 +1151,28 @@ function onCreateSticky() {
 }
 
 function onClickConnectionAdd(connection: Connection) {
-	nodeCreatorStore.openNodeCreatorForConnectingNode({
-		connection,
-		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	});
+	const getById = (id: string | null) => {
+		if (!id) return null;
+		const node = workflowsStore.getNodeById(id);
+		if (!node) return null;
+		const description = requireNodeTypeDescription(node.type, node.typeVersion);
+		if (!description) return null;
+		return { type: node.type, description };
+	};
+	const sourceNode = getById(connection.source);
+
+	if (NodeHelpers.isToolType(sourceNode?.type)) {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			nodeCreatorView: HUMAN_IN_THE_LOOP_CATEGORY,
+		});
+	} else {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		});
+	}
 }
 
 function onClickReplaceNode(nodeId: string) {

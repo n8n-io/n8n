@@ -15,6 +15,7 @@ import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { defineStore } from 'pinia';
@@ -155,7 +156,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: flatBaselineItems.length > 8 || stack?.hasSearch,
+			hasSearch: stack?.hasSearch ?? flatBaselineItems.length > 8,
 		};
 	});
 
@@ -174,6 +175,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.rootView === AI_OTHERS_NODE_CREATOR_VIEW;
 	}
 
+	function isHitlSubcategoryView(stack: ViewStack) {
+		return stack.rootView === HUMAN_IN_THE_LOOP_CATEGORY;
+	}
+
 	function getLastActiveStack() {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
@@ -187,7 +192,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
-		if (!stack?.search || isAiSubcategoryView(stack)) return [];
+		if (!stack?.search || isAiSubcategoryView(stack) || isHitlSubcategoryView(stack)) return [];
 
 		const allNodes = getAllNodeCreateElements();
 		// Apply filtering for AI nodes if the current view is not the AI root view
@@ -530,5 +535,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		pushViewStack,
 		popViewStack,
 		getAllNodeCreateElements,
+		isHitlSubcategoryView,
 	};
 });
