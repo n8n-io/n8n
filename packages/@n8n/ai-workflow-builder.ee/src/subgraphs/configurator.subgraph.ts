@@ -8,7 +8,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from '@/prompts/agents/configurator.prompt';
+import {
+	buildConfiguratorPrompt,
+	buildRecoveryModeContext,
+	INSTANCE_URL_PROMPT,
+} from '@/prompts/agents/configurator.prompt';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -215,11 +219,30 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(parentState.discoveryContext.bestPractices);
 		}
 
-		// 3. Full workflow JSON (nodes to configure)
+		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
+			if (entry.status !== 'error') return false;
+			if (entry.phase !== 'builder') return false;
+			return (
+				entry.metadata.phase === 'error' &&
+				'partialBuilderData' in entry.metadata &&
+				entry.metadata.partialBuilderData
+			);
+		});
+
+		if (
+			builderErrorEntry?.metadata.phase === 'error' &&
+			builderErrorEntry.metadata.partialBuilderData
+		) {
+			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
+			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
+		}
+
+		// 4. Full workflow JSON (nodes to configure)
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 4. Full execution context (data + schema for parameter values)
+		// 5. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
