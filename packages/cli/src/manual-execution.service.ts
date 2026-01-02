@@ -162,15 +162,14 @@ export class ManualExecutionService {
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-
-			return workflowExecute.run(
+			return workflowExecute.run({
 				workflow,
 				startNode,
-				data.destinationNode,
-				data.pinData,
-				data.triggerToStartFrom,
+				destinationNode: data.destinationNode,
+				pinData: data.pinData,
+				triggerToStartFrom: data.triggerToStartFrom,
 				additionalRunFilterNodes,
-			);
+			});
 		} else {
 			a.ok(
 				data.destinationNode,
