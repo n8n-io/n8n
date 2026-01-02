@@ -148,7 +148,7 @@ describe('rewireGraph()', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const root = createNodeData({ name: 'root' });
 		const agentRequest = {
-			query: { some: 'query' },
+			query: { tool: { some: 'query' } },
 			tool: {
 				name: 'toolName',
 			},
