@@ -23,8 +23,8 @@ const mockLayouts = {
 			this.$emit('mounted', this.$el);
 		},
 	},
-	BlankLayout: {
-		template: '<div data-test-id="blank-layout"><slot /></div>',
+	AuthLayout: {
+		template: '<div data-test-id="auth-layout"><slot /></div>',
 		mounted() {
 			this.$emit('mounted', this.$el);
 		},
@@ -62,10 +62,10 @@ const createTestRouter = (metaLayout?: RouteMeta['layout']) => {
 				meta: { layout: 'workflow' },
 			},
 			{
-				path: '/blank',
-				name: 'Blank',
+				path: '/auth',
+				name: 'Auth',
 				component,
-				meta: { layout: 'blank' },
+				meta: { layout: 'auth' },
 			},
 			{
 				path: '/demo',
@@ -91,7 +91,7 @@ const renderComponent = (router = createTestRouter()) => {
 				DefaultLayout: mockLayouts.DefaultLayout,
 				SettingsLayout: mockLayouts.SettingsLayout,
 				WorkflowLayout: mockLayouts.WorkflowLayout,
-				BlankLayout: mockLayouts.BlankLayout,
+				AuthLayout: mockLayouts.AuthLayout,
 				DemoLayout: mockLayouts.DemoLayout,
 				Suspense: {
 					template: '<div><slot /></div>',
@@ -138,13 +138,13 @@ describe('AppLayout', () => {
 		expect(getByTestId('workflow-layout')).toBeInTheDocument();
 	});
 
-	it('should render blank layout when layout is "blank"', async () => {
+	it('should render auth layout when layout is "auth"', async () => {
 		const router = createTestRouter();
-		await router.push('/blank');
+		await router.push('/auth');
 		const { getByTestId } = renderComponent(router)();
 		await flushPromises();
 
-		expect(getByTestId('blank-layout')).toBeInTheDocument();
+		expect(getByTestId('auth-layout')).toBeInTheDocument();
 	});
 
 	it('should render demo layout when layout is "demo"', async () => {
@@ -235,11 +235,11 @@ describe('AppLayout', () => {
 		expect(result1.getByTestId('default-layout')).toBeInTheDocument();
 		result1.unmount();
 
-		// Test blank layout
-		await router.push('/blank');
+		// Test auth layout
+		await router.push('/auth');
 		const result2 = renderComponent(router)();
 		await flushPromises();
-		expect(result2.getByTestId('blank-layout')).toBeInTheDocument();
+		expect(result2.getByTestId('auth-layout')).toBeInTheDocument();
 		result2.unmount();
 	});
 });
