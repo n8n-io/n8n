@@ -1,5 +1,5 @@
 import { Perplexity } from '../../Perplexity/Perplexity.node';
-import { description } from '../descriptions/chat/complete.operation';
+import { properties as chatProperties } from '../descriptions/chat/complete.operation';
 
 jest.mock('../../Perplexity/GenericFunctions', () => ({
 	getModels: jest.fn(),
@@ -16,7 +16,7 @@ describe('Perplexity Node', () => {
 		it('should correctly include chat completion properties', () => {
 			const properties = node.description.properties;
 
-			expect(properties).toEqual(expect.arrayContaining(description));
+			expect(properties).toEqual(expect.arrayContaining(chatProperties));
 		});
 	});
 });

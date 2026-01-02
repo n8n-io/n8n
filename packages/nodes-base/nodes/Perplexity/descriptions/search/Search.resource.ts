@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as complete from './complete.operation';
+import * as search from './search.operation';
 import { sendErrorPostReceive } from '../../GenericFunctions';
 
 export const description: INodeProperties[] = [
@@ -11,19 +11,19 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['chat'],
+				resource: ['search'],
 			},
 		},
 		options: [
 			{
-				name: 'Message a Model',
-				value: 'complete',
-				action: 'Message a model',
-				description: 'Generate a response to a series of messages',
+				name: 'Search the Web',
+				value: 'search',
+				action: 'Search the web',
+				description: 'Search the web and return ranked results with advanced filtering',
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/chat/completions',
+						url: '/search',
 					},
 					output: {
 						postReceive: [sendErrorPostReceive],
@@ -31,8 +31,8 @@ export const description: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'complete',
+		default: 'search',
 	},
 
-	...complete.properties,
+	...search.properties,
 ];

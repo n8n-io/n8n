@@ -10,11 +10,8 @@
 		},
 		{
 			"parameters": {
-				"model": {
-					"__rl": true,
-					"value": "sonar",
-					"mode": "id"
-				},
+				"operation": "chat",
+				"model": "sonar",
 				"messages": {
 					"message": [
 						{
@@ -39,8 +36,7 @@
 					"returnImages": false,
 					"returnRelatedQuestions": false,
 					"searchRecency": "month"
-				},
-				"requestOptions": {}
+				}
 			},
 			"type": "n8n-nodes-base.perplexity",
 			"typeVersion": 1,

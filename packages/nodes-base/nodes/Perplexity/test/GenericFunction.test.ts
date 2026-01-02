@@ -49,7 +49,7 @@ describe('Generic Functions', () => {
 			).rejects.toThrow(NodeApiError);
 		});
 
-		it('should throw NodeApiError with "Invalid model" message if error type is invalid_model', async () => {
+		it('should throw NodeApiError with "Invalid model selected" message if error type is invalid_model', async () => {
 			const errorResponse = {
 				statusCode: 400,
 				body: {
@@ -68,19 +68,19 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
+					message: 'Invalid model selected',
 					description:
-						'The model is not valid. Permitted models can be found in the documentation at https://docs.perplexity.ai/guides/model-cards.',
+						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/guides/model-cards for details.',
 				}),
 			);
 		});
 
-		it('should throw NodeApiError with "Invalid parameter" message if error type is invalid_parameter', async () => {
+		it('should throw NodeApiError with error message if error type is invalid_request_error', async () => {
 			const errorResponse = {
 				statusCode: 400,
 				body: {
 					error: {
-						type: 'invalid_parameter',
+						type: 'invalid_request_error',
 						message: 'Invalid parameter provided',
 					},
 				},
@@ -96,7 +96,7 @@ describe('Generic Functions', () => {
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid parameter provided.',
 					description:
-						'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});
@@ -121,18 +121,20 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
-					description: 'Permitted models documentation...',
+					message: 'Invalid model selected [Item 0]',
+					description:
+						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/getting-started/models for details.',
 				}),
 			);
 		});
 
-		it('should handle "invalid_parameter" error with non-string message', async () => {
+		it('should handle error with non-string message', async () => {
 			const errorResponse = {
 				statusCode: 400,
+				statusMessage: 'Bad Request',
 				body: {
 					error: {
-						type: 'invalid_parameter',
+						type: 'invalid_request_error',
 						message: { detail: 'Invalid param' },
 					},
 				},
@@ -146,8 +148,9 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'An unexpected issue occurred.',
-					description: 'Please check parameters...',
+					message: 'Bad Request.',
+					description:
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});
@@ -155,6 +158,7 @@ describe('Generic Functions', () => {
 		it('should throw generic error for unknown error type', async () => {
 			const errorResponse = {
 				statusCode: 500,
+				statusMessage: 'Internal Server Error',
 				body: {
 					error: {
 						type: 'server_error',
@@ -172,7 +176,8 @@ describe('Generic Functions', () => {
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Internal server error.',
-					description: 'Refer to API documentation...',
+					description:
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});

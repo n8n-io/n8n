@@ -1,0 +1,36 @@
+{
+	"type": "object",
+	"properties": {
+		"results": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"title": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string",
+						"format": "uri"
+					},
+					"snippet": {
+						"type": "string"
+					},
+					"date": {
+						"type": "string",
+						"format": "date",
+						"nullable": true
+					},
+					"last_updated": {
+						"type": "string",
+						"format": "date",
+						"nullable": true
+					}
+				},
+				"required": ["title", "url", "snippet"]
+			}
+		}
+	},
+	"required": ["results"],
+	"version": 4
+}
