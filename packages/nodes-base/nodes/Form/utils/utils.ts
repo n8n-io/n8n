@@ -10,6 +10,7 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -22,6 +23,7 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
+import crypto from 'crypto';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
@@ -185,6 +187,7 @@ export function prepareFormData({
 	buttonLabel,
 	customCss,
 	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -200,6 +203,7 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -221,6 +225,7 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
@@ -477,6 +482,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -490,6 +496,7 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -532,6 +539,7 @@ export function renderForm({
 		buttonLabel,
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
 	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
@@ -568,11 +576,13 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
+	const method = context.getRequestObject().method;
+
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (node.typeVersion > 1) {
+		if (node.typeVersion > 1 && method === 'GET') {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -586,8 +596,6 @@ export async function formWebhook(
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
-
-	const method = context.getRequestObject().method;
 
 	validateResponseModeConfiguration(context);
 
@@ -633,6 +641,11 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			authToken = await generateFormPostAuthToken(context);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -646,12 +659,15 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {
 			noWebhookResponse: true,
 		};
 	}
+
+	if (node.typeVersion > 1) await validatePostRequest(context);
 
 	let { useWorkflowTimezone } = options;
 
@@ -689,4 +705,55 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
+}
+
+export function getAuthentication(context: IWebhookFunctions) {
+	const node = context.getNode();
+	let authPropertyName = FORM_TRIGGER_AUTHENTICATION_PROPERTY;
+	if (node.type === WAIT_NODE_TYPE) {
+		authPropertyName = 'incomingAuthentication';
+	}
+
+	return context.getNodeParameter(authPropertyName) as string;
+}
+
+export async function generateFormPostAuthToken(context: IWebhookFunctions) {
+	const node = context.getNode();
+
+	const authentication = getAuthentication(context);
+	if (authentication === 'none') return;
+
+	let credentials: ICredentialDataDecryptedObject | undefined;
+
+	try {
+		credentials = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
+	} catch {}
+
+	if (credentials === undefined || !credentials.user || !credentials.password) {
+		throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+	}
+
+	const token = crypto
+		.createHmac('sha256', `${credentials.user}:${credentials.password}`)
+		.update(`${node.id}-${node.webhookId}`)
+		.digest('hex');
+
+	return token;
+}
+
+export async function validatePostRequest(context: IWebhookFunctions) {
+	const authentication = getAuthentication(context);
+	if (authentication === 'none') return;
+
+	const authToken = context.getRequestObject()?.query?.token;
+
+	if (!authToken) {
+		throw new WebhookAuthorizationError(403, 'Missing form post authentication token');
+	}
+
+	const expectedAuthToken = await generateFormPostAuthToken(context);
+
+	if (authToken !== expectedAuthToken) {
+		throw new WebhookAuthorizationError(403, 'Invalid form post authentication token');
+	}
 }

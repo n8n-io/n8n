@@ -993,6 +993,12 @@
 						postUrl = window.location.search;
 					}
 
+					const authToken = '{{{ authToken }}}';
+
+					if(authToken) {
+						postUrl = `${postUrl}?token=${authToken}`;
+					}
+
 					fetch(postUrl, {
 						method: 'POST',
 						body: formData,

@@ -23,6 +23,9 @@ import {
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
+	getAuthentication,
+	generateFormPostAuthToken,
+	validatePostRequest,
 } from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -354,6 +357,7 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -2356,5 +2360,361 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 		});
 
 		expect(result.formFields[0].defaultValue).toBe('');
+	});
+});
+
+describe('Authentication Functions', () => {
+	describe('getAuthentication', () => {
+		let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+		beforeEach(() => {
+			webhookFunctions = mock<IWebhookFunctions>();
+		});
+
+		it('should return authentication property for Form Trigger nodes', () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			const result = getAuthentication(webhookFunctions);
+
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication');
+			expect(result).toBe('basicAuth');
+		});
+
+		it('should return authentication property for Form nodes', () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.form',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			const result = getAuthentication(webhookFunctions);
+
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication');
+			expect(result).toBe('basicAuth');
+		});
+
+		it('should return incomingAuthentication property for Wait nodes', () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.wait',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			const result = getAuthentication(webhookFunctions);
+
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('incomingAuthentication');
+			expect(result).toBe('basicAuth');
+		});
+
+		it('should handle "none" authentication', () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('none');
+
+			const result = getAuthentication(webhookFunctions);
+
+			expect(result).toBe('none');
+		});
+	});
+
+	describe('generateFormPostAuthToken', () => {
+		let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+		beforeEach(() => {
+			webhookFunctions = mock<IWebhookFunctions>();
+			webhookFunctions.getNode.mockReturnValue({
+				id: 'node-123',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+		});
+
+		it('should return undefined when authentication is "none"', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('none');
+
+			const result = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should generate valid HMAC token using credentials', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+
+			const result = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result?.length).toBe(64);
+		});
+
+		it('should generate deterministic token for same inputs', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+
+			const token1 = await generateFormPostAuthToken(webhookFunctions);
+			const token2 = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(token1).toBe(token2);
+		});
+
+		it('should generate different tokens for different credentials', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			webhookFunctions.getCredentials.mockResolvedValueOnce({
+				user: 'user1',
+				password: 'pass1',
+			});
+			const token1 = await generateFormPostAuthToken(webhookFunctions);
+
+			webhookFunctions.getCredentials.mockResolvedValueOnce({
+				user: 'user2',
+				password: 'pass2',
+			});
+			const token2 = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(token1).not.toBe(token2);
+		});
+
+		it('should generate different tokens for different node IDs', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+
+			webhookFunctions.getNode.mockReturnValueOnce({
+				id: 'node-123',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			const token1 = await generateFormPostAuthToken(webhookFunctions);
+
+			webhookFunctions.getNode.mockReturnValueOnce({
+				id: 'node-789',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			const token2 = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(token1).not.toBe(token2);
+		});
+
+		it('should throw WebhookAuthorizationError when credentials are undefined', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockRejectedValue(new Error('No credentials'));
+
+			await expect(generateFormPostAuthToken(webhookFunctions)).rejects.toThrow(
+				'No authentication data defined on node!',
+			);
+		});
+
+		it('should throw WebhookAuthorizationError with status 500 when credentials are undefined', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockRejectedValue(new Error('No credentials'));
+
+			try {
+				await generateFormPostAuthToken(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.responseCode).toBe(500);
+			}
+		});
+
+		it('should throw WebhookAuthorizationError when credentials.user is missing', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				password: 'testpass',
+			});
+
+			await expect(generateFormPostAuthToken(webhookFunctions)).rejects.toThrow(
+				'No authentication data defined on node!',
+			);
+		});
+
+		it('should throw WebhookAuthorizationError when credentials.password is missing', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+			});
+
+			await expect(generateFormPostAuthToken(webhookFunctions)).rejects.toThrow(
+				'No authentication data defined on node!',
+			);
+		});
+
+		it('should throw WebhookAuthorizationError when both user and password are missing', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({});
+
+			await expect(generateFormPostAuthToken(webhookFunctions)).rejects.toThrow(
+				'No authentication data defined on node!',
+			);
+		});
+
+		it('should use node.id and node.webhookId in token generation', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+
+			const token = await generateFormPostAuthToken(webhookFunctions);
+
+			expect(token).toBeDefined();
+			expect(typeof token).toBe('string');
+		});
+	});
+
+	describe('validatePostRequest', () => {
+		let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+		beforeEach(() => {
+			webhookFunctions = mock<IWebhookFunctions>();
+			webhookFunctions.getNode.mockReturnValue({
+				id: 'node-123',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+		});
+
+		it('should return early when authentication is "none"', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('none');
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: {},
+			} as any);
+
+			await expect(validatePostRequest(webhookFunctions)).resolves.toBeUndefined();
+		});
+
+		it('should throw WebhookAuthorizationError(403) when token is missing', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: {},
+			} as any);
+
+			try {
+				await validatePostRequest(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.message).toBe('Missing form post authentication token');
+				expect(error.responseCode).toBe(403);
+			}
+		});
+
+		it('should throw WebhookAuthorizationError(403) when token is undefined in query', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token: undefined },
+			} as any);
+
+			try {
+				await validatePostRequest(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.message).toBe('Missing form post authentication token');
+				expect(error.responseCode).toBe(403);
+			}
+		});
+
+		it('should throw WebhookAuthorizationError(403) when token is invalid', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token: 'invalid-token' },
+			} as any);
+
+			try {
+				await validatePostRequest(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.message).toBe('Invalid form post authentication token');
+				expect(error.responseCode).toBe(403);
+			}
+		});
+
+		it('should pass validation when token matches expected token', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'testuser',
+				password: 'testpass',
+			});
+
+			const expectedToken = await generateFormPostAuthToken(webhookFunctions);
+
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token: expectedToken },
+			} as any);
+
+			await expect(validatePostRequest(webhookFunctions)).resolves.toBeUndefined();
+		});
+
+		it('should validate token using generateFormPostAuthToken', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'user123',
+				password: 'pass456',
+			});
+
+			const validToken = await generateFormPostAuthToken(webhookFunctions);
+
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token: validToken },
+			} as any);
+
+			await expect(validatePostRequest(webhookFunctions)).resolves.toBeUndefined();
+		});
+
+		it('should reject token generated with different credentials', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			webhookFunctions.getCredentials.mockResolvedValueOnce({
+				user: 'user1',
+				password: 'pass1',
+			});
+			const token = await generateFormPostAuthToken(webhookFunctions);
+
+			webhookFunctions.getCredentials.mockResolvedValue({
+				user: 'user2',
+				password: 'pass2',
+			});
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token },
+			} as any);
+
+			try {
+				await validatePostRequest(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.message).toBe('Invalid form post authentication token');
+				expect(error.responseCode).toBe(403);
+			}
+		});
+
+		it('should handle empty string token', async () => {
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+			webhookFunctions.getRequestObject.mockReturnValue({
+				query: { token: '' },
+			} as any);
+
+			try {
+				await validatePostRequest(webhookFunctions);
+				fail('Should have thrown WebhookAuthorizationError');
+			} catch (error: any) {
+				expect(error.message).toBe('Missing form post authentication token');
+				expect(error.responseCode).toBe(403);
+			}
+		});
 	});
 });

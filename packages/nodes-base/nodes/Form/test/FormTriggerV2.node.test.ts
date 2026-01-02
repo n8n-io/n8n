@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
 import { NodeOperationError, type INode } from 'n8n-workflow';
 
@@ -37,6 +38,7 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 					options: {
 						appendAttribution: false,
@@ -145,6 +147,7 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 				},
 			},
@@ -219,15 +222,60 @@ describe('FormTrigger', () => {
 		});
 	});
 
-	it('should throw on invalid webhook authentication', async () => {
+	it('should throw on invalid webhook authentication when token is invalid', async () => {
 		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
 
-		const { responseData, response } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+		await expect(
+			testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						formFields: { values: formFields },
+						authentication: 'basicAuth',
+					},
+				},
+				request: { method: 'POST', query: {} },
+				credential: {
+					user: 'testuser',
+					password: 'testpass',
+				},
+			}),
+		).rejects.toThrow('Invalid form post authentication token');
+	});
+
+	it('should validate POST requests with correct authentication token', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+		];
+
+		const nodeId = 'test-node-id';
+		const webhookId = 'test-webhook-id';
+		const credentials = { user: 'testuser', password: 'testpass' };
+
+		const token = crypto
+			.createHmac('sha256', `${credentials.user}:${credentials.password}`)
+			.update(`${nodeId}-${webhookId}`)
+			.digest('hex');
+
+		const bodyData = {
+			data: {
+				'field-0': 'John Doe',
+				'field-1': '30',
+			},
+		};
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
 			mode: 'manual',
 			node: {
+				id: nodeId,
+				webhookId,
 				parameters: {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
@@ -236,15 +284,31 @@ describe('FormTrigger', () => {
 					authentication: 'basicAuth',
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				query: { token },
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
+			bodyData,
+			credential: credentials,
 		});
 
-		expect(responseData).toEqual({ noWebhookResponse: true });
-		expect(response.status).toHaveBeenCalledWith(401);
-		expect(response.setHeader).toHaveBeenCalledWith(
-			'WWW-Authenticate',
-			'Basic realm="Enter credentials"',
-		);
+		expect(responseData).toEqual({
+			webhookResponse: { status: 200 },
+			workflowData: [
+				[
+					{
+						json: {
+							Name: 'John Doe',
+							Age: 30,
+							submittedAt: expect.any(String),
+							formMode: 'test',
+						},
+					},
+				],
+			],
+		});
 	});
 
 	it('should apply customCss property to form render', async () => {
@@ -258,6 +322,7 @@ describe('FormTrigger', () => {
 					formTitle: 'Custom CSS Test',
 					formDescription: 'Testing custom CSS',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 					options: {
 						customCss: '.form-input { border-color: red; }',
@@ -318,6 +383,7 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 				},
 			},
