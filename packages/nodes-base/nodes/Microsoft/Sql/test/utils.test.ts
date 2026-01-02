@@ -367,6 +367,9 @@ describe('MSSQL tests', () => {
 			expect(escapeTableName("test] SET mytext='1' where id=2; -- -")).toEqual(
 				"[test]] SET mytext='1' where id=2; -- -]",
 			);
+			expect(escapeTableName("[[test] (id,text) values(1,'123'); DROP TABLE users; -- ]")).toEqual(
+				"[[test]] (id,text) values(1,'123'); DROP TABLE users; -- ]",
+			);
 		});
 	});
 });
