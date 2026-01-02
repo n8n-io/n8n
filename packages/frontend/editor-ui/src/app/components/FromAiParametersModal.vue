@@ -280,10 +280,9 @@ const getRegularToolParameters = (toolNode: INode, omitFallbackField = false) =>
 	traverseNodeParameters(params, collectedArgs);
 	const inputOverrides =
 		nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
-
+	const inputQuery = inputOverrides?.query as IDataObject;
 	collectedArgs.forEach((value: FromAIArgument) => {
 		const type = value.type ?? 'string';
-		const inputQuery = inputOverrides?.query as IDataObject;
 		const initialValue = inputQuery?.[value.key]
 			? inputQuery[value.key]
 			: (agentRequestStore.getQueryValue(workflowsStore.workflowId, toolNode.id, value.key) ??
@@ -451,6 +450,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 			<ElCol>
 				<ElRow :class="$style.row">
 					<N8nFormInputs
+						v-if="parameters.length"
 						ref="inputs"
 						:inputs="parameters"
 						:column-view="true"
