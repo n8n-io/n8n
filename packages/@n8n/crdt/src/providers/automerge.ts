@@ -1,4 +1,5 @@
 import * as Automerge from '@automerge/automerge';
+import { patch as applyPatch } from '@onsetsoftware/automerge-patcher';
 
 import { AutomergeAwareness } from '../awareness/automerge-awareness';
 import type {
@@ -11,11 +12,14 @@ import type {
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
+	CRDTUndoManager,
 	DeepChange,
 	DeepChangeEvent,
+	UndoManagerOptions,
 	Unsubscribe,
 } from '../types';
 import { ChangeAction, ChangeOrigin as ChangeOriginConst, CRDTEngine } from '../types';
+import { AutomergeUndoManager } from '../undo/automerge-undo-manager';
 
 type AutomergeDoc = Automerge.Doc<Record<string, unknown>>;
 type ChangeHandler = (changes: DeepChange[], origin: ChangeOrigin) => void;
@@ -275,10 +279,13 @@ class AutomergeDocHolder {
 	/** Tracks nested transaction depth (0 = not in transaction) */
 	private transactionDepth = 0;
 	private transactionBeforeHeads: Automerge.Heads | null = null;
+	private transactionBeforeDoc: AutomergeDoc | null = null;
 	/** Queued change functions to apply when outermost transaction ends */
 	private pendingChanges: Array<(doc: Record<string, unknown>) => void> = [];
 	/** Tracks the last heads sent to update handlers for incremental sync */
 	private lastSyncedHeads: Automerge.Heads = [];
+	/** Optional undo manager for tracking changes */
+	private undoManager: AutomergeUndoManager | null = null;
 
 	constructor(readonly id: string) {
 		this.doc = Automerge.init();
@@ -292,6 +299,18 @@ class AutomergeDocHolder {
 		return Automerge.getHeads(this.doc);
 	}
 
+	setUndoManager(manager: AutomergeUndoManager): void {
+		this.undoManager = manager;
+	}
+
+	/**
+	 * Apply a change to the document.
+	 *
+	 * Performance note: When an undo manager is active, this method clones the
+	 * entire document before applying changes (O(n) where n = document size).
+	 * This is required for correct patch inversion in the undo manager.
+	 * See AutomergeUndoManager for details on the performance trade-offs.
+	 */
 	change(fn: (doc: Record<string, unknown>) => void): void {
 		if (this.transactionDepth > 0) {
 			// Inside a transaction - queue the change for later
@@ -301,15 +320,35 @@ class AutomergeDocHolder {
 
 		// Not in transaction - apply immediately
 		const beforeHeads = this.getHeads();
-		this.doc = Automerge.change(this.doc, fn);
+		// Clone doc for undo manager - O(n) but required for correct patch inversion
+		const beforeDoc = this.undoManager ? Automerge.clone(this.doc) : null;
+		let capturedPatches: Automerge.Patch[] = [];
+
+		this.doc = Automerge.change(
+			this.doc,
+			{
+				patchCallback: (patches) => {
+					capturedPatches = patches;
+				},
+			},
+			fn,
+		);
+
+		// Notify undo manager of local change (if not performing undo/redo)
+		if (this.undoManager && !this.undoManager.isPerformingUndoRedo() && beforeDoc) {
+			this.undoManager.captureChange(beforeDoc, capturedPatches);
+		}
+
 		this.notifyHandlers(beforeHeads, ChangeOriginConst.local);
 		this.notifyUpdateHandlers(ChangeOriginConst.local);
 	}
 
 	startTransaction(): void {
 		if (this.transactionDepth === 0) {
-			// Outermost transaction - capture heads before any changes
+			// Outermost transaction - capture heads and doc before any changes
 			this.transactionBeforeHeads = this.getHeads();
+			// Clone doc for undo manager - O(n) but required for correct patch inversion
+			this.transactionBeforeDoc = this.undoManager ? Automerge.clone(this.doc) : null;
 		}
 		this.transactionDepth++;
 	}
@@ -319,22 +358,42 @@ class AutomergeDocHolder {
 
 		if (this.transactionDepth === 0) {
 			// Outermost transaction ending - apply all queued changes
+			let capturedPatches: Automerge.Patch[] = [];
+
 			if (this.pendingChanges.length > 0) {
 				const changes = this.pendingChanges;
 				this.pendingChanges = [];
 
-				this.doc = Automerge.change(this.doc, (doc) => {
-					for (const fn of changes) {
-						fn(doc);
-					}
-				});
+				this.doc = Automerge.change(
+					this.doc,
+					{
+						patchCallback: (patches) => {
+							capturedPatches = patches;
+						},
+					},
+					(doc) => {
+						for (const fn of changes) {
+							fn(doc);
+						}
+					},
+				);
 			}
 
 			// Notify with all changes at once
 			if (this.transactionBeforeHeads) {
+				// Notify undo manager of local change (if not performing undo/redo)
+				if (
+					this.undoManager &&
+					!this.undoManager.isPerformingUndoRedo() &&
+					this.transactionBeforeDoc
+				) {
+					this.undoManager.captureChange(this.transactionBeforeDoc, capturedPatches);
+				}
+
 				this.notifyHandlers(this.transactionBeforeHeads, ChangeOriginConst.local);
 				this.notifyUpdateHandlers(ChangeOriginConst.local);
 				this.transactionBeforeHeads = null;
+				this.transactionBeforeDoc = null;
 			}
 		}
 	}
@@ -647,6 +706,11 @@ class AutomergeDocHolder {
 			beforeHeads.some((head, index) => head !== afterHeads[index]);
 
 		if (headsChanged) {
+			// Notify undo manager of remote change (does not affect stacks)
+			if (this.undoManager) {
+				this.undoManager.onRemoteChange();
+			}
+
 			this.notifyHandlers(beforeHeads, ChangeOriginConst.remote);
 			// Notify update handlers so changes propagate through sync chains (hub topology).
 			// Automerge's saveSince() handles deduplication - it only returns changes
@@ -656,12 +720,34 @@ class AutomergeDocHolder {
 		}
 	}
 
+	/**
+	 * Apply patches for undo/redo operations.
+	 * Used by the undo manager to apply inverse patches without triggering capture.
+	 */
+	applyPatches(patches: Automerge.Patch[]): void {
+		if (patches.length === 0) return;
+
+		const beforeHeads = this.getHeads();
+		this.doc = Automerge.change(this.doc, (doc) => {
+			for (const p of patches) {
+				applyPatch(doc, p);
+			}
+		});
+		this.notifyHandlers(beforeHeads, ChangeOriginConst.local);
+		this.notifyUpdateHandlers(ChangeOriginConst.local);
+	}
+
 	destroy(): void {
+		if (this.undoManager) {
+			this.undoManager.destroy();
+			this.undoManager = null;
+		}
 		this.changeHandlers.clear();
 		this.updateHandlers.clear();
 		this.pendingChanges = [];
 		this.transactionDepth = 0;
 		this.transactionBeforeHeads = null;
+		this.transactionBeforeDoc = null;
 	}
 }
 
@@ -742,6 +828,16 @@ class AutomergeDocImpl implements CRDTDoc {
 	getAwareness<T extends AwarenessState = AwarenessState>(): CRDTAwareness<T> {
 		this.awareness ??= new AutomergeAwareness(this.id);
 		return this.awareness as unknown as CRDTAwareness<T>;
+	}
+
+	createUndoManager(options?: UndoManagerOptions): CRDTUndoManager {
+		const undoManager = new AutomergeUndoManager(
+			() => this.docHolder.getDoc(),
+			(patches) => this.docHolder.applyPatches(patches),
+			options,
+		);
+		this.docHolder.setUndoManager(undoManager);
+		return undoManager;
 	}
 
 	destroy(): void {

@@ -9,11 +9,31 @@ import type {
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
+	CRDTUndoManager,
 	DeepChange,
 	DeepChangeEvent,
+	UndoManagerOptions,
 	Unsubscribe,
 } from '../types';
 import { ChangeAction, ChangeOrigin, CRDTEngine } from '../types';
+import { YjsRemoteOrigin, YjsUndoManager, YjsUndoManagerOrigin } from '../undo/yjs-undo-manager';
+
+/**
+ * Determine the ChangeOrigin from a Yjs transaction.
+ * - UndoManager transactions (origin is Y.UndoManager instance) → undoRedo
+ * - Local transactions → local
+ * - Remote transactions → remote
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getChangeOrigin(transaction: any): ChangeOrigin {
+	// Undo/redo transactions have the UndoManager instance as origin
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	if (transaction.origin instanceof Y.UndoManager) {
+		return ChangeOrigin.undoRedo;
+	}
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	return transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
+}
 
 /**
  * Convert a value to JSON if it's a Yjs type, otherwise return as-is.
@@ -118,9 +138,7 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 			}
 
 			if (changes.length > 0) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const origin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
-				handler(changes, origin);
+				handler(changes, getChangeOrigin(transaction));
 			}
 		};
 
@@ -227,9 +245,7 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 			}
 
 			if (changes.length > 0) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const origin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
-				handler(changes, origin);
+				handler(changes, getChangeOrigin(transaction));
 			}
 		};
 
@@ -247,6 +263,7 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 class YjsDoc implements CRDTDoc {
 	private readonly yDoc: Y.Doc;
 	private awareness: YjsAwareness | null = null;
+	private undoManager: YjsUndoManager | null = null;
 	private _synced = false;
 	private syncHandlers = new Set<(isSynced: boolean) => void>();
 
@@ -292,7 +309,8 @@ class YjsDoc implements CRDTDoc {
 	}
 
 	transact(fn: () => void): void {
-		this.yDoc.transact(fn);
+		// Use the tracked origin so undo manager captures these changes
+		this.yDoc.transact(fn, YjsUndoManagerOrigin);
 	}
 
 	encodeState(): Uint8Array {
@@ -300,7 +318,8 @@ class YjsDoc implements CRDTDoc {
 	}
 
 	applyUpdate(update: Uint8Array): void {
-		Y.applyUpdate(this.yDoc, update);
+		// Use remote origin so undo manager doesn't track these changes
+		Y.applyUpdate(this.yDoc, update, YjsRemoteOrigin);
 	}
 
 	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe {
@@ -321,7 +340,19 @@ class YjsDoc implements CRDTDoc {
 		return this.awareness as unknown as CRDTAwareness<T>;
 	}
 
+	createUndoManager(options?: UndoManagerOptions): CRDTUndoManager {
+		if (this.undoManager) {
+			throw new Error('Undo manager already exists for this document');
+		}
+		this.undoManager = new YjsUndoManager(this.yDoc, options);
+		return this.undoManager;
+	}
+
 	destroy(): void {
+		if (this.undoManager) {
+			this.undoManager.destroy();
+			this.undoManager = null;
+		}
 		if (this.awareness) {
 			this.awareness.destroy();
 			this.awareness = null;

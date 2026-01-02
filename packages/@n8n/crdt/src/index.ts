@@ -20,6 +20,10 @@ export type {
 	AwarenessState,
 	AwarenessChangeEvent,
 	CRDTAwareness,
+	// Undo manager types
+	UndoManagerOptions,
+	UndoStackChangeEvent,
+	CRDTUndoManager,
 } from './types';
 
 // Constants (also exports corresponding types via declaration merging)
@@ -31,6 +35,10 @@ export { isMapChange, isArrayChange } from './types';
 // Awareness implementations
 export { YjsAwareness } from './awareness/yjs-awareness';
 export { AutomergeAwareness } from './awareness/automerge-awareness';
+
+// Undo manager implementations
+export { YjsUndoManager, YjsUndoManagerOrigin, YjsRemoteOrigin } from './undo/yjs-undo-manager';
+export { AutomergeUndoManager } from './undo/automerge-undo-manager';
 
 // Providers
 export { YjsProvider } from './providers/yjs';

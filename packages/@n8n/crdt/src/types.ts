@@ -67,6 +67,8 @@ export const ChangeOrigin = {
 	local: 'local',
 	/** Change originated from remote peer (network sync) */
 	remote: 'remote',
+	/** Change originated from local undo/redo operation */
+	undoRedo: 'undoRedo',
 } as const;
 
 export type ChangeOrigin = (typeof ChangeOrigin)[keyof typeof ChangeOrigin];
@@ -187,6 +189,17 @@ export interface CRDTDoc {
 	 * Used for ephemeral state like presence and cursors.
 	 */
 	getAwareness<T extends AwarenessState = AwarenessState>(): CRDTAwareness<T>;
+	/**
+	 * Create an undo manager for this document.
+	 * Tracks all local changes and provides undo/redo functionality.
+	 *
+	 * Only one undo manager should be active per document.
+	 * Remote changes are not tracked and do not affect the undo/redo stacks.
+	 *
+	 * @param options Configuration options
+	 * @returns A new undo manager instance
+	 */
+	createUndoManager(options?: UndoManagerOptions): CRDTUndoManager;
 	/** Clean up resources */
 	destroy(): void;
 }
@@ -333,6 +346,122 @@ export interface CRDTAwareness<T extends AwarenessState = AwarenessState> {
 	/**
 	 * Clean up resources.
 	 * Marks this client as offline and removes all handlers.
+	 */
+	destroy(): void;
+}
+
+// =============================================================================
+// Undo Manager Types
+// =============================================================================
+
+/**
+ * Options for creating an undo manager.
+ */
+export interface UndoManagerOptions {
+	/**
+	 * Time in milliseconds to group consecutive changes into a single undo item.
+	 * Changes made within this window are merged into one undoable operation.
+	 * @default 500
+	 */
+	captureTimeout?: number;
+}
+
+/**
+ * Event data emitted when the undo/redo stack changes.
+ */
+export interface UndoStackChangeEvent {
+	/** Whether undo is currently possible */
+	canUndo: boolean;
+	/** Whether redo is currently possible */
+	canRedo: boolean;
+}
+
+/**
+ * CRDT Undo Manager - provides undo/redo functionality for document changes.
+ *
+ * Only tracks local changes (not remote peer changes from sync).
+ * Remote changes do NOT clear the redo stack, allowing proper collaborative undo.
+ *
+ * @example
+ * ```typescript
+ * const undoManager = doc.createUndoManager({ captureTimeout: 500 });
+ *
+ * // Make changes
+ * doc.getMap('data').set('key', 'value');
+ *
+ * // Undo the change
+ * if (undoManager.canUndo()) {
+ *   undoManager.undo();
+ * }
+ *
+ * // Clean up
+ * undoManager.destroy();
+ * ```
+ */
+export interface CRDTUndoManager {
+	/**
+	 * Undo the last undoable change.
+	 * @returns true if an undo was performed, false if nothing to undo
+	 */
+	undo(): boolean;
+
+	/**
+	 * Redo the last undone change.
+	 * @returns true if a redo was performed, false if nothing to redo
+	 */
+	redo(): boolean;
+
+	/**
+	 * Check if undo is possible.
+	 */
+	canUndo(): boolean;
+
+	/**
+	 * Check if redo is possible.
+	 */
+	canRedo(): boolean;
+
+	/**
+	 * Force the next change to start a new undo item instead of merging
+	 * with the previous one. Useful for marking logical boundaries
+	 * (e.g., after user completes an operation).
+	 */
+	stopCapturing(): void;
+
+	/**
+	 * Clear the entire undo and redo history.
+	 */
+	clear(): void;
+
+	/**
+	 * Subscribe to stack changes. Called when canUndo/canRedo state changes.
+	 * Useful for updating UI button states.
+	 *
+	 * @param handler Called when stack state changes
+	 * @returns Unsubscribe function
+	 */
+	onStackChange(handler: (event: UndoStackChangeEvent) => void): Unsubscribe;
+
+	/**
+	 * Store metadata on the current undo item.
+	 * Useful for storing cursor/selection state to restore after undo.
+	 *
+	 * @param key Metadata key
+	 * @param value Metadata value
+	 */
+	setMeta<V>(key: string, value: V): void;
+
+	/**
+	 * Retrieve metadata from the most recently undone/redone item.
+	 * Returns undefined if no metadata exists for the key.
+	 *
+	 * @param key Metadata key
+	 * @returns The stored value or undefined
+	 */
+	getMeta<V>(key: string): V | undefined;
+
+	/**
+	 * Clean up resources. The undo manager cannot be used after calling destroy.
 	 */
 	destroy(): void;
 }
