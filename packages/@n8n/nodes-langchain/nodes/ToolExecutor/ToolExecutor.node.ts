@@ -90,7 +90,7 @@ export class ToolExecutor implements INodeType {
 		}
 
 		const getQueryData = (name: string) => {
-			// node names in query have underscores in place of spaces, use it for accessing the query data.
+			// node names in query may have underscores in place of spaces, use it for accessing the query data.
 			return (get(parsedQuery, name, null) ??
 				get(parsedQuery, name.replaceAll(' ', '_'), null)) as Record<string, unknown> | null;
 		};
