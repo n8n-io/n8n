@@ -43,6 +43,9 @@ export const PERPLEXITY_OPERATIONS = [
 				method: 'POST' as IHttpRequestMethods,
 				url: '/async/chat/completions',
 			},
+			output: {
+				postReceive: [sendErrorPostReceive],
+			},
 		},
 	},
 	{
@@ -55,6 +58,9 @@ export const PERPLEXITY_OPERATIONS = [
 				method: 'GET' as IHttpRequestMethods,
 				url: '=/async/chat/completions/{{ $parameter.requestId }}',
 			},
+			output: {
+				postReceive: [sendErrorPostReceive],
+			},
 		},
 	},
 	{
@@ -66,6 +72,9 @@ export const PERPLEXITY_OPERATIONS = [
 			request: {
 				method: 'GET' as IHttpRequestMethods,
 				url: '/async/chat/completions',
+			},
+			output: {
+				postReceive: [sendErrorPostReceive],
 			},
 		},
 	},
