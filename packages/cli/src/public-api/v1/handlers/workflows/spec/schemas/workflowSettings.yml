@@ -49,7 +49,15 @@ properties:
   timeSavedMode:
     type: string
     enum: ['fixed', 'dynamic']
-    description: Controls the mode for calculating the time saved per execution
+    description: |
+      Controls how the time saved per execution is calculated.
+      Available options:
+      - `fixed`: Uses a predetermined time value specified in the `timeSavedPerExecution` field.
+        * Requires the `timeSavedPerExecution` field to be set
+        * Use when the time saved is consistent across all executions
+      - `dynamic`: Automatically calculates time saved based on actual execution metrics
+        * The `timeSavedPerExecution` field is ignored when this mode is active
+        * Use when time saved varies between executions
   timeSavedPerExecution:
     type: number
     description: Estimated time saved per execution in minutes
