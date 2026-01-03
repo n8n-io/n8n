@@ -76,7 +76,7 @@ export async function sendErrorPostReceive(
 			errorMessage.toLowerCase().includes('search') ||
 			errorType.toLowerCase().includes('search')
 		) {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+			throw new NodeApiError(this.getNode(), errorBody, {
 				message: `Search API error: ${errorMessage}${itemIndex ? ' ' + itemIndex : ''}`,
 				description:
 					'Please check your search parameters. For Search API documentation, see: https://docs.perplexity.ai/api-reference/search-post',
@@ -84,7 +84,7 @@ export async function sendErrorPostReceive(
 		}
 
 		// Fallback for other errors
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+		throw new NodeApiError(this.getNode(), errorBody, {
 			message: `${errorMessage}${itemIndex ? ' ' + itemIndex : ''}.`,
 			description:
 				'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
