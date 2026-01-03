@@ -339,19 +339,21 @@ function processSingleResponse(
 	};
 
 	if (Array.isArray(responseData.choices)) {
-		enhancedJson.choices = responseData.choices.map((choice: unknown) => {
-			const choiceObj = choice as JsonObject;
-			const choiceMessage = choiceObj.message as JsonObject | undefined;
-			return {
-				...choiceObj,
-				message: {
-					...(choiceMessage ?? {}),
-					content:
-						content || (typeof choiceMessage?.content === 'string' ? choiceMessage.content : ''),
-					...(reasoningSteps.length > 0 && { reasoning_steps: reasoningSteps }),
-				},
-			};
-		});
+		enhancedJson.choices = responseData.choices
+			.filter((choice: unknown) => choice && typeof choice === 'object')
+			.map((choice: unknown) => {
+				const choiceObj = choice as JsonObject;
+				const choiceMessage = choiceObj.message as JsonObject | undefined;
+				return {
+					...choiceObj,
+					message: {
+						...(choiceMessage ?? {}),
+						content:
+							content || (typeof choiceMessage?.content === 'string' ? choiceMessage.content : ''),
+						...(reasoningSteps.length > 0 && { reasoning_steps: reasoningSteps }),
+					},
+				};
+			});
 	}
 
 	return {
