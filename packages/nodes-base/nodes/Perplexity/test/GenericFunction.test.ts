@@ -70,7 +70,7 @@ describe('Generic Functions', () => {
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid model selected',
 					description:
-						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/guides/model-cards for details.',
+						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/getting-started/models for details.',
 				}),
 			);
 		});
