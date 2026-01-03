@@ -46,6 +46,10 @@ properties:
     type: string
     description: Comma-separated list of workflow IDs allowed to call this workflow (only used with workflowsFromAList policy)
     example: '14, 18, 23'
+  timeSavedMode:
+    type: string
+    enum: ['fixed', 'dynamic']
+    description: Controls the mode for calculating the time saved per execution
   timeSavedPerExecution:
     type: number
     description: Estimated time saved per execution in minutes
