@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "installCommand": "pnpm install",
+  "buildCommand": "turbo run build --filter=@n8n/storybook",
+  "outputDirectory": "packages/storybook/storybook-static"
+}
