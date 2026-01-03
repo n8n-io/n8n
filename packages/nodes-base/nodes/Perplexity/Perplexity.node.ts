@@ -30,6 +30,9 @@ export const PERPLEXITY_OPERATIONS = [
 				method: 'POST' as IHttpRequestMethods,
 				url: '/search',
 			},
+			output: {
+				postReceive: [sendErrorPostReceive],
+			},
 		},
 	},
 	{
