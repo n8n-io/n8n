@@ -160,8 +160,10 @@ function parseSSEString(str: string): JsonObject[] {
 		if (!jsonStr || jsonStr === '[DONE]') continue;
 
 		try {
-			const parsed = JSON.parse(jsonStr) as JsonObject;
-			chunks.push(parsed);
+			const parsed: unknown = JSON.parse(jsonStr);
+			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+				chunks.push(parsed as JsonObject);
+			}
 		} catch {
 			continue;
 		}

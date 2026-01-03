@@ -295,9 +295,8 @@ export const properties: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{ name: 'Day', value: 'day' },
-					{ name: 'Hour', value: 'hour' },
-					{ name: 'Month', value: 'month' },
 					{ name: 'Week', value: 'week' },
+					{ name: 'Month', value: 'month' },
 					{ name: 'Year', value: 'year' },
 				],
 				default: 'month',
