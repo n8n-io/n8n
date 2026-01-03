@@ -294,7 +294,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'search_recency',
+						property: 'search_recency_filter',
 					},
 				},
 			},

@@ -1,8 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as list from './list.operation';
 import * as create from './create.operation';
 import * as get from './get.operation';
+import * as list from './list.operation';
 import { sendErrorPostReceive } from '../../GenericFunctions';
 
 export const description: INodeProperties[] = [
@@ -19,7 +19,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'List Async Chat Completion Requests',
-				value: 'list',
+				value: 'asyncList',
 				action: 'List async chat completion requests',
 				description: 'List all asynchronous chat completion requests',
 				routing: {
@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'Create an Async Chat Completion Request',
-				value: 'create',
+				value: 'asyncCreate',
 				action: 'Create an async chat completion request',
 				description: 'Create an asynchronous chat completion job',
 				routing: {
@@ -49,7 +49,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'Get Async Chat Completion Status',
-				value: 'get',
+				value: 'asyncGet',
 				action: 'Get async chat completion status',
 				description: 'Retrieve the status and result of an asynchronous chat completion job',
 				routing: {
@@ -63,7 +63,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'list',
+		default: 'asyncList',
 	},
 
 	...list.properties,

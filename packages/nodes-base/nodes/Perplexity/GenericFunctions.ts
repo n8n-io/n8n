@@ -97,11 +97,16 @@ export function validateModelParameters(
 	this: IExecuteSingleFunctions,
 	parameters: Record<string, unknown>,
 ): void {
-	const model = parameters.model as string;
-	const reasoningEffort = parameters.reasoningEffort as string;
-	const webSearchOptions = parameters.webSearchOptions as Record<string, unknown> | undefined;
-	const searchType = webSearchOptions?.searchType as string | undefined;
-	const stream = parameters.stream as boolean;
+	const model = typeof parameters.model === 'string' ? parameters.model : '';
+	const reasoningEffort =
+		typeof parameters.reasoningEffort === 'string' ? parameters.reasoningEffort : '';
+	const webSearchOptions =
+		parameters.webSearchOptions && typeof parameters.webSearchOptions === 'object'
+			? (parameters.webSearchOptions as Record<string, unknown>)
+			: undefined;
+	const searchType =
+		typeof webSearchOptions?.searchType === 'string' ? webSearchOptions.searchType : undefined;
+	const stream = typeof parameters.stream === 'boolean' ? parameters.stream : false;
 
 	if (reasoningEffort && model !== 'sonar-deep-research') {
 		throw new NodeOperationError(
@@ -224,15 +229,6 @@ function processChunkArray(
 				}
 			}
 
-			for (const step of allReasoningSteps) {
-				if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
-					const webSearch = step.web_search as JsonObject;
-					if (Array.isArray(webSearch.search_results)) {
-						allSearchResults.push(...(webSearch.search_results as JsonObject[]));
-					}
-				}
-			}
-
 			if (objectType === 'chat.reasoning.done') {
 				if (Array.isArray(chunkObj.search_results)) {
 					allSearchResults.push(...(chunkObj.search_results as JsonObject[]));
@@ -244,10 +240,19 @@ function processChunkArray(
 		}
 	}
 
+	for (const step of allReasoningSteps) {
+		if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
+			const webSearch = step.web_search as JsonObject;
+			if (Array.isArray(webSearch.search_results)) {
+				allSearchResults.push(...(webSearch.search_results as JsonObject[]));
+			}
+		}
+	}
+
 	const finalResponse: JsonObject = {
-		id: id || (finalChunk?.id as string | undefined) || '',
-		model: model || (finalChunk?.model as string | undefined) || '',
-		created: created || (finalChunk?.created as number | undefined) || 0,
+		id: id || ((finalChunk?.id as string | undefined) ?? ''),
+		model: model || ((finalChunk?.model as string | undefined) ?? ''),
+		created: created || ((finalChunk?.created as number | undefined) ?? 0),
 		object: 'chat.completion',
 		choices: [
 			{
@@ -340,7 +345,7 @@ function processSingleResponse(
 			return {
 				...choiceObj,
 				message: {
-					...(choiceMessage || {}),
+					...(choiceMessage ?? {}),
 					content:
 						content || (typeof choiceMessage?.content === 'string' ? choiceMessage.content : ''),
 					...(reasoningSteps.length > 0 && { reasoning_steps: reasoningSteps }),
