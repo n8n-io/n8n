@@ -23,7 +23,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -51,7 +51,7 @@ describe('buildSteps', () => {
 			expect(result[0]).toMatchObject({
 				action: {
 					tool: 'Calculator',
-					toolInput: { expression: '2+2' },
+					toolInput: '2+2',
 					toolCallId: 'call_123',
 					type: 'tool_call',
 				},
@@ -68,7 +68,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -92,7 +92,7 @@ describe('buildSteps', () => {
 							nodeName: 'Search',
 							input: {
 								id: 'call_124',
-								input: { query: 'TypeScript' },
+								input: 'TypeScript',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_124',
@@ -130,7 +130,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -154,7 +154,7 @@ describe('buildSteps', () => {
 							nodeName: 'Search',
 							input: {
 								id: 'call_124',
-								input: { query: 'TypeScript' },
+								input: 'TypeScript',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_124',
@@ -982,6 +982,180 @@ describe('buildSteps', () => {
 			});
 			// When thinking blocks are present, tool_calls is not used (everything is in content array)
 			// Note: Anthropic thinking and Gemini thought_signature are mutually exclusive
+		});
+	});
+
+	describe('Tool input extraction', () => {
+		it('should extract toolInput as string from nested input property (legacy format)', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: '5*343',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { response: '1715' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should be a string to mimic old behavior
+			expect(result[0].action.toolInput).toBe('5*343');
+		});
+
+		it('should extract toolInput with multiple arguments (new format)', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'save_result',
+							input: {
+								id: 'call_456',
+								result: 1715,
+								equation: '5*343',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_456',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { equation: '5*343', result: 1715 } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.toolInput).toEqual({
+				result: 1715,
+				equation: '5*343',
+			});
+			// Should not include id, which is metadata
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
+		});
+
+		it('should exclude metadata fields (id, log, type) from toolInput', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'custom_tool',
+							input: {
+								id: 'call_789',
+								log: 'Custom log message',
+								type: 'tool_call',
+								arg1: 'value1',
+								arg2: 'value2',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_789',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { success: true } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.toolInput).toEqual({
+				arg1: 'value1',
+				arg2: 'value2',
+			});
+			// Metadata fields should be excluded from toolInput
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
+			expect(result[0].action.toolInput).not.toHaveProperty('log');
+			expect(result[0].action.toolInput).not.toHaveProperty('type');
+		});
+
+		it('should handle tools with non-string input property as full object', () => {
+			// When input property exists but is not a string (e.g., object), extract all properties
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'hybrid_tool',
+							input: {
+								id: 'call_mixed',
+								input: { expression: '2+2' },
+								extra: 'should be included',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_mixed',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 4 } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should extract all properties except metadata (id, log, type)
+			expect(result[0].action.toolInput).toEqual({
+				input: { expression: '2+2' },
+				extra: 'should be included',
+			});
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
 		});
 	});
 });
