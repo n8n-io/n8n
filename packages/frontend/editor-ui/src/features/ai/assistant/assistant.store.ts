@@ -103,11 +103,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isFloatingButtonShown = computed(
 		() =>
-			true ||
-			(!chatPanelStateStore.isOpen &&
-				!hideAssistantFloatingButton.value &&
-				isAssistantEnabled.value &&
-				EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS)),
+			!chatPanelStateStore.isOpen &&
+			!hideAssistantFloatingButton.value &&
+			isAssistantEnabled.value &&
+			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	function resetAssistantChat() {
