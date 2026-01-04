@@ -26,7 +26,7 @@ describe('ChatMessage', () => {
 				message,
 				compact: false,
 				isEditing: false,
-				isStreaming: false,
+				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
 				containerWidth: 100,

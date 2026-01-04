@@ -89,4 +89,16 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'aiAssistant.textMessage.restoreVersion': 'Restore version',
+	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
+	'aiAssistant.versionCard.restoreModal.description':
+		'This will replace your current version. Existing version will be saved for {pruneTime} in version history.',
+	'aiAssistant.versionCard.restoreModal.descriptionNoLimit':
+		'This will replace your current version. Existing version will be saved in version history.',
+	'aiAssistant.versionCard.restoreModal.hour': '{count} hour',
+	'aiAssistant.versionCard.restoreModal.hours': '{count} hours',
+	'aiAssistant.versionCard.restoreModal.day': '{count} day',
+	'aiAssistant.versionCard.restoreModal.days': '{count} days',
+	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
+	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
 } as N8nLocale;

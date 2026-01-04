@@ -268,8 +268,7 @@ test.describe('Workflow Executions', () => {
 
 			await expect(n8n.canvas.saveWorkflowButton()).toBeEnabled();
 			await n8n.canvas.saveWorkflowButton().click();
-			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
-			await expect(n8n.canvas.canvasPane()).toBeVisible();
+			await n8n.page.waitForURL(/\/workflow\/.+\/executions$/);
 		});
 	});
 });

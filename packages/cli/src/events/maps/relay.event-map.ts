@@ -502,10 +502,23 @@ export type RelayEventMap = {
 	// #region Variable
 
 	'variable-created': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 
 	'variable-updated': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
+
+	'variable-deleted': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 

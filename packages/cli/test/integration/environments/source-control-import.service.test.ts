@@ -91,6 +91,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			credentialsRepository,
 			projectRepository,
+			mock(),
 			tagRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
