@@ -10,7 +10,7 @@ describe('Github Node - Organization getMembers', () => {
 		},
 	};
 
-	describe('Basic getUsers Operation', () => {
+	describe('Basic getMembers Operation', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.github.com');
 
@@ -67,7 +67,7 @@ describe('Github Node - Organization getMembers', () => {
 		});
 	});
 
-	describe('Paginated getUsers Operation', () => {
+	describe('Paginated getMembers Operation', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.github.com');
 
