@@ -1,0 +1,99 @@
+{
+	"name": "Github Organization getMembers Limit Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "organization",
+				"operation": "getMembers",
+				"owner": {
+					"__rl": true,
+					"value": "testorg",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get Organization Members Limited",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Members Response"
+		}
+	],
+	"pinData": {
+		"Members Response": [
+			{
+				"json": {
+					"login": "octocat",
+					"id": 1,
+					"node_id": "MDQ6VXNlcjE=",
+					"avatar_url": "https://github.com/images/error/octocat_happy.gif",
+					"gravatar_id": "",
+					"url": "https://api.github.com/users/octocat",
+					"html_url": "https://github.com/octocat",
+					"followers_url": "https://api.github.com/users/octocat/followers",
+					"following_url": "https://api.github.com/users/octocat/following",
+					"gists_url": "https://api.github.com/users/octocat/gists",
+					"starred_url": "https://api.github.com/users/octocat/starred",
+					"subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+					"organizations_url": "https://api.github.com/users/octocat/orgs",
+					"repos_url": "https://api.github.com/users/octocat/repos",
+					"events_url": "https://api.github.com/users/octocat/events",
+					"received_events_url": "https://api.github.com/users/octocat/received_events",
+					"type": "User",
+					"site_admin": false
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Organization Members Limited",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Organization Members Limited": {
+			"main": [
+				[
+					{
+						"node": "Members Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
