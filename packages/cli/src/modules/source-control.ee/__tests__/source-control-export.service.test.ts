@@ -665,4 +665,89 @@ describe('SourceControlExportService', () => {
 			);
 		});
 	});
+
+	describe('exportDataTablesToWorkFolder', () => {
+		it('should export data tables to work folder', async () => {
+			// Arrange
+			const mockDataTables = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: new Date('2024-01-01'),
+					updatedAt: new Date('2024-01-02'),
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					projectId: 'project2',
+					columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+					createdAt: new Date('2024-01-03'),
+					updatedAt: new Date('2024-01-04'),
+				},
+			];
+
+			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0].name).toBe('/mock/n8n/git/data_tables.json');
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/data_tables.json', dataCaptor);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toHaveLength(2);
+			expect(exportedData[0]).toEqual({
+				id: 'dt1',
+				name: 'Test Table 1',
+				projectId: 'project1',
+				columns: [
+					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+				],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			});
+			expect(exportedData[1]).toEqual({
+				id: 'dt2',
+				name: 'Test Table 2',
+				projectId: 'project2',
+				columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+				createdAt: '2024-01-03T00:00:00.000Z',
+				updatedAt: '2024-01-04T00:00:00.000Z',
+			});
+		});
+
+		it('should return empty result when no data tables exist', async () => {
+			// Arrange
+			dataTableRepository.find.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+			expect(fsWriteFile).not.toHaveBeenCalled();
+		});
+
+		it('should handle export errors gracefully', async () => {
+			// Arrange
+			dataTableRepository.find.mockRejectedValue(new Error('Database error'));
+
+			// Act & Assert
+			await expect(service.exportDataTablesToWorkFolder()).rejects.toThrow(
+				'Failed to export data tables to work folder',
+			);
+		});
+	});
 });
