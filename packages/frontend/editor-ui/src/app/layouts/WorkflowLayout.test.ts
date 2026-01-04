@@ -9,6 +9,12 @@ vi.mock('@/app/composables/useLayoutProps', () => ({
 	})),
 }));
 
+vi.mock('@/features/ai/assistant/assistant.store', () => ({
+	useAssistantStore: vi.fn(() => ({
+		isFloatingButtonShown: false,
+	})),
+}));
+
 const renderComponent = createComponentRenderer(WorkflowLayout, {
 	global: {
 		stubs: {
@@ -20,6 +26,12 @@ const renderComponent = createComponentRenderer(WorkflowLayout, {
 			},
 			LogsPanel: {
 				template: '<div data-test-id="logs-panel">Logs Panel</div>',
+			},
+			AskAssistantFloatingButton: {
+				template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+			},
+			AppChatPanel: {
+				template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
 			},
 			RouterView: {
 				template: '<div><slot /></div>',
@@ -60,6 +72,12 @@ describe('WorkflowLayout', () => {
 					},
 					LogsPanel: {
 						template: '<div data-test-id="logs-panel">Logs Panel</div>',
+					},
+					AskAssistantFloatingButton: {
+						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+					},
+					AppChatPanel: {
+						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
 					},
 					RouterView: {
 						template: '<div>Workflow Content</div>',
@@ -115,6 +133,12 @@ describe('WorkflowLayout', () => {
 					LogsPanel: {
 						template: '<div data-test-id="logs-panel">Logs Panel</div>',
 					},
+					AskAssistantFloatingButton: {
+						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+					},
+					AppChatPanel: {
+						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
+					},
 					RouterView: {
 						template: '<div>Workflow Canvas</div>',
 					},
@@ -155,6 +179,12 @@ describe('WorkflowLayout', () => {
 					},
 					LogsPanel: {
 						template: '<div data-test-id="logs-panel">Logs Panel</div>',
+					},
+					AskAssistantFloatingButton: {
+						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+					},
+					AppChatPanel: {
+						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
 					},
 					RouterView: {
 						template: '<div>Workflow Editor</div>',
