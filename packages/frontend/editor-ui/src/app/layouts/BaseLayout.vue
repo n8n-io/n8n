@@ -39,7 +39,7 @@ onMounted(() => {
 .appGrid {
 	position: relative;
 	display: grid;
-	height: 100vh;
+	height: 100%;
 	width: 100%;
 	grid-area: layout;
 	grid-template-areas:
