@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
-import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
-import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -28,7 +25,6 @@ import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 
 const route = useRoute();
 const rootStore = useRootStore();
-const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
@@ -47,7 +43,6 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
-const layoutRef = ref<Element | null>(null);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
@@ -81,10 +76,6 @@ watch(
 	{ immediate: true },
 );
 
-const setLayoutRef = (el: Element) => {
-	layoutRef.value = el;
-};
-
 useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
@@ -100,11 +91,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<AppBanners />
-		<AppLayout @mounted="setLayoutRef" />
+		<AppLayout />
 		<AppModals />
 		<AppCommandBar />
-		<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
-		<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
 		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 	</div>
 </template>

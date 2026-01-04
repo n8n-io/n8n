@@ -28,6 +28,9 @@ onMounted(() => {
 				<slot name="footer" />
 			</div>
 		</main>
+		<aside v-if="$slots.aside" id="aside" :class="$style.aside">
+			<slot name="aside" />
+		</aside>
 	</div>
 </template>
 
@@ -40,10 +43,10 @@ onMounted(() => {
 	width: 100%;
 	grid-area: layout;
 	grid-template-areas:
-		'banners banners'
-		'sidebar header'
-		'sidebar content';
-	grid-template-columns: auto 1fr;
+		'banners banners banners'
+		'sidebar header aside'
+		'sidebar content aside';
+	grid-template-columns: auto 1fr auto;
 	grid-template-rows: auto auto 1fr;
 }
 
@@ -57,6 +60,14 @@ onMounted(() => {
 .sidebar {
 	grid-area: sidebar;
 	z-index: var(--app-sidebar--z);
+}
+
+.aside {
+	grid-area: aside;
+	z-index: var(--app-aside--z, 5);
+	min-width: 0;
+	min-height: 0;
+	position: relative;
 }
 
 .content {
