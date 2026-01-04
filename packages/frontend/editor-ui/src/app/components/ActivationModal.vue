@@ -17,8 +17,7 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText, N8nCheckbox } from '@n8n/design-system';
 import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 const checked = ref(false);
 
@@ -123,9 +122,9 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<ElCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
-					i18n.baseText('generic.dontShowAgain')
-				}}</ElCheckbox>
+				<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
+					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
+				</N8nCheckbox>
 				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>

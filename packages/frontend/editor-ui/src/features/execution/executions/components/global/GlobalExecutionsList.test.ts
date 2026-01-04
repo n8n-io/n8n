@@ -153,13 +153,13 @@ describe('GlobalExecutionsList', () => {
 
 			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-			await retry(() =>
+			await retry(() => {
 				expect(
-					getAllByTestId('select-execution-checkbox').filter((el) =>
-						el.contains(el.querySelector(':checked')),
+					getAllByTestId('select-execution-checkbox').filter(
+						(el) => el.getAttribute('data-state') === 'checked',
 					).length,
-				).toBe(10),
-			);
+				).toBe(10);
+			});
 			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
 			expect(getByTestId('selected-items-info').textContent).toContain(10);
 
@@ -171,16 +171,16 @@ describe('GlobalExecutionsList', () => {
 
 			await waitFor(() => expect(getAllByTestId('select-execution-checkbox').length).toBe(20));
 			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
+				getAllByTestId('select-execution-checkbox').filter(
+					(el) => el.getAttribute('data-state') === 'checked',
 				).length,
 			).toBe(10);
 
 			await userEvent.click(getByTestId('select-all-executions-checkbox'));
 			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
+				getAllByTestId('select-execution-checkbox').filter(
+					(el) => el.getAttribute('data-state') === 'checked',
 				).length,
 			).toBe(20);
 			expect(getByTestId('selected-items-info').textContent).toContain(20);
@@ -188,8 +188,8 @@ describe('GlobalExecutionsList', () => {
 			await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
 			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
+				getAllByTestId('select-execution-checkbox').filter(
+					(el) => el.getAttribute('data-state') === 'checked',
 				).length,
 			).toBe(19);
 			expect(getByTestId('selected-items-info').textContent).toContain(19);
