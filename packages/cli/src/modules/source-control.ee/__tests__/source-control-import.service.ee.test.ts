@@ -1556,11 +1556,14 @@ describe('SourceControlImportService', () => {
 					mockPersonalProject,
 					{ id: 'project1', type: 'team' },
 				] as any);
-				dataTableRepository.manager = {
-					connection: {
-						options: { type: 'sqlite' },
+				Object.defineProperty(dataTableRepository, 'manager', {
+					value: {
+						connection: {
+							options: { type: 'sqlite' },
+						},
 					},
-				} as any;
+					configurable: true,
+				});
 			});
 
 			it('should import new data table', async () => {
@@ -1661,7 +1664,7 @@ describe('SourceControlImportService', () => {
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTables) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
 				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column 1' }] as any);
-				dataTableColumnRepository.save.mockImplementation((col: any) => Promise.resolve(col));
+				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
 
 				// Act
 				await service.importDataTablesFromWorkFolder(mockCandidate, mockUser.id);
