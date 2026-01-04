@@ -66,7 +66,7 @@ export class ShopifyOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
+			type: 'string',
 			default: 'write_orders read_orders write_products read_products',
 		},
 		{
