@@ -44,7 +44,7 @@ export const properties: INodeProperties[] = [
 				type: 'body',
 				property: 'query',
 				value:
-					'={{ $value.query?.map(q => q.text).length === 1 ? $value.query[0].text : $value.query?.map(q => q.text) }}',
+					'={{ $value.query?.map(q => q.text)?.length === 1 ? $value.query[0].text : $value.query?.map(q => q.text) }}',
 			},
 		},
 	},

@@ -223,12 +223,12 @@ function processChunkArray(
 				}
 
 				if (Array.isArray(message?.reasoning_steps)) {
-					allReasoningSteps.push(...(message.reasoning_steps as JsonObject[]));
+					allReasoningSteps.push(...message.reasoning_steps.filter(isJsonObject));
 				}
 			}
 
 			if (Array.isArray(chunkObj.search_results)) {
-				allSearchResults.push(...(chunkObj.search_results as JsonObject[]));
+				allSearchResults.push(...chunkObj.search_results.filter(isJsonObject));
 			}
 
 			if (objectType === 'chat.completion.chunk' || objectType === 'chat.completion.done') {
@@ -242,16 +242,16 @@ function processChunkArray(
 			if (firstChoice) {
 				const delta = firstChoice.delta as JsonObject | undefined;
 				if (Array.isArray(delta?.reasoning_steps)) {
-					allReasoningSteps.push(...(delta.reasoning_steps as JsonObject[]));
+					allReasoningSteps.push(...delta.reasoning_steps.filter(isJsonObject));
 				}
 			}
 
 			if (objectType === 'chat.reasoning.done') {
 				if (Array.isArray(chunkObj.search_results)) {
-					allSearchResults.push(...(chunkObj.search_results as JsonObject[]));
+					allSearchResults.push(...chunkObj.search_results.filter(isJsonObject));
 				}
 				if (Array.isArray(chunkObj.images)) {
-					allImages.push(...(chunkObj.images as JsonObject[]));
+					allImages.push(...chunkObj.images.filter(isJsonObject));
 				}
 			}
 		}
@@ -261,7 +261,7 @@ function processChunkArray(
 		if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
 			const webSearch = step.web_search as JsonObject;
 			if (Array.isArray(webSearch.search_results)) {
-				allSearchResults.push(...(webSearch.search_results as JsonObject[]));
+				allSearchResults.push(...webSearch.search_results.filter(isJsonObject));
 			}
 		}
 	}
@@ -323,28 +323,28 @@ function processSingleResponse(
 
 	const reasoningSteps: JsonObject[] = [];
 	if (Array.isArray(message?.reasoning_steps)) {
-		reasoningSteps.push(...(message.reasoning_steps as JsonObject[]));
+		reasoningSteps.push(...message.reasoning_steps.filter(isJsonObject));
 	} else if (Array.isArray(delta?.reasoning_steps)) {
-		reasoningSteps.push(...(delta.reasoning_steps as JsonObject[]));
+		reasoningSteps.push(...delta.reasoning_steps.filter(isJsonObject));
 	}
 
 	const searchResults: JsonObject[] = [];
 	if (Array.isArray(responseData.search_results)) {
-		searchResults.push(...(responseData.search_results as JsonObject[]));
+		searchResults.push(...responseData.search_results.filter(isJsonObject));
 	}
 
 	for (const step of reasoningSteps) {
 		if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
 			const webSearch = step.web_search as JsonObject;
 			if (Array.isArray(webSearch.search_results)) {
-				searchResults.push(...(webSearch.search_results as JsonObject[]));
+				searchResults.push(...webSearch.search_results.filter(isJsonObject));
 			}
 		}
 	}
 
 	const images: JsonObject[] = [];
 	if (Array.isArray(responseData.images)) {
-		images.push(...(responseData.images as JsonObject[]));
+		images.push(...responseData.images.filter(isJsonObject));
 	}
 
 	const enhancedJson: JsonObject = {
