@@ -454,7 +454,8 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+
+				returnItems.push({ json: { error: errorItem } });
 
 				continue;
 			}
