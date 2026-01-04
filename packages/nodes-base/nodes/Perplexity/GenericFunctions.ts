@@ -6,6 +6,17 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+function isJsonObjectOrString(value: unknown): value is JsonObject | string {
+	return (
+		typeof value === 'string' ||
+		(value !== null && typeof value === 'object' && !Array.isArray(value))
+	);
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 export async function sendErrorPostReceive(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
@@ -129,7 +140,11 @@ export async function processProSearchResponse(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	return items.map((item) => {
-		const json = item.json as JsonObject | string;
+		if (!isJsonObjectOrString(item.json)) {
+			return item;
+		}
+
+		const json = item.json;
 
 		// Format: "data: {...}\r\n\r\ndata: {...}\r\n\r\ndata: {...}"
 		if (typeof json === 'string') {
@@ -196,7 +211,7 @@ function processChunkArray(
 
 		if (objectType === 'chat.completion.chunk' || objectType === 'chat.completion.done') {
 			const choices = Array.isArray(chunkObj.choices) ? chunkObj.choices : [];
-			const firstChoice = choices[0] as JsonObject | undefined;
+			const firstChoice = isJsonObject(choices[0]) ? choices[0] : undefined;
 			if (firstChoice) {
 				const message = firstChoice.message as JsonObject | undefined;
 				const delta = firstChoice.delta as JsonObject | undefined;
@@ -223,7 +238,7 @@ function processChunkArray(
 
 		if (objectType === 'chat.reasoning' || objectType === 'chat.reasoning.done') {
 			const choices = Array.isArray(chunkObj.choices) ? chunkObj.choices : [];
-			const firstChoice = choices[0] as JsonObject | undefined;
+			const firstChoice = isJsonObject(choices[0]) ? choices[0] : undefined;
 			if (firstChoice) {
 				const delta = firstChoice.delta as JsonObject | undefined;
 				if (Array.isArray(delta?.reasoning_steps)) {
@@ -283,9 +298,9 @@ function processSingleResponse(
 ): INodeExecutionData {
 	const objectType = typeof responseData.object === 'string' ? responseData.object : '';
 	const choices = Array.isArray(responseData.choices) ? responseData.choices : [];
-	const firstChoice = choices[0] as JsonObject | undefined;
-	const message = firstChoice?.message as JsonObject | undefined;
-	const delta = firstChoice?.delta as JsonObject | undefined;
+	const firstChoice = isJsonObject(choices[0]) ? choices[0] : undefined;
+	const message = isJsonObject(firstChoice?.message) ? firstChoice.message : undefined;
+	const delta = isJsonObject(firstChoice?.delta) ? firstChoice.delta : undefined;
 
 	const hasReasoningSteps =
 		objectType === 'chat.reasoning' ||

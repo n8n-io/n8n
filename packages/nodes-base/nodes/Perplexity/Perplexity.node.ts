@@ -1,4 +1,4 @@
-import type { INodeType, INodeTypeDescription, IHttpRequestMethods } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { chat, search, async } from './descriptions';
@@ -12,7 +12,7 @@ export const PERPLEXITY_OPERATIONS = [
 		description: 'Standard chat completion. Use for immediate responses.',
 		routing: {
 			request: {
-				method: 'POST' as IHttpRequestMethods,
+				method: 'POST' as const,
 				url: '/chat/completions',
 			},
 			output: {
@@ -27,7 +27,7 @@ export const PERPLEXITY_OPERATIONS = [
 		description: 'Search the web and return ranked results with advanced filtering',
 		routing: {
 			request: {
-				method: 'POST' as IHttpRequestMethods,
+				method: 'POST' as const,
 				url: '/search',
 			},
 			output: {
@@ -43,7 +43,7 @@ export const PERPLEXITY_OPERATIONS = [
 			'Submit a chat request for background processing. Returns a Request ID immediately.',
 		routing: {
 			request: {
-				method: 'POST' as IHttpRequestMethods,
+				method: 'POST' as const,
 				url: '/async/chat/completions',
 			},
 			output: {
@@ -58,7 +58,7 @@ export const PERPLEXITY_OPERATIONS = [
 		description: 'Retrieve the status and result of an asynchronous chat completion job',
 		routing: {
 			request: {
-				method: 'GET' as IHttpRequestMethods,
+				method: 'GET' as const,
 				url: '=/async/chat/completions/{{ $parameter.requestId }}',
 			},
 			output: {
@@ -73,7 +73,7 @@ export const PERPLEXITY_OPERATIONS = [
 		description: 'List all asynchronous chat completion requests',
 		routing: {
 			request: {
-				method: 'GET' as IHttpRequestMethods,
+				method: 'GET' as const,
 				url: '/async/chat/completions',
 			},
 			output: {
@@ -141,7 +141,7 @@ export class Perplexity implements INodeType {
 				routing: {
 					send: {
 						type: 'body',
-						property: 'model',
+						property: '={{ $parameter.operation === "asyncCreate" ? "request.model" : "model" }}',
 					},
 				},
 				default: 'sonar',
@@ -166,7 +166,8 @@ export class Perplexity implements INodeType {
 				routing: {
 					send: {
 						type: 'body',
-						property: 'reasoning_effort',
+						property:
+							'={{ $parameter.operation === "asyncCreate" ? "request.reasoning_effort" : "reasoning_effort" }}',
 					},
 				},
 			},
@@ -186,7 +187,8 @@ export class Perplexity implements INodeType {
 				routing: {
 					send: {
 						type: 'body',
-						property: 'web_search_options.search_type',
+						property:
+							'={{ $parameter.operation === "asyncCreate" ? "request.web_search_options.search_type" : "web_search_options.search_type" }}',
 						value: '={{ $value ? "pro" : undefined }}',
 					},
 				},
