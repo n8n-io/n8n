@@ -26,7 +26,7 @@ import {
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
-import { JSONSchema7 } from 'json-schema';
+import type { JSONSchema7 } from 'json-schema';
 import pick from 'lodash/pick';
 
 /**
