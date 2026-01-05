@@ -25,7 +25,7 @@ Use data persistence when you need to:
 
 ### Data Table (n8n-nodes-base.dataTable) - PREFERRED
 
-**Best for:** Quick setup, built-in storage, simple data structures
+**Best for:** Quick setup, small to medium amounts of data
 
 Advantages:
 - No credentials or external configuration required
@@ -139,7 +139,6 @@ Best for: Enrichment, validation, conditional logic based on stored data
 - **Batch operations when possible:** Multiple small writes are slower than batch operations
 - **Use appropriate operations:** Use "append" for new records, "update" for modifications
 - **Consider API limits:** Google Sheets has rate limits; plan accordingly for high-volume workflows
-- **Index/filter carefully:** Design queries to be efficient and avoid full table scans
 
 ### Data Integrity
 
@@ -153,7 +152,6 @@ Best for: Enrichment, validation, conditional logic based on stored data
 ### Storage vs. Transformation
 
 - **Set/Merge nodes are NOT storage:** They transform data in memory only
-- **Always use a storage node:** Data must be written to persistent storage (Data Table, Sheets, Airtable)
 - **Storage happens explicitly:** Data won't persist unless you explicitly write it to storage
 
 ### Temporary vs. Persistent Storage
@@ -164,25 +162,9 @@ Best for: Enrichment, validation, conditional logic based on stored data
 
 ## Common Pitfalls to Avoid
 
-### Forgetting to Store Data
-
-The most common mistake is assuming data will persist without explicitly writing it to storage. Always include a storage node (Data Table, Google Sheets, or Airtable) to actually write the data.
-
-### Using Only Set/Merge Nodes
-
-Set and Merge nodes transform data in memory but do not persist it. You must use an actual storage node after transformation.
-
-### Incorrect Field Mapping
-
-When writing to storage, ensure field names in your data match the column/field names in your destination. Mismatches cause data to be written incorrectly or fail silently.
-
 ### Not Handling Duplicates
 
 Without proper unique identifiers or upsert logic, you may create duplicate records. Use unique IDs or check for existing records before inserting.
-
-### Poor Schema Design
-
-Changing storage schemas after data is stored can be difficult. Plan your data structure before implementation, considering future needs.
 
 ### Ignoring Storage Limits
 
