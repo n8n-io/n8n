@@ -1,4 +1,5 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
+import type { Example } from 'langsmith/schemas';
 
 import type { EvalCriteria } from './judge-panel';
 
@@ -9,6 +10,11 @@ import type { EvalCriteria } from './judge-panel';
 export interface PairwiseDatasetInput {
 	evals: EvalCriteria;
 	prompt: string;
+}
+
+/** LangSmith Example with typed inputs for pairwise evaluation */
+export interface PairwiseExample extends Omit<Example, 'inputs'> {
+	inputs: PairwiseDatasetInput;
 }
 
 export interface PairwiseTargetOutput {
