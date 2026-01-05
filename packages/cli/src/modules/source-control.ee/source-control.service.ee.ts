@@ -1,3 +1,4 @@
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -6,8 +7,9 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
+import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
@@ -548,6 +550,18 @@ export class SourceControlService {
 			}
 			default:
 				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
+	}
+
+	/**
+	 * Broadcasts a reload event to other main instances in multi-main deployments.
+	 * Used to notify other instances when source control configuration changes.
+	 */
+	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
+		const instanceSettings = Container.get(InstanceSettings);
+
+		if (instanceSettings.isMultiMain) {
+			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 		}
 	}
 }
