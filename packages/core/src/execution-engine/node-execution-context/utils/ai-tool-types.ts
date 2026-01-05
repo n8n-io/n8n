@@ -1,5 +1,5 @@
 import { Toolkit } from '@langchain/classic/agents';
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 /**
  * A Toolkit that contains only DynamicStructuredTool instances.
