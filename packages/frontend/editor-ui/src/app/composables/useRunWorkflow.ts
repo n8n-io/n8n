@@ -162,8 +162,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
 			) {
 				toast.showMessage({
-					title: 'Unsupported Binary Mode',
-					message: i18n.baseText('workflowRun.showError.unsupportedBinaryMode'),
+					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
 					type: 'error',
 				});
 				return undefined;

@@ -223,7 +223,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (workflowsStore.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
 			return i18n.baseText('ndv.binaryData.combinedTooltip', {
 				interpolate: {
-					example: "{{ $('Target Node').item.json.binaryName }}",
+					example: "{{ $('Target Node').item.binaryName }}",
 				},
 			});
 		}

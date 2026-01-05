@@ -359,8 +359,8 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result).toBeUndefined();
 			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: 'Unsupported Binary Mode',
-				message: useI18n().baseText('workflowRun.showError.unsupportedBinaryMode'),
+				title: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+				message: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
 				type: 'error',
 			});
 		});
