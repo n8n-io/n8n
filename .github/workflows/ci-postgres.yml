@@ -1,4 +1,4 @@
-name: Test Postgres and MySQL schemas
+name: Test Postgres schemas
 
 on:
   schedule:
@@ -149,4 +149,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Postgres, MariaDB or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: Postgres tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

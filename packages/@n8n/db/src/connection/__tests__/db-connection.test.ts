@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
@@ -24,10 +24,6 @@ describe('DbConnection', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const databaseConfig = mock<DatabaseConfig>();
 	const logger = mock<Logger>();
-	const binaryDataConfig = mock<BinaryDataConfig>({
-		availableModes: ['filesystem'],
-		dbMaxFileSize: 512,
-	});
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
 	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
@@ -51,7 +47,6 @@ describe('DbConnection', () => {
 			connectionOptions,
 			databaseConfig,
 			logger,
-			binaryDataConfig,
 		);
 	});
 
@@ -206,7 +201,6 @@ describe('DbConnection', () => {
 						pingIntervalSeconds: 1,
 					}),
 					logger,
-					binaryDataConfig,
 				);
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any

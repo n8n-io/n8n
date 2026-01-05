@@ -28,21 +28,5 @@ describe('WorkflowRepository', () => {
 			expect(whereClause).toContain(expectedInQuery);
 			expect(parameters).toEqual(expectedParameters);
 		});
-
-		it('should return the correct WHERE clause and parameters for mysqldb', () => {
-			const nodeTypes = ['HTTP Request', 'Set'];
-			const expectedWhereClause =
-				"(JSON_SEARCH(JSON_EXTRACT(workflow.nodes, '$[*].type'), 'one', :nodeType0) IS NOT NULL OR JSON_SEARCH(JSON_EXTRACT(workflow.nodes, '$[*].type'), 'one', :nodeType1) IS NOT NULL)";
-			const expectedParameters = {
-				nodeType0: 'HTTP Request',
-				nodeType1: 'Set',
-				nodeTypes,
-			};
-
-			const { whereClause, parameters } = buildWorkflowsByNodesQuery(nodeTypes, 'mysqldb');
-
-			expect(whereClause).toEqual(expectedWhereClause);
-			expect(parameters).toEqual(expectedParameters);
-		});
 	});
 });

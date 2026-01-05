@@ -2,7 +2,6 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
-import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
@@ -11,7 +10,6 @@ import type { TlsOptions } from 'node:tls';
 import path from 'path';
 
 import { entities } from '../entities';
-import { mysqlMigrations } from '../migrations/mysqldb';
 import { postgresMigrations } from '../migrations/postgresdb';
 import { sqliteMigrations } from '../migrations/sqlite';
 import { subscribers } from '../subscribers';
@@ -24,7 +22,7 @@ export class DbConnectionOptions {
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
+	getOverrides(dbType: 'postgresdb') {
 		const dbConfig = this.config[dbType];
 		return {
 			database: dbConfig.database,
@@ -42,9 +40,6 @@ export class DbConnectionOptions {
 				return this.getSqliteConnectionOptions();
 			case 'postgresdb':
 				return this.getPostgresConnectionOptions();
-			case 'mariadb':
-			case 'mysqldb':
-				return this.getMysqlConnectionOptions(dbType);
 			default:
 				throw new UserError('Database type currently not supported', { extra: { dbType } });
 		}
@@ -131,18 +126,6 @@ export class DbConnectionOptions {
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
 			},
-		};
-	}
-
-	private getMysqlConnectionOptions(dbType: 'mariadb' | 'mysqldb'): MysqlConnectionOptions {
-		const { mysqldb: mysqlConfig } = this.config;
-		return {
-			type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
-			...this.getCommonOptions(),
-			...this.getOverrides('mysqldb'),
-			poolSize: mysqlConfig.poolSize,
-			migrations: mysqlMigrations,
-			timezone: 'Z', // set UTC as default
 		};
 	}
 }
