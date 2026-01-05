@@ -211,7 +211,7 @@ const normalizeToolSchema = (tool: Tool | DynamicStructuredTool | StructuredTool
 		return tool;
 	}
 	const isZodObject = tool.schema instanceof ZodType;
-	if (!isZodObject) {
+	if (tool.schema && !isZodObject) {
 		tool.schema = convertJsonSchemaToZod(tool.schema as JSONSchema7);
 	}
 
