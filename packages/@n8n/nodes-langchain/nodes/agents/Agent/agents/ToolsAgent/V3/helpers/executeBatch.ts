@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
-import { assertParamIsNumber, NodeOperationError, LoggerProxy } from 'n8n-workflow';
+import { assertParamIsNumber, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
