@@ -28,7 +28,6 @@ import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 
 const route = useRoute();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 const { setAppZIndexes } = useStyles();
