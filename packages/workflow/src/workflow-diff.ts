@@ -138,7 +138,7 @@ export class WorkflowChangeSet<T extends DiffableNode> {
 }
 /**
  * Determines whether the second node is a "superset" of the first one, i.e. whether no data
- * is lost if we were replace `prev` with `next`.
+ * is lost if we were to replace `prev` with `next`.
  *
  * Specifically this is the case if
  * - Both nodes have the exact same keys
