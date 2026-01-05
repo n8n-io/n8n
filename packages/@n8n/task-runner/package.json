@@ -5,6 +5,7 @@
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
     "dev": "pnpm build && pnpm start",
+    "debug": "./scripts/debug.sh",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
