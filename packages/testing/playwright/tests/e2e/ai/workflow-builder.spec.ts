@@ -23,7 +23,7 @@ async function openBuilderAndClickSuggestion(n8n: n8nPage, suggestionText: strin
 // Enable proxy server for recording/replaying Anthropic API calls
 test.use({
 	capability: {
-		proxyServerEnabled: true,
+		services: ['proxy'],
 		env: {
 			N8N_AI_ANTHROPIC_KEY: 'sk-ant-test-key-for-mocked-tests',
 		},

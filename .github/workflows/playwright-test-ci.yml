@@ -52,7 +52,8 @@ jobs:
       test-command: pnpm --filter=n8n-playwright test:local:e2e-only
       shards: 6
       runner: ubuntu-latest
-      workers: '2'
+      workers: '1'
+      upload-failure-artifacts: true
 
   community-isolated:
     name: 'Community: Isolated'
@@ -65,3 +66,4 @@ jobs:
       shards: 2
       runner: ubuntu-latest
       workers: '1'
+      upload-failure-artifacts: true
