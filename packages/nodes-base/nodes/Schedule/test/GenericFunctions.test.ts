@@ -2,6 +2,7 @@ import type { INode } from 'n8n-workflow';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import {
+	computeIntervalsHash,
 	intervalToRecurrence,
 	recurrenceCheck,
 	toCronExpression,
@@ -325,5 +326,80 @@ describe('intervalToRecurrence', () => {
 			intervalSize: 3,
 			typeInterval: 'months',
 		});
+	});
+});
+
+describe('computeIntervalsHash', () => {
+	it('should return same hash for identical intervals', () => {
+		const intervals1: ScheduleInterval[] = [{ field: 'hours', hoursInterval: 3 }];
+		const intervals2: ScheduleInterval[] = [{ field: 'hours', hoursInterval: 3 }];
+		expect(computeIntervalsHash(intervals1)).toBe(computeIntervalsHash(intervals2));
+	});
+
+	it('should return different hash when interval size changes', () => {
+		const intervals1: ScheduleInterval[] = [{ field: 'hours', hoursInterval: 1 }];
+		const intervals2: ScheduleInterval[] = [{ field: 'hours', hoursInterval: 3 }];
+		expect(computeIntervalsHash(intervals1)).not.toBe(computeIntervalsHash(intervals2));
+	});
+
+	it('should return different hash when interval type changes', () => {
+		const intervals1: ScheduleInterval[] = [{ field: 'hours', hoursInterval: 2 }];
+		const intervals2: ScheduleInterval[] = [
+			{ field: 'days', daysInterval: 2, triggerAtHour: 10, triggerAtMinute: 0 },
+		];
+		expect(computeIntervalsHash(intervals1)).not.toBe(computeIntervalsHash(intervals2));
+	});
+
+	it('should ignore non-recurrence properties like triggerAtMinute', () => {
+		const intervals1: ScheduleInterval[] = [
+			{ field: 'hours', hoursInterval: 3, triggerAtMinute: 0 },
+		];
+		const intervals2: ScheduleInterval[] = [
+			{ field: 'hours', hoursInterval: 3, triggerAtMinute: 30 },
+		];
+		expect(computeIntervalsHash(intervals1)).toBe(computeIntervalsHash(intervals2));
+	});
+
+	it('should handle multiple intervals', () => {
+		const intervals: ScheduleInterval[] = [
+			{ field: 'hours', hoursInterval: 2 },
+			{ field: 'days', daysInterval: 1, triggerAtHour: 10, triggerAtMinute: 0 },
+		];
+		const hash = computeIntervalsHash(intervals);
+		expect(hash).toBe('[{"field":"hours","hoursInterval":2},{"field":"days","daysInterval":1}]');
+	});
+
+	it('should handle empty intervals array', () => {
+		const intervals: ScheduleInterval[] = [];
+		const hash = computeIntervalsHash(intervals);
+		expect(hash).toBe('[]');
+	});
+
+	it('should handle seconds and minutes intervals', () => {
+		const seconds: ScheduleInterval[] = [{ field: 'seconds', secondsInterval: 30 }];
+		const minutes: ScheduleInterval[] = [{ field: 'minutes', minutesInterval: 5 }];
+		// These don't have recurrence-relevant properties beyond field
+		expect(computeIntervalsHash(seconds)).toBe('[{"field":"seconds"}]');
+		expect(computeIntervalsHash(minutes)).toBe('[{"field":"minutes"}]');
+	});
+
+	it('should handle weeks interval with all properties', () => {
+		const intervals: ScheduleInterval[] = [
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtDay: [1, 3, 5],
+				triggerAtHour: 9,
+				triggerAtMinute: 0,
+			},
+		];
+		const hash = computeIntervalsHash(intervals);
+		expect(hash).toBe('[{"field":"weeks","weeksInterval":2}]');
+	});
+
+	it('should handle cron expression interval', () => {
+		const intervals: ScheduleInterval[] = [{ field: 'cronExpression', expression: '0 0 0 * * *' }];
+		const hash = computeIntervalsHash(intervals);
+		expect(hash).toBe('[{"field":"cronExpression"}]');
 	});
 });
