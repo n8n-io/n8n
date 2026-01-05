@@ -1943,6 +1943,8 @@
 	"parameterInput.hoverTableItemTip": "You can also do this by hovering over input/output items in the table view",
 	"parameterInput.emptyString": "[empty]",
 	"parameterInput.customApiCall": "Custom API Call",
+	"parameterInput.iconPicker.tooltip": "Select icon or emoji",
+	"parameterInput.selectIcon": "Select icon",
 	"parameterInput.error": "ERROR",
 	"parameterInput.expression": "Expression",
 	"parameterInput.fixed": "Fixed",
