@@ -210,6 +210,38 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath('/tmp/xo'))).toBe(true);
 	});
 
+	describe('cross-platform path handling', () => {
+		beforeEach(() => {
+			// Use default .git blocking pattern
+			securityConfig.blockFilePatterns = '^(.*\\/)*\\.git(\\/.*)*$';
+		});
+
+		it('should handle Windows-style paths for .git directory', async () => {
+			const windowsGitPath = 'C:\\repo\\.git\\config';
+			expect(isFilePathBlocked(await resolvePath(windowsGitPath))).toBe(true);
+		});
+
+		it('should handle nested Windows paths for .git subdirectories', async () => {
+			const windowsGitPath = 'C:\\Users\\user\\project\\.git\\hooks\\pre-commit';
+			expect(isFilePathBlocked(await resolvePath(windowsGitPath))).toBe(true);
+		});
+
+		it('should handle mixed path separators', async () => {
+			const mixedPath = 'C:\\repo/.git\\objects\\abc123';
+			expect(isFilePathBlocked(await resolvePath(mixedPath))).toBe(true);
+		});
+
+		it('should allow legitimate files with git-related extensions', async () => {
+			const legitimatePath = 'C:\\repo\\somefile.txt';
+			expect(isFilePathBlocked(await resolvePath(legitimatePath))).toBe(false);
+		});
+
+		it('should handle Windows absolute paths to .git', async () => {
+			const windowsRootGit = 'C:\\.git';
+			expect(isFilePathBlocked(await resolvePath(windowsRootGit))).toBe(true);
+		});
+	});
+
 	describe('when multiple file patterns are configured', () => {
 		beforeEach(() => {
 			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';

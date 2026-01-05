@@ -55,6 +55,22 @@ export class LogsPanel {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
+	getSessionIdButton(): Locator {
+		return this.getManualChatModal().getByTestId('chat-session-id');
+	}
+
+	getRefreshSessionButton(): Locator {
+		return this.getManualChatModal().getByTestId('refresh-session-button');
+	}
+
+	/**
+	 * Returns the session ID tooltip locator.
+	 * Filters by "click to copy" text to avoid matching other tooltips in the header.
+	 */
+	getSessionIdTooltip(): Locator {
+		return this.root.page().locator('.n8n-tooltip').filter({ hasText: 'click to copy' });
+	}
+
 	/**
 	 * Actions
 	 */
@@ -88,5 +104,26 @@ export class LogsPanel {
 	async sendManualChatMessage(message: string): Promise<void> {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
+
+	/**
+	 * Clicks the session ID button to show the tooltip and extracts the full session ID.
+	 * @returns The full session ID string
+	 */
+	async getSessionId(): Promise<string> {
+		await this.getSessionIdButton().click();
+		const tooltipText = await this.getSessionIdTooltip().textContent();
+		if (!tooltipText) {
+			throw new Error('Session ID tooltip text is empty');
+		}
+		// Extract session ID before "(click to copy)"
+		return tooltipText.split('(')[0].trim();
+	}
+
+	/**
+	 * Clicks the refresh session button to reset the chat session.
+	 */
+	async refreshSession(): Promise<void> {
+		await this.getRefreshSessionButton().click();
 	}
 }

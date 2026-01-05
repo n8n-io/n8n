@@ -3,11 +3,7 @@ import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
-test.use({
-	addContainerCapability: {
-		sourceControl: true,
-	},
-});
+test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
 	expect(
@@ -26,7 +22,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		await setupGitRepo(n8n, n8nContainer);
+		await setupGitRepo(n8n, n8nContainer.services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {

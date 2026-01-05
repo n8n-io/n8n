@@ -23,6 +23,7 @@ import { getNextPhaseFromLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
+	handleClearErrorState,
 	handleCleanupDangling,
 	handleCompactMessages,
 	handleCreateWorkflowName,
@@ -211,6 +212,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				);
 			})
 			.addNode('delete_messages', (state) => handleDeleteMessages(state.messages))
+			.addNode('clear_error_state', (state) => handleClearErrorState(state.coordinationLog, logger))
 			.addNode(
 				'create_workflow_name',
 				async (state) =>
@@ -266,6 +268,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					delete_messages: 'delete_messages',
 					create_workflow_name: 'create_workflow_name',
 					auto_compact_messages: 'compact_messages', // Reuse same node
+					clear_error_state: 'clear_error_state',
 					continue: 'supervisor',
 				};
 				return routes[state.nextPhase] ?? 'supervisor';
@@ -273,6 +276,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Route after state modification nodes
 			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup
 			.addEdge('delete_messages', 'responder') // Clear → responder for acknowledgment
+			.addEdge('clear_error_state', 'check_state') // Re-check after clearing errors (AI-1812)
 			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
 			// Compact has conditional routing: auto → continue, manual → responder
 			.addConditionalEdges('compact_messages', (state) => {

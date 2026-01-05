@@ -3,11 +3,7 @@ import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
-test.use({
-	addContainerCapability: {
-		sourceControl: true,
-	},
-});
+test.use({ capability: 'source-control' });
 
 async function expectPullSuccess(n8n: n8nPage) {
 	expect(
@@ -21,7 +17,7 @@ test.describe('Pull resources from Git @capability:source-control', () => {
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
-		repoUrl = await setupGitRepo(n8n, n8nContainer);
+		repoUrl = await setupGitRepo(n8n, n8nContainer.services.gitea);
 	});
 
 	test('should pull new resources from remote', async ({ n8n }) => {

@@ -1598,6 +1598,7 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 	sharedWithProjects?: ProjectSharingData[];
+	homeProjectId?: string;
 }) => {
 	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
@@ -1613,6 +1614,7 @@ const moveWorkflowToFolder = async (payload: {
 			name: payload.name,
 			parentFolderId: payload.parentFolderId,
 			sharedWithProjects: payload.sharedWithProjects,
+			homeProjectId: payload.homeProjectId,
 		},
 		workflowListEventBus,
 	);

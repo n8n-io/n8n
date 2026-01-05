@@ -13,11 +13,15 @@ inputs:
     description: 'Login to DockerHub'
     required: false
     default: 'false'
+  login-dhi:
+    description: 'Login to Docker Hardened Images registry (dhi.io)'
+    required: false
+    default: 'false'
   dockerhub-username:
-    description: 'DockerHub username (required if login-dockerhub is true)'
+    description: 'DockerHub username (required if login-dockerhub or login-dhi is true)'
     required: false
   dockerhub-password:
-    description: 'DockerHub password (required if login-dockerhub is true)'
+    description: 'DockerHub password (required if login-dockerhub or login-dhi is true)'
     required: false
 
 runs:
@@ -35,5 +39,13 @@ runs:
       if: inputs.login-dockerhub == 'true'
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
+        username: ${{ inputs.dockerhub-username }}
+        password: ${{ inputs.dockerhub-password }}
+
+    - name: Login to DHI Registry
+      if: inputs.login-dhi == 'true'
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      with:
+        registry: dhi.io
         username: ${{ inputs.dockerhub-username }}
         password: ${{ inputs.dockerhub-password }}
