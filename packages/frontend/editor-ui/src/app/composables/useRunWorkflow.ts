@@ -163,8 +163,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			) {
 				toast.showMessage({
 					title: 'Unsupported Binary Mode',
-					message:
-						'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
+					message: i18n.baseText('workflowRun.showError.unsupportedBinaryMode'),
 					type: 'error',
 				});
 				return undefined;

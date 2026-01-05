@@ -2,7 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IPinData,
 	IRunData,
@@ -32,6 +32,7 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
 
 vi.mock('@/app/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -359,8 +360,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toBeUndefined();
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				title: 'Unsupported Binary Mode',
-				message:
-					'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
+				message: useI18n().baseText('workflowRun.showError.unsupportedBinaryMode'),
 				type: 'error',
 			});
 		});

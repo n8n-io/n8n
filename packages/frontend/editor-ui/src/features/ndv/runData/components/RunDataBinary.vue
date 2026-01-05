@@ -53,7 +53,7 @@ function openWorkflowSettings() {
 <template>
 	<div :class="$style.component">
 		<N8nNotice v-if="isLegacyBinaryMode" :class="$style.info" theme="info">
-			Try the new "combined" binary mode by selecting the corresponding option in the workflow
+			{{ i18n.baseText('runData.legacyBinaryMode') }}
 			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
 		</N8nNotice>
 		<N8nText v-if="binaryData.length === 0" align="center" tag="div">

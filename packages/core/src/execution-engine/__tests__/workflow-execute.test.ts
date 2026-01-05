@@ -35,7 +35,6 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
-	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -46,6 +45,7 @@ import {
 	NodeHelpers,
 	NodeOperationError,
 	Workflow,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
