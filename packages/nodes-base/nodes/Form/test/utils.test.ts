@@ -2521,9 +2521,9 @@ describe('Authentication Functions', () => {
 			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
 			webhookFunctions.getCredentials.mockRejectedValue(new Error('No credentials'));
 
+			expect.assertions(1);
 			try {
 				await generateFormPostAuthToken(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.responseCode).toBe(500);
 			}
@@ -2601,9 +2601,9 @@ describe('Authentication Functions', () => {
 				query: {},
 			} as any);
 
+			expect.assertions(2);
 			try {
 				await validatePostRequest(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.message).toBe('Missing form post authentication token');
 				expect(error.responseCode).toBe(403);
@@ -2616,9 +2616,9 @@ describe('Authentication Functions', () => {
 				query: { token: undefined },
 			} as any);
 
+			expect.assertions(2);
 			try {
 				await validatePostRequest(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.message).toBe('Missing form post authentication token');
 				expect(error.responseCode).toBe(403);
@@ -2635,9 +2635,9 @@ describe('Authentication Functions', () => {
 				query: { token: 'invalid-token' },
 			} as any);
 
+			expect.assertions(2);
 			try {
 				await validatePostRequest(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.message).toBe('Invalid form post authentication token');
 				expect(error.responseCode).toBe(403);
@@ -2693,9 +2693,9 @@ describe('Authentication Functions', () => {
 				query: { token },
 			} as any);
 
+			expect.assertions(2);
 			try {
 				await validatePostRequest(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.message).toBe('Invalid form post authentication token');
 				expect(error.responseCode).toBe(403);
@@ -2708,9 +2708,9 @@ describe('Authentication Functions', () => {
 				query: { token: '' },
 			} as any);
 
+			expect.assertions(2);
 			try {
 				await validatePostRequest(webhookFunctions);
-				fail('Should have thrown WebhookAuthorizationError');
 			} catch (error: any) {
 				expect(error.message).toBe('Missing form post authentication token');
 				expect(error.responseCode).toBe(403);

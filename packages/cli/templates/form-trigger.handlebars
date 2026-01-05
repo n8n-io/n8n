@@ -994,9 +994,9 @@
 					}
 
 					const authToken = '{{{ authToken }}}';
-
 					if(authToken) {
-						postUrl = `${postUrl}?token=${authToken}`;
+						const separator = postUrl.includes('?') ? '&' : '?';
+						postUrl = `${postUrl}${separator}token=${authToken}`;
 					}
 
 					fetch(postUrl, {
