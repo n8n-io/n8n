@@ -56,7 +56,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const { isRagStarterCalloutVisible } = useCalloutHelpers();
+const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
@@ -222,7 +222,7 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'openTemplate') {
-		calloutHelpers.openSampleWorkflowTemplate(item.properties.templateId, {
+		openSampleWorkflowTemplate(item.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
 				section: activeViewStack.value.title,

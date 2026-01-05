@@ -33,6 +33,7 @@ import { isNodePreviewKey } from '../../nodeCreator.utils';
 
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -54,6 +55,7 @@ const {
 } = useActions();
 
 const nodeCreatorStore = useNodeCreatorStore();
+const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -161,7 +163,7 @@ function onKeySelect(activeItemId: string) {
 
 function onSelected(actionCreateElement: INodeCreateElement) {
 	if (actionCreateElement.type === 'openTemplate') {
-		calloutHelpers.openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
+		openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
 				section: useViewStacks().activeViewStack.title,

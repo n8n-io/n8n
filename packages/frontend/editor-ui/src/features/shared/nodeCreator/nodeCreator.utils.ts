@@ -7,14 +7,11 @@ import type {
 	SectionCreateElement,
 	ActionTypeDescription,
 	NodeFilterType,
-	OpenTemplateElement,
 	LinkCreateElement,
-	ViewCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_OTHER_TOOLS,
-	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
