@@ -1631,7 +1631,7 @@ function checkIfRouteIsAllowed() {
 	) {
 		void nextTick(async () => {
 			resetWorkspace();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			await router.replace({ name: VIEWS.HOMEPAGE });
 		});
@@ -1870,11 +1870,9 @@ watch(
 );
 
 watch(
-	() => uiStore.stateIsDirty,
-	(isDirty) => {
-		if (isDirty) {
-			void workflowSaving.autoSaveWorkflow();
-		}
+	() => uiStore.dirtyStateSetCount,
+	() => {
+		void workflowSaving.autoSaveWorkflow();
 	},
 );
 

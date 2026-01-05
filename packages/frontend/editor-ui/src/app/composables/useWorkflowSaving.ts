@@ -88,7 +88,7 @@ export function useWorkflowSaving({
 
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
-					uiStore.stateIsDirty = false;
+					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
 				} else {
@@ -100,7 +100,7 @@ export function useWorkflowSaving({
 			case MODAL_CANCEL:
 				await cancel();
 
-				uiStore.stateIsDirty = false;
+				uiStore.markStateClean();
 				next();
 
 				return;
@@ -209,7 +209,7 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowTagIds(tagIds);
 			}
 
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
@@ -385,7 +385,7 @@ export function useWorkflowSaving({
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
 					key: 'webhookId',
@@ -418,7 +418,7 @@ export function useWorkflowSaving({
 			}
 
 			uiStore.removeActiveAction('workflowSaving');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			return workflowData.id;
@@ -448,8 +448,10 @@ export function useWorkflowSaving({
 				try {
 					await saveCurrentWorkflow({}, true, false, true);
 				} finally {
-					autosaveStore.setAutoSaveState(AutoSaveState.Idle);
-					autosaveStore.setPendingAutoSave(null);
+					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+						autosaveStore.setPendingAutoSave(null);
+					}
 				}
 			})();
 
