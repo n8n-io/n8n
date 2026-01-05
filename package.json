@@ -145,5 +145,6 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch"
     }
-  }
+  },
+  "repository": "https://github.com/888-wzk/n8n.git"
 }
