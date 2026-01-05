@@ -40,6 +40,9 @@ export type PublicFrontendSettings = {
 	/** Controls initialization flow in settings store */
 	settingsMode: FrontendSettings['settingsMode'];
 
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
+
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
 
@@ -191,9 +194,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -522,6 +522,7 @@ export class FrontendService {
 	async getPublicSettings(): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
+			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
@@ -531,6 +532,7 @@ export class FrontendService {
 
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
+			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: {
 				saml: {
