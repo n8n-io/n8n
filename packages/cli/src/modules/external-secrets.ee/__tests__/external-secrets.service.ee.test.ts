@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
-import { ExternalSecretsManager } from '../external-secrets-manager.ee';
+import type { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsService } from '../external-secrets.service.ee';
-import { SecretsProvider } from '../types';
+import type { SecretsProvider } from '../types';
 
 describe('ExternalSecretsService', () => {
 	let service: ExternalSecretsService;
