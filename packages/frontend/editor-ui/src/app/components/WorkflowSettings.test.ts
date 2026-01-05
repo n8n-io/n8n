@@ -400,7 +400,7 @@ describe('WorkflowSettingsVue', () => {
 			await waitFor(() => {
 				expect(toast.showMessage).toHaveBeenCalledWith(
 					expect.objectContaining({
-						title: 'Binary mode changed',
+						title: 'Execution Logic changed',
 						type: 'warning',
 						duration: 0,
 					}),

@@ -23,7 +23,7 @@ import { walk } from './utils';
 export const useLinter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	language: MaybeRefOrGetter<CodeNodeEditorLanguage>,
-	binaryMode?: MaybeRefOrGetter<WorkflowSettingsBinaryMode>,
+	binaryMode?: MaybeRefOrGetter<WorkflowSettingsBinaryMode | undefined>,
 ) => {
 	const i18n = useI18n();
 	const linter = computed(() => {
