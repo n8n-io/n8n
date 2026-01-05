@@ -68,7 +68,7 @@ const iconColor = computed(() => {
 				:to="to"
 				role="menuitem"
 				:class="[$style.menuItem, { [$style.active]: active, [$style.compact]: compact }]"
-				:aria-label="props.ariaLabel"
+				:aria-label="props.ariaLabel ?? props.item.label"
 				data-test-id="menu-item"
 				@click="emit('click')"
 			>

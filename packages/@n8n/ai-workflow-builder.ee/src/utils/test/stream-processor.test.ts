@@ -323,6 +323,163 @@ describe('stream-processor', () => {
 			});
 		});
 
+		it('should extract versionId from additional_kwargs as revertVersionId', () => {
+			const message = new HumanMessage({ content: 'Revert to this version' });
+			message.additional_kwargs = { versionId: 'version-123' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Revert to this version',
+				revertVersionId: 'version-123',
+			});
+		});
+
+		it('should extract messageId from additional_kwargs as id', () => {
+			const message = new HumanMessage({ content: 'Hello' });
+			message.additional_kwargs = { messageId: 'msg-456' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Hello',
+				id: 'msg-456',
+			});
+		});
+
+		it('should extract both versionId and messageId from additional_kwargs', () => {
+			const message = new HumanMessage({ content: 'Test message' });
+			message.additional_kwargs = { versionId: 'version-789', messageId: 'msg-789' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Test message',
+				revertVersionId: 'version-789',
+				id: 'msg-789',
+			});
+		});
+
+		it('should not include revertVersionId when versionId is missing', () => {
+			const message = new HumanMessage({ content: 'Normal message' });
+			message.additional_kwargs = { messageId: 'msg-001' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Normal message',
+				id: 'msg-001',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+		});
+
+		it('should not include id when messageId is missing', () => {
+			const message = new HumanMessage({ content: 'Another message' });
+			message.additional_kwargs = { versionId: 'version-999' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Another message',
+				revertVersionId: 'version-999',
+			});
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should preserve existing message properties with versionId and messageId', () => {
+			const message = new HumanMessage({ content: 'Complete message' });
+			message.additional_kwargs = { versionId: 'version-complete', messageId: 'msg-complete' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			const formatted = result[0];
+			expect(formatted.role).toBe('user');
+			expect(formatted.type).toBe('message');
+			expect(formatted.text).toBe('Complete message');
+			expect(formatted.revertVersionId).toBe('version-complete');
+			expect(formatted.id).toBe('msg-complete');
+		});
+
+		it('should handle undefined additional_kwargs', () => {
+			const message = new HumanMessage({ content: 'Message without kwargs' });
+			// Message is created without additional_kwargs, so it's undefined by default
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Message without kwargs',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should handle empty additional_kwargs object', () => {
+			const message = new HumanMessage({ content: 'Empty kwargs' });
+			message.additional_kwargs = {};
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Empty kwargs',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should only include revertVersionId when versionId is a string', () => {
+			const message = new HumanMessage({ content: 'Non-string versionId' });
+			message.additional_kwargs = { versionId: 123, messageId: 'msg-123' };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Non-string versionId',
+				id: 'msg-123',
+			});
+			expect(result[0]).not.toHaveProperty('revertVersionId');
+		});
+
+		it('should only include id when messageId is a string', () => {
+			const message = new HumanMessage({ content: 'Non-string messageId' });
+			message.additional_kwargs = { versionId: 'version-456', messageId: 456 };
+
+			const result = formatMessages([message]);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Non-string messageId',
+				revertVersionId: 'version-456',
+			});
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
 		it('should format HumanMessage with array content (multi-part messages)', () => {
 			const messages = [
 				new HumanMessage({

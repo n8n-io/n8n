@@ -12,8 +12,8 @@ import {
 	createSuccessResponse,
 	createErrorResponse,
 } from './helpers';
-import { processWorkflowExamples } from './utils/markdown-workflow.utils';
-import { fetchTemplateList, fetchTemplateByID } from './web/templates';
+import { processWorkflowExamples } from './utils/mermaid.utils';
+import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /**
  * Workflow example query schema
@@ -31,67 +31,6 @@ const getWorkflowExamplesSchema = z.object({
 		.min(1)
 		.describe('Array of search queries to find workflow examples'),
 });
-
-/**
- * Inferred types from schemas
- */
-type WorkflowExampleQuery = z.infer<typeof workflowExampleQuerySchema>;
-
-/**
- * Result of fetching workflow examples including template IDs for telemetry
- */
-interface FetchWorkflowExamplesResult {
-	workflows: WorkflowMetadata[];
-	totalFound: number;
-	templateIds: number[];
-}
-
-/**
- * Fetch workflow examples from the API
- */
-async function fetchWorkflowExamples(
-	query: WorkflowExampleQuery,
-	logger?: Logger,
-): Promise<FetchWorkflowExamplesResult> {
-	logger?.debug('Fetching workflow examples with query', { query });
-
-	// First, fetch the list of workflow templates (metadata)
-	const response = await fetchTemplateList({
-		search: query.search,
-	});
-
-	// Then fetch complete workflow data for each template
-	const workflowResults: Array<{ metadata: WorkflowMetadata; templateId: number } | undefined> =
-		await Promise.all(
-			response.workflows.map(async (workflow) => {
-				try {
-					const fullWorkflow = await fetchTemplateByID(workflow.id);
-					return {
-						metadata: {
-							name: workflow.name,
-							description: workflow.description,
-							workflow: fullWorkflow.workflow,
-						},
-						templateId: workflow.id,
-					};
-				} catch (error) {
-					// failed to fetch a workflow, ignore it for now
-					logger?.warn(`Failed to fetch full workflow for template ${workflow.id}`, { error });
-					return undefined;
-				}
-			}),
-		);
-
-	const validResults = workflowResults.filter(
-		(result): result is { metadata: WorkflowMetadata; templateId: number } => result !== undefined,
-	);
-
-	return {
-		workflows: validResults.map((r) => r.metadata),
-		totalFound: response.totalWorkflows,
-		templateIds: validResults.map((r) => r.templateId),
-	};
-}
 
 /**
  * Build a human-readable identifier for a query
@@ -182,8 +121,8 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 						// Report progress
 						batchReporter.next(identifier);
 
-						// Fetch workflow examples
-						const result = await fetchWorkflowExamples(query, logger);
+						// Fetch workflow examples using shared utility
+						const result = await fetchWorkflowsFromTemplates({ search: query.search }, { logger });
 
 						// Add to results
 						allResults = allResults.concat(result.workflows);
@@ -205,24 +144,9 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				}
 				const deduplicatedResults = Array.from(uniqueWorkflows.values());
 
-				// Process workflows to get mermaid diagrams and collect node configurations in one pass
+				// Process workflows to get mermaid diagrams
 				const processedResults = processWorkflowExamples(deduplicatedResults, {
 					includeNodeParameters: false,
-				});
-
-				// Get the accumulated node configurations from the last result (all results share the same map)
-				const nodeConfigurations =
-					processedResults.length > 0
-						? processedResults[processedResults.length - 1].nodeConfigurations
-						: {};
-
-				// Debug: Log the collected configurations
-				logger?.debug('Collected node configurations from workflow examples', {
-					nodeTypeCount: Object.keys(nodeConfigurations).length,
-					nodeTypes: Object.keys(nodeConfigurations),
-					configCounts: Object.fromEntries(
-						Object.entries(nodeConfigurations).map(([type, configs]) => [type, configs.length]),
-					),
 				});
 
 				// Build output with formatted results
@@ -234,7 +158,6 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				const output: GetWorkflowExamplesOutput = {
 					examples: formattedResults,
 					totalResults: deduplicatedResults.length,
-					nodeConfigurations,
 				};
 
 				// Build response message and report
@@ -244,10 +167,16 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				// Deduplicate template IDs
 				const uniqueTemplateIds = [...new Set(allTemplateIds)];
 
-				// Return success response with node configurations and template IDs stored in state
+				// Debug: Log what we're caching
+				logger?.debug('Caching workflow templates in state', {
+					templateCount: deduplicatedResults.length,
+					templateNames: deduplicatedResults.map((w) => w.name),
+				});
+
+				// Return success response with templates and template IDs stored in state
 				return createSuccessResponse(config, responseMessage, {
-					nodeConfigurations,
 					templateIds: uniqueTemplateIds,
+					cachedTemplates: deduplicatedResults,
 				});
 			} catch (error) {
 				// Handle validation or unexpected errors
