@@ -16,6 +16,7 @@ describe('WorkflowHistoryCompactionService', () => {
 		compactingMinimumAgeHours: 24,
 		compactingTimeWindowHours: 2,
 		compactOnStartUp: false,
+		minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 	});
 
 	describe('init', () => {
