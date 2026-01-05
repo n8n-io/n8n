@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
@@ -64,6 +64,9 @@ const { settingsItems } = useSettingsItems();
 
 // Component data
 const basePath = ref('');
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const hasOverflow = ref(false);
+let resizeObserver: ResizeObserver | null = null;
 
 const showWhatsNewNotification = computed(
 	() =>
@@ -221,14 +224,54 @@ const visibleMenuItems = computed<IMenuItem[]>(() =>
 	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
+const checkOverflow = () => {
+	const position = scrollAreaRef.value?.getScrollPosition();
+	if (position && scrollAreaRef.value?.$el) {
+		const hasVerticalOverflow = position.height > scrollAreaRef.value.$el.clientHeight;
+		hasOverflow.value = hasVerticalOverflow;
+	}
+};
+
+// Re-check overflow when sidebar collapse state changes
+watch(isCollapsed, () => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 
 	becomeTemplateCreatorStore.startMonitoringCta();
+
+	// Check for overflow after component is mounted
+	void nextTick(() => {
+		checkOverflow();
+
+		// Set up resize observer to watch for height changes
+		if (scrollAreaRef.value?.$el) {
+			resizeObserver = new ResizeObserver(() => {
+				checkOverflow();
+			});
+			resizeObserver.observe(scrollAreaRef.value.$el);
+		}
+	});
+
+	// Also listen for window resize events
+	window.addEventListener('resize', checkOverflow);
 });
 
 onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
+
+	// Clean up resize observer
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
+
+	// Remove window resize listener
+	window.removeEventListener('resize', checkOverflow);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -346,20 +389,25 @@ useKeybindings({
 			@collapse="toggleCollapse"
 			@open-command-bar="openCommandBar"
 		/>
-		<N8nScrollArea as-child>
-			<div :class="$style.scrollArea">
+		<div
+			:class="{
+				[$style.scrollAreaWrapper]: true,
+				[$style.scrollAreaWrapperWithBorder]: hasOverflow && !isCollapsed,
+			}"
+		>
+			<N8nScrollArea ref="scrollAreaRef">
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
-				<BottomMenu
-					:items="visibleMenuItems"
-					:is-collapsed="isCollapsed"
-					@logout="onLogout"
-					@select="handleSelect"
-				/>
-			</div>
-		</N8nScrollArea>
+			</N8nScrollArea>
+		</div>
+		<BottomMenu
+			:items="visibleMenuItems"
+			:is-collapsed="isCollapsed"
+			@logout="onLogout"
+			@select="handleSelect"
+		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarTrialUpgrade />
 		<TemplateTooltip />
@@ -381,9 +429,15 @@ useKeybindings({
 	}
 }
 
-.scrollArea {
-	height: 100%;
+.scrollAreaWrapper {
+	position: relative;
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
+}
+
+.scrollAreaWrapperWithBorder {
+	border-bottom: var(--border);
 }
 </style>
