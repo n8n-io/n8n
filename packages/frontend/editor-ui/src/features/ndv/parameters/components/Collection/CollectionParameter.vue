@@ -13,7 +13,7 @@ export interface Props {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeParameters;
+	values?: INodeParameters;
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;

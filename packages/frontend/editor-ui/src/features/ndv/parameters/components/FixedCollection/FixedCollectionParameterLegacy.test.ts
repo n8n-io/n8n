@@ -235,14 +235,13 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 			isReadOnly: false,
 		};
 
-		const renderRequiredOnly = createComponentRenderer(FixedCollectionParameter, {
+		const renderRequiredOnly = createComponentRenderer(FixedCollectionParameterLegacy, {
 			props: hideOptionalFieldsProps,
 		});
 
 		it('renders the optional values picker when hideOptionalFields is true', () => {
-			const { container } = renderRequiredOnly();
-			const picker = container.querySelector('.optional-values-picker');
-			expect(picker).toBeInTheDocument();
+			const { getByTestId } = renderRequiredOnly();
+			expect(getByTestId('fixed-collection-add-property')).toBeInTheDocument();
 		});
 
 		it('shows required values and notices by default', async () => {
@@ -255,16 +254,14 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 		});
 
 		it('shows optional values in the picker dropdown', async () => {
-			const { container } = renderRequiredOnly();
-			const picker = container.querySelector('.optional-values-picker');
+			const { getByTestId, getByRole } = renderRequiredOnly();
+			const picker = getByTestId('fixed-collection-add-property');
 			expect(picker).toBeInTheDocument();
 
-			const selectInput = picker?.querySelector('input');
+			const selectInput = getByRole('textbox');
 			expect(selectInput).toBeInTheDocument();
 
-			if (selectInput) {
-				await userEvent.click(selectInput);
-			}
+			await userEvent.click(selectInput);
 
 			await waitFor(() => {
 				const options = document.querySelectorAll('.optional-value-item');
@@ -277,13 +274,10 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 		});
 
 		it('emits valueChanged when toggling an optional value on', async () => {
-			const { container, emitted } = renderRequiredOnly();
-			const picker = container.querySelector('.optional-values-picker');
-			const selectInput = picker?.querySelector('input');
+			const { getByRole, emitted } = renderRequiredOnly();
+			const selectInput = getByRole('textbox');
 
-			if (selectInput) {
-				await userEvent.click(selectInput);
-			}
+			await userEvent.click(selectInput);
 
 			await waitFor(async () => {
 				const options = document.querySelectorAll('.optional-value-item');
@@ -400,7 +394,7 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 				isReadOnly: false,
 			};
 
-			const renderWithArrayField = createComponentRenderer(FixedCollectionParameter, {
+			const renderWithArrayField = createComponentRenderer(FixedCollectionParameterLegacy, {
 				props: propsWithArrayField,
 			});
 
@@ -473,7 +467,7 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 				isReadOnly: false,
 			};
 
-			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameter, {
+			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameterLegacy, {
 				props: propsWithArrayFieldDefault,
 			});
 

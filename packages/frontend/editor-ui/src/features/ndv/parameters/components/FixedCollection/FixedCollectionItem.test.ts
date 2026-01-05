@@ -16,7 +16,7 @@ const { mockState } = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock('@/composables/useCollectionOverhaul', () => ({
+vi.mock('@/app/composables/useCollectionOverhaul', () => ({
 	useCollectionOverhaul: () => ({
 		isEnabled: {
 			get value() {
@@ -26,7 +26,7 @@ vi.mock('@/composables/useCollectionOverhaul', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useResolvedExpression', () => ({
+vi.mock('@/app/composables/useResolvedExpression', () => ({
 	useResolvedExpression: () => ({
 		resolvedExpression: {
 			get value() {
@@ -87,6 +87,10 @@ describe('FixedCollectionItem.vue', () => {
 		sortable: true,
 		disableAnimation: false,
 		isDragging: false,
+		visiblePropertyValues: property.values ?? [],
+		pickerPropertyValues: [],
+		isOptionalValueAdded: () => false,
+		addOptionalFieldButtonText: '',
 	};
 
 	beforeEach(() => {

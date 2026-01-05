@@ -23,14 +23,13 @@ import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
 
 const selectedOption = ref<string | undefined>(undefined);
-const addSelectRef = ref<InstanceType<typeof N8nSelect>>();
 
 export interface Props {
 	hideDelete?: boolean;
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeParameters;
+	values?: INodeParameters;
 	isReadOnly?: boolean;
 	isNested?: boolean;
 }

@@ -831,7 +831,8 @@ async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
 
 	// Skip if already focused to avoid re-triggering focus events
 	// This prevents the options menu from staying visible after mode switches
-	if (isFocused.value) {
+	// But allow mode switch calls through, as they need to refocus the new input element
+	if (isFocused.value && !isFromModeSwitch) {
 		return;
 	}
 
@@ -1220,7 +1221,7 @@ watch(remoteParameterOptionsLoading, () => {
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
 	if (!props.isReadOnly && isFocused.value && isExpression !== wasExpression) {
 		await nextTick();
-		await setFocus();
+		await setFocus(true);
 	}
 });
 
