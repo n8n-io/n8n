@@ -99,7 +99,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<AppBanners :class="$style.banners" />
-		<div :class="$style.content">
+		<div :class="$style.layout">
 			<AppLayout @mounted="setLayoutRef">
 				<RouterView />
 			</AppLayout>
@@ -122,15 +122,15 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 	grid-template-rows: auto 1fr;
 	grid-template-areas:
 		'banners banners'
-		'content aside';
+		'layout aside';
 }
 
 .banners {
 	grid-area: banners;
 }
 
-.content {
-	grid-area: content;
+.layout {
+	grid-area: layout;
 	position: relative;
 }
 
