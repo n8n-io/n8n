@@ -205,13 +205,13 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			absolute: true,
 		});
 
+		const workflows = [];
+
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
 			if (!workflow.id) {
 				workflow.id = generateNanoId();
 			}
-
-			const workflows = [];
 
 			try {
 				assertHasWorkflowsToImport([workflow]);
@@ -221,9 +221,9 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				this.logger.warn(`Skipping invalid workflow file: ${file}`);
 				continue;
 			}
-
-			return workflows;
 		}
+
+		return workflows;
 	}
 
 	private async getProject(userId?: string, projectId?: string) {
