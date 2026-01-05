@@ -102,16 +102,35 @@ describe('usePinnedData', () => {
 	});
 
 	describe('onSetDataSuccess()', () => {
-		it('should trigger telemetry on successful data setting', async () => {
+		it('should trigger telemetry on successful data setting with correct payload values', async () => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow-id';
+
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');
-			const pinnedData = usePinnedData(ref({ name: 'testNode', type: 'someType' } as INodeUi), {
+			const node = ref({
+				name: 'testNode',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'test-node-id',
+			} as INodeUi);
+			const pinnedData = usePinnedData(node, {
 				displayMode: ref('json'),
-				runIndex: ref(0),
+				runIndex: ref(2),
 			});
 
 			pinnedData.onSetDataSuccess({ source: 'pin-icon-click' });
-			expect(spy).toHaveBeenCalled();
+
+			expect(spy).toHaveBeenCalledWith(
+				'Ndv data pinning success',
+				expect.objectContaining({
+					pinning_source: 'pin-icon-click',
+					node_type: 'n8n-nodes-base.httpRequest',
+					view: 'json',
+					run_index: 2,
+					workflow_id: 'test-workflow-id',
+					node_id: 'test-node-id',
+				}),
+			);
 		});
 	});
 

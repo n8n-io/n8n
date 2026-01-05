@@ -7,10 +7,12 @@ export const WORKFLOW_SHARING_OWNER_SCOPES: Scope[] = [
 	'workflow:execute',
 	'workflow:share',
 	'workflow:move',
+	'workflow:execute-chat',
 ];
 
 export const WORKFLOW_SHARING_EDITOR_SCOPES: Scope[] = [
 	'workflow:read',
 	'workflow:update',
 	'workflow:execute',
+	'workflow:execute-chat',
 ];

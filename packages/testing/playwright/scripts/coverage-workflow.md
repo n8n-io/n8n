@@ -86,9 +86,11 @@ The HTML report will show you:
 
 If you see "No coverage files found":
 
-1. Ensure you built with coverage: `pnpm --filter n8n-editor-ui build:coverage`
-2. Run tests with coverage enabled: `COVERAGE_ENABLED=true pnpm test:ui`
-3. Check that coverage files exist in the expected locations
+1. Build with coverage: `BUILD_WITH_COVERAGE=true pnpm build` or `pnpm build:docker:coverage`
+2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:standard`
+3. Check that coverage files exist in `.nyc_output/{projectName}/` directories
+   - For local mode: `.nyc_output/ui/`
+   - For container mode: `.nyc_output/standard:ui/`, `.nyc_output/standard:ui:isolated/`, etc.
 
 ### Low Coverage Percentage
 
@@ -123,13 +125,16 @@ For automated coverage reporting:
 
 ```yaml
 # Example GitHub Actions step
-- name: Generate Coverage Report
-  run: |
-    pnpm --filter n8n-editor-ui build:coverage
-    pnpm --filter n8n-playwright test:ui:coverage
-    pnpm --filter n8n-playwright coverage:report
+- name: Build Docker Image with Coverage
+  run: pnpm build:docker:coverage
+
+- name: Run Container Coverage Tests
+  run: pnpm --filter n8n-playwright test:container:standard
   env:
-    COVERAGE_ENABLED: true
+    BUILD_WITH_COVERAGE: 'true'
+
+- name: Generate Coverage Report
+  run: pnpm --filter n8n-playwright coverage:report
 ```
 
 ### Coverage Thresholds
@@ -154,9 +159,12 @@ packages/testing/playwright/
 │   ├── index.html           # Main coverage report
 │   ├── base.css             # Report styling
 │   └── ...                  # Individual file reports
-├── .nyc_output/             # Raw coverage data
+├── .nyc_output/             # Raw coverage data (per project)
+│   ├── ui/                  # Local mode coverage
+│   ├── standard:ui/         # Container mode coverage
+│   ├── standard:ui:isolated/
 │   └── out.json            # Merged coverage data
-├── nyc.config.js           # NYC configuration
+├── nyc.config.ts           # NYC configuration
 └── scripts/
     └── generate-coverage-report.js  # Report generation script
 ```

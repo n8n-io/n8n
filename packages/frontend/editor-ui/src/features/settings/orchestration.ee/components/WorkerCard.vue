@@ -7,6 +7,7 @@ import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../orchestration.ut
 import WorkerJobAccordion from './WorkerJobAccordion.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
+import WorkerMemoryMonitorAccordion from './WorkerMemoryMonitorAccordion.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useI18n } from '@n8n/i18n';
 
@@ -69,8 +70,13 @@ onBeforeUnmount(() => {
 				data-test-id="worker-card-name"
 			>
 				Name: {{ worker.senderId }} ({{ worker.hostname }}) <br />
-				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free Memory:
-				{{ memAsGb(worker.freeMem).toFixed(2) }}GB / {{ memAsGb(worker.totalMem).toFixed(2) }}GB
+				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free memory:
+				{{ memAsGb(worker.process.memory.available) }}GB /
+				{{
+					memAsGb(
+						worker.isInContainer ? worker.process.memory.constraint : worker.host.memory.total,
+					)
+				}}GB
 				{{ stale ? ' (stale)' : '' }}
 			</N8nHeading>
 		</template>
@@ -81,9 +87,11 @@ onBeforeUnmount(() => {
 					ago | n8n-Version: {{ worker.version }} | Architecture: {{ worker.arch }} (
 					{{ worker.platform }}) | Uptime: {{ upTime(worker.uptime) }}</span
 				>
+				<br />
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
 				<WorkerNetAccordion :items="sortedWorkerInterfaces" />
 				<WorkerChartsAccordion :worker-id="worker.senderId" />
+				<WorkerMemoryMonitorAccordion :worker="worker" />
 			</N8nText>
 		</div>
 		<template #append>

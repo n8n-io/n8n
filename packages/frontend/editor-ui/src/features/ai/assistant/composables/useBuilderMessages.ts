@@ -2,6 +2,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
+import { generateShortId } from '../builder.utils';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
@@ -98,9 +99,6 @@ export function useBuilderMessages() {
 		msg: ChatRequest.ToolMessage,
 		messageId: string,
 	): void {
-		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId ?? messageId;
-
 		// Check if we already have this tool message
 		const existingIndex = msg.toolCallId
 			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
@@ -111,6 +109,7 @@ export function useBuilderMessages() {
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
+				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
@@ -118,7 +117,7 @@ export function useBuilderMessages() {
 		} else {
 			// Add new tool message
 			const toolMessage: ChatUI.AssistantMessage = {
-				id: toolMessageId,
+				id: `${messageId}-${msg.toolCallId}`,
 				role: 'assistant',
 				type: 'tool',
 				toolName: msg.toolName,
@@ -269,15 +268,18 @@ export function useBuilderMessages() {
 	function processAssistantMessages(
 		currentMessages: ChatUI.AssistantMessage[],
 		newMessages: ChatRequest.MessageResponse[],
-		baseId: string,
+		userMessageId: string,
 		retry?: () => Promise<void>,
 	): MessageProcessingResult {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
+		const messageGroupId = generateShortId();
+
 		newMessages.forEach((msg, index) => {
-			// Generate unique ID for each message in the batch
-			const messageId = `${baseId}-${index}`;
+			// Generate unique ID for each message in the batch, based on original user message id.
+			// Used in telemetry to track events related to a specific user message
+			const messageId = `${userMessageId}--${messageGroupId}--${index}`;
 			const clearThinking = processSingleMessage(mutableMessages, msg, messageId, retry);
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});

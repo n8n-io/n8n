@@ -1,4 +1,5 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import axios from 'axios';
@@ -25,9 +26,11 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
 		jest.clearAllMocks();
 	});
 

@@ -15,6 +15,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
@@ -233,6 +234,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
+		useBuilderStore().resetManualExecutionStats();
 	}
 
 	////

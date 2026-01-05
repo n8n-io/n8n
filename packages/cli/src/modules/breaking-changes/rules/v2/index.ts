@@ -1,5 +1,5 @@
 import { BinaryDataStorageRule } from './binary-data-storage.rule';
-import { CliActivateAllWorkflowsRule } from './cli-activate-all-workflows.rule';
+import { CliActivateAllWorkflowsRule } from './cli-replace-update-workflow-command.rule';
 import { DisabledNodesRule } from './disabled-nodes.rule';
 import { DotenvUpgradeRule } from './dotenv-upgrade.rule';
 import { FileAccessRule } from './file-access.rule';
@@ -15,7 +15,9 @@ import { SqliteLegacyDriverRule } from './sqlite-legacy-driver.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
 import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
+import { StartNodeRemovedRule } from './start-node-removed.rule';
 import { WaitNodeSubworkflowRule } from './wait-node-subworkflow.rule';
+import { WorkflowHooksDeprecatedRule } from './workflow-hooks-deprecated.rule';
 
 const v2Rules = [
 	// Workflow-level rules
@@ -26,10 +28,12 @@ const v2Rules = [
 	DisabledNodesRule,
 	WaitNodeSubworkflowRule,
 	GitNodeBareReposRule,
+	StartNodeRemovedRule,
 	// Instance-level rules
 	DotenvUpgradeRule,
 	OAuthCallbackAuthRule,
 	CliActivateAllWorkflowsRule,
+	WorkflowHooksDeprecatedRule,
 	QueueWorkerMaxStalledCountRule,
 	TunnelOptionRule,
 	RemovedDatabaseTypesRule,

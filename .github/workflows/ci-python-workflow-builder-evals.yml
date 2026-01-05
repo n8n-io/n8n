@@ -1,4 +1,4 @@
-name: Python CI
+name: AI Workflow Builder Evals Python CI
 
 on:
   pull_request:

@@ -20,7 +20,7 @@ from src.errors import (
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
-from src.message_types.broker import NodeMode, Items
+from src.message_types.broker import NodeMode, Items, Query
 from src.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
@@ -59,6 +59,7 @@ class TaskExecutor:
         node_mode: NodeMode,
         items: Items,
         security_config: SecurityConfig,
+        query: Query = None,
     ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
         """Create a subprocess for executing a Python code task and a pipe for communication."""
 
@@ -78,6 +79,7 @@ class TaskExecutor:
                 items,
                 write_conn,
                 security_config,
+                query,
             ),
         )
 
@@ -186,6 +188,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        query: Query = None,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -204,6 +207,7 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
+                "_query": query,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
 
@@ -223,6 +227,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        _query: Query = None,  # unused, only to keep signatures consistent across modes
     ):
         """Execute a Python code task in per-item mode."""
 

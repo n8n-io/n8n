@@ -315,6 +315,7 @@ class TaskRunner:
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
                 security_config=self.security_config,
+                query=task_settings.query,
             )
 
             task_state.process = process

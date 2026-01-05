@@ -75,9 +75,29 @@ function displayNodeParameter(parameter: INodeProperties) {
 	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
 }
 
-function getOptionProperties(optionName: string) {
+const filteredOptions = computed<Array<INodePropertyOptions | INodeProperties>>(() => {
+	return (props.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter(
+		(option) => {
+			return displayNodeParameter(option as INodeProperties);
+		},
+	);
+});
+const propertyNames = computed<string[]>(() => {
+	if (props.values) {
+		return Object.keys(props.values);
+	}
+	return [];
+});
+const parameterOptions = computed(() => {
+	return filteredOptions.value.filter((option) => {
+		return !propertyNames.value.includes(option.name);
+	});
+});
+
+function getOptionProperties(optionName: string, filter: boolean = false) {
 	const properties = [];
-	for (const option of props.parameter.options ?? []) {
+	const options = filter ? parameterOptions.value : props.parameter.options;
+	for (const option of options ?? []) {
 		if (option.name === optionName) {
 			properties.push(option);
 		}
@@ -85,12 +105,7 @@ function getOptionProperties(optionName: string) {
 
 	return properties;
 }
-const propertyNames = computed<string[]>(() => {
-	if (props.values) {
-		return Object.keys(props.values);
-	}
-	return [];
-});
+
 const getProperties = computed(() => {
 	const returnProperties = [];
 	let tempProperties;
@@ -102,21 +117,9 @@ const getProperties = computed(() => {
 	}
 	return returnProperties;
 });
-const filteredOptions = computed<Array<INodePropertyOptions | INodeProperties>>(() => {
-	return (props.parameter.options as Array<INodePropertyOptions | INodeProperties>).filter(
-		(option) => {
-			return displayNodeParameter(option as INodeProperties);
-		},
-	);
-});
-const parameterOptions = computed(() => {
-	return filteredOptions.value.filter((option) => {
-		return !propertyNames.value.includes(option.name);
-	});
-});
 
 function optionSelected(optionName: string) {
-	const options = getOptionProperties(optionName);
+	const options = getOptionProperties(optionName, true);
 	if (options.length === 0) {
 		return;
 	}

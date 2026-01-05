@@ -13,7 +13,24 @@ pnpm test:local           											# Starts a local server and runs the UI tes
 N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the UI tests against the instance running
 ```
 
+## Separate Backend and Frontend URLs
+
+When developing with separate backend and frontend servers (e.g., backend on port 5680, frontend on port 8080), you can use the following environment variables:
+
+- **`N8N_BASE_URL`**: Backend server URL (also used as frontend URL if `N8N_EDITOR_URL` is not set)
+- **`N8N_EDITOR_URL`**: Frontend server URL (when set, overrides frontend URL while backend uses `N8N_BASE_URL`)
+
+**How it works:**
+- **Backend URL** (for API calls): Always uses `N8N_BASE_URL`
+- **Frontend URL** (for browser navigation): Uses `N8N_EDITOR_URL` if set, otherwise falls back to `N8N_BASE_URL`
+
+This allows you to:
+- Test against a backend on port 5680 while the frontend dev server runs on port 8080
+- Use different URLs for API calls vs browser navigation
+- Maintain backward compatibility with single-URL setups
+
 ## Test Commands
+
 ```bash
 # By Mode
 pnpm test:container:standard    # Sqlite

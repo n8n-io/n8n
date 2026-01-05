@@ -20,3 +20,14 @@ export {
 	type MailpitMessage,
 	type MailpitQuery,
 } from './n8n-test-container-mailpit';
+
+// Keycloak/OIDC test constants
+export {
+	KEYCLOAK_TEST_REALM,
+	KEYCLOAK_TEST_CLIENT_ID,
+	KEYCLOAK_TEST_CLIENT_SECRET,
+	KEYCLOAK_TEST_USER_EMAIL,
+	KEYCLOAK_TEST_USER_PASSWORD,
+	KEYCLOAK_TEST_USER_FIRSTNAME,
+	KEYCLOAK_TEST_USER_LASTNAME,
+} from './n8n-test-container-keycloak';

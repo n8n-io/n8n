@@ -118,6 +118,7 @@ describe('AiController', () => {
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
+				id: '12345',
 				text: 'Create a workflow',
 				type: 'message',
 				role: 'user',
@@ -146,6 +147,8 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 				{
+					id: '12345',
+					featureFlags: undefined,
 					message: 'Create a workflow',
 					workflowContext: {
 						currentWorkflow: { id: 'workflow123' },

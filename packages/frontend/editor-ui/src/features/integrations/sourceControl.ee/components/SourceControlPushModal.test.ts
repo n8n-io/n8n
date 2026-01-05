@@ -22,16 +22,20 @@ const mockRoute = reactive({
 	name: '',
 	params: {},
 	fullPath: '',
+	query: {},
 });
+
+const mockRouterInstance = {
+	back: vi.fn(),
+	push: vi.fn(),
+	replace: vi.fn(),
+	go: vi.fn(),
+	currentRoute: { value: mockRoute },
+};
 
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
-	useRouter: () => ({
-		back: vi.fn(),
-		push: vi.fn(),
-		replace: vi.fn(),
-		go: vi.fn(),
-	}),
+	useRouter: () => mockRouterInstance,
 	RouterLink: {
 		template: '<a><slot></slot></a>',
 		props: ['to', 'target'],
@@ -856,6 +860,59 @@ describe('SourceControlPushModal', () => {
 
 			const items = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('workflow diff button', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			vi.clearAllMocks();
+		});
+
+		it('should set workflowStatus url param when diff button is clicked for created workflow', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-2',
+					name: 'New workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/workflow-2.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText, getAllByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			const compareButton = getByTestId('source-control-workflow-diff-button');
+			await userEvent.click(compareButton);
+
+			expect(mockRouterInstance.push).toHaveBeenCalledWith({
+				query: expect.objectContaining({
+					diff: 'workflow-2',
+					workflowStatus: 'created',
+					direction: 'push',
+				}),
+			});
 		});
 	});
 

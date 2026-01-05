@@ -60,8 +60,14 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 
 	async getManyByUserId(userId: string, limit: number, cursor?: string) {
 		const queryBuilder = this.createQueryBuilder('session')
+			.leftJoinAndSelect('session.agent', 'agent')
+			.leftJoinAndSelect('session.workflow', 'workflow')
+			.leftJoinAndSelect('workflow.shared', 'shared')
+			.leftJoinAndSelect('shared.project', 'project')
+			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
 			.where('session.ownerId = :userId', { userId })
-			.orderBy("COALESCE(session.lastMessageAt, '1970-01-01')", 'DESC')
+			.addSelect("COALESCE(session.lastMessageAt, '1970-01-01')", 'sortdate')
+			.orderBy('sortdate', 'DESC')
 			.addOrderBy('session.id', 'ASC');
 
 		if (cursor) {
@@ -94,7 +100,16 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			async (em) => {
 				return await em.findOne(ChatHubSession, {
 					where: { id, ownerId: userId },
-					relations: ['messages'],
+					relations: {
+						messages: true,
+						agent: true,
+						workflow: {
+							shared: {
+								project: true,
+							},
+							activeVersion: true,
+						},
+					},
 				});
 			},
 			false,

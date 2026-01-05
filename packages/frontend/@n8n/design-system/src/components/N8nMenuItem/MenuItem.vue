@@ -81,7 +81,7 @@ const iconColor = computed(() => {
 						:color="iconColor"
 						>{{ item.icon.value }}</N8nText
 					>
-					<N8nIcon v-else-if="icon" :icon="icon" />
+					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
 				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
@@ -98,17 +98,12 @@ const iconColor = computed(() => {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.router-link-active,
-.active {
-	background-color: var(--color--foreground);
-}
-
 .menuItem {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--3xs);
-	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
 	cursor: pointer;
 	color: var(--color--text);
 	border-radius: var(--spacing--4xs);
@@ -120,11 +115,16 @@ const iconColor = computed(() => {
 	&:hover .menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
-}
 
-.menuItem:hover:not(.active) {
-	background-color: var(--color--background--light-1);
-	color: var(--color--text--shade-1);
+	&:global(.router-link-active),
+	&.active {
+		background-color: var(--color--background--light-1);
+	}
+
+	&:hover:not(.active):not(:global(.router-link-active)) {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+	}
 }
 
 .menuItem:focus-visible {
@@ -147,15 +147,18 @@ const iconColor = computed(() => {
 
 .menuItemIcon {
 	position: relative;
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	min-width: var(--spacing--sm);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	min-width: var(--spacing--lg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	&.notification::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing--5xs) * -1);
-		right: calc(var(--spacing--5xs) * -1);
+		top: 0;
+		right: 0;
 		width: var(--spacing--4xs);
 		height: var(--spacing--4xs);
 		background-color: var(--color--danger);

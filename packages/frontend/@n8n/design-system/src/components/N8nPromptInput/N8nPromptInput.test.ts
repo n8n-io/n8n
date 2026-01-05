@@ -1074,4 +1074,28 @@ describe('N8nPromptInput', () => {
 			wrapper.unmount();
 		});
 	});
+
+	describe('autofocus', () => {
+		it('should be focused if enabled', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					autofocus: true,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			expect(emitted('focus')).toBeTruthy();
+		});
+
+		it('should not be focused if disabled', () => {
+			const { emitted } = renderComponent({
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+			expect(emitted('focus')).toBeFalsy();
+		});
+	});
 });

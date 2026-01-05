@@ -126,6 +126,22 @@ export class ChatHubAttachmentService {
 		);
 	}
 
+	async getDataUrl(binaryData: IBinaryData): Promise<string> {
+		if (binaryData.data.startsWith('data:')) {
+			return binaryData.data;
+		}
+
+		const buffer = await this.binaryDataService.getAsBuffer(binaryData);
+		const base64Data = buffer.toString(BINARY_ENCODING);
+		const mimeType = binaryData.mimeType || 'application/octet-stream';
+
+		return `data:${mimeType};base64,${base64Data}`;
+	}
+
+	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
+		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
 	/**
 	 * Processes a single attachment by populating metadata and storing it.
 	 */

@@ -269,7 +269,7 @@ export class Form extends Node {
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes
-		version: [1, 2.3],
+		version: [1, 2.3, 2.4],
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',

@@ -86,32 +86,28 @@ function checkMergeNodeConnections(
 	const issues: SingleEvaluatorResult['violations'] = [];
 
 	if (/\.merge$/.test(nodeInfo.node.type)) {
-		const providedInputTypes = getProvidedInputTypes(nodeConnections);
+		// Merge node's number of inputs is controlled by the numberInputs parameter (default 2)
+		// The node type definition has static inputs, so we must read from parameters directly
+		const numberInputsParam = nodeInfo.node.parameters?.numberInputs;
+		const expectedInputs = typeof numberInputsParam === 'number' ? numberInputsParam : 2;
 
-		const totalInputConnections = providedInputTypes.get('main') ?? 0;
+		const mainConnections = nodeConnections?.main ?? [];
 
-		if (totalInputConnections < 2) {
+		// Count actual input slots that have connections (not total connections)
+		const connectedSlots = mainConnections.filter(
+			(slot) => Array.isArray(slot) && slot.length > 0,
+		).length;
+
+		if (connectedSlots < 2) {
 			issues.push({
 				name: 'node-merge-single-input',
 				type: 'major',
-				description: `Merge node ${nodeInfo.node.name} has only ${totalInputConnections} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
+				description: `Merge node ${nodeInfo.node.name} has only ${connectedSlots} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
 				pointsDeducted: 20,
 			});
 		}
 
-		const expectedInputs =
-			nodeInfo.resolvedInputs?.filter((input) => input.type === 'main').length ?? 1;
-
-		if (totalInputConnections !== expectedInputs) {
-			issues.push({
-				name: 'node-merge-incorrect-num-inputs',
-				type: 'minor',
-				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
-				pointsDeducted: 10,
-			});
-		}
-
-		const mainConnections = nodeConnections?.main ?? [];
+		// Check if all expected input slots have connections
 		const missingIndexes: number[] = [];
 
 		for (let inputIndex = 0; inputIndex < expectedInputs; inputIndex++) {

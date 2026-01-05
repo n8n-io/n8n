@@ -23,7 +23,6 @@ n8n is a workflow automation platform that gives technical teams the flexibility
   - [Available integrations](#available-integrations)
   - [Documentation](#documentation)
   - [Start n8n in Docker](#start-n8n-in-docker)
-  - [Start n8n with tunnel](#start-n8n-with-tunnel)
   - [Use with PostgreSQL](#use-with-postgresql)
   - [Passing sensitive data using files](#passing-sensitive-data-using-files)
   - [Example server setups](#example-server-setups)
@@ -74,25 +73,6 @@ You can then access n8n by opening:
 To save your work between container restarts, it also mounts a docker volume, `n8n_data`. The workflow data gets saved in an SQLite database in the user folder (`/home/node/.n8n`). This folder also contains important data like the webhook URL and the encryption key used for securing credentials.
 
 If this data can't be found at startup n8n automatically creates a new key and any existing credentials can no longer be decrypted.
-
-## Start n8n with tunnel
-
-> **WARNING**: This is only meant for local development and testing and should **NOT** be used in production!
-
-n8n must be reachable from the internet to make use of webhooks - essential for triggering workflows from external web-based services such as GitHub. To make this easier, n8n has a special tunnel service which redirects requests from our servers to your local n8n instance. You can inspect the code running this service here: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)
-
-To use it simply start n8n with `--tunnel`
-
-```bash
-docker volume create n8n_data
-
-docker run -it --rm \
- --name n8n \
- -p 5678:5678 \
- -v n8n_data:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- start --tunnel
-```
 
 ## Use with PostgreSQL
 

@@ -23,7 +23,15 @@ export const RESOURCES = {
 	variable: [...DEFAULT_OPERATIONS] as const,
 	projectVariable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
-	workflow: ['share', 'execute', 'move', 'activate', 'deactivate', ...DEFAULT_OPERATIONS] as const,
+	workflow: [
+		'share',
+		'execute',
+		'execute-chat',
+		'move',
+		'activate',
+		'deactivate',
+		...DEFAULT_OPERATIONS,
+	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
@@ -37,6 +45,8 @@ export const RESOURCES = {
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list'] as const,
+	apiKey: ['manage'] as const,
+	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -56,3 +66,4 @@ export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
+export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';

@@ -29,6 +29,7 @@ export const LOG_SCOPES = [
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
+	'dynamic-credentials',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -38,6 +38,8 @@ export class ModuleRegistry {
 		'provisioning',
 		'breaking-changes',
 		'source-control',
+		'dynamic-credentials',
+		'chat-hub',
 	];
 
 	private readonly activeModules: string[] = [];

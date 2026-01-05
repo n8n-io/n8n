@@ -27,17 +27,17 @@ function onUpdate(value: boolean | 'indeterminate') {
 </script>
 
 <template>
-	<Primitive :as :class="$style.Checkbox" :data-disabled="disabled ? '' : undefined">
+	<Primitive :as :class="$style.checkbox" :data-disabled="disabled ? '' : undefined">
 		<CheckboxRoot
 			:id="uuid"
 			v-bind="{ ...rootProps, ...$attrs }"
 			:model-value="computedValue"
 			:name="name"
 			:disabled="disabled"
-			:class="$style.CheckboxRoot"
+			:class="$style.checkboxRoot"
 			@update:model-value="onUpdate"
 		>
-			<CheckboxIndicator :class="$style.CheckboxIndicator">
+			<CheckboxIndicator :class="$style.checkboxIndicator">
 				<Icon v-if="indeterminate" icon="minus" size="small" />
 				<Icon v-else icon="check" size="small" />
 			</CheckboxIndicator>
@@ -45,7 +45,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 		<Label
 			v-if="label || !!slots.label"
 			:for="uuid"
-			:class="$style.Label"
+			:class="$style.label"
 			:data-disabled="disabled ? '' : undefined"
 		>
 			<slot name="label" :label="label">
@@ -56,7 +56,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 </template>
 
 <style lang="css" module>
-.Checkbox {
+.checkbox {
 	display: flex;
 	align-items: center;
 	flex-direction: row;
@@ -67,7 +67,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	}
 }
 
-.CheckboxRoot {
+.checkboxRoot {
 	background: transparent;
 	width: 16px;
 	height: 16px;
@@ -97,13 +97,13 @@ function onUpdate(value: boolean | 'indeterminate') {
 	}
 }
 
-.CheckboxIndicator {
+.checkboxIndicator {
 	display: flex;
 	align-items: center;
 	flex-direction: row;
 }
 
-.Label {
+.label {
 	padding-left: 15px;
 	font-size: 15px;
 	line-height: 1;

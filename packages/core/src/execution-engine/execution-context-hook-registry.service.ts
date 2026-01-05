@@ -97,8 +97,8 @@ export class ExecutionContextHookRegistry {
 	 * @returns Array of applicable hooks (may be empty)
 	 */
 	getHookForTriggerType(triggerType: string): IContextEstablishmentHook[] {
-		return Array.from(this.hookMap.values()).filter((hook) =>
-			hook.isApplicableToTriggerNode(triggerType),
-		);
+		return Array.from(this.hookMap.values()).filter((hook) => {
+			return hook.isApplicableToTriggerNode(triggerType);
+		});
 	}
 }

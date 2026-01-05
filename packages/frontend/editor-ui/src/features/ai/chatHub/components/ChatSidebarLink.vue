@@ -108,9 +108,9 @@ defineSlots<{
 
 .actionDropdown {
 	opacity: 0;
-	transition: opacity 0.2s;
 	flex-shrink: 0;
 	width: 0;
+	overflow: hidden;
 
 	.menuItem:has([aria-expanded='true']) &,
 	.menuItem:has(:focus) &,

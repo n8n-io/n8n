@@ -3,7 +3,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types';
 
 import type { SingleEvaluatorResult } from '../types';
-import { nodeParametersContainExpression } from '../utils/expressions';
 import { isTool } from '../utils/is-tool';
 
 const toolsWithoutParameters = [
@@ -37,16 +36,6 @@ export function validateTools(
 					name: 'tool-node-has-no-parameters',
 					type: 'major',
 					description: `Tool node "${node.name}" has no parameters set.`,
-					pointsDeducted: 20,
-				});
-				continue;
-			}
-
-			if (!nodeParametersContainExpression(node.parameters)) {
-				violations.push({
-					name: 'tool-node-static-parameters',
-					type: 'major',
-					description: `Tool node "${node.name}" has no expressions in its parameters. This likely means it is not using dynamic input.`,
 					pointsDeducted: 20,
 				});
 			}

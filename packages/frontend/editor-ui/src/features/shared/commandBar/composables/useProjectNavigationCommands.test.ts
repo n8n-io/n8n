@@ -67,6 +67,10 @@ describe('useProjectNavigationCommands', () => {
 			value: true,
 		});
 
+		Object.defineProperty(mockProjectsStore, 'canViewProjects', {
+			value: true,
+		});
+
 		vi.clearAllMocks();
 	});
 
@@ -93,6 +97,22 @@ describe('useProjectNavigationCommands', () => {
 
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-project');
 			expect(createCommand).toBeUndefined();
+		});
+
+		it('should not include any commands when user is chat user', () => {
+			Object.defineProperty(mockProjectsStore, 'hasPermissionToCreateProjects', {
+				value: false,
+			});
+			Object.defineProperty(mockProjectsStore, 'canViewProjects', {
+				value: false,
+			});
+
+			const { commands } = useProjectNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			expect(commands.value.length).toBe(0);
 		});
 
 		it('should not include create project command when user cannot create more projects', () => {

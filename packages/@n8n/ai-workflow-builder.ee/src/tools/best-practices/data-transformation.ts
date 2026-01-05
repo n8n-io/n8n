@@ -11,24 +11,12 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 
 ### Core Principles
 - **Structure**: Always follow Input → Transform → Output pattern
-- **Modularity**: Break complex workflows into sub-workflows using Execute Workflow node
 - **Optimization**: Filter and reduce data early to improve performance
-- **Documentation**: Use descriptive node names and sticky notes for clarity
-- **Testing**: Test with edge cases (empty data, missing fields, special characters)
 
 ### Design Best Practices
 - Plan transformation requirements in plain language before building
-- Keep main workflows to ~5 nodes, offload details to sub-workflows
-- Process inexpensive transformations first (especially data reduction)
 - Use Modular Design: Create reusable sub-workflows for common tasks like "Data Cleaning" or "Error Handler"
-- Batch large datasets using Split In Batches node to prevent timeouts
-
-## Error Handling
-- **Validate Early**: Use IF node at workflow start to check required fields and data types
-- **Error Outputs**: Connect red error output connectors to logging/notification chains
-- **Continue on Fail**: Enable in node settings to flag errors without breaking workflow
-- **Global Error Workflow**: Create separate workflow with Error Trigger node as safety net
-- **Logging**: Log key events with context (which record failed, error message, etc.)
+- Batch datasets over 100 items using Split In Batches node to prevent timeouts
 
 ## Recommended Nodes
 
@@ -51,6 +39,8 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 - Enabled: Drops all fields not explicitly defined (data loss risk)
 - Disabled: Carries forward all fields (potential bloat)
 - Always verify output structure after configuration
+
+**Testing tip**: When transforming data from a workflow trigger, you can set values with a fallback default e.g. set name to {{$json.name || 'Jane Doe'}} to help test the workflow.
 
 #### IF/Filter Nodes
 
@@ -75,9 +65,18 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 **Pitfalls**:
 - **Missing Keys**: Trying to merge on non-existent fields
 - **Field Name Mismatch**: Different field names in sources
-- **Solution**: Use Set node to normalize field names before merging
+- **Solution**: Use Edit Fields node to normalize field names before merging
 
 #### Code Node (n8n-nodes-base.code)
+
+**When NOT to Use**: Code node may be slower than core nodes (like Edit Fields, If, Switch, etc.) as Code nodes run in a sandboxed environment. Avoid the code node where possible — it should only be used for complex transformations that can't be done with other nodes. For example, DO NOT use it for:
+- Adding or removing fields from items (use the 'edit fields' node instead)
+- Single-line data transformations of item fields (use the 'edit fields' node instead)
+- Filtering items based on their fields (use the 'filter' node instead)
+- Pivoting, aggregating or summarizing data across items (use the 'summarize' node instead)
+- Splitting arrays inside items out into multiple items (use the 'split out' node instead)
+- Sorting items in an array based on their fields (use the 'Sort' node instead)
+- Generating HTML from text or formatting text as HTML (use the 'HTML' node set to operation 'Generate HTML Template' or 'Convert to HTML Table' instead)
 
 **When to Use**: Complex transformations impossible with built-in nodes
 
@@ -133,7 +132,7 @@ return items; // or return [{ json: {...} }];
 
 ### Critical Mistakes
 
-#### Set Node Issues
+#### Edit Fields Node Issues
 - **Mistake**: Not understanding "Keep Only Set" behavior
   - Enabled: Drops all fields not explicitly defined (data loss risk)
   - Disabled: Carries forward all fields (potential bloat)
@@ -149,15 +148,11 @@ return items; // or return [{ json: {...} }];
 - **Missing Keys**: Trying to merge on non-existent fields
 - **Fix**: Validate both inputs have matching key fields
 - **Field Name Mismatch**: Different field names in sources
-- **Fix**: Use Set node to normalize field names before merging
+- **Fix**: Use Edit Fields node to normalize field names before merging
 
 ### General Workflow Issues
-- **No Error Handling**: Workflow crashes on unexpected data
-- **Fix**: Add IF nodes for validation, use error outputs
-- **Hard-coded Values**: URLs, credentials, config in nodes
-- **Fix**: Use environment variables or config nodes
-- **Poor Naming**: Generic names like "Set1", "Function1"
-- **Fix**: Use descriptive names: "Clean Customer Data", "Calculate Totals"
+- **No Error Handling**: Workflow crashes on unexpected data. **Fix**: Add IF nodes for validation, use error outputs
+- **Hard-coded Values**: URLs, credentials, config in nodes.  **Fix**: Use environment variables or config nodes
 - **Missing Documentation**: No comments or descriptions
 - **Fix**: Add sticky notes, node descriptions, code comments
 

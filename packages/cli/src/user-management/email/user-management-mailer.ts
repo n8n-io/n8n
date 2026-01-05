@@ -23,6 +23,7 @@ type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
 	| 'password-reset-requested'
+	| 'workflow-deactivated'
 	| 'workflow-shared'
 	| 'credentials-shared'
 	| 'project-shared';
@@ -136,6 +137,29 @@ export class UserManagementMailer {
 			const error = toError(e);
 			throw new InternalServerError(`Please contact your administrator: ${error.message}`, e);
 		}
+	}
+
+	async notifyWorkflowAutodeactivated({
+		recipient,
+		workflow,
+	}: {
+		recipient: User;
+		workflow: IWorkflowBase;
+	}): Promise<SendEmailResult> {
+		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
+		return await this.sendNotificationEmails({
+			mailerTemplate: 'workflow-deactivated',
+			recipients,
+			sharer: recipient,
+			getTemplateData: () => ({
+				workflowName: workflow.name,
+				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+			}),
+			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
+			messageType: 'Workflow auto-deactivated',
+		});
 	}
 
 	async notifyWorkflowShared({

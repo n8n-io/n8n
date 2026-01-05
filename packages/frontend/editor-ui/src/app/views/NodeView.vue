@@ -60,14 +60,13 @@ import {
 	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -127,7 +126,6 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -177,6 +175,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
+const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -199,7 +198,6 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
-const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -263,7 +261,6 @@ const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 const { fetchAndSetParentFolder } = useParentFolder();
 
-useClipboard({ onPaste: onClipboardPaste });
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
@@ -295,12 +292,7 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -476,7 +468,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		openWorkflow(workflowData);
+		await openWorkflow(workflowData);
 
 		if (workflowData.parentFolder) {
 			workflowsStore.setParentFolder(workflowData.parentFolder);
@@ -537,11 +529,11 @@ function updateNodesIssues() {
  * Workflow
  */
 
-function openWorkflow(data: IWorkflowDb) {
+async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
-	initializeWorkspace(data);
+	await initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -574,9 +566,7 @@ function trackOpenWorkflowFromOnboardingTemplate() {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter(
-		(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
-	);
+	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -726,7 +716,9 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		importTags: false,
 		viewport: viewportBoundaries.value,
 	});
-	selectNodes(result.nodes?.map((node) => node.id) ?? []);
+	const ids = result.nodes?.map((node) => node.id) ?? [];
+
+	canvasRef.value?.ensureNodesAreVisible(ids);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -746,7 +738,7 @@ async function onDuplicateNodes(ids: string[]) {
 		viewport: viewportBoundaries.value,
 	});
 
-	selectNodes(newIds);
+	canvasRef.value?.ensureNodesAreVisible(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -846,6 +838,11 @@ async function onOpenRenameNodeModal(id: string) {
 		let shouldSaveAfterRename = false;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Stop propagation for space key to prevent VueFlow from intercepting it
+			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
 			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
 				e.preventDefault();
 				shouldSaveAfterRename = true;
@@ -994,7 +991,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	await initializeData();
 
-	initializeWorkspace({
+	await initializeWorkspace({
 		...workflowData,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1041,8 +1038,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		viewport: viewportBoundaries.value,
 	});
 
-	fitView();
-	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -1264,6 +1260,44 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
+function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+	if (!webhookUrl) return;
+
+	void clipboard.copy(webhookUrl);
+
+	toast.showMessage({
+		title: i18n.baseText('nodeWebhooks.showMessage.title'),
+		type: 'success',
+	});
+}
+
+async function onCopyTestUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(node?.type ?? '');
+
+	if (isProductionOnly) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.testWebhookUrl'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	copyWebhookUrl(id, 'test');
+}
+
+async function onCopyProductionUrl(id: string) {
+	const isWorkflowActive = workflowsStore.workflow.active;
+	if (!isWorkflowActive) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
+			type: 'warning',
+		});
+		return;
+	}
+	copyWebhookUrl(id, 'production');
+}
 
 function trackRunWorkflowToNode(node: INodeUi) {
 	const telemetryPayload = {
@@ -1465,7 +1499,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
-				openWorkflow(workflowData);
+				await openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1594,6 +1628,10 @@ function checkIfEditingIsAllowed(): boolean {
 	}
 
 	if (readOnlyNotification.value?.visible) {
+		return false;
+	}
+
+	if (!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)) {
 		return false;
 	}
 
@@ -1859,7 +1897,13 @@ watch(
 		}
 	},
 );
+
 onBeforeRouteLeave(async (to, from, next) => {
+	// Close the focus panel when leaving the workflow view
+	if (focusPanelStore.focusPanelActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
 	const toNodeViewTab = getNodeViewTab(to);
 
 	if (
@@ -1964,6 +2008,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {
@@ -2014,6 +2059,8 @@ onBeforeUnmount(() => {
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
 			@run:node="onRunWorkflowToNode"
+			@copy:production:url="onCopyProductionUrl"
+			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
 			@create:connection:cancelled="onCreateConnectionCancelled"
@@ -2102,7 +2149,7 @@ onBeforeUnmount(() => {
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop
-				@stop="builderStore.stopStreaming"
+				@stop="builderStore.abortStreaming"
 			/>
 
 			<Suspense>
