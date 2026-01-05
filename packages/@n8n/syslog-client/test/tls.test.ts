@@ -161,12 +161,7 @@ describe('SyslogClient - TLS Transport', () => {
 				client.on('error', resolve);
 			});
 
-			try {
-				await client.log('SHould error');
-				fail('Should throw error');
-			} catch (connectionError) {
-				expect(connectionError).toBeInstanceOf(ConnectionError);
-			}
+			await expect(client.log('Should error')).rejects.toBeInstanceOf(ConnectionError);
 
 			const error: NodeJS.ErrnoException = await errorPromise;
 			expect(error.code).toBe('DEPTH_ZERO_SELF_SIGNED_CERT');

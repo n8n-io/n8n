@@ -200,19 +200,18 @@ export class SyslogClient extends EventEmitter {
 		completionCb: SyslogCallback,
 	): void {
 		try {
-			if (this.isStreamTransport()) {
+			if (this.isStreamSocket(transport)) {
 				// TCP/TLS/Unix: use write
-				(transport as net.Socket | tls.TLSSocket).write(message, (error) => {
+				transport.write(message, (error) => {
 					if (error) {
 						completionCb(new TransportError('Write failed', this.getTransportName(), error));
 					} else {
 						completionCb();
 					}
 				});
-			} else if (this.transport === Transport.Udp) {
+			} else if (this.isUdpSocket(transport)) {
 				// UDP: use send
-				const socket = transport as dgram.Socket;
-				socket.send(message, 0, message.length, this.port, this.target, (error) => {
+				transport.send(message, 0, message.length, this.port, this.target, (error) => {
 					if (error) {
 						completionCb(new TransportError('Send failed', 'UDP', error));
 					} else {
@@ -315,7 +314,7 @@ export class SyslogClient extends EventEmitter {
 			host: this.target,
 			port: this.port,
 			ca: this.tlsCA,
-			secureProtocol: 'TLSv1_2_method',
+			minVersion: 'TLSv1.2',
 		};
 
 		let transport: tls.TLSSocket;
@@ -400,9 +399,9 @@ export class SyslogClient extends EventEmitter {
 
 			completionCb(null, this.transport_);
 		} catch (transportError) {
-			if (this.transport_) {
+			if (this.transport_ && this.isUdpSocket(this.transport_)) {
 				try {
-					(this.transport_ as dgram.Socket).close();
+					this.transport_.close();
 				} catch {
 					// Ignore cleanup error
 				}
@@ -420,10 +419,10 @@ export class SyslogClient extends EventEmitter {
 	 */
 	close(): this {
 		if (this.transport_) {
-			if (this.isStreamTransport()) {
-				(this.transport_ as net.Socket | tls.TLSSocket).destroy();
-			} else if (this.transport === Transport.Udp) {
-				(this.transport_ as dgram.Socket).close();
+			if (this.isStreamSocket(this.transport_)) {
+				this.transport_.destroy();
+			} else if (this.isUdpSocket(this.transport_)) {
+				this.transport_.close();
 			}
 			this.transport_ = undefined;
 		} else {
@@ -464,14 +463,17 @@ export class SyslogClient extends EventEmitter {
 	}
 
 	/**
-	 * Check if current transport is stream-based (TCP/TLS/Unix).
+	 * Type guard to check if transport is a stream socket (TCP/TLS/Unix).
 	 */
-	private isStreamTransport(): boolean {
-		return (
-			this.transport === Transport.Tcp ||
-			this.transport === Transport.Tls ||
-			this.transport === Transport.Unix
-		);
+	private isStreamSocket(transport: TransportConnection): transport is net.Socket | tls.TLSSocket {
+		return 'write' in transport && typeof transport.write === 'function';
+	}
+
+	/**
+	 * Type guard to check if transport is a UDP socket.
+	 */
+	private isUdpSocket(transport: TransportConnection): transport is dgram.Socket {
+		return 'send' in transport && typeof transport.send === 'function';
 	}
 
 	/**
