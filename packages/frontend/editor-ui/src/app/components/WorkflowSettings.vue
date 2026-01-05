@@ -25,7 +25,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -75,21 +75,18 @@ const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([
 const executionLogicAllOptions = ref<Array<{ key: string; value: string; description: string }>>([
 	{
 		key: 'v0',
-		value: 'v0 (legacy)',
-		description:
-			'Executes the first node of each branch, then the second node of each branch, and so on.',
+		value: i18n.baseText('workflowSettings.executionLogic.v0.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v0.description'),
 	},
 	{
 		key: 'v1',
-		value: 'v1 (recommended)',
-		description:
-			'Executes each branch in turn, from topmost to bottommost, completing one branch before starting another.',
+		value: i18n.baseText('workflowSettings.executionLogic.v1.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v1.description'),
 	},
 	{
 		key: 'v2',
-		value: 'v2 (experimental)',
-		description:
-			'Executes each branch in turn, with binaries included directly in the item structure to simplify expressions.',
+		value: i18n.baseText('workflowSettings.executionLogic.v2.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v2.description'),
 	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
@@ -132,7 +129,7 @@ const defaultValues = ref({
 });
 
 const executionLogic = computed(() => {
-	if (workflowSettings.value.binaryMode === 'combined') {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
 		return 'v2';
 	}
 	return workflowSettings.value.executionOrder || 'v0';
@@ -201,7 +198,7 @@ const timeSavedModeOptions = computed(() => [
 ]);
 
 const executionLogicOptions = computed(() => {
-	if (workflowSettings.value.binaryMode === 'combined') {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
 		return executionLogicAllOptions.value;
 	}
 
@@ -566,15 +563,15 @@ const onExecutionLogicModeChange = (value: string) => {
 	}
 
 	if (value === 'v2') {
-		workflowSettings.value.binaryMode = 'combined';
+		workflowSettings.value.binaryMode = BINARY_MODE_COMBINED;
 		workflowSettings.value.executionOrder = 'v1';
 	}
 
 	if (workflowSettings.value.binaryMode !== currentBinaryMode) {
 		toast.showMessage({
-			title: 'Binary mode changed',
+			title: i18n.baseText('workflowSettings.executionLogic.changed.title'),
 			message: h('span', [
-				'Please update expressions that reference binary data to match the new binary mode. ',
+				i18n.baseText('workflowSettings.executionLogic.changed.description'),
 				h(
 					N8nLink,
 					{

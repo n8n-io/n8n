@@ -12,7 +12,14 @@ import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
+import type {
+	CODE_EXECUTION_MODES,
+	CODE_LANGUAGES,
+	LOG_LEVELS,
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+} from './constants';
+
 import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
@@ -2791,7 +2798,7 @@ export namespace WorkflowSettings {
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
 }
 
-export type WorkflowSettingsBinaryMode = 'separate' | 'combined';
+export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
 
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;

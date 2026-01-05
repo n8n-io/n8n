@@ -8,7 +8,13 @@ import type {
 	INodeProperties,
 	IBinaryData,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	deepCopy,
+	jsonParse,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { icsCalendarToObject } from 'ts-ics';
 
 import { encodeDecodeOptions } from '@utils/descriptions';
@@ -152,7 +158,7 @@ export async function execute(
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
 			set(newItem.json, destinationKey, convertedValue);
 
-			if (typeof binaryPropertyName === 'string' && binaryMode !== 'combined') {
+			if (typeof binaryPropertyName === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
 				if (options.keepSource === 'binary' || options.keepSource === 'both') {
 					newItem.binary = item.binary;
 				} else {

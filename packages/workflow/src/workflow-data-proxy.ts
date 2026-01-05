@@ -7,7 +7,7 @@ import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
-import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
+import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -100,7 +100,7 @@ export class WorkflowDataProxy {
 	 */
 	private returnExecutionData(data: INodeExecutionData | INodeExecutionData[], fullItem = false) {
 		if (fullItem) return data;
-		if (this.workflow.settings?.binaryMode !== 'combined') return data;
+		if (this.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED) return data;
 
 		if (Array.isArray(data)) {
 			return data.map((i) => i.json);
@@ -1529,7 +1529,7 @@ export class WorkflowDataProxy {
 
 				const JSON_ACCESS_KEYS = ['$data', '$json'];
 
-				if (that.workflow.settings?.binaryMode === 'combined') {
+				if (that.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
 					JSON_ACCESS_KEYS.push('$item');
 				}
 

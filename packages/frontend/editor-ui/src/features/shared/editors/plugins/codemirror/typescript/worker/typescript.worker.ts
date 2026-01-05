@@ -4,6 +4,7 @@ import { indexedDbCache } from '@/app/plugins/cache';
 import { bufferChangeSets, fnPrefix } from './utils';
 
 import type { CodeExecutionMode } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 import { computed, reactive, ref, watch } from 'vue';
@@ -145,7 +146,7 @@ export const worker: LanguageServiceWorkerInit = {
 		);
 
 		const updateModeTypes = () => {
-			const isCombined = binaryMode.value === 'combined';
+			const isCombined = binaryMode.value === BINARY_MODE_COMBINED;
 			const modeTypes =
 				mode.value === 'runOnceForAllItems'
 					? isCombined

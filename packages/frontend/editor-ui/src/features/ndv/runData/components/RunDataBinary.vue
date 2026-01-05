@@ -6,6 +6,7 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { N8nButton, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
 const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
@@ -17,7 +18,7 @@ const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 
 const isLegacyBinaryMode = computed(
-	() => workflowsStore.workflow.settings?.binaryMode !== 'combined',
+	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
 );
 
 function isViewable(index: number, key: string | number): boolean {
@@ -52,7 +53,7 @@ function openWorkflowSettings() {
 <template>
 	<div :class="$style.component">
 		<N8nNotice v-if="isLegacyBinaryMode" :class="$style.info" theme="info">
-			Try the new "combined" binary mode by selecting the corresponding option in the workflow
+			{{ i18n.baseText('runData.legacyBinaryMode') }}
 			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
 		</N8nNotice>
 		<N8nText v-if="binaryData.length === 0" align="center" tag="div">

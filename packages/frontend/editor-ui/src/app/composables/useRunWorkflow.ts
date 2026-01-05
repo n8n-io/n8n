@@ -16,7 +16,12 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	TelemetryHelpers,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -154,12 +159,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if (
 				rootStore.binaryDataMode === 'default' &&
-				workflowData.settings?.binaryMode === 'combined'
+				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
 			) {
 				toast.showMessage({
-					title: 'Unsupported Binary Mode',
-					message:
-						'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
+					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
 					type: 'error',
 				});
 				return undefined;

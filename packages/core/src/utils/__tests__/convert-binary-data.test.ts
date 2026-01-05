@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 import type { IBinaryData, IRunNodeResponse } from 'n8n-workflow';
-import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY } from 'n8n-workflow';
+import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY, BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import type { BinaryDataConfig } from '../../binary-data/binary-data.config';
 import * as binaryHelperFunctions from '../../execution-engine/node-execution-context/utils/binary-helper-functions';
@@ -42,7 +42,12 @@ describe('convertBinaryData', () => {
 				data: [[{ json: { test: 'data' } }]],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(result).toBe(responseData);
 		});
@@ -54,7 +59,12 @@ describe('convertBinaryData', () => {
 				data: [],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(result).toBe(responseData);
 		});
@@ -70,7 +80,12 @@ describe('convertBinaryData', () => {
 				data: [[{ json: { test: 'data' } }]],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(result.data?.[0]?.[0]?.json).toEqual({ test: 'data' });
 		});
@@ -99,7 +114,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			const item = result.data?.[0]?.[0];
 			expect(item?.json[BINARY_IN_JSON_PROPERTY]).toEqual({
@@ -131,7 +151,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, undefined, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				undefined,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			const item = result.data?.[0]?.[0];
 			expect(item?.binary).toEqual({
@@ -175,7 +200,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(binaryHelperFunctions.prepareBinaryData).toHaveBeenCalledWith(
 				Buffer.from('test data'),
@@ -227,7 +257,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			const item = result.data?.[0]?.[0];
 			const jsonBinary = item?.json[BINARY_IN_JSON_PROPERTY] as Record<string, IBinaryData>;
@@ -272,7 +307,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			const item = result.data?.[0]?.[0];
 			expect(item?.json[BINARY_IN_JSON_PROPERTY]).toEqual({
@@ -326,7 +366,12 @@ describe('convertBinaryData', () => {
 			};
 
 			// Test with executionId to trigger conversion
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			const item = result.data?.[0]?.[0];
 			expect(item?.json[BINARY_IN_JSON_PROPERTY]).toEqual({
@@ -374,7 +419,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(result.data?.[0]?.[0]?.json[BINARY_IN_JSON_PROPERTY]).toEqual({
 				file1: binary1,
@@ -420,7 +470,12 @@ describe('convertBinaryData', () => {
 				],
 			};
 
-			const result = await convertBinaryData(workflowId, executionId, responseData, 'combined');
+			const result = await convertBinaryData(
+				workflowId,
+				executionId,
+				responseData,
+				BINARY_MODE_COMBINED,
+			);
 
 			expect(result.data?.[0]?.[0]?.json).toEqual({
 				item: 1,

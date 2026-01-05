@@ -9,6 +9,7 @@ import {
 	jsonParse,
 	validateFieldType,
 	isBinaryValue,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
@@ -283,7 +284,7 @@ export function prepareReturnItem(
 		}
 		const { binaryMode } = context.getWorkflowSettings();
 
-		const target = binaryMode === 'combined' ? 'json' : 'binary';
+		const target = binaryMode === BINARY_MODE_COMBINED ? 'json' : 'binary';
 
 		for (const assignment of binaryValues) {
 			const name = assignment.name;
