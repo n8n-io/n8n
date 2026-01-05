@@ -77,16 +77,16 @@ describe('Guardrails Process', () => {
 		});
 	}
 
-	it('Throws When Operation Is Classify And Model Is Null', async () => {
+	it('Throws When Operation Is LLM-based And Model Is Null', async () => {
 		setParams({
 			text: 'hello',
 			operation: 'classify',
-			guardrails: {},
+			guardrails: { nsfw: { value: { threshold: 0.5 } } },
 			customizeSystemMessage: false,
 		});
 
 		await expect(processGuardrails.call(exec, 0, null as unknown as BaseChatModel)).rejects.toThrow(
-			'Chat Model is required for classify operation',
+			'Chat Model is required',
 		);
 	});
 

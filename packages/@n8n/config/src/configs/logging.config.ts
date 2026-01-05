@@ -27,6 +27,9 @@ export const LOG_SCOPES = [
 	'legacy-sqlite-execution-recovery',
 	'chat-hub',
 	'breaking-changes',
+	'circuit-breaker',
+	'dynamic-credentials',
+	'workflow-history-compaction',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

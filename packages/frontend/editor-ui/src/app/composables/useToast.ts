@@ -54,10 +54,37 @@ export function useToast() {
 		}
 
 		if (params.type === 'error' && track) {
+			// Extract string message for telemetry - don't send VNode objects as they have circular refs
+			let messageForTelemetry: string;
+			if (typeof params.message === 'string') {
+				messageForTelemetry = params.message;
+			} else if (
+				params.message &&
+				typeof params.message === 'object' &&
+				'props' in params.message &&
+				params.message.props
+			) {
+				// Extract error message from VNode props (e.g., NodeExecutionErrorMessage component)
+				const props = params.message.props;
+				const hasErrorMessage =
+					typeof props === 'object' && props !== null && 'errorMessage' in props;
+				const hasMessage = typeof props === 'object' && props !== null && 'message' in props;
+
+				if (hasErrorMessage) {
+					messageForTelemetry = String(props.errorMessage);
+				} else if (hasMessage) {
+					messageForTelemetry = String(props.message);
+				} else {
+					messageForTelemetry = 'Unknown error';
+				}
+			} else {
+				messageForTelemetry = 'Unknown error';
+			}
+
 			telemetry.track('Instance FE emitted error', {
 				error_title: params.title,
-				error_message: params.message,
-				caused_by_credential: causedByCredential(params.message as string),
+				error_message: messageForTelemetry,
+				caused_by_credential: causedByCredential(messageForTelemetry),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}

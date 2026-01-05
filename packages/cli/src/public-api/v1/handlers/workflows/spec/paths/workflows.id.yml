@@ -51,7 +51,7 @@ put:
   tags:
     - Workflow
   summary: Update a workflow
-  description: Update a workflow.
+  description: Update a workflow. If the workflow is active, the updated version will be automatically reactivated.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:

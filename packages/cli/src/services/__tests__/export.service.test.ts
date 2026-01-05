@@ -1,7 +1,7 @@
 import { type Logger } from '@n8n/backend-common';
 import { ExportService } from '../export.service';
 import { type DataSource } from '@n8n/typeorm';
-import { mkdir, rm, readdir, appendFile } from 'fs/promises';
+import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
@@ -11,6 +11,7 @@ jest.mock('fs/promises', () => ({
 	rm: jest.fn(),
 	readdir: jest.fn(),
 	appendFile: jest.fn(),
+	readFile: jest.fn(),
 }));
 
 // Mock compression utility
@@ -121,6 +122,34 @@ describe('ExportService', () => {
 
 			expect(mockDataSource.query).toHaveBeenCalled();
 			expect(appendFile).toHaveBeenCalled();
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
+		});
+
+		it('should export entities successfully with a custom encryption key', async () => {
+			const outputDir = '/test/output';
+			const mockEntities = [
+				{ id: 1, email: 'test1@example.com', firstName: 'John' },
+				{ id: 2, email: 'test2@example.com', firstName: 'Jane' },
+			];
+
+			// Mock the migrations table query to fail (table doesn't exist)
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async (query: string) => {
+					if (query.includes('migrations') && query.includes('COUNT')) {
+						throw new Error('Table not found');
+					}
+					return [];
+				})
+				.mockResolvedValueOnce(mockEntities) // First entity (User)
+				.mockResolvedValueOnce([]); // Workflow entities
+			jest.mocked(readdir).mockResolvedValue([]);
+			jest.mocked(readFile).mockResolvedValueOnce('custom-encryption-key');
+
+			await exportService.exportEntities(outputDir, undefined, 'custom-encryption-key');
+
+			expect(mockCipher.encrypt).toHaveBeenCalledWith(expect.any(String), 'custom-encryption-key');
+			expect(appendFile).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'utf8');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 

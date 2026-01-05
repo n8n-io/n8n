@@ -22,7 +22,12 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 		): string => {
 			const workflow = workflowStore.getWorkflowById(workflowId);
 			const { name, email } = splitName(workflow?.homeProject?.name ?? '');
-			return name ? (email ? `${name} (${email})` : name) : (email ?? fallback);
+			const trimmedName = name?.replace(/\s+/g, ' ')?.trim();
+			return trimmedName
+				? email
+					? `${trimmedName} (${email})`
+					: trimmedName
+				: (email ?? fallback);
 		};
 	});
 

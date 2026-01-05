@@ -60,7 +60,7 @@ describe(useFloatingUiOffsets, () => {
 
 				useNDVStore().setActiveNodeName('n0', 'other');
 
-				expect(toastBottomOffset.value).toBe('90px'); // 42px button + 48px NDV offset
+				expect(toastBottomOffset.value).toBe('58px'); // 42px button + 16px NDV offset
 			},
 		);
 	});

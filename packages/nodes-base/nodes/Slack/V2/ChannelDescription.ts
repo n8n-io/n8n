@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { slackChannelModes } from './utils';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -136,52 +137,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                channel:close                               */
@@ -192,52 +148,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['close'],
@@ -300,52 +211,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['invite'],
@@ -383,52 +249,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		required: true,
 		displayOptions: {
 			show: {
@@ -469,52 +290,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['kick'],
@@ -552,52 +328,7 @@ export const channelFields: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
 		description: 'The Slack channel to join',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['join'],
@@ -700,52 +431,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['history'],
@@ -833,52 +519,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['leave'],
@@ -899,52 +540,7 @@ export const channelFields: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		description: 'The Slack channel to get the members from',
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['member'],
@@ -1053,52 +649,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['rename'],
@@ -1132,52 +683,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['replies'],
@@ -1280,52 +786,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['setPurpose'],
@@ -1359,52 +820,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['setTopic'],
@@ -1437,52 +853,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['unarchive'],

@@ -10,7 +10,6 @@ import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -87,6 +86,9 @@ export class AuthService {
 			'/types/nodes.json',
 			'/types/credentials.json',
 			'/mcp-oauth/authorize/',
+
+			// Skip browser ID check for chat hub attachments
+			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 		];
 	}
 
@@ -168,11 +170,7 @@ export class AuthService {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (
-			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
-			!isWithinUsersLimit
-		) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 

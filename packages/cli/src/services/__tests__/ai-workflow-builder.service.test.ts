@@ -3,13 +3,15 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
-import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
+import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { License } from '@/license';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { UrlService } from '@/services/url.service';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Telemetry } from '@/telemetry';
 
 jest.mock('@n8n/ai-workflow-builder');
 jest.mock('@n8n_io/ai-assistant-sdk');
@@ -28,6 +30,8 @@ describe('WorkflowBuilderService', () => {
 	let mockLogger: Logger;
 	let mockUrlService: UrlService;
 	let mockPush: Push;
+	let mockTelemetry: Telemetry;
+	let mockInstanceSettings: InstanceSettings;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -59,6 +63,8 @@ describe('WorkflowBuilderService', () => {
 		mockLogger = mock<Logger>();
 		mockUrlService = mock<UrlService>();
 		mockPush = mock<Push>();
+		mockTelemetry = mock<Telemetry>();
+		mockInstanceSettings = mock<InstanceSettings>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -66,6 +72,7 @@ describe('WorkflowBuilderService', () => {
 		(mockUrlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://instance.test.com');
 		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
+		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
 		mockConfig.aiAssistant = { baseUrl: '' };
 
 		// Reset the mocked AiWorkflowBuilderService
@@ -79,6 +86,8 @@ describe('WorkflowBuilderService', () => {
 			mockLogger,
 			mockUrlService,
 			mockPush,
+			mockTelemetry,
+			mockInstanceSettings,
 		);
 	});
 
@@ -91,6 +100,7 @@ describe('WorkflowBuilderService', () => {
 	describe('chat', () => {
 		it('should create AiWorkflowBuilderService on first chat call without AI assistant client', async () => {
 			const mockPayload = {
+				id: '12345',
 				message: 'test message',
 				workflowContext: {},
 			};
@@ -110,8 +120,11 @@ describe('WorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
-				'https://instance.test.com',
+				'test-instance-id', // instanceId
+				'https://instance.test.com', // instanceUrl
+				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
+				expect.any(Function), // onTelemetryEvent callback
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -122,6 +135,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -147,14 +161,18 @@ describe('WorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				expect.any(AiAssistantClient),
 				mockLogger,
-				'https://instance.test.com',
-				expect.any(Function),
+				'test-instance-id', // instanceId
+				'https://instance.test.com', // instanceUrl
+				expect.any(String), // n8nVersion
+				expect.any(Function), // onCreditsUpdated callback
+				expect.any(Function), // onTelemetryEvent callback
 			);
 		});
 
 		it('should reuse the same service instance on subsequent calls', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -186,6 +204,7 @@ describe('WorkflowBuilderService', () => {
 		it('should pass abort signal to underlying service', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -250,6 +269,7 @@ describe('WorkflowBuilderService', () => {
 		it('should send push notification when credits are updated', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -264,12 +284,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
-					capturedCallback = callback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedCallback = callback;
+				return mockAiService;
+			}) as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -297,6 +318,7 @@ describe('WorkflowBuilderService', () => {
 		it('should handle multiple credit updates', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -311,12 +333,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
-					capturedCallback = callback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedCallback = callback;
+				return mockAiService;
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -349,6 +372,225 @@ describe('WorkflowBuilderService', () => {
 				},
 				['user-456'],
 			);
+		});
+	});
+
+	describe('onTelemetryEvent callback', () => {
+		it('should call telemetry.track when telemetry event is triggered', async () => {
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+
+			let capturedTelemetryCallback:
+				| ((event: string, properties: ITelemetryTrackProperties) => void)
+				| undefined;
+
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
+
+			// Trigger service creation
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			// Verify callback was provided
+			expect(capturedTelemetryCallback).toBeDefined();
+
+			// Simulate telemetry event
+			const testEvent = 'ai_builder_workflow_created';
+			const testProperties = {
+				workflow_id: 'workflow-123',
+				node_count: 5,
+				user_id: 'user-123',
+			};
+
+			capturedTelemetryCallback!(testEvent, testProperties);
+
+			// Verify telemetry.track was called
+			expect(mockTelemetry.track).toHaveBeenCalledWith(testEvent, testProperties);
+		});
+
+		it('should handle multiple telemetry events', async () => {
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+
+			let capturedTelemetryCallback:
+				| ((event: string, properties: ITelemetryTrackProperties) => void)
+				| undefined;
+
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			// Simulate multiple telemetry events
+			const event1 = 'ai_builder_chat_started';
+			const properties1 = { session_id: 'session-1' };
+
+			const event2 = 'ai_builder_node_added';
+			const properties2 = { node_type: 'http_request', workflow_id: 'workflow-123' };
+
+			capturedTelemetryCallback!(event1, properties1);
+			capturedTelemetryCallback!(event2, properties2);
+
+			// Verify both telemetry events were tracked
+			expect(mockTelemetry.track).toHaveBeenCalledTimes(2);
+			expect(mockTelemetry.track).toHaveBeenNthCalledWith(1, event1, properties1);
+			expect(mockTelemetry.track).toHaveBeenNthCalledWith(2, event2, properties2);
+		});
+
+		it('should handle telemetry events with empty properties', async () => {
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+
+			let capturedTelemetryCallback:
+				| ((event: string, properties: ITelemetryTrackProperties) => void)
+				| undefined;
+
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			// Simulate telemetry event with empty properties
+			const testEvent = 'ai_builder_session_ended';
+			const emptyProperties = {};
+
+			capturedTelemetryCallback!(testEvent, emptyProperties);
+
+			// Verify telemetry.track was called with empty properties
+			expect(mockTelemetry.track).toHaveBeenCalledWith(testEvent, emptyProperties);
+		});
+	});
+
+	describe('license certificate refresh', () => {
+		it('should register for license certificate updates when client is created', async () => {
+			mockConfig.aiAssistant.baseUrl = 'https://ai-assistant.test.com';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(mockLicense.onCertRefresh).toHaveBeenCalledWith(expect.any(Function));
+		});
+
+		it('should update client license cert when callback is invoked', async () => {
+			mockConfig.aiAssistant.baseUrl = 'https://ai-assistant.test.com';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			// Capture the callback passed to onCertRefresh
+			let capturedCallback: ((cert: string) => void) | undefined;
+			(mockLicense.onCertRefresh as jest.Mock).mockImplementation((cb: (cert: string) => void) => {
+				capturedCallback = cb;
+				return () => {};
+			});
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(capturedCallback).toBeDefined();
+
+			// Get the mocked client instance
+			const mockClientInstance = MockedAiAssistantClient.mock.instances[0];
+
+			// Invoke the callback with a new cert
+			capturedCallback!('new-cert-value');
+
+			expect(mockClientInstance.updateLicenseCert).toHaveBeenCalledWith('new-cert-value');
+		});
+
+		it('should not register for license updates when no baseUrl is configured', async () => {
+			mockConfig.aiAssistant.baseUrl = '';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(mockLicense.onCertRefresh).not.toHaveBeenCalled();
 		});
 	});
 

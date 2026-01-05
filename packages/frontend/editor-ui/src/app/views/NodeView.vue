@@ -57,17 +57,14 @@ import {
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
-	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -127,7 +124,6 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -177,6 +173,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
+const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -199,7 +196,6 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
-const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -263,7 +259,6 @@ const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 const { fetchAndSetParentFolder } = useParentFolder();
 
-useClipboard({ onPaste: onClipboardPaste });
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
@@ -281,26 +276,26 @@ const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
+	const name = route.params.name;
+	return Array.isArray(name) ? name[0] : name;
 });
-const routeNodeId = computed(() => route.params.nodeId as string | undefined);
+const routeNodeId = computed(() => {
+	const nodeId = route.params.nodeId;
+	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
+});
 
-const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
+// Check if this is a new workflow by looking for the ?new query param
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
+});
+
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -330,8 +325,8 @@ async function initializeData() {
 
 		const promises: Array<Promise<unknown>> = [
 			workflowsStore.fetchActiveWorkflows(),
-			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(true),
+			loadCredentials(),
 		];
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
@@ -364,18 +359,6 @@ async function initializeData() {
 }
 
 async function initializeRoute(force = false) {
-	// In case the workflow got saved we do not have to run init
-	// as only the route changed but all the needed data is already loaded
-
-	if (route.query.action === 'workflowSave') {
-		uiStore.stateIsDirty = false;
-		// Remove the action from the query
-		await router.replace({
-			query: { ...route.query, action: undefined },
-		});
-		return;
-	}
-
 	// Open node panel if the route has a corresponding action
 	if (route.query.action === 'addEvaluationTrigger') {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
@@ -393,9 +376,7 @@ async function initializeRoute(force = false) {
 	}
 
 	const isAlreadyInitialized =
-		!force &&
-		initializedWorkflowId.value &&
-		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
+		!force && initializedWorkflowId.value && initializedWorkflowId.value === workflowId.value;
 
 	// This function is called on route change as well, so we need to do the following:
 	// - if the redirect is blank, then do nothing
@@ -429,18 +410,27 @@ async function initializeRoute(force = false) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
 
-			if (!isDemoRoute.value) {
-				await loadCredentials();
+			if (isDemoRoute.value) {
+				return await initializeWorkspaceForNewWorkflow();
 			}
 
-			// If there is no workflow id, treat it as a new workflow
-			if (isNewWorkflowRoute.value || !workflowId.value) {
-				if (route.meta?.nodeView === true) {
-					await initializeWorkspaceForNewWorkflow();
+			// Check if we should initialize for a new workflow
+			if (isNewWorkflowRoute.value) {
+				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				if (!exists && route.meta?.nodeView === true) {
+					return await initializeWorkspaceForNewWorkflow();
+				} else {
+					await router.replace({
+						...route,
+						query: {
+							...route.query,
+							new: undefined,
+						},
+					});
 				}
-				return;
 			}
 
+			// Load existing workflow
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
 			void nextTick(() => {
@@ -465,18 +455,23 @@ async function initializeWorkspaceForNewWorkflow() {
 		parentFolderId,
 	);
 
+	// Set the workflow ID from the route params (auto-generated by router)
+	workflowState.setWorkflowId(workflowId.value);
+
 	await projectsStore.refreshCurrentProject();
 	await fetchAndSetParentFolder(parentFolderId);
 
 	uiStore.nodeViewInitialized = true;
-	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+	initializedWorkflowId.value = workflowId.value;
+
+	fitView();
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		openWorkflow(workflowData);
+		await openWorkflow(workflowData);
 
 		if (workflowData.parentFolder) {
 			workflowsStore.setParentFolder(workflowData.parentFolder);
@@ -537,11 +532,11 @@ function updateNodesIssues() {
  * Workflow
  */
 
-function openWorkflow(data: IWorkflowDb) {
+async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
-	initializeWorkspace(data);
+	await initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -574,9 +569,7 @@ function trackOpenWorkflowFromOnboardingTemplate() {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter(
-		(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
-	);
+	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -726,7 +719,9 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		importTags: false,
 		viewport: viewportBoundaries.value,
 	});
-	selectNodes(result.nodes?.map((node) => node.id) ?? []);
+	const ids = result.nodes?.map((node) => node.id) ?? [];
+
+	canvasRef.value?.ensureNodesAreVisible(ids);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -746,7 +741,7 @@ async function onDuplicateNodes(ids: string[]) {
 		viewport: viewportBoundaries.value,
 	});
 
-	selectNodes(newIds);
+	canvasRef.value?.ensureNodesAreVisible(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -758,7 +753,8 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	const workflowIsSaved = !uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
+	const workflowIsSaved =
+		!uiStore.stateIsDirty && workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
 	if (workflowIsSaved || workflowIsArchived) {
@@ -846,6 +842,11 @@ async function onOpenRenameNodeModal(id: string) {
 		let shouldSaveAfterRename = false;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Stop propagation for space key to prevent VueFlow from intercepting it
+			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
 			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
 				e.preventDefault();
 				shouldSaveAfterRename = true;
@@ -916,7 +917,7 @@ function onClickNodeAdd(source: string, sourceHandle: string) {
 async function loadCredentials() {
 	let options: { workflowId: string } | { projectId: string };
 
-	if (workflowId.value) {
+	if (workflowId.value && !isNewWorkflowRoute.value) {
 		options = { workflowId: workflowId.value };
 	} else {
 		const queryParam =
@@ -994,7 +995,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	await initializeData();
 
-	initializeWorkspace({
+	await initializeWorkspace({
 		...workflowData,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1005,11 +1006,13 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
+	const setStateDirty = typeof data.setStateDirty === 'boolean' ? data.setStateDirty : undefined;
 
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
+		setStateDirty,
 	});
 
 	await nextTick();
@@ -1041,8 +1044,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		viewport: viewportBoundaries.value,
 	});
 
-	fitView();
-	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -1258,8 +1260,49 @@ async function onRunWorkflowToNode(id: string) {
 		trackRunWorkflowToNode(node);
 		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
 
-		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+		void runWorkflow({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'Node.executeNode',
+		});
 	}
+}
+function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+	if (!webhookUrl) return;
+
+	void clipboard.copy(webhookUrl);
+
+	toast.showMessage({
+		title: i18n.baseText('nodeWebhooks.showMessage.title'),
+		type: 'success',
+	});
+}
+
+async function onCopyTestUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(node?.type ?? '');
+
+	if (isProductionOnly) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.testWebhookUrl'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	copyWebhookUrl(id, 'test');
+}
+
+async function onCopyProductionUrl(id: string) {
+	const isWorkflowActive = workflowsStore.workflow.active;
+	if (!isWorkflowActive) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
+			type: 'warning',
+		});
+		return;
+	}
+	copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1462,7 +1505,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
-				openWorkflow(workflowData);
+				await openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1591,6 +1634,10 @@ function checkIfEditingIsAllowed(): boolean {
 	}
 
 	if (readOnlyNotification.value?.visible) {
+		return false;
+	}
+
+	if (!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)) {
 		return false;
 	}
 
@@ -1779,17 +1826,20 @@ function updateNodeRoute(nodeId: string) {
 		void router.replace({
 			name: route.name,
 			params: { name: workflowId.value },
+			query: route.query,
 		});
 	}
 }
 
 watch(
-	() => route.name,
-	async (newRouteName, oldRouteName) => {
+	[() => route.name, () => route.params.name],
+	async ([newRouteName, newWorkflowId], [oldRouteName, oldWorkflowId]) => {
 		// When navigating from an existing workflow to a new workflow or the other way around we should load the new workflow
 		const force =
 			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
-			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW);
+			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW) ||
+			newWorkflowId !== oldWorkflowId;
+
 		await initializeRoute(force);
 	},
 );
@@ -1852,19 +1902,35 @@ watch(
 			await router.replace({
 				name: route.name,
 				params: { name: workflowId.value, nodeId },
+				query: route.query,
 			});
 		}
 	},
 );
-onBeforeRouteLeave(async (to, from, next) => {
-	const toNodeViewTab = getNodeViewTab(to);
 
-	if (
+onBeforeRouteLeave(async (to, from, next) => {
+	// Close the focus panel when leaving the workflow view
+	if (focusPanelStore.focusPanelActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
+	if (isReadOnlyEnvironment.value) {
+		next();
+		return;
+	}
+
+	const toNodeViewTab = getNodeViewTab(to);
+	const isNavigatingBetweenWorkflows =
+		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(from.name as VIEWS) &&
+		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(to.name as VIEWS) &&
+		from.params.name !== to.params.name;
+
+	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
 		from.name === VIEWS.TEMPLATE_IMPORT ||
-		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG) ||
-		isReadOnlyEnvironment.value
-	) {
+		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG);
+
+	if (shouldSkipPrompt && !isNavigatingBetweenWorkflows) {
 		next();
 		return;
 	}
@@ -1872,22 +1938,15 @@ onBeforeRouteLeave(async (to, from, next) => {
 	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
-				// Replace the current route with the new workflow route
-				// before navigating to the new route when saving new workflow.
 				const savedWorkflowId = workflowsStore.workflowId;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: savedWorkflowId },
 				});
-
 				await router.push(to);
-
 				return false;
 			}
-
-			// Make sure workflow id is empty when leaving the editor
-			workflowState.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-
+			workflowState.setWorkflowId('');
 			return true;
 		},
 	});
@@ -1961,6 +2020,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {
@@ -2011,6 +2071,8 @@ onBeforeUnmount(() => {
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
 			@run:node="onRunWorkflowToNode"
+			@copy:production:url="onCopyProductionUrl"
+			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
 			@create:connection:cancelled="onCreateConnectionCancelled"
@@ -2099,7 +2161,7 @@ onBeforeUnmount(() => {
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop
-				@stop="builderStore.stopStreaming"
+				@stop="builderStore.abortStreaming"
 			/>
 
 			<Suspense>

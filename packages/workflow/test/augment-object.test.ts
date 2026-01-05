@@ -485,48 +485,6 @@ describe('AugmentObject', () => {
 			expect(originalObject).toEqual(copyOriginal);
 		});
 
-		// Skipping this test since it is no longer true in vitest, to be investigated
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		test.skip('should be faster than doing a deepCopy', () => {
-			const iterations = 100;
-			const originalObject: any = {
-				a: {
-					b: {
-						c: {
-							d: {
-								e: {
-									f: 12345,
-								},
-							},
-						},
-					},
-				},
-			};
-			for (let i = 0; i < 10; i++) {
-				originalObject[i.toString()] = deepCopy(originalObject);
-			}
-
-			let startTime = new Date().getTime();
-			for (let i = 0; i < iterations; i++) {
-				const augmentedObject = augmentObject(originalObject);
-				for (let i = 0; i < 5000; i++) {
-					augmentedObject.a!.b.c.d.e.f++;
-				}
-			}
-			const timeAugmented = new Date().getTime() - startTime;
-
-			startTime = new Date().getTime();
-			for (let i = 0; i < iterations; i++) {
-				const copiedObject = deepCopy(originalObject);
-				for (let i = 0; i < 5000; i++) {
-					copiedObject.a!.b.c.d.e.f++;
-				}
-			}
-			const timeCopied = new Date().getTime() - startTime;
-
-			expect(timeAugmented).toBeLessThan(timeCopied);
-		});
-
 		test('should ignore non-enumerable keys', () => {
 			const originalObject = { a: 1, b: 2 };
 			Object.defineProperty(originalObject, '__hiddenProp', { enumerable: false });

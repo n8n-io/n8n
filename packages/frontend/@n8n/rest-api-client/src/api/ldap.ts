@@ -44,6 +44,7 @@ export interface LdapConfig {
 	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
+	enforceEmailUniqueness: boolean;
 }
 
 export async function getLdapConfig(context: IRestApiContext): Promise<LdapConfig> {

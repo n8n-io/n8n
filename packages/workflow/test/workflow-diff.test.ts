@@ -1,16 +1,19 @@
 import { mock } from 'vitest-mock-extended';
 
-import { type INodeParameters, type IWorkflowBase } from '../src';
+import { type IConnections, type INode, type INodeParameters, type IWorkflowBase } from '../src';
 import {
 	compareNodes,
 	compareWorkflowsNodes,
 	groupWorkflows,
+	hasCredentialChanges,
+	hasNonPositionalChanges,
 	NodeDiffStatus,
 	RULES,
 	WorkflowChangeSet,
 	type DiffableNode,
 	type DiffRule,
 } from '../src/workflow-diff';
+import { compareConnections } from '../src/connections-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -290,7 +293,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 				{ id: '1', nodes: [node1, node2] },
 			]);
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -307,7 +310,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -324,7 +327,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -343,7 +346,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, modifiedNode2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -363,7 +366,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -380,7 +383,7 @@ describe('groupWorkflows', () => {
 		});
 
 		it('should handle empty workflows array', () => {
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(0);
 		});
@@ -388,12 +391,13 @@ describe('groupWorkflows', () => {
 		it('should handle single workflow', () => {
 			const workflows = mock<IWorkflowBase[]>([{ id: '1', nodes: [node1] }]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toEqual(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toEqual(NodeDiffStatus.Eq);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 	});
@@ -408,7 +412,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => false;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -428,7 +432,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => true;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -442,6 +446,7 @@ describe('groupWorkflows', () => {
 				return {
 					id,
 					nodes,
+					connections: {},
 				} as IWorkflowBase;
 			};
 
@@ -497,19 +502,366 @@ describe('groupWorkflows', () => {
 						from: baseWorkflow,
 						to: baseWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
 					},
 					{
 						from: nextWorkflow,
 						to: nextWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
 					},
-					compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
+					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
 				expect(result).toEqual(expected);
 			});
 		});
+	});
+	describe('groupWorkflows - skipRules', () => {
+		const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
+		const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
+
+		let workflows: IWorkflowBase[];
+		beforeEach(() => {
+			workflows = [];
+		});
+
+		it('should skip merging workflows when skipRules apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+			]);
+
+			const trueRule: DiffRule = (_l, _r) => true;
+			const grouped = groupWorkflows(workflows, [trueRule], [trueRule]);
+
+			expect(grouped.length).toBe(3);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
+			expect(grouped[2].from).toEqual(workflows[2]);
+			expect(grouped[2].to).toEqual(workflows[3]);
+			expect(grouped[2].groupedWorkflows).toEqual([]);
+		});
+
+		it('should not skip merging workflows when skipRules do not apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const skipRule: DiffRule = (_l, _r) => false; // Never skip merging
+			const grouped = groupWorkflows(workflows, [], [skipRule]);
+
+			expect(grouped.length).toBe(2);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
+		});
+	});
+});
+
+describe('hasNonPositionalChanges', () => {
+	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
+		id,
+		name: `Node ${id}`,
+		type: 'test-type',
+		typeVersion: 1,
+		position: [100, 200],
+		parameters: {},
+		...overrides,
+	});
+
+	it('should return false when only positions changed', () => {
+		const oldNodes = [createNode('1', { position: [100, 200] })];
+		const newNodes = [createNode('1', { position: [300, 400] })];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when a node is added', () => {
+		const oldNodes = [createNode('1')];
+		const newNodes = [createNode('1'), createNode('2')];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when a node is deleted', () => {
+		const oldNodes = [createNode('1'), createNode('2')];
+		const newNodes = [createNode('1')];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when node name changes', () => {
+		const oldNodes = [createNode('1', { name: 'Original Name' })];
+		const newNodes = [createNode('1', { name: 'New Name' })];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when node parameters change', () => {
+		const oldNodes = [createNode('1', { parameters: { param1: 'value1' } })];
+		const newNodes = [createNode('1', { parameters: { param1: 'value2' } })];
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, {}, {});
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when connections change', () => {
+		const oldNodes = [createNode('1'), createNode('2')];
+		const newNodes = [createNode('1'), createNode('2')];
+		const oldConnections: IConnections = {};
+		const newConnections: IConnections = {
+			'Node 1': {
+				main: [[{ node: 'Node 2', type: 'main', index: 0 }]],
+			},
+		};
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, oldConnections, newConnections);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when nodes and connections are identical', () => {
+		const oldNodes = [createNode('1'), createNode('2')];
+		const newNodes = [createNode('1'), createNode('2')];
+		const connections: IConnections = {
+			'Node 1': {
+				main: [[{ node: 'Node 2', type: 'main', index: 0 }]],
+			},
+		};
+
+		const result = hasNonPositionalChanges(oldNodes, newNodes, connections, connections);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return false for empty workflows', () => {
+		const result = hasNonPositionalChanges([], [], {}, {});
+
+		expect(result).toBe(false);
+	});
+});
+
+describe('hasCredentialChanges', () => {
+	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
+		id,
+		name: `Node ${id}`,
+		type: 'test-type',
+		typeVersion: 1,
+		position: [100, 200],
+		parameters: {},
+		...overrides,
+	});
+
+	it('should return false when no credentials exist', () => {
+		const oldNodes = [createNode('1')];
+		const newNodes = [createNode('1')];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return false when credentials are identical', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when credential is added to a node', () => {
+		const oldNodes = [createNode('1')];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when credential is removed from a node', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+		const newNodes = [createNode('1')];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when credential ID changes', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-2', name: 'Test Credential' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when only credential name changes but ID stays the same', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Old Name' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'New Name' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when a new credential type is added', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: {
+					testApi: { id: 'cred-1', name: 'Test Credential' },
+					anotherApi: { id: 'cred-2', name: 'Another Credential' },
+				},
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when a credential type is removed', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: {
+					testApi: { id: 'cred-1', name: 'Test Credential' },
+					anotherApi: { id: 'cred-2', name: 'Another Credential' },
+				},
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should handle multiple nodes correctly', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+			createNode('2', {
+				credentials: { testApi: { id: 'cred-2', name: 'Test Credential 2' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+			createNode('2', {
+				credentials: { testApi: { id: 'cred-2', name: 'Test Credential 2' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when credential changes in second node', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+			createNode('2', {
+				credentials: { testApi: { id: 'cred-2', name: 'Test Credential 2' } },
+			}),
+		];
+		const newNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+			createNode('2', {
+				credentials: { testApi: { id: 'cred-3', name: 'Test Credential 3' } },
+			}),
+		];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false for empty node arrays', () => {
+		const result = hasCredentialChanges([], []);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return false when node is deleted (deletion is not a credential change)', () => {
+		const oldNodes = [
+			createNode('1', {
+				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
+			}),
+		];
+		const newNodes: INode[] = [];
+
+		const result = hasCredentialChanges(oldNodes, newNodes);
+
+		// When a node is deleted, it's not considered a credential change
+		expect(result).toBe(false);
 	});
 });

@@ -26,6 +26,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -79,12 +80,16 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -173,10 +178,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -189,6 +194,11 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 	}>;
+
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
 
 	type AccessFields = {
 		accessibleWorkflowIds?: string[];
@@ -221,6 +231,7 @@ export namespace ListQueryDb {
 			| 'name'
 			| 'active'
 			| 'versionId'
+			| 'activeVersionId'
 			| 'createdAt'
 			| 'updatedAt'
 			| 'tags'
@@ -407,3 +418,8 @@ export interface ISimplifiedPinData {
 		pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	}>;
 }
+
+export type WorkflowHistoryUpdate = Omit<
+	Partial<WorkflowHistory>,
+	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
+>;

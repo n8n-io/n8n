@@ -3,6 +3,7 @@ export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
+export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
@@ -29,6 +30,7 @@ export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository'
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
+export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

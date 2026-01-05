@@ -418,7 +418,7 @@ export class SourceControlExportService {
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {
-					const { name, type, data, id } = sharing.credentials;
+					const { name, type, data, id, isGlobal = false } = sharing.credentials;
 					const credentials = new Credentials({ id, name }, type, data);
 
 					let owner: RemoteResourceOwner | null = null;
@@ -455,6 +455,7 @@ export class SourceControlExportService {
 						type,
 						data: this.replaceCredentialData(rest),
 						ownedBy: owner,
+						isGlobal,
 					};
 
 					const filePath = this.getCredentialsPath(id);

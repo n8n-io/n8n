@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflow } from '@n8n/rest-api-client';
 import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
@@ -12,10 +12,12 @@ import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	template: ITemplatesWorkflow;
+	tileNumber?: number;
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const { getTemplateRoute, trackTemplateTileClick } = useTemplatesDataQualityStore();
+const { getTemplateRoute, trackTemplateTileClick, trackTemplateShown } =
+	useTemplatesDataQualityStore();
 const router = useRouter();
 const uiStore = useUIStore();
 const locale = useI18n();
@@ -29,15 +31,59 @@ const templateNodes = computed(() => {
 	return nodeTypesArray.map((nodeType) => nodeTypesStore.getNodeType(nodeType)).filter(Boolean);
 });
 
+const hasTrackedShown = ref(false);
+const cardRef = ref<InstanceType<typeof N8nCard> | null>(null);
+let observer: IntersectionObserver | null = null;
+
+const trackWhenVisible = () => {
+	if (hasTrackedShown.value || props.tileNumber === undefined) {
+		return;
+	}
+
+	hasTrackedShown.value = true;
+	trackTemplateShown(props.template.id, props.tileNumber);
+	if (observer && cardRef.value) {
+		observer.unobserve(cardRef.value.$el);
+	}
+	observer = null;
+};
+
 const handleUseTemplate = async () => {
 	trackTemplateTileClick(props.template.id);
 	await router.push(getTemplateRoute(props.template.id));
 	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 };
+
+onMounted(() => {
+	if (!cardRef.value) return;
+
+	if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+		trackWhenVisible();
+		return;
+	}
+
+	observer = new IntersectionObserver((entries) => {
+		for (const entry of entries) {
+			if (entry.isIntersecting) {
+				trackWhenVisible();
+				break;
+			}
+		}
+	});
+
+	observer.observe(cardRef.value.$el);
+});
+
+onBeforeUnmount(() => {
+	if (observer) {
+		observer.disconnect();
+		observer = null;
+	}
+});
 </script>
 
 <template>
-	<N8nCard :class="$style.suggestion" @click="handleUseTemplate">
+	<N8nCard ref="cardRef" :class="$style.suggestion" @click="handleUseTemplate">
 		<div>
 			<div v-if="templateNodes.length > 0" :class="[$style.nodes, 'mb-s']">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
@@ -81,6 +127,7 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	justify-content: space-between;
 	min-width: 200px;
+	background-color: var(--color--background--light-2);
 	cursor: pointer;
 }
 
