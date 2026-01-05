@@ -22,10 +22,13 @@ import type {
 } from 'n8n-workflow';
 import {
 	CREDENTIAL_EMPTY_VALUE,
+	IconOrEmojiSchema,
 	isResourceLocatorValue,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
+
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -98,9 +101,17 @@ import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+} from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -270,6 +281,22 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
 		: props.modelValue;
+});
+
+const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
+	get() {
+		const result = IconOrEmojiSchema.safeParse(props.modelValue);
+		if (result.success) {
+			return {
+				type: result.data.type,
+				value: result.data.value,
+			} as DesignSystemIconOrEmoji;
+		}
+		return undefined;
+	},
+	set(_value: DesignSystemIconOrEmoji | undefined) {
+		// Handled by valueChanged
+	},
 });
 
 const editorRows = computed(() => getTypeOption('rows'));
@@ -1314,6 +1341,19 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
+			/>
+			<N8nIconPicker
+				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
+				ref="inputField"
+				v-model="iconPickerValue"
+				:button-tooltip="
+					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
+				"
+				button-size="large"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"
