@@ -5,10 +5,11 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
-import path from 'path';
+import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
@@ -76,6 +77,23 @@ export class SourceControlService {
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
 		if (this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
 			await this.initGitService();
+		}
+	}
+
+	/**
+	 * Ensures all main instances stay in sync with source control config changes made elsewhere in a multi-main setup.
+	 */
+	@OnPubSubEvent('reload-source-control-config', { instanceType: 'main' })
+	async reloadConfiguration(): Promise<void> {
+		this.logger.debug('Source control configuration changed, reloading from database');
+
+		const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+		await this.init();
+		const isNowConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+
+		if (wasConnected && !isNowConnected) {
+			await this.sourceControlExportService.deleteRepositoryFolder();
+			this.logger.info('Cleaned up git repository folder after source control disconnect');
 		}
 	}
 
