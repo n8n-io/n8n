@@ -27,7 +27,7 @@ function extractHitlMetadata(
 	return {
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
-		originalInput: toolInput,
+		originalInput: toolInput.toolParameters as IDataObject,
 	};
 }
 
@@ -102,9 +102,9 @@ export async function createEngineRequests(
 			let input: IDataObject = toolInput;
 			if (metadata.isFromToolkit) {
 				input = { ...input, tool: toolCall.tool };
-			}
-			if (hitlMetadata) {
-				input = { ...input, toolName: toolCall.tool };
+			} else if (hitlMetadata) {
+				// This input will be used as HITL node input
+				input = { ...input, toolName: toolCall.tool, ...(input.hitlParameters as IDataObject) };
 			}
 
 			return {

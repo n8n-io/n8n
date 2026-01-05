@@ -29,9 +29,10 @@ import {
 	UserError,
 	sleepWithAbort,
 } from 'n8n-workflow';
+import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
-import { createNodeAsTool } from './create-node-as-tool';
+import { createNodeAsTool, getSchema } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
@@ -107,12 +108,22 @@ async function createHitlToolSupplyData(
 		return toolOrToolkit;
 	});
 
+	const hitlNodeSchema = getSchema(hitlNode);
+
 	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
 	const gatedTools = connectedTools.map((tool) => {
+		let schema = tool.schema;
+		if (tool.schema instanceof ZodType) {
+			schema = z.object({
+				toolParameters: tool.schema.describe('Input parameters for the tool'),
+				hitlParameters: hitlNodeSchema.describe('Parameters for the Human-in-the-Loop layer'),
+			});
+		}
+
 		return new DynamicStructuredTool({
 			name: tool.name,
 			description: tool.description,
-			schema: tool.schema,
+			schema,
 			func: async () => await Promise.resolve(''),
 			metadata: {
 				sourceNodeName: hitlNode.name,
