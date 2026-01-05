@@ -23,10 +23,6 @@ import { createUser } from '../shared/db/users';
 
 // Mock file system operations
 jest.mock('node:fs/promises');
-jest.mock('@/modules/source-control.ee/source-control-export.service.ee', () => ({
-	...jest.requireActual('@/modules/source-control.ee/source-control-export.service.ee'),
-	sourceControlFoldersExistCheck: jest.fn().mockResolvedValue(true),
-}));
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
