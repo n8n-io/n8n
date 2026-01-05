@@ -1,3 +1,12 @@
+## [2.2.3](https://github.com/n8n-io/n8n/compare/n8n@2.2.2...n8n@2.2.3) (2026-01-05)
+
+
+### Bug Fixes
+
+* **core:** Fix CORS issue in waiting webhook responses ([#23697](https://github.com/n8n-io/n8n/issues/23697)) ([3078786](https://github.com/n8n-io/n8n/commit/3078786072cb237e163a729a348b24c8ae4ac861))
+
+
+
 ## [2.2.2](https://github.com/n8n-io/n8n/compare/n8n@2.2.1...n8n@2.2.2) (2025-12-30)
 
 
