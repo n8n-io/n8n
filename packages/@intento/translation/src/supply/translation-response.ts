@@ -1,5 +1,5 @@
 import { SupplyResponseBase } from 'intento-core';
-import type { LogMetadata, INodeExecutionData } from 'n8n-workflow';
+import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 import type { TranslationRequest } from 'supply/translation-request';
 
@@ -52,21 +52,14 @@ export class TranslationResponse extends SupplyResponseBase {
 		};
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [
-			[
-				{
-					json: {
-						requestId: this.requestId,
-						from: this.from,
-						to: this.to,
-						text: this.text,
-						translation: this.translation,
-						detectedLanguage: this.detectedLanguage,
-						latencyMs: this.latencyMs,
-					},
-				},
-			],
-		];
+	asDataObject(): IDataObject {
+		return {
+			from: this.from,
+			to: this.to,
+			text: this.text,
+			translation: this.translation,
+			detectedLanguage: this.detectedLanguage,
+			latencyMs: this.latencyMs,
+		};
 	}
 }

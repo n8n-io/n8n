@@ -1,5 +1,5 @@
 import { SupplyRequestBase } from 'intento-core';
-import type { LogMetadata, INodeExecutionData } from 'n8n-workflow';
+import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 /**
  * Represents a translation request with source text and target language.
@@ -57,20 +57,13 @@ export class TranslationRequest extends SupplyRequestBase {
 			requestedAt: this.requestedAt,
 		};
 	}
-	asExecutionData(): INodeExecutionData[][] {
-		return [
-			[
-				{
-					json: {
-						requestId: this.requestId,
-						from: this.from,
-						to: this.to,
-						text: this.text,
-						requestedAt: this.requestedAt,
-					},
-				},
-			],
-		];
+	asDataObject(): IDataObject {
+		return {
+			from: this.from,
+			to: this.to,
+			text: this.text,
+			requestedAt: this.requestedAt,
+		};
 	}
 
 	/**

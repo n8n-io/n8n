@@ -1,6 +1,6 @@
 import { SupplierBase } from 'intento-core';
 
-import type { TranslationError } from 'supply/translation-error';
+import { TranslationError } from 'supply/translation-error';
 import type { TranslationRequest } from 'supply/translation-request';
 import type { TranslationResponse } from 'supply/translation-response';
 
@@ -11,4 +11,8 @@ import type { TranslationResponse } from 'supply/translation-response';
  * All translation suppliers must inherit from this class to ensure consistent API contracts
  * and enable polymorphic handling of different translation providers.
  */
-export abstract class TranslationSupplierBase extends SupplierBase<TranslationRequest, TranslationResponse, TranslationError> {}
+export abstract class TranslationSupplierBase extends SupplierBase<TranslationRequest, TranslationResponse, TranslationError> {
+	protected onTimeOut(request: TranslationRequest): TranslationError {
+		return new TranslationError(request, 408, 'Translation request timed out');
+	}
+}

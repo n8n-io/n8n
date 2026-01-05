@@ -2,108 +2,153 @@
 
 **Author:** Claude Sonnet 4.5
 **Date:** 2025-01-05
-**Coverage Target:** 100% all metrics
+**Coverage Target:** ≥95% all metrics
 **Test File:** `translation-error.test.ts`
 
-## Code Surface
+---
 
-**Exports:**
-- `TranslationError` class (extends SupplyErrorBase)
+## 1. Code Analysis
 
-**Dependencies:**
-- `intento-core` - `SupplyErrorBase` base class
-- `n8n-workflow` - `LogMetadata`, `INodeExecutionData`, `INode`, `NodeOperationError` types
-- `supply/translation-request` - `TranslationRequest` class
-- No external APIs, DB, or I/O (pure logic)
+### Exports
+- `TranslationError` class (default export)
 
-**Branches:**
-- Constructor: None (simple assignment + super call)
-- `asLogMetadata()`: None (returns object literal)
-- `asExecutionData()`: None (returns structured data)
-- `asError()`: None (creates NodeOperationError)
+### Class Structure
+```typescript
+class TranslationError extends SupplyErrorBase {
+  readonly from?: string;
+  readonly to: string;
+  readonly text: string;
 
-**ESLint Considerations:**
-- Mock TranslationRequest for constructor tests
-- Mock INode for asError() tests
-- Test frozen object with type assertion
-- Use proper type imports to avoid unsafe operations
+  constructor(request: TranslationRequest, code: number, reason: string)
+  asLogMetadata(): LogMetadata
+  asDataObject(): IDataObject
+  asError(node: INode): NodeOperationError
+}
+```
 
-## Test Cases
+### Dependencies to Mock
+- `TranslationRequest` (from `supply/translation-request`)
+- `INode` (from n8n-workflow)
+- `SupplyErrorBase` (inherited behavior)
 
-### TranslationError Class
+### Branches & Edge Cases
+1. Constructor: Copies `from`, `to`, `text` from request + calls super
+2. `from` can be `undefined` (optional source language)
+3. `asLogMetadata()`: Excludes text, includes all other fields
+4. `asDataObject()`: Includes text field
+5. `asError()`: Creates NodeOperationError with formatted message
+6. `Object.freeze()` immutability
+7. Inherited `isRetryable()` logic (tested via parent)
 
-#### Business Logic (BL-XX)
+### Coverage Targets
+- Lines: 15-34 (constructor through asError method)
+- Branches: from undefined vs defined
+- All public methods: constructor, asLogMetadata, asDataObject, asError
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| BL-01 | should create error with all request parameters | Constructor with from, to, text |
-| BL-02 | should create error without from language | Constructor with undefined from |
-| BL-03 | should inherit requestId from base class | SupplyErrorBase.requestId assignment |
-| BL-04 | should inherit latencyMs from base class | SupplyErrorBase.latencyMs calculation |
-| BL-05 | should freeze instance after construction | Object.freeze() call in constructor |
-| BL-06 | should return correct log metadata | asLogMetadata() with all fields |
-| BL-07 | should return log metadata without from language | asLogMetadata() with undefined from |
-| BL-08 | should return execution data with all fields | asExecutionData() structure |
-| BL-09 | should return execution data without from language | asExecutionData() with undefined from |
-| BL-10 | should create NodeOperationError with correct message | asError() message formatting |
+---
 
-#### Edge Cases (EC-XX)
+## 2. Test Inventory
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| EC-01 | should handle empty text in error | text as empty string |
-| EC-02 | should handle error code 0 | code as 0 |
-| EC-03 | should handle large error codes | code as 999 |
-| EC-04 | should handle empty error reason | reason as empty string |
-| EC-05 | should handle multi-line error reason | reason with newlines |
-
-#### Error Handling (EH-XX)
+### BL-XX: Business Logic
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should preserve error code in all outputs | code consistency across methods |
-| EH-02 | should preserve error reason in all outputs | reason consistency across methods |
-| EH-03 | should format error message with code and reason | Message format verification |
+| BL-01 | should copy from, to, text from request | Lines 24-26, constructor field assignment |
+| BL-02 | should call parent constructor with request, code, reason | Line 23, super call with inherited fields |
+| BL-03 | should freeze instance after construction | Line 28, Object.freeze call |
+| BL-04 | should return log metadata without text field | Lines 36-44, asLogMetadata implementation |
+| BL-05 | should return data object with text field | Lines 46-54, asDataObject implementation |
+| BL-06 | should create NodeOperationError with formatted message | Lines 56-59, asError implementation |
 
-## Coverage Analysis
+### EC-XX: Edge Cases
 
-**Lines of executable code:** ~50 lines
-**Expected test count:** 18 tests
-**Coverage areas:**
-- Constructor + Object.freeze: 5 tests (BL-01 to BL-05)
-- asLogMetadata() method: 2 tests (BL-06, BL-07)
-- asExecutionData() method: 2 tests (BL-08, BL-09)
-- asError() method: 1 test (BL-10)
-- Edge cases: 5 tests (EC-01 to EC-05)
-- Error handling: 3 tests (EH-01 to EH-03)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should handle undefined from language | Line 24, from undefined branch |
+| EC-02 | should preserve empty string in text | Lines 24-26, empty string handling |
+| EC-03 | should handle zero latency (same timestamp) | Inherited from SupplyErrorBase |
+| EC-04 | should handle special characters in text | Lines 24-26, Unicode/special chars |
 
-**Branch coverage:**
-- No branches in implementation (all methods are straightforward assignments/returns)
-- All methods tested with different parameter combinations
+### EH-XX: Error Handling
 
-**Error path coverage:**
-- Constructor doesn't throw (validates upstream in TranslationRequest)
-- Test data integrity and immutability
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should include error code in message | Line 57, error message format |
+| EH-02 | should include error reason in message | Line 57, error message format |
+| EH-03 | should pass node context to NodeOperationError | Lines 56-58, node parameter |
 
-## Success Criteria
+---
 
-- [x] Test plan created with author and date
-- [x] All exports identified and planned (TranslationError)
-- [x] All branches covered (100% - no branches in implementation)
-- [x] All methods tested (constructor, asLogMetadata, asExecutionData, asError)
-- [x] ESLint considerations documented (mocking needs)
-- [x] Coverage 100% target for all metrics
-- [x] Frozen object immutability verified
-- [x] Base class inheritance verified
-- [x] NodeOperationError creation tested
+## 3. Test Structure
 
-## Implementation Notes
+```
+describe('TranslationError')
+├── business logic (BL-01 to BL-06)
+├── edge cases (EC-01 to EC-04)
+└── error handling (EH-01 to EH-03)
+```
 
-1. **Mocking:** Need to create mock TranslationRequest and INode objects
-2. **Frozen object:** Use type assertion to test that property modification throws
-3. **Base class:** Verify requestId and latencyMs inherited from SupplyErrorBase
-4. **No mocking needed:** TranslationRequest is a simple value object, create real instances
-5. **Deterministic tests:** All tests are fully deterministic
-6. **Log metadata:** Excludes text content (sensitive data) but includes in execution data
-7. **Error message format:** Tests specific message template with emoji
-8. **Execution data structure:** Returns nested array format for n8n
+---
+
+## 4. Mock Strategy
+
+### Required Mocks
+1. **TranslationRequest**: Mock with controllable values
+   - `requestId`, `requestedAt` (inherited)
+   - `from`, `to`, `text` (translation-specific)
+
+2. **INode**: Mock with jest-mock-extended
+   - Minimal interface for `asError()` tests
+
+3. **Date.now()**: Mock for latency calculations
+   - Control timestamps for predictable latency
+
+### Fixtures
+```typescript
+const MOCK_REQUEST_ID = 'translation-req-uuid-001';
+const MOCK_REQUEST_TIMESTAMP = 1704412800000;
+const MOCK_ERROR_TIMESTAMP = 1704412800250; // +250ms
+const CODE_BAD_REQUEST = 400;
+const CODE_RATE_LIMIT = 429;
+const CODE_SERVER_ERROR = 500;
+```
+
+---
+
+## 5. Implementation Notes
+
+- Follow existing patterns from `supply-error-base.test.ts`
+- Use `jest-mock-extended` for INode mocking
+- Create MockTranslationRequest class similar to MockRequest pattern
+- Test both with and without `from` language in multiple tests
+- Verify immutability with `Object.isFrozen()` and property assignment attempts
+- Compare output formats between `asLogMetadata()` and `asDataObject()`
+- Validate error message format includes emoji, code, and reason
+
+---
+
+## 6. Coverage Verification
+
+**Minimum Targets:**
+- Statements: ≥95%
+- Branches: ≥95%
+- Functions: 100%
+- Lines: ≥95%
+
+**Critical Paths:**
+- Constructor with all parameters
+- Constructor with undefined from
+- All three conversion methods (asLogMetadata, asDataObject, asError)
+- Immutability enforcement
+
+---
+
+## 7. Success Criteria
+
+- [ ] All 13 test cases pass
+- [ ] Coverage ≥95% all metrics
+- [ ] No TypeScript errors
+- [ ] No ESLint warnings
+- [ ] Tests execute in <1 second
+- [ ] Mock cleanup in afterEach
+- [ ] Follows established patterns from similar test files

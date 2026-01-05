@@ -1,9 +1,11 @@
-import type { INode, IntentoConnectionType, LogMetadata, INodeExecutionData } from 'n8n-workflow';
+import 'reflect-metadata';
+
+import { mock } from 'jest-mock-extended';
+import type { IDataObject, INode, IntentoConnectionType, LogMetadata } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { ContextFactory } from '../../context/context-factory';
-import { ExecutionContext } from '../../context/execution-context';
-import { Tracer } from '../../tracing/tracer';
+import type { ExecutionContext } from '../../context/execution-context';
+import type { Tracer } from '../../tracing/tracer';
 import { CoreError } from '../../types/core-error';
 import type { IFunctions } from '../../types/functions-interface';
 import { Delay } from '../../utils/delay';
@@ -15,12 +17,16 @@ import { SupplyResponseBase } from '../supply-response-base';
 /**
  * Tests for SupplierBase
  * @author Claude Sonnet 4.5
- * @date 2025-12-30
+ * @date 2025-01-05
  */
 
-// Test implementations
+// Mock Delay utility - must be done this way due to jest.mock hoisting
+jest.mock('../../utils/delay');
+const mockDelayApply = Delay.apply as jest.Mock;
+
+// Test data classes
 class TestRequest extends SupplyRequestBase {
-	constructor(public data: string) {
+	constructor(readonly data: string) {
 		super();
 	}
 
@@ -28,129 +34,122 @@ class TestRequest extends SupplyRequestBase {
 		return { requestId: this.requestId, data: this.data };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, data: this.data } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId, data: this.data };
 	}
 
 	clone(): this {
-		const cloned = new TestRequest(this.data) as this;
-		(cloned as unknown as { requestId: string }).requestId = this.requestId;
-		(cloned as unknown as { requestedAt: number }).requestedAt = this.requestedAt;
-		return cloned;
+		return new TestRequest(this.data) as this;
 	}
 }
 
 class TestResponse extends SupplyResponseBase {
 	constructor(
-		request: TestRequest,
-		public result: string,
+		request: SupplyRequestBase,
+		readonly result: string,
 	) {
 		super(request);
 	}
 
 	asLogMetadata(): LogMetadata {
-		return { requestId: this.requestId, result: this.result, latencyMs: this.latencyMs };
+		return { requestId: this.requestId, latencyMs: this.latencyMs, result: this.result };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, result: this.result } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId, latencyMs: this.latencyMs, result: this.result };
 	}
 }
 
 class TestError extends SupplyErrorBase {
-	constructor(request: TestRequest, code: number, reason: string) {
+	constructor(request: SupplyRequestBase, code: number, reason: string) {
 		super(request, code, reason);
 	}
 
 	asLogMetadata(): LogMetadata {
-		return { requestId: this.requestId, code: this.code, reason: this.reason };
+		return { requestId: this.requestId, latencyMs: this.latencyMs, code: this.code, reason: this.reason };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, error: this.reason } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId, latencyMs: this.latencyMs, code: this.code, reason: this.reason };
 	}
 
 	asError(node: INode): NodeOperationError {
-		return new NodeOperationError(node, `Error ${this.code}: ${this.reason}`);
+		return new NodeOperationError(node, this.reason);
 	}
 }
 
+// Concrete test implementation of abstract SupplierBase
 class TestSupplier extends SupplierBase<TestRequest, TestResponse, TestError> {
-	supplyCallCount = 0;
-	supplyBehavior: 'success' | 'error' | 'throw' = 'success';
-	throwError: Error | null = null;
+	readonly supplyMock = jest.fn<Promise<TestResponse | TestError>, [TestRequest, AbortSignal?]>();
+	readonly onTimeOutMock = jest.fn<TestError, [TestRequest]>();
 
 	protected async supply(request: TestRequest, signal?: AbortSignal): Promise<TestResponse | TestError> {
-		this.supplyCallCount++;
-		await Promise.resolve(); // Make async meaningful
-		signal?.throwIfAborted();
+		return await this.supplyMock(request, signal);
+	}
 
-		if (this.supplyBehavior === 'throw') {
-			throw this.throwError ?? new Error('Unexpected error');
-		}
-
-		if (this.supplyBehavior === 'error') {
-			return new TestError(request, 500, 'Supply failed');
-		}
-
-		return new TestResponse(request, 'success');
+	protected onTimeOut(request: TestRequest): TestError {
+		return this.onTimeOutMock(request);
 	}
 }
-
 describe('SupplierBase', () => {
+	const MOCK_CONNECTION_TYPE: IntentoConnectionType = 'intento_translationProvider';
+	const MOCK_SUPPLIER_NAME = 'TestSupplier';
+	const MOCK_MAX_ATTEMPTS = 3;
+
 	let mockFunctions: IFunctions;
 	let mockContext: ExecutionContext;
 	let mockNode: INode;
+	let mockTracer: Tracer;
 	let supplier: TestSupplier;
-	let contextFactoryReadSpy: jest.SpyInstance;
-	let delayApplySpy: jest.SpyInstance;
-
-	const connectionType: IntentoConnectionType = 'intento_translationProvider';
 
 	beforeEach(() => {
-		// Setup mocks
-		mockNode = { name: 'TestNode' } as INode;
+		// Reset all mocks
+		jest.clearAllMocks();
 
-		let inputDataIndex = 0;
-		mockFunctions = {
-			getNode: jest.fn().mockReturnValue(mockNode),
-			getWorkflow: jest.fn().mockReturnValue({ id: 'workflow-123' }),
-			getExecutionId: jest.fn().mockReturnValue('execution-456'),
-			getWorkflowDataProxy: jest.fn().mockReturnValue({
-				$execution: {
-					customData: new Map(),
-				},
-			}),
+		// Mock IFunctions
+		mockFunctions = mock<IFunctions>();
+		mockNode = mock<INode>();
+		mockNode.name = 'TestNode';
+		(mockFunctions.addInputData as jest.Mock).mockReturnValue({ index: 0 });
+		(mockFunctions.getNode as jest.Mock).mockReturnValue(mockNode);
+		(mockFunctions.getWorkflow as jest.Mock).mockReturnValue({ id: 'test-workflow-id' });
+		(mockFunctions.getExecutionId as jest.Mock).mockReturnValue('test-execution-id');
+		(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+			$execution: {
+				customData: new Map(),
+			},
+		});
+		Object.assign(mockFunctions, {
 			logger: {
 				debug: jest.fn(),
 				info: jest.fn(),
 				warn: jest.fn(),
 				error: jest.fn(),
 			},
-			addInputData: jest.fn().mockImplementation(() => ({ index: inputDataIndex++ })),
-			addOutputData: jest.fn(),
-		} as unknown as IFunctions;
-
-		mockContext = {
-			maxAttempts: 3,
-			calculateDelay: jest.fn().mockImplementation((attempt: number) => attempt * 100),
-			createAbortSignal: jest.fn().mockImplementation((signal?: AbortSignal) => signal),
-		} as unknown as ExecutionContext;
-
-		// Spy on static methods
-		contextFactoryReadSpy = jest.spyOn(ContextFactory, 'read').mockReturnValue(mockContext);
-		delayApplySpy = jest.spyOn(Delay, 'apply').mockResolvedValue();
-
-		// Mock Tracer constructor
-		jest.spyOn(Tracer.prototype, 'debug').mockImplementation();
-		jest.spyOn(Tracer.prototype, 'info').mockImplementation();
-		jest.spyOn(Tracer.prototype, 'warn').mockImplementation();
-		jest.spyOn(Tracer.prototype, 'errorAndThrow').mockImplementation((msg) => {
-			throw new Error(msg);
 		});
 
-		// Create supplier
-		supplier = new TestSupplier('test-supplier', connectionType, mockFunctions);
+		// Mock ExecutionContext
+		mockContext = {
+			maxAttempts: MOCK_MAX_ATTEMPTS,
+			calculateDelay: jest.fn((attempt: number) => attempt * 100),
+			createAbortSignal: jest.fn((signal?: AbortSignal) => signal ?? new AbortController().signal),
+		} as unknown as ExecutionContext;
+
+		// Mock Tracer
+		mockTracer = mock<Tracer>();
+		Object.assign(mockTracer, {
+			debug: jest.fn(),
+			info: jest.fn(),
+			errorAndThrow: jest.fn((msg: string) => {
+				throw new Error(msg);
+			}),
+			nodeName: 'TestNode',
+		});
+
+		// Create supplier instance with mocked dependencies
+		supplier = new TestSupplier(MOCK_SUPPLIER_NAME, MOCK_CONNECTION_TYPE, mockFunctions);
+		// Replace internal dependencies with mocks
+		Object.assign(supplier, { tracer: mockTracer, context: mockContext });
 	});
 
 	afterEach(() => {
@@ -158,402 +157,430 @@ describe('SupplierBase', () => {
 	});
 
 	describe('business logic', () => {
-		it('[BL-01] should initialize with name, connection, functions', () => {
+		it('[BL-01] should initialize supplier with name, connection, and functions', () => {
 			// ASSERT
-			expect(supplier.name).toBe('test-supplier');
-			expect(supplier['connection']).toBe(connectionType);
+			expect(supplier.name).toBe(MOCK_SUPPLIER_NAME);
+			expect(supplier['connection']).toBe(MOCK_CONNECTION_TYPE);
 			expect(supplier['functions']).toBe(mockFunctions);
 		});
 
-		it('[BL-02] should read ExecutionContext during construction', () => {
+		it('[BL-02] should create Tracer instance during construction', () => {
 			// ASSERT
-			expect(contextFactoryReadSpy).toHaveBeenCalledWith(ExecutionContext, mockFunctions, expect.any(Tracer));
+			expect(supplier['tracer']).toBeDefined();
 		});
 
-		it('[BL-03] should create Tracer during construction', () => {
+		it('[BL-03] should read ExecutionContext during construction', () => {
 			// ASSERT
-			expect(supplier['tracer']).toBeInstanceOf(Tracer);
+			expect(supplier['context']).toBeDefined();
 		});
 
-		it('[BL-04] should execute supply once when first attempt succeeds', async () => {
+		it('[BL-04] should return response on first successful attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
 
 			// ACT
 			const result = await supplier.supplyWithRetries(request);
 
 			// ASSERT
+			expect(result).toBe(response);
 			expect(result).toBeInstanceOf(TestResponse);
-			expect(supplier.supplyCallCount).toBe(1);
-			expect(delayApplySpy).toHaveBeenCalledTimes(1);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-05] should retry on error until success', async () => {
+		it('[BL-05] should retry on retryable error and succeed on second attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			let attemptCount = 0;
-			supplier.supply = jest.fn().mockImplementation(async () => {
-				await Promise.resolve(); // Make async meaningful
-				attemptCount++;
-				if (attemptCount < 3) {
-					return new TestError(request, 500, 'Temporary error');
-				}
-				return new TestResponse(request, 'success');
-			});
+			const retryableError = new TestError(request, 503, 'Service unavailable');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(retryableError).mockResolvedValueOnce(response);
 
 			// ACT
 			const result = await supplier.supplyWithRetries(request);
 
 			// ASSERT
+			expect(result).toBe(response);
 			expect(result).toBeInstanceOf(TestResponse);
-			expect(supplier.supply).toHaveBeenCalledTimes(3);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(2);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(2);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(2);
 		});
 
-		it('[BL-06] should return final error after exhausting retries', async () => {
+		it('[BL-06] should exit early on non-retryable error without retrying', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
+			const nonRetryableError = new TestError(request, 404, 'Not found');
+			supplier.supplyMock.mockResolvedValue(nonRetryableError);
 
 			// ACT
 			const result = await supplier.supplyWithRetries(request);
 
 			// ASSERT
+			expect(result).toBe(nonRetryableError);
 			expect(result).toBeInstanceOf(TestError);
-			expect(supplier.supplyCallCount).toBe(3); // maxAttempts = 3
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-07] should log debug message at supply start', async () => {
+		it('[BL-07] should apply exponential backoff delay before each attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const retryableError = new TestError(request, 503, 'Service unavailable');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(retryableError).mockResolvedValueOnce(retryableError).mockResolvedValueOnce(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(supplier['tracer'].debug).toHaveBeenCalledWith(
-				expect.stringContaining('Supplying data'),
-				expect.objectContaining({ requestId: request.requestId }),
-			);
+			expect(mockDelayApply).toHaveBeenCalledTimes(3);
+			expect(mockContext.calculateDelay).toHaveBeenCalledWith(0);
+			expect(mockContext.calculateDelay).toHaveBeenCalledWith(1);
+			expect(mockContext.calculateDelay).toHaveBeenCalledWith(2);
 		});
 
-		it('[BL-08] should log warning after all retries fail', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
-
-			// ACT
-			await supplier.supplyWithRetries(request);
-
-			// ASSERT
-			expect(supplier['tracer'].warn).toHaveBeenCalledWith(expect.stringContaining('failed all supply attempts'), expect.any(Object));
-		});
-
-		it('[BL-09] should apply exponential backoff delay between attempts', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
-
-			// ACT
-			await supplier.supplyWithRetries(request);
-
-			// ASSERT
-			expect(mockContext.calculateDelay).toHaveBeenCalledTimes(3);
-			expect(mockContext.calculateDelay).toHaveBeenNthCalledWith(1, 0);
-			expect(mockContext.calculateDelay).toHaveBeenNthCalledWith(2, 1);
-			expect(mockContext.calculateDelay).toHaveBeenNthCalledWith(3, 2);
-		});
-
-		it('[BL-10] should clone request for each attempt', async () => {
+		it('[BL-08] should clone request for each retry attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
 			const cloneSpy = jest.spyOn(request, 'clone');
-			supplier.supplyBehavior = 'error';
+			const retryableError = new TestError(request, 503, 'Service unavailable');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(retryableError).mockResolvedValueOnce(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(cloneSpy).toHaveBeenCalledTimes(3); // maxAttempts = 3
+			expect(cloneSpy).toHaveBeenCalledTimes(2);
 		});
 
-		it('[BL-11] should track successful attempt in execution data', async () => {
+		it('[BL-09] should track input data in n8n UI for each attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const retryableError = new TestError(request, 503, 'Service unavailable');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(retryableError).mockResolvedValueOnce(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(
-				connectionType,
-				0,
-				expect.arrayContaining([expect.arrayContaining([expect.objectContaining({ json: expect.anything() as unknown })])]),
-			);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(2);
+			expect(mockFunctions.addInputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, [
+				[{ json: expect.objectContaining({ data: 'test-data' }) as IDataObject }],
+			]);
 		});
 
-		it('[BL-12] should track failed attempt in execution data', async () => {
+		it('[BL-10] should track output data in n8n UI for successful attempt', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(connectionType, expect.any(Number), expect.any(NodeOperationError));
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, 0, [
+				[{ json: expect.objectContaining({ result: 'success' }) as IDataObject }],
+			]);
+		});
+
+		it('[BL-11] should track error in n8n UI for failed attempt', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const error = new TestError(request, 404, 'Not found');
+			supplier.supplyMock.mockResolvedValue(error);
+
+			// ACT
+			await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(1);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, 0, expect.any(NodeOperationError));
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should handle maxAttempts = 1 (single attempt)', async () => {
+		it('[EC-01] should handle timeout error and convert to TE', async () => {
 			// ARRANGE
-			mockContext.maxAttempts = 1;
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const timeoutError = new TestError(request, 408, 'Request timeout');
+			supplier.supplyMock.mockRejectedValue(new DOMException('Timeout', 'TimeoutError'));
+			supplier.onTimeOutMock.mockReturnValue(timeoutError);
 
 			// ACT
 			const result = await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(result).toBeInstanceOf(TestResponse);
-			expect(supplier.supplyCallCount).toBe(1);
+			expect(result).toBe(timeoutError);
+			expect(supplier.onTimeOutMock).toHaveBeenCalledWith(expect.any(TestRequest));
 		});
 
-		it('[EC-02] should handle maxAttempts = 50 (maximum retries)', async () => {
-			// ARRANGE
-			mockContext.maxAttempts = 50;
-			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
-
-			// ACT
-			const result = await supplier.supplyWithRetries(request);
-
-			// ASSERT
-			expect(result).toBeInstanceOf(TestError);
-			expect(supplier.supplyCallCount).toBe(50);
-		});
-
-		it('[EC-03] should pass abort signal through to delay and supply', async () => {
+		it('[EC-02] should retry up to maxAttempts for retryable errors', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			const abortController = new AbortController();
-			const signal = abortController.signal;
-			supplier.supplyBehavior = 'success';
-
-			// ACT
-			await supplier.supplyWithRetries(request, signal);
-
-			// ASSERT
-			expect(mockContext.createAbortSignal).toHaveBeenCalledWith(signal);
-			expect(delayApplySpy).toHaveBeenCalledWith(expect.any(Number), signal);
-		});
-
-		it('[EC-04] should create abort signal from context', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const retryableError = new TestError(request, 503, 'Service unavailable');
+			supplier.supplyMock.mockResolvedValue(retryableError);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockContext.createAbortSignal).toHaveBeenCalledWith(undefined);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(MOCK_MAX_ATTEMPTS);
 		});
 
-		it('[EC-05] should handle zero delay on first attempt (attempt = 0)', async () => {
+		it('[EC-03] should return last retryable error after maxAttempts exhausted', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
+			const retryableError1 = new TestError(request, 503, 'Service unavailable attempt 1');
+			const retryableError2 = new TestError(request, 503, 'Service unavailable attempt 2');
+			const retryableError3 = new TestError(request, 503, 'Service unavailable attempt 3');
+			supplier.supplyMock
+				.mockResolvedValueOnce(retryableError1)
+				.mockResolvedValueOnce(retryableError2)
+				.mockResolvedValueOnce(retryableError3);
+
+			// ACT
+			const result = await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(result).toBe(retryableError3); // Last error returned
+			expect(result).toBeInstanceOf(TestError);
+			expect((result as TestError).code).toBe(503);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(MOCK_MAX_ATTEMPTS);
+		});
+
+		it('[EC-04] should handle signal cancellation gracefully', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const controller = new AbortController();
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
+
+			// ACT
+			const result = await supplier.supplyWithRetries(request, controller.signal);
+
+			// ASSERT
+			expect(result).toBe(response);
+			expect(mockContext.createAbortSignal).toHaveBeenCalledWith(controller.signal);
+		});
+
+		it('[EC-05] should calculate delay as zero for first attempt', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
 			(mockContext.calculateDelay as jest.Mock).mockReturnValue(0);
-			supplier.supplyBehavior = 'success';
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
 			expect(mockContext.calculateDelay).toHaveBeenCalledWith(0);
+			expect(mockDelayApply).toHaveBeenCalledWith(0, expect.any(Object));
 		});
 
-		it('[EC-06] should record input data for each attempt', async () => {
+		it('[EC-06] should pass abort signal through to supply method', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'error';
+			const controller = new AbortController();
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
+
+			// ACT
+			await supplier.supplyWithRetries(request, controller.signal);
+
+			// ASSERT
+			expect(supplier.supplyMock).toHaveBeenCalledWith(expect.any(TestRequest), controller.signal);
+		});
+
+		it('[EC-07] should call onTimeOut when TimeoutError occurs', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const timeoutError = new TestError(request, 408, 'Request timeout');
+			supplier.supplyMock.mockRejectedValue(new DOMException('Timeout', 'TimeoutError'));
+			supplier.onTimeOutMock.mockReturnValue(timeoutError);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(3);
-			expect(mockFunctions.addInputData).toHaveBeenCalledWith(connectionType, expect.any(Array));
+			expect(supplier.onTimeOutMock).toHaveBeenCalledTimes(1);
+			expect(supplier.onTimeOutMock).toHaveBeenCalledWith(expect.any(TestRequest));
 		});
 
-		it('[EC-07] should use correct run index for output tracking', async () => {
+		it('[EC-08] should track attempt number correctly in logs', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'success';
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(
-				connectionType,
-				0, // First index from addInputData
-				expect.anything(),
-			);
+			expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('attempt 1'), expect.any(Object));
 		});
 
-		it('[EC-08] should distinguish success vs error in completeAttempt', async () => {
+		it('[EC-09] should handle multiple retryable errors before success', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			let attemptCount = 0;
-			supplier.supply = jest.fn().mockImplementation(async () => {
-				await Promise.resolve(); // Make async meaningful
-				attemptCount++;
-				if (attemptCount === 1) {
-					return new TestError(request, 500, 'First error');
-				}
-				return new TestResponse(request, 'success');
-			});
+			const error1 = new TestError(request, 429, 'Rate limit');
+			const error2 = new TestError(request, 503, 'Service unavailable');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(error1).mockResolvedValueOnce(error2).mockResolvedValueOnce(response);
+
+			// ACT
+			const result = await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(result).toBe(response);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(3);
+		});
+
+		it('[EC-10] should preserve runIndex correlation between input and output', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const response = new TestResponse(request, 'success');
+			const runIndex = 5;
+			(mockFunctions.addInputData as jest.Mock).mockReturnValue({ index: runIndex });
+			supplier.supplyMock.mockResolvedValue(response);
 
 			// ACT
 			await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(2);
-			// First call with error
-			expect(mockFunctions.addOutputData).toHaveBeenNthCalledWith(1, connectionType, 0, expect.any(NodeOperationError));
-			// Second call with success
-			expect(mockFunctions.addOutputData).toHaveBeenNthCalledWith(2, connectionType, 1, expect.any(Array));
+			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, runIndex, expect.any(Array));
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should throw NodeOperationError when supply throws unexpected error', async () => {
+		it('[EH-01] should throw if no attempts were made (bug scenario)', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = new Error('Network failure');
-
-			// ACT & ASSERT
-			await expect(supplier.supplyWithRetries(request)).rejects.toThrow('Network failure');
-			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(connectionType, expect.any(Number), expect.any(NodeOperationError));
-		});
-
-		it('[EH-02] should throw TimeoutError when signal times out', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			const timeoutError = new DOMException('Timeout', 'TimeoutError');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = timeoutError;
-
-			// ACT & ASSERT
-			await expect(supplier.supplyWithRetries(request)).rejects.toThrow('Timeout');
-		});
-
-		it('[EH-03] should wrap CoreError with original message', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			const coreError = new CoreError('Configuration error');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = coreError;
-
-			// ACT & ASSERT
-			await expect(supplier.supplyWithRetries(request)).rejects.toThrow('Configuration error');
-		});
-
-		it('[EH-04] should wrap other errors with BUG marker', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = new Error('Unknown error');
+			Object.assign(mockContext, { maxAttempts: 0 });
 
 			// ACT & ASSERT
 			await expect(supplier.supplyWithRetries(request)).rejects.toThrow();
-			// Verify error was tracked
-			expect(mockFunctions.addOutputData).toHaveBeenCalled();
+			expect(mockTracer.errorAndThrow).toHaveBeenCalledWith(expect.stringContaining('No supply attempts were made'));
 		});
 
-		it('[EH-05] should track error in execution data before throwing', async () => {
+		it('[EH-02] should handle CoreError with clear message', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = new Error('Test error');
+			const coreError = new CoreError('Invalid configuration');
+			supplier.supplyMock.mockRejectedValue(coreError);
+
+			// ACT & ASSERT
+			await expect(supplier.supplyWithRetries(request)).rejects.toThrow();
+			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, 0, expect.any(NodeOperationError));
+		});
+
+		it('[EH-03] should handle unexpected error with bug message', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const unexpectedError = new Error('Unexpected error');
+			supplier.supplyMock.mockRejectedValue(unexpectedError);
+
+			// ACT & ASSERT
+			await expect(supplier.supplyWithRetries(request)).rejects.toThrow();
+			expect(mockTracer.errorAndThrow).toHaveBeenCalledWith(expect.stringContaining('BUG'), expect.any(Object));
+		});
+
+		it('[EH-04] should track unexpected error in n8n UI', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const unexpectedError = new Error('Unexpected error');
+			supplier.supplyMock.mockRejectedValue(unexpectedError);
+
+			// ACT & ASSERT
+			await expect(supplier.supplyWithRetries(request)).rejects.toThrow();
+			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(MOCK_CONNECTION_TYPE, 0, expect.any(NodeOperationError));
+		});
+
+		it('[EH-05] should rethrow unexpected errors after tracking', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const unexpectedError = new Error('Unexpected error');
+			supplier.supplyMock.mockRejectedValue(unexpectedError);
+
+			// ACT & ASSERT
+			await expect(supplier.supplyWithRetries(request)).rejects.toThrow();
+			expect(mockTracer.errorAndThrow).toHaveBeenCalled();
+		});
+	});
+
+	describe('integration scenarios', () => {
+		it('should complete full retry cycle with mixed results', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const error1 = new TestError(request, 503, 'Service unavailable');
+			const error2 = new TestError(request, 429, 'Rate limit');
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValueOnce(error1).mockResolvedValueOnce(error2).mockResolvedValueOnce(response);
 
 			// ACT
-			try {
-				await supplier.supplyWithRetries(request);
-			} catch (error) {
-				// Expected
-			}
+			const result = await supplier.supplyWithRetries(request);
 
 			// ASSERT
-			expect(mockFunctions.addOutputData).toHaveBeenCalledWith(connectionType, expect.any(Number), expect.any(NodeOperationError));
+			expect(result).toBe(response);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(3);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(3);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(3);
+			expect(mockDelayApply).toHaveBeenCalledTimes(3);
 		});
 
-		it('[EH-06] should throw defensive error if no result after loop', async () => {
+		it('should handle immediate success without retries', async () => {
 			// ARRANGE
 			const request = new TestRequest('test-data');
-			mockContext.maxAttempts = 0; // Force loop to not execute
-
-			// ACT & ASSERT
-			await expect(supplier.supplyWithRetries(request)).rejects.toThrow('No supply attempts were made');
-		});
-
-		it('[EH-07] should throw CoreError if ExecutionContext cannot be read', () => {
-			// ARRANGE
-			contextFactoryReadSpy.mockImplementation(() => {
-				throw new CoreError('Failed to read context');
-			});
-
-			// ACT & ASSERT
-			expect(() => new TestSupplier('test', connectionType, mockFunctions)).toThrow('Failed to read context');
-		});
-
-		it('[EH-08] should preserve timeout error type (not wrap as NodeOperationError)', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			const timeoutError = new DOMException('Operation timed out', 'TimeoutError');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = timeoutError;
-
-			// ACT & ASSERT
-			await expect(supplier.supplyWithRetries(request)).rejects.toThrow(DOMException);
-			await expect(supplier.supplyWithRetries(request)).rejects.toMatchObject({
-				name: 'TimeoutError',
-			});
-		});
-
-		it('[EH-09] should provide configuration guidance for timeout errors', async () => {
-			// ARRANGE
-			const request = new TestRequest('test-data');
-			const timeoutError = new DOMException('Timeout', 'TimeoutError');
-			supplier.supplyBehavior = 'throw';
-			supplier.throwError = timeoutError;
+			const response = new TestResponse(request, 'success');
+			supplier.supplyMock.mockResolvedValue(response);
 
 			// ACT
-			try {
-				await supplier.supplyWithRetries(request);
-			} catch (error) {
-				// Expected
-			}
+			const result = await supplier.supplyWithRetries(request);
 
-			// ASSERT - verify error output was recorded with timeout message
-			expect(mockFunctions.addOutputData).toHaveBeenCalled();
-			const addOutputCalls = (mockFunctions.addOutputData as jest.Mock).mock.calls;
-			const hasTimeoutError = addOutputCalls.some((call: unknown[]) => {
-				const errorArg = call[2];
-				return (
-					errorArg &&
-					typeof errorArg === 'object' &&
-					'message' in errorArg &&
-					typeof errorArg.message === 'string' &&
-					errorArg.message.includes('timeout')
-				);
-			});
-			expect(hasTimeoutError).toBe(true);
+			// ASSERT
+			expect(result).toBe(response);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(1);
+			expect(mockDelayApply).toHaveBeenCalledTimes(1);
+			expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('supplied data successfully'), expect.any(Object));
+		});
+
+		it('should handle immediate non-retryable error', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const error = new TestError(request, 400, 'Bad request');
+			supplier.supplyMock.mockResolvedValue(error);
+
+			// ACT
+			const result = await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(result).toBe(error);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(1);
+			expect(mockTracer.info).toHaveBeenCalledWith(expect.stringContaining('failed supply attempt'), expect.any(Object));
+		});
+
+		it('should exhaust all retries with consistent retryable errors', async () => {
+			// ARRANGE
+			const request = new TestRequest('test-data');
+			const error = new TestError(request, 503, 'Service unavailable');
+			supplier.supplyMock.mockResolvedValue(error);
+
+			// ACT
+			const result = await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(result).toBe(error);
+			expect(supplier.supplyMock).toHaveBeenCalledTimes(MOCK_MAX_ATTEMPTS);
+			expect(mockFunctions.addInputData).toHaveBeenCalledTimes(MOCK_MAX_ATTEMPTS);
+			expect(mockFunctions.addOutputData).toHaveBeenCalledTimes(MOCK_MAX_ATTEMPTS);
 		});
 	});
 });

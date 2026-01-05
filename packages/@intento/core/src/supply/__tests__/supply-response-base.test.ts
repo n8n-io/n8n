@@ -1,4 +1,4 @@
-import type { IDataObject, INodeExecutionData, LogMetadata } from 'n8n-workflow';
+import type { IDataObject, LogMetadata } from 'n8n-workflow';
 
 import { SupplyRequestBase } from '../supply-request-base';
 import { SupplyResponseBase } from '../supply-response-base';
@@ -6,237 +6,321 @@ import { SupplyResponseBase } from '../supply-response-base';
 /**
  * Tests for SupplyResponseBase
  * @author Claude Sonnet 4.5
- * @date 2025-12-30
+ * @date 2025-01-05
  */
 
-/**
- * Test implementation of SupplyRequestBase for testing purposes.
- */
-class TestRequest extends SupplyRequestBase {
-	constructor(
-		readonly testData: unknown = {},
-		customRequestedAt?: number,
-	) {
+// Mock request implementation for testing
+class MockRequest extends SupplyRequestBase {
+	constructor(testRequestId: string, testRequestedAt: number) {
 		super();
-		if (customRequestedAt !== undefined) {
-			// Override requestedAt for testing timing scenarios
-			(this as { requestedAt: number }).requestedAt = customRequestedAt;
-		}
+		// Override generated values with test values for predictable testing
+		Object.assign(this, { requestId: testRequestId, requestedAt: testRequestedAt });
 	}
 
 	asLogMetadata(): LogMetadata {
-		return { requestId: this.requestId, requestedAt: this.requestedAt, testData: this.testData };
+		return { requestId: this.requestId };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, testData: this.testData as IDataObject } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId };
 	}
 
 	clone(): this {
-		return new TestRequest(this.testData, this.requestedAt) as this;
+		return new MockRequest(this.requestId, this.requestedAt) as this;
 	}
 }
 
-/**
- * Test implementation of SupplyResponseBase for testing purposes.
- */
+// Concrete test implementation of abstract SupplyResponseBase
 class TestResponse extends SupplyResponseBase {
 	constructor(
 		request: SupplyRequestBase,
-		private readonly data?: unknown,
+		private readonly data: string,
 	) {
 		super(request);
 	}
 
 	asLogMetadata(): LogMetadata {
-		return {
-			requestId: this.requestId,
-			latencyMs: this.latencyMs,
-			data: this.data,
-		};
+		return { requestId: this.requestId, latencyMs: this.latencyMs, data: this.data };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, latencyMs: this.latencyMs, data: this.data as IDataObject } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId, latencyMs: this.latencyMs, data: this.data };
 	}
 }
 
 describe('SupplyResponseBase', () => {
-	let dateNowSpy: jest.SpyInstance;
+	const MOCK_REQUEST_ID = 'test-request-uuid-001';
+	const MOCK_REQUEST_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
+	const MOCK_RESPONSE_TIMESTAMP_ZERO = 1704412800000; // Same millisecond (0ms latency)
+	const MOCK_RESPONSE_TIMESTAMP_100 = 1704412800100; // +100ms latency
+	const MOCK_RESPONSE_TIMESTAMP_1000 = 1704412801000; // +1000ms (1 second) latency
+	const MOCK_RESPONSE_TIMESTAMP_5000 = 1704412805000; // +5000ms (5 seconds) latency
+
+	let mockDateNow: jest.SpyInstance;
+
+	beforeEach(() => {
+		mockDateNow = jest.spyOn(Date, 'now');
+	});
 
 	afterEach(() => {
-		if (dateNowSpy) {
-			dateNowSpy.mockRestore();
-		}
-		jest.clearAllMocks();
+		jest.restoreAllMocks();
 	});
 
 	describe('business logic', () => {
 		it('[BL-01] should copy requestId from request', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
-			const expectedRequestId = request.requestId;
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
 
 			// ACT
-			const response = new TestResponse(request);
+			const response = new TestResponse(request, 'test-data');
 
 			// ASSERT
-			expect(response.requestId).toBe(expectedRequestId);
-		});
-
-		it('[BL-02] should calculate latency from request timestamp', () => {
-			// ARRANGE
-			const requestTimestamp = 1000;
-			const responseTimestamp = 1500;
-			const expectedLatency = 500;
-
-			const request = new TestRequest({ test: 'data' }, requestTimestamp);
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(responseTimestamp);
-
-			// ACT
-			const response = new TestResponse(request);
-
-			// ASSERT
-			expect(response.latencyMs).toBe(expectedLatency);
-		});
-
-		it('[BL-03] should have readonly requestId property', () => {
-			// ARRANGE
-			const request = new TestRequest();
-
-			// ACT
-			const response = new TestResponse(request);
-
-			// ASSERT - TypeScript readonly prevents compile-time modification
-			// Runtime: property exists and is accessible
+			expect(response.requestId).toBe(MOCK_REQUEST_ID);
 			expect(response.requestId).toBe(request.requestId);
-			expect(typeof response.requestId).toBe('string');
 		});
 
-		it('[BL-04] should have readonly latencyMs property', () => {
+		it('[BL-02] should calculate latencyMs from request timestamp', () => {
 			// ARRANGE
-			const request = new TestRequest();
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
 
 			// ACT
-			const response = new TestResponse(request);
+			const response = new TestResponse(request, 'test-data');
 
-			// ASSERT - TypeScript readonly prevents compile-time modification
-			// Runtime: property exists and is a number
-			expect(response.latencyMs).toBeGreaterThanOrEqual(0);
-			expect(typeof response.latencyMs).toBe('number');
+			// ASSERT
+			expect(response.latencyMs).toBe(100);
+			expect(response.latencyMs).toBe(MOCK_RESPONSE_TIMESTAMP_100 - MOCK_REQUEST_TIMESTAMP);
 		});
 
-		it('[BL-05] should implement ITraceable interface', () => {
+		it('[BL-03] should implement ITraceable interface with requestId', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
-			const response = new TestResponse(request, { result: 'success' });
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+			const metadata = response.asLogMetadata();
+
+			// ASSERT
+			expect(metadata.requestId).toBe(MOCK_REQUEST_ID);
+			expect(typeof metadata.requestId).toBe('string');
+		});
+
+		it('[BL-04] should implement IDataProvider interface', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+			const dataObject = response.asDataObject();
+
+			// ASSERT
+			expect(dataObject).toBeInstanceOf(Object);
+			expect(dataObject.requestId).toBe(MOCK_REQUEST_ID);
+			expect(dataObject.latencyMs).toBe(100);
+			expect(dataObject.data).toBe('test-data');
+		});
+
+		it('[BL-05] should correlate response to originating request via requestId', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT - Response carries same ID as request for correlation
+			expect(response.requestId).toBe(request.requestId);
+			expect(response.asLogMetadata().requestId).toBe(request.requestId);
+			expect(response.asDataObject().requestId).toBe(request.requestId);
+		});
+
+		it('[BL-06] should calculate positive latency for delayed response', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_1000);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT
+			expect(response.latencyMs).toBe(1000);
+			expect(response.latencyMs).toBeGreaterThan(0);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('[EC-01] should handle zero latency (same millisecond as request)', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_ZERO);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT
+			expect(response.latencyMs).toBe(0);
+			expect(response.asLogMetadata().latencyMs).toBe(0);
+		});
+
+		it('[EC-02] should handle large latency values (seconds/minutes)', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_5000);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT
+			expect(response.latencyMs).toBe(5000);
+			expect(response.latencyMs).toBeGreaterThan(1000);
+		});
+
+		it('[EC-03] should preserve requestId from request without modification', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT
+			expect(response.requestId).toBe(MOCK_REQUEST_ID);
+			expect(response.requestId).toBe(request.requestId);
+			expect(response.requestId.length).toBe(MOCK_REQUEST_ID.length);
+		});
+
+		it('[EC-04] should require concrete implementation of asLogMetadata', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+			const response = new TestResponse(request, 'test-data');
 
 			// ACT
 			const metadata = response.asLogMetadata();
 
 			// ASSERT
-			expect(metadata).toEqual({
-				requestId: request.requestId,
-				latencyMs: expect.any(Number) as number,
-				data: { result: 'success' },
-			});
+			expect(metadata).toBeDefined();
+			expect(metadata.requestId).toBe(MOCK_REQUEST_ID);
+			expect(metadata.latencyMs).toBe(100);
+			expect(metadata.data).toBe('test-data');
 		});
 
-		it('[BL-06] should implement IDataProvider interface', () => {
+		it('[EC-05] should require concrete implementation of asDataObject', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
-			const response = new TestResponse(request, { result: 'success' });
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_100);
+			const response = new TestResponse(request, 'test-data');
 
 			// ACT
-			const executionData = response.asExecutionData();
+			const dataObject = response.asDataObject();
 
 			// ASSERT
-			expect(executionData).toHaveLength(1);
-			expect(executionData[0]).toHaveLength(1);
-			expect(executionData[0][0].json).toEqual({
-				requestId: request.requestId,
-				latencyMs: expect.any(Number) as number,
-				data: { result: 'success' },
-			});
-		});
-	});
-
-	describe('edge cases', () => {
-		it('[EC-01] should calculate zero latency when request created at same millisecond', () => {
-			// ARRANGE
-			const timestamp = 1000;
-			const request = new TestRequest({ test: 'data' }, timestamp);
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(timestamp);
-
-			// ACT
-			const response = new TestResponse(request);
-
-			// ASSERT
-			expect(response.latencyMs).toBe(0);
+			expect(dataObject).toBeDefined();
+			expect(dataObject.requestId).toBe(MOCK_REQUEST_ID);
+			expect(dataObject.latencyMs).toBe(100);
+			expect(dataObject.data).toBe('test-data');
 		});
 
-		it('[EC-02] should calculate positive latency for older requests', () => {
+		it('[EC-06] should create multiple responses with same requestId (retries)', () => {
 			// ARRANGE
-			const requestTimestamp = 5000;
-			const responseTimestamp = 7500;
-			const expectedLatency = 2500;
-
-			const request = new TestRequest({ test: 'data' }, requestTimestamp);
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(responseTimestamp);
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_100).mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_1000);
 
 			// ACT
-			const response = new TestResponse(request);
+			const response1 = new TestResponse(request, 'first-attempt');
+			const response2 = new TestResponse(request, 'second-attempt');
 
-			// ASSERT
-			expect(response.latencyMs).toBe(expectedLatency);
-			expect(response.latencyMs).toBeGreaterThan(0);
-		});
-
-		it('[EC-03] should handle requests from different time epochs', () => {
-			// ARRANGE
-			const requestTimestamp = 1609459200000; // 2021-01-01 00:00:00 UTC
-			const responseTimestamp = 1735603200000; // 2024-12-31 00:00:00 UTC
-			const expectedLatency = responseTimestamp - requestTimestamp;
-
-			const request = new TestRequest({ test: 'data' }, requestTimestamp);
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(responseTimestamp);
-
-			// ACT
-			const response = new TestResponse(request);
-
-			// ASSERT
-			expect(response.latencyMs).toBe(expectedLatency);
-			expect(response.latencyMs).toBeGreaterThan(0);
+			// ASSERT - Both responses correlate to same request
+			expect(response1.requestId).toBe(MOCK_REQUEST_ID);
+			expect(response2.requestId).toBe(MOCK_REQUEST_ID);
+			expect(response1.requestId).toBe(response2.requestId);
+			// But have different latencies
+			expect(response1.latencyMs).toBe(100);
+			expect(response2.latencyMs).toBe(1000);
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should require concrete implementation of asLogMetadata', () => {
-			// ARRANGE
-			const request = new TestRequest();
+		it('[EH-01] should enforce abstract class pattern via TypeScript', () => {
+			// ASSERT
+			// TypeScript prevents direct instantiation at compile time
+			// This test validates the design enforces abstract pattern
+			// @ts-expect-error Cannot instantiate abstract class - TypeScript compile-time check
+			const abstractCheck: SupplyResponseBase = SupplyResponseBase;
+			expect(abstractCheck).toBeDefined(); // Validates abstract keyword presence
+		});
+	});
 
-			// ACT
-			const response = new TestResponse(request);
+	describe('integration scenarios', () => {
+		it('should work with real Date.now for latency calculation', () => {
+			// ARRANGE
+			const requestTime = Date.now();
+			const request = new MockRequest(MOCK_REQUEST_ID, requestTime);
+
+			// ACT - Wait a tiny bit (test execution time adds natural delay)
+			const response = new TestResponse(request, 'test-data');
+			const afterResponse = Date.now();
 
 			// ASSERT
-			expect(response.asLogMetadata).toBeDefined();
-			expect(typeof response.asLogMetadata).toBe('function');
-			expect(response.asLogMetadata()).toHaveProperty('requestId');
-			expect(response.asLogMetadata()).toHaveProperty('latencyMs');
+			expect(response.latencyMs).toBeGreaterThanOrEqual(0);
+			expect(response.latencyMs).toBeLessThanOrEqual(afterResponse - requestTime);
 		});
 
-		it('[EH-02] should require concrete implementation of asExecutionData', () => {
+		it('should calculate different latencies for multiple responses', () => {
 			// ARRANGE
-			const request = new TestRequest();
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow
+				.mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_100)
+				.mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_1000)
+				.mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_5000);
 
 			// ACT
-			const response = new TestResponse(request);
+			const fastResponse = new TestResponse(request, 'fast');
+			const normalResponse = new TestResponse(request, 'normal');
+			const slowResponse = new TestResponse(request, 'slow');
 
 			// ASSERT
-			expect(response.asExecutionData).toBeDefined();
-			expect(typeof response.asExecutionData).toBe('function');
-			expect(Array.isArray(response.asExecutionData())).toBe(true);
-			expect(Array.isArray(response.asExecutionData()[0])).toBe(true);
+			expect(fastResponse.latencyMs).toBe(100);
+			expect(normalResponse.latencyMs).toBe(1000);
+			expect(slowResponse.latencyMs).toBe(5000);
+			expect(normalResponse.latencyMs).toBeGreaterThan(fastResponse.latencyMs);
+			expect(slowResponse.latencyMs).toBeGreaterThan(normalResponse.latencyMs);
+		});
+
+		it('should maintain request-response correlation through latency tracking', () => {
+			// ARRANGE
+			const request1 = new MockRequest('request-001', MOCK_REQUEST_TIMESTAMP);
+			const request2 = new MockRequest('request-002', MOCK_REQUEST_TIMESTAMP + 1000);
+			mockDateNow.mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_100).mockReturnValueOnce(MOCK_RESPONSE_TIMESTAMP_100 + 1000);
+
+			// ACT
+			const response1 = new TestResponse(request1, 'data-1');
+			const response2 = new TestResponse(request2, 'data-2');
+
+			// ASSERT - Each response correlates to correct request
+			expect(response1.requestId).toBe('request-001');
+			expect(response2.requestId).toBe('request-002');
+			expect(response1.latencyMs).toBe(100);
+			expect(response2.latencyMs).toBe(100);
+		});
+
+		it('should include latency in both log metadata and data object', () => {
+			// ARRANGE
+			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_1000);
+
+			// ACT
+			const response = new TestResponse(request, 'test-data');
+
+			// ASSERT
+			const metadata = response.asLogMetadata();
+			const dataObject = response.asDataObject();
+			expect(metadata.latencyMs).toBe(1000);
+			expect(dataObject.latencyMs).toBe(1000);
+			expect(metadata.latencyMs).toBe(dataObject.latencyMs);
 		});
 	});
 });

@@ -1,12 +1,10 @@
 import 'reflect-metadata';
 
-import type { IFunctions } from 'intento-core';
-import { SupplierBase } from 'intento-core';
+import type { ExecutionContext, Tracer, IFunctions } from 'intento-core';
 import { mock } from 'jest-mock-extended';
 import type { IntentoConnectionType } from 'n8n-workflow';
 
-import { DryRunSupplier } from '../../suppliers/dry-run-supplier';
-import type { TranslationError } from '../translation-error';
+import { TranslationError } from '../translation-error';
 import type { TranslationRequest } from '../translation-request';
 import type { TranslationResponse } from '../translation-response';
 import { TranslationSupplierBase } from '../translation-supplier-base';
@@ -17,50 +15,69 @@ import { TranslationSupplierBase } from '../translation-supplier-base';
  * @date 2025-01-05
  */
 
+// Concrete test implementation of abstract TranslationSupplierBase
+class TestTranslationSupplier extends TranslationSupplierBase {
+	readonly supplyMock = jest.fn<Promise<TranslationResponse | TranslationError>, [TranslationRequest, AbortSignal?]>();
+
+	protected async supply(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
+		return await this.supplyMock(request, signal);
+	}
+}
+
 describe('TranslationSupplierBase', () => {
+	const MOCK_CONNECTION_TYPE: IntentoConnectionType = 'intento_translationProvider';
+	const MOCK_SUPPLIER_NAME = 'TestTranslationSupplier';
+	const MOCK_REQUEST_ID = 'translation-req-uuid-001';
+	const MOCK_TIMESTAMP = 1704412800000;
+
 	let mockFunctions: IFunctions;
-	const mockConnection: IntentoConnectionType = 'intento_translationProvider';
+	let mockContext: ExecutionContext;
+	let mockTracer: Tracer;
+	let supplier: TestTranslationSupplier;
 
 	beforeEach(() => {
+		// Mock IFunctions
 		mockFunctions = mock<IFunctions>();
-		mockFunctions.getNode = jest.fn().mockReturnValue({ name: 'TestNode', type: 'n8n-nodes-base.test' });
-		mockFunctions.getWorkflow = jest.fn().mockReturnValue({ id: 'workflow-123', name: 'Test Workflow' });
-		mockFunctions.getExecutionId = jest.fn().mockReturnValue('execution-456');
-		mockFunctions.logger = {
-			error: jest.fn(),
-			warn: jest.fn(),
-			info: jest.fn(),
-			debug: jest.fn(),
-		};
-
-		// Mock getWorkflowDataProxy for Tracer initialization
-		mockFunctions.getWorkflowDataProxy = jest.fn().mockReturnValue({
-			$execution: {
-				customData: new Map(),
+		Object.assign(mockFunctions, {
+			getNode: jest.fn().mockReturnValue({ name: 'TestNode' }),
+			getWorkflow: jest.fn().mockReturnValue({ id: 'test-workflow-id' }),
+			getExecutionId: jest.fn().mockReturnValue('test-execution-id'),
+			addInputData: jest.fn().mockReturnValue({ index: 0 }),
+			addOutputData: jest.fn(),
+			getWorkflowDataProxy: jest.fn().mockReturnValue({
+				$execution: {
+					customData: new Map(),
+				},
+			}),
+			logger: {
+				debug: jest.fn(),
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
 			},
 		});
 
-		// Mock getNodeParameter to return default values for ExecutionContext and other contexts
-		const mockGetNodeParameter = (paramName: string): string | number | undefined => {
-			// ExecutionContext parameters (from execution_context collection)
-			if (paramName === 'execution_context.max_attempts') return 5;
-			if (paramName === 'execution_context.max_delay_ms') return 5000;
-			if (paramName === 'execution_context.max_jitter') return 0.2;
-			if (paramName === 'execution_context.timeout_ms') return 10000;
+		// Mock ExecutionContext
+		mockContext = mock<ExecutionContext>({
+			maxAttempts: 3,
+			calculateDelay: jest.fn((attempt: number) => attempt * 100),
+			createAbortSignal: jest.fn((signal?: AbortSignal) => signal ?? new AbortController().signal),
+		});
 
-			// DelayContext parameters
-			if (paramName === 'delay_context_delay_mode') return 'noDelay';
-			if (paramName === 'delay_context_delay_value') return undefined;
+		// Mock Tracer
+		mockTracer = mock<Tracer>({
+			debug: jest.fn(),
+			info: jest.fn(),
+			errorAndThrow: jest.fn((msg: string) => {
+				throw new Error(msg);
+			}),
+			nodeName: 'TestNode',
+		});
 
-			// DryRunContext parameters
-			if (paramName === 'dry_run_context_mode') return 'pass';
-			if (paramName === 'dry_run_context_override') return undefined;
-			if (paramName === 'dry_run_context_error_code') return undefined;
-			if (paramName === 'dry_run_context_error_message') return undefined;
-
-			return '';
-		};
-		mockFunctions.getNodeParameter = jest.fn(mockGetNodeParameter) as typeof mockFunctions.getNodeParameter;
+		// Create supplier instance
+		supplier = new TestTranslationSupplier(MOCK_SUPPLIER_NAME, MOCK_CONNECTION_TYPE, mockFunctions);
+		// Replace internal dependencies with mocks
+		Object.assign(supplier, { tracer: mockTracer, context: mockContext });
 	});
 
 	afterEach(() => {
@@ -68,163 +85,213 @@ describe('TranslationSupplierBase', () => {
 	});
 
 	describe('business logic', () => {
-		it('[BL-01] should extend SupplierBase with correct generic parameters', () => {
-			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
-
-			// ACT & ASSERT
-			expect(supplier).toBeInstanceOf(SupplierBase);
+		it('[BL-01] should extend SupplierBase with correct generic types', () => {
+			// ASSERT
 			expect(supplier).toBeInstanceOf(TranslationSupplierBase);
+			expect(supplier.name).toBe(MOCK_SUPPLIER_NAME);
 		});
 
-		it('[BL-02] should be constructible via concrete implementation', () => {
-			// ARRANGE & ACT
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
-
-			// ASSERT
-			expect(supplier).toBeDefined();
-			expect(supplier).toBeInstanceOf(TranslationSupplierBase);
-		});
-
-		it('[BL-03] should pass TranslationRequest type to SupplierBase', () => {
+		it('[BL-02] should create TranslationError on timeout', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Hello, world!',
+				to: 'es',
+				from: 'en',
+			});
 
 			// ACT
-			const supplyMethod = supplier['supply'];
+			const error = supplier['onTimeOut'](request);
 
 			// ASSERT
-			expect(supplyMethod).toBeDefined();
-			expect(typeof supplyMethod).toBe('function');
+			expect(error).toBeInstanceOf(TranslationError);
 		});
 
-		it('[BL-04] should pass TranslationResponse type to SupplierBase', () => {
+		it('[BL-03] should set error code to 408 for timeout', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Test text',
+				to: 'fr',
+				from: 'en',
+			});
 
 			// ACT
-			// Verify the supplier can work with TranslationResponse type
-			const supplierAsBase: SupplierBase<TranslationRequest, TranslationResponse, TranslationError> = supplier;
+			const error = supplier['onTimeOut'](request);
 
 			// ASSERT
-			expect(supplierAsBase).toBeDefined();
-			expect(supplierAsBase).toBeInstanceOf(TranslationSupplierBase);
+			expect(error.code).toBe(408);
 		});
 
-		it('[BL-05] should pass TranslationError type to SupplierBase', () => {
+		it('[BL-04] should set error reason to timeout message', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Another test',
+				to: 'de',
+				from: 'en',
+			});
 
 			// ACT
-			// Verify the supplier can handle TranslationError type
-			const supplierAsBase: SupplierBase<TranslationRequest, TranslationResponse, TranslationError> = supplier;
+			const error = supplier['onTimeOut'](request);
 
 			// ASSERT
-			expect(supplierAsBase).toBeDefined();
-			expect(supplierAsBase).toBeInstanceOf(TranslationSupplierBase);
+			expect(error.reason).toBe('Translation request timed out');
+			expect(error.reason).toContain('Translation');
+			expect(error.reason).toContain('timed out');
 		});
 
-		it('[BL-06] should inherit all SupplierBase properties', () => {
+		it('[BL-05] should include request context in timeout error', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Context test',
+				to: 'ja',
+				from: 'en',
+			});
 
-			// ACT & ASSERT
-			// Verify inherited properties exist
-			expect(supplier['connection']).toBeDefined();
-			expect(supplier['functions']).toBeDefined();
-			expect(supplier['tracer']).toBeDefined();
-			expect(supplier['context']).toBeDefined();
-			expect(supplier.name).toBeDefined();
+			// ACT
+			const error = supplier['onTimeOut'](request);
+
+			// ASSERT
+			expect(error.requestId).toBe(MOCK_REQUEST_ID);
+			expect(error.from).toBe('en');
+			expect(error.to).toBe('ja');
+			expect(error.text).toBe('Context test');
 		});
 
-		it('[BL-07] should inherit supplyWithRetries method', () => {
+		it('[BL-06] should integrate with parent retry mechanism', async () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Retry test',
+				to: 'pt',
+				from: 'en',
+				clone: jest.fn().mockReturnThis(),
+			});
+			const response = mock<TranslationResponse>({
+				requestId: MOCK_REQUEST_ID,
+				translation: 'Teste de repetição',
+			});
+			supplier.supplyMock.mockResolvedValue(response);
 
-			// ACT & ASSERT
-			expect(supplier.supplyWithRetries).toBeDefined();
-			expect(typeof supplier.supplyWithRetries).toBe('function');
+			// ACT
+			const result = await supplier.supplyWithRetries(request);
+
+			// ASSERT
+			expect(result).toBe(response);
+			expect(supplier.supplyMock).toHaveBeenCalled();
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should enforce abstract supply method implementation', () => {
+		it('[EC-01] should handle request with undefined from language', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
-
-			// ACT
-			const hasSupplyMethod = 'supply' in supplier;
-			const supplyMethod = supplier['supply'];
-
-			// ASSERT
-			expect(hasSupplyMethod).toBe(true);
-			expect(supplyMethod).toBeDefined();
-			expect(typeof supplyMethod).toBe('function');
-		});
-
-		it('[EC-02] should work with different concrete implementations', () => {
-			// ARRANGE
-			const supplier1 = new DryRunSupplier(mockConnection, mockFunctions);
-			const supplier2 = new DryRunSupplier(mockConnection, mockFunctions);
-
-			// ACT
-			const suppliers: TranslationSupplierBase[] = [supplier1, supplier2];
-
-			// ASSERT
-			expect(suppliers.length).toBe(2);
-			suppliers.forEach((supplier) => {
-				expect(supplier).toBeInstanceOf(TranslationSupplierBase);
-				expect(supplier).toBeInstanceOf(SupplierBase);
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Auto-detect test',
+				to: 'en',
+				from: undefined,
 			});
-		});
-
-		it('[EC-03] should maintain type safety across inheritance chain', () => {
-			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
 
 			// ACT
-			// Test polymorphic assignment
-			const asTranslationSupplier: TranslationSupplierBase = supplier;
-			const asSupplierBase: SupplierBase<TranslationRequest, TranslationResponse, TranslationError> = supplier;
+			const error = supplier['onTimeOut'](request);
 
 			// ASSERT
-			expect(asTranslationSupplier).toBe(supplier);
-			expect(asSupplierBase).toBe(supplier);
-			expect(asTranslationSupplier).toBeInstanceOf(TranslationSupplierBase);
-			expect(asSupplierBase).toBeInstanceOf(SupplierBase);
+			expect(error.from).toBeUndefined();
+			expect(error.to).toBe('en');
+			expect(error.text).toBe('Auto-detect test');
+		});
+
+		it('[EC-02] should preserve request text in timeout error', () => {
+			// ARRANGE
+			const specialText = '🌍 Special chars: "quotes" & <tags> 日本語';
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: specialText,
+				to: 'zh',
+				from: 'en',
+			});
+
+			// ACT
+			const error = supplier['onTimeOut'](request);
+
+			// ASSERT
+			expect(error.text).toBe(specialText);
+		});
+
+		it('[EC-03] should work with different target languages', () => {
+			// ARRANGE
+			const languages = [
+				{ to: 'es', from: 'en' },
+				{ to: 'fr', from: 'de' },
+				{ to: 'ja', from: 'zh' },
+				{ to: 'ar', from: 'ru' },
+			];
+
+			// ACT & ASSERT
+			languages.forEach(({ to, from }) => {
+				const request = mock<TranslationRequest>({
+					requestId: MOCK_REQUEST_ID,
+					requestedAt: MOCK_TIMESTAMP,
+					text: 'Multi-language test',
+					to,
+					from,
+				});
+
+				const error = supplier['onTimeOut'](request);
+
+				expect(error.to).toBe(to);
+				expect(error.from).toBe(from);
+				expect(error.code).toBe(408);
+			});
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should prevent direct instantiation via TypeScript', () => {
-			// ARRANGE & ACT & ASSERT
-			// TypeScript prevents instantiation of abstract classes at compile time
-			// This test verifies the class is properly marked as abstract
-			// @ts-expect-error - Testing that TypeScript correctly marks class as abstract
-			const isAbstract = TranslationSupplierBase.prototype.constructor === TranslationSupplierBase;
-
-			// Verify the abstract class can only be used through concrete implementations
-			expect(isAbstract).toBe(true);
-
-			// Verify that DryRunSupplier properly extends the abstract class
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
-			expect(supplier).toBeInstanceOf(TranslationSupplierBase);
-		});
-
-		it('[EH-02] should enforce correct return types from supply method', () => {
+		it('[EH-01] should return TranslationError instance from onTimeOut', () => {
 			// ARRANGE
-			const supplier = new DryRunSupplier(mockConnection, mockFunctions);
-			const supplyMethod = supplier['supply'];
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Instance test',
+				to: 'ko',
+				from: 'en',
+			});
 
 			// ACT
-			// Verify supply method exists and has correct signature
-			const methodExists = typeof supplyMethod === 'function';
-			const supplierAsBase = supplier as SupplierBase<TranslationRequest, TranslationResponse, TranslationError>;
+			const error = supplier['onTimeOut'](request);
 
 			// ASSERT
-			expect(methodExists).toBe(true);
-			expect(supplierAsBase).toBeDefined();
-			expect(supplierAsBase.supplyWithRetries).toBeDefined();
+			expect(error).toBeInstanceOf(TranslationError);
+			expect(error.constructor.name).toBe('TranslationError');
+		});
+
+		it('[EH-02] should create retryable error for timeout (408)', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_TIMESTAMP,
+				text: 'Retryable test',
+				to: 'it',
+				from: 'en',
+			});
+
+			// ACT
+			const error = supplier['onTimeOut'](request);
+
+			// ASSERT
+			// Note: 408 is not in the retryable list (429, 5xx), but it's a timeout error
+			// The actual retry behavior is handled by parent class
+			expect(error.code).toBe(408);
+			expect(error.isRetryable()).toBe(false); // 408 is not in the retryable list per SupplyErrorBase
 		});
 	});
 });

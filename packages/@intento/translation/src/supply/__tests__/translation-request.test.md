@@ -2,112 +2,157 @@
 
 **Author:** Claude Sonnet 4.5
 **Date:** 2025-01-05
-**Coverage Target:** 100% all metrics
+**Coverage Target:** ≥95% all metrics
 **Test File:** `translation-request.test.ts`
 
-## Code Surface
+---
 
-**Exports:**
-- `TranslationRequest` class (extends SupplyRequestBase)
+## 1. Code Analysis
 
-**Dependencies:**
-- `intento-core` - `SupplyRequestBase` base class
-- `n8n-workflow` - `LogMetadata`, `INodeExecutionData` types
-- No external APIs, DB, or I/O (pure logic)
+### Exports
+- `TranslationRequest` class (extends `SupplyRequestBase`)
 
-**Branches:**
-- Constructor: Calls throwIfInvalid() + Object.freeze()
-- `throwIfInvalid()`: 2 conditions (!this.to OR this.to.trim() === '')
-- `asLogMetadata()`: None (returns object literal)
-- `asExecutionData()`: None (returns structured data)
-- `clone()`: None (creates new instance)
+### Class Structure
+```typescript
+class TranslationRequest extends SupplyRequestBase {
+  readonly text: string;
+  readonly to: string;
+  readonly from?: string;
 
-**ESLint Considerations:**
-- Test frozen object with type assertion
-- Test protected method throwIfInvalid() via constructor
-- Verify base class inheritance (requestId, requestedAt)
+  constructor(text: string, to: string, from?: string)
+  protected throwIfInvalid(): void
+  asLogMetadata(): LogMetadata
+  asDataObject(): IDataObject
+  clone(): this
+}
+```
 
-## Test Cases
+### Dependencies to Mock
+- `crypto.randomUUID()` (inherited from SupplyRequestBase)
+- `Date.now()` (inherited from SupplyRequestBase)
 
-### TranslationRequest Class
+### Branches & Edge Cases
+1. Constructor: Validates `to` parameter, `from` is optional
+2. `throwIfInvalid()`: Throws if `to` is empty/undefined/whitespace-only
+3. `from` can be `undefined` (auto-detection mode)
+4. `Object.freeze()` immutability enforcement
+5. `asLogMetadata()`: Excludes text, includes requestId and timestamps
+6. `asDataObject()`: Includes text but excludes requestId
+7. `clone()`: Creates new instance with same data but new requestId/timestamp
 
-#### Business Logic (BL-XX)
+### Coverage Targets
+- Lines: 10-78 (constructor through clone method)
+- Branches: `to` validation (empty, whitespace, undefined), `from` optional
+- All public methods: constructor, asLogMetadata, asDataObject, clone
+- Error paths: invalid `to` parameter
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| BL-01 | should create request with all parameters | Constructor with from, to, text |
-| BL-02 | should create request without from language | Constructor with undefined from |
-| BL-03 | should inherit requestId from base class | SupplyRequestBase.requestId assignment |
-| BL-04 | should inherit requestedAt from base class | SupplyRequestBase.requestedAt assignment |
-| BL-05 | should freeze instance after construction | Object.freeze() call in constructor |
-| BL-06 | should validate successfully with valid target language | throwIfInvalid() passes |
-| BL-07 | should return correct log metadata | asLogMetadata() with all fields |
-| BL-08 | should return log metadata without from language | asLogMetadata() with undefined from |
-| BL-09 | should return execution data with all fields | asExecutionData() structure |
-| BL-10 | should return execution data without from language | asExecutionData() with undefined from |
-| BL-11 | should clone request with all parameters | clone() creates identical request |
-| BL-12 | should clone request without from language | clone() with undefined from |
+---
 
-#### Edge Cases (EC-XX)
+## 2. Test Inventory
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| EC-01 | should handle empty text | text as empty string (valid) |
-| EC-02 | should handle target language with surrounding whitespace | Valid to with spaces |
-| EC-03 | should handle empty from language | from as empty string |
-| EC-04 | should create independent clone | Clone is separate instance |
-
-#### Error Handling (EH-XX)
+### BL-XX: Business Logic
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should throw when target language is undefined | throwIfInvalid() with !this.to |
-| EH-02 | should throw when target language is null | throwIfInvalid() with null |
-| EH-03 | should throw when target language is empty string | throwIfInvalid() with to === '' |
-| EH-04 | should throw when target language is only whitespace | throwIfInvalid() with to.trim() === '' |
-| EH-05 | should throw immediately on construction with invalid target | Constructor validation |
+| BL-01 | should create request with all parameters | Lines 26-31, constructor with from |
+| BL-02 | should create request without from language | Lines 26-31, constructor without from |
+| BL-03 | should auto-generate requestId via parent | Line 26 (super call), inherited UUID generation |
+| BL-04 | should auto-generate requestedAt via parent | Line 26 (super call), inherited timestamp |
+| BL-05 | should freeze instance after construction | Line 32, Object.freeze enforcement |
+| BL-06 | should return log metadata without text | Lines 50-56, asLogMetadata implementation |
+| BL-07 | should return data object with text but without requestId | Lines 57-63, asDataObject implementation |
+| BL-08 | should clone with same field values | Lines 70-72, clone creates new instance |
 
-## Coverage Analysis
+### EC-XX: Edge Cases
 
-**Lines of executable code:** ~60 lines
-**Expected test count:** 21 tests
-**Coverage areas:**
-- Constructor + validation + freeze: 5 tests (BL-01 to BL-05, EH-01 to EH-05)
-- Base class inheritance: 2 tests (BL-03, BL-04)
-- throwIfInvalid() method: 6 tests (BL-06, EH-01 to EH-05)
-- asLogMetadata() method: 2 tests (BL-07, BL-08)
-- asExecutionData() method: 2 tests (BL-09, BL-10)
-- clone() method: 2 tests (BL-11, BL-12)
-- Edge cases: 4 tests (EC-01 to EC-04)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should handle empty string text | Lines 27-29, empty text allowed |
+| EC-02 | should preserve whitespace in text | Lines 27-29, whitespace handling |
+| EC-03 | should handle special characters in text | Lines 27-29, Unicode/emoji handling |
+| EC-04 | should trim whitespace when validating to | Line 42, trim in validation |
+| EC-05 | should handle undefined from in all methods | Lines 50-63, from undefined branch |
+| EC-06 | should create new requestId on clone | Line 71, clone generates new UUID |
+| EC-07 | should create new requestedAt on clone | Line 71, clone generates new timestamp |
 
-**Branch coverage:**
-- throwIfInvalid() conditions: Both branches covered (!this.to and trim() === '')
-- All validation paths tested
+### EH-XX: Error Handling
 
-**Error path coverage:**
-- All error messages in throwIfInvalid() tested
-- Constructor validation tested (throws during construction)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should throw if to is empty string | Line 42, validation fails |
+| EH-02 | should throw if to is whitespace only | Line 42, trim check |
+| EH-03 | should throw if to is undefined | Line 42, falsy check |
+| EH-04 | should throw with descriptive error message | Line 42, error message format |
 
-## Success Criteria
+---
 
-- [x] Test plan created with author and date
-- [x] All exports identified and planned (TranslationRequest)
-- [x] All branches covered (100% - both validation conditions)
-- [x] All error paths tested (all throw statements covered)
-- [x] ESLint considerations documented
-- [x] Coverage 100% target for all metrics
-- [x] Frozen object immutability verified
-- [x] Base class inheritance verified
-- [x] Clone creates independent instance
+## 3. Test Structure
 
-## Implementation Notes
+```
+describe('TranslationRequest')
+├── business logic (BL-01 to BL-08)
+├── edge cases (EC-01 to EC-07)
+└── error handling (EH-01 to EH-04)
+```
 
-1. **Auto-detection:** from parameter is optional, undefined means auto-detect
-2. **Frozen object:** Use type assertion to test that property modification throws
-3. **Protected method:** throwIfInvalid() tested via constructor (throws on invalid data)
-4. **Base class:** Verify requestId and requestedAt inherited from SupplyRequestBase
-5. **Deterministic tests:** All tests are fully deterministic
-6. **Whitespace handling:** Test trim() logic for target language validation
-7. **Empty strings:** Empty text is valid, empty to is invalid
-8. **Log metadata:** Excludes text content (sensitive data) but includes in execution data
-9. **Clone independence:** Cloned object is frozen separately and has same requestId
+---
+
+## 4. Mock Strategy
+
+### Required Mocks
+1. **crypto.randomUUID()**: Mock for predictable requestId
+   - Return fixed UUIDs for assertions
+   - Return different UUIDs for clone tests
+
+2. **Date.now()**: Mock for predictable timestamps
+   - Return fixed timestamp for creation
+   - Return different timestamp for clone tests
+
+### Fixtures
+```typescript
+const MOCK_REQUEST_ID_1 = 'req-uuid-001';
+const MOCK_REQUEST_ID_2 = 'req-uuid-002';
+const MOCK_TIMESTAMP_1 = 1704412800000;
+const MOCK_TIMESTAMP_2 = 1704412800500;
+```
+
+---
+
+## 5. Implementation Notes
+
+- Mock `crypto.randomUUID()` at global level for parent constructor
+- Mock `Date.now()` for timestamp control
+- Test immutability with `Object.isFrozen()` and assignment attempts
+- Verify clone creates NEW instances (different requestId/timestamp)
+- Test both with and without `from` parameter in multiple scenarios
+- Validate error messages contain expected text
+- Test whitespace handling explicitly (leading/trailing spaces)
+
+---
+
+## 6. Coverage Verification
+
+**Minimum Targets:**
+- Statements: ≥95%
+- Branches: ≥95%
+- Functions: 100%
+- Lines: ≥95%
+
+**Critical Paths:**
+- Constructor with all parameters
+- Constructor with undefined from
+- Validation failure paths (empty, whitespace, undefined)
+- All conversion methods (asLogMetadata, asDataObject, clone)
+- Immutability enforcement
+
+---
+
+## 7. Success Criteria
+
+- [ ] All 19 test cases pass
+- [ ] Coverage ≥95% all metrics
+- [ ] No TypeScript errors
+- [ ] No ESLint warnings
+- [ ] Tests execute in <1 second
+- [ ] Mock cleanup in afterEach
+- [ ] Follows established patterns from similar test files

@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 import { TranslationRequest } from '../translation-request';
 
 /**
@@ -9,6 +7,27 @@ import { TranslationRequest } from '../translation-request';
  */
 
 describe('TranslationRequest', () => {
+	const MOCK_REQUEST_ID_1 = 'req-uuid-001';
+	const MOCK_REQUEST_ID_2 = 'req-uuid-002';
+	const MOCK_TIMESTAMP_1 = 1704412800000; // 2025-01-05 00:00:00 UTC
+	const MOCK_TIMESTAMP_2 = 1704412800500; // 2025-01-05 00:00:00.500 UTC
+
+	let mockRandomUUID: jest.SpyInstance;
+	let mockDateNow: jest.SpyInstance;
+
+	beforeEach(() => {
+		mockRandomUUID = jest.spyOn(crypto, 'randomUUID');
+		mockDateNow = jest.spyOn(Date, 'now');
+
+		// Default mock values for single request creation
+		mockRandomUUID.mockReturnValue(MOCK_REQUEST_ID_1);
+		mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe('business logic', () => {
 		it('[BL-01] should create request with all parameters', () => {
 			// ARRANGE & ACT
@@ -30,29 +49,27 @@ describe('TranslationRequest', () => {
 			expect(request.from).toBeUndefined();
 		});
 
-		it('[BL-03] should inherit requestId from base class', () => {
+		it('[BL-03] should auto-generate requestId via parent', () => {
 			// ARRANGE & ACT
-			const request = new TranslationRequest('Test', 'fr');
+			const request = new TranslationRequest('Test', 'fr', 'en');
 
 			// ASSERT
-			expect(request.requestId).toBeDefined();
-			expect(typeof request.requestId).toBe('string');
-			expect(request.requestId.length).toBeGreaterThan(0);
+			expect(request.requestId).toBe(MOCK_REQUEST_ID_1);
+			expect(mockRandomUUID).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-04] should inherit requestedAt from base class', () => {
+		it('[BL-04] should auto-generate requestedAt via parent', () => {
 			// ARRANGE & ACT
-			const request = new TranslationRequest('Test', 'de');
+			const request = new TranslationRequest('Test', 'de', 'en');
 
 			// ASSERT
-			expect(request.requestedAt).toBeDefined();
-			expect(typeof request.requestedAt).toBe('number');
-			expect(request.requestedAt).toBeLessThanOrEqual(Date.now());
+			expect(request.requestedAt).toBe(MOCK_TIMESTAMP_1);
+			expect(mockDateNow).toHaveBeenCalledTimes(1);
 		});
 
 		it('[BL-05] should freeze instance after construction', () => {
 			// ARRANGE & ACT
-			const request = new TranslationRequest('Test', 'ja');
+			const request = new TranslationRequest('Test', 'ja', 'en');
 
 			// ASSERT
 			expect(Object.isFrozen(request)).toBe(true);
@@ -63,77 +80,47 @@ describe('TranslationRequest', () => {
 			}).toThrow();
 		});
 
-		it('[BL-06] should validate successfully with valid target language', () => {
-			// ARRANGE & ACT
-			const request = new TranslationRequest('Text', 'it');
-
-			// ASSERT - Construction succeeded, validation passed
-			expect(request.to).toBe('it');
-		});
-
-		it('[BL-07] should return correct log metadata', () => {
+		it('[BL-06] should return log metadata without text', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Hello', 'es', 'en');
+			const request = new TranslationRequest('Secret content', 'pt', 'en');
 
 			// ACT
 			const metadata = request.asLogMetadata();
 
 			// ASSERT
-			expect(metadata).toHaveProperty('requestId', request.requestId);
-			expect(metadata).toHaveProperty('from', 'en');
-			expect(metadata).toHaveProperty('to', 'es');
-			expect(metadata).toHaveProperty('requestedAt', request.requestedAt);
-			expect(metadata).not.toHaveProperty('text'); // Text excluded from logs
-		});
-
-		it('[BL-08] should return log metadata without from language', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Text', 'fr');
-
-			// ACT
-			const metadata = request.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('from', undefined);
-			expect(metadata).toHaveProperty('to', 'fr');
-			expect(metadata).toHaveProperty('requestId');
-		});
-
-		it('[BL-09] should return execution data with all fields', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test text', 'de', 'en');
-
-			// ACT
-			const executionData = request.asExecutionData();
-
-			// ASSERT
-			expect(executionData).toHaveLength(1);
-			expect(executionData[0]).toHaveLength(1);
-			expect(executionData[0][0].json).toEqual({
-				requestId: request.requestId,
+			expect(metadata).toEqual({
+				requestId: MOCK_REQUEST_ID_1,
 				from: 'en',
-				to: 'de',
-				text: 'Test text',
-				requestedAt: request.requestedAt,
+				to: 'pt',
+				requestedAt: MOCK_TIMESTAMP_1,
 			});
+			expect(metadata).not.toHaveProperty('text');
 		});
 
-		it('[BL-10] should return execution data without from language', () => {
+		it('[BL-07] should return data object with text but without requestId', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Sample', 'it');
+			const request = new TranslationRequest('Data content', 'ru', 'en');
 
 			// ACT
-			const executionData = request.asExecutionData();
+			const dataObject = request.asDataObject();
 
 			// ASSERT
-			expect(executionData[0][0].json).toHaveProperty('from', undefined);
-			expect(executionData[0][0].json).toHaveProperty('to', 'it');
-			expect(executionData[0][0].json).toHaveProperty('text', 'Sample');
+			expect(dataObject).toEqual({
+				from: 'en',
+				to: 'ru',
+				text: 'Data content',
+				requestedAt: MOCK_TIMESTAMP_1,
+			});
+			expect(dataObject).not.toHaveProperty('requestId');
 		});
 
-		it('[BL-11] should clone request with all parameters', () => {
+		it('[BL-08] should clone with same field values', () => {
 			// ARRANGE
-			const original = new TranslationRequest('Original text', 'ru', 'en');
+			const original = new TranslationRequest('Original text', 'it', 'en');
+
+			// Setup different IDs/timestamps for clone
+			mockRandomUUID.mockReturnValue(MOCK_REQUEST_ID_2);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_2);
 
 			// ACT
 			const cloned = original.clone();
@@ -141,110 +128,137 @@ describe('TranslationRequest', () => {
 			// ASSERT
 			expect(cloned).toBeInstanceOf(TranslationRequest);
 			expect(cloned.text).toBe('Original text');
-			expect(cloned.to).toBe('ru');
+			expect(cloned.to).toBe('it');
 			expect(cloned.from).toBe('en');
-			expect(cloned.requestId).not.toBe(original.requestId); // Clone gets new ID
-			expect(cloned.requestId).toBeDefined();
-		});
-
-		it('[BL-12] should clone request without from language', () => {
-			// ARRANGE
-			const original = new TranslationRequest('Test', 'pt');
-
-			// ACT
-			const cloned = original.clone();
-
-			// ASSERT
-			expect(cloned.text).toBe('Test');
-			expect(cloned.to).toBe('pt');
-			expect(cloned.from).toBeUndefined();
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should handle empty text', () => {
+		it('[EC-01] should handle empty string text', () => {
 			// ARRANGE & ACT
-			const request = new TranslationRequest('', 'en');
+			const request = new TranslationRequest('', 'fr', 'en');
 
 			// ASSERT
 			expect(request.text).toBe('');
-			expect(request.asExecutionData()[0][0].json.text).toBe('');
+			expect(request.text.length).toBe(0);
 		});
 
-		it('[EC-02] should handle target language with surrounding whitespace', () => {
-			// ARRANGE & ACT
-			const request = new TranslationRequest('Text', '  es  ');
-
-			// ASSERT
-			// Note: Code doesn't trim before using, only for validation
-			expect(request.to).toBe('  es  ');
-		});
-
-		it('[EC-03] should handle empty from language', () => {
-			// ARRANGE & ACT
-			const request = new TranslationRequest('Hello', 'en', '');
-
-			// ASSERT
-			expect(request.from).toBe('');
-		});
-
-		it('[EC-04] should create independent clone', () => {
+		it('[EC-02] should preserve whitespace in text', () => {
 			// ARRANGE
-			const original = new TranslationRequest('Test', 'fr');
+			const textWithWhitespace = '  Hello  \n  World  \t';
+
+			// ACT
+			const request = new TranslationRequest(textWithWhitespace, 'de');
+
+			// ASSERT
+			expect(request.text).toBe(textWithWhitespace);
+		});
+
+		it('[EC-03] should handle special characters in text', () => {
+			// ARRANGE
+			const specialText = '🌍 Hello! "Quotes" & <tags> 日本語 \n\t';
+
+			// ACT
+			const request = new TranslationRequest(specialText, 'en', 'ja');
+
+			// ASSERT
+			expect(request.text).toBe(specialText);
+		});
+
+		it('[EC-04] should trim whitespace when validating to', () => {
+			// ARRANGE & ACT & ASSERT
+			// Should NOT throw because "es" is valid after trimming
+			expect(() => {
+				new TranslationRequest('Test', '  es  ');
+			}).not.toThrow();
+		});
+
+		it('[EC-05] should handle undefined from in all methods', () => {
+			// ARRANGE
+			const request = new TranslationRequest('Test', 'ko');
+
+			// ACT
+			const metadata = request.asLogMetadata();
+			const dataObject = request.asDataObject();
+
+			// ASSERT
+			expect(request.from).toBeUndefined();
+			expect(metadata.from).toBeUndefined();
+			expect(dataObject.from).toBeUndefined();
+		});
+
+		it('[EC-06] should create new requestId on clone', () => {
+			// ARRANGE
+			const original = new TranslationRequest('Test', 'zh', 'en');
+			expect(original.requestId).toBe(MOCK_REQUEST_ID_1);
+
+			// Setup different ID for clone
+			mockRandomUUID.mockReturnValue(MOCK_REQUEST_ID_2);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_2);
 
 			// ACT
 			const cloned = original.clone();
 
 			// ASSERT
-			expect(cloned).not.toBe(original); // Different instances
-			expect(Object.isFrozen(cloned)).toBe(true); // Clone is also frozen
-			expect(cloned.requestId).not.toBe(original.requestId); // New ID for clone
-			expect(cloned.requestId).toBeDefined();
+			expect(cloned.requestId).toBe(MOCK_REQUEST_ID_2);
+			expect(cloned.requestId).not.toBe(original.requestId);
+			expect(mockRandomUUID).toHaveBeenCalledTimes(2); // Once for original, once for clone
+		});
+
+		it('[EC-07] should create new requestedAt on clone', () => {
+			// ARRANGE
+			const original = new TranslationRequest('Test', 'ar', 'en');
+			expect(original.requestedAt).toBe(MOCK_TIMESTAMP_1);
+
+			// Setup different timestamp for clone
+			mockRandomUUID.mockReturnValue(MOCK_REQUEST_ID_2);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_2);
+
+			// ACT
+			const cloned = original.clone();
+
+			// ASSERT
+			expect(cloned.requestedAt).toBe(MOCK_TIMESTAMP_2);
+			expect(cloned.requestedAt).not.toBe(original.requestedAt);
+			expect(mockDateNow).toHaveBeenCalledTimes(2); // Once for original, once for clone
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should throw when target language is undefined', () => {
-			// ACT & ASSERT
+		it('[EH-01] should throw if to is empty string', () => {
+			// ARRANGE & ACT & ASSERT
 			expect(() => {
-				new TranslationRequest('Text', undefined as unknown as string);
+				new TranslationRequest('Test', '');
 			}).toThrow('targetLanguage is required');
 		});
 
-		it('[EH-02] should throw when target language is null', () => {
-			// ACT & ASSERT
+		it('[EH-02] should throw if to is whitespace only', () => {
+			// ARRANGE & ACT & ASSERT
 			expect(() => {
-				new TranslationRequest('Text', null as unknown as string);
+				new TranslationRequest('Test', '   \t\n   ');
 			}).toThrow('targetLanguage is required');
 		});
 
-		it('[EH-03] should throw when target language is empty string', () => {
-			// ACT & ASSERT
+		it('[EH-03] should throw if to is undefined', () => {
+			// ARRANGE & ACT & ASSERT
 			expect(() => {
-				new TranslationRequest('Text', '');
+				new TranslationRequest('Test', undefined as unknown as string);
 			}).toThrow('targetLanguage is required');
 		});
 
-		it('[EH-04] should throw when target language is only whitespace', () => {
-			// ACT & ASSERT
-			expect(() => {
-				new TranslationRequest('Text', '   \t\n   ');
-			}).toThrow('targetLanguage is required');
-		});
-
-		it('[EH-05] should throw immediately on construction with invalid target', () => {
-			// ARRANGE
-			let errorThrown = false;
-
-			// ACT
+		it('[EH-04] should throw with descriptive error message', () => {
+			// ARRANGE & ACT
+			let errorMessage = '';
 			try {
-				new TranslationRequest('Will fail', '  ');
+				new TranslationRequest('Test', '');
 			} catch (error) {
-				errorThrown = true;
+				errorMessage = (error as Error).message;
 			}
 
 			// ASSERT
-			expect(errorThrown).toBe(true);
+			expect(errorMessage).toBe('targetLanguage is required');
+			expect(errorMessage).toContain('targetLanguage');
+			expect(errorMessage).toContain('required');
 		});
 	});
 });

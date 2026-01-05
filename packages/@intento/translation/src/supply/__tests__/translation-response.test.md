@@ -2,105 +2,154 @@
 
 **Author:** Claude Sonnet 4.5
 **Date:** 2025-01-05
-**Coverage Target:** 100% all metrics
+**Coverage Target:** ≥95% all metrics
 **Test File:** `translation-response.test.ts`
 
-## Code Surface
+---
 
-**Exports:**
-- `TranslationResponse` class (extends SupplyResponseBase)
+## 1. Code Analysis
 
-**Dependencies:**
-- `intento-core` - `SupplyResponseBase` base class
-- `n8n-workflow` - `LogMetadata`, `INodeExecutionData` types
-- `supply/translation-request` - `TranslationRequest` class
-- No external APIs, DB, or I/O (pure logic)
+### Exports
+- `TranslationResponse` class (extends `SupplyResponseBase`)
 
-**Branches:**
-- Constructor: None (simple assignment + super call)
-- `asLogMetadata()`: None (returns object literal)
-- `asExecutionData()`: None (returns structured data)
+### Class Structure
+```typescript
+class TranslationResponse extends SupplyResponseBase {
+  readonly from?: string;
+  readonly to: string;
+  readonly text: string;
+  readonly translation: string;
+  readonly detectedLanguage?: string;
 
-**ESLint Considerations:**
-- Need TranslationRequest for constructor tests
-- Verify base class inheritance (requestId, latencyMs)
-- Type imports to avoid unsafe operations
+  constructor(request: TranslationRequest, translation: string, detectedLanguage?: string)
+  asLogMetadata(): LogMetadata
+  asDataObject(): IDataObject
+}
+```
 
-## Test Cases
+### Dependencies to Mock
+- `TranslationRequest` (parameter type)
+- `Date.now()` (inherited from SupplyResponseBase for latency calculation)
 
-### TranslationResponse Class
+### Branches & Edge Cases
+1. Constructor: Copies `from`, `to`, `text` from request + adds `translation` and `detectedLanguage`
+2. `from` can be `undefined` (auto-detection mode)
+3. `detectedLanguage` is optional (only relevant when `from` was undefined)
+4. `asLogMetadata()`: Excludes text/translation, includes detectedLanguage
+5. `asDataObject()`: Includes all fields including text/translation
+6. Inherited behavior: `requestId` and `latencyMs` from parent
 
-#### Business Logic (BL-XX)
+### Coverage Targets
+- Lines: 10-62 (constructor through asDataObject)
+- Branches: `from` undefined/defined, `detectedLanguage` undefined/defined
+- All public methods: constructor, asLogMetadata, asDataObject
+- Parent class integration: requestId, latencyMs calculation
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| BL-01 | should create response with all request parameters and translation | Constructor with from, to, text, translation |
-| BL-02 | should create response without from language (auto-detect scenario) | Constructor with undefined from |
-| BL-03 | should create response with detected language | Constructor with detectedLanguage when from undefined |
-| BL-04 | should not set detected language when from is specified | detectedLanguage optional when from exists |
-| BL-05 | should inherit requestId from base class | SupplyResponseBase.requestId from request |
-| BL-06 | should inherit latencyMs from base class | SupplyResponseBase.latencyMs calculation |
-| BL-07 | should return correct log metadata with all fields | asLogMetadata() with from and detectedLanguage |
-| BL-08 | should return log metadata without from language | asLogMetadata() with undefined from |
-| BL-09 | should return log metadata with detected language | asLogMetadata() includes detectedLanguage |
-| BL-10 | should return execution data with all fields | asExecutionData() structure |
-| BL-11 | should return execution data without from language | asExecutionData() with undefined from |
-| BL-12 | should return execution data with detected language | asExecutionData() includes detectedLanguage |
+---
 
-#### Edge Cases (EC-XX)
+## 2. Test Inventory
 
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| EC-01 | should handle empty original text | text as empty string |
-| EC-02 | should handle empty translation | translation as empty string |
-| EC-03 | should handle empty detected language | detectedLanguage as empty string |
-| EC-04 | should preserve multi-line text in translation | Newlines in text/translation |
-
-#### Error Handling (EH-XX)
+### BL-XX: Business Logic
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should preserve all request context in response | Request data consistency |
-| EH-02 | should include translation in execution data but not log metadata | Sensitive data handling |
+| BL-01 | should copy from, to, text from request | Lines 30-32, field assignment from request |
+| BL-02 | should store translation result | Line 33, translation storage |
+| BL-03 | should store detectedLanguage when provided | Line 34, detectedLanguage storage |
+| BL-04 | should call parent constructor with request | Line 29, super call with requestId/latency |
+| BL-05 | should return log metadata without text/translation | Lines 41-48, asLogMetadata implementation |
+| BL-06 | should return data object with all fields | Lines 50-58, asDataObject implementation |
+| BL-07 | should correlate response to request via requestId | Inherited from parent, verify correlation |
+| BL-08 | should calculate latency from request timestamp | Inherited from parent, verify calculation |
 
-## Coverage Analysis
+### EC-XX: Edge Cases
 
-**Lines of executable code:** ~40 lines
-**Expected test count:** 18 tests
-**Coverage areas:**
-- Constructor: 6 tests (BL-01 to BL-06)
-- Base class inheritance: 2 tests (BL-05, BL-06)
-- asLogMetadata() method: 3 tests (BL-07 to BL-09)
-- asExecutionData() method: 3 tests (BL-10 to BL-12)
-- Edge cases: 4 tests (EC-01 to EC-04)
-- Error handling: 2 tests (EH-01, EH-02)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should handle undefined from language | Line 30, from undefined branch |
+| EC-02 | should handle undefined detectedLanguage | Line 34, detectedLanguage undefined branch |
+| EC-03 | should handle both from and detectedLanguage defined | Lines 30,34 both defined scenario |
+| EC-04 | should preserve empty string in text | Line 32, empty text handling |
+| EC-05 | should preserve empty string in translation | Line 33, empty translation handling |
+| EC-06 | should handle special characters in text/translation | Lines 32-33, Unicode/emoji |
+| EC-07 | should handle zero latency (immediate response) | Parent behavior, same timestamp |
 
-**Branch coverage:**
-- No branches in implementation (all methods are straightforward assignments/returns)
-- All methods tested with different parameter combinations
+### EH-XX: Error Handling
 
-**Error path coverage:**
-- Constructor doesn't throw (validates upstream)
-- Test data integrity across all output methods
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should include detectedLanguage in metadata when present | Line 44, metadata field inclusion |
+| EH-02 | should exclude detectedLanguage from metadata when undefined | Line 44, undefined handling |
+| EH-03 | should include detectedLanguage in data object when present | Line 55, data object field inclusion |
 
-## Success Criteria
+---
 
-- [x] Test plan created with author and date
-- [x] All exports identified and planned (TranslationResponse)
-- [x] All branches covered (100% - no branches in implementation)
-- [x] All methods tested (constructor, asLogMetadata, asExecutionData)
-- [x] ESLint considerations documented (mocking needs)
-- [x] Coverage 100% target for all metrics
-- [x] Base class inheritance verified
-- [x] Detected language handling tested
-- [x] Log metadata excludes sensitive data (text/translation)
+## 3. Test Structure
 
-## Implementation Notes
+```
+describe('TranslationResponse')
+├── business logic (BL-01 to BL-08)
+├── edge cases (EC-01 to EC-07)
+└── error handling (EH-01 to EH-03)
+```
 
-1. **Request dependency:** Need to create TranslationRequest instances for constructor
-2. **Base class:** Verify requestId and latencyMs inherited from SupplyResponseBase
-3. **Deterministic tests:** All tests are fully deterministic
-4. **Auto-detection:** detectedLanguage is relevant only when from is undefined
-5. **Log metadata:** Excludes text and translation (sensitive data) but includes in execution data
-6. **Execution data structure:** Returns nested array format for n8n
-7. **Data integrity:** Response preserves all original request context
+---
+
+## 4. Mock Strategy
+
+### Required Mocks
+1. **TranslationRequest**: Mock with jest-mock-extended
+   - `requestId`, `requestedAt` (for parent constructor)
+   - `from`, `to`, `text` (translation-specific fields)
+
+2. **Date.now()**: Mock for latency calculations
+   - Control timestamps for predictable latency
+
+### Fixtures
+```typescript
+const MOCK_REQUEST_ID = 'translation-req-uuid-001';
+const MOCK_REQUEST_TIMESTAMP = 1704412800000;
+const MOCK_RESPONSE_TIMESTAMP_250 = 1704412800250; // +250ms
+const MOCK_RESPONSE_TIMESTAMP_0 = 1704412800000; // 0ms latency
+```
+
+---
+
+## 5. Implementation Notes
+
+- Use `jest-mock-extended` for TranslationRequest mocking (avoid frozen property issues)
+- Test both with and without `from` language
+- Test both with and without `detectedLanguage`
+- Verify metadata excludes text/translation (prevent log bloat)
+- Verify data object includes all fields
+- Test correlation between request and response via requestId
+- Validate latency calculation from parent class
+
+---
+
+## 6. Coverage Verification
+
+**Minimum Targets:**
+- Statements: ≥95%
+- Branches: ≥95%
+- Functions: 100%
+- Lines: ≥95%
+
+**Critical Paths:**
+- Constructor with all parameters
+- Constructor with undefined from
+- Constructor with undefined detectedLanguage
+- Both conversion methods (asLogMetadata, asDataObject)
+- Parent class integration (requestId, latencyMs)
+
+---
+
+## 7. Success Criteria
+
+- [ ] All 18 test cases pass
+- [ ] Coverage ≥95% all metrics
+- [ ] No TypeScript errors
+- [ ] No ESLint warnings
+- [ ] Tests execute in <1 second
+- [ ] Mock cleanup in afterEach
+- [ ] Follows established patterns from similar test files

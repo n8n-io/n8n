@@ -1,7 +1,7 @@
 import type { IFunctions } from 'intento-core';
 import { ContextFactory, SupplyFactory, Tracer } from 'intento-core';
-import type { TranslationSupplierBase, TranslationError } from 'intento-translation';
-import { TranslationResponse, CONTEXT_TRANSLATION, TranslationContext } from 'intento-translation';
+import type { TranslationSupplierBase } from 'intento-translation';
+import { TranslationError, TranslationResponse, CONTEXT_TRANSLATION, TranslationContext } from 'intento-translation';
 import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -56,7 +56,12 @@ export class TranslationAgentV1 implements INodeType {
 		const tracer = new Tracer(this);
 		tracer.debug('🤖 Executing Translation Agent node...');
 		const result = await TranslationAgentV1.supplyTranslation(this, tracer);
-		if (result instanceof TranslationResponse) return result.asExecutionData();
+		if (result instanceof TranslationResponse) return [[{ json: result.asDataObject() }]];
+		if (result instanceof TranslationError && this.continueOnFail()) {
+			const error = { json: { error: result.asDataObject() } };
+			const errorOutput = this.helpers.constructExecutionMetaData([error], { itemData: { item: 0 } });
+			return [errorOutput];
+		}
 		return tracer.errorAndThrow('🤖 All translation suppliers failed.', result?.asLogMetadata());
 	}
 
@@ -67,12 +72,9 @@ export class TranslationAgentV1 implements INodeType {
 		let result: TranslationError | TranslationResponse | undefined;
 		for (let i = 0; i < suppliers.length; i++) {
 			const request = context.toRequest();
-			try {
-				result = await suppliers[i].supplyWithRetries(request, functions.getExecutionCancelSignal());
-				if (result instanceof TranslationResponse) return result;
-			} catch (error) {
-				if (!(error instanceof DOMException && error.name === 'TimeoutError')) throw error;
-			}
+			result = await suppliers[i].supplyWithRetries(request, functions.getExecutionCancelSignal());
+			if (result instanceof TranslationResponse) return result;
+			if (i >= suppliers.length - 1) return result;
 		}
 		throw new NodeOperationError(functions.getNode(), 'No translation suppliers were found.');
 	}

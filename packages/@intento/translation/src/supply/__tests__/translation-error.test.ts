@@ -1,10 +1,8 @@
-import 'reflect-metadata';
-
+import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { TranslationError } from '../translation-error';
-import { TranslationRequest } from '../translation-request';
+import type { TranslationRequest } from '../translation-request';
 
 /**
  * Tests for TranslationError
@@ -13,301 +11,307 @@ import { TranslationRequest } from '../translation-request';
  */
 
 describe('TranslationError', () => {
+	const MOCK_REQUEST_ID = 'translation-req-uuid-001';
+	const MOCK_REQUEST_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
+	const MOCK_ERROR_TIMESTAMP_250 = 1704412800250; // +250ms latency
+	const MOCK_ERROR_TIMESTAMP_0 = 1704412800000; // Same millisecond (0ms latency)
+
+	// HTTP Status Codes
+	const CODE_BAD_REQUEST = 400;
+	const CODE_RATE_LIMIT = 429;
+	const CODE_SERVER_ERROR = 500;
+
+	let mockDateNow: jest.SpyInstance;
+	let mockNode: INode;
+
+	beforeEach(() => {
+		mockDateNow = jest.spyOn(Date, 'now');
+		mockNode = mock<INode>();
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe('business logic', () => {
-		it('[BL-01] should create error with all request parameters', () => {
+		it('[BL-01] should copy from, to, text from request', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Hello, world!', 'es', 'en');
+			const request = mock<TranslationRequest>({
+				text: 'Hello, world!',
+				to: 'es',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const error = new TranslationError(request, 500, 'Internal server error');
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Translation failed');
 
 			// ASSERT
-			expect(error.text).toBe('Hello, world!');
-			expect(error.to).toBe('es');
 			expect(error.from).toBe('en');
-			expect(error.code).toBe(500);
-			expect(error.reason).toBe('Internal server error');
+			expect(error.to).toBe('es');
+			expect(error.text).toBe('Hello, world!');
 		});
 
-		it('[BL-02] should create error without from language', () => {
+		it('[BL-02] should call parent constructor with request, code, reason', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Bonjour', 'en');
+			const request = mock<TranslationRequest>({
+				text: 'Test text',
+				to: 'fr',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const error = new TranslationError(request, 404, 'Not found');
+			const error = new TranslationError(request, CODE_BAD_REQUEST, 'Invalid language code');
 
 			// ASSERT
-			expect(error.text).toBe('Bonjour');
-			expect(error.to).toBe('en');
-			expect(error.from).toBeUndefined();
-			expect(error.code).toBe(404);
-			expect(error.reason).toBe('Not found');
+			// Verify inherited properties from SupplyErrorBase
+			expect(error.requestId).toBe(MOCK_REQUEST_ID);
+			expect(error.code).toBe(CODE_BAD_REQUEST);
+			expect(error.reason).toBe('Invalid language code');
+			expect(error.latencyMs).toBe(250);
 		});
 
-		it('[BL-03] should inherit requestId from base class', () => {
+		it('[BL-03] should freeze instance after construction', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'fr');
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'de',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const error = new TranslationError(request, 400, 'Bad request');
-
-			// ASSERT
-			expect(error.requestId).toBeDefined();
-			expect(typeof error.requestId).toBe('string');
-			expect(error.requestId).toBe(request.requestId);
-		});
-
-		it('[BL-04] should inherit latencyMs from base class', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test', 'de');
-
-			// ACT
-			const error = new TranslationError(request, 503, 'Service unavailable');
-
-			// ASSERT
-			expect(error.latencyMs).toBeDefined();
-			expect(typeof error.latencyMs).toBe('number');
-			expect(error.latencyMs).toBeGreaterThanOrEqual(0);
-		});
-
-		it('[BL-05] should freeze instance after construction', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test', 'ja');
-
-			// ACT
-			const error = new TranslationError(request, 429, 'Rate limit exceeded');
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Server error');
 
 			// ASSERT
 			expect(Object.isFrozen(error)).toBe(true);
 
 			// Verify property modification fails
 			expect(() => {
-				(error as { code: number }).code = 200;
+				(error as { to: string }).to = 'fr';
 			}).toThrow();
 		});
 
-		it('[BL-06] should return correct log metadata', () => {
+		it('[BL-04] should return log metadata without text field', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Hello', 'es', 'en');
-			const error = new TranslationError(request, 500, 'Server error');
-
-			// ACT
-			const metadata = error.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('requestId', error.requestId);
-			expect(metadata).toHaveProperty('from', 'en');
-			expect(metadata).toHaveProperty('to', 'es');
-			expect(metadata).toHaveProperty('errorCode', 500);
-			expect(metadata).toHaveProperty('errorReason', 'Server error');
-			expect(metadata).toHaveProperty('latencyMs');
-			expect(metadata).not.toHaveProperty('text'); // Text excluded from logs
-		});
-
-		it('[BL-07] should return log metadata without from language', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Text', 'fr');
-			const error = new TranslationError(request, 401, 'Unauthorized');
-
-			// ACT
-			const metadata = error.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('from', undefined);
-			expect(metadata).toHaveProperty('to', 'fr');
-			expect(metadata).toHaveProperty('errorCode', 401);
-		});
-
-		it('[BL-08] should return execution data with all fields', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test text', 'de', 'en');
-			const error = new TranslationError(request, 503, 'Service unavailable');
-
-			// ACT
-			const executionData = error.asExecutionData();
-
-			// ASSERT
-			expect(executionData).toHaveLength(1);
-			expect(executionData[0]).toHaveLength(1);
-			expect(executionData[0][0].json).toEqual({
-				requestId: error.requestId,
+			const request = mock<TranslationRequest>({
+				text: 'Hello, world!',
+				to: 'ja',
 				from: 'en',
-				to: 'de',
-				text: 'Test text',
-				errorCode: 503,
-				errorReason: 'Service unavailable',
-				latencyMs: error.latencyMs,
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
+
+			// ACT
+			const error = new TranslationError(request, CODE_RATE_LIMIT, 'Rate limit exceeded');
+			const metadata = error.asLogMetadata();
+
+			// ASSERT
+			expect(metadata).toEqual({
+				requestId: MOCK_REQUEST_ID,
+				from: 'en',
+				to: 'ja',
+				errorCode: CODE_RATE_LIMIT,
+				errorReason: 'Rate limit exceeded',
+				latencyMs: 250,
+			});
+			expect(metadata).not.toHaveProperty('text');
+		});
+
+		it('[BL-05] should return data object with text field', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				text: 'Test content',
+				to: 'zh',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
+
+			// ACT
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Internal server error');
+			const dataObject = error.asDataObject();
+
+			// ASSERT
+			expect(dataObject).toEqual({
+				from: 'en',
+				to: 'zh',
+				text: 'Test content',
+				errorCode: CODE_SERVER_ERROR,
+				errorReason: 'Internal server error',
+				latencyMs: 250,
 			});
 		});
 
-		it('[BL-09] should return execution data without from language', () => {
+		it('[BL-06] should create NodeOperationError with formatted message', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Sample', 'it');
-			const error = new TranslationError(request, 400, 'Bad request');
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'pt',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const executionData = error.asExecutionData();
-
-			// ASSERT
-			expect(executionData[0][0].json).toHaveProperty('from', undefined);
-			expect(executionData[0][0].json).toHaveProperty('to', 'it');
-			expect(executionData[0][0].json).toHaveProperty('text', 'Sample');
-		});
-
-		it('[BL-10] should create NodeOperationError with correct message', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Text', 'ru');
-			const error = new TranslationError(request, 429, 'Rate limit exceeded');
-			const mockNode: INode = {
-				id: 'node-123',
-				name: 'Translation Node',
-				typeVersion: 1,
-				type: 'n8n-nodes-base.translate',
-				position: [0, 0],
-				parameters: {},
-			};
-
-			// ACT
+			const error = new TranslationError(request, CODE_BAD_REQUEST, 'Invalid target language');
 			const nodeError = error.asError(mockNode);
 
 			// ASSERT
-			expect(nodeError).toBeInstanceOf(NodeOperationError);
-			expect(nodeError.message).toBe('🌍 Translation has been failed: [429] Rate limit exceeded');
+			expect(nodeError.message).toBe('🌍 Translation has been failed: [400] Invalid target language');
+			expect(nodeError.node).toBe(mockNode);
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should handle empty text in error', () => {
+		it('[EC-01] should handle undefined from language', () => {
 			// ARRANGE
-			const request = new TranslationRequest('', 'en');
+			const request = mock<TranslationRequest>({
+				text: 'Bonjour',
+				to: 'en',
+				from: undefined,
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const error = new TranslationError(request, 400, 'Empty text');
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Translation service down');
+
+			// ASSERT
+			expect(error.from).toBeUndefined();
+			expect(error.to).toBe('en');
+			expect(error.text).toBe('Bonjour');
+		});
+
+		it('[EC-02] should preserve empty string in text', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				text: '',
+				to: 'es',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
+
+			// ACT
+			const error = new TranslationError(request, CODE_BAD_REQUEST, 'Empty text not allowed');
 
 			// ASSERT
 			expect(error.text).toBe('');
-			expect(error.asExecutionData()[0][0].json.text).toBe('');
+			expect(error.text.length).toBe(0);
 		});
 
-		it('[EC-02] should handle error code 0', () => {
+		it('[EC-03] should handle zero latency (same timestamp)', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'fr',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_0);
 
 			// ACT
-			const error = new TranslationError(request, 0, 'Unknown error');
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Immediate failure');
 
 			// ASSERT
-			expect(error.code).toBe(0);
-			expect(error.asLogMetadata().errorCode).toBe(0);
+			expect(error.latencyMs).toBe(0);
 		});
 
-		it('[EC-03] should handle large error codes', () => {
+		it('[EC-04] should handle special characters in text', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
+			const specialText = '🌍 Hello! "Quotes" & <tags> 日本語';
+			const request = mock<TranslationRequest>({
+				text: specialText,
+				to: 'en',
+				from: 'ja',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const error = new TranslationError(request, 999, 'Custom error');
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Failed to process');
 
 			// ASSERT
-			expect(error.code).toBe(999);
-			expect(error.asLogMetadata().errorCode).toBe(999);
-		});
-
-		it('[EC-04] should handle empty error reason', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
-
-			// ACT
-			const error = new TranslationError(request, 500, '');
-
-			// ASSERT
-			expect(error.reason).toBe('');
-			expect(error.asLogMetadata().errorReason).toBe('');
-		});
-
-		it('[EC-05] should handle multi-line error reason', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
-			const multiLineReason = 'Error occurred\nDetails: Connection timeout\nRetry in 60s';
-
-			// ACT
-			const error = new TranslationError(request, 408, multiLineReason);
-
-			// ASSERT
-			expect(error.reason).toBe(multiLineReason);
-			expect(error.asLogMetadata().errorReason).toBe(multiLineReason);
+			expect(error.text).toBe(specialText);
+			expect(error.asDataObject().text).toBe(specialText);
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should preserve error code in all outputs', () => {
+		it('[EH-01] should include error code in message', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
-			const error = new TranslationError(request, 404, 'Not found');
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'de',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
 
 			// ACT
-			const logMetadata = error.asLogMetadata();
-			const executionData = error.asExecutionData();
-			const mockNode: INode = {
-				id: 'node-1',
-				name: 'Test',
-				typeVersion: 1,
-				type: 'test',
-				position: [0, 0],
-				parameters: {},
-			};
+			const error = new TranslationError(request, CODE_RATE_LIMIT, 'Too many requests');
 			const nodeError = error.asError(mockNode);
 
 			// ASSERT
-			expect(error.code).toBe(404);
-			expect(logMetadata.errorCode).toBe(404);
-			expect(executionData[0][0].json.errorCode).toBe(404);
-			expect(nodeError.message).toContain('[404]');
+			expect(nodeError.message).toContain('[429]');
+			expect(nodeError.message).toContain('429');
 		});
 
-		it('[EH-02] should preserve error reason in all outputs', () => {
+		it('[EH-02] should include error reason in message', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
-			const error = new TranslationError(request, 503, 'Service temporarily unavailable');
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'it',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
+			const reason = 'Unsupported language pair';
 
 			// ACT
-			const logMetadata = error.asLogMetadata();
-			const executionData = error.asExecutionData();
-			const mockNode: INode = {
-				id: 'node-1',
-				name: 'Test',
-				typeVersion: 1,
-				type: 'test',
-				position: [0, 0],
-				parameters: {},
-			};
+			const error = new TranslationError(request, CODE_BAD_REQUEST, reason);
 			const nodeError = error.asError(mockNode);
 
 			// ASSERT
-			expect(error.reason).toBe('Service temporarily unavailable');
-			expect(logMetadata.errorReason).toBe('Service temporarily unavailable');
-			expect(executionData[0][0].json.errorReason).toBe('Service temporarily unavailable');
-			expect(nodeError.message).toContain('Service temporarily unavailable');
+			expect(nodeError.message).toContain(reason);
 		});
 
-		it('[EH-03] should format error message with code and reason', () => {
+		it('[EH-03] should pass node context to NodeOperationError', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
-			const error = new TranslationError(request, 422, 'Unprocessable entity');
-			const mockNode: INode = {
-				id: 'node-1',
-				name: 'Test',
-				typeVersion: 1,
-				type: 'test',
-				position: [0, 0],
-				parameters: {},
-			};
+			const request = mock<TranslationRequest>({
+				text: 'Test',
+				to: 'ru',
+				from: 'en',
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+			});
+			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_250);
+			const specificNode = mock<INode>({ name: 'TranslationNode' });
 
 			// ACT
-			const nodeError = error.asError(mockNode);
+			const error = new TranslationError(request, CODE_SERVER_ERROR, 'Service unavailable');
+			const nodeError = error.asError(specificNode);
 
 			// ASSERT
-			expect(nodeError.message).toBe('🌍 Translation has been failed: [422] Unprocessable entity');
+			expect(nodeError.node).toBe(specificNode);
+			expect(nodeError.node).not.toBe(mockNode);
 		});
 	});
 });

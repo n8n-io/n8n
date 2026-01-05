@@ -1,6 +1,6 @@
-import 'reflect-metadata';
+import { mock } from 'jest-mock-extended';
 
-import { TranslationRequest } from '../translation-request';
+import type { TranslationRequest } from '../translation-request';
 import { TranslationResponse } from '../translation-response';
 
 /**
@@ -10,266 +10,385 @@ import { TranslationResponse } from '../translation-response';
  */
 
 describe('TranslationResponse', () => {
+	const MOCK_REQUEST_ID = 'translation-req-uuid-001';
+	const MOCK_REQUEST_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
+	const MOCK_RESPONSE_TIMESTAMP_250 = 1704412800250; // +250ms latency
+	const MOCK_RESPONSE_TIMESTAMP_0 = 1704412800000; // Same millisecond (0ms latency)
+
+	let mockDateNow: jest.SpyInstance;
+
+	beforeEach(() => {
+		mockDateNow = jest.spyOn(Date, 'now');
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe('business logic', () => {
-		it('[BL-01] should create response with all request parameters and translation', () => {
+		it('[BL-01] should copy from, to, text from request', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Hello, world!', 'es', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Hello, world!',
+				to: 'es',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
 			const response = new TranslationResponse(request, 'Hola, mundo!');
 
 			// ASSERT
-			expect(response.text).toBe('Hello, world!');
-			expect(response.to).toBe('es');
 			expect(response.from).toBe('en');
-			expect(response.translation).toBe('Hola, mundo!');
-			expect(response.detectedLanguage).toBeUndefined();
+			expect(response.to).toBe('es');
+			expect(response.text).toBe('Hello, world!');
 		});
 
-		it('[BL-02] should create response without from language (auto-detect scenario)', () => {
+		it('[BL-02] should store translation result', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Bonjour', 'en');
-
-			// ACT
-			const response = new TranslationResponse(request, 'Hello');
-
-			// ASSERT
-			expect(response.text).toBe('Bonjour');
-			expect(response.to).toBe('en');
-			expect(response.from).toBeUndefined();
-			expect(response.translation).toBe('Hello');
-		});
-
-		it('[BL-03] should create response with detected language', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Ciao', 'en');
-
-			// ACT
-			const response = new TranslationResponse(request, 'Hello', 'it');
-
-			// ASSERT
-			expect(response.from).toBeUndefined(); // Original request had no from
-			expect(response.detectedLanguage).toBe('it');
-			expect(response.translation).toBe('Hello');
-		});
-
-		it('[BL-04] should not set detected language when from is specified', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Hello', 'fr', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Hello',
+				to: 'fr',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
 			const response = new TranslationResponse(request, 'Bonjour');
 
 			// ASSERT
-			expect(response.from).toBe('en');
-			expect(response.detectedLanguage).toBeUndefined();
+			expect(response.translation).toBe('Bonjour');
 		});
 
-		it('[BL-05] should inherit requestId from base class', () => {
+		it('[BL-03] should store detectedLanguage when provided', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'de');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Hola',
+				to: 'en',
+				from: undefined,
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const response = new TranslationResponse(request, 'Test');
+			const response = new TranslationResponse(request, 'Hello', 'es');
 
 			// ASSERT
-			expect(response.requestId).toBeDefined();
-			expect(typeof response.requestId).toBe('string');
-			expect(response.requestId).toBe(request.requestId);
+			expect(response.detectedLanguage).toBe('es');
 		});
 
-		it('[BL-06] should inherit latencyMs from base class', () => {
+		it('[BL-04] should call parent constructor with request', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'ja');
-
-			// ACT
-			const response = new TranslationResponse(request, 'テスト');
-
-			// ASSERT
-			expect(response.latencyMs).toBeDefined();
-			expect(typeof response.latencyMs).toBe('number');
-			expect(response.latencyMs).toBeGreaterThanOrEqual(0);
-		});
-
-		it('[BL-07] should return correct log metadata with all fields', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Hello', 'es', 'en');
-			const response = new TranslationResponse(request, 'Hola', 'en');
-
-			// ACT
-			const metadata = response.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('requestId', response.requestId);
-			expect(metadata).toHaveProperty('from', 'en');
-			expect(metadata).toHaveProperty('to', 'es');
-			expect(metadata).toHaveProperty('detectedLanguage', 'en');
-			expect(metadata).toHaveProperty('latencyMs');
-			expect(metadata).not.toHaveProperty('text'); // Text excluded from logs
-			expect(metadata).not.toHaveProperty('translation'); // Translation excluded from logs
-		});
-
-		it('[BL-08] should return log metadata without from language', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Text', 'fr');
-			const response = new TranslationResponse(request, 'Texte');
-
-			// ACT
-			const metadata = response.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('from', undefined);
-			expect(metadata).toHaveProperty('to', 'fr');
-		});
-
-		it('[BL-09] should return log metadata with detected language', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Text', 'ru');
-			const response = new TranslationResponse(request, 'Текст', 'en');
-
-			// ACT
-			const metadata = response.asLogMetadata();
-
-			// ASSERT
-			expect(metadata).toHaveProperty('detectedLanguage', 'en');
-		});
-
-		it('[BL-10] should return execution data with all fields', () => {
-			// ARRANGE
-			const request = new TranslationRequest('Test text', 'de', 'en');
-			const response = new TranslationResponse(request, 'Testtext', 'en');
-
-			// ACT
-			const executionData = response.asExecutionData();
-
-			// ASSERT
-			expect(executionData).toHaveLength(1);
-			expect(executionData[0]).toHaveLength(1);
-			expect(executionData[0][0].json).toEqual({
-				requestId: response.requestId,
-				from: 'en',
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
 				to: 'de',
-				text: 'Test text',
-				translation: 'Testtext',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Test translation');
+
+			// ASSERT
+			// Verify inherited properties from SupplyResponseBase
+			expect(response.requestId).toBe(MOCK_REQUEST_ID);
+			expect(response.latencyMs).toBe(250);
+		});
+
+		it('[BL-05] should return log metadata without text/translation', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Secret content',
+				to: 'ja',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Sensitive translation', 'en');
+			const metadata = response.asLogMetadata();
+
+			// ASSERT
+			expect(metadata).toEqual({
+				requestId: MOCK_REQUEST_ID,
+				from: 'en',
+				to: 'ja',
 				detectedLanguage: 'en',
-				latencyMs: response.latencyMs,
+				latencyMs: 250,
+			});
+			expect(metadata).not.toHaveProperty('text');
+			expect(metadata).not.toHaveProperty('translation');
+		});
+
+		it('[BL-06] should return data object with all fields', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Original text',
+				to: 'zh',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Translated text', 'en');
+			const dataObject = response.asDataObject();
+
+			// ASSERT
+			expect(dataObject).toEqual({
+				from: 'en',
+				to: 'zh',
+				text: 'Original text',
+				translation: 'Translated text',
+				detectedLanguage: 'en',
+				latencyMs: 250,
 			});
 		});
 
-		it('[BL-11] should return execution data without from language', () => {
+		it('[BL-07] should correlate response to request via requestId', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Sample', 'it');
-			const response = new TranslationResponse(request, 'Campione');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'pt',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const executionData = response.asExecutionData();
+			const response = new TranslationResponse(request, 'Teste');
 
 			// ASSERT
-			expect(executionData[0][0].json).toHaveProperty('from', undefined);
-			expect(executionData[0][0].json).toHaveProperty('to', 'it');
-			expect(executionData[0][0].json).toHaveProperty('text', 'Sample');
-			expect(executionData[0][0].json).toHaveProperty('translation', 'Campione');
+			expect(response.requestId).toBe(request.requestId);
+			expect(response.asLogMetadata().requestId).toBe(request.requestId);
 		});
 
-		it('[BL-12] should return execution data with detected language', () => {
+		it('[BL-08] should calculate latency from request timestamp', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Hola', 'en');
-			const response = new TranslationResponse(request, 'Hello', 'es');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'ru',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const executionData = response.asExecutionData();
+			const response = new TranslationResponse(request, 'Тест');
 
 			// ASSERT
-			expect(executionData[0][0].json).toHaveProperty('detectedLanguage', 'es');
+			expect(response.latencyMs).toBe(250);
+			expect(response.latencyMs).toBe(MOCK_RESPONSE_TIMESTAMP_250 - MOCK_REQUEST_TIMESTAMP);
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should handle empty original text', () => {
+		it('[EC-01] should handle undefined from language', () => {
 			// ARRANGE
-			const request = new TranslationRequest('', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Bonjour',
+				to: 'en',
+				from: undefined,
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Hello', 'fr');
+
+			// ASSERT
+			expect(response.from).toBeUndefined();
+			expect(response.to).toBe('en');
+			expect(response.detectedLanguage).toBe('fr');
+		});
+
+		it('[EC-02] should handle undefined detectedLanguage', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Hello',
+				to: 'es',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Hola');
+
+			// ASSERT
+			expect(response.detectedLanguage).toBeUndefined();
+		});
+
+		it('[EC-03] should handle both from and detectedLanguage defined', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'fr',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT - This scenario could occur if supplier overrides the detected language
+			const response = new TranslationResponse(request, 'Test', 'en-US');
+
+			// ASSERT
+			expect(response.from).toBe('en');
+			expect(response.detectedLanguage).toBe('en-US');
+		});
+
+		it('[EC-04] should preserve empty string in text', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: '',
+				to: 'de',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
 			const response = new TranslationResponse(request, '');
 
 			// ASSERT
 			expect(response.text).toBe('');
-			expect(response.asExecutionData()[0][0].json.text).toBe('');
+			expect(response.text.length).toBe(0);
 		});
 
-		it('[EC-02] should handle empty translation', () => {
+		it('[EC-05] should preserve empty string in translation', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Test', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'it',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
 			const response = new TranslationResponse(request, '');
 
 			// ASSERT
 			expect(response.translation).toBe('');
-			expect(response.asExecutionData()[0][0].json.translation).toBe('');
+			expect(response.translation.length).toBe(0);
 		});
 
-		it('[EC-03] should handle empty detected language', () => {
+		it('[EC-06] should handle special characters in text/translation', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Text', 'en');
+			const specialText = '🌍 Hello! "Quotes" & <tags> 日本語';
+			const specialTranslation = '🌏 こんにちは！ "引用" & <タグ>';
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: specialText,
+				to: 'ja',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const response = new TranslationResponse(request, 'Text', '');
+			const response = new TranslationResponse(request, specialTranslation);
 
 			// ASSERT
-			expect(response.detectedLanguage).toBe('');
-			expect(response.asLogMetadata().detectedLanguage).toBe('');
+			expect(response.text).toBe(specialText);
+			expect(response.translation).toBe(specialTranslation);
+			expect(response.asDataObject().text).toBe(specialText);
+			expect(response.asDataObject().translation).toBe(specialTranslation);
 		});
 
-		it('[EC-04] should preserve multi-line text in translation', () => {
+		it('[EC-07] should handle zero latency (immediate response)', () => {
 			// ARRANGE
-			const multiLineText = 'Line 1\nLine 2\nLine 3';
-			const multiLineTranslation = 'Línea 1\nLínea 2\nLínea 3';
-			const request = new TranslationRequest(multiLineText, 'es', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'ko',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_0);
 
 			// ACT
-			const response = new TranslationResponse(request, multiLineTranslation);
+			const response = new TranslationResponse(request, '테스트');
 
 			// ASSERT
-			expect(response.text).toBe(multiLineText);
-			expect(response.translation).toBe(multiLineTranslation);
-			expect(response.asExecutionData()[0][0].json.text).toBe(multiLineText);
-			expect(response.asExecutionData()[0][0].json.translation).toBe(multiLineTranslation);
+			expect(response.latencyMs).toBe(0);
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should preserve all request context in response', () => {
+		it('[EH-01] should include detectedLanguage in metadata when present', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Original text', 'pt', 'en');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'en',
+				from: undefined,
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const response = new TranslationResponse(request, 'Texto original');
+			const response = new TranslationResponse(request, 'Test', 'de');
+			const metadata = response.asLogMetadata();
 
 			// ASSERT
-			expect(response.text).toBe(request.text);
-			expect(response.to).toBe(request.to);
-			expect(response.from).toBe(request.from);
-			expect(response.requestId).toBe(request.requestId);
+			expect(metadata.detectedLanguage).toBe('de');
 		});
 
-		it('[EH-02] should include translation in execution data but not log metadata', () => {
+		it('[EH-02] should exclude detectedLanguage from metadata when undefined', () => {
 			// ARRANGE
-			const request = new TranslationRequest('Sensitive data', 'fr', 'en');
-			const response = new TranslationResponse(request, 'Données sensibles');
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'ar',
+				from: 'en',
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
 
 			// ACT
-			const logMetadata = response.asLogMetadata();
-			const executionData = response.asExecutionData();
+			const response = new TranslationResponse(request, 'اختبار');
+			const metadata = response.asLogMetadata();
 
 			// ASSERT
-			// Log metadata should not include text/translation
-			expect(logMetadata).not.toHaveProperty('text');
-			expect(logMetadata).not.toHaveProperty('translation');
+			expect(metadata.detectedLanguage).toBeUndefined();
+			expect(metadata).toHaveProperty('detectedLanguage');
+		});
 
-			// Execution data should include everything
-			expect(executionData[0][0].json).toHaveProperty('text', 'Sensitive data');
-			expect(executionData[0][0].json).toHaveProperty('translation', 'Données sensibles');
+		it('[EH-03] should include detectedLanguage in data object when present', () => {
+			// ARRANGE
+			const request = mock<TranslationRequest>({
+				requestId: MOCK_REQUEST_ID,
+				requestedAt: MOCK_REQUEST_TIMESTAMP,
+				text: 'Test',
+				to: 'en',
+				from: undefined,
+			});
+			mockDateNow.mockReturnValue(MOCK_RESPONSE_TIMESTAMP_250);
+
+			// ACT
+			const response = new TranslationResponse(request, 'Test', 'sv');
+			const dataObject = response.asDataObject();
+
+			// ASSERT
+			expect(dataObject.detectedLanguage).toBe('sv');
 		});
 	});
 });

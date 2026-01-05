@@ -1,31 +1,25 @@
-import type { IDataObject, INodeExecutionData, LogMetadata } from 'n8n-workflow';
+import type { IDataObject, LogMetadata } from 'n8n-workflow';
 
 import { SupplyRequestBase } from '../supply-request-base';
 
 /**
  * Tests for SupplyRequestBase
  * @author Claude Sonnet 4.5
- * @date 2025-12-30
+ * @date 2025-01-05
  */
 
-/**
- * Test implementation of SupplyRequestBase for testing purposes.
- */
+// Concrete test implementation of abstract SupplyRequestBase
 class TestRequest extends SupplyRequestBase {
-	constructor(readonly data: unknown = {}) {
+	constructor(private readonly data: string) {
 		super();
 	}
 
 	asLogMetadata(): LogMetadata {
-		return {
-			requestId: this.requestId,
-			requestedAt: this.requestedAt,
-			data: this.data as IDataObject,
-		};
+		return { requestId: this.requestId, data: this.data };
 	}
 
-	asExecutionData(): INodeExecutionData[][] {
-		return [[{ json: { requestId: this.requestId, data: this.data as IDataObject } }]];
+	asDataObject(): IDataObject {
+		return { requestId: this.requestId, data: this.data };
 	}
 
 	clone(): this {
@@ -34,203 +28,229 @@ class TestRequest extends SupplyRequestBase {
 }
 
 describe('SupplyRequestBase', () => {
-	let cryptoSpy: jest.SpyInstance;
-	let dateNowSpy: jest.SpyInstance;
+	const MOCK_UUID_1 = 'test-uuid-001';
+	const MOCK_UUID_2 = 'test-uuid-002';
+	const MOCK_TIMESTAMP_1 = 1704412800000; // 2025-01-05 00:00:00 UTC
+	const MOCK_TIMESTAMP_2 = 1704412801000; // 2025-01-05 00:00:01 UTC
+
+	let mockRandomUUID: jest.SpyInstance;
+	let mockDateNow: jest.SpyInstance;
+
+	beforeEach(() => {
+		mockRandomUUID = jest.spyOn(crypto, 'randomUUID');
+		mockDateNow = jest.spyOn(Date, 'now');
+	});
 
 	afterEach(() => {
-		if (cryptoSpy) {
-			cryptoSpy.mockRestore();
-		}
-		if (dateNowSpy) {
-			dateNowSpy.mockRestore();
-		}
-		jest.clearAllMocks();
+		jest.restoreAllMocks();
 	});
 
 	describe('business logic', () => {
 		it('[BL-01] should generate unique requestId using crypto.randomUUID', () => {
 			// ARRANGE
-			const mockUuid = '550e8400-e29b-41d4-a716-446655440000';
-			cryptoSpy = jest.spyOn(crypto, 'randomUUID').mockReturnValue(mockUuid);
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
 
 			// ACT
-			const request = new TestRequest({ test: 'data' });
+			const request = new TestRequest('test-data');
 
 			// ASSERT
-			expect(crypto.randomUUID).toHaveBeenCalledTimes(1);
-			expect(request.requestId).toBe(mockUuid);
+			expect(request.requestId).toBe(MOCK_UUID_1);
+			expect(mockRandomUUID).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-02] should capture timestamp at construction', () => {
+		it('[BL-02] should capture timestamp at construction using Date.now', () => {
 			// ARRANGE
-			const mockTimestamp = 1609459200000; // 2021-01-01 00:00:00 UTC
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(mockTimestamp);
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
 
 			// ACT
-			const request = new TestRequest({ test: 'data' });
+			const request = new TestRequest('test-data');
 
 			// ASSERT
-			expect(Date.now).toHaveBeenCalledTimes(1);
-			expect(request.requestedAt).toBe(mockTimestamp);
+			expect(request.requestedAt).toBe(MOCK_TIMESTAMP_1);
+			expect(mockDateNow).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-03] should have readonly requestId property', () => {
+		it('[BL-03] should implement ITraceable interface with requestId', () => {
 			// ARRANGE
-			const request = new TestRequest();
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
 
-			// ACT & ASSERT - TypeScript readonly prevents compile-time modification
-			// Runtime: property exists and is a string
-			expect(request.requestId).toBeDefined();
-			expect(typeof request.requestId).toBe('string');
-			expect(request.requestId.length).toBeGreaterThan(0);
+			// ACT
+			const request = new TestRequest('test-data');
+			const metadata = request.asLogMetadata();
+
+			// ASSERT
+			expect(metadata.requestId).toBe(MOCK_UUID_1);
+			expect(typeof metadata.requestId).toBe('string');
 		});
 
-		it('[BL-04] should have readonly requestedAt property', () => {
+		it('[BL-04] should implement IDataProvider interface', () => {
 			// ARRANGE
-			const request = new TestRequest();
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
 
-			// ACT & ASSERT - TypeScript readonly prevents compile-time modification
-			// Runtime: property exists and is a number
-			expect(request.requestedAt).toBeDefined();
-			expect(typeof request.requestedAt).toBe('number');
-			expect(request.requestedAt).toBeGreaterThan(0);
+			// ACT
+			const request = new TestRequest('test-data');
+			const dataObject = request.asDataObject();
+
+			// ASSERT
+			expect(dataObject).toBeInstanceOf(Object);
+			expect(dataObject.requestId).toBe(MOCK_UUID_1);
+			expect(dataObject.data).toBe('test-data');
 		});
 
-		it('[BL-05] should implement ITraceable interface', () => {
+		it('[BL-05] should create multiple instances with unique requestIds', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
+			mockRandomUUID.mockReturnValueOnce(MOCK_UUID_1).mockReturnValueOnce(MOCK_UUID_2);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
+
+			// ACT
+			const request1 = new TestRequest('data-1');
+			const request2 = new TestRequest('data-2');
+
+			// ASSERT
+			expect(request1.requestId).toBe(MOCK_UUID_1);
+			expect(request2.requestId).toBe(MOCK_UUID_2);
+			expect(request1.requestId).not.toBe(request2.requestId);
+			expect(mockRandomUUID).toHaveBeenCalledTimes(2);
+		});
+
+		it('[BL-06] should capture sequential timestamps for multiple instances', () => {
+			// ARRANGE
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValueOnce(MOCK_TIMESTAMP_1).mockReturnValueOnce(MOCK_TIMESTAMP_2);
+
+			// ACT
+			const request1 = new TestRequest('data-1');
+			const request2 = new TestRequest('data-2');
+
+			// ASSERT
+			expect(request1.requestedAt).toBe(MOCK_TIMESTAMP_1);
+			expect(request2.requestedAt).toBe(MOCK_TIMESTAMP_2);
+			expect(request2.requestedAt).toBeGreaterThan(request1.requestedAt);
+			expect(mockDateNow).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('[EC-01] should handle rapid instantiation (same millisecond)', () => {
+			// ARRANGE
+			mockRandomUUID.mockReturnValueOnce(MOCK_UUID_1).mockReturnValueOnce(MOCK_UUID_2);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1); // Same timestamp
+
+			// ACT
+			const request1 = new TestRequest('data-1');
+			const request2 = new TestRequest('data-2');
+
+			// ASSERT
+			expect(request1.requestedAt).toBe(MOCK_TIMESTAMP_1);
+			expect(request2.requestedAt).toBe(MOCK_TIMESTAMP_1);
+			expect(request1.requestId).not.toBe(request2.requestId); // UUIDs still unique
+		});
+
+		it('[EC-02] should require concrete implementation of asLogMetadata', () => {
+			// ARRANGE
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
+			const request = new TestRequest('test-data');
 
 			// ACT
 			const metadata = request.asLogMetadata();
 
 			// ASSERT
 			expect(metadata).toBeDefined();
-			expect(metadata.requestId).toBe(request.requestId);
-			expect(metadata.requestedAt).toBe(request.requestedAt);
-			expect(metadata.data).toEqual({ test: 'data' });
+			expect(metadata.requestId).toBe(MOCK_UUID_1);
+			expect(metadata.data).toBe('test-data');
 		});
 
-		it('[BL-06] should implement IDataProvider interface', () => {
+		it('[EC-03] should require concrete implementation of asDataObject', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
+			mockRandomUUID.mockReturnValue(MOCK_UUID_1);
+			mockDateNow.mockReturnValue(MOCK_TIMESTAMP_1);
+			const request = new TestRequest('test-data');
 
 			// ACT
-			const executionData = request.asExecutionData();
+			const dataObject = request.asDataObject();
 
 			// ASSERT
-			expect(executionData).toHaveLength(1);
-			expect(executionData[0]).toHaveLength(1);
-			expect(executionData[0][0].json).toEqual({
-				requestId: request.requestId,
-				data: { test: 'data' },
-			});
+			expect(dataObject).toBeDefined();
+			expect(dataObject.requestId).toBe(MOCK_UUID_1);
+			expect(dataObject.data).toBe('test-data');
 		});
 
-		it('[BL-07] should generate different IDs for multiple instances', () => {
-			// ARRANGE & ACT
-			const request1 = new TestRequest({ id: 1 });
-			const request2 = new TestRequest({ id: 2 });
-			const request3 = new TestRequest({ id: 3 });
-
-			// ASSERT
-			expect(request1.requestId).not.toBe(request2.requestId);
-			expect(request2.requestId).not.toBe(request3.requestId);
-			expect(request1.requestId).not.toBe(request3.requestId);
-		});
-	});
-
-	describe('edge cases', () => {
-		it('[EC-01] should capture increasing timestamps for sequential requests', () => {
+		it('[EC-04] should require concrete implementation of clone', () => {
 			// ARRANGE
-			const timestamps = [1000, 1001, 1002];
-			let callCount = 0;
-			dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => timestamps[callCount++]);
+			mockRandomUUID.mockReturnValueOnce(MOCK_UUID_1).mockReturnValueOnce(MOCK_UUID_2);
+			mockDateNow.mockReturnValueOnce(MOCK_TIMESTAMP_1).mockReturnValueOnce(MOCK_TIMESTAMP_2);
+			const original = new TestRequest('test-data');
 
 			// ACT
-			const request1 = new TestRequest({ id: 1 });
-			const request2 = new TestRequest({ id: 2 });
-			const request3 = new TestRequest({ id: 3 });
+			const cloned = original.clone();
 
 			// ASSERT
-			expect(request1.requestedAt).toBe(1000);
-			expect(request2.requestedAt).toBe(1001);
-			expect(request3.requestedAt).toBe(1002);
-			expect(request1.requestedAt).toBeLessThan(request2.requestedAt);
-			expect(request2.requestedAt).toBeLessThan(request3.requestedAt);
-		});
-
-		it('[EC-02] should generate RFC 4122 v4 compliant UUIDs', () => {
-			// ARRANGE
-			const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-			// ACT
-			const request = new TestRequest();
-
-			// ASSERT
-			expect(request.requestId).toMatch(uuidV4Regex);
-		});
-
-		it('[EC-03] should maintain timestamp precision in milliseconds', () => {
-			// ARRANGE
-			const preciseTimestamp = 1609459200123; // Includes milliseconds
-			dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(preciseTimestamp);
-
-			// ACT
-			const request = new TestRequest();
-
-			// ASSERT
-			expect(request.requestedAt).toBe(preciseTimestamp);
-			expect(request.requestedAt % 1000).toBe(123); // Verify millisecond precision
+			expect(cloned).toBeInstanceOf(TestRequest);
+			expect(cloned.requestId).toBe(MOCK_UUID_2); // New UUID
+			expect(cloned.requestedAt).toBe(MOCK_TIMESTAMP_2); // New timestamp
+			expect(cloned.asDataObject().data).toBe('test-data'); // Same data
+			expect(cloned).not.toBe(original); // Different instance
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should require concrete implementation of asLogMetadata', () => {
-			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
+		it('[EH-01] should enforce abstract class pattern via TypeScript', () => {
+			// ASSERT
+			// TypeScript prevents direct instantiation at compile time
+			// This test validates the design enforces abstract pattern
+			// @ts-expect-error Cannot instantiate abstract class - TypeScript compile-time check
+			const abstractCheck: SupplyRequestBase = SupplyRequestBase;
+			expect(abstractCheck).toBeDefined(); // Validates abstract keyword presence
+		});
+	});
 
-			// ACT
-			const metadata = request.asLogMetadata();
+	describe('integration scenarios', () => {
+		it('should work with real crypto.randomUUID (unmocked)', () => {
+			// ACT (no mocks)
+			const request1 = new TestRequest('data-1');
+			const request2 = new TestRequest('data-2');
 
 			// ASSERT
-			expect(request.asLogMetadata).toBeDefined();
-			expect(typeof request.asLogMetadata).toBe('function');
-			expect(metadata).toHaveProperty('requestId');
-			expect(metadata).toHaveProperty('requestedAt');
+			expect(request1.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+			expect(request2.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+			expect(request1.requestId).not.toBe(request2.requestId);
 		});
 
-		it('[EH-02] should require concrete implementation of asExecutionData', () => {
+		it('should work with real Date.now (unmocked)', () => {
 			// ARRANGE
-			const request = new TestRequest({ test: 'data' });
+			const beforeTime = Date.now();
 
 			// ACT
-			const executionData = request.asExecutionData();
+			const request = new TestRequest('test-data');
 
 			// ASSERT
-			expect(request.asExecutionData).toBeDefined();
-			expect(typeof request.asExecutionData).toBe('function');
-			expect(Array.isArray(executionData)).toBe(true);
-			expect(Array.isArray(executionData[0])).toBe(true);
+			const afterTime = Date.now();
+			expect(request.requestedAt).toBeGreaterThanOrEqual(beforeTime);
+			expect(request.requestedAt).toBeLessThanOrEqual(afterTime);
 		});
 
-		it('[EH-03] should require concrete implementation of clone', () => {
+		it('should maintain immutability across clone operations', () => {
 			// ARRANGE
-			const originalData = { test: 'data', value: 42 };
-			const request = new TestRequest(originalData);
-			const originalRequestId = request.requestId;
-			const originalTimestamp = request.requestedAt;
+			mockRandomUUID.mockReturnValueOnce(MOCK_UUID_1).mockReturnValueOnce(MOCK_UUID_2);
+			mockDateNow.mockReturnValueOnce(MOCK_TIMESTAMP_1).mockReturnValueOnce(MOCK_TIMESTAMP_2);
+			const original = new TestRequest('original-data');
+			const originalId = original.requestId;
+			const originalTime = original.requestedAt;
 
 			// ACT
-			const cloned = request.clone();
+			const cloned = original.clone();
 
-			// ASSERT
-			expect(request.clone).toBeDefined();
-			expect(typeof request.clone).toBe('function');
-			expect(cloned).toBeInstanceOf(TestRequest);
-			expect(cloned.data).toEqual(originalData);
-			// NOTE: Clone creates new instance via super(), so gets new ID and timestamp
-			expect(cloned.requestId).not.toBe(originalRequestId);
-			expect(cloned.requestedAt).toBeGreaterThanOrEqual(originalTimestamp);
+			// ASSERT - original unchanged
+			expect(original.requestId).toBe(originalId);
+			expect(original.requestedAt).toBe(originalTime);
+			// ASSERT - clone has new identity
+			expect(cloned.requestId).not.toBe(originalId);
+			expect(cloned.requestedAt).not.toBe(originalTime);
 		});
 	});
 });

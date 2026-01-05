@@ -347,18 +347,11 @@ describe('DelayContext', () => {
 
 		it('[NP-07] should only show delay value when randomDelay or fixedDelay selected', () => {
 			// ARRANGE
-			const delayValueProperty = CONTEXT_DELAY[1] as {
-				displayOptions: {
-					show: {
-						delay_context_delay_mode: string[];
-					};
-				};
-			};
+			const delayValueProperty = CONTEXT_DELAY[1];
 
 			// ASSERT
-			expect(delayValueProperty.displayOptions.show.delay_context_delay_mode).toEqual(['randomDelay', 'fixedDelay']);
+			expect(delayValueProperty.displayOptions?.show?.delay_context_delay_mode).toEqual(['randomDelay', 'fixedDelay']);
 		});
-
 		it('[NP-08] should export exactly two properties', () => {
 			// ASSERT
 			expect(CONTEXT_DELAY).toHaveLength(2);

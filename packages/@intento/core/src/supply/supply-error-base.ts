@@ -1,94 +1,66 @@
-import type { INode, INodeExecutionData, LogMetadata, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INode, LogMetadata, NodeOperationError } from 'n8n-workflow';
 
 import type { SupplyRequestBase } from 'supply/supply-request-base';
 import type { ITraceable, IDataProvider } from 'types/*';
 
 /**
- * Base class for supply operation errors with request correlation and latency tracking.
+ * Base class for supply errors with automatic latency tracking and retry logic.
  *
- * Provides standardized error representation across supply chain operations with automatic
- * performance metrics. Subclasses must implement serialization for logging, execution data,
- * and n8n error handling.
+ * Correlates errors to originating requests via requestId and determines retryability
+ * based on HTTP status codes (429, 5xx). Calculates end-to-end latency for failed attempts.
  *
- * Latency calculation: Uses request timestamp to measure operation duration at error time.
- * Request correlation: Preserves requestId for tracing failed operations.
+ * @example
+ * ```typescript
+ * class TranslationError extends SupplyErrorBase {
+ *   constructor(request: SupplyRequestBase, code: number, reason: string, private details?: string) {
+ *     super(request, code, reason);
+ *   }
+ *
+ *   asLogMetadata(): LogMetadata {
+ *     return { requestId: this.requestId, latencyMs: this.latencyMs, code: this.code, reason: this.reason };
+ *   }
+ *
+ *   asDataObject(): IDataObject {
+ *     return { requestId: this.requestId, code: this.code, reason: this.reason, details: this.details };
+ *   }
+ *
+ *   asError(node: INode): NodeOperationError {
+ *     return new NodeOperationError(node, this.reason, { description: this.details });
+ *   }
+ * }
+ * ```
  */
 export abstract class SupplyErrorBase implements ITraceable, IDataProvider {
-	/**
-	 * Correlation ID copied from the originating request.
-	 *
-	 * Used to trace errors back to their source request for debugging and monitoring.
-	 */
 	readonly requestId: string;
-
-	/**
-	 * Operation duration in milliseconds from request timestamp to error.
-	 *
-	 * Calculated as: Date.now() - request.requestedAt
-	 * Useful for identifying slow-failing operations and timeout analysis.
-	 */
 	readonly latencyMs: number;
-
-	/**
-	 * Error code representing the specific failure type.
-	 *
-	 * Numeric code allows programmatic error handling and classification.
-	 */
 	readonly code: number;
-
-	/**
-	 * Human-readable error message describing the failure.
-	 *
-	 * Should provide actionable information for debugging and user feedback.
-	 */
 	readonly reason: string;
 
-	/**
-	 * Creates supply error with automatic latency calculation from request timestamp.
-	 *
-	 * Latency measurement captures operation duration up to error occurrence, helping
-	 * identify slow failures, timeout issues, and performance bottlenecks.
-	 *
-	 * @param request - Originating request providing requestId and timestamp for correlation
-	 * @param code - Numeric error code for programmatic error classification
-	 * @param reason - Human-readable error message for logging and user feedback
-	 */
 	constructor(request: SupplyRequestBase, code: number, reason: string) {
 		this.requestId = request.requestId;
-		// Measure operation duration from request start to error occurrence
+		// NOTE: Latency measured from request creation to error construction for failed attempt timing
 		this.latencyMs = Date.now() - request.requestedAt;
 		this.code = code;
 		this.reason = reason;
 	}
 
-	/**
-	 * Serializes error for structured logging with correlation metadata.
-	 *
-	 * Subclasses must implement to provide error-specific log fields while preserving
-	 * requestId and latencyMs for tracing and performance analysis.
-	 *
-	 * @returns Structured log metadata including error details and correlation data
-	 */
 	abstract asLogMetadata(): LogMetadata;
+	abstract asDataObject(): IDataObject;
 
 	/**
-	 * Serializes error as n8n execution data for workflow error handling.
+	 * Converts error to n8n NodeOperationError for workflow error handling.
 	 *
-	 * Subclasses must implement to format error for n8n's execution data model,
-	 * allowing workflow error handlers to process failure information.
-	 *
-	 * @returns Array of execution data items representing the error state
-	 */
-	abstract asExecutionData(): INodeExecutionData[][];
-
-	/**
-	 * Converts error to n8n NodeOperationError for workflow exception handling.
-	 *
-	 * Subclasses must implement to create properly contextualized errors with node
-	 * information, enabling n8n's error reporting and workflow interruption.
-	 *
-	 * @param node - n8n node where error occurred, used for error context and reporting
-	 * @returns NodeOperationError instance for n8n error handling system
+	 * @param node - The n8n node where the error occurred, used for error context
 	 */
 	abstract asError(node: INode): NodeOperationError;
+
+	/**
+	 * Determines if error is retryable based on HTTP status code.
+	 *
+	 * @returns true for rate limiting (429) and server errors (5xx), false otherwise
+	 */
+	isRetryable(): boolean {
+		// NOTE: 429 = rate limit, 5xx = server errors are typically transient and retryable
+		return this.code === 429 || (this.code >= 500 && this.code < 600);
+	}
 }

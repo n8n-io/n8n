@@ -16,7 +16,6 @@ export class DryRunProvider extends VersionedNodeType {
 			},
 		};
 
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new DryRunProviderV1(baseDescription),
 		};

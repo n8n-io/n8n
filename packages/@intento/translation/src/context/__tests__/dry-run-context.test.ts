@@ -344,16 +344,10 @@ describe('DryRunContext', () => {
 
 		it('[NP-07] should only show override response when override mode selected', () => {
 			// ARRANGE
-			const overrideProperty = CONTEXT_DRY_RUN[1] as {
-				displayOptions: {
-					show: {
-						dry_run_context_mode: string[];
-					};
-				};
-			};
+			const overrideProperty = CONTEXT_DRY_RUN[1];
 
 			// ASSERT
-			expect(overrideProperty.displayOptions.show.dry_run_context_mode).toEqual(['override']);
+			expect(overrideProperty.displayOptions?.show?.dry_run_context_mode).toEqual(['override']);
 		});
 
 		it('[NP-08] should export error code property with correct configuration', () => {
@@ -369,16 +363,10 @@ describe('DryRunContext', () => {
 
 		it('[NP-09] should only show error code when fail mode selected', () => {
 			// ARRANGE
-			const errorCodeProperty = CONTEXT_DRY_RUN[2] as {
-				displayOptions: {
-					show: {
-						dry_run_context_mode: string[];
-					};
-				};
-			};
+			const errorCodeProperty = CONTEXT_DRY_RUN[2];
 
 			// ASSERT
-			expect(errorCodeProperty.displayOptions.show.dry_run_context_mode).toEqual(['fail']);
+			expect(errorCodeProperty.displayOptions?.show?.dry_run_context_mode).toEqual(['fail']);
 		});
 
 		it('[NP-10] should export error message property with correct configuration', () => {
@@ -394,16 +382,10 @@ describe('DryRunContext', () => {
 
 		it('[NP-11] should only show error message when fail mode selected', () => {
 			// ARRANGE
-			const errorMessageProperty = CONTEXT_DRY_RUN[3] as {
-				displayOptions: {
-					show: {
-						dry_run_context_mode: string[];
-					};
-				};
-			};
+			const errorMessageProperty = CONTEXT_DRY_RUN[3];
 
 			// ASSERT
-			expect(errorMessageProperty.displayOptions.show.dry_run_context_mode).toEqual(['fail']);
+			expect(errorMessageProperty.displayOptions?.show?.dry_run_context_mode).toEqual(['fail']);
 		});
 
 		it('[NP-12] should export exactly four properties', () => {
