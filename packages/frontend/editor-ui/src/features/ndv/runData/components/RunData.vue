@@ -383,10 +383,13 @@ const parentNodeError = computed(() => {
 
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) return null;
-	if (isSubNodeType.value && isPaneTypeInput.value) {
+
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+
+	if (!selfTaskData && isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error as NodeError;
+	return selfTaskData?.error as NodeError;
 });
 
 const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
