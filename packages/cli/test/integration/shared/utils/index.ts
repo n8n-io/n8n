@@ -18,9 +18,9 @@ import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.creden
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
-import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
 import type { INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
@@ -86,8 +86,8 @@ export async function initCredentialsTypes(): Promise<void> {
  */
 export async function initNodeTypes(customNodes?: INodeTypeData) {
 	const defaultNodes: INodeTypeData = {
-		'n8n-nodes-base.start': {
-			type: new Start(),
+		'n8n-nodes-base.manualTrigger': {
+			type: new ManualTrigger(),
 			sourcePath: '',
 		},
 		'n8n-nodes-base.cron': {

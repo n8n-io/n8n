@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
@@ -327,16 +327,18 @@ function validateInputConfiguration(
 	}
 }
 
-function fillToolMetadata(targetTool: unknown, sourceNodeName: string) {
-	if (targetTool instanceof DynamicStructuredTool || targetTool instanceof DynamicTool) {
-		targetTool.metadata ??= {};
-		targetTool.metadata.sourceNodeName = sourceNodeName;
+// Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
+function extendResponseMetadata(response: unknown, connectedNode: INode) {
+	// Ensure sourceNodeName is set for proper routing
+	if (response instanceof StructuredTool || response instanceof Tool) {
+		response.metadata ??= {};
+		response.metadata.sourceNodeName = connectedNode.name;
 	}
 
-	if (targetTool instanceof StructuredToolkit) {
-		for (const tool of targetTool.tools) {
+	if (response instanceof StructuredToolkit) {
+		for (const tool of response.tools) {
 			tool.metadata ??= {};
-			tool.metadata.sourceNodeName = sourceNodeName;
+			tool.metadata.sourceNodeName = connectedNode.name;
 		}
 	}
 }
@@ -460,8 +462,7 @@ export async function getInputConnectionData(
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
 				const response = supplyData.response;
 
-				// Ensure sourceNodeName is set for proper routing
-				fillToolMetadata(response, connectedNode.name);
+				extendResponseMetadata(response, connectedNode);
 
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);

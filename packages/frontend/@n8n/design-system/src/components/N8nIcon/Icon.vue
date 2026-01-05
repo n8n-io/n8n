@@ -65,7 +65,7 @@ const colorMap: Record<IconColor, string> = {
 	'text-dark': '--color--text--shade-1',
 	'text-base': '--color--text',
 	'text-light': '--color--text--tint-1',
-	'text-xlight': '--color--text--tint-3',
+	'text-xlight': '--color--text--tint-2',
 	danger: '--color--danger',
 	success: '--color--success',
 	warning: '--color--warning',

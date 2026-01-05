@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 
-import { getHex, resolveHSLCalc } from './ColorCircles.utils';
+import { getHex } from './ColorCircles.utils';
 
 const props = defineProps<{ colors: string[] }>();
 
@@ -43,7 +43,6 @@ onUnmounted(() => {
 
 // Expose functions for template usage
 const getHexValue = (color: string) => getHex(hsl.value[color]);
-const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
 </script>
 
 <template>
@@ -51,7 +50,7 @@ const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
 		<div v-for="color in colors" :key="color" :class="$style.container">
 			<div :class="$style.circle" :style="{ backgroundColor: `var(${color})` }"></div>
 			<span>{{ color }}</span>
-			<span :class="$style.hsl">{{ getHSLValue(color) }}</span>
+			<span :class="$style.hsl">{{ hsl[color] }}</span>
 			<span :class="$style.color">{{ getHexValue(color) }}</span>
 		</div>
 	</div>

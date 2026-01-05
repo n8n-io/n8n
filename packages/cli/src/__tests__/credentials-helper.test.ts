@@ -540,7 +540,7 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should handle missing executionContext gracefully', async () => {
+		test('should skip resolution when executionContext is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
 
@@ -549,7 +549,7 @@ describe('CredentialsHelper', () => {
 				executionContext: undefined,
 			};
 
-			await credentialsHelper.getDecrypted(
+			const result = await credentialsHelper.getDecrypted(
 				additionalDataWithoutContext,
 				nodeCredentials,
 				credentialType,
@@ -558,8 +558,39 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
-			expect(call[2]).toBeUndefined();
+			// Resolution should not happen when executionContext is missing
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution when credentials context is missing', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+
+			const additionalDataWithoutCredentials = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutCredentials,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Resolution should not happen when credentials context is missing
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
 		test('should handle missing workflowSettings gracefully', async () => {
