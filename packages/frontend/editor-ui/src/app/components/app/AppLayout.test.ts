@@ -114,8 +114,8 @@ describe('AppLayout', () => {
 
 	it('should render default layout when no layout is specified in route meta', async () => {
 		const router = createTestRouter();
-		await router.push('/');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/');
 		await flushPromises();
 
 		expect(getByTestId('default-layout')).toBeInTheDocument();
@@ -123,8 +123,8 @@ describe('AppLayout', () => {
 
 	it('should render settings layout when layout is "settings"', async () => {
 		const router = createTestRouter();
-		await router.push('/settings');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/settings');
 		await flushPromises();
 
 		expect(getByTestId('settings-layout')).toBeInTheDocument();
@@ -132,8 +132,8 @@ describe('AppLayout', () => {
 
 	it('should render workflow layout when layout is "workflow"', async () => {
 		const router = createTestRouter();
-		await router.push('/workflow');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/workflow');
 		await flushPromises();
 
 		expect(getByTestId('workflow-layout')).toBeInTheDocument();
@@ -141,8 +141,8 @@ describe('AppLayout', () => {
 
 	it('should render auth layout when layout is "auth"', async () => {
 		const router = createTestRouter();
-		await router.push('/auth');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/auth');
 		await flushPromises();
 
 		expect(getByTestId('auth-layout')).toBeInTheDocument();
@@ -150,8 +150,8 @@ describe('AppLayout', () => {
 
 	it('should render demo layout when layout is "demo"', async () => {
 		const router = createTestRouter();
-		await router.push('/demo');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/demo');
 		await flushPromises();
 
 		expect(getByTestId('demo-layout')).toBeInTheDocument();
@@ -159,8 +159,8 @@ describe('AppLayout', () => {
 
 	it('should render default layout when an unknown layout is specified', async () => {
 		const router = createTestRouter();
-		await router.push('/unknown');
 		const { getByTestId } = renderComponent(router)();
+		await router.push('/unknown');
 		await flushPromises();
 
 		expect(getByTestId('default-layout')).toBeInTheDocument();
@@ -168,13 +168,13 @@ describe('AppLayout', () => {
 
 	it('should emit mounted event on mount with layout element', async () => {
 		const router = createTestRouter();
-		await router.push('/');
 		const onMounted = vi.fn();
 		renderComponent(router)({
 			attrs: {
 				onMounted,
 			},
 		});
+		await router.push('/');
 		await flushPromises();
 
 		expect(onMounted).toHaveBeenCalledTimes(1);
@@ -185,13 +185,13 @@ describe('AppLayout', () => {
 
 	it('should emit mounted event with null if layoutRef is not set', async () => {
 		const router = createTestRouter();
-		await router.push('/');
 		const onMounted = vi.fn();
 		renderComponent(router)({
 			attrs: {
 				onMounted,
 			},
 		});
+		await router.push('/');
 		await flushPromises();
 
 		expect(onMounted).toHaveBeenCalled();
@@ -199,8 +199,8 @@ describe('AppLayout', () => {
 
 	it('should use Suspense to handle async component loading', async () => {
 		const router = createTestRouter();
-		await router.push('/');
 		const { container } = renderComponent(router)();
+		await router.push('/');
 
 		// The component should be wrapped in Suspense
 		// We can't directly check for Suspense, but we can verify the layout renders
@@ -212,15 +212,15 @@ describe('AppLayout', () => {
 		const router = createTestRouter();
 
 		// Test default layout
-		await router.push('/');
 		const result1 = renderComponent(router)();
+		await router.push('/');
 		await flushPromises();
 		expect(result1.getByTestId('default-layout')).toBeInTheDocument();
 		result1.unmount();
 
 		// Test settings layout in a new instance
-		await router.push('/settings');
 		const result2 = renderComponent(router)();
+		await router.push('/settings');
 		await flushPromises();
 		expect(result2.getByTestId('settings-layout')).toBeInTheDocument();
 		result2.unmount();
@@ -230,15 +230,15 @@ describe('AppLayout', () => {
 		const router = createTestRouter();
 
 		// Test default layout
-		await router.push('/');
 		const result1 = renderComponent(router)();
+		await router.push('/');
 		await flushPromises();
 		expect(result1.getByTestId('default-layout')).toBeInTheDocument();
 		result1.unmount();
 
 		// Test auth layout
-		await router.push('/auth');
 		const result2 = renderComponent(router)();
+		await router.push('/auth');
 		await flushPromises();
 		expect(result2.getByTestId('auth-layout')).toBeInTheDocument();
 		result2.unmount();

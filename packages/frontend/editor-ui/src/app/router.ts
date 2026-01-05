@@ -878,19 +878,6 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
-	const layout = to.meta.layout ?? 'default';
-
-	to.components = {
-		default: to.component,
-		layout: {
-			default: DefaultLayout,
-			settings: SettingsLayout,
-			workflow: WorkflowLayout,
-			auth: AuthLayout,
-			demo: DemoLayout,
-		}[layout],
-	};
-
 	try {
 		/**
 		 * Initialize application core
