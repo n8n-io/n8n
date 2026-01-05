@@ -10,13 +10,17 @@ import * as agentExecution from '@utils/agent-execution';
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
-jest.mock('@utils/agent-execution', () => ({
-	loadMemory: jest.fn(),
-	processEventStream: jest.fn(),
-	buildSteps: jest.fn(),
-	createEngineRequests: jest.fn(),
-	saveToMemory: jest.fn(),
-}));
+jest.mock('@utils/agent-execution', () => {
+	const originalModule = jest.requireActual('@utils/agent-execution');
+	return {
+		...originalModule,
+		loadMemory: jest.fn(),
+		processEventStream: jest.fn(),
+		buildSteps: jest.fn(),
+		createEngineRequests: jest.fn(),
+		saveToMemory: jest.fn(),
+	};
+});
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
