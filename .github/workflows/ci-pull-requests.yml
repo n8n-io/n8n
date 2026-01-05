@@ -17,8 +17,8 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     outputs:
-      frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
       workflows_changed: ${{ steps.paths-filter.outputs.workflows == 'true' }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -32,18 +32,11 @@ jobs:
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Check for frontend changes
+      - name: Check for relevant changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: paths-filter
         with:
           filters: |
-            frontend:
-              - packages/frontend/**
-              - packages/@n8n/design-system/**
-              - packages/@n8n/chat/**
-              - packages/@n8n/codemirror-lang/**
-              - .bundlemonrc.json
-              - .github/workflows/ci-pull-requests.yml
             non-python:
               - '**'
               - '!packages/@n8n/task-runner-python/**'
@@ -56,45 +49,6 @@ jobs:
       - name: Run format check
         if: steps.paths-filter.outputs.non-python == 'true'
         run: pnpm format:check
-
-      - name: Upload Frontend Build Artifacts
-        if: steps.paths-filter.outputs.frontend == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: editor-ui-dist
-          path: packages/frontend/editor-ui/dist/
-          retention-days: 1
-
-  bundle-size-check:
-    name: Bundle Size Check
-    needs: install-and-build
-    if: needs.install-and-build.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
-      - name: Setup pnpm CLI
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
-        with:
-          node-version: '22.x'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download Frontend Build Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: editor-ui-dist
-          path: packages/frontend/editor-ui/dist/
-
-      - name: BundleMon
-        uses: lironer/bundlemon-action@cadbdd58f86faf1900725ef69d455444124b3748 # v1.3.0
 
   unit-test:
     name: Unit tests

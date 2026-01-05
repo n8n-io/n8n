@@ -89,6 +89,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -177,10 +178,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -193,6 +194,11 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 	}>;
+
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
 
 	type AccessFields = {
 		accessibleWorkflowIds?: string[];

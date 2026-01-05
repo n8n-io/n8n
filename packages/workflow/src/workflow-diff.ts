@@ -2,10 +2,17 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 
 import type { IConnections, INode, IWorkflowBase } from '.';
+import { compareConnections, type ConnectionsDiff } from './connections-diff';
+
+export type WorkflowDiffBase = Omit<
+	IWorkflowBase,
+	'id' | 'active' | 'activeVersionId' | 'isArchived' | 'name'
+> & { name: string | null };
 
 export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
+	connections: IConnections;
 };
 
 export const enum NodeDiffStatus {
@@ -111,32 +118,20 @@ function mergeNodeDiff(
 }
 
 export class WorkflowChangeSet<T extends DiffableNode> {
-	constructor(public nodes: WorkflowDiff<T> = new Map()) {}
+	readonly nodes: WorkflowDiff<T>;
+	readonly connections: ConnectionsDiff;
+	constructor(from: DiffableWorkflow<T>, to: DiffableWorkflow<T>) {
+		this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
+		this.connections = compareConnections(from.connections, to.connections);
+	}
 
 	hasChanges() {
 		for (const nodeDiff of this.nodes.values()) {
 			if (nodeDiff.status !== NodeDiffStatus.Eq) return true;
 		}
+		if (Object.keys(this.connections.added).length || Object.keys(this.connections.removed).length)
+			return true;
 		return false;
-	}
-
-	mergeNext(wcs: WorkflowChangeSet<T>) {
-		for (const [key, diff] of wcs.nodes) {
-			const existing = this.nodes.get(key);
-			if (existing) {
-				const diffStatus = mergeNodeDiff(existing.status, diff.status);
-				if (diffStatus === 'invariant broken') {
-					throw new Error('invariant broken');
-				}
-				if (diffStatus === 'undone') {
-					this.nodes.delete(key);
-				} else {
-					this.nodes.set(key, { ...diff, status: diffStatus });
-				}
-			} else {
-				this.nodes.set(key, { ...diff, status: NodeDiffStatus.Added });
-			}
-		}
 	}
 }
 
@@ -169,15 +164,18 @@ function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	_prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
 	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
-	diff: WorkflowDiff<N>,
+	diff: WorkflowChangeSet<N>,
 ) {
-	for (const d of diff.values()) {
+	for (const d of diff.nodes.values()) {
 		if (d.status === NodeDiffStatus.Deleted) return false;
 		if (d.status === NodeDiffStatus.Added) continue;
-		const nextNode = next.from.nodes.find((x) => x.name === d.node.name);
+		const nextNode = next.from.nodes.find((x) => x.id === d.node.id);
 		if (!nextNode) throw new Error('invariant broken');
 		if (d.status === NodeDiffStatus.Modified && !nodeIsAdditive(d.node, nextNode)) return false;
 	}
+
+	if (Object.keys(diff.connections.removed).length > 0) return false;
+
 	return true;
 }
 
@@ -185,19 +183,18 @@ export const RULES = {
 	mergeAdditiveChanges,
 };
 
-type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {
+export type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {
 	workflowChangeSet: WorkflowChangeSet<W['nodes'][number]>;
 	groupedWorkflows: W[];
 	from: W;
 	to: W;
 };
 
-function compareWorkflows<W extends IWorkflowBase = IWorkflowBase>(
+function compareWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	previous: W,
 	next: W,
 ): GroupedWorkflowHistory<W> {
-	const nodesDiff = compareWorkflowsNodes(previous.nodes, next.nodes);
-	const workflowChangeSet = new WorkflowChangeSet(nodesDiff);
+	const workflowChangeSet = new WorkflowChangeSet(previous, next);
 	return {
 		workflowChangeSet,
 		groupedWorkflows: [],
@@ -207,23 +204,24 @@ function compareWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 }
 
 export type DiffRule<
-	W extends IWorkflowBase = IWorkflowBase,
+	W extends WorkflowDiffBase = WorkflowDiffBase,
 	N extends W['nodes'][number] = W['nodes'][number],
 > = (
 	prev: GroupedWorkflowHistory<W>,
 	next: GroupedWorkflowHistory<W>,
-	diff: WorkflowDiff<N>,
+	diff: WorkflowChangeSet<N>,
 ) => boolean;
 
-export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
+export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
+	skipRules: Array<DiffRule<W>> = [],
 ): Array<GroupedWorkflowHistory<W>> {
 	if (workflows.length === 0) return [];
 	if (workflows.length === 1) {
 		return [
 			{
-				workflowChangeSet: new WorkflowChangeSet(),
+				workflowChangeSet: new WorkflowChangeSet(workflows[0], workflows[0]),
 				groupedWorkflows: [],
 				from: workflows[0],
 				to: workflows[0],
@@ -240,16 +238,19 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	do {
 		prevDiffsLength = diffs.length;
 		const n = diffs.length;
-		for (let i = n - 1; i > 0; --i) {
-			const diff = compareWorkflowsNodes(diffs[i - 1].from.nodes, diffs[i].to.nodes);
+		diffLoop: for (let i = n - 1; i > 0; --i) {
+			const wcs = new WorkflowChangeSet(diffs[i - 1].from, diffs[i].to);
+			for (const shouldSkip of skipRules) {
+				if (shouldSkip(diffs[i - 1], diffs[i], wcs)) continue diffLoop;
+			}
 			for (const rule of rules) {
-				const shouldMerge = rule(diffs[i - 1], diffs[i], diff);
+				const shouldMerge = rule(diffs[i - 1], diffs[i], wcs);
 				if (shouldMerge) {
-					const right = diffs.pop();
+					const right = diffs.splice(i, 1)[0];
 					if (!right) throw new Error('invariant broken');
 
 					// merge diffs
-					diffs[i - 1].workflowChangeSet.mergeNext(right.workflowChangeSet);
+					diffs[i - 1].workflowChangeSet = wcs;
 					diffs[i - 1].groupedWorkflows.push(diffs[i - 1].to);
 					diffs[i - 1].groupedWorkflows.push(...right.groupedWorkflows);
 					diffs[i - 1].to = right.to;
