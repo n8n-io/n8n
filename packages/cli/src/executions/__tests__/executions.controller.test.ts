@@ -163,4 +163,28 @@ describe('ExecutionsController', () => {
 			expect(executionService.stop).toHaveBeenCalledWith(req.params.id, mockAccessibleWorkflowIds);
 		});
 	});
+
+	describe('stopMany', () => {
+		const req = mock<ExecutionRequest.StopMany>({ body: { filter: { status: ['waiting'] } } });
+
+		it('should not call mock if no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await executionsController.stopMany(req);
+
+			expect(executionService.stopMany).not.toHaveBeenCalled();
+		});
+
+		it('should call execution service with expected data when user has accessible workflows', async () => {
+			const mockAccessibleWorkflowIds = ['1234', '999'];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(mockAccessibleWorkflowIds);
+
+			await executionsController.stopMany(req);
+
+			expect(executionService.stopMany).toHaveBeenCalledWith(
+				req.body.filter,
+				mockAccessibleWorkflowIds,
+			);
+		});
+	});
 });

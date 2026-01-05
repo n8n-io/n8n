@@ -6,6 +6,7 @@ import type {
 	ChatAttachment,
 } from '@n8n/api-types';
 import type { INode, INodeCredentials } from 'n8n-workflow';
+import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface ModelWithCredentials {
@@ -70,6 +71,7 @@ export const chatTriggerParamsShape = z.object({
 	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
+	agentIcon: IconOrEmojiSchema.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),

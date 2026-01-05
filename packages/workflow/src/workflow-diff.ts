@@ -13,6 +13,8 @@ export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;
+	createdAt: Date;
+	user?: unknown;
 };
 
 export const enum NodeDiffStatus {
@@ -134,10 +136,16 @@ export class WorkflowChangeSet<T extends DiffableNode> {
 		return false;
 	}
 }
+/**
+ * Determines whether the second node is a "superset" of the first one, i.e. whether no data
+ * is lost if we were to replace `prev` with `next`.
+ *
+ * Specifically this is the case if
+ * - Both nodes have the exact same keys
+ * - All values are either strings where `next.x` contains `prev.x`, or hold the exact same value
+ */
 
-// determines whether the second node is a "superset" of the first one, i.e. whether no data
-// is lost if we were to cleanse the first node
-function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
+function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	const { parameters: prevParams, ...prev } = prevNode;
 	const { parameters: nextParams, ...next } = nextNode;
 
@@ -145,8 +153,11 @@ function nodeIsAdditive<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	if (!compareNodes({ ...prev, parameters: {} }, { ...next, parameters: {} })) return false;
 
 	const params = Object.keys(prevParams);
-	// abort if prev has some field next does not have
+
+	// abort if keys differ
 	if (params.some((x) => !Object.prototype.hasOwnProperty.call(nextParams, x))) return false;
+	if (Object.keys(nextParams).some((x) => !Object.prototype.hasOwnProperty.call(prevParams, x)))
+		return false;
 
 	for (const key of params) {
 		const left = prevParams[key];
@@ -171,7 +182,7 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 		if (d.status === NodeDiffStatus.Added) continue;
 		const nextNode = next.from.nodes.find((x) => x.id === d.node.id);
 		if (!nextNode) throw new Error('invariant broken');
-		if (d.status === NodeDiffStatus.Modified && !nodeIsAdditive(d.node, nextNode)) return false;
+		if (d.status === NodeDiffStatus.Modified && !nodeIsSuperset(d.node, nextNode)) return false;
 	}
 
 	if (Object.keys(diff.connections.removed).length > 0) return false;
@@ -179,8 +190,33 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	return true;
 }
 
+// We want to avoid merging versions from different editing "sessions"
+//
+const makeSkipTimeDifference = (timeDiffMs: number) => {
+	return <N extends DiffableNode = DiffableNode>(
+		prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+		next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	) => {
+		const timeDifference = next.to.createdAt.getTime() - prev.from.createdAt.getTime();
+
+		return Math.abs(timeDifference) > timeDiffMs;
+	};
+};
+
+function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
+	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+) {
+	return next.to.user !== prev.from.user;
+}
+
 export const RULES = {
 	mergeAdditiveChanges,
+};
+
+export const SKIP_RULES = {
+	makeSkipTimeDifference,
+	skipDifferentUsers,
 };
 
 export type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {

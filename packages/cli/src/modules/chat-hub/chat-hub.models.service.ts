@@ -737,20 +737,10 @@ export class ChatHubModelsService {
 			select: {
 				id: true,
 				name: true,
-				shared: {
-					role: true,
-					project: {
-						id: true,
-						icon: { type: true, value: true },
-					},
-				},
 			},
 			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
 			relations: {
 				activeVersion: true,
-				shared: {
-					project: true,
-				},
 			},
 		});
 
@@ -763,7 +753,7 @@ export class ChatHubModelsService {
 	}
 
 	extractModelFromWorkflow(
-		{ name, activeVersion, id, shared }: WorkflowEntity,
+		{ name, activeVersion, id }: WorkflowEntity,
 		scopes: Scope[],
 	): ChatModelDto | null {
 		if (!activeVersion) {
@@ -789,13 +779,10 @@ export class ChatHubModelsService {
 				? chatTriggerParams.agentName
 				: name;
 
-		// Find the owner's project (home project)
-		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
-
 		return {
 			name: agentName,
 			description: chatTriggerParams.agentDescription ?? null,
-			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			icon: chatTriggerParams.agentIcon ?? null,
 			model: {
 				provider: 'n8n',
 				workflowId: id,

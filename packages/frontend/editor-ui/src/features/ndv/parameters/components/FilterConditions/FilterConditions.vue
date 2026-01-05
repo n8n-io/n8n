@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 
 import {
@@ -65,15 +64,19 @@ const allowedCombinators = computed<FilterTypeCombinator[]>(
 	() => props.parameter.typeOptions?.filter?.allowedCombinators ?? ['and', 'or'],
 );
 
+function createParamValue(value: FilterValue | undefined): FilterValue {
+	return {
+		options: value?.options ?? DEFAULT_FILTER_OPTIONS,
+		conditions: value?.conditions?.map((condition) => ({
+			...condition,
+			id: condition.id || crypto.randomUUID(),
+		})) ?? [createCondition()],
+		combinator: value?.combinator ?? allowedCombinators.value[0],
+	};
+}
+
 const state = reactive<{ paramValue: FilterValue }>({
-	paramValue: {
-		options: props.value?.options ?? DEFAULT_FILTER_OPTIONS,
-		conditions: props.value?.conditions?.map((condition) => {
-			if (!condition.id) condition.id = crypto.randomUUID();
-			return condition;
-		}) ?? [createCondition()],
-		combinator: props.value?.combinator ?? allowedCombinators.value[0],
-	},
+	paramValue: createParamValue(props.value),
 });
 
 const maxConditions = computed(
@@ -119,11 +122,10 @@ watch(
 watch(
 	() => props.value,
 	(value) => {
-		if (isEmpty(value) || isEqual(state.paramValue, value)) return;
+		const newParamValue = createParamValue(value);
+		if (isEqual(state.paramValue, newParamValue)) return;
 
-		state.paramValue.conditions = value.conditions;
-		state.paramValue.combinator = value.combinator;
-		state.paramValue.options = value.options;
+		state.paramValue = newParamValue;
 	},
 );
 

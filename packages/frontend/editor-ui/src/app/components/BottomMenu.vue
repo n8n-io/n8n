@@ -61,16 +61,20 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 			size: 'small',
 			customIconSize: 'small',
 		},
-		{
-			id: 'version-upgrade-cta',
-			component: VersionUpdateCTA,
-			available: versionsStore.hasVersionUpdates && usersStore.canUserUpdateVersion,
-			props: {
-				tooltipText: !usersStore.canUserUpdateVersion
-					? i18n.baseText('whatsNew.updateNudgeTooltip')
-					: undefined,
-			},
-		},
+		...(versionsStore.hasVersionUpdates
+			? [
+					{
+						id: 'version-upgrade-cta',
+						component: VersionUpdateCTA,
+						props: {
+							tooltipText: !usersStore.canUserUpdateVersion
+								? i18n.baseText('whatsNew.updateNudgeTooltip')
+								: undefined,
+							disabled: !usersStore.canUserUpdateVersion,
+						},
+					},
+				]
+			: []),
 	],
 }));
 

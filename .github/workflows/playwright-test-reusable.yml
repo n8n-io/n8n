@@ -42,6 +42,11 @@ on:
         required: false
         default: false
         type: boolean
+      upload-failure-artifacts:
+        description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
+        required: false
+        default: false
+        type: boolean
 
     secrets:
       CURRENTS_RECORD_KEY:
@@ -133,3 +138,13 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+
+      - name: Upload Failure Artifacts
+        if: ${{ failure() && inputs.upload-failure-artifacts }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: |
+            packages/testing/playwright/test-results/
+            packages/testing/playwright/playwright-report/
+          retention-days: 7

@@ -37,7 +37,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
-		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
 		activeExecutionId: undefined,

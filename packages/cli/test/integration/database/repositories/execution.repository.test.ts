@@ -132,4 +132,127 @@ describe('ExecutionRepository', () => {
 			});
 		});
 	});
+	describe('findByStopExecutionsFilter', () => {
+		it('should find executions by status', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+
+			// Insert executions with different statuses
+			await executionRepo.insert([
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'running',
+					finished: false,
+					createdAt: new Date(),
+				},
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+					finished: true,
+					createdAt: new Date(),
+				},
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'error',
+					finished: false,
+					createdAt: new Date(),
+				},
+			]);
+
+			// Find executions with status 'running' and 'error'
+			const executions = await executionRepo.findByStopExecutionsFilter({
+				status: ['running', 'error'],
+				workflowId: workflow.id,
+			});
+
+			expect(executions).toHaveLength(2);
+		});
+
+		it('should find executions by startedAfter and startedBefore', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+
+			// Insert executions with different start times
+			const now = new Date();
+			const pastDate = new Date(now.getTime() - 1000 * 60 * 60); // 1 hour ago
+			const futureDate = new Date(now.getTime() + 1000 * 60 * 60); // 1 hour later
+
+			await executionRepo.insert([
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: pastDate,
+					status: 'running',
+					finished: false,
+					createdAt: pastDate,
+				},
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: now,
+					status: 'success',
+					finished: true,
+					createdAt: now,
+				},
+				{
+					workflowId: workflow.id,
+					mode: 'manual',
+					startedAt: futureDate,
+					status: 'error',
+					finished: false,
+					createdAt: futureDate,
+				},
+			]);
+
+			// Find executions started between pastDate and now
+			const executions = await executionRepo.findByStopExecutionsFilter({
+				startedAfter: new Date(pastDate.getTime() + 1).toISOString(),
+				startedBefore: new Date(futureDate.getTime() - 1).toISOString(),
+				status: ['running', 'success', 'error'],
+				workflowId: workflow.id,
+			});
+
+			expect(executions).toHaveLength(1);
+		});
+
+		it('should find executions for all workflows when workflowId is "all"', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow1 = await createWorkflow();
+			const workflow2 = await createWorkflow();
+
+			// Insert executions for different workflows
+			await executionRepo.insert([
+				{
+					workflowId: workflow1.id,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'running',
+					finished: false,
+					createdAt: new Date(),
+				},
+				{
+					workflowId: workflow2.id,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+					finished: true,
+					createdAt: new Date(),
+				},
+			]);
+
+			// Find executions for all workflows
+			const executions = await executionRepo.findByStopExecutionsFilter({
+				status: ['running', 'success'],
+				workflowId: 'all',
+			});
+
+			expect(executions).toHaveLength(2);
+		});
+	});
 });

@@ -1,9 +1,8 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
+import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
+import { createN8NStack } from 'n8n-containers/stack';
 
 import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
@@ -30,32 +29,12 @@ type WorkerFixtures = {
 	backendUrl: string;
 	frontendUrl: string;
 	dbSetup: undefined;
-	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
 	capability?: CapabilityOption;
 };
 
-interface ContainerConfig {
-	postgres?: boolean;
-	queueMode?: {
-		mains: number;
-		workers: number;
-	};
-	env?: Record<string, string>;
-	proxyServerEnabled?: boolean;
-	taskRunner?: boolean;
-	sourceControl?: boolean;
-	email?: boolean;
-	oidc?: boolean;
-	observability?: boolean;
-	resourceQuota?: {
-		memory?: number; // in GB
-		cpu?: number; // in cores
-	};
-}
-
-type CapabilityOption = Capability | ContainerConfig;
-type ProjectUse = { containerConfig?: ContainerConfig };
+type CapabilityOption = Capability | N8NConfig;
+type ProjectUse = { containerConfig?: N8NConfig };
 
 export const test = base.extend<
 	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
@@ -80,13 +59,13 @@ export const test = base.extend<
 			}
 
 			const { containerConfig: base = {} } = workerInfo.project.use as ProjectUse;
-			const override: ContainerConfig = !capability
+			const override: N8NConfig = !capability
 				? {}
 				: typeof capability === 'string'
 					? CAPABILITIES[capability]
 					: capability;
 
-			const config: ContainerConfig = {
+			const config: N8NConfig = {
 				...base,
 				...override,
 				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
@@ -133,21 +112,6 @@ export const test = base.extend<
 				await apiContext.dispose();
 			}
 			await use(undefined);
-		},
-		{ scope: 'worker' },
-	],
-
-	chaos: [
-		async ({ n8nContainer }, use) => {
-			if (getBackendUrl()) {
-				throw new TestError(
-					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
-				);
-			}
-			const helpers = new ContainerTestHelpers(n8nContainer.containers, {
-				observability: n8nContainer.observability,
-			});
-			await use(helpers);
 		},
 		{ scope: 'worker' },
 	],
@@ -271,7 +235,13 @@ export { expect };
 
 /*
 Fixture Dependency Graph:
-Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup, chaos]
+Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
+
+n8nContainer provides unified access to:
+- services: Type-safe helpers (mailpit, gitea, observability, etc.)
+- logs/metrics: Shortcuts for observability queries
+- findContainers/stopContainer: Container operations for chaos testing
+- serviceResults: Raw service results (advanced use)
 */

@@ -1223,4 +1223,36 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// Just return the string data as-is.
 		return data;
 	}
+
+	async findByStopExecutionsFilter(
+		query: ExecutionSummaries.StopExecutionFilterQuery,
+	): Promise<Array<{ id: string }>> {
+		if (!query.status || query.status.length === 0) return [];
+
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: In(query.status),
+		};
+
+		if (query.workflowId !== 'all') {
+			where.workflowId = query.workflowId;
+		}
+
+		const startedAtConditions = [];
+
+		if (query.startedAfter)
+			startedAtConditions.push(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
+			);
+
+		if (query.startedBefore)
+			startedAtConditions.push(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
+			);
+
+		if (startedAtConditions.length > 0) {
+			where.startedAt = And(...startedAtConditions);
+		}
+
+		return await this.find({ select: ['id'], where });
+	}
 }

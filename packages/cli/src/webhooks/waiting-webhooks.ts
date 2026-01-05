@@ -33,6 +33,7 @@ import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -169,6 +170,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,

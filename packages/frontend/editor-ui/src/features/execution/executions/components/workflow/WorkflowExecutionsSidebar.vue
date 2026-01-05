@@ -16,6 +16,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'execution:stopMany': [];
 }>();
 
 const route = useRoute();
@@ -52,7 +54,6 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
-const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
@@ -177,11 +178,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div
-		ref="sidebarContainerRef"
-		:class="['executions-sidebar', $style.container]"
-		data-test-id="executions-sidebar"
-	>
+	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
 			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
@@ -194,6 +191,7 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
+			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
 			<ElCheckbox
@@ -274,15 +272,15 @@ const goToUpgrade = () => {
 .heading {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-	padding-right: var(--spacing--lg);
+	align-items: center;
+	padding-right: var(--spacing--md);
 }
 
 .controls {
-	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
 
 	button {

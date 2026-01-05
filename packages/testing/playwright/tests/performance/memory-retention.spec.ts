@@ -1,5 +1,3 @@
-import { ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 import { attachMetric } from '../../utils/performance-helper';
@@ -10,7 +8,7 @@ test.use({
 			memory: 0.75,
 			cpu: 0.5,
 		},
-		observability: true,
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
 
@@ -28,7 +26,7 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 	}
 
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		const obs = new ObservabilityHelper(n8nContainer.observability!);
+		const obs = n8nContainer.services.observability;
 
 		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
 		// RSS can stay high after GC due to OS memory management

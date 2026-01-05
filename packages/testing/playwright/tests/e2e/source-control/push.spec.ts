@@ -22,7 +22,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		await setupGitRepo(n8n, n8nContainer);
+		await setupGitRepo(n8n, n8nContainer.services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {

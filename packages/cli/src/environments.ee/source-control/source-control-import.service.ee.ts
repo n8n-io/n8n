@@ -761,13 +761,24 @@ export class SourceControlImportService {
 	) {
 		if (!existingWorkflow?.activeVersionId) return;
 		let didAdd = false;
+		const newVersionId = importedWorkflow.versionId ?? uuid();
+
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.activeVersionId) {
-				// try activating the imported workflow
+			// If the workflow should be active (was active before and not archived),
+			// reactivate it with the new version
+			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
+				// Publish the new version - this updates activeVersionId and active flag
+				// This ensures the workflow runs the new pulled version
+				this.logger.debug(
+					`Publishing workflow id ${existingWorkflow.id} with new version ${newVersionId}`,
+				);
+				await this.workflowRepository.publishVersion(existingWorkflow.id, newVersionId);
+
+				// Activate the workflow with the new published version
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
 				didAdd = true;
@@ -779,23 +790,16 @@ export class SourceControlImportService {
 			// update the versionId of the workflow to match the imported workflow
 			await this.workflowRepository.update(
 				{ id: existingWorkflow.id },
-				{ versionId: importedWorkflow.versionId },
+				{ versionId: newVersionId },
 			);
-			if (didAdd) {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'activated',
-					userId,
-				});
-			} else {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'deactivated',
-					userId,
-				});
-			}
+
+			// Add record to workflow publish history
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId: existingWorkflow.id,
+				versionId: didAdd ? newVersionId : existingWorkflow.activeVersionId,
+				event: didAdd ? 'activated' : 'deactivated',
+				userId,
+			});
 		}
 	}
 

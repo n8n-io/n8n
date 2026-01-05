@@ -94,8 +94,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		}
 
-		workflowsStore.subWorkflowExecutionError = null;
-
 		// Set the execution as started, but still waiting for the execution to be retrieved
 		workflowState.setActiveExecutionId(null);
 

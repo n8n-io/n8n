@@ -1,5 +1,3 @@
-import { addGiteaBranch, addGiteaRepo } from 'n8n-containers/n8n-test-container-gitea';
-
 import { expect, test } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
 import {
@@ -25,13 +23,12 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		await initSourceControl({ n8n, n8nContainer });
+		const gitea = n8nContainer.services.gitea;
+		await initSourceControl({ n8n, gitea });
 
 		// Create unique repo with branches via API (not UI)
 		repoName = generateUniqueRepoName();
-		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-
-		await addGiteaRepo(giteaContainer!, repoName, 'giteaadmin', 'giteapassword');
+		await gitea.createRepo(repoName);
 
 		repoUrl = buildRepoUrl(repoName);
 	});
@@ -56,10 +53,10 @@ test.describe('Source Control Settings @capability:source-control', () => {
 	});
 
 	test('should switch between branches', async ({ n8n, n8nContainer }) => {
-		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-		await addGiteaBranch(giteaContainer!, repoName, 'development', 'giteaadmin', 'giteapassword');
-		await addGiteaBranch(giteaContainer!, repoName, 'staging', 'giteaadmin', 'giteapassword');
-		await addGiteaBranch(giteaContainer!, repoName, 'production', 'giteaadmin', 'giteapassword');
+		const gitea = n8nContainer.services.gitea;
+		await gitea.createBranch(repoName, 'development');
+		await gitea.createBranch(repoName, 'staging');
+		await gitea.createBranch(repoName, 'production');
 
 		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
 

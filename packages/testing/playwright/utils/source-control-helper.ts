@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { addGiteaRepo, addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
+import type { GiteaHelper } from 'n8n-containers';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -27,17 +26,13 @@ const initSourceControlPreferences = async (n8n: n8nPage) => {
 	});
 };
 
-const initSourceControlSSHKey = async ({
-	n8n,
-	n8nContainer,
-}: { n8n: n8nPage; n8nContainer: N8NStack }) => {
+const initSourceControlSSHKey = async ({ n8n, gitea }: { n8n: n8nPage; gitea: GiteaHelper }) => {
 	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
 	const preferences = await preferencesResponse.json();
 	const sshKey = preferences.data.publicKey;
 
-	const sourceControlContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
 	try {
-		await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
+		await gitea.addSSHKey('n8n-source-control', sshKey);
 	} catch {
 		// Key might already exist in Gitea - this is fine if we're reusing keys
 	}
@@ -47,10 +42,7 @@ const initSourceControlSSHKey = async ({
  * initialize source control preferences and SSH key
  * Will disconnect first if already connected to ensure clean state
  */
-export const initSourceControl = async ({
-	n8n,
-	n8nContainer,
-}: { n8n: n8nPage; n8nContainer: N8NStack }) => {
+export const initSourceControl = async ({ n8n, gitea }: { n8n: n8nPage; gitea: GiteaHelper }) => {
 	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
 	const preferences = await preferencesResponse.json();
 	if (preferences.data?.connected) {
@@ -59,7 +51,7 @@ export const initSourceControl = async ({
 	}
 
 	await initSourceControlPreferences(n8n);
-	await initSourceControlSSHKey({ n8n, n8nContainer });
+	await initSourceControlSSHKey({ n8n, gitea });
 };
 
 export function generateUniqueRepoName(): string {
@@ -75,12 +67,11 @@ export function buildRepoUrl(repoName: string): string {
 /**
  * Create unique repo in gitea with branches and connect via API
  */
-export async function setupGitRepo(n8n: n8nPage, n8nContainer: N8NStack): Promise<string> {
-	await initSourceControl({ n8n, n8nContainer });
+export async function setupGitRepo(n8n: n8nPage, gitea: GiteaHelper): Promise<string> {
+	await initSourceControl({ n8n, gitea });
 	const repoName = generateUniqueRepoName();
 
-	const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-	await addGiteaRepo(giteaContainer!, repoName, 'giteaadmin', 'giteapassword');
+	await gitea.createRepo(repoName);
 
 	const repoUrl = buildRepoUrl(repoName);
 	await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });

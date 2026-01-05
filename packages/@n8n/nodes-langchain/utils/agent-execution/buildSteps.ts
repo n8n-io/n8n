@@ -231,14 +231,8 @@ export function buildSteps(
 			});
 
 			// Extract tool input arguments for the result
-			let toolInputForResult: IDataObject | string;
-			if (toolInput.input && typeof toolInput.input === 'string') {
-				toolInputForResult = toolInput.input;
-			} else {
-				// Exclude metadata fields: id, log, type
-				const { id, log, type, ...actualInput } = toolInput;
-				toolInputForResult = actualInput;
-			}
+			// Exclude metadata fields: id, log, type - always keep as object for type consistency
+			const { id, log, type, ...toolInputForResult } = toolInput;
 
 			// Build observation from tool result data or error information
 			// When tool execution fails, ai_tool may be missing but error info should be preserved

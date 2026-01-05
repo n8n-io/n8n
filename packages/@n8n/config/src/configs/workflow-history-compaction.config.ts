@@ -12,7 +12,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * and `compactingMinimumAgeHours`
 
 	 */
-	compactingMinimumAgeHours: number = 24;
+	compactingMinimumAgeHours: number = 3;
 
 	/**
 	 * The time window we consider when compacting versions.
@@ -32,7 +32,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * before continuing with the next workflowId
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_BATCH_SIZE')
-	batchSize: number = 1_000;
+	batchSize: number = 100;
 
 	/**
 	 * Delay in milliseconds before continuing with the next workflowId to compact
@@ -51,4 +51,11 @@ export class WorkflowHistoryCompactionConfig {
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_RUN_ON_START_UP')
 	compactOnStartUp: boolean = false;
+
+	/**
+	 * The minimum time in milliseconds before two consecutive versions are
+	 * considered part of different sessions and should thus never be merged together.
+	 */
+	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_TIME_BETWEEN_SESSIONS_MS')
+	minimumTimeBetweenSessionsMs: number = 20 * 60 * 1000;
 }

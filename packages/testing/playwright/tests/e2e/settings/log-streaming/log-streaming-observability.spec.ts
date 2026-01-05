@@ -9,8 +9,6 @@
  * - @capability:observability tag to bring up VictoriaLogs
  */
 
-import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../../../fixtures/base';
 
 // Worker-scoped fixtures must be at top level
@@ -26,14 +24,16 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		api,
 		n8nContainer,
 	}) => {
-		// Get observability stack from the container
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+		const obs = n8nContainer.services.observability;
 
 		// Configure syslog destination pointing to VictoriaLogs
+		// syslog contains: host, port, protocol, facility, appName
 		const destination = await api.createSyslogDestination({
-			...obsStack.victoriaLogs.syslog, // host, port
-			...SYSLOG_DEFAULTS, // protocol, facility, app_name
+			host: obs.syslog.host,
+			port: obs.syslog.port,
+			protocol: obs.syslog.protocol,
+			facility: obs.syslog.facility,
+			app_name: obs.syslog.appName,
 			label: 'VictoriaLogs Test Destination',
 		});
 
@@ -58,9 +58,7 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 	});
 
 	test('should query metrics from VictoriaMetrics', async ({ api, n8nContainer }) => {
-		// Get observability stack from the container
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+		const obs = n8nContainer.services.observability;
 
 		// Import and activate a webhook workflow to generate metrics
 		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(

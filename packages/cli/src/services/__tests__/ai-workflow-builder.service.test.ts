@@ -155,6 +155,7 @@ describe('WorkflowBuilderService', () => {
 				consumerId: 'test-consumer-id',
 				baseUrl: 'https://ai-assistant.test.com',
 				n8nVersion: expect.any(String),
+				instanceId: 'test-instance-id',
 			});
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
