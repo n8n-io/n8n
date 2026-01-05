@@ -56,14 +56,14 @@ test.describe('Feature @capability:email', () => {
 
 ### Available Capabilities
 
-| Capability | Tag | Container |
+| Capability | Tag | Containers |
 |------------|-----|-----------|
 | `'proxy'` | `@capability:proxy` | Proxy server |
 | `'email'` | `@capability:email` | Mailpit |
 | `'source-control'` | `@capability:source-control` | Git server |
 | `'task-runner'` | `@capability:task-runner` | Task runner |
 | `'oidc'` | `@capability:oidc` | OIDC provider |
-| `'observability'` | `@capability:observability` | VictoriaLogs |
+| `'observability'` | `@capability:observability` | VictoriaLogs + VictoriaMetrics + Vector |
 
 ## Modes vs Capabilities
 

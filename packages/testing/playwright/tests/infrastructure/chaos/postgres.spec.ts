@@ -2,17 +2,20 @@ import { Time } from '@n8n/constants';
 
 import { test, expect } from '../../../fixtures/base';
 
+// Enable observability to use VictoriaLogs for log queries
+test.use({ capability: 'observability' });
+
 // @CATS team to look at this.  This works locally, but not in CI. Maybe IP table rules are not working in CI?
 // eslint-disable-next-line playwright/no-skipped-test
 test.skip(
-	'Database connection timeout health check bug @mode:postgres @chaostest',
+	'Database connection timeout health check bug @mode:postgres @chaostest @capability:observability',
 	{
 		annotation: {
 			type: 'issue',
 			description: 'CAT-1018',
 		},
 	},
-	async ({ api, chaos }) => {
+	async ({ api, n8nContainer }) => {
 		test.setTimeout(300000);
 
 		// ========== SETUP: Verify Initial Health ==========
@@ -26,7 +29,7 @@ test.skip(
 
 		// ========== CHAOS INJECTION: Block Database Traffic ==========
 		// Find postgres container and install iptables to simulate network issues
-		const postgres = chaos.findContainers('postgres*')[0];
+		const postgres = n8nContainer.findContainers('postgres*')[0];
 
 		// Install iptables in the postgres container (Alpine Linux)
 		const apkUpdate = await postgres.exec(['apk', 'update']);
@@ -40,9 +43,10 @@ test.skip(
 		expect(blockPostgresTraffic.exitCode).toBe(0);
 
 		// ========== WAIT FOR CONNECTION ISSUES ==========
-		await chaos.waitForLog('Database connection timed out', {
-			namePattern: 'n8n-*',
+		// Query VictoriaLogs for database timeout messages
+		await n8nContainer.logs.waitForLog('Database connection timed out', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
+			start: '-1m',
 		});
 
 		// ========== VERIFY: Health Checks ==========
@@ -59,9 +63,10 @@ test.skip(
 		expect(allowPostgresTraffic.exitCode).toBe(0);
 
 		// ========== VERIFY: Automatic Recovery ==========
-		await chaos.waitForLog('Database connection recovered', {
-			namePattern: 'n8n-*',
+		// Query VictoriaLogs for database recovery messages
+		await n8nContainer.logs.waitForLog('Database connection recovered', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
+			start: '-1m',
 		});
 	},
 );

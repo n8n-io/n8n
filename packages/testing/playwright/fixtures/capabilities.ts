@@ -1,16 +1,18 @@
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
 /**
  * Capability definitions for `test.use({ capability: 'email' })`.
  * Add `@capability:X` tag to tests for orchestration grouping.
+ *
+ * Maps capability names to service registry keys.
+ * Note: task-runner is always enabled, no capability needed.
  */
 export const CAPABILITIES = {
-	email: { email: true },
-	proxy: { proxyServerEnabled: true },
-	'source-control': { sourceControl: true },
-	'task-runner': { taskRunner: true },
-	oidc: { oidc: true },
-	observability: { observability: true },
+	email: { services: ['mailpit'] },
+	proxy: { services: ['proxy'] },
+	'source-control': { services: ['gitea'] },
+	oidc: { services: ['keycloak'] },
+	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;
