@@ -73,7 +73,12 @@ describe('WorkflowHistoryRepository', () => {
 
 			{
 				// Don't touch workflows younger than range
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, tenMinsAgo, aMinAgo);
+				const { deleted, seen } = await repository.pruneHistory(
+					workflow.id,
+					tenMinsAgo,
+					aMinAgo,
+					20 * 60 * 1000,
+				);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -83,7 +88,12 @@ describe('WorkflowHistoryRepository', () => {
 
 			{
 				// Don't touch workflows older
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, nextMin, inTenMins);
+				const { deleted, seen } = await repository.pruneHistory(
+					workflow.id,
+					nextMin,
+					inTenMins,
+					20 * 60 * 1000,
+				);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -92,7 +102,12 @@ describe('WorkflowHistoryRepository', () => {
 			}
 
 			{
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, aMinAgo, nextMin);
+				const { deleted, seen } = await repository.pruneHistory(
+					workflow.id,
+					aMinAgo,
+					nextMin,
+					20 * 60 * 1000,
+				);
 				expect(deleted).toBe(2);
 				expect(seen).toBe(4);
 
@@ -156,7 +171,12 @@ describe('WorkflowHistoryRepository', () => {
 			const nextDay = new Date();
 			nextDay.setDate(nextDay.getDate() + 1);
 
-			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
+			const { deleted, seen } = await repository.pruneHistory(
+				workflow.id,
+				aDayAgo,
+				nextDay,
+				20 * 60 * 1000,
+			);
 
 			// ASSERT
 			expect(deleted).toBe(1);
@@ -171,7 +191,7 @@ describe('WorkflowHistoryRepository', () => {
 				expect.objectContaining({ versionId: id5 }),
 			]);
 
-			const redo = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
+			const redo = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, 20 * 60 * 1000);
 
 			// ASSERT
 			expect(redo.deleted).toBe(0);
