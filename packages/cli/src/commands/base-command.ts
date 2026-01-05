@@ -123,7 +123,7 @@ export abstract class BaseCommand<F = never> {
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
 
-		// Initialize the auth roles service to make sure that roles are correctly setup for the instance
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		await Container.get(AuthRolesService).init();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);

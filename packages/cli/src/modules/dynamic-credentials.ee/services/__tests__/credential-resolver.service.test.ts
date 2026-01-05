@@ -64,7 +64,7 @@ describe('DynamicCredentialResolverService', () => {
 		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
 
 		mockRegistry = {
-			getResolverByName: jest.fn(),
+			getResolverByTypename: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
 
 		mockCipher = {
@@ -85,7 +85,7 @@ describe('DynamicCredentialResolverService', () => {
 			const config: CredentialResolverConfiguration = { prefix: 'test-prefix' };
 			const savedEntity = createMockEntity();
 
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
 			mockCipher.encrypt.mockReturnValue('encrypted-config-data');
 			mockRepository.create.mockReturnValue(savedEntity);
@@ -98,7 +98,7 @@ describe('DynamicCredentialResolverService', () => {
 				config,
 			});
 
-			expect(mockRegistry.getResolverByName).toHaveBeenCalledWith('test.resolver');
+			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('test.resolver');
 			expect(mockResolverImplementation.validateOptions).toHaveBeenCalledWith(config);
 			expect(mockCipher.encrypt).toHaveBeenCalledWith(config);
 			expect(mockRepository.create).toHaveBeenCalledWith({
@@ -114,7 +114,7 @@ describe('DynamicCredentialResolverService', () => {
 		});
 
 		it('should throw CredentialResolverValidationError for unknown resolver type', async () => {
-			mockRegistry.getResolverByName.mockReturnValue(undefined);
+			mockRegistry.getResolverByTypename.mockReturnValue(undefined);
 
 			await expect(
 				service.create({
@@ -131,7 +131,7 @@ describe('DynamicCredentialResolverService', () => {
 		it('should throw CredentialResolverValidationError when config validation fails', async () => {
 			const config: CredentialResolverConfiguration = { invalidOption: 'value' };
 
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockRejectedValue(
 				new CredentialResolverValidationError('Invalid option'),
 			);
@@ -237,7 +237,7 @@ describe('DynamicCredentialResolverService', () => {
 			const updatedEntity = createMockEntity({ config: 'new-encrypted-config' });
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
 			mockCipher.encrypt.mockReturnValue('new-encrypted-config');
 			mockRepository.save.mockResolvedValue(updatedEntity);
@@ -245,7 +245,7 @@ describe('DynamicCredentialResolverService', () => {
 
 			await service.update('resolver-id-123', { config: newConfig });
 
-			expect(mockRegistry.getResolverByName).toHaveBeenCalledWith('test.resolver');
+			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('test.resolver');
 			expect(mockResolverImplementation.validateOptions).toHaveBeenCalledWith(newConfig);
 			expect(mockCipher.encrypt).toHaveBeenCalledWith(newConfig);
 			expect(mockRepository.save).toHaveBeenCalled();
@@ -266,7 +266,7 @@ describe('DynamicCredentialResolverService', () => {
 			const invalidConfig: CredentialResolverConfiguration = { badOption: 'value' };
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockRejectedValue(
 				new CredentialResolverValidationError('Invalid config'),
 			);
@@ -285,14 +285,14 @@ describe('DynamicCredentialResolverService', () => {
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
 			mockCipher.decrypt.mockReturnValue(JSON.stringify(existingConfig));
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
 			mockRepository.save.mockResolvedValue(updatedEntity);
 
 			await service.update('resolver-id-123', { type: 'new.resolver' });
 
 			expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-config-data');
-			expect(mockRegistry.getResolverByName).toHaveBeenCalledWith('new.resolver');
+			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('new.resolver');
 			expect(mockResolverImplementation.validateOptions).toHaveBeenCalledWith(existingConfig);
 			expect(mockRepository.save).toHaveBeenCalled();
 		});
@@ -303,7 +303,7 @@ describe('DynamicCredentialResolverService', () => {
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
 			mockCipher.decrypt.mockReturnValue(JSON.stringify(existingConfig));
-			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
 			mockResolverImplementation.validateOptions.mockRejectedValue(
 				new CredentialResolverValidationError('Config incompatible with new resolver type'),
 			);

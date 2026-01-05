@@ -3,6 +3,7 @@ import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 import { isSubNode } from '@/utils/node-helpers';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
 
 import type {
@@ -189,10 +190,10 @@ export function validateConnections(
 
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 	const nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
-	const nodeTypeMap = new Map(nodeTypes.map((type) => [type.name, type]));
+	const { nodeTypeMap, nodeTypesByName } = createNodeTypeMaps(nodeTypes);
 
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypeMap.get(node.type);
+		const nodeType = getNodeTypeForNode(node, nodeTypeMap, nodeTypesByName);
 		if (!nodeType) {
 			violations.push({
 				name: 'node-type-not-found',

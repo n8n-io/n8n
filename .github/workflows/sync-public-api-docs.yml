@@ -31,10 +31,10 @@ jobs:
           fetch-depth: 0 # Fetch all history for git log
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version: '22.x'
           cache: 'pnpm'
@@ -107,7 +107,7 @@ jobs:
 
             # Find all commits between the last success and now that touched the relevant files
             # NOTE: The pathspecs here mirror the workflow's 'paths' trigger for precision
-            RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" $LAST_SUCCESS_SHA..${{ github.sha }} -- \
+            RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" "${LAST_SUCCESS_SHA}..${{ github.sha }}" -- \
               'packages/cli/src/public-api/**/*.css' \
               'packages/cli/src/public-api/**/*.yaml' \
               'packages/cli/src/public-api/**/*.yml')
@@ -129,9 +129,11 @@ jobs:
             SOURCE_LINK="Source commit(s):"$'\n'"$RELEVANT_COMMITS"
           fi
 
-          echo "source_link<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$SOURCE_LINK" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "source_link<<EOF"
+            echo "$SOURCE_LINK"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create PR in Docs Repo
         if: steps.verify_file.outputs.file_exists == 'true'
