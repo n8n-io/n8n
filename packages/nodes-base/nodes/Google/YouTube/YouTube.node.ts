@@ -854,6 +854,8 @@ export class YouTube implements INodeType {
 							mimeType = binaryData.mimeType;
 						}
 
+						mimeType = mimeType == 'application/mp4' ? 'video/mp4' : mimeType; //Youtube API accepts video/mp4
+
 						const payload = {
 							snippet: {
 								title,
