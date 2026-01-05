@@ -524,7 +524,7 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	async getPublicSettings(displayMfaSettings: boolean): Promise<PublicFrontendSettings> {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
@@ -554,7 +554,7 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 		};
-		if (displayMfaSettings) {
+		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
 		}
 		return publicSettings;
