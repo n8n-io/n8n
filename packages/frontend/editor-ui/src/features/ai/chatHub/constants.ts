@@ -8,6 +8,7 @@ export const CHAT_PERSONAL_AGENTS_VIEW = 'chat-personal-agents';
 export const CHAT_SETTINGS_VIEW = 'chat-settings';
 
 export const CHAT_STORE = 'chatStore';
+export const CHAT_SESSIONS_PAGE_SIZE = 18;
 
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',

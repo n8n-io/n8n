@@ -12,6 +12,7 @@ import type {
 import {
 	CredentialsRepository,
 	FolderRepository,
+	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -23,7 +24,7 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -144,6 +145,7 @@ export class SourceControlImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly tagRepository: TagRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -659,7 +661,7 @@ export class SourceControlImportService {
 		// as project creation might cause constraint issues.
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
-			this.logger.debug(`Parsing workflow file ${candidate.file}`);
+			this.logger.debug(`Importing workflow file ${candidate.file}`);
 
 			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
@@ -759,13 +761,24 @@ export class SourceControlImportService {
 	) {
 		if (!existingWorkflow?.activeVersionId) return;
 		let didAdd = false;
+		const newVersionId = importedWorkflow.versionId ?? uuid();
+
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.activeVersionId) {
-				// try activating the imported workflow
+			// If the workflow should be active (was active before and not archived),
+			// reactivate it with the new version
+			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
+				// Publish the new version - this updates activeVersionId and active flag
+				// This ensures the workflow runs the new pulled version
+				this.logger.debug(
+					`Publishing workflow id ${existingWorkflow.id} with new version ${newVersionId}`,
+				);
+				await this.workflowRepository.publishVersion(existingWorkflow.id, newVersionId);
+
+				// Activate the workflow with the new published version
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
 				didAdd = true;
@@ -777,23 +790,16 @@ export class SourceControlImportService {
 			// update the versionId of the workflow to match the imported workflow
 			await this.workflowRepository.update(
 				{ id: existingWorkflow.id },
-				{ versionId: importedWorkflow.versionId },
+				{ versionId: newVersionId },
 			);
-			if (didAdd) {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'activated',
-					userId,
-				});
-			} else {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'deactivated',
-					userId,
-				});
-			}
+
+			// Add record to workflow publish history
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId: existingWorkflow.id,
+				versionId: didAdd ? newVersionId : existingWorkflow.activeVersionId,
+				event: didAdd ? 'activated' : 'deactivated',
+				userId,
+			});
 		}
 	}
 
@@ -1067,8 +1073,14 @@ export class SourceControlImportService {
 	 * Only team projects are supported.
 	 * Personal project are not supported because they are not stable across instances
 	 * (different ids across instances).
+	 *
+	 * @param candidates - The project files to import
+	 * @param pullingUserId - The ID of the user pulling the changes (will be assigned as project admin for new projects)
 	 */
-	async importTeamProjectsFromWorkFolder(candidates: SourceControlledFile[]) {
+	async importTeamProjectsFromWorkFolder(
+		candidates: SourceControlledFile[],
+		pullingUserId: string,
+	) {
 		const importResults = [];
 		const existingProjectVariables = (await this.variablesService.getAllCached()).filter(
 			(v) => v.project,
@@ -1103,6 +1115,27 @@ export class SourceControlImportService {
 					},
 					['id'],
 				);
+
+				const existingProject = await this.projectRepository.findOne({
+					where: { id: project.id },
+				});
+
+				// For newly created projects OR existing projects without an admin,
+				// assign the pulling user as project admin
+				const hasExistingAdmin =
+					existingProject &&
+					(await this.projectRelationRepository.findOne({
+						where: { projectId: project.id, role: { slug: PROJECT_ADMIN_ROLE_SLUG } },
+					}));
+
+				if (!hasExistingAdmin) {
+					await this.projectRelationRepository.save({
+						projectId: project.id,
+						userId: pullingUserId,
+						role: { slug: PROJECT_ADMIN_ROLE_SLUG },
+					});
+					this.logger.debug(`Assigned user ${pullingUserId} as admin for project ${project.name}`);
+				}
 
 				await this.importVariables(
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],

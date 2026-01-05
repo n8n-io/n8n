@@ -7,6 +7,8 @@ import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	Project,
+	type ProjectRelation,
+	type ProjectRelationRepository,
 	type ProjectRepository,
 	type SharedWorkflowRepository,
 	User,
@@ -47,6 +49,7 @@ describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
@@ -60,6 +63,7 @@ describe('SourceControlImportService', () => {
 		activeWorkflowManager,
 		mock(),
 		projectRepository,
+		projectRelationRepository,
 		mock(),
 		sharedWorkflowRepository,
 		mock(),
@@ -394,6 +398,65 @@ describe('SourceControlImportService', () => {
 			);
 			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+		});
+
+		it('should call publishVersion with the new version when reactivating workflows', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const newVersionId = 'new-version-456';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				nodes: [],
+				parentFolderId: null,
+				versionId: newVersionId,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'old-version-123',
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+			workflowRepository.publishVersion.mockResolvedValue({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+			workflowRepository.update.mockResolvedValue({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			// Verify publishVersion is called with the new version
+			expect(workflowRepository.publishVersion).toHaveBeenCalledWith('workflow1', newVersionId);
+			// Verify the workflow is deactivated before reactivation
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
+			// Verify the workflow is reactivated
+			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+			// Verify the versionId is updated
+			expect(workflowRepository.update).toHaveBeenCalledWith(
+				{ id: 'workflow1' },
+				{ versionId: newVersionId },
+			);
 		});
 
 		it('should deactivate archived workflows even if they were previously active', async () => {
@@ -857,6 +920,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('projects', () => {
+		const mockPullingUserId = 'pulling-user-id';
+
 		describe('importTeamProjectsFromWorkFolder', () => {
 			it('should import team projects from work folder', async () => {
 				// Arrange
@@ -895,9 +960,13 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
 
 				variableService.getAllCached.mockResolvedValue([]);
+				projectRepository.findOne.mockResolvedValue(null);
 
 				// Act
-				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				const result = await service.importTeamProjectsFromWorkFolder(
+					candidates,
+					mockPullingUserId,
+				);
 
 				// Assert
 				expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile1, { encoding: 'utf8' });
@@ -931,6 +1000,17 @@ describe('SourceControlImportService', () => {
 					['id'],
 				);
 
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData1.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData2.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
+
 				expect(result).toEqual([
 					{
 						id: mockProjectData1.id,
@@ -941,6 +1021,82 @@ describe('SourceControlImportService', () => {
 						name: mockProjectData2.name,
 					},
 				]);
+			});
+
+			it('should NOT assign pulling user as project admin for existing projects with an admin', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'existing-project',
+					name: 'Existing Team Project',
+					icon: 'icon.png',
+					description: 'An existing team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'existing-project',
+					},
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+				variableService.getAllCached.mockResolvedValue([]);
+				// Project already exists
+				projectRepository.findOne.mockResolvedValue(
+					Object.assign(new Project(), { id: mockProjectData.id }),
+				);
+				// Project already has an admin
+				projectRelationRepository.findOne.mockResolvedValue(
+					mock<ProjectRelation>({
+						projectId: mockProjectData.id,
+						userId: 'existing-admin-user-id',
+					}),
+				);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+				// Assert - project relation should NOT be created for existing projects with admin
+				expect(projectRelationRepository.save).not.toHaveBeenCalled();
+			});
+
+			it('should assign pulling user as project admin for existing projects without an admin', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'orphaned-project',
+					name: 'Orphaned Team Project',
+					icon: 'icon.png',
+					description: 'An existing team project without admin',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'orphaned-project',
+					},
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+				variableService.getAllCached.mockResolvedValue([]);
+				projectRepository.findOne.mockResolvedValue(
+					Object.assign(new Project(), { id: mockProjectData.id }),
+				);
+				// Project has no admin
+				projectRelationRepository.findOne.mockResolvedValue(null);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+				// Assert - pulling user should be assigned as admin for orphaned projects
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
 			});
 
 			it('should import only valid team projects and skip invalid ones', async () => {
@@ -998,7 +1154,12 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockNonTeamProjectData))
 					.mockResolvedValueOnce(JSON.stringify(mockInconsistentOwnerData));
 
-				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				projectRepository.findOne.mockResolvedValue(null);
+
+				const result = await service.importTeamProjectsFromWorkFolder(
+					candidates,
+					mockPullingUserId,
+				);
 
 				expect(fsReadFile).toHaveBeenCalledWith(mockTeamProjectFile, { encoding: 'utf8' });
 				expect(fsReadFile).toHaveBeenCalledWith(mockNonTeamProjectFile, { encoding: 'utf8' });
@@ -1055,8 +1216,10 @@ describe('SourceControlImportService', () => {
 					} as Variables,
 				]);
 
+				projectRepository.findOne.mockResolvedValue(null);
+
 				// Act
-				await service.importTeamProjectsFromWorkFolder(candidates);
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
 
 				// Assert
 				expect(variableService.deleteByIds).toHaveBeenCalledWith(['var2']);

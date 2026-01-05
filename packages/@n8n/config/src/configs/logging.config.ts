@@ -30,6 +30,7 @@ export const LOG_SCOPES = [
 	'circuit-breaker',
 	'source-control',
 	'dynamic-credentials',
+	'workflow-history-compaction',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
