@@ -94,8 +94,8 @@ catalogs:
       specifier: 3.4.4
       version: 3.4.4
     mime-types:
-      specifier: 3.0.1
-      version: 3.0.1
+      specifier: 3.0.2
+      version: 3.0.2
     mysql2:
       specifier: 3.15.0
       version: 3.15.0
@@ -1233,7 +1233,7 @@ importers:
         version: 1.11.0
       mime-types:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.0.2
       mongodb:
         specifier: ^6.17.0
         version: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
@@ -1951,7 +1951,7 @@ importers:
         version: 3.4.4
       mime-types:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.0.2
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -3034,7 +3034,7 @@ importers:
         version: 3.6.7
       mime-types:
         specifier: 'catalog:'
-        version: 3.0.1
+        version: 3.0.2
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -14144,6 +14144,10 @@ packages:
   mime-types@3.0.1:
     resolution: {integrity: sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==}
     engines: {node: '>= 0.6'}
+
+  mime-types@3.0.2:
+    resolution: {integrity: sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==}
+    engines: {node: '>=18'}
 
   mime@2.6.0:
     resolution: {integrity: sha512-USPkMeET31rOMiarsBNIHZKLGgvKc/LrjofAnBlOttf5ajRvqiRA8QsenbcooctK6d6Ts6aqZXBA+XbkKthiQg==}
@@ -32358,6 +32362,10 @@ snapshots:
       mime-db: 1.52.0
 
   mime-types@3.0.1:
+    dependencies:
+      mime-db: 1.54.0
+
+  mime-types@3.0.2:
     dependencies:
       mime-db: 1.54.0
 
