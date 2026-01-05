@@ -7,6 +7,7 @@ import type { Schema } from '@/Interface';
 
 vi.mock('./utils', async () => {
 	const actual = await vi.importActual('./utils');
+
 	return {
 		...actual,
 		getSchemas: vi.fn(() => ({
