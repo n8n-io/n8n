@@ -50,7 +50,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const databaseType = computed(() => settings.value?.databaseType);
 
-	const planName = computed(() => settings.value?.license.planName ?? 'Community');
+	const planName = computed(() => settings.value?.license?.planName ?? 'Community');
 
 	const consumerId = computed(() => settings.value?.license.consumerId);
 
@@ -59,7 +59,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const pruning = computed(() => settings.value?.pruning);
 
 	const security = computed(() => ({
-		blockFileAccessToN8nFiles: settings.value.security.blockFileAccessToN8nFiles,
+		blockFileAccessToN8nFiles: settings.value.security?.blockFileAccessToN8nFiles,
 		secureCookie: settings.value.authCookie.secure,
 	}));
 
