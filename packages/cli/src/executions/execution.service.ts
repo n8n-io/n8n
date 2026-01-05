@@ -269,7 +269,7 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		this.eventService.emit('workflow-executed', {
+		this.eventService.emit('workflow-executed-by-user', {
 			user: {
 				id: req.user.id,
 				email: req.user.email,

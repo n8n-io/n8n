@@ -1447,8 +1447,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-executed` event for manual execution', () => {
-			const event: RelayEventMap['workflow-executed'] = {
+		it('should log on `workflow-executed-by-user` event for manual execution', () => {
+			const event: RelayEventMap['workflow-executed-by-user'] = {
 				user: {
 					id: 'user789',
 					email: 'executor@example.com',
@@ -1462,7 +1462,7 @@ describe('LogStreamingEventRelay', () => {
 				executionMode: 'manual',
 			};
 
-			eventService.emit('workflow-executed', event);
+			eventService.emit('workflow-executed-by-user', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.user.workflow.executed',
@@ -1480,8 +1480,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-executed` event for retry execution', () => {
-			const event: RelayEventMap['workflow-executed'] = {
+		it('should log on `workflow-executed-by-user` event for retry execution', () => {
+			const event: RelayEventMap['workflow-executed-by-user'] = {
 				user: {
 					id: 'user101',
 					email: 'retrier@example.com',
@@ -1495,7 +1495,7 @@ describe('LogStreamingEventRelay', () => {
 				executionMode: 'retry',
 			};
 
-			eventService.emit('workflow-executed', event);
+			eventService.emit('workflow-executed-by-user', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.user.workflow.executed',

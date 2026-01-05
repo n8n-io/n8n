@@ -593,7 +593,7 @@ export class WorkflowsController {
 		);
 
 		if ('executionId' in result) {
-			this.eventService.emit('workflow-executed', {
+			this.eventService.emit('workflow-executed-by-user', {
 				user: {
 					id: req.user.id,
 					email: req.user.email,

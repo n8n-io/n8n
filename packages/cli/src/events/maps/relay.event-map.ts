@@ -125,7 +125,7 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
-	'workflow-executed': {
+	'workflow-executed-by-user': {
 		user: UserLike;
 		workflowId: string;
 		workflowName: string;
