@@ -514,6 +514,7 @@ async function onAskAssistantClick() {
 			</div>
 
 			<div class="node-error-view__info-content">
+				jkjoioiiou
 				<details
 					v-if="
 						('httpCode' in error && error.httpCode) ||

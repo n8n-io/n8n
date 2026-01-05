@@ -3,6 +3,7 @@ import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
+import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -77,6 +78,12 @@ watch(
 	{ immediate: true },
 );
 
+const layoutRef = ref<Element | null>(null);
+
+const setLayoutRef = (el: Element) => {
+	layoutRef.value = el;
+};
+
 useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
@@ -91,11 +98,14 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 		}"
 	>
-		<AppBanners />
-		<AppLayout>
-			<RouterView />
-		</AppLayout>
-		<AppModals />
+		<AppBanners :class="$style.banners" />
+		<div :class="$style.content">
+			<AppLayout @mounted="setLayoutRef">
+				<RouterView />
+			</AppLayout>
+			<AppModals />
+		</div>
+		<AppChatPanel v-if="layoutRef" :class="$style.aside" :layout-ref="layoutRef" />
 		<AppCommandBar />
 		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 	</div>
@@ -108,9 +118,23 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 	height: 100vh;
 	overflow: hidden;
 	display: grid;
+	grid-template-columns: 1fr auto;
 	grid-template-rows: auto 1fr;
 	grid-template-areas:
-		'banners'
-		'layout';
+		'banners banners'
+		'content aside';
+}
+
+.banners {
+	grid-area: banners;
+}
+
+.content {
+	grid-area: content;
+	position: relative;
+}
+
+.aside {
+	grid-area: aside;
 }
 </style>

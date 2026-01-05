@@ -17,7 +17,6 @@ const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 
 <style lang="scss" module>
 .banners {
-	grid-area: banners;
 	z-index: var(--top-banners--z);
 }
 </style>
