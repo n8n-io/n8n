@@ -7,7 +7,7 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import type { SetNodeOptions } from '../interfaces';
 import { INCLUDE } from '../interfaces';
@@ -247,7 +247,9 @@ describe('prepareReturnItem', () => {
 				};
 
 				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+					binaryMode: BINARY_MODE_COMBINED,
+				});
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -276,7 +278,9 @@ describe('prepareReturnItem', () => {
 				};
 
 				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+					binaryMode: BINARY_MODE_COMBINED,
+				});
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -312,7 +316,9 @@ describe('prepareReturnItem', () => {
 				(mockContext.helpers.assertBinaryData as jest.Mock)
 					.mockReturnValueOnce(mockBinaryDataNoId)
 					.mockReturnValueOnce(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+					binaryMode: BINARY_MODE_COMBINED,
+				});
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -350,7 +356,9 @@ describe('prepareReturnItem', () => {
 				};
 
 				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataEmptyId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+					binaryMode: BINARY_MODE_COMBINED,
+				});
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -450,7 +458,9 @@ describe('prepareReturnItem', () => {
 				};
 
 				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+					binaryMode: BINARY_MODE_COMBINED,
+				});
 
 				const value: AssignmentCollectionValue = {
 					assignments: [

@@ -12,6 +12,7 @@ import type {
 	INode,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
 import {
 	NodeOperationError,
@@ -19,6 +20,7 @@ import {
 	ApplicationError,
 	UnexpectedError,
 	isBinaryValue,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -68,7 +70,7 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode: 'separate' | 'combined' | undefined = undefined,
+	binaryMode?: WorkflowSettingsBinaryMode,
 ): IBinaryData {
 	if (isBinaryValue(parameterData)) {
 		return parameterData;
@@ -139,13 +141,13 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode: 'separate' | 'combined' | undefined = undefined,
+	binaryMode?: WorkflowSettingsBinaryMode,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
 	if (isBinaryValue(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string' && binaryMode !== 'combined') {
+	} else if (typeof parameterData === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
 	} else if (typeof parameterData === 'string') {
 		const itemData = inputData.main[inputIndex]![itemIndex].json;

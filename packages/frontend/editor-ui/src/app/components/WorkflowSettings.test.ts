@@ -14,6 +14,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 const toast = {
 	showMessage: vi.fn(),
@@ -334,7 +335,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should set binaryMode to separate when selecting v0', async () => {
 			workflowsStore.workflowSettings.executionOrder = 'v1';
-			workflowsStore.workflowSettings.binaryMode = 'combined';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await nextTick();
@@ -359,7 +360,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should set binaryMode to separate when selecting v1', async () => {
 			workflowsStore.workflowSettings.executionOrder = 'v0';
-			workflowsStore.workflowSettings.binaryMode = 'combined';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await nextTick();
@@ -389,7 +390,7 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			workflowsStore.workflowSettings.binaryMode = 'combined';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),

@@ -12,7 +12,9 @@ import {
 	type IRun,
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
+	type WorkflowSettingsBinaryMode,
 } from '../src/interfaces';
+import { BINARY_MODE_COMBINED } from '../src/constants';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
@@ -133,7 +135,9 @@ describe('WorkflowDataProxy', () => {
 	});
 
 	describe('Binary Mode: Combined', () => {
-		const createWorkflowWithBinaryData = (binaryMode?: 'separate' | 'combined'): IWorkflowBase => ({
+		const createWorkflowWithBinaryData = (
+			binaryMode?: WorkflowSettingsBinaryMode,
+		): IWorkflowBase => ({
 			id: '123',
 			name: 'test workflow with binary',
 			nodes: [
@@ -308,7 +312,7 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		describe('Combined mode (binaryMode: "combined")', () => {
-			const workflow = createWorkflowWithBinaryData('combined');
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
 			const run = createRunWithBinaryData();
 			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
 
@@ -367,7 +371,7 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		describe('Combined mode with $() resolveFullItem parameter', () => {
-			const workflow = createWorkflowWithBinaryData('combined');
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
 			const run = createRunWithBinaryData();
 			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
 
@@ -394,7 +398,7 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		describe('Combined mode with $input accessors', () => {
-			const workflow = createWorkflowWithBinaryData('combined');
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
 			const run = createRunWithBinaryData();
 			const proxy = getProxyFromFixture(workflow, run, 'ProcessData');
 

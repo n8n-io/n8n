@@ -25,7 +25,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -132,7 +132,7 @@ const defaultValues = ref({
 });
 
 const executionLogic = computed(() => {
-	if (workflowSettings.value.binaryMode === 'combined') {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
 		return 'v2';
 	}
 	return workflowSettings.value.executionOrder || 'v0';
@@ -201,7 +201,7 @@ const timeSavedModeOptions = computed(() => [
 ]);
 
 const executionLogicOptions = computed(() => {
-	if (workflowSettings.value.binaryMode === 'combined') {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
 		return executionLogicAllOptions.value;
 	}
 
@@ -566,7 +566,7 @@ const onExecutionLogicModeChange = (value: string) => {
 	}
 
 	if (value === 'v2') {
-		workflowSettings.value.binaryMode = 'combined';
+		workflowSettings.value.binaryMode = BINARY_MODE_COMBINED;
 		workflowSettings.value.executionOrder = 'v1';
 	}
 

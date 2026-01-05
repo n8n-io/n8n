@@ -17,7 +17,7 @@ import {
 } from './ndv.constants';
 import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -217,7 +217,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const isNDVOpen = computed(() => activeNodeName.value !== null);
 
 	const binaryDataAccessTooltip = computed(() => {
-		if (workflowsStore.workflow.settings?.binaryMode === 'combined') {
+		if (workflowsStore.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
 			return "Specify the path to the binary data entry in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.json.binaryName }}";
 		}
 

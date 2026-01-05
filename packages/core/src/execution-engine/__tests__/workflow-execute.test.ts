@@ -35,6 +35,7 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -2657,7 +2658,7 @@ describe('WorkflowExecute', () => {
 					active: false,
 					settings: {
 						executionOrder: 'v1',
-						binaryMode: 'combined',
+						binaryMode: BINARY_MODE_COMBINED,
 					},
 				});
 
@@ -2688,13 +2689,13 @@ describe('WorkflowExecute', () => {
 				(call) =>
 					call[0] === 'test-workflow-id' &&
 					call[1] === 'test-execution-id' &&
-					call[3] === 'combined',
+					call[3] === BINARY_MODE_COMBINED,
 			);
 
 			expect(callsWithBinary.length).toBeGreaterThan(0);
 			expect(callsWithBinary[0][0]).toBe('test-workflow-id');
 			expect(callsWithBinary[0][1]).toBe('test-execution-id');
-			expect(callsWithBinary[0][3]).toBe('combined');
+			expect(callsWithBinary[0][3]).toBe(BINARY_MODE_COMBINED);
 		});
 	});
 

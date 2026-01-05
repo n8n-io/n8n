@@ -9,6 +9,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -357,7 +358,7 @@ describe('test binary data helper methods', () => {
 				],
 			};
 
-			const result = await getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined');
+			const result = await getBinaryDataBuffer(inputData, 0, 'file', 0, BINARY_MODE_COMBINED);
 			expect(result).toEqual(inputBuffer);
 		});
 
@@ -391,7 +392,7 @@ describe('test binary data helper methods', () => {
 				0,
 				'data.attachments.document',
 				0,
-				'combined',
+				BINARY_MODE_COMBINED,
 			);
 			expect(result).toEqual(inputBuffer);
 		});
@@ -409,9 +410,9 @@ describe('test binary data helper methods', () => {
 				],
 			};
 
-			await expect(getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined')).rejects.toThrow(
-				'Provided parameter is not a string or binary data object.',
-			);
+			await expect(
+				getBinaryDataBuffer(inputData, 0, 'file', 0, BINARY_MODE_COMBINED),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
 		});
 
 		it('should throw error when path is undefined in combined mode', async () => {
@@ -429,9 +430,9 @@ describe('test binary data helper methods', () => {
 				],
 			};
 
-			await expect(getBinaryDataBuffer(inputData, 0, 'data.file', 0, 'combined')).rejects.toThrow(
-				'Provided parameter is not a string or binary data object.',
-			);
+			await expect(
+				getBinaryDataBuffer(inputData, 0, 'data.file', 0, BINARY_MODE_COMBINED),
+			).rejects.toThrow('Provided parameter is not a string or binary data object.');
 		});
 
 		it('should handle binary data in array path in combined mode', async () => {
@@ -455,7 +456,13 @@ describe('test binary data helper methods', () => {
 				],
 			};
 
-			const result = await getBinaryDataBuffer(inputData, 0, 'files[0].image', 0, 'combined');
+			const result = await getBinaryDataBuffer(
+				inputData,
+				0,
+				'files[0].image',
+				0,
+				BINARY_MODE_COMBINED,
+			);
 			expect(result).toEqual(inputBuffer);
 		});
 
@@ -488,10 +495,10 @@ describe('test binary data helper methods', () => {
 				],
 			};
 
-			const result1 = await getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined');
+			const result1 = await getBinaryDataBuffer(inputData, 0, 'file', 0, BINARY_MODE_COMBINED);
 			expect(result1).toEqual(inputBuffer1);
 
-			const result2 = await getBinaryDataBuffer(inputData, 1, 'file', 0, 'combined');
+			const result2 = await getBinaryDataBuffer(inputData, 1, 'file', 0, BINARY_MODE_COMBINED);
 			expect(result2).toEqual(inputBuffer2);
 		});
 
@@ -528,7 +535,7 @@ describe('test binary data helper methods', () => {
 				0,
 				'response.data.files.primary',
 				0,
-				'combined',
+				BINARY_MODE_COMBINED,
 			);
 			expect(result).toEqual(inputBuffer);
 		});
@@ -1026,7 +1033,7 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			const result = assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined');
+			const result = assertBinaryData(inputData, mockNode, 0, 'file', 0, BINARY_MODE_COMBINED);
 			expect(result).toBe(binaryData);
 		});
 
@@ -1058,7 +1065,7 @@ describe('assertBinaryData', () => {
 				0,
 				'data.attachments.document',
 				0,
-				'combined',
+				BINARY_MODE_COMBINED,
 			);
 			expect(result).toBe(binaryData);
 		});
@@ -1077,7 +1084,7 @@ describe('assertBinaryData', () => {
 			};
 
 			expect(() =>
-				assertBinaryData(inputData, mockNode, 0, 'nonexistent.path', 0, 'combined'),
+				assertBinaryData(inputData, mockNode, 0, 'nonexistent.path', 0, BINARY_MODE_COMBINED),
 			).toThrow('does not resolve to a binary data object');
 		});
 
@@ -1094,9 +1101,9 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			expect(() => assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined')).toThrow(
-				'does not resolve to a binary data object',
-			);
+			expect(() =>
+				assertBinaryData(inputData, mockNode, 0, 'file', 0, BINARY_MODE_COMBINED),
+			).toThrow('does not resolve to a binary data object');
 		});
 
 		it('should throw error when path resolves to object without binary data properties in combined mode', () => {
@@ -1115,9 +1122,9 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			expect(() => assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined')).toThrow(
-				'does not resolve to a binary data object',
-			);
+			expect(() =>
+				assertBinaryData(inputData, mockNode, 0, 'file', 0, BINARY_MODE_COMBINED),
+			).toThrow('does not resolve to a binary data object');
 		});
 
 		it('should handle binary data in array path in combined mode', () => {
@@ -1138,7 +1145,14 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			const result = assertBinaryData(inputData, mockNode, 0, 'files[0].image', 0, 'combined');
+			const result = assertBinaryData(
+				inputData,
+				mockNode,
+				0,
+				'files[0].image',
+				0,
+				BINARY_MODE_COMBINED,
+			);
 			expect(result).toBe(binaryData);
 		});
 
@@ -1158,7 +1172,7 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0, 'combined');
+			const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0, BINARY_MODE_COMBINED);
 			expect(result).toBe(binaryData);
 		});
 
@@ -1177,9 +1191,9 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			expect(() => assertBinaryData(inputData, mockNode, 0, 'data.file', 0, 'combined')).toThrow(
-				'does not resolve to a binary data object',
-			);
+			expect(() =>
+				assertBinaryData(inputData, mockNode, 0, 'data.file', 0, BINARY_MODE_COMBINED),
+			).toThrow('does not resolve to a binary data object');
 		});
 
 		it('should throw error when path is null in combined mode', () => {
@@ -1197,9 +1211,9 @@ describe('assertBinaryData', () => {
 				],
 			};
 
-			expect(() => assertBinaryData(inputData, mockNode, 0, 'data.file', 0, 'combined')).toThrow(
-				'does not resolve to a binary data object',
-			);
+			expect(() =>
+				assertBinaryData(inputData, mockNode, 0, 'data.file', 0, BINARY_MODE_COMBINED),
+			).toThrow('does not resolve to a binary data object');
 		});
 	});
 

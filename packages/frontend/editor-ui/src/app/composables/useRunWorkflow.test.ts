@@ -350,7 +350,7 @@ describe('useRunWorkflow({ router })', () => {
 				id: 'workflowId',
 				nodes: [],
 				settings: {
-					binaryMode: 'combined',
+					binaryMode: BINARY_MODE_COMBINED,
 				},
 			} as unknown as WorkflowData);
 

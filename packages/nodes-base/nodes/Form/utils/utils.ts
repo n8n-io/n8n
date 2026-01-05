@@ -19,6 +19,7 @@ import {
 	WorkflowConfigurationError,
 	jsonParse,
 	tryToParseUrl,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -410,7 +411,7 @@ export async function prepareFormReturnItem(
 
 		if (Array.isArray(filesInput)) {
 			bodyData[key] =
-				binaryMode === 'combined'
+				binaryMode === BINARY_MODE_COMBINED
 					? []
 					: filesInput.map((file) => ({
 							filename: file.originalFilename,
@@ -421,7 +422,7 @@ export async function prepareFormReturnItem(
 			multiFile = true;
 		} else {
 			bodyData[key] =
-				binaryMode === 'combined'
+				binaryMode === BINARY_MODE_COMBINED
 					? {}
 					: {
 							filename: filesInput.originalFilename,
@@ -443,7 +444,7 @@ export async function prepareFormReturnItem(
 				file.mimetype,
 			);
 
-			if (binaryMode === 'combined') {
+			if (binaryMode === BINARY_MODE_COMBINED) {
 				if (Array.isArray(bodyData[key])) {
 					(bodyData[key] as IDataObject[]).push(binaryData);
 				} else {

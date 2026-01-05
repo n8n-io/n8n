@@ -16,7 +16,12 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	TelemetryHelpers,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -154,7 +159,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if (
 				rootStore.binaryDataMode === 'default' &&
-				workflowData.settings?.binaryMode === 'combined'
+				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
 			) {
 				toast.showMessage({
 					title: 'Unsupported Binary Mode',

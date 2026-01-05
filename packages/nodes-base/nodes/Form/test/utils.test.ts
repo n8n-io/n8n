@@ -11,6 +11,7 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -1807,7 +1808,7 @@ describe('prepareFormReturnItem', () => {
 		describe('binaryMode === "combined"', () => {
 			beforeEach(() => {
 				mockContext.getWorkflowSettings.mockReturnValue(
-					mock<IWorkflowSettings>({ binaryMode: 'combined' }),
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
 				);
 			});
 
@@ -2129,7 +2130,7 @@ describe('prepareFormReturnItem', () => {
 
 				// Test combined mode
 				mockContext.getWorkflowSettings.mockReturnValue(
-					mock<IWorkflowSettings>({ binaryMode: 'combined' }),
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
 				);
 				mockContext.getBodyData.mockReturnValue({
 					data: {},
