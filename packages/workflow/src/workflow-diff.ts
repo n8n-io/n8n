@@ -13,7 +13,7 @@ export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;
-	updatedAt: Date;
+	createdAt: Date;
 };
 
 export const enum NodeDiffStatus {
@@ -186,7 +186,7 @@ function skipTimeDifference<N extends DiffableNode = DiffableNode>(
 	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
 	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
 ) {
-	const timeDifference = next.to.updatedAt.getTime() - prev.from.updatedAt.getTime();
+	const timeDifference = next.to.createdAt.getTime() - prev.from.createdAt.getTime();
 
 	return Math.abs(timeDifference) > 30 * 60 * 1000;
 }

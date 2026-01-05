@@ -16,7 +16,6 @@ import {
 	type DiffRule,
 	type GroupedWorkflowHistory,
 } from '../src/workflow-diff';
-import { compareConnections } from '../src/connections-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -450,7 +449,7 @@ describe('groupWorkflows', () => {
 					id,
 					nodes,
 					connections: {},
-					updatedAt: new Date(),
+					createdAt: new Date(),
 				} as IWorkflowBase;
 			};
 
@@ -528,29 +527,29 @@ describe('groupWorkflows', () => {
 		});
 		describe('skipTimeDifference', () => {
 			const createWorkflowHistory = (
-				updatedAt: Date,
+				createdAt: Date,
 			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
 				from: {
 					nodes: [],
 					connections: {},
-					updatedAt,
+					createdAt,
 				},
 				to: {
 					nodes: [],
 					connections: {},
-					updatedAt,
+					createdAt,
 				},
 				groupedWorkflows: [],
 				workflowChangeSet: new WorkflowChangeSet(
 					{
 						nodes: [],
 						connections: {},
-						updatedAt,
+						createdAt,
 					},
 					{
 						nodes: [],
 						connections: {},
-						updatedAt,
+						createdAt,
 					},
 				),
 			});
