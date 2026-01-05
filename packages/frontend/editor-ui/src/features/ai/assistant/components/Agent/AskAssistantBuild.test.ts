@@ -46,6 +46,7 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 			'creditsQuota',
 			'creditsRemaining',
 			'showAskOwnerTooltip',
+			'disabled',
 		],
 		emits: ['message', 'feedback', 'stop', 'upgrade-click'],
 		setup(props, { emit, expose, slots }) {
@@ -109,6 +110,7 @@ import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -170,6 +172,7 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let collaborationStore: ReturnType<typeof mockedStore<typeof useCollaborationStore>>;
 
 	beforeAll(() => {
 		Element.prototype.scrollTo = vi.fn(() => {});
@@ -198,12 +201,19 @@ describe('AskAssistantBuild', () => {
 					},
 					isInstanceOwner: true,
 				},
+				[STORES.COLLABORATION]: {
+					shouldBeReadOnly: false,
+				},
 			},
 		});
 
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		collaborationStore = mockedStore(useCollaborationStore);
+
+		// Mock collaboration store methods
+		collaborationStore.requestWriteAccess = vi.fn();
 
 		// Mock action implementations
 		builderStore.sendChatMessage = vi.fn();
@@ -284,6 +294,23 @@ describe('AskAssistantBuild', () => {
 				initialGeneration: true,
 				text: testMessage,
 			});
+		});
+
+		it('should request write access when sending a message', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+
+			const { container } = renderComponent();
+			const testMessage = 'Create a workflow';
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
+
+			await flushPromises();
+
+			expect(collaborationStore.requestWriteAccess).toHaveBeenCalled();
 		});
 	});
 
