@@ -103,6 +103,11 @@ export class SourceControlGitService {
 				await this.initRepository(sourceControlPreferences, instanceOwner);
 			}
 		}
+
+		// Ensure local repo is on the correct branch before operations in multi-main setups.
+		if (sourceControlPreferences.connected && sourceControlPreferences.branchName) {
+			await this.ensureBranchSetup(sourceControlPreferences.branchName);
+		}
 	}
 
 	async setGitCommand(
