@@ -17,6 +17,7 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
+import { applyCors } from '@/utils/cors.util';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -74,23 +75,6 @@ export class WaitingForms extends WaitingWebhooks {
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
-
-		function applyCors(req: express.Request, res: express.Response) {
-			if (res.getHeader('Access-Control-Allow-Origin')) {
-				return;
-			}
-
-			const origin = req.headers.origin;
-
-			if (!origin || origin === 'null') {
-				res.setHeader('Access-Control-Allow-Origin', '*');
-			} else {
-				res.setHeader('Access-Control-Allow-Origin', origin);
-			}
-
-			res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-			res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-		}
 
 		this.logReceivedWebhook(req.method, executionId);
 
