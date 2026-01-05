@@ -5832,8 +5832,7 @@ describe('NodeHelpers', () => {
 
 		test.each([
 			['javaScript', 'Code in JavaScript'],
-			['python', 'Code in Python'],
-			['pythonNative', 'Code in Python (Native)'],
+			['pythonNative', 'Code in Python'],
 		])(
 			'should return action-based name for Code node with %s language',
 			(language, expectedAction) => {
@@ -5851,13 +5850,8 @@ describe('NodeHelpers', () => {
 							},
 							{
 								name: 'Python',
-								value: 'python',
-								action: 'Code in Python',
-							},
-							{
-								name: 'Python (Native)',
 								value: 'pythonNative',
-								action: 'Code in Python (Native)',
+								action: 'Code in Python',
 							},
 						],
 						default: 'javaScript',

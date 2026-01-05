@@ -50,17 +50,15 @@ export function sendMessageApi(
 
 export function editMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	editId: ChatMessageId,
-	payload: ChatHubEditMessageRequest,
+	request: { sessionId: ChatSessionId; editId: ChatMessageId; payload: ChatHubEditMessageRequest },
 	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
 	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -70,17 +68,19 @@ export function editMessageApi(
 
 export function regenerateMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	retryId: ChatMessageId,
-	payload: ChatHubRegenerateMessageRequest,
+	request: {
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubRegenerateMessageRequest;
+	},
 	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
 	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,

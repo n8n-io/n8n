@@ -230,20 +230,38 @@ export function buildSteps(
 				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
 			});
 
-			const toolInputForResult = toolInput.input;
+			// Extract tool input arguments for the result
+			// Exclude metadata fields: id, log, type - always keep as object for type consistency
+			const { id, log, type, ...toolInputForResult } = toolInput;
+
+			// Build observation from tool result data or error information
+			// When tool execution fails, ai_tool may be missing but error info should be preserved
+			const aiToolData = tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json);
+			let observation: string;
+			if (aiToolData && aiToolData.length > 0) {
+				observation = JSON.stringify(aiToolData);
+			} else if (tool.data?.error) {
+				// Include error information in observation so the agent can see what went wrong
+				// tool.data is ITaskData which has error?: ExecutionError
+				const errorInfo = {
+					error: tool.data.error.message ?? 'Unknown error',
+					...(tool.data.error.name && { errorType: tool.data.error.name }),
+				};
+				observation = JSON.stringify(errorInfo);
+			} else {
+				observation = JSON.stringify('');
+			}
+
 			const toolResult = {
 				action: {
 					tool: nodeNameToToolName(tool.action.nodeName),
-					toolInput:
-						toolInputForResult && typeof toolInputForResult === 'object'
-							? (toolInputForResult as IDataObject)
-							: {},
+					toolInput: toolInputForResult,
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
 					toolCallId: toolInput?.id,
 					type: toolInput.type || 'tool_call',
 				},
-				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json) ?? ''),
+				observation,
 			};
 
 			steps.push(toolResult);

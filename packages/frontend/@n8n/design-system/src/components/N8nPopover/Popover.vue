@@ -7,6 +7,8 @@ import {
 	PopoverRoot,
 	type PopoverRootProps,
 	PopoverTrigger,
+	type PointerDownOutsideEvent,
+	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
 import type { CSSProperties } from 'vue';
@@ -16,12 +18,19 @@ defineOptions({ name: 'N8nPopover' });
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props
-	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
+	extends Pick<
+			PopoverContentProps,
+			'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference' | 'positionStrategy'
+		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
 	enableScrolling?: boolean;
+	/**
+	 * Whether to force mount the content even when closed
+	 */
+	forceMount?: boolean;
 	/**
 	 * Whether to enable slide-in animation
 	 */
@@ -71,6 +80,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
+	forceMount: false,
 	enableSlideIn: true,
 	scrollType: 'hover',
 	sideOffset: 5,
@@ -79,12 +89,28 @@ const props = withDefaults(defineProps<Props>(), {
 	zIndex: 999,
 	showArrow: false,
 	teleported: true,
+	positionStrategy: undefined,
 });
 
 const emit = defineEmits<Emits>();
 
 function handleOpenAutoFocus(e: Event) {
 	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
+
+/**
+ * Handles outside interaction events to prevent Reka UI from interfering
+ * with Element Plus dropdown selections. Element Plus teleports dropdowns
+ * to the body, so Reka UI's DismissableLayer detects clicks on them as
+ * "outside" clicks, which would otherwise prevent proper selection.
+ *
+ * TODO: This workaround can be removed once N8nSelect is migrated to Reka UI.
+ */
+function handleOutsideInteraction(e: PointerDownOutsideEvent | FocusOutsideEvent) {
+	const target = e.target as HTMLElement | null;
+	if (target?.closest('.el-popper, .el-select-dropdown')) {
 		e.preventDefault();
 	}
 }
@@ -117,7 +143,11 @@ watch(
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"
+				:force-mount="forceMount"
+				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
+				@pointer-down-outside="handleOutsideInteraction"
+				@interact-outside="handleOutsideInteraction"
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
@@ -150,6 +180,10 @@ watch(
 	&.enableSlideIn {
 		animation-duration: 400ms;
 		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	&[data-state='closed'] {
+		display: none;
 	}
 }
 

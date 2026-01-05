@@ -37,7 +37,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
-		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
 		activeExecutionId: undefined,
@@ -57,6 +56,24 @@ vi.mock('@/app/stores/workflows.store', () => {
 			connections: {},
 			versionId: '',
 			activeVersionId: null,
+		},
+		workflowId: '123',
+		workflowsById: {
+			'123': {
+				id: '123',
+				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: '',
+				updatedAt: '',
+				connections: {},
+				nodes: [],
+				versionId: '',
+				activeVersionId: null,
+			},
+		},
+		isWorkflowSaved: {
+			'123': true,
 		},
 		getNodeByName: vi
 			.fn()
