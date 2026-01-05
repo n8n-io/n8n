@@ -53,10 +53,8 @@ export class MessageEventBusDestinationSyslog
 		this.eol = options.eol ?? '\n';
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 
-		if (this.protocol === 'tls') {
-			if (!options.tlsCa) {
-				console.log('Syslog - No TLS CA set');
-			}
+		if (this.protocol === 'tls' && !options.tlsCa) {
+			this.logger.error('Syslog - No TLS CA set - Unable to create the syslog client');
 		}
 
 		this.client = createClient(this.host, {

@@ -1,7 +1,10 @@
+/* eslint-disable no-restricted-syntax */
+/* We want the runtime overhead here */
+
 /**
  * Transport protocols supported by the syslog client.
  */
-export const enum Transport {
+export enum Transport {
 	Tcp = 1,
 	Udp = 2,
 	Tls = 3,
@@ -11,7 +14,7 @@ export const enum Transport {
 /**
  * Syslog facility codes as defined in RFC 5424.
  */
-export const enum Facility {
+export enum Facility {
 	Kernel = 0,
 	User = 1,
 	Mail = 2,
@@ -41,7 +44,7 @@ export const enum Facility {
 /**
  * Syslog severity levels as defined in RFC 5424.
  */
-export const enum Severity {
+export enum Severity {
 	Emergency = 0,
 	Alert = 1,
 	Critical = 2,
