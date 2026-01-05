@@ -102,9 +102,10 @@ export async function createEngineRequests(
 			let input: IDataObject = toolInput;
 			if (metadata.isFromToolkit) {
 				input = { ...input, tool: toolCall.tool };
-			} else if (hitlMetadata) {
+			}
+			if (hitlMetadata) {
 				// This input will be used as HITL node input
-				input = { ...input, toolName: toolCall.tool, ...(input.hitlParameters as IDataObject) };
+				input = { ...input, ...(input.hitlParameters as IDataObject) };
 			}
 
 			return {

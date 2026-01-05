@@ -88,7 +88,7 @@ function filterHitlToolProperties(
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		default: '=The agent wants to call {{ $fromAI("toolName") }}',
+		default: '=The agent wants to call {{ $fromAI("tool") }}',
 		required: true,
 		typeOptions: { rows: 3 },
 		description:
