@@ -14,7 +14,6 @@ import type {
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
-	randomInt,
 	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
