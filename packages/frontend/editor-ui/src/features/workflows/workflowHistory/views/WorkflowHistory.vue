@@ -260,11 +260,20 @@ const restoreWorkflowVersion = async (
 			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
 	}
 
+	const versionIdBeforeRestore = workflow.versionId;
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 		workflowId.value,
 		id,
 		deactivateAndRestore,
 	);
+
+	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.restore.alreadyRestored'),
+			type: 'info',
+		});
+		return;
+	}
 
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
@@ -538,16 +547,6 @@ watchEffect(async () => {
 .listComponentWrapper {
 	grid-area: list;
 	position: relative;
-
-	&::before {
-		content: '';
-		display: block;
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: var(--border-width);
-		background-color: var(--color--foreground);
-	}
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 </style>

@@ -17,6 +17,7 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
+import { applyCors } from '@/utils/cors.util';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -96,6 +97,9 @@ export class WaitingForms extends WaitingWebhooks {
 					status = 'form-waiting';
 				}
 			}
+
+			applyCors(req, res);
+
 			res.send(status);
 			return { noWebhookResponse: true };
 		}
@@ -142,6 +146,8 @@ export class WaitingForms extends WaitingWebhooks {
 				lastNodeExecuted = completionPage;
 			}
 		}
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,

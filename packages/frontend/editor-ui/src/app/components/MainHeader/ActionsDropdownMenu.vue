@@ -205,7 +205,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	if (
 		isDraftPublishEnabled &&
 		activeVersion.value &&
-		props.workflowPermissions.update &&
+		props.workflowPermissions.publish &&
 		!props.readOnly
 	) {
 		actions.push({

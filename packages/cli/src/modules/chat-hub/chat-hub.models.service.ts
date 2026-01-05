@@ -25,6 +25,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { Scope } from '@n8n/permissions';
 
 @Service()
 export class ChatHubModelsService {
@@ -736,36 +737,25 @@ export class ChatHubModelsService {
 			select: {
 				id: true,
 				name: true,
-				shared: {
-					role: true,
-					project: {
-						id: true,
-						icon: { type: true, value: true },
-					},
-				},
 			},
 			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
 			relations: {
 				activeVersion: true,
-				shared: {
-					project: true,
-				},
 			},
 		});
 
 		return workflows.flatMap((workflow) => {
-			const model = this.extractModelFromWorkflow(workflow);
+			const scopes = activeWorkflows.find((w) => w.id === workflow.id)?.scopes ?? [];
+			const model = this.extractModelFromWorkflow(workflow, scopes);
 
 			return model ? [model] : [];
 		});
 	}
 
-	extractModelFromWorkflow({
-		name,
-		activeVersion,
-		id,
-		shared,
-	}: WorkflowEntity): ChatModelDto | null {
+	extractModelFromWorkflow(
+		{ name, activeVersion, id }: WorkflowEntity,
+		scopes: Scope[],
+	): ChatModelDto | null {
 		if (!activeVersion) {
 			return null;
 		}
@@ -789,13 +779,10 @@ export class ChatHubModelsService {
 				? chatTriggerParams.agentName
 				: name;
 
-		// Find the owner's project (home project)
-		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
-
 		return {
 			name: agentName,
 			description: chatTriggerParams.agentDescription ?? null,
-			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			icon: chatTriggerParams.agentIcon ?? null,
 			model: {
 				provider: 'n8n',
 				workflowId: id,
@@ -808,6 +795,7 @@ export class ChatHubModelsService {
 					functionCalling: false,
 				},
 				available: true,
+				scopes,
 			},
 		};
 	}

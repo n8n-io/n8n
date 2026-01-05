@@ -6,8 +6,11 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { ListQuery } from '@/requests';
+
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
+import { SUPPORTED_MCP_TRIGGERS } from '../mcp.constants';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
@@ -66,6 +69,15 @@ const createRes = () => {
 	res.json.mockReturnThis();
 	return res;
 };
+
+const createListQueryReq = (
+	user: User,
+	listQueryOptions: ListQuery.Options = {},
+): ListQuery.Request =>
+	({
+		user,
+		listQueryOptions,
+	}) as unknown as ListQuery.Request;
 
 describe('McpSettingsController', () => {
 	const logger = mock<Logger>();
@@ -184,6 +196,121 @@ describe('McpSettingsController', () => {
 
 			expect(mcpServerApiKeyService.rotateMcpServerApiKey).toHaveBeenCalledWith(mockUser);
 			expect(result).toEqual(mockApiKey);
+		});
+	});
+
+	describe('getMcpEligibleWorkflows', () => {
+		const user = createUser();
+
+		test('calls workflowService.getMany with correct filter options', async () => {
+			const req = createListQueryReq(user);
+			const res = createRes();
+			const mockWorkflows = [createWorkflow({ id: 'wf-1' }), createWorkflow({ id: 'wf-2' })];
+
+			workflowService.getMany.mockResolvedValue({ workflows: mockWorkflows, count: 2 });
+
+			await controller.getMcpEligibleWorkflows(req, res);
+
+			expect(workflowService.getMany).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					filter: expect.objectContaining({
+						active: true,
+						isArchived: false,
+						availableInMCP: false,
+						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
+					}),
+				}),
+				false, // includeScopes
+				false, // includeFolders
+				false, // onlySharedWithMe
+				['workflow:update'], // requiredScopes
+			);
+		});
+
+		test('returns workflows and count in response', async () => {
+			const req = createListQueryReq(user);
+			const res = createRes();
+			const mockWorkflows = [createWorkflow({ id: 'wf-1' }), createWorkflow({ id: 'wf-2' })];
+
+			workflowService.getMany.mockResolvedValue({ workflows: mockWorkflows, count: 2 });
+
+			await controller.getMcpEligibleWorkflows(req, res);
+
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: mockWorkflows });
+		});
+
+		test('returns empty array when no eligible workflows exist', async () => {
+			const req = createListQueryReq(user);
+			const res = createRes();
+
+			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			await controller.getMcpEligibleWorkflows(req, res);
+
+			expect(res.json).toHaveBeenCalledWith({ count: 0, data: [] });
+		});
+
+		test('merges user-provided filter options with required filters', async () => {
+			const req = createListQueryReq(user, {
+				filter: { name: 'test-workflow' },
+				take: 10,
+				skip: 5,
+			});
+			const res = createRes();
+
+			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			await controller.getMcpEligibleWorkflows(req, res);
+
+			expect(workflowService.getMany).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					filter: expect.objectContaining({
+						name: 'test-workflow',
+						active: true,
+						isArchived: false,
+						availableInMCP: false,
+						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
+					}),
+					take: 10,
+					skip: 5,
+				}),
+				false,
+				false,
+				false,
+				['workflow:update'],
+			);
+		});
+
+		test('required filters override user-provided conflicting filters', async () => {
+			const req = createListQueryReq(user, {
+				filter: {
+					active: false,
+					isArchived: true,
+					availableInMCP: true,
+				},
+			});
+			const res = createRes();
+
+			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			await controller.getMcpEligibleWorkflows(req, res);
+
+			expect(workflowService.getMany).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					filter: expect.objectContaining({
+						active: true,
+						isArchived: false,
+						availableInMCP: false,
+					}),
+				}),
+				false,
+				false,
+				false,
+				['workflow:update'],
+			);
 		});
 	});
 

@@ -498,6 +498,7 @@ watch(connectionType, () => {
 					<N8nCheckbox
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
+						data-test-id="source-control-read-only-checkbox"
 					>
 						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
 							<template #bold>
