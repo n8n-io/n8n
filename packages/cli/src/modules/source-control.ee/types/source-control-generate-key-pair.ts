@@ -1,6 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-import { KeyPairType } from '../../../modules/source-control.ee/types/key-pair-type';
+import { KeyPairType } from './key-pair-type';
 
 export class SourceControlGenerateKeyPair {
 	@IsOptional()
