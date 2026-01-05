@@ -1,5 +1,5 @@
 import type { Project } from '@playwright/test';
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
 import { CONTAINER_ONLY_CAPABILITIES, CONTAINER_ONLY_MODES } from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
@@ -24,8 +24,11 @@ const ISOLATED_ONLY = /@isolated/;
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
-	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 }, observability: true } },
+	{ name: 'queue', config: { workers: 1 } },
+	{
+		name: 'multi-main',
+		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	},
 ];
 
 export function getProjects(): Project[] {
