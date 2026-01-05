@@ -257,6 +257,10 @@ describe('Webhook Utils', () => {
 			).toBe(false);
 		});
 
+		it('CAT-1846: should use CIDR matching to determine if ip is in the whitelist', () => {
+			expect(isIpWhitelisted('192.168.1.3', [], '192.168.1.30')).toBe(false);
+		});
+
 		it('should handle comma-separated whitelist string', () => {
 			expect(isIpWhitelisted('192.168.1.1, 192.168.1.2', ['192.168.1.3'], '192.168.1.2')).toBe(
 				true,

@@ -101,6 +101,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
 		roleType: 'project',
@@ -1056,6 +1057,7 @@ describe('GET /workflows', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -1072,6 +1074,7 @@ describe('GET /workflows', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -2223,6 +2226,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -2239,6 +2243,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -4004,13 +4009,13 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 		});
 	});
 
-	test('should return 404 when no successful execution exists', async () => {
+	test('should return 200 with null when no successful execution exists', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
 			.get(`/workflows/${workflow.id}/executions/last-successful`)
-			.expect(404);
+			.expect(200);
 
-		expect(response.body.message).toBe('No successful execution found for the workflow');
+		expect(response.body.data).toBeNull();
 	});
 });

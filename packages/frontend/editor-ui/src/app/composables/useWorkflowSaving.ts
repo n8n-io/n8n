@@ -439,7 +439,6 @@ export function useWorkflowSaving({
 		() => {
 			// Check if cancelled during debounce period
 			if (autosaveStore.autoSaveState === AutoSaveState.Idle) {
-				console.log('[AutoSave] Cancelled during debounce');
 				return;
 			}
 
@@ -447,10 +446,7 @@ export function useWorkflowSaving({
 
 			const savePromise = (async () => {
 				try {
-					const saved = await saveCurrentWorkflow({}, true, false, true);
-					if (saved) {
-						console.log('[AutoSave] ✅ Workflow saved successfully');
-					}
+					await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
 						autosaveStore.setAutoSaveState(AutoSaveState.Idle);

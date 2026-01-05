@@ -230,7 +230,15 @@ export function buildSteps(
 				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
 			});
 
-			const toolInputForResult = toolInput.input;
+			// Extract tool input arguments for the result
+			let toolInputForResult: IDataObject | string;
+			if (toolInput.input && typeof toolInput.input === 'string') {
+				toolInputForResult = toolInput.input;
+			} else {
+				// Exclude metadata fields: id, log, type
+				const { id, log, type, ...actualInput } = toolInput;
+				toolInputForResult = actualInput;
+			}
 
 			// Build observation from tool result data or error information
 			// When tool execution fails, ai_tool may be missing but error info should be preserved
@@ -253,10 +261,7 @@ export function buildSteps(
 			const toolResult = {
 				action: {
 					tool: nodeNameToToolName(tool.action.nodeName),
-					toolInput:
-						toolInputForResult && typeof toolInputForResult === 'object'
-							? (toolInputForResult as IDataObject)
-							: {},
+					toolInput: toolInputForResult,
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
 					toolCallId: toolInput?.id,
