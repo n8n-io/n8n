@@ -36,6 +36,7 @@ import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -274,8 +275,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(PubSubRegistry).init();
 
 		const subscriber = Container.get(Subscriber);
-		await subscriber.subscribe('n8n.commands');
-		await subscriber.subscribe('n8n.worker-response');
+		await subscriber.subscribe(subscriber.getCommandChannel());
+		await subscriber.subscribe(subscriber.getWorkerResponseChannel());
 
 		if (this.instanceSettings.isMultiMain) {
 			await Container.get(MultiMainSetup).init();
@@ -315,6 +316,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
+		Container.get(WorkflowHistoryCompactionService).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();

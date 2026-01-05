@@ -4,6 +4,7 @@ import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
+import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
@@ -33,6 +34,7 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
+import Webhook from './custom/webhook.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -481,6 +483,8 @@ export const updatedIconSet = {
 	mcp: Mcp,
 	lovable: Lovable,
 	resolver: Resolver,
+	form: Form,
+	webhook: Webhook,
 
 	// lucide
 	'align-right': IconLucideAlignRight,

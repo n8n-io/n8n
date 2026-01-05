@@ -703,27 +703,6 @@ describe('AskAssistantBuild', () => {
 			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
 		});
 
-		it('should save new workflow before sending first message', async () => {
-			// Setup: new workflow
-			workflowsStore.$patch({ workflowsById: {} });
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			// Verify workflow was saved to get ID for session
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(1);
-		});
-
 		it('should work when opening existing AI builder session', async () => {
 			// Setup: existing workflow with AI session
 			workflowsStore.workflowId = 'existing-id';

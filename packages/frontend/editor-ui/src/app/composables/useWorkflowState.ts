@@ -4,6 +4,7 @@ import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
+	IWorkflowDb,
 } from '@/Interface';
 import type {
 	IExecutionResponse,
@@ -125,6 +126,10 @@ export function useWorkflowState() {
 
 	function setWorkflowTagIds(tags: string[]) {
 		ws.workflow.tags = tags;
+	}
+
+	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
+		ws.workflow[key] = value;
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
@@ -410,6 +415,7 @@ export function useWorkflowState() {
 		setWorkflowName,
 		setWorkflowSettings,
 		setWorkflowTagIds,
+		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
 
