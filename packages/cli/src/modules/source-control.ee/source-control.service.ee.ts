@@ -154,6 +154,9 @@ export class SourceControlService {
 			}
 
 			this.gitService.resetService();
+
+			await this.broadcastReloadSourceControlConfiguration();
+
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
 			throw new UnexpectedError('Failed to disconnect from source control', { cause: error });

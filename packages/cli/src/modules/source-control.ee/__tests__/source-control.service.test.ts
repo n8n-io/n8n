@@ -10,6 +10,7 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -880,6 +881,133 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.resetService).toHaveBeenCalledTimes(1);
+		});
+
+		it('should broadcast reload event to other instances in multi-main mode', async () => {
+			// ARRANGE
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+
+			const mockInstanceSettings = mock<InstanceSettings>({ isMultiMain: true });
+			const mockPublisher = mock<Publisher>();
+			mockPublisher.publishCommand.mockResolvedValue(undefined);
+
+			jest.spyOn(Container, 'get').mockImplementation((token) => {
+				if (token === InstanceSettings) return mockInstanceSettings;
+				if (token.name === 'Publisher') return mockPublisher;
+				throw new Error(`Unexpected token: ${String(token)}`);
+			});
+
+			// ACT
+			await sourceControlService.disconnect();
+
+			// ASSERT
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-source-control-config',
+			});
+		});
+
+		it('should not broadcast reload event when not in multi-main mode', async () => {
+			// ARRANGE
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+
+			const mockInstanceSettings = mock<InstanceSettings>({ isMultiMain: false });
+			const mockPublisher = mock<Publisher>();
+
+			jest.spyOn(Container, 'get').mockImplementation((token) => {
+				if (token === InstanceSettings) return mockInstanceSettings;
+				if (token.name === 'Publisher') return mockPublisher;
+				throw new Error(`Unexpected token: ${String(token)}`);
+			});
+
+			// ACT
+			await sourceControlService.disconnect();
+
+			// ASSERT
+			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadConfiguration', () => {
+		beforeEach(() => {
+			gitService.resetService.mockReturnValue(undefined);
+		});
+
+		it('should reload configuration from database when triggered by pubsub', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalled();
+		});
+
+		it('should delete git folder when source control was connected but is now disconnected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, now disconnected
+			preferencesService.isSourceControlConnected = jest
+				.fn()
+				.mockReturnValueOnce(true) // wasConnected check
+				.mockReturnValueOnce(false); // isNowConnected check
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control remains connected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, still connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(true);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control was not connected before', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was not connected, still not connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
 		});
 	});
 });
