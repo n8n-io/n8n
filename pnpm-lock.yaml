@@ -22,8 +22,8 @@ catalogs:
       specifier: 0.3.20-15
       version: 0.3.20-15
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.19.1
-      version: 1.19.1
+      specifier: 1.20.0
+      version: 1.20.0
     '@sentry/node':
       specifier: ^9.42.1
       version: 9.42.1
@@ -398,7 +398,7 @@ importers:
         version: link:../utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.19.1
+        version: 1.20.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -1536,7 +1536,7 @@ importers:
         version: link:../@n8n/utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.19.1
+        version: 1.20.0
       '@n8n_io/license-sdk':
         specifier: 2.24.1
         version: 2.24.1
@@ -6354,8 +6354,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.19.1':
-    resolution: {integrity: sha512-oZZlXxyDOOPuHztrHUfoigZrhEY/iwSr9dH23j8jdzNTPiexRQlUly1kTE6v5DNLv9EwBVZ4e5FalOVUMtGzHg==}
+  '@n8n_io/ai-assistant-sdk@1.20.0':
+    resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.24.1':
@@ -22810,7 +22810,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.19.1': {}
+  '@n8n_io/ai-assistant-sdk@1.20.0': {}
 
   '@n8n_io/license-sdk@2.24.1':
     dependencies:
