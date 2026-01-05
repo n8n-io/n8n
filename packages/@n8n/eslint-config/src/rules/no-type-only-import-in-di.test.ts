@@ -174,5 +174,99 @@ ruleTester.run('no-type-only-import-in-di', NoTypeOnlyImportInDiRule, {
 				},
 			],
 		},
+		{
+			// Test with multiple spaces after 'type' keyword
+			code: `
+        import { Service } from '@n8n/di';
+        import { type  Publisher } from './publisher.service';
+
+        @Service()
+        class ProvisioningService {
+          constructor(private readonly publisher: Publisher) {}
+        }
+      `,
+			output: `
+        import { Service } from '@n8n/di';
+        import { Publisher } from './publisher.service';
+
+        @Service()
+        class ProvisioningService {
+          constructor(private readonly publisher: Publisher) {}
+        }
+      `,
+			filename: '/test/provisioning.service.ts',
+			errors: [
+				{
+					messageId: 'noTypeOnlyImportInDi',
+					data: {
+						paramName: 'publisher',
+						typeName: 'Publisher',
+					},
+				},
+			],
+		},
+		{
+			// Test multi-specifier import where only one is used in DI
+			// Should convert to inline type syntax for other specifiers
+			code: `
+        import { Service } from '@n8n/di';
+        import type { IPublisher, Publisher } from './publisher.service';
+
+        @Service()
+        class ProvisioningService {
+          constructor(private readonly publisher: Publisher) {}
+        }
+      `,
+			output: `
+        import { Service } from '@n8n/di';
+        import { type IPublisher, Publisher } from './publisher.service';
+
+        @Service()
+        class ProvisioningService {
+          constructor(private readonly publisher: Publisher) {}
+        }
+      `,
+			filename: '/test/provisioning.service.ts',
+			errors: [
+				{
+					messageId: 'noTypeOnlyImportInDi',
+					data: {
+						paramName: 'publisher',
+						typeName: 'Publisher',
+					},
+				},
+			],
+		},
+		{
+			// Test multi-specifier import with multiple type-only specifiers
+			code: `
+        import { Service } from '@n8n/di';
+        import type { ILogger, Logger, IConfig } from './types';
+
+        @Service()
+        class MyService {
+          constructor(private readonly logger: Logger) {}
+        }
+      `,
+			output: `
+        import { Service } from '@n8n/di';
+        import { type ILogger, Logger, type IConfig } from './types';
+
+        @Service()
+        class MyService {
+          constructor(private readonly logger: Logger) {}
+        }
+      `,
+			filename: '/test/my.service.ts',
+			errors: [
+				{
+					messageId: 'noTypeOnlyImportInDi',
+					data: {
+						paramName: 'logger',
+						typeName: 'Logger',
+					},
+				},
+			],
+		},
 	],
 });

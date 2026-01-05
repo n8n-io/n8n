@@ -86,16 +86,35 @@ export const NoTypeOnlyImportInDiRule = ESLintUtils.RuleCreator.withoutDocs({
 								fix(fixer) {
 									const targetNode = importInfo.node;
 
-									// Scenario A: import type { Foo } from 'bar'
+									// Scenario A: import type { Foo, Bar } from 'bar'
 									if (targetNode.type === 'ImportDeclaration') {
-										// Find the 'type' token specifically
+										const fixes = [];
+
+										// Find and remove the declaration-level 'type' keyword
 										const typeToken = sourceCode.getFirstToken(
 											targetNode,
 											(t) => t.value === 'type',
 										);
-										return typeToken
-											? fixer.removeRange([typeToken.range[0], typeToken.range[1] + 1])
-											: null;
+										if (!typeToken) return null;
+
+										const nextToken = sourceCode.getTokenAfter(typeToken);
+										if (!nextToken) return null;
+
+										// Remove 'type' and any whitespace after it up to the next token
+										fixes.push(fixer.removeRange([typeToken.range[0], nextToken.range[0]]));
+
+										// Add 'type' inline for all specifiers except the one being used in DI
+										for (const specifier of targetNode.specifiers) {
+											if (
+												specifier.type === 'ImportSpecifier' &&
+												specifier.local.name !== typeName
+											) {
+												// Add 'type ' before this specifier
+												fixes.push(fixer.insertTextBefore(specifier, 'type '));
+											}
+										}
+
+										return fixes;
 									}
 
 									// Scenario B: import { type Foo } from 'bar'
@@ -104,9 +123,13 @@ export const NoTypeOnlyImportInDiRule = ESLintUtils.RuleCreator.withoutDocs({
 											targetNode,
 											(t) => t.value === 'type',
 										);
-										return typeToken
-											? fixer.removeRange([typeToken.range[0], typeToken.range[1] + 1])
-											: null;
+										if (!typeToken) return null;
+
+										const nextToken = sourceCode.getTokenAfter(typeToken);
+										if (!nextToken) return null;
+
+										// Remove 'type' and any whitespace after it up to the next token
+										return fixer.removeRange([typeToken.range[0], nextToken.range[0]]);
 									}
 
 									return null;
