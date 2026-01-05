@@ -765,7 +765,7 @@ export class ChatHubModelsService {
 	}
 
 	extractModelFromWorkflow(
-		{ name, activeVersion, id, shared }: WorkflowEntity,
+		{ name, activeVersion, id }: WorkflowEntity,
 		scopes: Scope[],
 	): ChatModelDto | null {
 		if (!activeVersion) {
@@ -801,7 +801,7 @@ export class ChatHubModelsService {
 		return {
 			name: agentName,
 			description: chatTriggerParams.agentDescription ?? null,
-			icon: ownerProject?.icon ?? null,
+			icon: chatTriggerParams.agentIcon ?? null,
 			model: {
 				provider: 'n8n',
 				workflowId: id,
