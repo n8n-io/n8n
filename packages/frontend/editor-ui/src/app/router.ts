@@ -26,6 +26,12 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
+import DefaultLayout from '@/app/layouts/DefaultLayout.vue';
+import SettingsLayout from '@/app/layouts/SettingsLayout.vue';
+import WorkflowLayout from '@/app/layouts/WorkflowLayout.vue';
+import AuthLayout from '@/app/layouts/AuthLayout.vue';
+import DemoLayout from '@/app/layouts/DemoLayout.vue';
+
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
@@ -872,6 +878,19 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
+	const layout = to.meta.layout ?? 'default';
+
+	to.components = {
+		default: to.component,
+		layout: {
+			default: DefaultLayout,
+			settings: SettingsLayout,
+			workflow: WorkflowLayout,
+			auth: AuthLayout,
+			demo: DemoLayout,
+		}[layout],
+	};
+
 	try {
 		/**
 		 * Initialize application core

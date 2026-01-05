@@ -14,21 +14,21 @@ onMounted(() => {
 
 <template>
 	<div ref="layout" class="app-grid" :class="$style.appGrid">
-		<header v-if="$slots.header" id="header" :class="$style.header">
+		<header v-if="!!$slots.header" id="header" :class="$style.header">
 			<slot name="header" />
 		</header>
-		<aside v-if="$slots.sidebar" id="sidebar" :class="$style.sidebar">
+		<aside v-if="!!$slots.sidebar" id="sidebar" :class="$style.sidebar">
 			<slot name="sidebar" />
 		</aside>
 		<main id="content" :class="$style.content">
 			<div :class="$style.contentWrapper">
 				<slot />
 			</div>
-			<div v-if="$slots.footer" :class="$style.contentFooter">
+			<div v-if="!!$slots.footer" :class="$style.contentFooter">
 				<slot name="footer" />
 			</div>
 		</main>
-		<aside v-if="$slots.aside" id="aside" :class="$style.aside">
+		<aside v-if="!!$slots.aside" id="aside" :class="$style.aside">
 			<slot name="aside" />
 		</aside>
 	</div>

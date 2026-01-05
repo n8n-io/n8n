@@ -3,6 +3,7 @@ import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
+
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
@@ -91,7 +92,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<AppBanners />
-		<AppLayout />
+		<AppLayout>
+			<RouterView />
+		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
 		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />

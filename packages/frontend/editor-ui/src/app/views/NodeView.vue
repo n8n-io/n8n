@@ -2024,10 +2024,6 @@ onDeactivated(() => {
 });
 
 onBeforeUnmount(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushDisconnect();
-	}
-
 	removeSourceControlEventBindings();
 	removePostMessageEventBindings();
 	removeWorkflowSavedEventBindings();
@@ -2036,6 +2032,9 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+	if (!isDemoRoute.value) {
+		pushConnectionStore.pushDisconnect();
+	}
 });
 </script>
 
