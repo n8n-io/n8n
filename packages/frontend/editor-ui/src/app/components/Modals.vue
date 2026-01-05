@@ -30,6 +30,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -115,6 +116,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
@@ -378,6 +380,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<FromAiParametersModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="STOP_MANY_EXECUTIONS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<StopManyExecutionsModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
