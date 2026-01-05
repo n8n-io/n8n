@@ -23,12 +23,32 @@ const DRY_RUN = {
 	},
 };
 
+/**
+ * Dry run testing context for simulating translation behavior.
+ *
+ * Supports three modes: pass-through (return original text), override (predefined response),
+ * or fail (simulate error). Used for testing workflows without making actual API calls.
+ */
 export class DryRunContext implements IContext {
+	/** Dry run strategy: 'pass', 'override', or 'fail' */
 	readonly mode: DryRunMode;
+	/** Predefined translation result - required for 'override' mode */
 	readonly override?: string;
+	/** Error code to simulate - required for 'fail' mode, must be 100-599 */
 	readonly errorCode?: number;
+	/** Error message to simulate - required for 'fail' mode */
 	readonly errorMessage?: string;
 
+	/**
+	 * Creates dry run context from n8n node parameters.
+	 *
+	 * NOTE: @mapTo decorators execute bottom-to-top, binding parameters to n8n properties.
+	 *
+	 * @param mode - Dry run strategy to apply
+	 * @param override - Predefined response text (only for 'override' mode)
+	 * @param errorCode - HTTP error code to simulate (only for 'fail' mode)
+	 * @param errorMessage - Error description to simulate (only for 'fail' mode)
+	 */
 	constructor(
 		@mapTo(DRY_RUN.KEYS.MODE) mode: DryRunMode,
 		@mapTo(DRY_RUN.KEYS.OVERRIDE) override?: string,
@@ -43,6 +63,14 @@ export class DryRunContext implements IContext {
 		Object.freeze(this);
 	}
 
+	/**
+	 * Validates dry run configuration has required fields for selected mode.
+	 *
+	 * NOTE: Each mode requires different parameters - validates mutual exclusivity.
+	 *
+	 * @throws Error if required fields missing for selected mode
+	 * @throws Error if fields set for wrong mode (e.g., errorCode for 'pass' mode)
+	 */
 	throwIfInvalid(): void {
 		switch (this.mode) {
 			case 'pass':
@@ -70,6 +98,12 @@ export class DryRunContext implements IContext {
 	}
 }
 
+/**
+ * n8n node properties for dry run context.
+ *
+ * Defines UI form fields for dry run testing configuration in n8n workflow editor.
+ * Property names must match DRY_RUN.KEYS for @mapTo decorator binding.
+ */
 export const CONTEXT_DRY_RUN = [
 	{
 		displayName: 'Dry Run Mode',
