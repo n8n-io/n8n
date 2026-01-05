@@ -1,3 +1,4 @@
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
@@ -6,7 +7,6 @@ import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
 
-import type { RequestResponseMetadata } from '../../types';
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
