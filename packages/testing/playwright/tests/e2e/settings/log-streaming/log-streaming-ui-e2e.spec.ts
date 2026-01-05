@@ -7,8 +7,6 @@
  * 3. Events can be queried from VictoriaLogs
  */
 
-import { ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../../../fixtures/base';
 
 test.use({ capability: 'observability' });
@@ -22,8 +20,7 @@ test.describe('Log Streaming UI E2E @capability:observability', () => {
 		n8n,
 		n8nContainer,
 	}) => {
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+		const obs = n8nContainer.services.observability;
 
 		// ========== STEP 1: Configure Log Streaming via UI ==========
 		await n8n.navigate.toLogStreaming();
@@ -32,8 +29,8 @@ test.describe('Log Streaming UI E2E @capability:observability', () => {
 		// Create syslog destination pointing to VictoriaLogs
 		await n8n.settingsLogStreaming.createSyslogDestination({
 			name: 'VictoriaLogs E2E Test',
-			host: obsStack.victoriaLogs.syslog.host,
-			port: obsStack.victoriaLogs.syslog.port,
+			host: obs.syslog.host,
+			port: obs.syslog.port,
 		});
 		// Send test event
 		await n8n.settingsLogStreaming.sendTestEvent();
