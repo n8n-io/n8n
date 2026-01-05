@@ -58,34 +58,27 @@ const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
  */
 const saveBeforePublish = async () => {
 	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
-		console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
 		autoSaveForPublish.value = true;
 		try {
 			await autosaveStore.pendingAutoSave;
-			console.log('[Publish] ✅ Autosave completed');
 		} finally {
 			autoSaveForPublish.value = false;
 		}
 	} else if (autosaveStore.autoSaveState === AutoSaveState.Scheduled) {
-		console.log('[Publish] ⏹️ Cancelling scheduled autosave');
 		cancelAutoSave();
 	}
 
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		console.log('[Publish] ⏳ Saving unsaved changes before publish');
 		autoSaveForPublish.value = true;
 		try {
 			const saved = await saveCurrentWorkflow({}, true);
 			if (!saved) {
-				console.log('[Publish] ❌ Save failed');
 				throw new Error('Failed to save workflow before publish');
 			}
-			console.log('[Publish] ✅ Save completed');
 		} finally {
 			autoSaveForPublish.value = false;
 		}
 	} else {
-		console.log('[Publish] No unsaved changes, skipping save');
 	}
 };
 
@@ -95,7 +88,6 @@ const onPublishButtonClick = async () => {
 		try {
 			await saveBeforePublish();
 		} catch (error) {
-			console.error('[Publish] ❌ Error saving workflow before publish:', error);
 			return;
 		}
 	}
