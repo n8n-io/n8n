@@ -581,23 +581,45 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		content: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		keepAttachmentIndices: number[] = [],
+		newFiles: File[] = [],
 	) {
 		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[editId];
 		const previousMessageId = message?.previousMessageId ?? null;
+		const binaryData = await Promise.all(newFiles.map(convertFileToBinaryData));
 		const payload: ChatHubEditMessageRequest = {
 			model: agent.model,
 			messageId: promptId,
 			message: content,
 			credentials,
+			newAttachments: binaryData.map((attachment) => ({
+				fileName: attachment.fileName ?? 'unnamed file',
+				mimeType: attachment.mimeType,
+				data: attachment.data,
+			})),
+			keepAttachmentIndices,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
 		if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
 		}
+
+		// Combine kept existing attachments with new attachments for optimistic UI
+		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
+			const attachment = message?.attachments[index];
+			if (!attachment) return [];
+			return [
+				{
+					fileName: attachment.fileName ?? 'unnamed file',
+					mimeType: attachment.mimeType ?? 'application/octet-stream',
+					data: '', // Binary data not needed for display (accessed via download URL)
+				},
+			];
+		});
 
 		streaming.value = {
 			promptPreviousMessageId: previousMessageId,
@@ -608,7 +630,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
 			tools: [],
-			attachments: [],
+			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
 		telemetry.track('User edited chat hub message', {
