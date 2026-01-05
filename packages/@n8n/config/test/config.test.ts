@@ -161,6 +161,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			blockEnvAccessInNode: true,
 		},
 		publicApi: {
 			disabled: false,
@@ -526,7 +527,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 
