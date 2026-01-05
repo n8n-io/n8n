@@ -3083,9 +3083,6 @@ importers:
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
-      pyodide:
-        specifier: 0.28.0
-        version: 0.28.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -15728,10 +15725,6 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
-
-  pyodide@0.28.0:
-    resolution: {integrity: sha512-QML/Gh8eu50q5zZKLNpW6rgS0XUdK+94OSL54AUSKV8eJAxgwZrMebqj+CyM0EbF3EUX8JFJU3ryaxBViHammQ==}
-    engines: {node: '>=18.0.0'}
 
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
@@ -34267,13 +34260,6 @@ snapshots:
   pure-rand@6.0.1: {}
 
   pure-rand@6.1.0: {}
-
-  pyodide@0.28.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
-    dependencies:
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   python-struct@1.1.3:
     dependencies:

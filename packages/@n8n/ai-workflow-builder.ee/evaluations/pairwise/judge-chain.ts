@@ -84,7 +84,12 @@ export async function evaluateWorkflowPairwise(
 ): Promise<PairwiseEvaluationResult> {
 	const dos = input.evalCriteria?.dos ?? '';
 	const donts = input.evalCriteria?.donts ?? '';
-	const criteriaList = `[DO]\n${dos}\n\n[DONT]\n${donts}`;
+	const formattedDonts = donts
+		.split('\n')
+		.filter((line) => line.trim().length > 0)
+		.map((line) => `DO NOT ${line}`)
+		.join('\n');
+	const criteriaList = `[DO]\n${dos}\n\n[DON'T]\n${formattedDonts}`;
 
 	const chain = createEvaluatorChain(
 		llm,

@@ -1,5 +1,4 @@
 import { test, expect } from '../../../fixtures/base';
-import { capabilities } from '../../../fixtures/capabilities';
 import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper functions for common operations
@@ -9,7 +8,7 @@ async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 10000) {
 	});
 }
 
-test.use({ addContainerCapability: capabilities.proxy });
+test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
