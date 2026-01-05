@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BaseLayout from '@/app/layouts/BaseLayout.vue';
 import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
@@ -90,51 +91,27 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 
 <template>
 	<LoadingView v-if="loading" />
-	<div
-		v-else
-		id="n8n-app"
-		:class="{
-			[$style.container]: true,
-			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-		}"
-	>
-		<AppBanners :class="$style.banners" />
-		<div :class="$style.layout">
-			<AppLayout @mounted="setLayoutRef">
-				<RouterView />
-			</AppLayout>
-			<AppModals />
-		</div>
-		<AppChatPanel v-if="layoutRef" :class="$style.aside" :layout-ref="layoutRef" />
+	<BaseLayout v-else id="n8n-app" :class="$style.app">
+		<template #banners>
+			<AppBanners />
+		</template>
+		<AppLayout @mounted="setLayoutRef">
+			<RouterView />
+		</AppLayout>
+		<AppModals />
 		<AppCommandBar />
 		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
-	</div>
+		<template #aside>
+			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
+		</template>
+	</BaseLayout>
 </template>
 
 <style lang="scss" module>
 // On the root level, whole app is a flex container
 // with app grid and assistant sidebar as children
-.container {
+.app {
 	height: 100vh;
 	overflow: hidden;
-	display: grid;
-	grid-template-columns: 1fr auto;
-	grid-template-rows: auto 1fr;
-	grid-template-areas:
-		'banners banners'
-		'layout aside';
-}
-
-.banners {
-	grid-area: banners;
-}
-
-.layout {
-	grid-area: layout;
-	position: relative;
-}
-
-.aside {
-	grid-area: aside;
 }
 </style>

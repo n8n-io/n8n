@@ -37,11 +37,13 @@ const LogsPanel = defineAsyncComponent(
 				<Component :is="Component" />
 			</KeepAlive>
 		</RouterView>
-		<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		<template v-if="layoutProps.logs" #footer>
 			<Suspense>
 				<LogsPanel />
 			</Suspense>
+		</template>
+		<template #overlays>
+			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</template>
 	</BaseLayout>
 </template>

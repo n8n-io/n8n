@@ -14,6 +14,9 @@ onMounted(() => {
 
 <template>
 	<div ref="layout" class="app-grid" :class="$style.appGrid">
+		<div v-if="!!$slots.banners" id="banners" :class="$style.banners">
+			<slot name="banners" />
+		</div>
 		<header v-if="!!$slots.header" id="header" :class="$style.header">
 			<slot name="header" />
 		</header>
@@ -31,6 +34,7 @@ onMounted(() => {
 		<aside v-if="!!$slots.aside" id="aside" :class="$style.aside">
 			<slot name="aside" />
 		</aside>
+		<slot name="overlays" />
 	</div>
 </template>
 
@@ -50,21 +54,24 @@ onMounted(() => {
 	grid-template-rows: auto auto 1fr;
 }
 
+.banners {
+	grid-area: banners;
+	min-width: 0;
+	min-height: 0;
+}
+
 .header {
 	grid-area: header;
-	z-index: var(--app-header--z);
 	min-width: 0;
 	min-height: 0;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	z-index: var(--app-sidebar--z);
 }
 
 .aside {
 	grid-area: aside;
-	z-index: var(--app-aside--z, 5);
 	min-width: 0;
 	min-height: 0;
 	position: relative;
