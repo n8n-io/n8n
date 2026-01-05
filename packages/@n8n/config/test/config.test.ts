@@ -417,6 +417,7 @@ describe('GlobalConfig', () => {
 			compactingMinimumAgeHours: 3,
 			compactingTimeWindowHours: 2,
 			compactOnStartUp: false,
+			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 		},
 	};
 

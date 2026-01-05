@@ -81,6 +81,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		workflowId: string,
 		startDate: Date,
 		endDate: Date,
+		minimumTimeBetweenSessionsMs: number,
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
@@ -103,7 +104,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			workflows,
 			[RULES.mergeAdditiveChanges],
 			[
-				SKIP_RULES.skipTimeDifference,
+				SKIP_RULES.makeSkipTimeDifference(minimumTimeBetweenSessionsMs),
 				this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId)),
 			],
 		);

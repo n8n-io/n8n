@@ -51,4 +51,11 @@ export class WorkflowHistoryCompactionConfig {
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_RUN_ON_START_UP')
 	compactOnStartUp: boolean = false;
+
+	/**
+	 * The minimum time in milliseconds before two consecutive versions are
+	 * considered part of different sessions and should thus never be merged together.
+	 */
+	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_TIME_BETWEEN_SESSIONS_MS')
+	minimumTimeBetweenSessionsMs: number = 20 * 60 * 1000;
 }
