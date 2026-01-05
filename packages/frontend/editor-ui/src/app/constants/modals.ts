@@ -27,6 +27,7 @@ export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
+export const STOP_MANY_EXECUTIONS_MODAL_KEY = 'stopManyExecutions';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';

@@ -148,3 +148,28 @@ describe('POST /executions/stop', () => {
 		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });
+describe('POST /executions/stopMany', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(member)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(0);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(owner)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(1);
+	});
+});

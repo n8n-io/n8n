@@ -181,6 +181,11 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'fieldValue',
 	'elementName',
 	'html',
+	'fieldName',
+	'limitSelection',
+	'numberOfSelections',
+	'minSelections',
+	'maxSelections',
 ];
 
 const ALLOWED_FIELD_TYPES = [
