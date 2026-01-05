@@ -57,47 +57,47 @@ function loadNodesFromDist(nodeNames: string[]): INodeTypeData {
 	return nodeTypes;
 }
 
-beforeAll(async () => {
-	// Configure insights for fast flushing and compaction BEFORE loading modules
-	process.env.N8N_INSIGHTS_FLUSH_BATCH_SIZE = '10'; // Flush after 10 events
-	process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
-	process.env.N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES = '0.05'; // Compact every ~3 seconds
-	process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
-
-	await testModules.loadModules(['insights']);
-	await testDb.init();
-
-	// Load required node types from dist folder
-	const nodeTypes = loadNodesFromDist([
-		'n8n-nodes-base.manualTrigger',
-		'n8n-nodes-base.executeWorkflow',
-		'n8n-nodes-base.executeWorkflowTrigger',
-	]);
-
-	await utils.initNodeTypes(nodeTypes);
-	await utils.initBinaryDataService();
-
-	// Mark instance as leader to enable compaction
-	Container.get(InstanceSettings).markAsLeader();
-});
-
-beforeEach(async () => {
-	await testDb.truncate([
-		'InsightsRaw',
-		'InsightsByPeriod',
-		'InsightsMetadata',
-		'WorkflowEntity',
-		'WorkflowStatistics',
-		'ExecutionEntity',
-		'Project',
-	]);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('Insights vs Workflow Statistics Integration', () => {
+	beforeAll(async () => {
+		// Configure insights for fast flushing and compaction BEFORE loading modules
+		process.env.N8N_INSIGHTS_FLUSH_BATCH_SIZE = '10'; // Flush after 10 events
+		process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
+		process.env.N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES = '0.05'; // Compact every ~3 seconds
+		process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
+
+		await testModules.loadModules(['insights']);
+		await testDb.init();
+
+		// Load required node types from dist folder
+		const nodeTypes = loadNodesFromDist([
+			'n8n-nodes-base.manualTrigger',
+			'n8n-nodes-base.executeWorkflow',
+			'n8n-nodes-base.executeWorkflowTrigger',
+		]);
+
+		await utils.initNodeTypes(nodeTypes);
+		await utils.initBinaryDataService();
+
+		// Mark instance as leader to enable compaction
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await testDb.truncate([
+			'InsightsRaw',
+			'InsightsByPeriod',
+			'InsightsMetadata',
+			'WorkflowEntity',
+			'WorkflowStatistics',
+			'ExecutionEntity',
+			'Project',
+		]);
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsCompactionService: InsightsCompactionService;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
@@ -116,9 +116,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 
 		// IMPORTANT: Get WorkflowStatisticsService early to ensure its event listeners are set up
 		// This must be done BEFORE any workflows are executed
-		const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-		// Just getting it from the container initializes it and sets up its event listeners
-		console.log('WorkflowStatisticsService initialized:', !!workflowStatisticsService);
+		Container.get(WorkflowStatisticsService);
 
 		insightsCollectionService = Container.get(InsightsCollectionService);
 		insightsCompactionService = Container.get(InsightsCompactionService);
