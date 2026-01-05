@@ -1,6 +1,6 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { mock } from 'jest-mock-extended';
-import type { Tool } from 'langchain/tools';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';

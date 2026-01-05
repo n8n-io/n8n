@@ -279,9 +279,14 @@ export class EnterpriseWorkflowService {
 		destinationParentFolderId?: string,
 	) {
 		// 1. get workflow
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:move',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:move'],
+			{
+				includeParentFolder: true,
+			},
+		);
 		NotFoundError.isDefinedAndNotNull(
 			workflow,
 			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
@@ -309,9 +314,12 @@ export class EnterpriseWorkflowService {
 		);
 
 		// 5. checks
-		if (sourceProject.id === destinationProject.id) {
+		if (
+			sourceProject.id === destinationProject.id &&
+			destinationParentFolderId === workflow.parentFolder?.id
+		) {
 			throw new TransferWorkflowError(
-				"You can't transfer a workflow into the project that's already owning it.",
+				"You can't transfer a workflow into the same destination it already belongs to.",
 			);
 		}
 

@@ -1,5 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { Toolkit } from 'langchain/agents';
+import { Toolkit } from '@langchain/classic/agents';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';

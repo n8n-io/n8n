@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js and Dependencies
-        uses: ./.github/actions/setup-nodejs-github
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: '' # Skip build, we only need to fetch data
 
@@ -56,5 +56,5 @@ jobs:
           branch: update-node-popularity
           base: master
           delete-branch: true
-          author: n8n Bot <191478365+n8n-bot@users.noreply.github.com>
-          committer: n8n Bot <191478365+n8n-bot@users.noreply.github.com>
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>

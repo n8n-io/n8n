@@ -210,8 +210,9 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Enable sticky sessions using cookie
-    lb_policy cookie
+    # Use first available backend for simpler debugging
+    # (cookie-based sticky sessions can cause issues with separate API/browser contexts)
+    lb_policy first
 
     # Health check (optional)
     health_uri /healthz
@@ -245,11 +246,14 @@ export async function setupCaddyLoadBalancer({
 	projectName,
 	mainCount,
 	network,
+	hostPort,
 }: {
 	caddyImage?: string;
 	projectName: string;
 	mainCount: number;
 	network: StartedNetwork;
+	/** Optional pre-allocated host port (for OIDC callback URL consistency) */
+	hostPort?: number;
 }): Promise<StartedTestContainer> {
 	// Generate upstream server addresses
 	const upstreamServers = Array.from(
@@ -265,7 +269,7 @@ export async function setupCaddyLoadBalancer({
 	try {
 		return await new GenericContainer(caddyImage)
 			.withNetwork(network)
-			.withExposedPorts(80)
+			.withExposedPorts(hostPort ? { container: 80, host: hostPort } : 80)
 			.withCopyContentToContainer([{ content: caddyConfig, target: '/etc/caddy/Caddyfile' }])
 			.withWaitStrategy(Wait.forListeningPorts())
 			.withLabels({

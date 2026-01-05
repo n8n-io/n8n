@@ -1,5 +1,5 @@
 import { CredentialsRepository } from '@n8n/db';
-import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
 	IDataObject,
@@ -12,6 +12,7 @@ import type {
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+
 import { OwnershipService } from './services/ownership.service';
 
 /**
@@ -215,6 +216,57 @@ export function shouldRestartParentExecution(
 		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
 	}
 	return parentExecution.shouldResume;
+}
+
+/**
+ * Updates a parent execution's nodeExecutionStack with the final results from a completed child execution.
+ * This ensures that when the parent resumes, the Execute Workflow node (running in disabled mode)
+ * returns the correct data from the child workflow's last node, rather than the original input.
+ *
+ * Note: In "run once for each item" mode, multiple child executions may complete concurrently and
+ * attempt to update the same parent execution. This creates a race condition where the last child
+ * to write wins. However, this is acceptable for Promise.race semantics - we only care that the
+ * parent receives ONE child's final output (whichever child's update happens to be last before
+ * the parent resumes), not which specific child. Only one child will successfully resume the parent
+ * due to the atomic status check in ActiveExecutions.add().
+ *
+ * @param executionRepository - The execution repository for database operations
+ * @param parentExecutionId - The execution ID of the waiting parent workflow
+ * @param subworkflowResults - The final execution results from the child workflow
+ * @returns Promise that resolves when the parent execution has been updated
+ */
+export async function updateParentExecutionWithChildResults(
+	executionRepository: ExecutionRepository,
+	parentExecutionId: string,
+	subworkflowResults: IRun,
+): Promise<void> {
+	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	if (!lastExecutedNodeData?.data) return;
+	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
+		includeData: true,
+		unflattenData: true,
+	});
+
+	if (parent?.status !== 'waiting') {
+		return;
+	}
+
+	const parentWithSubWorkflowResults = { data: { ...parent.data } };
+
+	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
+	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
+		return;
+	}
+
+	// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+	// so that the Execute Workflow node returns the correct data when parent execution is resumed
+	// and the Execute Workflow node is executed again in disabled mode.
+	nodeExecutionStack[0].data = lastExecutedNodeData.data;
+
+	await executionRepository.updateExistingExecution(
+		parentExecutionId,
+		parentWithSubWorkflowResults,
+	);
 }
 
 /**

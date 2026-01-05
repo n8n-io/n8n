@@ -110,6 +110,54 @@ describe('jsonParse', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
 	});
 
+	describe('acceptJSObject', () => {
+		const options: Parameters<typeof jsonParse>[1] = {
+			acceptJSObject: true,
+		};
+
+		it('should handle string values', () => {
+			const result = jsonParse('{name: \'John\', surname: "Doe"}', options);
+			expect(result).toEqual({ name: 'John', surname: 'Doe' });
+		});
+
+		it('should handle positive numbers', () => {
+			const result = jsonParse(
+				'{int: 12345, float1: 444.111, float2: .123, float3: +.12, oct: 0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: 12345,
+				float1: 444.111,
+				float2: 0.123,
+				float3: 0.12,
+				oct: 16,
+			});
+		});
+
+		it('should handle negative numbers', () => {
+			const result = jsonParse(
+				'{int: -12345, float1: -444.111, float2: -.123, float3: -.12, oct: -0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: -12345,
+				float1: -444.111,
+				float2: -0.123,
+				float3: -0.12,
+				oct: -16,
+			});
+		});
+
+		it('should handle mixed values', () => {
+			const result = jsonParse('{int: -12345, float: 12.35, text: "hello world"}', options);
+			expect(result).toEqual({
+				int: -12345,
+				float: 12.35,
+				text: 'hello world',
+			});
+		});
+	});
+
 	describe('JSON repair', () => {
 		describe('Recovery edge cases', () => {
 			it('should handle simple object with single quotes', () => {

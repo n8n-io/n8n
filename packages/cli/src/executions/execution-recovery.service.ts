@@ -1,17 +1,27 @@
 import { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionsConfig } from '@n8n/config';
+import {
+	In,
+	type IExecutionResponse,
+	ProjectRelationRepository,
+	WorkflowEntity,
+	User,
+} from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
-import type { IRun, ITaskData } from 'n8n-workflow';
+import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -25,7 +35,62 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly userManagementMailer: UserManagementMailer,
+		private readonly ownershipService: OwnershipService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
+
+	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
+		for (const workflowId of workflowIds) {
+			const maxLastExecutions = this.executionsConfig.recovery.maxLastExecutions;
+			const lastExecutions = await this.executionRepository.findMultipleExecutions({
+				select: ['id', 'status'],
+				where: { workflowId },
+				order: { startedAt: 'DESC' },
+				take: maxLastExecutions,
+			});
+			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
+
+			// If all of the last N executions are crashed, deactivate the workflow
+			if (
+				lastExecutions.length >= maxLastExecutions &&
+				lastExecutions.length === numberOfCrashedExecutions
+			) {
+				// Get workflow to preserve existing meta
+				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+
+				if (!workflow) {
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
+					continue;
+				}
+
+				if (workflow.activeVersionId !== null) {
+					await this.workflowRepository.updateActiveState(workflowId, false);
+					this.logger.warn(
+						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+					);
+
+					const recipient = await this.getAutodeactivationRecipient(workflow);
+					await this.userManagementMailer.notifyWorkflowAutodeactivated({
+						recipient,
+						workflow,
+					});
+
+					this.push.once('editorUiConnected', async () => {
+						await sleep(1000);
+						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+					});
+				}
+
+				await this.executionRepository.update(
+					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
+					{ status: 'crashed', stoppedAt: new Date() },
+				);
+			}
+		}
+	}
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
@@ -209,5 +274,24 @@ export class ExecutionRecoveryService {
 		};
 
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
+	}
+
+	private async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+
+		const roleSlug = project.type === 'team' ? PROJECT_ADMIN_ROLE_SLUG : PROJECT_OWNER_ROLE_SLUG;
+		const projectRelations = await this.projectRelationRepository.find({
+			where: {
+				projectId: project.id,
+				role: { slug: roleSlug },
+			},
+			relations: { user: true },
+		});
+
+		if (projectRelations.length > 0) {
+			return projectRelations[0].user;
+		} else {
+			return await this.ownershipService.getInstanceOwner();
+		}
 	}
 }

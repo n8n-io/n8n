@@ -8,9 +8,16 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
+import {
+	buildConfiguratorPrompt,
+	buildRecoveryModeContext,
+	INSTANCE_URL_PROMPT,
+} from '@/prompts/agents/configurator.prompt';
+import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
@@ -18,6 +25,7 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
+import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
@@ -26,102 +34,12 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
 	createStandardShouldContinue,
 } from '../utils/subgraph-helpers';
-import type { ChatPayload } from '../workflow-builder-agent';
-
-/**
- * Configurator Agent Prompt
- */
-const CONFIGURATOR_PROMPT = `You are a Configurator Agent specialized in setting up n8n node parameters.
-
-MANDATORY EXECUTION SEQUENCE:
-You MUST follow these steps IN ORDER. Do not skip any step.
-
-STEP 1: CONFIGURE ALL NODES
-- Call update_node_parameters for EVERY node in the workflow
-- Configure multiple nodes in PARALLEL for efficiency
-- Do NOT respond with text - START CONFIGURING immediately
-
-STEP 2: VALIDATE (REQUIRED)
-- After ALL configurations complete, call validate_configuration
-- This step is MANDATORY - you cannot finish without it
-- If validation finds issues, fix them and validate again
-
-STEP 3: RESPOND TO USER
-- Only after validation passes, provide your response
-
-NEVER respond to the user without calling validate_configuration first
-
-WORKFLOW JSON DETECTION:
-- You receive <current_workflow_json> in your context
-- If you see nodes in the workflow JSON, you MUST configure them IMMEDIATELY
-- Look at the workflow JSON, identify each node, and call update_node_parameters for ALL of them
-
-PARAMETER CONFIGURATION:
-Use update_node_parameters with natural language instructions:
-- "Set URL to https://api.example.com/weather"
-- "Add header Authorization: Bearer token"
-- "Set method to POST"
-- "Add field 'status' with value 'processed'"
-
-SPECIAL EXPRESSIONS FOR TOOL NODES:
-Tool nodes (types ending in "Tool") support $fromAI expressions:
-- "Set sendTo to ={{ $fromAI('to') }}"
-- "Set subject to ={{ $fromAI('subject') }}"
-- "Set message to ={{ $fromAI('message_html') }}"
-- "Set timeMin to ={{ $fromAI('After', '', 'string') }}"
-
-$fromAI syntax: ={{ $fromAI('key', 'description', 'type', defaultValue) }}
-- ONLY use in tool nodes (check node type ends with "Tool")
-- Use for dynamic values that AI determines at runtime
-- For regular nodes, use static values or standard expressions
-
-CRITICAL PARAMETERS TO ALWAYS SET:
-- HTTP Request: URL, method, headers (if auth needed)
-- Set node: Fields to set with values
-- Code node: The actual code to execute
-- IF node: Conditions to check
-- Document Loader: dataType parameter ('binary' for files like PDF, 'json' for JSON data)
-- AI nodes: Prompts, models, configurations
-- Tool nodes: Use $fromAI for dynamic recipient/subject/message fields
-
-NEVER RELY ON DEFAULT VALUES:
-Defaults are traps that cause runtime failures. Examples:
-- Document Loader defaults to 'json' but MUST be 'binary' when processing files
-- HTTP Request defaults to GET but APIs often need POST
-- Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)
-
-<response_format>
-After validation passes, provide a concise summary:
-- List any placeholders requiring user configuration (e.g., "URL placeholder needs actual endpoint")
-- Note which nodes were configured and key settings applied
-- Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users
-</response_format>
-
-DO NOT:
-- Respond before calling validate_configuration
-- Skip validation even if you think configuration is correct
-- Add commentary between tool calls - execute tools silently`;
-
-/**
- * Instance URL prompt template
- */
-const INSTANCE_URL_PROMPT = `
-<instance_url>
-The n8n instance base URL is: {instanceUrl}
-
-This URL is essential for webhook nodes and chat triggers as it provides the base URL for:
-- Webhook URLs that external services need to call
-- Chat trigger URLs for conversational interfaces
-- Any node that requires the full instance URL to generate proper callback URLs
-
-When working with webhook or chat trigger nodes, use this URL as the base for constructing proper endpoint URLs.
-</instance_url>
-`;
 
 /**
  * Configurator Subgraph State
@@ -171,6 +89,12 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		},
 		default: () => [],
 	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
+	}),
 });
 
 export interface ConfiguratorSubgraphConfig {
@@ -178,6 +102,7 @@ export interface ConfiguratorSubgraphConfig {
 	llm: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class ConfiguratorSubgraph extends BaseSubgraph<
@@ -194,8 +119,12 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 	create(config: ConfiguratorSubgraphConfig) {
 		this.instanceUrl = config.instanceUrl ?? '';
-		// Create tools
-		const tools = [
+
+		// Check if template examples are enabled
+		const includeExamples = config.featureFlags?.templateExamples === true;
+
+		// Create base tools
+		const baseTools = [
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
 				config.llm, // Uses same LLM for parameter updater chain
@@ -205,6 +134,11 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
 		];
+
+		// Conditionally add node configuration examples tool if feature flag is enabled
+		const tools = includeExamples
+			? [...baseTools, createGetNodeConfigurationExamplesTool(config.logger)]
+			: baseTools;
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPromptTemplate = ChatPromptTemplate.fromMessages([
@@ -213,7 +147,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: CONFIGURATOR_PROMPT,
+						text: buildConfiguratorPrompt(),
 					},
 					{
 						type: 'text',
@@ -285,11 +219,30 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(parentState.discoveryContext.bestPractices);
 		}
 
-		// 3. Full workflow JSON (nodes to configure)
+		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
+			if (entry.status !== 'error') return false;
+			if (entry.phase !== 'builder') return false;
+			return (
+				entry.metadata.phase === 'error' &&
+				'partialBuilderData' in entry.metadata &&
+				entry.metadata.partialBuilderData
+			);
+		});
+
+		if (
+			builderErrorEntry?.metadata.phase === 'error' &&
+			builderErrorEntry.metadata.partialBuilderData
+		) {
+			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
+			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
+		}
+
+		// 4. Full workflow JSON (nodes to configure)
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 4. Full execution context (data + schema for parameter values)
+		// 5. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
@@ -303,6 +256,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
 			messages: [contextMessage],
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -338,6 +292,8 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 			// NO messages - clean separation from user-facing conversation
 		};
 	}

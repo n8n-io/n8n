@@ -28,8 +28,21 @@ import {
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
 import { setupGitea } from './n8n-test-container-gitea';
+import {
+	setupKeycloak,
+	getKeycloakN8nEnvironment,
+	waitForKeycloakFromContainer,
+	N8N_KEYCLOAK_CERT_PATH,
+} from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
-import { createSilentLogConsumer } from './n8n-test-container-utils';
+import {
+	setupObservabilityStack,
+	type ObservabilityStack,
+	type ScrapeTarget,
+} from './n8n-test-container-observability';
+import { setupTracingStack, type TracingStack } from './n8n-test-container-tracing';
+import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
+import { waitForNetworkQuiet } from './network-stabilization';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
@@ -47,14 +60,16 @@ const N8N_IMAGE = getDockerImageFromEnv(N8N_E2E_IMAGE);
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
-	N8N_ENCRYPTION_KEY: 'test-encryption-key',
+	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
 	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	N8N_METRICS: 'true',
-	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
+	NODE_ENV: 'development',
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
+	N8N_LICENSE_CERT: process.env.N8N_LICENSE_CERT ?? '',
+	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 };
 
 // Wait strategy for n8n main containers
@@ -90,12 +105,29 @@ export interface N8NConfig {
 	sourceControl?: boolean;
 	taskRunner?: boolean;
 	email?: boolean;
+	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
+	oidc?: boolean;
+	/** Enable VictoriaObs stack for test observability (VictoriaLogs + VictoriaMetrics) */
+	observability?: boolean;
+	/** Enable tracing stack for workflow execution visualization (n8n-tracer + Jaeger) */
+	tracing?: boolean;
 }
 
 export interface N8NStack {
 	baseUrl: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
+	/** OIDC configuration when oidc is enabled */
+	oidc?: {
+		/** Discovery URL for OIDC configuration (accessible from host/browser) */
+		discoveryUrl: string;
+		/** Internal discovery URL for n8n container to access Keycloak via Docker network */
+		internalDiscoveryUrl: string;
+	};
+	/** Observability stack when observability is enabled */
+	observability?: ObservabilityStack;
+	/** Tracing stack when tracing is enabled */
+	tracing?: TracingStack;
 }
 
 /**
@@ -121,6 +153,8 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
+	const log = createElapsedLogger('n8n-stack');
+
 	const {
 		postgres = false,
 		queueMode = false,
@@ -128,17 +162,27 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled = false,
 		projectName,
 		resourceQuota,
-		taskRunner = false,
+		taskRunner,
 		sourceControl = false,
 		email = false,
+		oidc = false,
+		observability = false,
+		tracing = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
-	const taskRunnerEnabled = !!taskRunner;
+	// Task runner is enabled by default for all containerized stacks (mirrors production default)
+	const taskRunnerEnabled = taskRunner ?? true;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
-	const usePostgres = postgres || !!queueConfig;
+	const oidcEnabled = !!oidc;
+	const observabilityEnabled = !!observability;
+	const tracingEnabled = !!tracing;
+	// OIDC requires PostgreSQL for SSO support
+	const usePostgres = postgres || !!queueConfig || oidcEnabled;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
+
+	log(`Starting stack creation: ${uniqueProjectName} (queueMode: ${JSON.stringify(queueConfig)})`);
 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
@@ -149,11 +193,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
 		sourceControlEnabled ||
-		emailEnabled;
+		emailEnabled ||
+		oidcEnabled ||
+		observabilityEnabled ||
+		tracingEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
+		log('Creating network...');
 		network = await new Network().start();
+		log('Network created');
 	}
 
 	let environment: Record<string, string> = {
@@ -168,12 +217,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (usePostgres) {
 		assert(network, 'Network should be created for postgres');
+		log('Starting PostgreSQL...');
 		const postgresContainer = await setupPostgres({
 			postgresImage: POSTGRES_IMAGE,
 			projectName: uniqueProjectName,
 			network,
 		});
 		containers.push(postgresContainer.container);
+		log('PostgreSQL ready');
 		environment = {
 			...environment,
 			DB_TYPE: 'postgresdb',
@@ -189,12 +240,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (queueConfig) {
 		assert(network, 'Network should be created for queue mode');
+		log('Starting Redis...');
 		const redis = await setupRedis({
 			redisImage: REDIS_IMAGE,
 			projectName: uniqueProjectName,
 			network,
 		});
 		containers.push(redis);
+		log('Redis ready');
 		environment = {
 			...environment,
 			EXECUTIONS_MODE: 'queue',
@@ -270,25 +323,133 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	let observabilityStack: ObservabilityStack | undefined;
+	let tracingStack: TracingStack | undefined;
+
+	let earlyAllocatedPort: number | undefined;
+	let earlyAllocatedLoadBalancerPort: number | undefined;
+	if (oidcEnabled) {
+		if (needsLoadBalancer) {
+			earlyAllocatedLoadBalancerPort = await getPort();
+		} else {
+			earlyAllocatedPort = await getPort();
+		}
+	}
+
+	let oidcDiscoveryUrl: string | undefined;
+	let oidcInternalDiscoveryUrl: string | undefined;
+	let keycloakCertPem: string | undefined;
+
+	if (oidcEnabled && network) {
+		log('Starting Keycloak for OIDC...');
+		const n8nPort = needsLoadBalancer ? earlyAllocatedLoadBalancerPort! : earlyAllocatedPort!;
+		const n8nCallbackUrl = `http://localhost:${n8nPort}/rest/sso/oidc/callback`;
+
+		const keycloakResult = await setupKeycloak({
+			projectName: uniqueProjectName,
+			network,
+			n8nCallbackUrl,
+		});
+		containers.push(keycloakResult.container);
+		oidcDiscoveryUrl = keycloakResult.discoveryUrl;
+		oidcInternalDiscoveryUrl = keycloakResult.internalDiscoveryUrl;
+		keycloakCertPem = keycloakResult.certPem;
+
+		log(`Keycloak ready. Discovery URL: ${oidcDiscoveryUrl}`);
+
+		environment = {
+			...environment,
+			...getKeycloakN8nEnvironment(),
+		};
+	}
+
+	// Set up observability stack early to capture startup metrics
+	// VictoriaMetrics will retry failed scrapes until n8n containers are ready
+	// Vector collects container logs independently (persists even when process exits)
+	if (observabilityEnabled && network) {
+		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics + Vector)...');
+
+		// Pre-compute scrape targets (hostnames are deterministic)
+		const workerCount = queueConfig?.workers ?? 0;
+		const scrapeTargets: ScrapeTarget[] = [];
+
+		// Add main targets (all grouped under 'n8n-main' job)
+		// Hostname must match the container name: single instance uses '-n8n', multi uses '-n8n-main-{i}'
+		for (let i = 1; i <= mainCount; i++) {
+			const hostname =
+				mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
+			scrapeTargets.push({
+				job: 'n8n-main',
+				instance: `n8n-main-${i}`,
+				host: hostname,
+				port: 5678,
+			});
+		}
+
+		// Add worker targets (all grouped under 'n8n-worker' job)
+		for (let i = 1; i <= workerCount; i++) {
+			scrapeTargets.push({
+				job: 'n8n-worker',
+				instance: `n8n-worker-${i}`,
+				host: `${uniqueProjectName}-n8n-worker-${i}`,
+				port: 5678,
+			});
+		}
+
+		// Start full observability stack (VictoriaLogs, VictoriaMetrics, Vector)
+		observabilityStack = await setupObservabilityStack({
+			projectName: uniqueProjectName,
+			network,
+			scrapeTargets,
+		});
+
+		containers.push(
+			observabilityStack.victoriaLogs.container,
+			observabilityStack.victoriaMetrics.container,
+		);
+		if (observabilityStack.vector) {
+			containers.push(observabilityStack.vector.container);
+		}
+		log('Observability stack ready (logs collected by Vector)');
+	}
+
+	if (tracingEnabled && network) {
+		log('Setting up tracing stack (n8n-tracer + Jaeger)...');
+
+		tracingStack = await setupTracingStack({
+			projectName: uniqueProjectName,
+			network,
+			deploymentMode: 'scaling',
+		});
+
+		containers.push(tracingStack.jaeger.container, tracingStack.n8nTracer.container);
+		log('Tracing stack ready');
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
 		assert(network, 'Network should be created for load balancer');
+		log('Starting Caddy load balancer...');
 		const loadBalancerContainer = await setupCaddyLoadBalancer({
 			caddyImage: CADDY_IMAGE,
 			projectName: uniqueProjectName,
 			mainCount,
 			network,
+			hostPort: earlyAllocatedLoadBalancerPort,
 		});
 		containers.push(loadBalancerContainer);
+		log('Caddy load balancer ready');
 
-		const loadBalancerPort = loadBalancerContainer.getMappedPort(80);
+		const loadBalancerPort =
+			earlyAllocatedLoadBalancerPort ?? loadBalancerContainer.getMappedPort(80);
 		baseUrl = `http://localhost:${loadBalancerPort}`;
 		environment = {
 			...environment,
 			WEBHOOK_URL: baseUrl,
 		};
 
+		log(`Starting n8n instances (${mainCount} mains, ${queueConfig?.workers ?? 0} workers)...`);
 		const instances = await createN8NInstances({
 			mainCount,
 			workerCount: queueConfig?.workers ?? 0,
@@ -296,13 +457,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			environment,
 			network,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		containers.push(...instances);
+		log('All n8n instances started');
 
 		// Wait for all containers to be ready behind the load balancer
+		log('Polling load balancer for readiness...');
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
+		log('Load balancer is ready');
 	} else {
-		const assignedPort = await getPort();
+		// Use early allocated port if available (OIDC), otherwise allocate new
+		const assignedPort = earlyAllocatedPort ?? (await getPort());
 		baseUrl = `http://localhost:${assignedPort}`;
 		environment = {
 			...environment,
@@ -318,16 +484,34 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			network,
 			directPort: assignedPort,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		containers.push(...instances);
 	}
 
+	if (oidcEnabled && oidcInternalDiscoveryUrl) {
+		log('Verifying Keycloak connectivity from n8n containers...');
+		const n8nContainers = containers.filter((c) => {
+			const name = c.getName();
+			return name.includes('-n8n-main-') || name.endsWith('-n8n');
+		});
+		for (const container of n8nContainers) {
+			await waitForKeycloakFromContainer(container, oidcInternalDiscoveryUrl);
+		}
+		log('Keycloak connectivity verified');
+	}
+
 	if (taskRunnerEnabled && network) {
-		// Connect to first available broker (main or worker)
-		// In queue mode, workers also run task brokers
-		const taskBrokerUri = queueConfig?.workers
-			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
-			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
+		// Determine task broker hostname based on mode:
+		// - Queue mode with workers: use first worker
+		// - Queue mode without workers (multi-main): use first main (named -n8n-main-1)
+		// - Single instance: use main (named -n8n)
+		const taskBrokerHost = queueConfig?.workers
+			? `${uniqueProjectName}-n8n-worker-1`
+			: mainCount > 1
+				? `${uniqueProjectName}-n8n-main-1`
+				: `${uniqueProjectName}-n8n`;
+		const taskBrokerUri = `http://${taskBrokerHost}:5679`;
 
 		const taskRunnerContainer = await setupTaskRunner({
 			projectName: uniqueProjectName,
@@ -346,12 +530,26 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(giteaContainer);
 	}
 
+	log(`Stack ready! baseUrl: ${baseUrl}`);
+
+	// Wait for Docker network changes to settle before proceeding.
+	// This prevents ERR_NETWORK_CHANGED errors when containers join the network.
+	await waitForNetworkQuiet();
+
 	return {
 		baseUrl,
 		stop: async () => {
 			await stopN8NStack(containers, network, uniqueProjectName);
 		},
 		containers,
+		...(oidcDiscoveryUrl && {
+			oidc: {
+				discoveryUrl: oidcDiscoveryUrl,
+				internalDiscoveryUrl: oidcInternalDiscoveryUrl!,
+			},
+		}),
+		...(observabilityStack && { observability: observabilityStack }),
+		...(tracingStack && { tracing: tracingStack }),
 	};
 }
 
@@ -415,6 +613,7 @@ interface CreateInstancesOptions {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
+	keycloakCertPem?: string;
 }
 
 async function createN8NInstances({
@@ -426,13 +625,15 @@ async function createN8NInstances({
 	/** The host port to use for the main instance */
 	directPort,
 	resourceQuota,
+	keycloakCertPem,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
+	const log = createElapsedLogger('n8n-instances');
 
 	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
-		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
+		log(`Starting main ${i}/${mainCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
@@ -440,16 +641,19 @@ async function createN8NInstances({
 			network,
 			isWorker: false,
 			instanceNumber: i,
-			networkAlias,
+			networkAlias: name, // Use container name as network alias for VictoriaMetrics scraping
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
+			keycloakCertPem,
 		});
 		instances.push(container);
+		log(`Main ${i}/${mainCount} ready`);
 	}
 
 	// Create worker instances
 	for (let i = 1; i <= workerCount; i++) {
 		const name = `${uniqueProjectName}-n8n-worker-${i}`;
+		log(`Starting worker ${i}/${workerCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
@@ -458,8 +662,10 @@ async function createN8NInstances({
 			isWorker: true,
 			instanceNumber: i,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		instances.push(container);
+		log(`Worker ${i}/${workerCount} ready`);
 	}
 
 	return instances;
@@ -478,6 +684,7 @@ interface CreateContainerOptions {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
+	keycloakCertPem?: string;
 }
 
 async function createN8NContainer({
@@ -490,8 +697,11 @@ async function createN8NContainer({
 	networkAlias,
 	directPort,
 	resourceQuota,
+	keycloakCertPem,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
+
+	// Use silent log consumer - Vector handles log collection when observability is enabled
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
@@ -507,6 +717,15 @@ async function createN8NContainer({
 		.withName(name)
 		.withLogConsumer(consumer)
 		.withReuse();
+
+	if (keycloakCertPem) {
+		container = container.withCopyContentToContainer([
+			{
+				content: keycloakCertPem,
+				target: N8N_KEYCLOAK_CERT_PATH,
+			},
+		]);
+	}
 
 	if (resourceQuota) {
 		container = container.withResourcesQuota({

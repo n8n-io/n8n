@@ -64,6 +64,7 @@ export const enum VIEWS {
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
+	RESOLVERS = 'Resolvers',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

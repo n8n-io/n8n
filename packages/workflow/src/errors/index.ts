@@ -9,6 +9,7 @@ export {
 	ManualExecutionCancelledError,
 	SystemShutdownExecutionCancelledError,
 	TimeoutExecutionCancelledError,
+	type CancellationReason,
 } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';

@@ -30,17 +30,16 @@ import type {
 import {
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
+	displayParameter,
 	isINodePropertyCollection,
 	NodeHelpers,
-	UnexpectedError,
 } from 'n8n-workflow';
-
-import { CredentialsFinderService } from './credentials-finder.service';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
+import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -50,7 +49,8 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
+import { CredentialsFinderService } from './credentials-finder.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -76,6 +76,7 @@ export class CredentialsService {
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsHelper: CredentialsHelper,
 	) {}
 
 	private async addGlobalCredentials(
@@ -385,6 +386,12 @@ export class CredentialsService {
 			}));
 	}
 
+	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
+		const globalCredentials =
+			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		return globalCredentials;
+	}
+
 	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		// If the workflow is owned by a personal project and the owner of the
 		// project has global read permissions it can use all personal credentials.
@@ -538,28 +545,27 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			const project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUserOrFail(
-							user.id,
-							transactionManager,
-						)
-					: await this.projectService.getProjectWithScope(
-							user,
-							projectId,
-							['credential:create'],
-							transactionManager,
-						);
+			if (projectId === undefined) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create credentials even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				projectId = personalProject.id;
+			}
 
-			if (typeof projectId === 'string' && project === null) {
+			const project = await this.projectService.getProjectWithScope(
+				user,
+				projectId,
+				['credential:create'],
+				transactionManager,
+			);
+
+			if (project === null) {
 				throw new BadRequestError(
 					"You don't have the permissions to save the credential in this project.",
 				);
-			}
-
-			// Safe guard in case the personal project does not exist for whatever reason.
-			if (project === null) {
-				throw new UnexpectedError('No personal project found');
 			}
 
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -863,6 +869,26 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
 	}
 
+	private checkCredentialData(type: string, data: ICredentialDataDecryptedObject) {
+		// check mandatory fields are present
+		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
+		for (const property of credentialProperties) {
+			if (property.required && displayParameter(data, property, null, null)) {
+				// Check if value is present in data, if not, check if default value exists
+				const value = data[property.name];
+				const hasDefault =
+					property.default !== undefined && property.default !== null && property.default !== '';
+				if ((value === undefined || value === null || value === '') && !hasDefault) {
+					throw new BadRequestError(
+						`The field "${property.name}" is mandatory for credentials of type "${type}"`,
+					);
+				}
+			}
+		}
+
+		// TODO: add further validation if needed
+	}
+
 	/**
 	 * Create a new managed credential in user's account and return it along the scopes.
 	 * Managed credentials are managed by n8n and cannot be edited by the user.
@@ -872,6 +898,7 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,
@@ -894,6 +921,7 @@ export class CredentialsService {
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
 			isManaged: opts.isManaged,
+			isResolvable: opts.isResolvable ?? false,
 		});
 
 		const { shared, ...credential } = await this.save(

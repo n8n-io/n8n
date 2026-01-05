@@ -1,13 +1,14 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -25,9 +26,11 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
 		jest.clearAllMocks();
 	});
 
@@ -158,7 +161,7 @@ describe('WorkflowsController', () => {
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 
-		it('should throw NotFoundError when no successful execution exists', async () => {
+		it('should return null when no successful execution exists', async () => {
 			/**
 			 * Arrange
 			 */
@@ -168,11 +171,14 @@ describe('WorkflowsController', () => {
 			controller.executionService = executionService;
 
 			/**
-			 * Act & Assert
+			 * Act
 			 */
-			await expect(controller.getLastSuccessfulExecution(req, res, workflowId)).rejects.toThrow(
-				NotFoundError,
-			);
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeNull();
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 	});
@@ -222,6 +228,9 @@ describe('WorkflowsController', () => {
 					throw new BadRequestError('Stopping execution for test');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -229,6 +238,7 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert
@@ -278,6 +288,9 @@ describe('WorkflowsController', () => {
 					throw new Error('User does not have access');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -285,6 +298,7 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert

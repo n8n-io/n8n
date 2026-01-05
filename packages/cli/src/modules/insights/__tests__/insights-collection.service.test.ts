@@ -118,3 +118,65 @@ describe('initialization safeguards', () => {
 		expect(jest.getTimerCount()).toBe(0);
 	});
 });
+
+describe('calculateTimeSaved', () => {
+	let insightsCollectionService: InsightsCollectionService;
+
+	const workflow = mock<WorkflowEntity & IWorkflowDb>({
+		id: 'workflow-id',
+		name: 'Test Workflow',
+	});
+
+	beforeAll(() => {
+		insightsCollectionService = new InsightsCollectionService(
+			mock<SharedWorkflowRepository>(),
+			mock<InsightsRawRepository>(),
+			mock<InsightsMetadataRepository>(),
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+	});
+
+	test('returns the workflow time saved when the time saved mode is fixed', () => {
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		ctx.workflow.settings = {
+			timeSavedMode: 'fixed',
+			timeSavedPerExecution: 10,
+		};
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
+		});
+
+		// @ts-ignore-next-line
+		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
+		expect(timeSaved).toBe(10);
+	});
+
+	test('returns the node time saved when the time saved mode is dynamic', () => {
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		ctx.workflow.settings = {
+			timeSavedMode: 'dynamic',
+		};
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
+			data: {
+				resultData: {
+					runData: {
+						'node-1': [{ metadata: { timeSaved: { minutes: 5 } } }],
+						'node-2': [{ metadata: { timeSaved: { minutes: 15 } } }],
+					},
+				},
+			},
+		});
+
+		// @ts-ignore-next-line
+		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
+		expect(timeSaved).toBe(20);
+	});
+});

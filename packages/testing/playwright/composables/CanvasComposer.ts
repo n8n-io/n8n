@@ -28,6 +28,7 @@ export class CanvasComposer {
 	 * Copy selected nodes and verify success toast
 	 */
 	async copySelectedNodesWithToast(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.copyNodes();
 		await this.n8n.notifications.waitForNotificationAndClose('Copied to clipboard');
 	}
@@ -36,6 +37,7 @@ export class CanvasComposer {
 	 * Select all nodes and copy them
 	 */
 	async selectAllAndCopy(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.selectAll();
 		await this.copySelectedNodesWithToast();
 	}

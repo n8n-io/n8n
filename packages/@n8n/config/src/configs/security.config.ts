@@ -3,21 +3,30 @@ import { Config, Env } from '../decorators';
 @Config
 export class SecurityConfig {
 	/**
-	 * Which directories to limit n8n's access to. Separate multiple dirs with semicolon `;`.
+	 * Dirs that the `ReadWriteFile` and `ReadBinaryFiles` nodes are allowed to access. Separate multiple dirs with semicolon `;`.
+	 * Set to an empty string to disable restrictions (insecure, not recommended for production).
 	 *
-	 * @example N8N_RESTRICT_FILE_ACCESS_TO=/home/user/.n8n;/home/user/n8n-data
+	 * @example N8N_RESTRICT_FILE_ACCESS_TO=/home/john/my-n8n-files
 	 */
 	@Env('N8N_RESTRICT_FILE_ACCESS_TO')
-	restrictFileAccessTo: string = '';
+	restrictFileAccessTo: string = '~/.n8n-files';
 
 	/**
-	 * Whether to block access to all files at:
-	 * - the ".n8n" directory,
-	 * - the static cache dir at ~/.cache/n8n/public, and
-	 * - user-defined config files.
+	 * Whether to block nodes from accessing files at dirs internally used by n8n:
+	 * - `~/.n8n`
+	 * - `~/.cache/n8n/public`
+	 * - any dirs specified by `N8N_CONFIG_FILES`, `N8N_CUSTOM_EXTENSIONS`, `N8N_BINARY_DATA_STORAGE_PATH`, `N8N_UM_EMAIL_TEMPLATES_INVITE`, and `UM_EMAIL_TEMPLATES_PWRESET`.
 	 */
 	@Env('N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES')
 	blockFileAccessToN8nFiles: boolean = true;
+
+	/**
+	 * Blocked file and folder regular expression patterns that `ReadWriteFile` and `ReadBinaryFiles` nodes cant access. Separate multiple patterns with with semicolon `;`.
+	 * - `^(.*\/)*\.git(\/.*)*$`
+	 * Set to empty to not block based on file patterns.
+	 */
+	@Env('N8N_BLOCK_FILE_PATTERNS')
+	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.
@@ -50,7 +59,7 @@ export class SecurityConfig {
 	 * Whether to disable bare repositories support in the Git node.
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
-	disableBareRepos: boolean = false;
+	disableBareRepos: boolean = true;
 
 	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
 	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
@@ -61,4 +70,10 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
 	enableGitNodeHooks: boolean = false;
+
+	/**
+	 * Whether to enable arbitrary git config keys.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
+	enableGitNodeAllConfigKeys: boolean = false;
 }

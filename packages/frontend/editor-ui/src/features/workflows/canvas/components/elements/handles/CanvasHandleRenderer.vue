@@ -181,11 +181,8 @@ provide(CanvasNodeHandleKey, {
 	background: transparent;
 	border-radius: 0;
 
-	&.inputs {
-		&.main {
-			/* stylelint-disable-next-line @n8n/css-var-naming */
-			--handle--indicator--width: calc(8px * var(--canvas-zoom-compensation-factor, 1));
-		}
+	&.inputs.main {
+		cursor: default;
 	}
 }
 

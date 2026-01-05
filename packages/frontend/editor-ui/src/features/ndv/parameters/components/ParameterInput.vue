@@ -95,10 +95,12 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -165,6 +167,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
+const builderStore = useBuilderStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -249,15 +252,6 @@ const hasRemoteMethod = computed<boolean>(() => {
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
-
-	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language') {
-		if (settingsStore.isNativePythonRunnerEnabled) {
-			return safeOptions.filter((o) => o.value !== 'python');
-		} else {
-			return safeOptions.filter((o) => o.value !== 'pythonNative');
-		}
-	}
 
 	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
@@ -801,6 +795,14 @@ function selectInput() {
 	}
 }
 
+function trackBuilderPlaceholders() {
+	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
+		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
+			node_type: node.value.type,
+		});
+	}
+}
+
 async function setFocus() {
 	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
@@ -830,6 +832,7 @@ async function setFocus() {
 	}
 
 	emit('focus');
+	trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {

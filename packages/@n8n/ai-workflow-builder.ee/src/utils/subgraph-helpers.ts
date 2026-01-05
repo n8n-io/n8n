@@ -4,11 +4,14 @@ import type { StructuredTool } from '@langchain/core/tools';
 import { isCommand, END } from '@langchain/langgraph';
 
 import { isBaseMessage } from '../types/langchain';
+import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
 	workflowOperations?: WorkflowOperation[];
+	templateIds?: number[];
+	cachedTemplates?: WorkflowMetadata[];
 }
 
 /**
@@ -31,6 +34,18 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 	) {
 		return false;
 	}
+	// templateIds is optional, but if present must be an array
+	if ('templateIds' in obj && obj.templateIds !== undefined && !Array.isArray(obj.templateIds)) {
+		return false;
+	}
+	// cachedTemplates is optional, but if present must be an array
+	if (
+		'cachedTemplates' in obj &&
+		obj.cachedTemplates !== undefined &&
+		!Array.isArray(obj.cachedTemplates)
+	) {
+		return false;
+	}
 	return true;
 }
 
@@ -47,7 +62,12 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 export async function executeSubgraphTools(
 	state: { messages: BaseMessage[] },
 	toolMap: Map<string, StructuredTool>,
-): Promise<{ messages?: BaseMessage[]; workflowOperations?: WorkflowOperation[] | null }> {
+): Promise<{
+	messages?: BaseMessage[];
+	workflowOperations?: WorkflowOperation[] | null;
+	templateIds?: number[];
+	cachedTemplates?: WorkflowMetadata[];
+}> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
 	if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
@@ -85,9 +105,11 @@ export async function executeSubgraphTools(
 		}),
 	);
 
-	// Unwrap Command objects and collect messages/operations
+	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates
 	const messages: BaseMessage[] = [];
 	const operations: WorkflowOperation[] = [];
+	const templateIds: number[] = [];
+	const cachedTemplates: WorkflowMetadata[] = [];
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
@@ -99,6 +121,12 @@ export async function executeSubgraphTools(
 				if (result.update.workflowOperations) {
 					operations.push(...result.update.workflowOperations);
 				}
+				if (result.update.templateIds) {
+					templateIds.push(...result.update.templateIds);
+				}
+				if (result.update.cachedTemplates) {
+					cachedTemplates.push(...result.update.cachedTemplates);
+				}
 			}
 		} else if (isBaseMessage(result)) {
 			// Direct message (ToolMessage, AIMessage, etc.)
@@ -106,8 +134,12 @@ export async function executeSubgraphTools(
 		}
 	}
 
-	const stateUpdate: { messages?: BaseMessage[]; workflowOperations?: WorkflowOperation[] | null } =
-		{};
+	const stateUpdate: {
+		messages?: BaseMessage[];
+		workflowOperations?: WorkflowOperation[] | null;
+		templateIds?: number[];
+		cachedTemplates?: WorkflowMetadata[];
+	} = {};
 
 	if (messages.length > 0) {
 		stateUpdate.messages = messages;
@@ -115,6 +147,14 @@ export async function executeSubgraphTools(
 
 	if (operations.length > 0) {
 		stateUpdate.workflowOperations = operations;
+	}
+
+	if (templateIds.length > 0) {
+		stateUpdate.templateIds = templateIds;
+	}
+
+	if (cachedTemplates.length > 0) {
+		stateUpdate.cachedTemplates = cachedTemplates;
 	}
 
 	return stateUpdate;

@@ -206,7 +206,9 @@ export class ConcurrencyControlService {
 			return undefined;
 		}
 
-		if (mode === 'webhook' || mode === 'trigger') return this.queues.get('production');
+		if (mode === 'webhook' || mode === 'trigger' || mode === 'chat') {
+			return this.queues.get('production');
+		}
 
 		if (mode === 'evaluation') return this.queues.get('evaluation');
 

@@ -17,6 +17,7 @@ import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 import { BaseCommand } from './base-command';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
@@ -115,6 +116,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		await this.executionContextHookRegistry.init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initEventBus() {
@@ -134,7 +138,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
 	}
 
