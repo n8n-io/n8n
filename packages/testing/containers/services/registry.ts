@@ -8,12 +8,13 @@ import { proxy } from './proxy';
 import { redis } from './redis';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
-import type { Service, ServiceResult, HelperFactories } from './types';
+import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
 import { vector } from './vector';
 import { victoriaLogs } from './victoria-logs';
 import { victoriaMetrics } from './victoria-metrics';
 
-export const services: Record<string, Service<ServiceResult>> = {
+/** Service registry - must include all ServiceName entries */
+export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgres,
 	redis,
 	mailpit,

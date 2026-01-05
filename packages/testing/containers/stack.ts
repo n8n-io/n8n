@@ -13,12 +13,13 @@ import type {
 	HelperFactories,
 	Service,
 	ServiceHelpers,
+	ServiceName,
 	ServiceResult,
 	StackConfig,
 	StartContext,
 } from './services/types';
 
-const SERVICE_REGISTRY: Record<string, Service> = services;
+const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
 
 export type N8NConfig = StackConfig;
 
@@ -26,7 +27,7 @@ export interface N8NStack {
 	baseUrl: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
-	serviceResults: Record<string, ServiceResult>;
+	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	services: ServiceHelpers;
 	logs: ServiceHelpers['observability']['logs'];
 	metrics: ServiceHelpers['observability']['metrics'];
@@ -34,19 +35,19 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 }
 
-function shouldServiceStart(name: string, service: Service, ctx: StartContext): boolean {
+function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
 	if (service.shouldStart) {
 		return service.shouldStart(ctx);
 	}
 	return ctx.config.services?.includes(name) ?? false;
 }
 
-function groupByDependencyLevel(serviceNames: string[]): string[][] {
-	const levels: string[][] = [];
-	const assigned = new Set<string>();
+function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
+	const levels: ServiceName[][] = [];
+	const assigned = new Set<ServiceName>();
 
 	while (assigned.size < serviceNames.length) {
-		const currentLevel: string[] = [];
+		const currentLevel: ServiceName[] = [];
 		for (const name of serviceNames) {
 			if (assigned.has(name)) continue;
 			const service = SERVICE_REGISTRY[name];
@@ -117,7 +118,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	};
 
 	// Step 1: Start services (parallel by dependency level)
-	const servicesToStart = Object.keys(SERVICE_REGISTRY).filter((name) =>
+	const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
+	const servicesToStart = allServiceNames.filter((name) =>
 		shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 	);
 	const dependencyLevels = groupByDependencyLevel(servicesToStart);

@@ -20,12 +20,12 @@ type ChatHubFixtures = {
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
 	capability: {
-		services: ['proxy'] as string[],
+		services: ['proxy'],
 		env: {
 			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
 		},
 	},
-};
+} as const;
 
 export const test = base.extend<ChatHubFixtures>({
 	anthropicApiKey: async ({}, use) => {

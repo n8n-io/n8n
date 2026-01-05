@@ -238,18 +238,27 @@ export const myService: Service<MyServiceResult> = {
 };
 ```
 
-**2. Add to `services/registry.ts`:**
+**2. Register in `services/types.ts` and `services/registry.ts`:**
 
 ```typescript
+// types.ts - add to SERVICE_NAMES array
+export const SERVICE_NAMES = [
+  // ...existing
+  'myService',
+] as const;
+
+// registry.ts - add to services object
 import { myService } from './my-service';
 
-export const services = {
+export const services: Record<ServiceName, Service<ServiceResult>> = {
   // ...existing
   myService,
 };
 ```
 
 **Done.** Use with `services: ['myService']` in tests.
+
+> **Note:** The `ServiceName` type is derived from `SERVICE_NAMES`, and `Record<ServiceName, ...>` ensures the registry includes all services. TypeScript will error if they're out of sync.
 
 ### Service With Helper
 
@@ -274,11 +283,11 @@ export class MyServiceHelper {
 
 // Factory function
 export function createMyServiceHelper(ctx: HelperContext): MyServiceHelper {
-  const result = ctx.serviceResults['myService'] as MyServiceResult | undefined;
+  const result = ctx.serviceResults.myService;
   if (!result) {
     throw new Error('MyService not running. Add services: ["myService"] to test.use()');
   }
-  return new MyServiceHelper(result.container, result.meta);
+  return new MyServiceHelper(result.container, result.meta as MyServiceMeta);
 }
 
 // Type registration (enables autocomplete)
@@ -289,9 +298,16 @@ declare module './types' {
 }
 ```
 
-**Add to `services/registry.ts`:**
+**Register in `services/types.ts` and `services/registry.ts`:**
 
 ```typescript
+// types.ts - add to SERVICE_NAMES array
+export const SERVICE_NAMES = [
+  // ...existing
+  'myService',
+] as const;
+
+// registry.ts - add service and helper factory
 import { myService, createMyServiceHelper } from './my-service';
 
 export const services = { ...existing, myService };

@@ -6,6 +6,7 @@ import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { KeycloakResult } from './services/keycloak';
 import type { TracingResult } from './services/tracing';
+import type { ServiceName } from './services/types';
 import type { VictoriaLogsResult } from './services/victoria-logs';
 import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
@@ -138,7 +139,7 @@ async function main() {
 	}
 
 	// Build services array from CLI flags
-	const services: string[] = [];
+	const services: ServiceName[] = [];
 	if (values['source-control']) services.push('gitea');
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
