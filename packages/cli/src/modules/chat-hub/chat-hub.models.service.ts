@@ -765,7 +765,7 @@ export class ChatHubModelsService {
 	}
 
 	extractModelFromWorkflow(
-		{ name, activeVersion, id }: WorkflowEntity,
+		{ name, activeVersion, id, shared }: WorkflowEntity,
 		scopes: Scope[],
 	): ChatModelDto | null {
 		if (!activeVersion) {
