@@ -1516,9 +1516,6 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
-      '@n8n/localtunnel':
-        specifier: 3.0.0
-        version: 3.0.0
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
@@ -6317,10 +6314,6 @@ packages:
     resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
     engines: {node: '>=18'}
 
-  '@n8n/localtunnel@3.0.0':
-    resolution: {integrity: sha512-0t/AUiZ8Oqo7AqYp2q2qmEC2p2lPP4CEdrGRB0J6nSC7ivOtr0p46Pw739UvUfJMU1bIKvzHIc5M9wCjH5Byjg==}
-    engines: {node: '>=18.0.0'}
-
   '@n8n/tournament@1.0.6':
     resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
@@ -10871,15 +10864,6 @@ packages:
 
   debug@4.3.5:
     resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.3.6:
-    resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -22768,13 +22752,6 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/localtunnel@3.0.0':
-    dependencies:
-      axios: 1.12.0(debug@4.3.6)
-      debug: 4.3.6
-    transitivePeerDependencies:
-      - supports-color
-
   '@n8n/tournament@1.0.6':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
@@ -26841,14 +26818,6 @@ snapshots:
       axios: 1.12.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
-  axios@1.12.0(debug@4.3.6):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.3.6)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
@@ -28170,10 +28139,6 @@ snapshots:
       ms: 2.1.2
 
   debug@4.3.5:
-    dependencies:
-      ms: 2.1.2
-
-  debug@4.3.6:
     dependencies:
       ms: 2.1.2
 
@@ -29611,10 +29576,6 @@ snapshots:
   flatted@3.3.3: {}
 
   fn.name@1.1.0: {}
-
-  follow-redirects@1.15.11(debug@4.3.6):
-    optionalDependencies:
-      debug: 4.3.6
 
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
