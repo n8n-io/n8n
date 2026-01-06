@@ -25,7 +25,7 @@ function isDateLike(v: unknown): v is DateLike {
 }
 
 // Helper function to resolve data table ID from resourceLocator
-async function resolveDataTableId(
+export async function resolveDataTableId(
 	ctx: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
 ): Promise<string> {
