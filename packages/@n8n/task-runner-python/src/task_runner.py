@@ -216,6 +216,8 @@ class TaskRunner:
 
         async for raw_message in self.websocket_connection:
             try:
+                if isinstance(raw_message, bytes):
+                    raw_message = raw_message.decode("utf-8")
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
             except websockets.ConnectionClosedOK:

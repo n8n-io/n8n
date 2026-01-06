@@ -138,7 +138,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const npsSurveyStore = useNpsSurveyStore();
 			vi.spyOn(npsSurveyStore, 'fetchPromptsData').mockResolvedValue();
@@ -183,7 +183,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CANCEL);
@@ -209,7 +209,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const workflowStore = useWorkflowsStore();
 			const MOCK_ID = 'existing-workflow-id';
@@ -246,7 +246,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const workflowStore = useWorkflowsStore();
 			workflowStore.workflow.id = '';
@@ -274,7 +274,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const workflowSaving = useWorkflowSaving({ router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
@@ -314,7 +314,7 @@ describe('useWorkflowSaving', () => {
 
 			// Mock state
 			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);

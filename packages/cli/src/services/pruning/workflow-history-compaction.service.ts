@@ -39,7 +39,7 @@ export class WorkflowHistoryCompactionService {
 		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
-		this.logger = this.logger.scoped('history-compaction');
+		this.logger = this.logger.scoped('workflow-history-compaction');
 	}
 
 	init() {
@@ -57,18 +57,19 @@ export class WorkflowHistoryCompactionService {
 		const { connectionState } = this.dbConnection;
 		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
 
-		this.logger.debug('Started workflow histories compaction');
+		this.logger.debug('Started workflow histories compaction', { ...this.config });
 
 		this.scheduleRollingCompacting();
 
 		if (this.config.compactOnStartUp) {
+			this.logger.debug('Compacting on start up');
 			void this.compactHistories();
 		}
 	}
 
 	@OnLeaderStepdown()
 	stopCompacting() {
-		if (!this.isEnabled) return;
+		if (!this.compactingInterval) return;
 
 		clearInterval(this.compactingInterval);
 
@@ -120,12 +121,12 @@ export class WorkflowHistoryCompactionService {
 		);
 
 		this.logger.debug(
-			`Found ${workflowIds.length} workflows with versions between ${startDate.toISOString()} and ${endDate.toISOString()}`,
+			`Found ${workflowIds.length} workflows with versions between ${startIso} and ${endIso}`,
 		);
 
 		let batchSum = 0;
-		let totalSum = 0;
-		let totalDeleted = 0;
+		let totalVersionsSeen = 0;
+		let totalVersionsDeleted = 0;
 		let errorCount = 0;
 		for (const [index, workflowId] of workflowIds.entries()) {
 			try {
@@ -133,10 +134,11 @@ export class WorkflowHistoryCompactionService {
 					workflowId,
 					startDate,
 					endDate,
+					this.config.minimumTimeBetweenSessionsMs,
 				);
 				batchSum += seen;
-				totalSum += seen;
-				totalDeleted += deleted;
+				totalVersionsSeen += seen;
+				totalVersionsDeleted += deleted;
 
 				this.logger.debug(
 					`Deleted ${deleted} of ${seen} versions of workflow ${workflowId} between ${startIso} and ${endIso}`,
@@ -163,13 +165,13 @@ export class WorkflowHistoryCompactionService {
 			}
 		}
 
-		const compactionDuration = Date.now() - compactionStartTime;
+		const durationMs = Date.now() - compactionStartTime;
 		this.logger.info('Workflow history compaction complete', {
 			workflowsProcessed: workflowIds.length,
-			totalVersionsSeen: totalSum,
-			totalVersionsDeleted: totalDeleted,
+			totalVersionsSeen,
+			totalVersionsDeleted,
 			errorCount,
-			durationMs: compactionDuration,
+			durationMs,
 			dateRange: { start: startIso, end: endIso },
 		});
 	}

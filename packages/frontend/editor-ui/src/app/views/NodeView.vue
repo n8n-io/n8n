@@ -1642,7 +1642,7 @@ function checkIfRouteIsAllowed() {
 	) {
 		void nextTick(async () => {
 			resetWorkspace();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			await router.replace({ name: VIEWS.HOMEPAGE });
 		});
@@ -1882,9 +1882,9 @@ watch(
 
 // Acquire write access when user makes first edit, and trigger auto-save
 watch(
-	() => uiStore.stateIsDirty,
-	(isDirty) => {
-		if (isDirty) {
+	() => uiStore.dirtyStateSetCount,
+	(dirtyStateSetCount) => {
+		if (dirtyStateSetCount > 0) {
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only

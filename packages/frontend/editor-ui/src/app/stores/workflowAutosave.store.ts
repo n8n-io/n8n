@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { AutoSaveState } from '@/app/constants';
 
 /**
@@ -9,11 +9,6 @@ import { AutoSaveState } from '@/app/constants';
 export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 	const autoSaveState = ref<AutoSaveState>(AutoSaveState.Idle);
 	const pendingAutoSave = ref<Promise<void> | null>(null);
-
-	// Log state changes for debugging
-	watch(autoSaveState, (newState, oldState) => {
-		console.log('[AutoSave] State changed:', oldState, '→', newState);
-	});
 
 	function setAutoSaveState(state: AutoSaveState) {
 		autoSaveState.value = state;

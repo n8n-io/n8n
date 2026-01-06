@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -248,7 +248,7 @@
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
     "undici": "^6.21.0",
-    "weaviate-client": "3.6.2",
+    "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }

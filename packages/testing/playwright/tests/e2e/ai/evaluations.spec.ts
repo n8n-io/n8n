@@ -1,10 +1,6 @@
 import { expect, test } from '../../../fixtures/base';
 
-test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
-	},
-});
+test.use({ capability: 'proxy' });
 
 test.describe('Evaluations @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
