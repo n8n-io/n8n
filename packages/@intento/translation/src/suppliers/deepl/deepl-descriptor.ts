@@ -7,4 +7,7 @@ export const DeeplDescriptor: IDescriptor = {
 	tool: 'intentoDeeplTranslationTool',
 	displayName: 'DeepL',
 	description: 'DeepL translation service with advanced features like glossaries and tone adjustment',
+	batchLimit: 50,
+	// Max: 128K bytes, for zh it is near 31500 chars including 5% overhead; current value suitable for failover
+	segmentLimit: 30000,
 };

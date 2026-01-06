@@ -1,18 +1,21 @@
-import { mapTo, type IContext } from 'intento-core';
+import { mapTo, RegExpValidator, type IContext } from 'intento-core';
 import { INodeProperties } from 'n8n-workflow';
 
-type DryRunMode = 'pass' | 'override' | 'fail';
+type DryRunMode = 'pass' | 'override' | 'replace' | 'fail';
 
 const DRY_RUN = {
 	KEYS: {
 		MODE: 'dry_run_context_mode',
 		OVERRIDE: 'dry_run_context_override',
+		REPLACE_PATTERN: 'dry_run_context_replace_pattern',
+		REPLACE_TO: 'dry_run_context_replace_to',
 		ERROR_CODE: 'dry_run_context_error_code',
 		ERROR_MESSAGE: 'dry_run_context_error_message',
 	},
 	MODES: {
 		PASS: 'pass' as DryRunMode,
 		OVERRIDE: 'override' as DryRunMode,
+		REPLACE: 'replace' as DryRunMode,
 		FAIL: 'fail' as DryRunMode,
 	},
 	BOUNDS: {
@@ -23,87 +26,99 @@ const DRY_RUN = {
 	},
 };
 
-/**
- * Dry run testing context for simulating translation behavior.
- *
- * Supports three modes: pass-through (return original text), override (predefined response),
- * or fail (simulate error). Used for testing workflows without making actual API calls.
- */
 export class DryRunContext implements IContext {
-	/** Dry run strategy: 'pass', 'override', or 'fail' */
 	readonly mode: DryRunMode;
-	/** Predefined translation result - required for 'override' mode */
 	readonly override?: string;
-	/** Error code to simulate - required for 'fail' mode, must be 100-599 */
+	readonly replacePattern?: string;
+	readonly replaceTo?: string;
 	readonly errorCode?: number;
-	/** Error message to simulate - required for 'fail' mode */
 	readonly errorMessage?: string;
 
-	/**
-	 * Creates dry run context from n8n node parameters.
-	 *
-	 * NOTE: @mapTo decorators execute bottom-to-top, binding parameters to n8n properties.
-	 *
-	 * @param mode - Dry run strategy to apply
-	 * @param override - Predefined response text (only for 'override' mode)
-	 * @param errorCode - HTTP error code to simulate (only for 'fail' mode)
-	 * @param errorMessage - Error description to simulate (only for 'fail' mode)
-	 */
 	constructor(
 		@mapTo(DRY_RUN.KEYS.MODE) mode: DryRunMode,
 		@mapTo(DRY_RUN.KEYS.OVERRIDE) override?: string,
+		@mapTo(DRY_RUN.KEYS.REPLACE_PATTERN) replacePattern?: string,
+		@mapTo(DRY_RUN.KEYS.REPLACE_TO) replaceTo?: string,
 		@mapTo(DRY_RUN.KEYS.ERROR_CODE) errorCode?: number,
 		@mapTo(DRY_RUN.KEYS.ERROR_MESSAGE) errorMessage?: string,
 	) {
 		this.mode = mode;
 		this.override = override;
+		this.replacePattern = replacePattern;
+		this.replaceTo = replaceTo;
 		this.errorCode = errorCode;
 		this.errorMessage = errorMessage;
 
 		Object.freeze(this);
 	}
 
-	/**
-	 * Validates dry run configuration has required fields for selected mode.
-	 *
-	 * NOTE: Each mode requires different parameters - validates mutual exclusivity.
-	 *
-	 * @throws Error if required fields missing for selected mode
-	 * @throws Error if fields set for wrong mode (e.g., errorCode for 'pass' mode)
-	 */
 	throwIfInvalid(): void {
 		switch (this.mode) {
 			case 'pass':
-				if (this.override || this.errorCode || this.errorMessage)
-					throw new Error('override, errorCode, and errorMessage must not be set for dryRun mode "pass"');
+				this.throwIfPassModeInvalid();
 				return;
 			case 'override':
-				if (!this.override) throw new Error('override is required for dryRun mode "override"');
-				if (this.errorCode || this.errorMessage) throw new Error('errorCode and errorMessage must not be set for dryRun mode "override"');
-				break;
+				this.throwIfOverrideModeInvalid();
+				return;
+			case 'replace':
+				this.throwIfReplaceModeInvalid();
+				return;
 			case 'fail':
-				if (!this.errorCode) throw new Error('errorCode is required for dryRun mode "fail"');
-				if (!this.errorMessage) throw new Error('errorMessage is required for dryRun mode "fail"');
-				if (this.override) throw new Error('override must not be set for dryRun mode "fail"');
-				break;
+				this.throwIfFailModeInvalid();
+				return;
 		}
 	}
+
 	asLogMetadata(): Record<string, unknown> {
 		return {
 			dryRunMode: this.mode,
 			override: this.override,
+			replacePattern: this.replacePattern,
+			replaceTo: this.replaceTo,
 			errorCode: this.errorCode,
 			errorMessage: this.errorMessage,
 		};
 	}
+
+	private throwIfPassModeInvalid(): void {
+		if (this.override) throw new Error('override must not be set for dryRun mode "pass"');
+		if (this.replacePattern) throw new Error('replacePattern must not be set for dryRun mode "pass"');
+		if (this.replaceTo) throw new Error('replaceTo must not be set for dryRun mode "pass"');
+		if (this.errorCode) throw new Error('errorCode must not be set for dryRun mode "pass"');
+		if (this.errorMessage) throw new Error('errorMessage must not be set for dryRun mode "pass"');
+	}
+
+	private throwIfReplaceModeInvalid(): void {
+		if (!this.replacePattern) throw new Error('replacePattern is required for dryRun mode "replace"');
+		if (!RegExpValidator.isValidPattern(this.replacePattern))
+			throw new Error('replacePattern contains invalid regex for dryRun mode "replace"');
+		if (!this.replaceTo) throw new Error('replaceTo is required for dryRun mode "replace"');
+		if (this.override) throw new Error('override must not be set for dryRun mode "replace"');
+		if (this.errorCode) throw new Error('errorCode must not be set for dryRun mode "replace"');
+		if (this.errorMessage) throw new Error('errorMessage must not be set for dryRun mode "replace"');
+	}
+
+	private throwIfOverrideModeInvalid(): void {
+		if (!this.override) throw new Error('override is required for dryRun mode "override"');
+		if (this.replacePattern) throw new Error('replacePattern must not be set for dryRun mode "override"');
+		if (this.replaceTo) throw new Error('replaceTo must not be set for dryRun mode "override"');
+		if (this.errorCode) throw new Error('errorCode must not be set for dryRun mode "override"');
+		if (this.errorMessage) throw new Error('errorMessage must not be set for dryRun mode "override"');
+	}
+
+	private throwIfFailModeInvalid(): void {
+		if (this.override) throw new Error('override must not be set for dryRun mode "fail"');
+		if (this.replacePattern) throw new Error('replacePattern must not be set for dryRun mode "fail"');
+		if (this.replaceTo) throw new Error('replaceTo must not be set for dryRun mode "fail"');
+		if (!this.errorCode) throw new Error('errorCode is required for dryRun mode "fail"');
+		if (!this.errorMessage) throw new Error('errorMessage is required for dryRun mode "fail"');
+		if (this.errorCode < DRY_RUN.BOUNDS.CODE.MIN)
+			throw new RangeError(`errorCode must be at least ${DRY_RUN.BOUNDS.CODE.MIN} for dryRun mode "fail"`);
+		if (this.errorCode > DRY_RUN.BOUNDS.CODE.MAX)
+			throw new RangeError(`errorCode must be at most ${DRY_RUN.BOUNDS.CODE.MAX} for dryRun mode "fail"`);
+	}
 }
 
-/**
- * n8n node properties for dry run context.
- *
- * Defines UI form fields for dry run testing configuration in n8n workflow editor.
- * Property names must match DRY_RUN.KEYS for @mapTo decorator binding.
- */
 export const CONTEXT_DRY_RUN = [
 	{
 		displayName: 'Dry Run Mode',
@@ -114,6 +129,11 @@ export const CONTEXT_DRY_RUN = [
 				name: 'Pass Through',
 				value: DRY_RUN.MODES.PASS,
 				description: 'Process the request normally without any dry run modifications',
+			},
+			{
+				name: 'Replace Text',
+				value: DRY_RUN.MODES.REPLACE,
+				description: 'Replace text using a pattern instead of making an actual request',
 			},
 			{
 				name: 'Override Response',
@@ -128,6 +148,45 @@ export const CONTEXT_DRY_RUN = [
 		],
 		default: DRY_RUN.MODES.PASS,
 		description: 'Determines how to handle the request in dry run mode',
+	},
+	{
+		displayName: 'Replace Pattern',
+		name: DRY_RUN.KEYS.REPLACE_PATTERN,
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				[DRY_RUN.KEYS.MODE]: [DRY_RUN.MODES.REPLACE],
+			},
+		},
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^/.+/[gimusy]*$',
+					errorMessage: 'Pattern must be in format /pattern/flags (e.g., /text/gi or /\\d+/)',
+				},
+			},
+		],
+		placeholder: '/<span[^>]*>(.*?)</span>/g',
+		hint: 'Example: /<span[^>]*>(.*?)</span>/g matches <span>text</span> and <span class="x">text</span>. [^>]* matches any attributes. Flags: g (global), i (case-insensitive)',
+		description:
+			'Regular expression pattern in /pattern/flags format. Supports full regex syntax including character classes [aA-Z], capture groups (\\w+), quantifiers +*?, etc. Captured groups can be referenced as $1, $2 in the replacement field',
+	},
+	{
+		displayName: 'Replace With',
+		name: DRY_RUN.KEYS.REPLACE_TO,
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				[DRY_RUN.KEYS.MODE]: [DRY_RUN.MODES.REPLACE],
+			},
+		},
+		placeholder: '_$1_',
+		hint: 'Use $1 for first capture group, $2 for second, etc. Leave empty to remove matches',
+		description:
+			'Replacement text. Use $1, $2, etc. to insert captured groups from the pattern. Use empty string to remove matched text. Example: Pattern /<span>(.*?)</span>/g with replacement "_$1_" changes <span>text</span> to _text_',
 	},
 	{
 		displayName: 'Override Response',

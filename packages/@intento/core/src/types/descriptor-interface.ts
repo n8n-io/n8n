@@ -5,4 +5,6 @@ export interface IDescriptor {
 	node: string;
 	displayName: string;
 	description: string;
+	batchLimit: number;
+	segmentLimit: number;
 }

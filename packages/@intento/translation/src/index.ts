@@ -7,6 +7,7 @@ export * from './supply/translation-supplier-base';
 // intento-translation/context
 export * from './context/delay-context';
 export * from './context/translation-context';
+export * from './context/split-context';
 
 // intento-translation/suppliers
 // Dry Run Supplier

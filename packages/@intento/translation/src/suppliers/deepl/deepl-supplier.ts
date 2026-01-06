@@ -3,6 +3,7 @@ import type { IHttpRequestOptions, IntentoConnectionType } from 'n8n-workflow';
 
 import type { TranslationError, TranslationRequest, TranslationResponse } from 'supply/*';
 import { TranslationSupplierBase } from 'supply/translation-supplier-base';
+
 import { DeeplDescriptor } from './deepl-descriptor';
 
 export class DeeplSupplier extends TranslationSupplierBase {
@@ -10,7 +11,7 @@ export class DeeplSupplier extends TranslationSupplierBase {
 	private headers: Record<string, string>;
 
 	constructor(connection: IntentoConnectionType, functions: IFunctions) {
-		super(`${DeeplDescriptor.name}`, connection, functions);
+		super(DeeplDescriptor, connection, functions);
 		this.uri = 'https://api.deepl.com/v2';
 		this.headers = {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -20,10 +21,12 @@ export class DeeplSupplier extends TranslationSupplierBase {
 
 	protected async supply(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
 		signal?.throwIfAborted();
+
 		const body = {
 			text: request.text,
 			target_lang: request.to,
 		};
+
 		const options: IHttpRequestOptions = {
 			method: 'POST',
 			headers: this.headers,
@@ -36,6 +39,7 @@ export class DeeplSupplier extends TranslationSupplierBase {
 			DeeplDescriptor.credentials,
 			options,
 		)) as unknown;
+
 		throw new Error('Method not implemented.');
 	}
 }

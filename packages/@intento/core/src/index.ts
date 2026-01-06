@@ -18,7 +18,9 @@ export type * from './types/data-provider-interface';
 export type * from './types/functions-interface';
 export type * from './types/traceable-interface';
 export type * from './types/descriptor-interface';
+export type * from './types/text-type';
 
 // intento-core/utils
 export * from './utils/delay';
 export * from './utils/pipeline';
+export * from './utils/regexp-validator';
