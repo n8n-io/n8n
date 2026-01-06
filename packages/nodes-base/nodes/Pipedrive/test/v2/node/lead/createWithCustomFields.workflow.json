@@ -1,0 +1,99 @@
+{
+	"name": "Pipedrive v2 lead create with custom fields test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d1e2f3a4-b5c6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "lead",
+				"operation": "create",
+				"title": "Lead With Custom Fields",
+				"associateWith": "organization",
+				"organization_id": 7,
+				"additionalFields": {
+					"customFields": {
+						"property": [
+							{
+								"name": "test_enum",
+								"value": "option_a"
+							},
+							{
+								"name": "test_multi",
+								"value": "option_b"
+							}
+						]
+					}
+				}
+			},
+			"id": "e2f3a4b5-c6d7-8901-bcde-f12345678901",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "f3a4b5c6-d7e8-9012-cdef-123456789012",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "aaa11111-bb22-cc33-dd44-ee5555555555",
+					"title": "Lead With Custom Fields",
+					"owner_id": 25455458,
+					"creator_id": 25455458,
+					"label_ids": [],
+					"value": null,
+					"expected_close_date": null,
+					"person_id": null,
+					"organization_id": 7,
+					"is_archived": false,
+					"archive_time": null,
+					"source_name": "API",
+					"source_deal_id": null,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"was_seen": false,
+					"next_activity_id": null,
+					"add_time": "2026-04-01T22:03:28.177Z",
+					"update_time": "2026-04-01T22:03:28.177Z",
+					"visible_to": "3",
+					"cc_email": "test+lead@pipedrivemail.com",
+					"custom_fields": {
+						"test_enum": "option_a",
+						"test_multi": "option_b"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}
