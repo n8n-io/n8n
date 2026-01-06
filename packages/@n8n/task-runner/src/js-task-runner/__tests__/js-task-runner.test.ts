@@ -1512,7 +1512,8 @@ describe('JsTaskRunner', () => {
 							: 'return { json: { result: Error.prepareStackTrace } }',
 					inputItems: [{ a: 1 }],
 				});
-				expect(outcome.result[0].json.result).toBeUndefined();
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
 			},
 		);
 
@@ -1527,7 +1528,8 @@ describe('JsTaskRunner', () => {
 							: 'return { json: { result: Error.captureStackTrace } }',
 					inputItems: [{ a: 1 }],
 				});
-				expect(outcome.result[0].json.result).toBeUndefined();
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
 			},
 		);
 
@@ -1550,7 +1552,8 @@ describe('JsTaskRunner', () => {
 					inputItems: [{ a: 1 }],
 				});
 				// prepareStackTrace should still be undefined because defineProperty is neutered
-				expect(outcome.result[0].json.result).toBeUndefined();
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
 			},
 		);
 
@@ -1575,8 +1578,9 @@ describe('JsTaskRunner', () => {
 			});
 			// The exploit should fail - prepareStackTrace wasn't actually set
 			// so .stack returns a normal stack trace string, not 'pwned'
-			expect(outcome.result[0].json.exploited).toBe(false);
-			expect(outcome.result[0].json.result).toBe('string'); // Normal stack trace
+			const result = outcome.result as Array<{ json: IDataObject }>;
+			expect(result[0].json.exploited).toBe(false);
+			expect(result[0].json.result).toBe('string'); // Normal stack trace
 		});
 	});
 
@@ -1601,8 +1605,9 @@ describe('JsTaskRunner', () => {
 					inputItems: [{ a: 1 }],
 				});
 				// defineProperty is neutered, property won't be defined
-				expect(outcome.result[0].json.hasProperty).toBe(false);
-				expect(outcome.result[0].json.value).toBeUndefined();
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasProperty).toBe(false);
+				expect(result[0].json.value).toBeUndefined();
 			},
 		);
 
@@ -1625,8 +1630,9 @@ describe('JsTaskRunner', () => {
 							`,
 					inputItems: [{ a: 1 }],
 				});
-				expect(outcome.result[0].json.hasA).toBe(false);
-				expect(outcome.result[0].json.hasB).toBe(false);
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasA).toBe(false);
+				expect(result[0].json.hasB).toBe(false);
 			},
 		);
 	});
