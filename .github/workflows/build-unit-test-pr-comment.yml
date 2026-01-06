@@ -1,4 +1,4 @@
-name: Trigger build/unit tests on PR comment
+name: 'Build: Unit Test PR Comment'
 
 on:
   issue_comment:

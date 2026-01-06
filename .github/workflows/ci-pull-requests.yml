@@ -1,4 +1,4 @@
-name: Build, unit test and lint branch
+name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
   pull_request:

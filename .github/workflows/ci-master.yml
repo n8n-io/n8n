@@ -1,4 +1,4 @@
-name: Test Master
+name: 'CI: Master (Build, Test, Lint)'
 
 on:
   push:
