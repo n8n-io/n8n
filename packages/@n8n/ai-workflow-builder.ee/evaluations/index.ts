@@ -20,8 +20,9 @@ const VALID_FLAGS = [
 	'--test-case',
 	'--prompts-csv',
 	'--repetitions',
-	'--notion-id',
-	'--technique',
+	'--notion-id', // Backwards-compatible alias for --filter id:
+	'--technique', // Backwards-compatible alias for --filter technique:
+	'--filter', // Unified filter flag with key:value syntax
 	'--judges',
 	'--generations',
 	'--concurrency',
@@ -64,17 +65,82 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 	return max ? Math.min(parsed, max) : parsed;
 }
 
+interface FilterOptions {
+	doSearch?: string;
+	dontSearch?: string;
+	technique?: string;
+	notionId?: string;
+}
+
+/**
+ * Parse --filter flags with key:value syntax.
+ * Supports multiple --filter flags that are applied progressively.
+ * Also handles backwards-compatible --technique and --notion-id aliases.
+ *
+ * @example
+ * --filter "do:structured output" --filter "technique:data_transformation"
+ * --filter "id:abc123" --filter "dont:hardcoded"
+ */
+function parseFilterFlags(): FilterOptions {
+	const filters: FilterOptions = {};
+
+	// Extract values following --filter flags
+	const filterValues = process.argv
+		.map((arg, i, arr) => (arg === '--filter' ? arr[i + 1] : null))
+		.filter((v): v is string => v !== null);
+
+	// Parse each filter (format: key:value)
+	const filterPattern = /^(\w+):(.+)$/;
+
+	for (const value of filterValues) {
+		const match = value.match(filterPattern);
+		if (!match) {
+			throw new Error('Invalid --filter format. Expected: --filter "key:value"');
+		}
+
+		const [, key, filterValue] = match;
+		switch (key) {
+			case 'do':
+				filters.doSearch = filterValue;
+				break;
+			case 'dont':
+				filters.dontSearch = filterValue;
+				break;
+			case 'technique':
+				filters.technique = filterValue;
+				break;
+			case 'id':
+				filters.notionId = filterValue;
+				break;
+		}
+	}
+
+	// Backwards-compatible aliases (--technique and --notion-id)
+	// These are overridden by --filter if both are specified
+	const techniqueAlias = getFlagValue('--technique');
+	if (techniqueAlias && !filters.technique) {
+		filters.technique = techniqueAlias;
+	}
+
+	const notionIdAlias = getFlagValue('--notion-id');
+	if (notionIdAlias && !filters.notionId) {
+		filters.notionId = notionIdAlias;
+	}
+
+	return filters;
+}
+
 /** Parse all CLI arguments */
 function parseCliArgs() {
 	validateCliArgs();
+
 	return {
 		testCaseId: process.argv.includes('--test-case')
 			? process.argv[process.argv.indexOf('--test-case') + 1]
 			: undefined,
 		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
 		repetitions: getIntFlag('--repetitions', 1),
-		notionId: getFlagValue('--notion-id'),
-		technique: getFlagValue('--technique'),
+		filters: parseFilterFlags(),
 		numJudges: getIntFlag('--judges', 3),
 		numGenerations: getIntFlag('--generations', 1, 10),
 		concurrency: getIntFlag('--concurrency', 5),
@@ -121,8 +187,7 @@ async function main(): Promise<void> {
 			// LangSmith mode
 			await runPairwiseLangsmithEvaluation({
 				repetitions: args.repetitions,
-				notionId: args.notionId,
-				technique: args.technique,
+				...args.filters,
 				numJudges: args.numJudges,
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,

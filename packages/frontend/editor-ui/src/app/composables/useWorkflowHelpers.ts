@@ -947,10 +947,10 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
+		ws.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
-		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
+		ws.setWorkflowMetadata(workflowData.meta);
+		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);

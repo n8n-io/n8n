@@ -105,7 +105,6 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/task-runner": "workspace:*",
