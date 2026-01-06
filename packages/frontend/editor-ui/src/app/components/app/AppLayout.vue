@@ -7,6 +7,7 @@ import SettingsLayout from '@/app/layouts/SettingsLayout.vue';
 import WorkflowLayout from '@/app/layouts/WorkflowLayout.vue';
 import AuthLayout from '@/app/layouts/AuthLayout.vue';
 import DemoLayout from '@/app/layouts/DemoLayout.vue';
+import ChatLayout from '@/app/layouts/ChatLayout.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -33,5 +34,6 @@ function onMounted(element: Element) {
 	<WorkflowLayout v-else-if="route.meta.layout === 'workflow'" @mounted="onMounted" />
 	<AuthLayout v-else-if="route.meta.layout === 'auth'" @mounted="onMounted" />
 	<DemoLayout v-else-if="route.meta.layout === 'demo'" @mounted="onMounted" />
+	<ChatLayout v-else-if="route.meta.layout === 'chat'" @mounted="onMounted" />
 	<DefaultLayout v-else @mounted="onMounted" />
 </template>
