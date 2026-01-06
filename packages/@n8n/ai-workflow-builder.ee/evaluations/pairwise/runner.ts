@@ -230,6 +230,7 @@ export interface PairwiseEvaluationOptions {
 	concurrency?: number;
 	maxExamples?: number;
 	featureFlags?: BuilderFeatureFlags;
+	splits?: string[];
 }
 
 /**
@@ -250,6 +251,7 @@ export async function runPairwiseLangsmithEvaluation(
 		concurrency = DEFAULTS.CONCURRENCY,
 		maxExamples,
 		featureFlags,
+		splits,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -292,7 +294,10 @@ export async function runPairwiseLangsmithEvaluation(
 		// Fetch and filter examples
 		const allExamples: Example[] = [];
 		log.verbose('➔ Fetching examples from dataset...');
-		for await (const example of lsClient.listExamples({ datasetId })) {
+		if (splits?.length) {
+			log.info(`➔ Filtering by splits: ${splits.join(', ')}`);
+		}
+		for await (const example of lsClient.listExamples({ datasetId, splits })) {
 			allExamples.push(example);
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);

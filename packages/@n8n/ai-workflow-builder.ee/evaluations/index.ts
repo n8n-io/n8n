@@ -35,6 +35,7 @@ const VALID_FLAGS = [
 	'--donts',
 	'--template-examples',
 	'--multi-agent',
+	'--splits',
 ] as const;
 
 /** Validate that all provided CLI flags are recognized */
@@ -64,6 +65,16 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 	return max ? Math.min(parsed, max) : parsed;
 }
 
+/** Parse splits flag as comma-separated array */
+function getSplitsFlag(): string[] | undefined {
+	const value = getFlagValue('--splits');
+	if (!value) return undefined;
+	return value
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
 /** Parse all CLI arguments */
 function parseCliArgs() {
 	validateCliArgs();
@@ -86,6 +97,7 @@ function parseCliArgs() {
 		prompt: getFlagValue('--prompt'),
 		dos: getFlagValue('--dos'),
 		donts: getFlagValue('--donts'),
+		splits: getSplitsFlag(),
 	};
 }
 
@@ -130,6 +142,7 @@ async function main(): Promise<void> {
 				concurrency: args.concurrency,
 				maxExamples: args.maxExamples,
 				featureFlags,
+				splits: args.splits,
 			});
 		}
 	} else if (useLangsmith) {

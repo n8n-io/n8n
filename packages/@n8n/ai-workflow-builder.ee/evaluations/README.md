@@ -321,6 +321,7 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
 | `--technique <name>` | Filter examples by technique (must be in metadata `categories` field) | (all examples) |
 | `--max-examples <n>` | Limit number of examples to evaluate (useful for testing) | (no limit) |
+| `--splits <names>` | Comma-separated list of LangSmith dataset splits to filter by | (all splits) |
 | `--repetitions <n>` | Number of times to repeat the entire evaluation | 1 |
 | `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
 | `--judges <n>` | Number of LLM judges per evaluation | 3 |
@@ -369,6 +370,9 @@ pnpm eval:pairwise --notion-id 30d29454-b397-4a35-8e0b-74a2302fa81a
 
 # Filter examples by technique (from metadata.categories field)
 pnpm eval:pairwise --technique "1-technique-data"
+
+# Filter examples by LangSmith dataset splits
+pnpm eval:pairwise --splits "train,test"
 
 # Run with 3 repetitions and 5 judges, custom experiment name
 pnpm eval:pairwise --repetitions 3 --judges 5 --name "my-experiment"
