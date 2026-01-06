@@ -87,10 +87,9 @@ export class RefactorExecutionIndices1723796243146 implements ReversibleMigratio
 			skipIfMissing: true,
 		});
 		await schemaBuilder.dropIndex('execution_entity', ['workflowId', 'id'], {
-			customIndexName:
-				isPostgres
-					? 'idx_execution_entity_workflow_id_id'
-					: 'IDX_81fc04c8a17de15835713505e4',
+			customIndexName: isPostgres
+				? 'idx_execution_entity_workflow_id_id'
+				: 'IDX_81fc04c8a17de15835713505e4',
 			skipIfMissing: true,
 		});
 	}

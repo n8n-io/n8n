@@ -42,12 +42,7 @@ describe('DbConnection', () => {
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
 		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
 
-		dbConnection = new DbConnection(
-			errorReporter,
-			connectionOptions,
-			databaseConfig,
-			logger,
-		);
+		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
 	});
 
 	describe('init', () => {
