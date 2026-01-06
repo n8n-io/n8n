@@ -369,6 +369,147 @@ describe('SlackTrigger Node', () => {
 		});
 	});
 
+	describe('webhook method - userIds ignore filter', () => {
+		it('should ignore events from users in the ignore list (event.user)', async () => {
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'message',
+						channel: 'C123',
+						user: 'U_IGNORED',
+						text: 'Hello world',
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['message'];
+					case 'watchWorkspace':
+						return false;
+					case 'channelId':
+						return 'C123';
+					case 'options':
+						return { userIds: ['U_IGNORED', 'U_OTHER'] };
+					default:
+						return {};
+				}
+			});
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should ignore message_changed events when event.message.user is in ignore list', async () => {
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'message',
+						subtype: 'message_changed',
+						channel: 'C123',
+						message: {
+							user: 'U_BOT_IGNORED',
+							text: 'Updated message with locale',
+						},
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['message'];
+					case 'watchWorkspace':
+						return false;
+					case 'channelId':
+						return 'C123';
+					case 'options':
+						return { userIds: ['U_BOT_IGNORED'] };
+					default:
+						return {};
+				}
+			});
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should not ignore events when user is not in the ignore list', async () => {
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'message',
+						channel: 'C123',
+						user: 'U_ALLOWED',
+						text: 'Hello world',
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['message'];
+					case 'watchWorkspace':
+						return false;
+					case 'channelId':
+						return 'C123';
+					case 'options':
+						return { userIds: ['U_IGNORED'] };
+					default:
+						return {};
+				}
+			});
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+			expect(result.workflowData![0][0].json).toEqual(mockRequest.body.event);
+		});
+
+		it('should not ignore events when no user ID is available', async () => {
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'channel_created',
+						channel: {
+							id: 'C_NEW',
+							name: 'new-channel',
+						},
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['channel_created'];
+					case 'watchWorkspace':
+						return true;
+					case 'options':
+						return { userIds: ['U_IGNORED'] };
+					default:
+						return {};
+				}
+			});
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+	});
+
 	describe('webhook method - other event scenarios', () => {
 		it('should handle team_join event (no channel extraction needed)', async () => {
 			const mockRequest = {
