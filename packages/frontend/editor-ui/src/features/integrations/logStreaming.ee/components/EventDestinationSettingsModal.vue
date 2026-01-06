@@ -461,7 +461,7 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="isTypeAbstract || unchanged || !isFormValid"
+								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"
