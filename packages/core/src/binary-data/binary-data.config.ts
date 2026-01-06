@@ -15,6 +15,7 @@ const availableModesSchema = z
 	.pipe(binaryDataModesSchema.array());
 
 const dbMaxFileSizeSchema = z
+	.coerce
 	.number()
 	.max(1024, 'Binary data max file size in `database` mode cannot exceed 1024 MiB'); // because of Postgres BYTEA hard limit
 
