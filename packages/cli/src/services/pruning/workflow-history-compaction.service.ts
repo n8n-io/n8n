@@ -134,6 +134,7 @@ export class WorkflowHistoryCompactionService {
 					workflowId,
 					startDate,
 					endDate,
+					this.config.minimumTimeBetweenSessionsMs,
 				);
 				batchSum += seen;
 				totalVersionsSeen += seen;
