@@ -850,7 +850,7 @@ export function useWorkflowHelpers() {
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 		}
 
 		if (workflow.activeVersion) {
@@ -968,8 +968,7 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		ws.setWorkflowTagIds(tagIds || []);
+		ws.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(tags));
 		tagsStore.upsertTags(tags);
 	}
 

@@ -2,6 +2,7 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const collaborationStore = useCollaborationStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const router = useRouter();
@@ -90,6 +92,9 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 async function onUserMessage(content: string) {
+	// Record activity to maintain write lock while building
+	collaborationStore.requestWriteAccess();
+
 	// Reset tidy up flag for each new message exchange
 	shouldTidyUp.value = false;
 
@@ -308,6 +313,7 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowsStore.workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
+			:disabled="collaborationStore.shouldBeReadOnly"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

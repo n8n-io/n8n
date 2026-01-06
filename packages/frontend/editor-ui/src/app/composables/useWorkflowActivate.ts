@@ -14,6 +14,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -28,6 +29,7 @@ export function useWorkflowActivate() {
 	const i18n = useI18n();
 	const npsSurveyStore = useNpsSurveyStore();
 	const rootStore = useRootStore();
+	const collaborationStore = useCollaborationStore();
 
 	//methods
 
@@ -160,6 +162,9 @@ export function useWorkflowActivate() {
 		options?: { name?: string; description?: string },
 	) => {
 		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
+
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
 
@@ -222,6 +227,8 @@ export function useWorkflowActivate() {
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
 		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
 
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const wasPublished = !!workflow.activeVersion;

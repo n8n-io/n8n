@@ -37,6 +37,7 @@ import axios from 'axios';
 import express from 'express';
 import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -92,6 +93,7 @@ export class WorkflowsController {
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/')
@@ -444,6 +446,8 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
 
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'update');
+
 		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } =
 			req.body;
@@ -479,12 +483,27 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...updatedWorkflow, scopes, checksum };
+	}
+
+	@Get('/:workflowId/collaboration/write-lock')
+	@ProjectScope('workflow:read')
+	async getWriteLock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const writeLockUserId = await this.collaborationService.getWriteLock(req.user.id, workflowId);
+		return { userId: writeLockUserId };
 	}
 
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'delete');
+
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to delete a workflow without permissions', {
@@ -506,6 +525,8 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'archive');
+
 		const workflow = await this.workflowService.archive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to archive a workflow without permissions', {
@@ -519,6 +540,8 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(workflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...workflow, checksum };
 	}
 
@@ -529,6 +552,8 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'unarchive');
+
 		const workflow = await this.workflowService.unarchive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to unarchive a workflow without permissions', {
@@ -542,6 +567,8 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(workflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...workflow, checksum };
 	}
 
@@ -553,6 +580,8 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ActivateWorkflowDto,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'activate');
+
 		const { versionId, name, description, expectedChecksum } = body;
 
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
@@ -565,6 +594,8 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...workflow, scopes, checksum };
 	}
 
@@ -573,10 +604,14 @@ export class WorkflowsController {
 	async deactivate(req: WorkflowRequest.Deactivate) {
 		const { workflowId } = req.params;
 
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'deactivate');
+
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
+
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
 
 		return { ...workflow, scopes, checksum };
 	}

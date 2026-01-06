@@ -3,13 +3,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { useToast } from './useToast';
@@ -17,16 +16,24 @@ import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 
 export function useWorkflowSaving({
 	router,
 	workflowState: providedWorkflowState,
-}: { router: ReturnType<typeof useRouter>; workflowState?: WorkflowState }) {
+	onSaved,
+}: {
+	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
+	onSaved?: (isFirstSave: boolean) => void;
+}) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const message = useMessage();
@@ -39,8 +46,11 @@ export function useWorkflowSaving({
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
+
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
+
+	const autosaveStore = useWorkflowAutosaveStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -78,7 +88,7 @@ export function useWorkflowSaving({
 
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
-					uiStore.stateIsDirty = false;
+					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
 				} else {
@@ -90,7 +100,7 @@ export function useWorkflowSaving({
 			case MODAL_CANCEL:
 				await cancel();
 
-				uiStore.stateIsDirty = false;
+				uiStore.markStateClean();
 				next();
 
 				return;
@@ -140,10 +150,14 @@ export function useWorkflowSaving({
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
 		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
-			return !!(await saveAsNewWorkflow(
+			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
-			));
+			);
+			if (workflowId) {
+				onSaved?.(true); // First save of new workflow
+			}
+			return !!workflowId;
 		}
 
 		// Workflow exists already so update it
@@ -189,19 +203,16 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
-			if (tags) {
-				const createdTags = (workflowData.tags || []) as ITag[];
-				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowState.setWorkflowTagIds(tagIds);
-			}
+			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
 
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			// Reset AI Builder edits flag only after successful save
 			builderStore.resetAiBuilderMadeEdits();
 
+			onSaved?.(false); // Update of existing workflow
 			return true;
 		} catch (error) {
 			console.error(error);
@@ -370,7 +381,7 @@ export function useWorkflowSaving({
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
 					key: 'webhookId',
@@ -380,9 +391,7 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowState.setWorkflowTagIds(tagIds);
+			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;
@@ -403,7 +412,7 @@ export function useWorkflowSaving({
 			}
 
 			uiStore.removeActiveAction('workflowSaving');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			return workflowData.id;
@@ -420,9 +429,49 @@ export function useWorkflowSaving({
 		}
 	}
 
+	const autoSaveWorkflowDebounced = useDebounceFn(
+		() => {
+			// Check if cancelled during debounce period
+			if (autosaveStore.autoSaveState === AutoSaveState.Idle) {
+				return;
+			}
+
+			autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+
+			const savePromise = (async () => {
+				try {
+					await saveCurrentWorkflow({}, true, false, true);
+				} finally {
+					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+						autosaveStore.setPendingAutoSave(null);
+					}
+				}
+			})();
+
+			autosaveStore.setPendingAutoSave(savePromise);
+		},
+		1500,
+		{ maxWait: 5000 },
+	);
+
+	const scheduleAutoSave = () => {
+		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+		void autoSaveWorkflowDebounced();
+	};
+
+	const cancelAutoSave = () => {
+		if (isDebouncedFunction(autoSaveWorkflowDebounced)) {
+			autoSaveWorkflowDebounced.cancel();
+		}
+		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+	};
+
 	return {
 		promptSaveUnsavedWorkflowChanges,
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
+		autoSaveWorkflow: scheduleAutoSave,
+		cancelAutoSave,
 	};
 }
