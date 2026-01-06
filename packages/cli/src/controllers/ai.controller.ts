@@ -1,4 +1,3 @@
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type { CreateCredentialDto } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
@@ -18,6 +17,7 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';

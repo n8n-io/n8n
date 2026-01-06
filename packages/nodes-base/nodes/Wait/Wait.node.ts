@@ -233,7 +233,7 @@ const waitingTooltip = (
 ) => {
 	const resume = parameters.resume;
 
-	if (['webhook', 'form'].includes(resume as string)) {
+	if (['webhook', 'form'].includes(resume)) {
 		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 

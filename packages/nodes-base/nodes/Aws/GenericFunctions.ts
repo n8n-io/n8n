@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { parseString as parseXml } from 'xml2js';
+
 import type {
 	AwsAssumeRoleCredentialsType,
 	AwsIamCredentialsType,
@@ -53,7 +54,7 @@ export async function awsApiRequest(
 		body: service === 'lambda' ? body : JSON.stringify(body),
 		url: '',
 		headers,
-		region: credentials?.region as string,
+		region: credentials?.region,
 	} as IHttpRequestOptions;
 
 	try {

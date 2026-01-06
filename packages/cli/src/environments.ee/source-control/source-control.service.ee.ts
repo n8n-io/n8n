@@ -11,6 +11,11 @@ import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
+
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
@@ -40,10 +45,6 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { IWorkflowToImport } from '@/interfaces';
 
 @Service()
 export class SourceControlService {

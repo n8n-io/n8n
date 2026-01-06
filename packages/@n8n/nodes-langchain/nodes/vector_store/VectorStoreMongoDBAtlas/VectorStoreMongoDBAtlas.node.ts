@@ -1,6 +1,7 @@
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { MongoDBAtlasVectorSearch, type MongoDBAtlasVectorSearchLibArgs } from '@langchain/mongodb';
 import { MongoClient } from 'mongodb';
+import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -9,11 +10,11 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
+
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
-import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 
 /**
  * Constants for the name of the credentials and Node parameters.

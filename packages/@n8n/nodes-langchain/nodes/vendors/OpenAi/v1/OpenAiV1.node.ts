@@ -9,7 +9,6 @@ import {
 import { listSearch, loadOptions } from '../methods';
 import { router } from './actions/router';
 import { configureNodeInputs } from '../helpers/description';
-
 import * as assistant from './actions/assistant';
 import * as audio from './actions/audio';
 import * as file from './actions/file';

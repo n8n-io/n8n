@@ -90,7 +90,7 @@ export async function getDataTableProxyLoadOptions(
 		value: string;
 	};
 
-	if (!resourceLocator || !resourceLocator.value) {
+	if (!resourceLocator?.value) {
 		return;
 	}
 

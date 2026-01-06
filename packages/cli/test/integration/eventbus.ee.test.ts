@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
+import { mock } from 'jest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -15,7 +16,6 @@ import {
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
-import { mock } from 'jest-mock-extended';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';

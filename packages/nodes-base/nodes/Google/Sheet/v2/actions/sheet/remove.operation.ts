@@ -34,7 +34,7 @@ export async function execute(
 			{ itemData: { item: i } },
 		);
 
-		returnData.push(...executionData);
+		returnData.push.apply(returnData, executionData);
 	}
 
 	return returnData;

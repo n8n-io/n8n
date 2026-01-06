@@ -72,8 +72,8 @@ describe('Guardrails Process', () => {
 		exec.getNodeParameter.mockImplementation((name: string, index: number) => {
 			// Prefer specific index key, fall back to global
 			const key = `${name}@${index}`;
-			if (key in params) return params[key] as unknown as any;
-			return params[name] as unknown as any;
+			if (key in params) return params[key] as any;
+			return params[name] as any;
 		});
 	}
 

@@ -1,10 +1,8 @@
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
-import type { Server as HttpServer } from 'http';
-import type { IncomingMessage } from 'http';
+import type { Server as HttpServer, IncomingMessage  } from 'http';
 import { mock, mockReset } from 'jest-mock-extended';
-import type { WebSocket } from 'ws';
-import type { WebSocketServer } from 'ws';
+import type { WebSocket, WebSocketServer  } from 'ws';
 
 import { ChatServer } from '../chat-server';
 import type { ChatService } from '../chat-service';

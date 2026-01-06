@@ -10,15 +10,16 @@ import {
 	UnexpectedError,
 	UserError,
 } from 'n8n-workflow';
-
-import { createWorkflow } from './mock.utils';
-import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { v4 as uuid } from 'uuid';
+
+import { createWorkflow } from './mock.utils';
+import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
+
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

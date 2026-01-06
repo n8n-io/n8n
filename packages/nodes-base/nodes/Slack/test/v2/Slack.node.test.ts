@@ -7,8 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import { SlackV2 } from '../../V2/SlackV2.node';
 
 describe('SlackV2', () => {
 	let node: SlackV2;

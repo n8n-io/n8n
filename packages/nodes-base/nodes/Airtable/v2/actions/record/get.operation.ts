@@ -80,7 +80,7 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
-				returnData.push(...itemWithAttachments);
+				returnData.push.apply(returnData, itemWithAttachments);
 				continue;
 			}
 
@@ -89,7 +89,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, id, i);
 			if (this.continueOnFail()) {

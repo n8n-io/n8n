@@ -15,7 +15,6 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
-import { createUser } from '@test-integration/db/users';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import {
@@ -30,6 +29,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {

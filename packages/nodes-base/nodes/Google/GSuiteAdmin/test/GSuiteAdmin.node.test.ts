@@ -742,7 +742,7 @@ describe('GSuiteAdmin Node - Error Handling', () => {
 				);
 
 				if (executionErrorData) {
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 				} else {
 					console.error('executionErrorData is not iterable:', executionErrorData);
 				}

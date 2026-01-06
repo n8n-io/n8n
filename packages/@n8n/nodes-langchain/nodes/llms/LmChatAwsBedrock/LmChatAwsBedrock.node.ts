@@ -2,8 +2,6 @@ import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -11,6 +9,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';

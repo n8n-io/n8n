@@ -2,8 +2,8 @@ import { mockDeep } from 'jest-mock-extended';
 import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import * as image from './image';
-import * as text from './text';
 import { router } from './router';
+import * as text from './text';
 
 jest.mock('./image');
 jest.mock('./text');

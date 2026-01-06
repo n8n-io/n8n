@@ -739,7 +739,7 @@ export class Odoo implements INodeType {
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -747,7 +747,7 @@ export class Odoo implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 
 					continue;
 				}

@@ -86,7 +86,7 @@ function initializeEditor() {
 	if (!root.value) return;
 
 	editor.value = new EditorView({
-		parent: root.value as HTMLElement,
+		parent: root.value,
 		state: EditorState.create({
 			doc: resolvedExpression.value,
 			extensions: [

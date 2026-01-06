@@ -39,7 +39,7 @@ describe('createEventQueue', () => {
 		const processedEvents: string[] = [];
 		const processEvent = vi.fn(async (event: string) => {
 			if (event === 'fail') {
-				throw new Error('Processing error'); // eslint-disable-line n8n-local-rules/no-plain-errors
+				throw new Error('Processing error');  
 			}
 			processedEvents.push(event);
 			await new Promise((resolve) => setTimeout(resolve, 10));

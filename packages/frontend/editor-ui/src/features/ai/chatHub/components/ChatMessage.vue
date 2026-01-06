@@ -371,7 +371,7 @@ onBeforeMount(() => {
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
-					@switchAlternative="handleSwitchAlternative"
+					@switch-alternative="handleSwitchAlternative"
 				/>
 			</div>
 		</div>

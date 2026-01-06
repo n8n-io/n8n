@@ -69,7 +69,7 @@ test.skip('Workflow Archive', () => {
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
+	 
 	test.skip('should archive published workflow and then delete it', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
@@ -91,7 +91,7 @@ test.skip('Workflow Archive', () => {
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
 		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
@@ -132,7 +132,7 @@ test.skip('Workflow Archive', () => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
 		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
@@ -153,10 +153,10 @@ test.skip('Workflow Archive', () => {
 		await n8n.workflowSettingsModal.confirmUnpublishModal();
 
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
+	 
 	test.skip('should unpublish published workflow on archive', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
@@ -175,8 +175,8 @@ test.skip('Workflow Archive', () => {
 		await goToWorkflow(n8n, workflowId);
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
-		await expect(n8n.canvas.getPublishButton()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
+		await expect(n8n.canvas.getPublishButton()).toBeHidden();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();

@@ -159,7 +159,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
@@ -190,7 +190,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -264,7 +264,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// if (Array.isArray(responseData)) {
 						// 	returnData.push.apply(returnData, responseData);
 						// } else {
@@ -312,7 +312,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
@@ -398,7 +398,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -464,7 +464,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -575,7 +575,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push(responseData.CopyObjectResult);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
@@ -674,7 +674,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -743,7 +743,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
@@ -881,7 +881,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push({ success: true });
 					}
 				}
@@ -894,7 +894,7 @@ export class S3 implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// returnData.push({ error: error.message });
 					}
 					continue;

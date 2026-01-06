@@ -192,7 +192,7 @@ describe('Test Gmail Node v1', () => {
 							'W3siYXR0YWNobWVudCI6dHJ1ZX1d',
 							'----test-boundary',
 						].join('\n');
-						// eslint-disable-next-line no-console
+						 
 						console.log('Normalized (v1) actual:', normalized);
 						return normalized.trimEnd() === expectedNormalized.trimEnd();
 					} catch {

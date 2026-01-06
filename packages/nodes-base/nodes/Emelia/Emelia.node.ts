@@ -137,7 +137,7 @@ export class Emelia implements INodeType {
 							}),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//        campaign: create
@@ -166,7 +166,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray(responseData.data.createCampaign as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//        campaign: get
@@ -211,7 +211,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray(responseData.data.campaign as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//        campaign: getAll
@@ -253,7 +253,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray(campaigns as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'pause') {
 						// ----------------------------------
 						//        campaign: pause
@@ -274,7 +274,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'start') {
 						// ----------------------------------
 						//        campaign: start
@@ -295,7 +295,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'duplicate') {
 						// ----------------------------------
 						//        campaign: duplicate
@@ -340,7 +340,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray({ _id: duplicateCampaign }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				} else if (resource === 'contactList') {
 					// **********************************
@@ -391,7 +391,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray({ contactId: responseData.data.addContactsToListHook }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//       contactList: getAll
@@ -424,7 +424,7 @@ export class Emelia implements INodeType {
 							this.helpers.returnJsonArray(contactLists as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				}
 			} catch (error) {
@@ -433,7 +433,7 @@ export class Emelia implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 

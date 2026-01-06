@@ -4,10 +4,10 @@ import { mock } from 'jest-mock-extended';
 import type { AuthService } from '@/auth/auth.service';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { BannerService } from '@/services/banner.service';
-import type { UserService } from '@/services/user.service';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { PostHogClient } from '@/posthog';
+import type { BannerService } from '@/services/banner.service';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { UserService } from '@/services/user.service';
 
 describe('OwnerController', () => {
 	const authService = mock<AuthService>();

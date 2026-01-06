@@ -128,9 +128,9 @@ export async function quickBooksApiRequestAllItems(
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
 			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
-				returnData.push(...(responseData.QueryResponse[nonResource] as IDataObject[]));
+				returnData.push.apply(returnData, responseData.QueryResponse[nonResource] as IDataObject[]);
 			} else {
-				returnData.push(...(responseData.QueryResponse[capitalCase(resource)] as IDataObject[]));
+				returnData.push.apply(returnData, responseData.QueryResponse[capitalCase(resource)] as IDataObject[]);
 			}
 		} catch (error) {
 			return [];

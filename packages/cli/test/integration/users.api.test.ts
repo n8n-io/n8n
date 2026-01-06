@@ -30,6 +30,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
+import { createRole } from '@test-integration/db/roles';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -41,7 +42,6 @@ import { createAdmin, createMember, createOwner, createUser, getUserById } from 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
-import { createRole } from '@test-integration/db/roles';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);

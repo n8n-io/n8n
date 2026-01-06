@@ -7,6 +7,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
+
 import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
@@ -28,7 +29,7 @@ export async function awsApiRequest(
 		body,
 		url: '',
 		headers,
-		region: credentials?.region as string,
+		region: credentials?.region,
 	} as IHttpRequestOptions;
 	return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 }

@@ -132,7 +132,7 @@ function getTool(
 		}
 
 		if (typeof response === 'number') {
-			response = (response as number).toString();
+			response = (response).toString();
 		}
 
 		if (typeof response !== 'string') {

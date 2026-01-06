@@ -52,7 +52,7 @@ export function merge(responseData: [any]) {
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows.push(...(rows as IDataObject[]));
+		allRows.push.apply(allRows, rows as IDataObject[]);
 	}
 	response.data.rows = allRows as [];
 	return [response];

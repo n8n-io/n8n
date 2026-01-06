@@ -1,10 +1,5 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
-
-import { cleanupRolesAndScopes } from '../shared/db/roles';
-import { createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
 import {
 	PROJECT_ADMIN_ROLE,
 	PROJECT_EDITOR_ROLE,
@@ -13,6 +8,11 @@ import {
 	RoleRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { cleanupRolesAndScopes } from '../shared/db/roles';
+import { createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });

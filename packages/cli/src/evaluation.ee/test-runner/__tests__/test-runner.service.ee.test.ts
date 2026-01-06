@@ -6,7 +6,6 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
@@ -19,13 +18,15 @@ import {
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
-import { TestRunnerService } from '../test-runner.service.ee';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+
+import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),

@@ -9,10 +9,11 @@ import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '../workflow-finder.service';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+
+import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {

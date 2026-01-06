@@ -253,7 +253,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(block as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -287,7 +287,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -304,7 +304,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -332,7 +332,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -378,7 +378,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -444,7 +444,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -475,7 +475,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -490,7 +490,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			if (operation === 'getAll') {
@@ -508,7 +508,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -547,7 +547,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -564,7 +564,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -617,7 +617,7 @@ export class NotionV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}

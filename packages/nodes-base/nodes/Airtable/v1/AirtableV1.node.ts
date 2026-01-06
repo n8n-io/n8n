@@ -647,7 +647,7 @@ export class AirtableV1 implements INodeType {
 							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// empty rows
 						rows.length = 0;
 					}
@@ -690,7 +690,7 @@ export class AirtableV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 						// empty rows
 						rows.length = 0;
 					}
@@ -789,7 +789,7 @@ export class AirtableV1 implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
@@ -873,7 +873,7 @@ export class AirtableV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 
 						// empty rows
 						rows.length = 0;

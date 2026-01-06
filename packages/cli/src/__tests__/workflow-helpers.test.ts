@@ -3,8 +3,7 @@ import type { Project, Variables } from '@n8n/db';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
-import { getVariables } from '@/workflow-helpers';
-import { shouldRestartParentExecution } from '@/workflow-helpers';
+import { getVariables, shouldRestartParentExecution  } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {

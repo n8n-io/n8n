@@ -226,7 +226,7 @@ test.describe('Execution', () => {
 	/**
 	 * @TODO New Canvas: Different classes for pinned states on edges and nodes
 	 */
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	 
 	test.describe.skip('connections should be colored differently for pinned data', () => {
 		test('when executing the workflow', async () => {
 			// Not yet migrated - waiting for New Canvas implementation

@@ -236,7 +236,7 @@ export function getRunQueriesFn(
 
 		// Wrap the real one with a spy to track calls
 		return jest.fn(async (...args: Parameters<RunQueriesFn>) => {
-			return await realRunQueries(...args);
+			return await realRunQueries.apply(undefined, args);
 		});
 	}
 

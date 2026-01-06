@@ -184,7 +184,7 @@ export function addWhereClauses(
 		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [`${query}${whereQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function addSortRules(
@@ -211,7 +211,7 @@ export function addSortRules(
 		orderByQuery += ` ${columnReplacement} ${sortDirection}${endWith}`;
 	});
 
-	return [`${query}${orderByQuery}`, replacements.concat(...values)];
+	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function addReturning(
@@ -316,7 +316,7 @@ export function configureQueryRunner(
 							{ itemData: { item: i } },
 						);
 
-						result.push(...executionData);
+						result.push.apply(result, executionData);
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
@@ -356,7 +356,7 @@ export function configureQueryRunner(
 							{ itemData: { item: i } },
 						);
 
-						result.push(...executionData);
+						result.push.apply(result, executionData);
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;

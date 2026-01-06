@@ -12,6 +12,11 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { UrlService } from '@/services/url.service';
+
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
@@ -30,10 +35,6 @@ import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '../sso-helpers';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UrlService } from '@/services/url.service';
 
 @Service()
 export class SamlService {

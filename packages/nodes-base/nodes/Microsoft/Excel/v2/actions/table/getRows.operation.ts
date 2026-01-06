@@ -186,7 +186,7 @@ export async function execute(
 						{ itemData: { item: index } },
 					);
 
-					rows.push(...executionData);
+					rows.push.apply(rows, executionData);
 				}
 
 				if ((filters?.column as string[])?.length) {
@@ -201,7 +201,7 @@ export async function execute(
 					});
 				}
 
-				returnData.push(...rows);
+				returnData.push.apply(returnData, rows);
 			} else {
 				const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -209,7 +209,7 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -217,7 +217,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData.push.apply(returnData, executionErrorData);
 				continue;
 			}
 			throw error;

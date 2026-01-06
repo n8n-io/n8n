@@ -1,10 +1,10 @@
-import { Command } from '@n8n/decorators';
-import { z } from 'zod';
-import { Container } from '@n8n/di';
-
-import { BaseCommand } from '../base-command';
-import { ImportService } from '../../services/import.service';
 import { safeJoinPath } from '@n8n/backend-common';
+import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { z } from 'zod';
+
+import { ImportService } from '../../services/import.service';
+import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	inputDir: z

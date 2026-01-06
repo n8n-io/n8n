@@ -1,14 +1,15 @@
-import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Post, RestController, GlobalScope, Param } from '@n8n/decorators';
-
-import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	UpdateChatSettingsRequest,
 } from '@n8n/api-types';
+import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { Body, Get, Post, RestController, GlobalScope, Param } from '@n8n/decorators';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 
 @RestController('/chat')
 export class ChatHubSettingsController {

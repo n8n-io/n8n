@@ -4,9 +4,10 @@ import { mock } from 'jest-mock-extended';
 import { getWebhookSandboxCSP } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
+import { WaitingForms } from '@/webhooks/waiting-forms';
+
 import type { WaitingWebhookRequest } from '../webhook.types';
 
-import { WaitingForms } from '@/webhooks/waiting-forms';
 
 class TestWaitingForms extends WaitingForms {
 	exposeGetWorkflow(execution: IExecutionResponse): Workflow {

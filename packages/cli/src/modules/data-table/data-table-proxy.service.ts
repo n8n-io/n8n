@@ -22,9 +22,10 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { OwnershipService } from '@/services/ownership.service';
+
 import { DataTableService } from './data-table.service';
 
-import { OwnershipService } from '@/services/ownership.service';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',

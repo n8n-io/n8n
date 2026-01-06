@@ -1284,14 +1284,14 @@ export class AwsSes implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 					continue;
 				}
 				throw error;

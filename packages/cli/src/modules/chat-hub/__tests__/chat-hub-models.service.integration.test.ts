@@ -5,9 +5,9 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import assert from 'assert';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import assert from 'assert';
 import { BinaryDataService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';

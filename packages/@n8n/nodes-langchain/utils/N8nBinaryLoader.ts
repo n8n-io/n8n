@@ -1,3 +1,5 @@
+import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
+import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
@@ -5,8 +7,6 @@ import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { createWriteStream } from 'fs';
-import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
-import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import type {
 	IBinaryData,
 	IExecuteFunctions,
@@ -45,7 +45,7 @@ export class N8nBinaryLoader {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const processedDocuments = await this.processItem(items[itemIndex], itemIndex);
 
-			docs.push(...processedDocuments);
+			docs.push.apply(docs, processedDocuments);
 		}
 
 		return docs;
@@ -183,13 +183,13 @@ export class N8nBinaryLoader {
 
 					for (const fileKey of binaryDataKeys) {
 						const processedDocuments = await this.processItemByKey(item, itemIndex, fileKey);
-						docs.push(...processedDocuments);
+						docs.push.apply(docs, processedDocuments);
 					}
 				}
 			}
 		} else {
 			const processedDocuments = await this.processItemByKey(item, itemIndex, this.binaryDataKey);
-			docs.push(...processedDocuments);
+			docs.push.apply(docs, processedDocuments);
 		}
 
 		return docs;
@@ -221,7 +221,7 @@ export class N8nBinaryLoader {
 		const loader = await this.getLoader(mimeType, filePathOrBlob, itemIndex);
 		const loadedDoc = await this.loadDocuments(loader);
 
-		docs.push(...loadedDoc);
+		docs.push.apply(docs, loadedDoc);
 
 		if (metadata) {
 			docs.forEach((document) => {

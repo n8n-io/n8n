@@ -32,9 +32,6 @@ import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -45,6 +42,10 @@ import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+
+import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialsService } from './credentials.service';
+import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 @RestController('/credentials')
 export class CredentialsController {

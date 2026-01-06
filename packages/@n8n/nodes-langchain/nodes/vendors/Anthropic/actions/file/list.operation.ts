@@ -72,7 +72,7 @@ async function getAllFiles(this: IExecuteFunctions, baseUrl: string, i: number) 
 
 		hasMore = response.has_more;
 		lastId = response.last_id;
-		files.push(...response.data);
+		files.push.apply(files, response.data);
 	}
 
 	return files.map((file) => ({

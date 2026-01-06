@@ -49,12 +49,11 @@ import {
 	TEST_ISSUE,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeData  } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WAIT_NODE_TYPE } from '@/app/constants';
-import type { INodeTypeData } from 'n8n-workflow';
 
 // Create node types that include Form, FormTrigger, and Wait nodes
 const testNodeTypes: INodeTypeData = {
@@ -387,7 +386,7 @@ describe('ParameterInputList', () => {
 
 			expect(emitted('valueChanged')).toBeDefined();
 			expect(emitted('valueChanged')).toHaveLength(1);
-			expect(emitted('valueChanged')![0]).toEqual([{ name: 'testParam', value: 'testValue' }]);
+			expect(emitted('valueChanged')[0]).toEqual([{ name: 'testParam', value: 'testValue' }]);
 		});
 
 		it('should emit parameterBlur event when child component emits blur', async () => {

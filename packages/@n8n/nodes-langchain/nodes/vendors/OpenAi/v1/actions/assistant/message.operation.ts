@@ -1,8 +1,10 @@
-import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
 import type { BufferWindowMemory } from '@langchain/classic/memory';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
@@ -20,13 +22,11 @@ import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { Container } from '@n8n/di';
-import { AiConfig } from '@n8n/config';
 
 const properties: INodeProperties[] = [
 	assistantRLC,

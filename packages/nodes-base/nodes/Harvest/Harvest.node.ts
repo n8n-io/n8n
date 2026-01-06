@@ -226,7 +226,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -237,7 +237,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'createByStartEnd') {
 						// ----------------------------------
 						//         createByStartEnd
@@ -265,7 +265,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'createByDuration') {
 						// ----------------------------------
 						//         createByDuration
@@ -294,7 +294,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -311,7 +311,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'deleteExternal') {
 						// ----------------------------------
 						//         deleteExternal
@@ -328,7 +328,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'restartTime') {
 						// ----------------------------------
 						//         restartTime
@@ -345,7 +345,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'stopTime') {
 						// ----------------------------------
 						//         stopTime
@@ -362,7 +362,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -388,7 +388,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -414,7 +414,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -427,7 +427,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -454,7 +454,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -480,7 +480,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -497,7 +497,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -523,7 +523,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -536,7 +536,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -567,7 +567,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -593,7 +593,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -610,7 +610,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -636,7 +636,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -649,7 +649,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'me') {
 						// ----------------------------------
 						//         me
@@ -666,7 +666,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -695,7 +695,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -721,7 +721,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -738,7 +738,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -764,7 +764,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -777,7 +777,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -805,7 +805,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -831,7 +831,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -848,7 +848,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -872,7 +872,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -898,7 +898,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -911,7 +911,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -938,7 +938,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -964,7 +964,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -981,7 +981,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1007,7 +1007,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -1020,7 +1020,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -1047,7 +1047,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -1073,7 +1073,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1090,7 +1090,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1116,7 +1116,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -1129,7 +1129,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -1158,7 +1158,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -1184,7 +1184,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1201,7 +1201,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1227,7 +1227,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -1240,7 +1240,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -1267,7 +1267,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -1293,7 +1293,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1310,7 +1310,7 @@ export class Harvest implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1330,7 +1330,7 @@ export class Harvest implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;

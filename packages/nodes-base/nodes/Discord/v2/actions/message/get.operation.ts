@@ -81,12 +81,12 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push(...prepareErrorData.call(this, err, i));
+				returnData.push.apply(returnData, prepareErrorData.call(this, err, i));
 				continue;
 			}
 

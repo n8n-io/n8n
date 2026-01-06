@@ -1,12 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { WorkflowStatusController } from '../workflow-status.controller';
-import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { UrlService } from '@/services/url.service';
-import type { GlobalConfig } from '@n8n/config';
+
+import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
+import { WorkflowStatusController } from '../workflow-status.controller';
+
 
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;

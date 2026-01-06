@@ -165,7 +165,7 @@ describe('computeTimelineEntries', () => {
 		const items = [createNamedItem(), createUnnamedItem(), createNamedItem(), createUnnamedItem()];
 
 		const result = computeTimelineEntries(items);
-		const groupHeaders = result.filter((e) => e.type === 'group-header') as TimelineGroupHeader[];
+		const groupHeaders = result.filter((e) => e.type === 'group-header');
 
 		expect(groupHeaders).toHaveLength(2);
 		expect(groupHeaders[0].groupId).not.toBe(groupHeaders[1].groupId);

@@ -14,8 +14,6 @@ import { hasCredentialChanges, hasNonPositionalChanges, TelemetryHelpers } from 
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
-import { Telemetry } from '../../telemetry';
-import { EventRelay } from './event-relay';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -25,6 +23,9 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+
+import { EventRelay } from './event-relay';
+import { Telemetry } from '../../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {

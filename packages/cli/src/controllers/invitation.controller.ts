@@ -14,9 +14,9 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
+import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')

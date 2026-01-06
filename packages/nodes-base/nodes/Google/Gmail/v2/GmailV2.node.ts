@@ -584,7 +584,7 @@ export class GmailV2 implements INodeType {
 						if (threadId) {
 							// If a threadId is set, we need to add the Message-ID of the last message in the thread
 							// to the email so that Gmail can correctly associate the draft with the thread
-							await addThreadHeadersToEmail.call(this, email, threadId as string);
+							await addThreadHeadersToEmail.call(this, email, threadId);
 						}
 
 						const body = {
@@ -826,7 +826,7 @@ export class GmailV2 implements INodeType {
 						itemData: { item: i },
 					},
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;
 				if (this.continueOnFail()) {

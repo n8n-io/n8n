@@ -71,7 +71,7 @@ export async function baserowApiRequestAllItems(
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData.push.apply(returnData, responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

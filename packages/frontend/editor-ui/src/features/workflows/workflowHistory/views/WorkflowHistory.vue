@@ -6,7 +6,7 @@ import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY, IS_DRAFT_PUBLISH_ENABLED 
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -33,7 +33,6 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {

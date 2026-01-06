@@ -12,7 +12,7 @@ export const DRY_RUN = {
 } satisfies INodeProperties;
 
 export const DATA_TABLE_RESOURCE_LOCATOR_BASE = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	 
 	displayName: 'Data table',
 	name: DATA_TABLE_ID_FIELD,
 	type: 'resourceLocator',

@@ -332,7 +332,7 @@ describe('loadLanguage', () => {
 
 		const numberFormats = i18nInstance.global.getNumberFormat(
 			locale,
-		) as typeof messages.numberFormats;
+		);
 		expect(numberFormats).toBeDefined();
 		expect(numberFormats.currency).toBeDefined();
 		expect(numberFormats.percent).toBeDefined();

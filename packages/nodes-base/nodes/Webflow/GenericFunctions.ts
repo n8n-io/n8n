@@ -69,7 +69,7 @@ export async function webflowApiRequestAllItems(
 	do {
 		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
 		const items = isTypeVersion1 ? responseData.items : responseData.body.items;
-		returnData.push(...(items as IDataObject[]));
+		returnData.push.apply(returnData, items as IDataObject[]);
 
 		if (responseData.offset !== undefined || responseData?.body?.pagination?.offset !== undefined) {
 			query.offset += query.limit;

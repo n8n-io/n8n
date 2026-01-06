@@ -1,6 +1,7 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
+import * as utils from '../../../v2/helpers/utils';
 import {
 	searchContacts,
 	searchCalendars,
@@ -11,7 +12,6 @@ import {
 	searchAttachments,
 } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
-import * as utils from '../../../v2/helpers/utils';
 
 jest.mock('../../../v2/transport');
 jest.mock('../../../v2/helpers/utils');

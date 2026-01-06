@@ -38,8 +38,8 @@ import {
 	validateCredentials,
 } from './GenericFunctions';
 import { ticketFields, ticketOperations } from './TicketDescription';
-import { generatePairedItemData } from '../../../utils/utilities';
 import { parseToTimestamp } from './utils/parseToTimestamp';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1192,7 +1192,7 @@ export class HubspotV2 implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
@@ -3185,7 +3185,7 @@ export class HubspotV2 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				} catch (error) {
 					if (
 						error.cause?.error?.validationResults &&

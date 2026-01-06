@@ -20,7 +20,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
-import { dataPinningEventBus } from '@/app/event-bus';
+import { dataPinningEventBus, nodeViewEventBus  } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -35,7 +35,6 @@ import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-import { nodeViewEventBus } from '@/app/event-bus';
 import { ElDialog } from 'element-plus';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{

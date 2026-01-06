@@ -1,10 +1,14 @@
-import { IWorkflowToImport } from '@/interfaces';
 import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import express from 'express';
 import type { PullResult } from 'simple-git';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
@@ -20,9 +24,6 @@ import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 @RestController('/source-control')
 export class SourceControlController {

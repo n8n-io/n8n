@@ -1,3 +1,5 @@
+import { OwnerSetupRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -11,15 +13,15 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@/services/cache/cache.service';
-import { OwnerSetupRequestDto } from '@n8n/api-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { PasswordUtility } from './password.utility';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
+
 import config from '@/config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
+
+import { PasswordUtility } from './password.utility';
 
 @Service()
 export class OwnershipService {

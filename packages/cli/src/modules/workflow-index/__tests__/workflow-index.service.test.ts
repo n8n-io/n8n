@@ -6,8 +6,9 @@ import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
-import { WorkflowIndexService } from '../workflow-index.service';
 import { EventService } from '@/events/event.service';
+
+import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;

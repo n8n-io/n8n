@@ -1,5 +1,7 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User, Variables } from '@n8n/db';
+
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import {
 	createProjectVariable,
@@ -8,7 +10,6 @@ import {
 } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 describe('Variables in Public API', () => {
 	let owner: User;

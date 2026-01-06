@@ -60,7 +60,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 		return [returnData];
 	}

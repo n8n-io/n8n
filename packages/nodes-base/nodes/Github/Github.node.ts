@@ -2975,7 +2975,7 @@ export class Github implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2993,7 +2993,7 @@ export class Github implements INodeType {
 							],
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionErrorData);
+						returnData.push.apply(returnData, executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}

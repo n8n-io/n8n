@@ -1,4 +1,6 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,12 +11,9 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { logWrapper } from '@utils/logWrapper';
-
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { Container } from '@n8n/di';
-import { AiConfig } from '@n8n/config';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',

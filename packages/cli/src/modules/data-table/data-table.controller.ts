@@ -32,6 +32,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
@@ -39,7 +40,6 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
-import { ProjectService } from '@/services/project.service.ee';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {

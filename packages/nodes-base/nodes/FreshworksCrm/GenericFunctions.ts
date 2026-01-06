@@ -94,7 +94,7 @@ export async function freshworksCrmApiRequestAllItems(
 	do {
 		response = await freshworksCrmApiRequest.call(this, method, endpoint, body, qs);
 		const key = Object.keys(response as IDataObject)[0];
-		returnData.push(...(response[key] as IDataObject[]));
+		returnData.push.apply(returnData, response[key] as IDataObject[]);
 		qs.page++;
 	} while (response.meta.total_pages && qs.page <= response.meta.total_pages);
 

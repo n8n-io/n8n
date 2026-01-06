@@ -6,7 +6,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	LOCAL_STORAGE_ACTIVATION_FLAG,
-	VIEWS,
+	VIEWS, IS_DRAFT_PUBLISH_ENABLED 
 } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,7 +19,6 @@ import { useI18n } from '@n8n/i18n';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();

@@ -1,5 +1,5 @@
-import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from '@langchain/classic/document';
+import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	NodeConnectionTypes,
 	type INodeExecutionData,

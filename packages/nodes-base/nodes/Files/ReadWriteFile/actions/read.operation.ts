@@ -138,7 +138,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-			returnData.push(...newItems);
+			returnData.push.apply(returnData, newItems);
 		} catch (error) {
 			const nodeOperationError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,

@@ -3,14 +3,15 @@ import type { AuthenticatedRequest, SharedCredentialsRepository, CredentialsEnti
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import { createRawProjectData } from '@/__tests__/project.test-data';
+import type { EventService } from '@/events/event.service';
+import type { CredentialRequest } from '@/requests';
+
 import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import type { CredentialsService } from '../credentials.service';
 
-import { createRawProjectData } from '@/__tests__/project.test-data';
-import type { EventService } from '@/events/event.service';
-import type { CredentialRequest } from '@/requests';
 
 describe('CredentialsController', () => {
 	const eventService = mock<EventService>();

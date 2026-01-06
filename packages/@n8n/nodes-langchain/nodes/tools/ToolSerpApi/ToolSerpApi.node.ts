@@ -1,6 +1,4 @@
 import { SerpAPI } from '@langchain/community/tools/serpapi';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	type IExecuteFunctions,
 	NodeConnectionTypes,
@@ -11,6 +9,9 @@ import {
 	type INodeExecutionData,
 	NodeOperationError,
 } from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
 	const credentials = await ctx.getCredentials('serpApi');

@@ -2,9 +2,6 @@ import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -12,6 +9,10 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {

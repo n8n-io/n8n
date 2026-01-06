@@ -155,7 +155,7 @@ export async function copperApiRequestAllItems(
 	do {
 		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
 		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...(responseData.body as IDataObject[]));
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (totalItems > returnData.length);
 
 	return returnData;

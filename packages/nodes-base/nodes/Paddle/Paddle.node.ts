@@ -521,7 +521,7 @@ export class Paddle implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;
@@ -531,7 +531,7 @@ export class Paddle implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 		return [returnData];
 	}

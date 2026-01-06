@@ -113,7 +113,7 @@ import {
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, useWorkflowState  } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -130,7 +130,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -1563,7 +1562,7 @@ export function useCanvasOperations() {
 			width: newWidth,
 		};
 
-		replaceNodeParameters(sticky.id, sticky.parameters as INodeParameters, newParameters, {
+		replaceNodeParameters(sticky.id, sticky.parameters, newParameters, {
 			trackHistory,
 			trackBulk: false,
 		});

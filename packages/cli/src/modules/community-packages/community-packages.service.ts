@@ -16,6 +16,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { valid } from 'semver';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -30,13 +31,12 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
+import { getCommunityNodeTypes } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
-import { getCommunityNodeTypes } from './community-node-types-utils';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
 import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
-import { valid } from 'semver';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];

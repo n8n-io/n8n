@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
-import { Time } from '@n8n/constants';
 
 /**
  * This service is responsible for compacting lower granularity insights data

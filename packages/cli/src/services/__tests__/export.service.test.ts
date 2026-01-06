@@ -1,9 +1,10 @@
 import { type Logger } from '@n8n/backend-common';
-import { ExportService } from '../export.service';
 import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
+
+import { ExportService } from '../export.service';
 
 // Mock fs/promises with proper implementations
 jest.mock('fs/promises', () => ({

@@ -12,19 +12,19 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
-import { SAML_PREFERENCES_DB_KEY } from '../constants';
-import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
-import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
-import { SamlValidator } from '../saml-validator';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { SAML_PREFERENCES_DB_KEY } from '../constants';
+import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
+import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
+import { SamlValidator } from '../saml-validator';
+
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

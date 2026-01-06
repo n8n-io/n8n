@@ -1,5 +1,4 @@
 import type { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-
 import type {
 	INodeTypeBaseDescription,
 	ISupplyDataFunctions,
@@ -74,7 +73,7 @@ export class ToolWorkflowV2 implements INodeType {
 				// When manualLogging is false, tool.invoke returns INodeExecutionData[]
 				// We need to spread these into the response array
 				if (Array.isArray(result)) {
-					response.push(...result);
+					response.push.apply(response, result);
 				} else {
 					// Fallback for unexpected types (shouldn't happen with manualLogging=false)
 					response.push({

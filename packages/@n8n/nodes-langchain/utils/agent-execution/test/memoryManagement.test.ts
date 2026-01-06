@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	HumanMessage,
@@ -7,7 +8,6 @@ import {
 	trimMessages,
 } from '@langchain/core/messages';
 import { mock } from 'jest-mock-extended';
-import type { BaseChatMemory } from '@langchain/classic/memory';
 
 import {
 	loadMemory,

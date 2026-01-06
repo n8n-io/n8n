@@ -2,10 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
-	CredentialStoreMetadata,
-	IDynamicCredentialStorageProvider,
-} from './dynamic-credential-storage.interface';
-import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -13,10 +9,15 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
+
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
+import type {
+	CredentialStoreMetadata,
+	IDynamicCredentialStorageProvider,
+} from './dynamic-credential-storage.interface';
 
 @Service()
 export class DynamicCredentialsProxy

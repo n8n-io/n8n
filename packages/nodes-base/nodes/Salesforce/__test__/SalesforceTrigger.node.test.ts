@@ -84,7 +84,7 @@ describe('SalesforceTrigger', () => {
 				});
 
 				const result =
-					await trigger.methods!.loadOptions!.getCustomObjects.call(mockLoadOptionsFunctions);
+					await trigger.methods.loadOptions.getCustomObjects.call(mockLoadOptionsFunctions);
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects');
 				expect(sortOptionsSpy).toHaveBeenCalled();
@@ -102,7 +102,7 @@ describe('SalesforceTrigger', () => {
 				salesforceApiRequestSpy.mockResolvedValue(mockSobjects);
 
 				const result =
-					await trigger.methods!.loadOptions!.getCustomObjects.call(mockLoadOptionsFunctions);
+					await trigger.methods.loadOptions.getCustomObjects.call(mockLoadOptionsFunctions);
 
 				expect(result).toEqual([]);
 			});
@@ -120,7 +120,7 @@ describe('SalesforceTrigger', () => {
 				salesforceApiRequestSpy.mockResolvedValue(mockSobjects);
 
 				const result =
-					await trigger.methods!.loadOptions!.getCustomObjects.call(mockLoadOptionsFunctions);
+					await trigger.methods.loadOptions.getCustomObjects.call(mockLoadOptionsFunctions);
 
 				expect(result).toEqual([]);
 			});

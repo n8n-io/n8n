@@ -13,10 +13,10 @@ import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';

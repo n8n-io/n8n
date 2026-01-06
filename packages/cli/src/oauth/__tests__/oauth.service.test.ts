@@ -1,34 +1,35 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
+import type { Cipher } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
-import type { Cipher } from 'n8n-core';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { CredentialsHelper } from '@/credentials-helper';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExternalHooks } from '@/external-hooks';
 import {
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ExternalHooks } from '@/external-hooks';
-import type { OAuth2CredentialData } from '@n8n/client-oauth2';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { Credentials } from 'n8n-core';
+
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');

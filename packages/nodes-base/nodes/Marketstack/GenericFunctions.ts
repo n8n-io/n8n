@@ -55,7 +55,7 @@ export async function marketstackApiRequestAllItems(
 
 	do {
 		responseData = await marketstackApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData.push.apply(returnData, responseData.data as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

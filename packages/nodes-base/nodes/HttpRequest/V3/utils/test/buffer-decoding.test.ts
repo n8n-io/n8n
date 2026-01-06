@@ -1,5 +1,5 @@
-import { Readable } from 'stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { Readable } from 'stream';
 
 import { binaryToStringWithEncodingDetection } from '../buffer-decoding';
 

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+
 import { TimeSaved } from '../TimeSaved.node';
 
 describe('TimeSaved node', () => {

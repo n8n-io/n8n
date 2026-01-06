@@ -61,7 +61,7 @@ export function prepareOutput(
 				itemData: { item: rowIndex },
 			});
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 	} else {
 		const itemData = generatePairedItemData(this.getInputData().length);
@@ -70,7 +70,7 @@ export function prepareOutput(
 			{ itemData },
 		);
 
-		returnData.push(...executionData);
+		returnData.push.apply(returnData, executionData);
 	}
 
 	return returnData;

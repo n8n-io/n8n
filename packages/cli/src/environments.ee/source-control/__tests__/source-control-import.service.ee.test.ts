@@ -21,6 +21,7 @@ import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
@@ -29,7 +30,6 @@ import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 jest.mock('fast-glob');
 

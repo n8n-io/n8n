@@ -339,7 +339,7 @@ export class ExecuteWorkflow implements INodeType {
 								returnData[outputIndex] = [];
 							}
 
-							returnData[outputIndex].push(...outputData);
+							returnData[outputIndex].push.apply(returnData[outputIndex], outputData);
 						}
 					} else {
 						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(

@@ -28,6 +28,10 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -38,9 +42,6 @@ import {
 import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],

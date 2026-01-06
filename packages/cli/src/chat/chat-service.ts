@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import { jsonParse, UnexpectedError, ensureError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
@@ -13,8 +15,7 @@ import {
 	Session,
 } from './chat-service.types';
 import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
-import { ErrorReporter } from 'n8n-core';
-import { IExecutionResponse } from '@n8n/db';
+
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;

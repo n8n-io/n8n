@@ -201,14 +201,14 @@ export async function execute(
 
 				let sheetName = workbook.SheetNames[0];
 				if (options.sheetName) {
-					if (!workbook.SheetNames.includes(options.sheetName as string)) {
+					if (!workbook.SheetNames.includes(options.sheetName)) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`Spreadsheet does not contain sheet called "${options.sheetName}"!`,
 							{ itemIndex: i },
 						);
 					}
-					sheetName = options.sheetName as string;
+					sheetName = options.sheetName;
 				}
 
 				// Convert it to json

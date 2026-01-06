@@ -461,7 +461,7 @@ export async function execute(
 			});
 		}
 
-		updateData.push(...preparedData.updateData);
+		updateData.push.apply(updateData, preparedData.updateData);
 	}
 
 	if (updateData.length) {

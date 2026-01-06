@@ -157,7 +157,7 @@ describe('TheHiveProject', () => {
 				// Mock get case API call (via query endpoint)
 				mock
 					.post('/api/v1/query', (body) => {
-						return body.query && body.query[0] && body.query[0]._name === 'getCase';
+						return body.query?.[0] && body.query[0]._name === 'getCase';
 					})
 					.query(true)
 					.reply(200, {
@@ -253,7 +253,7 @@ describe('TheHiveProject', () => {
 				// Mock get task API call (via query endpoint)
 				mock
 					.post('/api/v1/query', (body) => {
-						return body.query && body.query[0] && body.query[0]._name === 'getTask';
+						return body.query?.[0] && body.query[0]._name === 'getTask';
 					})
 					.query(true)
 					.reply(200, {

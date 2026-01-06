@@ -12,10 +12,10 @@ import type {
 
 import { textInput, toolDescription } from '@utils/descriptions';
 
-import { getInputs } from '../utils';
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
 import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
+import { getInputs } from '../utils';
 
 export class AgentToolV3 implements INodeType {
 	description: INodeTypeDescription;

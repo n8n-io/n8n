@@ -332,7 +332,7 @@ export class MemoryManager implements INodeType {
 					await memory.chatHistory.clear();
 				}
 
-				returnData.push(...(await prepareOutput(i)));
+				returnData.push.apply(returnData, await prepareOutput(i));
 			}
 
 			if (mode === 'insert') {
@@ -363,7 +363,7 @@ export class MemoryManager implements INodeType {
 					await memory.chatHistory.addMessage(MessageClass);
 				}
 
-				returnData.push(...(await prepareOutput(i)));
+				returnData.push.apply(returnData, await prepareOutput(i));
 			}
 
 			if (mode === 'load') {
@@ -409,7 +409,7 @@ export class MemoryManager implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			}
 		}
 

@@ -373,13 +373,11 @@ export async function execute(
 		const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;
 		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
-		returnData.push(
-			...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+		returnData.push.apply(returnData, prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 				updatedRows,
 				rawData,
 				dataProperty,
-			}),
-		);
+			}));
 	} catch (error) {
 		if (this.continueOnFail()) {
 			const itemData = generatePairedItemData(this.getInputData().length);
@@ -387,7 +385,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push(...executionErrorData);
+			returnData.push.apply(returnData, executionErrorData);
 		} else {
 			throw error;
 		}

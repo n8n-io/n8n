@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+
 import { sentryIoApiRequest } from '../GenericFunctions';
 
 describe('SentryIo GenericFunctions', () => {

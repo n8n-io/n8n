@@ -78,7 +78,7 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 		});
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields.push.apply(fields, customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -131,7 +131,7 @@ export async function getAlertUpdateFields(
 	];
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields.push.apply(fields, customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -179,7 +179,7 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 		});
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields.push.apply(fields, customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -238,7 +238,7 @@ export async function getCaseUpdateFields(
 	];
 
 	const customFields = (await getCustomFields.call(this)) || [];
-	fields.push(...customFields);
+	fields.push.apply(fields, customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,

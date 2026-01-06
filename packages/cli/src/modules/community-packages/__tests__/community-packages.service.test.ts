@@ -23,8 +23,8 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
-import type { CommunityPackagesConfig } from '../community-packages.config';
 import { getCommunityNodeTypes } from '../community-node-types-utils';
+import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesService } from '../community-packages.service';
 import type { CommunityPackages } from '../community-packages.types';
 import { InstalledNodes } from '../installed-nodes.entity';

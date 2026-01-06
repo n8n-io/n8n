@@ -1,11 +1,12 @@
+import FormData from 'form-data';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { VideoJob } from '../../../../helpers/interfaces';
 import * as pollingHelpers from '../../../../helpers/polling';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/video/generate.operation';
-import FormData from 'form-data';
 
 jest.mock('../../../../helpers/binary-data');
 jest.mock('../../../../helpers/polling');

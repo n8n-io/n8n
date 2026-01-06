@@ -34,8 +34,9 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleCacheService } from './role-cache.service';
 import { isUniqueConstraintError } from '@/response-helper';
+
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {

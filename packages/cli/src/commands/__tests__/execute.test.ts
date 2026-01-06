@@ -6,7 +6,6 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
-import { Execute } from '../execute';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -20,6 +19,8 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);

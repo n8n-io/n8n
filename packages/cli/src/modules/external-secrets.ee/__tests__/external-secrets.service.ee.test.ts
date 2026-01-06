@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+
 import type { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsService } from '../external-secrets.service.ee';
 import type { SecretsProvider } from '../types';

@@ -2,6 +2,10 @@ import { type User, type WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import z from 'zod';
 
+import type { ListQuery } from '@/requests';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowService } from '@/workflows/workflow.service';
+
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
 	ToolDefinition,
@@ -12,9 +16,6 @@ import type {
 } from '../mcp.types';
 import { nodeSchema } from './schemas';
 
-import type { ListQuery } from '@/requests';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowService } from '@/workflows/workflow.service';
 
 const MAX_RESULTS = 200;
 

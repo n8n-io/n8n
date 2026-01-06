@@ -1,5 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { mockDeep } from 'jest-mock-extended';
+import type { IExecuteFunctions } from 'n8n-workflow';
+
 import { apiRequest } from '.';
 
 describe('Anthropic transport', () => {

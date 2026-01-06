@@ -328,7 +328,7 @@ describe('handleHostedChatResponse', () => {
 			end: jest.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const responseMode = 'hostedChat';
 
 		(res.send as jest.Mock).mockImplementation((data) => {
@@ -349,7 +349,7 @@ describe('handleHostedChatResponse', () => {
 			end: jest.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const responseMode = 'responseNode';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -365,7 +365,7 @@ describe('handleHostedChatResponse', () => {
 			end: jest.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = true;
+		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);

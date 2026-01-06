@@ -3,9 +3,6 @@ import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
-import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
-import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -14,6 +11,10 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 @Service()
 export class McpService {

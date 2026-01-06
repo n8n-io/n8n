@@ -275,9 +275,9 @@ async function getAzureAISearchClient(
 		// Log the full error for debugging
 		context.logger.debug('Azure AI Search connection error:', {
 			message: error instanceof Error ? error.message : String(error),
-			code: (error as any).code,
-			statusCode: (error as any).statusCode,
-			details: (error as any).details,
+			code: (error).code,
+			statusCode: (error).statusCode,
+			details: (error).details,
 		});
 
 		// Check for authentication errors
@@ -421,9 +421,9 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 			// Log the full error for debugging
 			context.logger.debug('Azure AI Search error details:', {
 				message: error instanceof Error ? error.message : String(error),
-				code: (error as any).code,
-				statusCode: (error as any).statusCode,
-				details: (error as any).details,
+				code: (error).code,
+				statusCode: (error).statusCode,
+				details: (error).details,
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 
@@ -448,7 +448,7 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 			if (
 				error.message?.includes('403') ||
 				error.message?.includes('Forbidden') ||
-				(error as any).statusCode === 403
+				(error).statusCode === 403
 			) {
 				throw new NodeOperationError(
 					context.getNode(),
@@ -462,9 +462,9 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 			}
 
 			// Check for RestError (common Azure SDK error)
-			if ((error as any).name === 'RestError' || error.message?.includes('RestError')) {
-				const statusCode = (error as any).statusCode || 'unknown';
-				const errorCode = (error as any).code || 'unknown';
+			if ((error).name === 'RestError' || error.message?.includes('RestError')) {
+				const statusCode = (error).statusCode || 'unknown';
+				const errorCode = (error).code || 'unknown';
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				throw new NodeOperationError(
 					context.getNode(),

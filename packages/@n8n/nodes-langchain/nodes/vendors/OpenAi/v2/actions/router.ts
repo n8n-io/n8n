@@ -5,14 +5,14 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import { getCustomErrorMessage } from '../../helpers/error-handling';
-import type { OpenAiType } from './node.type';
 import * as audio from './audio';
 import * as conversation from './conversation';
 import * as file from './file';
 import * as image from './image';
+import type { OpenAiType } from './node.type';
 import * as text from './text';
 import * as video from './video';
+import { getCustomErrorMessage } from '../../helpers/error-handling';
 
 export async function router(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
@@ -57,7 +57,7 @@ export async function router(this: IExecuteFunctions) {
 		try {
 			const responseData = await execute.call(this, i);
 
-			returnData.push(...responseData);
+			returnData.push.apply(returnData, responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });

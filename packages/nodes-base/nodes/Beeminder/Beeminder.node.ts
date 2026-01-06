@@ -1053,7 +1053,7 @@ export class Beeminder implements INodeType {
 				}
 
 				const executionData = buildExecutionData(this, results, i);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const errorData = {

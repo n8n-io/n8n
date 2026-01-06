@@ -1,10 +1,11 @@
 import { CredentialsEntity, CredentialsRepository, In, WorkflowRepository } from '@n8n/db';
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 type CredentialStatus = {
 	credentialId: string;

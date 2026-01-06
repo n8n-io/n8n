@@ -1,4 +1,5 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { valid } from 'semver';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -15,7 +16,6 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
-import { valid } from 'semver';
 
 const {
 	PACKAGE_NOT_INSTALLED,

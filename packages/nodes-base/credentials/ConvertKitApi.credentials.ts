@@ -5,6 +5,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+
 import { getUrl } from './common/http';
 
 export class ConvertKitApi implements ICredentialType {
