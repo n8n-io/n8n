@@ -27,7 +27,6 @@ describe('useGetNodeCreatorFilter', () => {
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
 
-		// Create a mock workflow object
 		const getNodeMock = vi.fn();
 		mockWorkflow = {
 			getNode: getNodeMock,
@@ -35,7 +34,6 @@ describe('useGetNodeCreatorFilter', () => {
 
 		mockUseWorkflowsStore.workflowObject = mockWorkflow;
 
-		// Mock NodeHelpers.getNodeInputs
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 
 		const { getNodeCreatorFilter: getFilter } = useGetNodeCreatorFilter();
