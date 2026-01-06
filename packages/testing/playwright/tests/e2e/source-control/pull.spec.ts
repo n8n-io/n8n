@@ -1,7 +1,7 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
-import { setupGitRepo } from '../../../utils/source-control-helper';
+import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-helper';
 
 test.use({ capability: 'source-control' });
 
@@ -14,12 +14,12 @@ async function expectPullSuccess(n8n: n8nPage) {
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe.skip('Pull resources from Git @capability:source-control', () => {
-	let repoUrl: string;
+	let gitRepo: GitRepoHelper;
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
-		repoUrl = await setupGitRepo(n8n, n8nContainer.services.gitea);
+		gitRepo = await setupGitRepo(n8n, n8nContainer.services.gitea);
 	});
 
 	test('should pull new resources from remote', async ({ n8n }) => {
@@ -58,7 +58,7 @@ test.describe.skip('Pull resources from Git @capability:source-control', () => {
 		await n8n.api.tags.delete(tag.id);
 
 		// re-connect to source control
-		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+		await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
 
 		// pull all resources
 		await n8n.navigate.toHome();
@@ -113,7 +113,7 @@ test.describe.skip('Pull resources from Git @capability:source-control', () => {
 		});
 
 		// re-connect to source control
-		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+		await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
 
 		// pull
 		await n8n.navigate.toHome();
