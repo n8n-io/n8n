@@ -33,7 +33,7 @@ Document(Text, Resolvable)
 Document(
   Element(
     OpenTag(StartTag,TagName,EndTag),
-    Resolvable
+    Resolvable,
     CloseTag(StartCloseTag,TagName,EndTag)
   )
 )
@@ -75,7 +75,7 @@ Document(
 Document(
   Element(
     OpenTag(StartTag,TagName,EndTag),
-    Resolvable
+    Resolvable,
     Text,
     CloseTag(StartCloseTag,TagName,EndTag)
   )

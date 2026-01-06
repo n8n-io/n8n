@@ -17,7 +17,7 @@ export interface TagSpec {
 }
 
 const Targets = ['_blank', '_self', '_top', '_parent'];
-const Charsets = ['ascii', 'utf-8', 'utf-16', 'latin1', 'latin1'];
+const Charsets = ['ascii', 'utf-8', 'utf-16', 'latin1'];
 const Methods = ['get', 'post', 'put', 'delete'];
 const Encs = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
 const Bool = ['true', 'false'];
@@ -77,7 +77,7 @@ const Tags: Record<string, TagSpec> = {
 			name: null,
 			value: null,
 			autofocus: ['autofocus'],
-			disabled: ['autofocus'],
+			disabled: ['disabled'],
 			formenctype: Encs,
 			formmethod: Methods,
 			formnovalidate: ['novalidate'],

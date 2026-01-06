@@ -112,7 +112,7 @@ Comment { commentStart commentContent* commentEnd }
   StartTextareaTag[@name=StartTag,closedBy=EndTag],
   StartSelfClosingTag[@name=StartTag,closedBy=EndTag],
   StartCloseTag[closedBy=EndTag],
-  NoMatchStartCloseTag[@name=StartCloseTag,closedBy=EndTag]
+  NoMatchStartCloseTag[@name=StartCloseTag,closedBy=EndTag],
   MismatchedStartCloseTag[@name=StartCloseTag,closedBy=EndTag],
   missingCloseTag,
   IncompleteCloseTag

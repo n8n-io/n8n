@@ -6,7 +6,7 @@
     "test": "cm-runtests",
     "build": "cm-buildhelper src/html.ts",
     "grammar:build": "lezer-generator src/grammar/html.grammar -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
-    "grammar:build-debug": "lezer-generator src/html.grammar --names -o src/parser && rollup -c src/grammar/rollup.config.js",
+    "grammar:build-debug": "lezer-generator src/grammar/html.grammar --names -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
     "grammar:test": "mocha src/grammar/test/test-*.js"
   },
   "keywords": [

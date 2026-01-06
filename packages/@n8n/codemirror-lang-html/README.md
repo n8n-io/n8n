@@ -1,4 +1,4 @@
-# codemirror-lang-html-n8n
+# @n8n/codemirror-lang-html
 
 HTML + n8n expression language support for CodeMirror 6.
 
