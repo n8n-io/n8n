@@ -84,6 +84,16 @@ describe('PrototypeSanitizer', () => {
 			}).toThrowError(errorRegex);
 		});
 
+		it.each([
+			['getPrototypeOf', '{{ Object.getPrototypeOf }}'],
+			['binding', '{{ process.binding }}'],
+			['_load', '{{ module._load }}'],
+		])('should not allow access to %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, Object, process: {}, module: {} });
+			}).toThrowError(errorRegex);
+		});
+
 		describe('Dollar sign identifier handling', () => {
 			it('should not allow bare $ identifier', () => {
 				expect(() => {
@@ -248,6 +258,58 @@ describe('PrototypeSanitizer', () => {
 					Number,
 				});
 			}).toThrowError(errorRegex);
+		});
+
+		describe('Array-based property access bypass attempts', () => {
+			it('should not allow access to __proto__ via array', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["__proto__"]] }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to constructor via array', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["constructor"]] }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to prototype via array', () => {
+				expect(() => {
+					tournament.execute('{{ Number[["prototype"]] }}', {
+						__sanitize: sanitizer,
+						Number,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow prototype pollution via array access', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["__proto__"]].polluted = 1 }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow RCE via chained array access', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["toString"]][["constructor"]]("return 1")() }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to prepareStackTrace via array', () => {
+				expect(() => {
+					tournament.execute('{{ Error[["prepareStackTrace"]] }}', {
+						__sanitize: sanitizer,
+						Error,
+					});
+				}).toThrowError(errorRegex);
+			});
 		});
 	});
 });

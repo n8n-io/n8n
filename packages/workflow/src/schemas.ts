@@ -1,6 +1,7 @@
 import type {
 	AssignmentCollectionValue,
 	FilterValue,
+	IconOrEmoji,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameterResourceLocator,
@@ -421,6 +422,11 @@ export const AssignmentCollectionValueSchema: z.ZodType<AssignmentCollectionValu
 	assignments: z.array(AssignmentValueSchema),
 });
 
+export const IconOrEmojiSchema: z.ZodType<IconOrEmoji> = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('icon'), value: z.string() }),
+	z.object({ type: z.literal('emoji'), value: z.string() }),
+]);
+
 export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z.lazy(() =>
 	z.union([
 		NodeParameterValueSchema,
@@ -428,6 +434,7 @@ export const NodeParameterValueTypeSchema: z.ZodType<NodeParameterValueType> = z
 		ResourceMapperValueSchema,
 		FilterValueSchema,
 		AssignmentCollectionValueSchema,
+		IconOrEmojiSchema,
 
 		INodeParametersSchema,
 
