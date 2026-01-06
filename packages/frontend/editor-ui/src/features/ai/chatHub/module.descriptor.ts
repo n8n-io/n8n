@@ -162,6 +162,7 @@ export const ChatModule: FrontendModuleDescription = {
 				settingsView: SettingsChatHubView,
 			},
 			meta: {
+				layout: 'settings',
 				middleware: ['authenticated', 'rbac'],
 				middlewareOptions: {
 					rbac: {

@@ -23,6 +23,7 @@ export const MCPModule: FrontendModuleDescription = {
 				settingsView: SettingsMCPView,
 			},
 			meta: {
+				layout: 'settings',
 				middleware: ['authenticated', 'custom'],
 				telemetry: {
 					pageCategory: 'settings',
