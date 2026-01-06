@@ -6,11 +6,10 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -21,6 +20,7 @@ import {
 } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
+import TimeAgo from '../TimeAgo.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -187,37 +187,44 @@ onBeforeUnmount(() => {
 defineExpose({
 	importFileRef,
 });
+
+const publishButtonText = computed(() => {
+	if (props.isNewWorkflow) {
+		return locale.baseText('workflows.publish');
+	}
+	if (publishButtonEnabled.value) {
+		return locale.baseText('workflows.publish');
+	}
+	return locale.baseText('workflows.published');
+});
 </script>
 
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
-		<div
-			v-if="activeVersion"
-			:class="$style.activeVersionIndicator"
-			data-test-id="workflow-active-version-indicator"
-		>
-			<N8nTooltip>
-				<template #content>
-					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
-					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
-				</template>
-				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
-			</N8nTooltip>
-		</div>
-		<div v-if="!readOnlyForPublish" :class="$style.publishButtonWrapper">
+		<div :class="$style.publishButtonWrapper">
 			<N8nTooltip :disabled="!publishTooltipText">
 				<template #content>
 					{{ publishTooltipText }}
+					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
+					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 				</template>
 				<N8nButton
 					:loading="autoSaveForPublish"
-					:disabled="!publishButtonEnabled || isWorkflowSaving"
+					:disabled="!publishButtonEnabled || isWorkflowSaving || !readOnlyForPublish"
 					type="secondary"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
 				>
-					{{ locale.baseText('workflows.publish') }}
+					<div :class="$style.flex">
+						<span
+							:class="{
+								[$style.indicatorDot]: activeVersion,
+								[$style.indicatorDotChanges]: publishButtonEnabled,
+							}"
+						/>
+						{{ publishButtonText }}
+					</div>
 				</N8nButton>
 			</N8nTooltip>
 		</div>
@@ -254,5 +261,24 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-block;
+}
+
+.indicatorDot {
+	height: 8px;
+	width: 8px;
+	background-color: var(--color--mint-600);
+	border-radius: 50%;
+	display: inline-block;
+	margin-right: var(--spacing--3xs);
+}
+
+.indicatorDotChanges {
+	background-color: var(--color--yellow-500);
+}
+
+.flex {
+	display: flex;
+	align-items: center;
+	color: var(--color--text);
 }
 </style>
