@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line import-x/order
 import { ALL_SCOPES, ALL_ROLES, scopeInformation } from '@n8n/permissions';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+ 
 import { In } from '@n8n/typeorm';
 
 import { Scope } from '../entities';

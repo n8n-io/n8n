@@ -19,7 +19,7 @@ const timestampSyntaxMap = {
 	sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
 	postgresdb: 'CURRENT_TIMESTAMP(3)',
 } as const;
-const timestampSyntax = timestampSyntaxMap[dbType as keyof typeof timestampSyntaxMap];
+const timestampSyntax = timestampSyntaxMap[dbType];
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
@@ -27,7 +27,7 @@ const binaryColumnTypeMap = {
 	sqlite: 'blob',
 	postgresdb: 'bytea',
 } as const;
-const binaryColumnType = binaryColumnTypeMap[dbType as keyof typeof binaryColumnTypeMap];
+const binaryColumnType = binaryColumnTypeMap[dbType];
 
 export function JsonColumn(options?: Omit<ColumnOptions, 'type'>) {
 	return Column({
