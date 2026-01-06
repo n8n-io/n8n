@@ -38,16 +38,20 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/autocomplete": "^6.0.0",
-    "@codemirror/language": "^6.0.0",
-    "@codemirror/state": "^6.0.0",
-    "@lezer/highlight": "^1.0.0",
-    "@lezer/lr": "^1.0.0",
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@lezer/lr": "catalog:",
     "@n8n/codemirror-lang": "workspace:*"
   },
   "devDependencies": {
-    "@codemirror/text": "^0.19.6",
-    "@lezer/generator": "^1.7.0",
+    "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n",
+    "directory": "packages/@n8n/codemirror-lang-sql"
   }
 }
