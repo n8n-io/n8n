@@ -21,7 +21,7 @@ export class CreateWorkflowDto extends Z.class({
 	// always overridden in the controller to enforce security policies:
 	// - active is always set to false (workflows must be activated via separate endpoint)
 	// - activeVersionId is always set to null (managed by the system)
-	active: z.boolean().optional().default(false),
+	active: z.boolean().optional(),
 	activeVersionId: z.string().nullable().optional(),
 	activeVersion: z.unknown().optional(),
 

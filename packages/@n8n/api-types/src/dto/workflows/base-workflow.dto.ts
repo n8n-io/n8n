@@ -79,7 +79,17 @@ export const baseWorkflowShape = {
 	parentFolderId: z.string().optional(),
 
 	// Tags
-	tags: z.array(z.string()).optional(),
+	tags: z
+		// Accept either array of tag IDs (strings) or array of tag objects ({ id, name }) for backwards compatibility
+		.union([z.array(z.string()), z.array(z.object({ id: z.string(), name: z.string() }))])
+		.transform((val): string[] => {
+			// If array of objects, extract just the ids
+			if (val.length > 0 && typeof val[0] === 'object' && 'id' in val[0]) {
+				return (val as Array<{ id: string; name: string }>).map((tag) => tag.id);
+			}
+			return val as string[];
+		})
+		.optional(),
 
 	// UI context and builder metadata
 	uiContext: z.string().optional(),
