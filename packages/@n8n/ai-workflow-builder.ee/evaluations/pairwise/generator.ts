@@ -29,12 +29,6 @@ export interface CreatePairwiseTargetOptions {
 	artifactSaver?: ArtifactSaver | null;
 }
 
-/** Generate a fallback prompt ID from prompt text when no example ID is available */
-function generateFallbackPromptId(prompt: string): string {
-	const hash = crypto.createHash('sha256').update(prompt).digest('hex').slice(0, 8);
-	return hash;
-}
-
 /**
  * Creates a target function that does ALL the work:
  * - Generates all workflows (each wrapped in traceable)
