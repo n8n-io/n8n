@@ -2133,6 +2133,7 @@
 	"projectRoles.workflow:read": "View",
 	"projectRoles.workflow:read.tooltip": "View workflows within the project",
 	"projectRoles.workflow:execute": "Execute",
+	"projectRoles.workflow:execute.tooltip": "Execute workflows",
 	"projectRoles.workflow:update": "Edit",
 	"projectRoles.workflow:update.tooltip": "Edit workflow content and execute workflows",
 	"projectRoles.workflow:create": "Create",
