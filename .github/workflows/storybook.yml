@@ -37,6 +37,11 @@ jobs:
         run: |
           pnpm build:storybook
 
+      - name: Create 404 page
+        working-directory: packages/frontend/@n8n/design-system/storybook-static
+        run: |
+          echo "404" > 404.html
+
       - name: Setup Wrangler Pre-requisites
         run: |
           echo "ignore-workspace-root-check=true" >> .npmrc
