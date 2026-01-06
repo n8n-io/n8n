@@ -9,7 +9,8 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nTooltip, N8nText } from '@n8n/design-system';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -92,6 +93,11 @@ const lastPublishInfo = computed(() => {
 	return lastPublishedByUser;
 });
 
+const versionPublishInfo = computed(() => {
+	const publishInfo = getLastPublishedVersion(props.item.workflowPublishHistory);
+	return publishInfo;
+});
+
 const publishedAt = computed(() => {
 	if (!lastPublishInfo.value) {
 		return null;
@@ -155,8 +161,31 @@ onMounted(() => {
 		<!-- Timeline column -->
 		<span :class="$style.timelineColumn">
 			<template v-if="!props.isGrouped">
-				<N8nIcon v-if="props.isVersionActive" size="large" icon="circle-check" color="success" />
-				<span v-else :class="$style.timelineMarker" />
+				<N8nTooltip v-if="props.isVersionActive" placement="left">
+					<template #content>
+						<div>
+							{{ `${i18n.baseText('workflowHistory.item.active')}:` }}
+							<TimeAgo v-if="lastPublishInfo" :date="lastPublishInfo.createdAt" />
+						</div>
+					</template>
+					<span :class="[$style.timelineDot, $style.timelineDotPublished]" />
+				</N8nTooltip>
+				<N8nTooltip v-else-if="props.index === 0 && !props.isVersionActive" placement="left">
+					<template #content>{{ i18n.baseText('workflowHistory.item.currentChanges') }}</template>
+					<span :class="[$style.timelineDot, $style.timelineDotLatest]" />
+				</N8nTooltip>
+				<N8nTooltip v-else placement="left">
+					<template #content>
+						<div v-if="versionPublishInfo">
+							{{ `${i18n.baseText('workflowHistory.item.publishedAtLabel')}:` }}
+							<TimeAgo :date="versionPublishInfo.createdAt" />
+						</div>
+						<div v-else>
+							{{ formattedCreatedAt }}
+						</div>
+					</template>
+					<span :class="[$style.timelineDot, $style.timelineDotDefault]" />
+				</N8nTooltip>
 			</template>
 			<span v-else :class="$style.timelineLine" />
 		</span>
@@ -169,22 +198,6 @@ onMounted(() => {
 						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
 							{{ versionName }}
 						</N8nText>
-						<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
-							<template #content>
-								<div :class="$style.tooltipContent">
-									<N8nText size="small">
-										{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
-										{{ publishedAt }}
-									</N8nText>
-									<N8nText v-if="publishedByUserName" size="small">
-										{{ publishedByUserName }}
-									</N8nText>
-								</div>
-							</template>
-							<N8nBadge size="xsmall" :class="$style.publishedBadge" :show-border="false">
-								{{ i18n.baseText('workflowHistory.item.active') }}
-							</N8nBadge>
-						</N8nTooltip>
 					</div>
 					<div :class="$style.metaRow">
 						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
@@ -230,8 +243,7 @@ onMounted(() => {
 <style module lang="scss">
 @use './timeline' as *;
 
-$timelineMarkerDiameter: 13px;
-$timelineMarkerBorderWidth: 1.33px;
+$timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
 
 .item {
@@ -294,12 +306,24 @@ $hoverBackground: var(--color--background--light-1);
 	align-self: stretch;
 }
 
-.timelineMarker {
-	position: relative;
-	width: $timelineMarkerDiameter;
-	height: $timelineMarkerDiameter;
+.timelineDot {
+	height: $timelineDotSize;
+	width: $timelineDotSize;
 	border-radius: 50%;
-	border: $timelineMarkerBorderWidth solid var(--color--text--tint-1);
+	display: inline-block;
+}
+
+.timelineDotPublished {
+	background-color: var(--color--mint-600);
+}
+
+.timelineDotLatest {
+	background-color: var(--color--yellow-500);
+}
+
+.timelineDotDefault {
+	border: var(--border);
+	border-color: var(--color--text--tint-2);
 }
 
 .timelineLine {
