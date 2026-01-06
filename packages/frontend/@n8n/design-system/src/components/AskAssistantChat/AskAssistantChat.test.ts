@@ -591,14 +591,14 @@ describe('AskAssistantChat', () => {
 		});
 
 		it('should show initial thinking-group when streaming with no tool messages', () => {
-			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking...' });
+			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking' });
 
 			// Should create an initial thinking-group
 			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
 
 			const props = getThinkingMessageProps()[0];
 			expect(props.items).toHaveLength(1);
-			expect(props.items[0].displayTitle).toBe('Thinking...');
+			expect(props.items[0].displayTitle).toBe('Thinking');
 			expect(props.items[0].status).toBe('running');
 		});
 	});

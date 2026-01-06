@@ -145,7 +145,7 @@ function groupToolMessagesIntoThinking(
 		}));
 
 		// If this is the last group, all tools completed, and we're still streaming,
-		// add a "Thinking..." item to show the AI is processing
+		// add a "Thinking" item to show the AI is processing
 		if (isLastToolGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
 			items.push({
 				id: 'thinking-item',
@@ -197,7 +197,7 @@ function groupToolMessagesIntoThinking(
 	}
 
 	// If streaming with a loadingMessage but no thinking-group exists yet (no tool messages received),
-	// create an initial thinking-group with just the "Thinking..." item
+	// create an initial thinking-group with just the "Thinking" item
 	// Use the same stable ID as tool-based thinking-groups so Vue preserves component state
 	const hasThinkingGroup = result.some((msg) => msg.type === 'thinking-group');
 	if (options.streaming && options.loadingMessage && !hasThinkingGroup) {

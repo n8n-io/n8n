@@ -24,7 +24,7 @@ Default.args = {
 
 export const Thinking = Template.bind({});
 Thinking.args = {
-	message: 'Thinking...',
+	message: 'Thinking',
 };
 
 export const NarrowContainer = Template.bind({});
