@@ -57,7 +57,9 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
-			const { prompt, evals: evalCriteria, exampleId: promptId } = inputs;
+			const { prompt, evals: evalCriteria, exampleId } = inputs;
+
+			const promptId = `${exampleId}-${Date.now()}`;
 
 			// Save prompt artifacts if output directory is configured
 			artifactSaver?.savePrompt(promptId, prompt, evalCriteria);
