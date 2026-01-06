@@ -12,7 +12,6 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	IS_DRAFT_PUBLISH_ENABLED,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -90,8 +89,6 @@ const onExecutionsTab = computed(() => {
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
-
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -131,7 +128,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (isDraftPublishEnabled && isSharingEnabled.value) {
+	if (isSharingEnabled.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
@@ -202,12 +199,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (
-		isDraftPublishEnabled &&
-		activeVersion.value &&
-		props.workflowPermissions.publish &&
-		!props.readOnly
-	) {
+	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
 			label: locale.baseText('menuActions.unpublish'),

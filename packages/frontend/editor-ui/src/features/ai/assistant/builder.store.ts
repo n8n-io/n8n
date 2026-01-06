@@ -873,11 +873,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// 1. Restore the workflow using existing workflow history store
-		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(
-			workflowId,
-			versionId,
-			false,
-		);
+		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(workflowId, versionId);
 
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
