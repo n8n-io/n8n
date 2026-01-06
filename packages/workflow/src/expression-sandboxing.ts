@@ -1,6 +1,6 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionError } from './errors';
+import { ExpressionDestructuringError, ExpressionError } from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
@@ -223,6 +223,27 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 						true,
 					),
 				);
+			}
+		},
+
+		visitObjectPattern(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const prop of node.properties) {
+				if (prop.type === 'Property') {
+					let keyName: string | undefined;
+
+					if (prop.key.type === 'Identifier') {
+						keyName = prop.key.name;
+					} else if (prop.key.type === 'StringLiteral' || prop.key.type === 'Literal') {
+						keyName = String(prop.key.value);
+					}
+
+					if (keyName !== undefined && !isSafeObjectProperty(keyName)) {
+						throw new ExpressionDestructuringError(keyName);
+					}
+				}
 			}
 		},
 	});
