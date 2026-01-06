@@ -241,6 +241,7 @@ describe('Console Lifecycle', () => {
 				index: 1,
 				prompt: 'Test',
 				status: 'pass',
+				score: 0.9,
 				feedback: [{ key: 'test', score: 0.9 }],
 				durationMs: 2000,
 			};
@@ -249,6 +250,7 @@ describe('Console Lifecycle', () => {
 				index: 2,
 				prompt: 'Test',
 				status: 'fail',
+				score: 0.3,
 				feedback: [{ key: 'test', score: 0.3 }],
 				durationMs: 1500,
 			};
@@ -269,6 +271,7 @@ describe('Console Lifecycle', () => {
 				index: 1,
 				prompt: 'Test',
 				status: 'error',
+				score: 0,
 				feedback: [],
 				durationMs: 500,
 				error: 'Generation failed',
@@ -288,6 +291,7 @@ describe('Console Lifecycle', () => {
 				index: 1,
 				prompt: 'Test',
 				status: 'pass',
+				score: 0.9,
 				feedback: [{ key: 'test', score: 0.9 }],
 				durationMs: 2000,
 			};
@@ -545,6 +549,7 @@ describe('Console Lifecycle', () => {
 				index: 1,
 				prompt: 'Test',
 				status: 'pass',
+				score: 1,
 				feedback: [],
 				durationMs: 1000,
 			};

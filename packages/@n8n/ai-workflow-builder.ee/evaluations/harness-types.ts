@@ -2,6 +2,36 @@ import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
+ * Shared context passed to all evaluators.
+ *
+ * Keep this as the single "base" context so callers (CLI/runner) never need casts.
+ * Evaluators should validate required fields at runtime when optional fields are needed.
+ */
+export interface EvaluationContext {
+	/** The original user prompt for this example */
+	prompt: string;
+	/** Pairwise criteria: required behaviors */
+	dos?: string;
+	/** Pairwise criteria: forbidden behaviors */
+	donts?: string;
+	/** Optional reference workflow for similarity-based checks */
+	referenceWorkflow?: SimpleWorkflow;
+	/** Optional reference workflows for similarity-based checks (best match wins) */
+	referenceWorkflows?: SimpleWorkflow[];
+	/**
+	 * Optional generator for multi-generation evaluations.
+	 * When present, pairwise evaluator can generate multiple workflows from the same prompt.
+	 */
+	generateWorkflow?: (prompt: string) => Promise<SimpleWorkflow>;
+}
+
+/** Context attached to an individual test case (prompt is provided separately). */
+export type TestCaseContext = Omit<Partial<EvaluationContext>, 'prompt'>;
+
+/** Global context attached to a run (prompt is provided per test case). */
+export type GlobalRunContext = Omit<Partial<EvaluationContext>, 'prompt'>;
+
+/**
  * What evaluators return - a single piece of feedback.
  */
 export interface Feedback {
@@ -14,7 +44,7 @@ export interface Feedback {
  * An evaluator that can assess a generated workflow.
  * Optionally typed with context for evaluator-specific data.
  */
-export interface Evaluator<TContext = void> {
+export interface Evaluator<TContext = EvaluationContext> {
 	name: string;
 	evaluate(workflow: SimpleWorkflow, ctx: TContext): Promise<Feedback[]>;
 }
@@ -26,7 +56,7 @@ export interface TestCase {
 	prompt: string;
 	id?: string;
 	/** Context passed to evaluators (e.g., pairwise dos/donts) */
-	context?: Record<string, unknown>;
+	context?: TestCaseContext;
 	/** Reference workflow for similarity comparison */
 	referenceWorkflow?: SimpleWorkflow;
 }
@@ -41,9 +71,9 @@ export interface RunConfig {
 	/** Function to generate workflow from prompt */
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
 	/** Evaluators to run on each generated workflow */
-	evaluators: Array<Evaluator<unknown>>;
+	evaluators: Array<Evaluator<EvaluationContext>>;
 	/** Global context available to all evaluators */
-	context?: unknown;
+	context?: GlobalRunContext;
 	/** Directory for JSON output files */
 	outputDir?: string;
 	/** LangSmith-specific options */
@@ -74,6 +104,8 @@ export interface ExampleResult {
 	index: number;
 	prompt: string;
 	status: 'pass' | 'fail' | 'error';
+	/** Example-level score (0-1). In v2 this should be scoring-strategy aware (not key-count dependent). */
+	score: number;
 	feedback: Feedback[];
 	durationMs: number;
 	workflow?: SimpleWorkflow;

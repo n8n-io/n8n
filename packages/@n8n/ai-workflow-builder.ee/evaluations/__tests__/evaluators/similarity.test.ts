@@ -56,7 +56,7 @@ describe('Similarity Evaluator', () => {
 			const evaluator = createSimilarityEvaluator();
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			expect(mockEvaluateWorkflowSimilarity).not.toHaveBeenCalled();
 			expect(mockEvaluateWorkflowSimilarityMultiple).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			await evaluator.evaluate(workflow, { referenceWorkflow });
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt', referenceWorkflow });
 
 			expect(mockEvaluateWorkflowSimilarity).toHaveBeenCalledWith(
 				workflow,
@@ -99,7 +99,7 @@ describe('Similarity Evaluator', () => {
 				createMockWorkflow('Reference 2'),
 			];
 
-			await evaluator.evaluate(workflow, { referenceWorkflows });
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt', referenceWorkflows });
 
 			expect(mockEvaluateWorkflowSimilarityMultiple).toHaveBeenCalledWith(
 				workflow,
@@ -118,7 +118,7 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			await evaluator.evaluate(workflow, { referenceWorkflow });
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt', referenceWorkflow });
 
 			expect(mockEvaluateWorkflowSimilarity).toHaveBeenCalledWith(
 				workflow,
@@ -137,7 +137,10 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			const feedback = await evaluator.evaluate(workflow, { referenceWorkflow });
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Test prompt',
+				referenceWorkflow,
+			});
 
 			const scoreFeedback = feedback.find((f) => f.key === 'similarity.score');
 			expect(scoreFeedback?.score).toBe(0.92);
@@ -164,7 +167,10 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			const feedback = await evaluator.evaluate(workflow, { referenceWorkflow });
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Test prompt',
+				referenceWorkflow,
+			});
 
 			const scoreFeedback = feedback.find((f) => f.key === 'similarity.score');
 			expect(scoreFeedback?.comment).toContain('[major] Missing Slack node');
@@ -202,7 +208,10 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			const feedback = await evaluator.evaluate(workflow, { referenceWorkflow });
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Test prompt',
+				referenceWorkflow,
+			});
 
 			const nodeDeleteFeedback = feedback.find((f) => f.key === 'similarity.node-delete');
 			expect(nodeDeleteFeedback).toBeDefined();
@@ -222,7 +231,10 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			const feedback = await evaluator.evaluate(workflow, { referenceWorkflow });
+			const feedback = await evaluator.evaluate(workflow, {
+				prompt: 'Test prompt',
+				referenceWorkflow,
+			});
 
 			const errorFeedback = feedback.find((f) => f.key === 'similarity.error');
 			expect(errorFeedback).toEqual({
@@ -244,7 +256,7 @@ describe('Similarity Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
 
-			await evaluator.evaluate(workflow, { referenceWorkflow });
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt', referenceWorkflow });
 
 			expect(mockEvaluateWorkflowSimilarity).toHaveBeenCalledWith(
 				workflow,
@@ -264,7 +276,11 @@ describe('Similarity Evaluator', () => {
 			const referenceWorkflow = createMockWorkflow('Single Reference');
 			const referenceWorkflows = [createMockWorkflow('Multi Reference')];
 
-			await evaluator.evaluate(workflow, { referenceWorkflow, referenceWorkflows });
+			await evaluator.evaluate(workflow, {
+				prompt: 'Test prompt',
+				referenceWorkflow,
+				referenceWorkflows,
+			});
 
 			expect(mockEvaluateWorkflowSimilarityMultiple).toHaveBeenCalled();
 			expect(mockEvaluateWorkflowSimilarity).not.toHaveBeenCalled();

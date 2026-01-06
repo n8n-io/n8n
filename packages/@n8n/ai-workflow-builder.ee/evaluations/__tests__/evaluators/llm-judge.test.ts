@@ -98,14 +98,18 @@ describe('LLM-Judge Evaluator', () => {
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
 			// Should have feedback for each category
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'functionality' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'connections' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'expressions' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'nodeConfiguration' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'efficiency' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'dataFlow' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'maintainability' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'overallScore' }));
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.functionality' }));
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.connections' }));
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.expressions' }));
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ key: 'llm-judge.nodeConfiguration' }),
+			);
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.efficiency' }));
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.dataFlow' }));
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ key: 'llm-judge.maintainability' }),
+			);
+			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.overallScore' }));
 		});
 
 		it('should include violations in feedback comments', async () => {
@@ -127,7 +131,7 @@ describe('LLM-Judge Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const funcFeedback = feedback.find((f) => f.key === 'functionality');
+			const funcFeedback = feedback.find((f) => f.key === 'llm-judge.functionality');
 			expect(funcFeedback?.comment).toContain('Missing HTTP node');
 		});
 

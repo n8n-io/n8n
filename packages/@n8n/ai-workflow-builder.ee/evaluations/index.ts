@@ -17,6 +17,9 @@ export { runEvaluation, getLastResults } from './runner';
 // Types
 export type {
 	Feedback,
+	EvaluationContext,
+	TestCaseContext,
+	GlobalRunContext,
 	Evaluator,
 	TestCase,
 	RunConfig,
@@ -40,11 +43,7 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
-	type LLMJudgeContext,
-	type ProgrammaticContext,
-	type PairwiseContext,
 	type PairwiseEvaluatorOptions,
-	type SimilarityContext,
 	type SimilarityEvaluatorOptions,
 } from './evaluators';
 

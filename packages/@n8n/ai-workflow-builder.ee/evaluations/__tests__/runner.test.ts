@@ -1,6 +1,13 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, TestCase, Feedback, RunConfig, EvaluationLifecycle } from '../harness-types';
+import type {
+	Evaluator,
+	TestCase,
+	Feedback,
+	RunConfig,
+	EvaluationLifecycle,
+	EvaluationContext,
+} from '../harness-types';
 
 /** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
@@ -123,14 +130,14 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should pass context from test case to evaluators', async () => {
-			const evaluator: Evaluator<{ dos: string; donts: string }> = {
+			const evaluator: Evaluator = {
 				name: 'contextual',
 				evaluate: jest
 					.fn()
-					.mockImplementation((_workflow: SimpleWorkflow, ctx: { dos: string; donts: string }) => {
+					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
 						expect(ctx.dos).toBe('Use Slack');
 						expect(ctx.donts).toBe('No HTTP');
-						return [{ key: 'contextual', score: 1 }];
+						return [{ key: 'contextual.score', score: 1 }];
 					}),
 			};
 
@@ -143,7 +150,7 @@ describe('Runner - Local Mode', () => {
 					},
 				],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [evaluator as Evaluator<unknown>],
+				evaluators: [evaluator],
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -153,25 +160,23 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should merge global context with test case context', async () => {
-			const evaluator: Evaluator<{ global: boolean; local: string }> = {
+			const evaluator: Evaluator = {
 				name: 'merged',
 				evaluate: jest
 					.fn()
-					.mockImplementation(
-						(_workflow: SimpleWorkflow, ctx: { global: boolean; local: string }) => {
-							expect(ctx.global).toBe(true);
-							expect(ctx.local).toBe('test');
-							return [{ key: 'merged', score: 1 }];
-						},
-					),
+					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
+						expect(ctx.dos).toBe('Use Slack');
+						expect(ctx.donts).toBe('No HTTP');
+						return [{ key: 'merged.score', score: 1 }];
+					}),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
-				dataset: [{ prompt: 'Test', context: { local: 'test' } }],
+				dataset: [{ prompt: 'Test', context: { donts: 'No HTTP' } }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [evaluator as Evaluator<unknown>],
-				context: { global: true },
+				evaluators: [evaluator],
+				context: { dos: 'Use Slack' },
 			};
 
 			const { runEvaluation } = await import('../runner');

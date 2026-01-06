@@ -1,20 +1,10 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, Feedback } from '../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
 import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,
 } from '../programmatic/evaluators/workflow-similarity';
-
-/**
- * Context for similarity evaluator.
- */
-export interface SimilarityContext {
-	/** Single reference workflow to compare against */
-	referenceWorkflow?: SimpleWorkflow;
-	/** Multiple reference workflows to compare against (best match wins) */
-	referenceWorkflows?: SimpleWorkflow[];
-}
 
 /**
  * Options for creating a similarity evaluator.
@@ -62,14 +52,14 @@ function formatViolations(
  */
 export function createSimilarityEvaluator(
 	options?: SimilarityEvaluatorOptions,
-): Evaluator<SimilarityContext> {
+): Evaluator<EvaluationContext> {
 	const preset = options?.preset ?? 'standard';
 	const customConfigPath = options?.customConfigPath;
 
 	return {
 		name: 'similarity',
 
-		async evaluate(workflow: SimpleWorkflow, ctx: SimilarityContext): Promise<Feedback[]> {
+		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			const feedback: Feedback[] = [];
 
 			// Check if we have any reference workflows to compare against

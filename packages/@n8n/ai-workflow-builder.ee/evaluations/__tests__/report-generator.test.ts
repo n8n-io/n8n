@@ -23,6 +23,7 @@ function createExampleResult(overrides: Partial<ExampleResult> = {}): ExampleRes
 		index: 1,
 		prompt: 'Test prompt',
 		status: 'pass',
+		score: 0,
 		feedback: [],
 		durationMs: 1000,
 		...overrides,

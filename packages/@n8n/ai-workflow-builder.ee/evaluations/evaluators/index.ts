@@ -5,15 +5,13 @@
  * All evaluators are independent and can run in parallel.
  */
 
-export { createLLMJudgeEvaluator, type LLMJudgeContext } from './llm-judge';
-export { createProgrammaticEvaluator, type ProgrammaticContext } from './programmatic';
+export { createLLMJudgeEvaluator } from './llm-judge';
+export { createProgrammaticEvaluator } from './programmatic';
 export {
 	createPairwiseEvaluator,
-	type PairwiseContext,
 	type PairwiseEvaluatorOptions,
 } from './pairwise';
 export {
 	createSimilarityEvaluator,
-	type SimilarityContext,
 	type SimilarityEvaluatorOptions,
 } from './similarity';

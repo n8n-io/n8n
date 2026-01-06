@@ -7,13 +7,17 @@ import { traceable } from 'langsmith/traceable';
 import type {
 	Evaluator,
 	TestCase,
+	EvaluationContext,
+	GlobalRunContext,
+	TestCaseContext,
 	Feedback,
 	RunConfig,
 	ExampleResult,
 	RunSummary,
 	EvaluationLifecycle,
 } from './harness-types.js';
-import { createArtifactSaver } from './output';
+import { createArtifactSaver, type ArtifactSaver } from './output';
+import { calculateWeightedScore } from './score-calculator';
 import { extractMessageContent } from './types/langsmith';
 import { createLogger, type EvalLogger } from './utils/logger';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
@@ -38,8 +42,8 @@ export function getLastResults(): ExampleResult[] {
  */
 async function evaluateWithPlugins(
 	workflow: SimpleWorkflow,
-	evaluators: Array<Evaluator<unknown>>,
-	context: unknown,
+	evaluators: Array<Evaluator<EvaluationContext>>,
+	context: EvaluationContext,
 	lifecycle?: Partial<EvaluationLifecycle>,
 ): Promise<Feedback[]> {
 	const results = await Promise.all(
@@ -66,29 +70,144 @@ async function evaluateWithPlugins(
 }
 
 /**
- * Calculate average score from feedback array.
+ * Calculate example score from feedback using evaluator-weighted scoring.
  */
-function calculateAverageScore(feedback: Feedback[]): number {
-	if (feedback.length === 0) return 0;
-	const total = feedback.reduce((sum, f) => sum + f.score, 0);
-	return total / feedback.length;
+function calculateExampleScore(feedback: Feedback[]): number {
+	return calculateWeightedScore(feedback);
 }
 
 /**
  * Determine pass/fail status based on average score.
  */
-function determineStatus(averageScore: number): 'pass' | 'fail' {
-	return averageScore >= PASS_THRESHOLD ? 'pass' : 'fail';
+function determineStatus(score: number): 'pass' | 'fail' {
+	return score >= PASS_THRESHOLD ? 'pass' : 'fail';
 }
 
 /**
- * Build context for evaluators by merging global and test case context.
+ * Build a typed evaluation context for evaluators.
  */
-function buildContext(globalContext: unknown, testCaseContext?: Record<string, unknown>): unknown {
-	if (!globalContext && !testCaseContext) return undefined;
-	if (!globalContext) return testCaseContext;
-	if (!testCaseContext) return globalContext;
-	return { ...(globalContext as object), ...testCaseContext };
+function buildContext(args: {
+	prompt: string;
+	globalContext?: GlobalRunContext;
+	testCaseContext?: TestCaseContext;
+	referenceWorkflow?: SimpleWorkflow;
+}): EvaluationContext {
+	const { prompt, globalContext, testCaseContext, referenceWorkflow } = args;
+
+	return {
+		prompt,
+		...(globalContext ?? {}),
+		...(testCaseContext ?? {}),
+		...(referenceWorkflow ? { referenceWorkflow } : {}),
+	};
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return isUnknownRecord(value) ? value : {};
+}
+
+function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
+	return !!value && typeof value === 'object' && 'nodes' in value && 'connections' in value;
+}
+
+function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
+	const record = asRecord(inputs);
+	const context: TestCaseContext = {};
+
+	if (typeof record.dos === 'string') context.dos = record.dos;
+	if (typeof record.donts === 'string') context.donts = record.donts;
+
+	if (isSimpleWorkflow(record.referenceWorkflow))
+		context.referenceWorkflow = record.referenceWorkflow;
+	if (
+		Array.isArray(record.referenceWorkflows) &&
+		record.referenceWorkflows.every((wf) => isSimpleWorkflow(wf))
+	) {
+		context.referenceWorkflows = record.referenceWorkflows;
+	}
+
+	return context;
+}
+
+async function runLocalExample(args: {
+	index: number;
+	total: number;
+	testCase: TestCase;
+	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	evaluators: Array<Evaluator<EvaluationContext>>;
+	globalContext?: GlobalRunContext;
+	lifecycle?: Partial<EvaluationLifecycle>;
+	artifactSaver?: ArtifactSaver | null;
+}): Promise<ExampleResult> {
+	const {
+		index,
+		total,
+		testCase,
+		generateWorkflow,
+		evaluators,
+		globalContext,
+		lifecycle,
+		artifactSaver,
+	} = args;
+
+	const startTime = Date.now();
+	lifecycle?.onExampleStart?.(index, total, testCase.prompt);
+
+	try {
+		// Generate workflow
+		const genStartTime = Date.now();
+		const workflow = await generateWorkflow(testCase.prompt);
+		const genDurationMs = Date.now() - genStartTime;
+		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+
+		const context = buildContext({
+			prompt: testCase.prompt,
+			globalContext,
+			testCaseContext: testCase.context,
+			referenceWorkflow: testCase.referenceWorkflow,
+		});
+
+		// Run evaluators in parallel
+		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+
+		// Calculate result
+		const score = calculateExampleScore(feedback);
+		const status = determineStatus(score);
+		const durationMs = Date.now() - startTime;
+
+		const result: ExampleResult = {
+			index,
+			prompt: testCase.prompt,
+			status,
+			score,
+			feedback,
+			durationMs,
+			workflow,
+		};
+
+		artifactSaver?.saveExample(result);
+		lifecycle?.onExampleComplete?.(index, result);
+		return result;
+	} catch (error) {
+		const durationMs = Date.now() - startTime;
+		const result: ExampleResult = {
+			index,
+			prompt: testCase.prompt,
+			status: 'error',
+			score: 0,
+			feedback: [],
+			durationMs,
+			error: error instanceof Error ? error.message : String(error),
+		};
+
+		artifactSaver?.saveExample(result);
+		lifecycle?.onExampleComplete?.(index, result);
+		return result;
+	}
 }
 
 /**
@@ -104,7 +223,11 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 		outputDir,
 	} = config;
 
-	const testCases = dataset as TestCase[];
+	if (typeof dataset === 'string') {
+		throw new Error('Local mode requires dataset to be an array of test cases');
+	}
+
+	const testCases: TestCase[] = dataset;
 	const results: ExampleResult[] = [];
 
 	// Create artifact saver if outputDir is provided
@@ -115,58 +238,17 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 	for (let i = 0; i < testCases.length; i++) {
 		const testCase = testCases[i];
 		const index = i + 1;
-		const startTime = Date.now();
-
-		lifecycle?.onExampleStart?.(index, testCases.length, testCase.prompt);
-
-		try {
-			// Generate workflow
-			const genStartTime = Date.now();
-			const workflow = await generateWorkflow(testCase.prompt);
-			const genDurationMs = Date.now() - genStartTime;
-			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
-
-			// Build context - include prompt so LLM-judge evaluator can access it
-			const context = buildContext(globalContext, {
-				prompt: testCase.prompt,
-				...testCase.context,
-			});
-
-			// Run evaluators in parallel
-			const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
-
-			// Calculate result
-			const averageScore = calculateAverageScore(feedback);
-			const status = determineStatus(averageScore);
-			const durationMs = Date.now() - startTime;
-
-			const result: ExampleResult = {
-				index,
-				prompt: testCase.prompt,
-				status,
-				feedback,
-				durationMs,
-				workflow,
-			};
-
-			results.push(result);
-			artifactSaver?.saveExample(result);
-			lifecycle?.onExampleComplete?.(index, result);
-		} catch (error) {
-			const durationMs = Date.now() - startTime;
-			const result: ExampleResult = {
-				index,
-				prompt: testCase.prompt,
-				status: 'error',
-				feedback: [],
-				durationMs,
-				error: error instanceof Error ? error.message : String(error),
-			};
-
-			results.push(result);
-			artifactSaver?.saveExample(result);
-			lifecycle?.onExampleComplete?.(index, result);
-		}
+		const result = await runLocalExample({
+			index,
+			total: testCases.length,
+			testCase,
+			generateWorkflow,
+			evaluators,
+			globalContext,
+			lifecycle,
+			artifactSaver,
+		});
+		results.push(result);
 	}
 
 	// Build summary
@@ -174,8 +256,8 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 	const failed = results.filter((r) => r.status === 'fail').length;
 	const errors = results.filter((r) => r.status === 'error').length;
 
-	const allFeedback = results.flatMap((r) => r.feedback);
-	const averageScore = calculateAverageScore(allFeedback);
+	const averageScore =
+		results.length > 0 ? results.reduce((sum, r) => sum + r.score, 0) / results.length : 0;
 	const totalDurationMs = results.reduce((sum, r) => sum + r.durationMs, 0);
 
 	const summary: RunSummary = {
@@ -295,13 +377,11 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		const workflow = await traceableGenerate();
 		logger.verbose(`Workflow generated in ${((Date.now() - genStart) / 1000).toFixed(1)}s`);
 
-		// Build context - merge global context with dataset-level context
-		// IMPORTANT: Include prompt so LLM-judge evaluator can access it
-		const context = buildContext(globalContext, {
-			prompt,
-			...datasetContext,
-			...rest,
-		} as Record<string, unknown>);
+		const extracted = extractContextFromLangsmithInputs({
+			...asRecord(datasetContext),
+			...asRecord(rest),
+		});
+		const context = buildContext({ prompt, globalContext, testCaseContext: extracted });
 
 		// Run all evaluators in parallel
 		logger.verbose(`Running ${evaluators.length} evaluator(s)...`);
@@ -341,7 +421,11 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 	};
 
 	// Load examples if maxExamples is set
-	const datasetName = dataset as string;
+	if (typeof dataset !== 'string') {
+		throw new Error('LangSmith mode requires dataset to be a dataset name string');
+	}
+
+	const datasetName = dataset;
 	let data: string | Example[] = datasetName;
 
 	if (langsmithOptions.maxExamples && langsmithOptions.maxExamples > 0) {

@@ -88,7 +88,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const context = { dos: 'Use Slack', donts: 'No HTTP requests' };
+			const context = { prompt: 'Test prompt', dos: 'Use Slack', donts: 'No HTTP requests' };
 
 			await evaluator.evaluate(workflow, context);
 
@@ -107,7 +107,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 5 });
 
 			const workflow = createMockWorkflow();
-			await evaluator.evaluate(workflow, {});
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(mockLlm, workflow, expect.any(Object), 5);
 		});
@@ -119,7 +119,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			await evaluator.evaluate(workflow, {});
+			await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(
 				mockLlm,
@@ -141,7 +141,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			const majorityFeedback = feedback.find((f) => f.key === 'pairwise.majorityPass');
 			expect(majorityFeedback).toEqual({
@@ -158,7 +158,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			const diagnosticFeedback = feedback.find((f) => f.key === 'pairwise.diagnosticScore');
 			expect(diagnosticFeedback).toEqual({
@@ -174,7 +174,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			expect(feedback).toContainEqual(
 				expect.objectContaining({ key: 'pairwise.judge1', score: 1 }),
@@ -208,7 +208,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			const judgeFeedback = feedback.find((f) => f.key === 'pairwise.judge1');
 			// Full violation output without truncation
@@ -225,7 +225,9 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 
 			// Should throw - let the runner handle errors
-			await expect(evaluator.evaluate(workflow, {})).rejects.toThrow('Judge panel failed');
+			await expect(evaluator.evaluate(workflow, { prompt: 'Test prompt' })).rejects.toThrow(
+				'Judge panel failed',
+			);
 		});
 	});
 
@@ -237,7 +239,7 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm, { numGenerations: 1 });
 
 			const workflow = createMockWorkflow();
-			const feedback = await evaluator.evaluate(workflow, {});
+			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			// Should have single-gen feedback keys
 			expect(feedback.find((f) => f.key === 'pairwise.majorityPass')).toBeDefined();
@@ -360,6 +362,7 @@ describe('Pairwise Evaluator', () => {
 			const mockGenerateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
 
 			await expect(
+				// @ts-expect-error Intentionally missing required prompt to verify runtime validation
 				evaluator.evaluate(workflow, {
 					generateWorkflow: mockGenerateWorkflow,
 					// Missing prompt

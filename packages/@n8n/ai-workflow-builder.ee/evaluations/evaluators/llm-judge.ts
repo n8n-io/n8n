@@ -4,15 +4,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import type { Evaluator, Feedback } from '../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
 import type { EvaluationInput } from '../types/evaluation';
 
-/**
- * Context for LLM-judge evaluator.
- */
-export interface LLMJudgeContext {
-	prompt: string;
-}
+const EVALUATOR_NAME = 'llm-judge';
 
 /**
  * Violation type from evaluation results.
@@ -41,11 +36,17 @@ function formatViolations(violations: Violation[]): string {
 export function createLLMJudgeEvaluator(
 	llm: BaseChatModel,
 	_nodeTypes: INodeTypeDescription[],
-): Evaluator<LLMJudgeContext> {
-	return {
-		name: 'llm-judge',
+): Evaluator<EvaluationContext> {
+	const fb = (metric: string, score: number, comment?: string): Feedback => ({
+		key: `${EVALUATOR_NAME}.${metric}`,
+		score,
+		...(comment ? { comment } : {}),
+	});
 
-		async evaluate(workflow: SimpleWorkflow, ctx: LLMJudgeContext): Promise<Feedback[]> {
+	return {
+		name: EVALUATOR_NAME,
+
+		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			const input: EvaluationInput = {
 				userPrompt: ctx.prompt,
 				generatedWorkflow: workflow,
@@ -53,92 +54,51 @@ export function createLLMJudgeEvaluator(
 
 			const result = await evaluateWorkflow(llm, input);
 
-			const feedback: Feedback[] = [];
+			return [
+				// Core category scores
+				fb(
+					'functionality',
+					result.functionality.score,
+					formatViolations(result.functionality.violations),
+				),
+				fb(
+					'connections',
+					result.connections.score,
+					formatViolations(result.connections.violations),
+				),
+				fb(
+					'expressions',
+					result.expressions.score,
+					formatViolations(result.expressions.violations),
+				),
+				fb(
+					'nodeConfiguration',
+					result.nodeConfiguration.score,
+					formatViolations(result.nodeConfiguration.violations),
+				),
 
-			// Core category scores
-			feedback.push({
-				key: 'functionality',
-				score: result.functionality.score,
-				comment: formatViolations(result.functionality.violations),
-			});
+				// Efficiency with sub-metrics
+				fb('efficiency', result.efficiency.score, formatViolations(result.efficiency.violations)),
+				fb('efficiency.redundancyScore', result.efficiency.redundancyScore),
+				fb('efficiency.pathOptimization', result.efficiency.pathOptimization),
+				fb('efficiency.nodeCountEfficiency', result.efficiency.nodeCountEfficiency),
 
-			feedback.push({
-				key: 'connections',
-				score: result.connections.score,
-				comment: formatViolations(result.connections.violations),
-			});
+				// Data flow
+				fb('dataFlow', result.dataFlow.score, formatViolations(result.dataFlow.violations)),
 
-			feedback.push({
-				key: 'expressions',
-				score: result.expressions.score,
-				comment: formatViolations(result.expressions.violations),
-			});
+				// Maintainability with sub-metrics
+				fb(
+					'maintainability',
+					result.maintainability.score,
+					formatViolations(result.maintainability.violations),
+				),
+				fb('maintainability.nodeNamingQuality', result.maintainability.nodeNamingQuality),
+				fb('maintainability.workflowOrganization', result.maintainability.workflowOrganization),
+				fb('maintainability.modularity', result.maintainability.modularity),
 
-			feedback.push({
-				key: 'nodeConfiguration',
-				score: result.nodeConfiguration.score,
-				comment: formatViolations(result.nodeConfiguration.violations),
-			});
-
-			// Efficiency with sub-metrics
-			feedback.push({
-				key: 'efficiency',
-				score: result.efficiency.score,
-				comment: formatViolations(result.efficiency.violations),
-			});
-
-			feedback.push({
-				key: 'efficiency.redundancyScore',
-				score: result.efficiency.redundancyScore,
-			});
-
-			feedback.push({
-				key: 'efficiency.pathOptimization',
-				score: result.efficiency.pathOptimization,
-			});
-
-			feedback.push({
-				key: 'efficiency.nodeCountEfficiency',
-				score: result.efficiency.nodeCountEfficiency,
-			});
-
-			// Data flow
-			feedback.push({
-				key: 'dataFlow',
-				score: result.dataFlow.score,
-				comment: formatViolations(result.dataFlow.violations),
-			});
-
-			// Maintainability with sub-metrics
-			feedback.push({
-				key: 'maintainability',
-				score: result.maintainability.score,
-				comment: formatViolations(result.maintainability.violations),
-			});
-
-			feedback.push({
-				key: 'maintainability.nodeNamingQuality',
-				score: result.maintainability.nodeNamingQuality,
-			});
-
-			feedback.push({
-				key: 'maintainability.workflowOrganization',
-				score: result.maintainability.workflowOrganization,
-			});
-
-			feedback.push({
-				key: 'maintainability.modularity',
-				score: result.maintainability.modularity,
-			});
-
-			// Overall score
-			feedback.push({
-				key: 'overallScore',
-				score: result.overallScore,
-				comment: result.summary,
-			});
-
-			return feedback;
+				// Overall score
+				fb('overallScore', result.overallScore, result.summary),
+			];
 		},
 	};
 }

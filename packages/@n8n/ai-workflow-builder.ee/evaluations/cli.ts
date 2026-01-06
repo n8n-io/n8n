@@ -23,6 +23,7 @@ import {
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
+	type EvaluationContext,
 } from './index';
 import { generateRunId, isWorkflowStateValues } from './types/langsmith';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader';
@@ -118,19 +119,19 @@ export async function runV2Evaluation(): Promise<void> {
 	const generateWorkflow = createWorkflowGenerator(env.parsedNodeTypes, env.llm, args.featureFlags);
 
 	// Create evaluators based on mode
-	const evaluators: Array<Evaluator<unknown>> = [];
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
 	if (args.mode === 'llm-judge-langsmith' || args.mode === 'llm-judge-local') {
-		evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes) as Evaluator<unknown>);
-		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
+		evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes));
+		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 	} else if (args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') {
 		evaluators.push(
 			createPairwiseEvaluator(env.llm, {
 				numJudges: args.numJudges,
 				numGenerations: args.numGenerations,
-			}) as Evaluator<unknown>,
+			}),
 		);
-		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes) as Evaluator<unknown>);
+		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 	}
 
 	// Build context - include generateWorkflow for multi-gen pairwise
@@ -148,6 +149,7 @@ export async function runV2Evaluation(): Promise<void> {
 		evaluators,
 		lifecycle,
 		logger,
+		outputDir: args.outputDir,
 		// For multi-gen, pass generateWorkflow in context so evaluator can create multiple workflows
 		context: isMultiGen ? { generateWorkflow } : undefined,
 		langsmithOptions: args.mode.includes('langsmith')

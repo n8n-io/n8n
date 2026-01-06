@@ -161,13 +161,8 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 						? pc.yellow('FAIL')
 						: pc.red('ERROR');
 
-			const avgScore =
-				result.feedback.length > 0
-					? result.feedback.reduce((sum, f) => sum + f.score, 0) / result.feedback.length
-					: 0;
-
 			console.log(
-				`${prefix} ${status} ${formatScore(avgScore)} in ${formatDuration(result.durationMs)}`,
+				`${prefix} ${status} ${formatScore(result.score)} in ${formatDuration(result.durationMs)}`,
 			);
 		},
 
@@ -179,7 +174,8 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 					`Fail: ${pc.yellow(String(summary.failed))} | ` +
 					`Error: ${pc.red(String(summary.errors))}`,
 			);
-			console.log(`  Pass rate: ${formatScore(summary.passed / summary.totalExamples)}`);
+			const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
+			console.log(`  Pass rate: ${formatScore(passRate)}`);
 			console.log(`  Average score: ${formatScore(summary.averageScore)}`);
 			console.log(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
 			console.log(pc.bold('═══════════════════════════════════════════════\n'));

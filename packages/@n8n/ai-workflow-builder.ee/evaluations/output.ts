@@ -136,10 +136,7 @@ function formatFeedbackForExport(result: ExampleResult): object {
 		index: result.index,
 		status: result.status,
 		durationMs: result.durationMs,
-		averageScore:
-			result.feedback.length > 0
-				? result.feedback.reduce((sum, f) => sum + f.score, 0) / result.feedback.length
-				: 0,
+		score: result.score,
 		evaluators: Object.entries(byEvaluator).map(([name, feedback]) => ({
 			name,
 			feedback: feedback.map((f) => ({
@@ -189,10 +186,7 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 			index: r.index,
 			prompt: r.prompt.slice(0, 100) + (r.prompt.length > 100 ? '...' : ''),
 			status: r.status,
-			score:
-				r.feedback.length > 0
-					? r.feedback.reduce((sum, f) => sum + f.score, 0) / r.feedback.length
-					: 0,
+			score: r.score,
 			durationMs: r.durationMs,
 			...(r.error ? { error: r.error } : {}),
 		})),

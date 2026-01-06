@@ -2,20 +2,18 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, Feedback } from '../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
 import { aggregateGenerations, type GenerationDetail } from '../multi-gen';
 import { runJudgePanel, type EvalCriteria } from '../pairwise/judge-panel';
 
-/**
- * Context for pairwise evaluator.
- */
-export interface PairwiseContext {
-	dos?: string;
-	donts?: string;
-	/** Required for multi-gen: function to generate workflows */
-	generateWorkflow?: (prompt: string) => Promise<SimpleWorkflow>;
-	/** Required for multi-gen: the original prompt */
-	prompt?: string;
+type MultiGenContext = EvaluationContext & {
+	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+};
+
+function assertMultiGenContext(ctx: EvaluationContext): asserts ctx is MultiGenContext {
+	if (!ctx.generateWorkflow || !ctx.prompt) {
+		throw new Error('Multi-gen requires generateWorkflow and prompt in context');
+	}
 }
 
 /**
@@ -35,7 +33,7 @@ export interface PairwiseEvaluatorOptions {
 async function evaluateSingleGeneration(
 	llm: BaseChatModel,
 	workflow: SimpleWorkflow,
-	ctx: PairwiseContext,
+	ctx: EvaluationContext,
 	numJudges: number,
 ): Promise<Feedback[]> {
 	const evalCriteria: EvalCriteria = {
@@ -84,7 +82,7 @@ async function evaluateSingleGeneration(
  */
 async function evaluateMultiGeneration(
 	llm: BaseChatModel,
-	ctx: PairwiseContext,
+	ctx: MultiGenContext,
 	numJudges: number,
 	numGenerations: number,
 ): Promise<Feedback[]> {
@@ -96,7 +94,7 @@ async function evaluateMultiGeneration(
 	// Generate all workflows and evaluate in parallel
 	const generationDetails: GenerationDetail[] = await Promise.all(
 		Array.from({ length: numGenerations }, async () => {
-			const workflow = await ctx.generateWorkflow!(ctx.prompt!);
+			const workflow = await ctx.generateWorkflow(ctx.prompt);
 			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
 			return {
 				workflow,
@@ -170,24 +168,21 @@ async function evaluateMultiGeneration(
 export function createPairwiseEvaluator(
 	llm: BaseChatModel,
 	options?: PairwiseEvaluatorOptions,
-): Evaluator<PairwiseContext> {
+): Evaluator<EvaluationContext> {
 	const numJudges = options?.numJudges ?? 3;
 	const numGenerations = options?.numGenerations ?? 1;
 
 	return {
 		name: 'pairwise',
 
-		async evaluate(workflow: SimpleWorkflow, ctx: PairwiseContext): Promise<Feedback[]> {
+		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			// Single generation (existing behavior)
 			if (numGenerations === 1) {
 				return await evaluateSingleGeneration(llm, workflow, ctx, numJudges);
 			}
 
 			// Multi-generation - validate required context
-			if (!ctx.generateWorkflow || !ctx.prompt) {
-				throw new Error('Multi-gen requires generateWorkflow and prompt in context');
-			}
-
+			assertMultiGenContext(ctx);
 			return await evaluateMultiGeneration(llm, ctx, numJudges, numGenerations);
 		},
 	};

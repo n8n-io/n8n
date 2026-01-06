@@ -2,16 +2,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, Feedback } from '../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
 import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
-
-/**
- * Context for programmatic evaluator.
- */
-export interface ProgrammaticContext {
-	prompt: string;
-	referenceWorkflow?: SimpleWorkflow;
-}
 
 /**
  * Format violations as a comment string.
@@ -32,11 +24,11 @@ function formatViolations(
  */
 export function createProgrammaticEvaluator(
 	nodeTypes: INodeTypeDescription[],
-): Evaluator<ProgrammaticContext> {
+): Evaluator<EvaluationContext> {
 	return {
 		name: 'programmatic',
 
-		async evaluate(workflow: SimpleWorkflow, ctx: ProgrammaticContext): Promise<Feedback[]> {
+		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			const result = await programmaticEvaluation(
 				{
 					userPrompt: ctx.prompt,

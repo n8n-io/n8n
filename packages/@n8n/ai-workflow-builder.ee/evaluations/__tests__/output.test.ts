@@ -23,6 +23,7 @@ interface ParsedWorkflow {
 interface ParsedFeedback {
 	index: number;
 	status: string;
+	score: number;
 	evaluators: Array<{
 		name: string;
 		feedback: Array<{ key: string; score: number }>;
@@ -66,6 +67,7 @@ function createMockResult(overrides: Partial<ExampleResult> = {}): ExampleResult
 		index: 1,
 		prompt: 'Create a test workflow',
 		status: 'pass',
+		score: 0.9,
 		feedback: [
 			{ key: 'llm-judge.functionality', score: 0.9 },
 			{ key: 'llm-judge.connections', score: 0.8 },
@@ -182,6 +184,7 @@ describe('Artifact Saver', () => {
 			const saver = createArtifactSaver({ outputDir: tempDir });
 			const result = createMockResult({
 				status: 'error',
+				score: 0,
 				error: 'Generation failed: timeout',
 			});
 

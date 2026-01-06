@@ -9,7 +9,7 @@
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, Feedback, RunConfig } from '../harness-types';
+import type { Evaluator, Feedback, RunConfig, EvaluationContext } from '../harness-types';
 
 // Mock langsmith/evaluation
 jest.mock('langsmith/evaluation', () => ({
@@ -328,12 +328,12 @@ describe('Runner - LangSmith Mode', () => {
 				return undefined;
 			});
 
-			const evaluator: Evaluator<{ dos: string }> = {
+			const evaluator: Evaluator = {
 				name: 'contextual',
 				evaluate: jest
 					.fn()
-					.mockImplementation((_workflow: SimpleWorkflow, ctx: { dos: string } | undefined) => {
-						return [{ key: 'contextual', score: ctx?.dos ? 1 : 0 }];
+					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
+						return [{ key: 'contextual.score', score: ctx.dos ? 1 : 0 }];
 					}),
 			};
 
@@ -341,7 +341,7 @@ describe('Runner - LangSmith Mode', () => {
 				mode: 'langsmith',
 				dataset: 'test-dataset',
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [evaluator as Evaluator<unknown>],
+				evaluators: [evaluator],
 				langsmithOptions: {
 					experimentName: 'test',
 					repetitions: 1,
@@ -363,7 +363,7 @@ describe('Runner - LangSmith Mode', () => {
 				expect.anything(),
 				expect.objectContaining({ dos: 'Use Slack', donts: 'No HTTP' }),
 			);
-			expect(result.feedback).toContainEqual({ key: 'contextual', score: 1 });
+			expect(result.feedback).toContainEqual({ key: 'contextual.score', score: 1 });
 		});
 	});
 });
