@@ -23,6 +23,7 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
+	noExecutePermission?: boolean;
 	hideTooltip?: boolean;
 	label?: string;
 	size?: 'small' | 'medium' | 'large';
@@ -41,7 +42,6 @@ const label = computed(() => {
 	if (!props.executing) {
 		return props.label ?? i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
-	// TODO: show special label for missing workflow:execute scope
 
 	if (props.waitingForWebhook) {
 		return i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
@@ -49,6 +49,14 @@ const label = computed(() => {
 
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
+
+const tooltip = computed(() => {
+	if (props.noExecutePermission) {
+		return i18n.baseText('nodeView.runButtonTooltip.noPermission');
+	}
+	return label;
+});
+
 const actions = computed(() =>
 	props.triggerNodes
 		.filter((node) => (props.includeChatTrigger ? true : !isChatNode(node)))
@@ -83,8 +91,8 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 <template>
 	<div :class="[$style.component, isSplitButton ? $style.split : '']">
 		<KeyboardShortcutTooltip
-			:label="label"
-			:shortcut="{ metaKey: true, keys: ['↵'] }"
+			:label="tooltip"
+			:shortcut="noExecutePermission ? undefined : { metaKey: true, keys: ['↵'] }"
 			:disabled="executing || hideTooltip"
 		>
 			<N8nButton

@@ -15,7 +15,7 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 <template>
 	<N8nTooltip :placement="placement" :show-after="500" :disabled>
 		<template #content>
-			<div :class="$style.shortcut">
+			<div :class="shortcut ? $style.shortcut : undefined">
 				<div :class="$style.label">{{ label }}</div>
 				<N8nKeyboardShortcut v-if="shortcut" v-bind="shortcut" />
 			</div>
