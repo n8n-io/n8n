@@ -57,7 +57,6 @@ const aggregatedInsightsByTimeParser = z
 				return value.toISOString();
 			}
 
-
 			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
 			if (parsedDatetime.isValid) {
 				return parsedDatetime.toISO();

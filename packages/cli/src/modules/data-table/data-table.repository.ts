@@ -354,7 +354,6 @@ export class DataTableRepository extends Repository<DataTable> {
 				break;
 			}
 
-
 			default:
 				return new Map<string, number>();
 		}
