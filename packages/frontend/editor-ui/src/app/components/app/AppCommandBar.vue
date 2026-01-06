@@ -12,7 +12,6 @@ const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
-	isEnabled: isCommandBarEnabled,
 	items,
 	placeholder,
 	context,
@@ -23,9 +22,7 @@ const {
 
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
-);
+const showCommandBar = computed(() => hasPermission(['authenticated']) && !isDemoMode.value);
 
 watch(showCommandBar, (newVal) => {
 	if (newVal) {
