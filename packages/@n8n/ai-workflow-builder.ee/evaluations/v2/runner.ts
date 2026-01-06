@@ -16,7 +16,6 @@ import type {
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { extractMessageContent } from '../types/langsmith';
 import { createArtifactSaver } from './output';
-import { createTraceFilters, isMinimalTracingEnabled } from '../core/trace-filters';
 
 /** Pass/fail threshold for overall score */
 const PASS_THRESHOLD = 0.7;
@@ -252,49 +251,71 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		throw new Error('langsmithOptions required for LangSmith mode');
 	}
 
+	// Enable tracing (required in langsmith 0.4.x)
+	process.env.LANGSMITH_TRACING = 'true';
+
 	lifecycle?.onStart?.(config);
 
-	// Set up trace filtering if enabled (default: true)
-	const enableFiltering = langsmithOptions.enableTraceFiltering ?? isMinimalTracingEnabled();
-	const traceFilters = enableFiltering ? createTraceFilters() : null;
+	// Get properly configured client from setupTestEnvironment
+	// This ensures traceable() and evaluate() use the same client configuration
+	const { setupTestEnvironment } = await import('../core/environment.js');
+	const { lsClient, traceFilters } = await setupTestEnvironment();
+
+	if (!lsClient) {
+		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
+	}
+
+	// Reset filtering stats for this run
+	traceFilters?.resetStats();
 
 	// Create target function that does ALL work (generation + evaluation)
-	// This is the key fix for "Run not created by target function" error
-	const target = traceable(
-		async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
-			// Extract prompt from inputs (supports both direct prompt and messages array)
-			const prompt = extractPrompt(inputs);
-			const { evals: datasetContext, ...rest } = inputs;
+	// NOTE: Do NOT wrap target with traceable() - evaluate() handles that automatically
+	// and applies critical options (on_end callback, reference_example_id, client).
+	// Only wrap inner operations with traceable() for child traces.
+	let targetCallCount = 0;
+	const target = async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
+		targetCallCount++;
+		// Extract prompt from inputs (supports both direct prompt and messages array)
+		const prompt = extractPrompt(inputs);
+		const { evals: datasetContext, ...rest } = inputs;
 
-			// Generate workflow
-			const workflow = await generateWorkflow(prompt);
+		console.log(
+			`[v2 target #${targetCallCount}] ➔ Starting workflow generation for: "${prompt.slice(0, 50)}..."`,
+		);
+		const genStart = Date.now();
 
-			// Build context - merge global context with dataset-level context
-			// IMPORTANT: Include prompt so LLM-judge evaluator can access it
-			const context = buildContext(globalContext, {
-				prompt,
-				...datasetContext,
-				...rest,
-			} as Record<string, unknown>);
-
-			// Run all evaluators in parallel
-			const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
-
-			return {
-				workflow,
-				prompt,
-				feedback,
-			};
-		},
-		{
-			name: 'workflow_evaluation',
+		// Generate workflow - wrapped in traceable for proper child trace visibility
+		const traceableGenerate = traceable(async () => await generateWorkflow(prompt), {
+			name: 'workflow_generation',
 			run_type: 'chain',
-			...(traceFilters && {
-				processInputs: traceFilters.filterInputs,
-				processOutputs: traceFilters.filterOutputs,
-			}),
-		},
-	);
+		});
+		const workflow = await traceableGenerate();
+		console.log(
+			`[v2 target] ➔ Workflow generated in ${((Date.now() - genStart) / 1000).toFixed(1)}s`,
+		);
+
+		// Build context - merge global context with dataset-level context
+		// IMPORTANT: Include prompt so LLM-judge evaluator can access it
+		const context = buildContext(globalContext, {
+			prompt,
+			...datasetContext,
+			...rest,
+		} as Record<string, unknown>);
+
+		// Run all evaluators in parallel
+		console.log(`[v2 target] ➔ Running ${evaluators.length} evaluator(s)...`);
+		const evalStart = Date.now();
+		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+		console.log(
+			`[v2 target] ➔ Evaluators completed in ${((Date.now() - evalStart) / 1000).toFixed(1)}s, ${feedback.length} feedback items`,
+		);
+
+		return {
+			workflow,
+			prompt,
+			feedback,
+		};
+	};
 
 	// Create LangSmith evaluator that extracts pre-computed feedback
 	// This does NOT do any LLM calls - just returns outputs.feedback
@@ -318,14 +339,59 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		return outputs.feedback;
 	};
 
+	// Load examples if maxExamples is set
+	const datasetName = dataset as string;
+	let data: string | Example[] = datasetName;
+
+	if (langsmithOptions.maxExamples && langsmithOptions.maxExamples > 0) {
+		console.log(
+			`[v2] ➔ Loading up to ${langsmithOptions.maxExamples} examples from dataset "${datasetName}"...`,
+		);
+		const examples: Example[] = [];
+		try {
+			const datasetInfo = await lsClient.readDataset({ datasetName });
+			// Use limit parameter directly instead of fetching all and slicing
+			for await (const example of lsClient.listExamples({
+				datasetId: datasetInfo.id,
+				limit: langsmithOptions.maxExamples,
+			})) {
+				examples.push(example);
+			}
+		} catch (error) {
+			throw new Error(`Dataset "${datasetName}" not found: ${error}`);
+		}
+
+		data = examples;
+		console.log(`[v2] ➔ Loaded ${examples.length} examples`);
+	}
+
 	// Run LangSmith evaluation
+	const exampleCount = Array.isArray(data) ? data.length : 'dataset';
+	if (Array.isArray(data)) {
+		console.log(`[v2] ➔ Example IDs in data: ${data.map((e) => e.id).join(', ')}`);
+	}
+	console.log(
+		`[v2] ➔ Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
+	);
+	const evalStartTime = Date.now();
 	await evaluate(target, {
-		data: dataset as string,
+		data,
 		evaluators: [feedbackExtractor],
 		experimentPrefix: langsmithOptions.experimentName,
-		numRepetitions: langsmithOptions.repetitions,
+		// Only pass numRepetitions if > 1 (default is 1, passing 1 explicitly may cause issues)
+		...(langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
 		maxConcurrency: langsmithOptions.concurrency,
+		client: lsClient,
 	});
+	console.log(
+		`[v2] ➔ evaluate() completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount} times)`,
+	);
+
+	// Flush pending traces to ensure all data is sent to LangSmith
+	console.log('[v2] ➔ Flushing pending trace batches...');
+	const flushStartTime = Date.now();
+	await lsClient.awaitPendingTraceBatches();
+	console.log(`[v2] ➔ Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
 
 	// Log trace filtering statistics if enabled
 	traceFilters?.logStats();

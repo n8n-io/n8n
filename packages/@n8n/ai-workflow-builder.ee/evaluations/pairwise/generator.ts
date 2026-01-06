@@ -15,7 +15,7 @@ import { buildSingleGenerationResults, buildMultiGenerationResults } from './met
 import type { PairwiseDatasetInput, PairwiseTargetOutput } from './types';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
-import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
+import { EVAL_TYPES, EVAL_USERS } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
@@ -125,83 +125,84 @@ export interface CreatePairwiseTargetOptions {
 
 /**
  * Creates a target function that does ALL the work:
- * - Generates all workflows (each wrapped in traceable)
+ * - Generates all workflows (each wrapped in traceable for child traces)
  * - Runs judge panels
  * - Returns pre-computed feedback
  *
  * The evaluator then just extracts the pre-computed feedback.
- * This avoids 403 errors from nested traceable in evaluator context.
+ *
+ * NOTE: Do NOT wrap the target itself with traceable() - evaluate() handles that
+ * automatically and applies critical options (on_end, reference_example_id, client).
+ * Only wrap inner operations with traceable() for child traces.
+ * See evaluations/v2/README.md "LangSmith Tracing (Critical)" section for details.
  */
 export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName, logger } =
 		options;
 
-	return traceable(
-		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
-			const { prompt, evals: evalCriteria } = inputs;
+	return async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
+		const { prompt, evals: evalCriteria } = inputs;
 
-			// Log prompt being evaluated (verbose)
-			if (logger) {
-				const shortPrompt = prompt.slice(0, 60) + (prompt.length > 60 ? '...' : '');
-				logger.verbose(`  Evaluating: "${shortPrompt}"`);
-			}
+		// Log prompt being evaluated (verbose)
+		if (logger) {
+			const shortPrompt = prompt.slice(0, 60) + (prompt.length > 60 ? '...' : '');
+			logger.verbose(`  Evaluating: "${shortPrompt}"`);
+		}
 
-			// Generate ALL workflows and run judges in parallel
-			const generationResults: GenerationResult[] = await Promise.all(
-				Array.from({ length: numGenerations }, async (_, i) => {
-					const generationIndex = i + 1;
-					const genStartTime = Date.now();
+		// Generate ALL workflows and run judges in parallel
+		const generationResults: GenerationResult[] = await Promise.all(
+			Array.from({ length: numGenerations }, async (_, i) => {
+				const generationIndex = i + 1;
+				const genStartTime = Date.now();
 
-					// Wrap each generation in traceable for proper visibility
-					const generate = traceable(
-						async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
-						{
-							name: `generation_${generationIndex}`,
-							run_type: 'chain',
-							metadata: {
-								...(experimentName && { experiment_name: experimentName }),
-							},
+				// Wrap each generation in traceable for child trace visibility
+				const generate = traceable(
+					async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+					{
+						name: `generation_${generationIndex}`,
+						run_type: 'chain',
+						metadata: {
+							...(experimentName && { experiment_name: experimentName }),
 						},
-					);
-					const workflow = await generate();
-					const genTimeMs = Date.now() - genStartTime;
+					},
+				);
+				const workflow = await generate();
+				const genTimeMs = Date.now() - genStartTime;
 
-					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+				const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+					generationIndex,
+					experimentName,
+				});
+
+				// Verbose logging for this generation
+				if (logger) {
+					logGenerationVerbose(
+						logger,
 						generationIndex,
-						experimentName,
-					});
+						workflow,
+						panelResult,
+						genTimeMs,
+						numJudges,
+					);
+				}
 
-					// Verbose logging for this generation
-					if (logger) {
-						logGenerationVerbose(
-							logger,
-							generationIndex,
-							workflow,
-							panelResult,
-							genTimeMs,
-							numJudges,
-						);
-					}
+				return { workflow, ...panelResult };
+			}),
+		);
 
-					return { workflow, ...panelResult };
-				}),
-			);
+		if (numGenerations === 1) {
+			const singleGenFeedback = buildSingleGenerationResults(generationResults[0], numJudges);
+			return { prompt, evals: evalCriteria, feedback: singleGenFeedback };
+		}
 
-			if (numGenerations === 1) {
-				const singleGenFeedback = buildSingleGenerationResults(generationResults[0], numJudges);
-				return { prompt, evals: evalCriteria, feedback: singleGenFeedback };
-			}
+		const aggregation = aggregateGenerations(generationResults);
+		const multiGenFeedback: LangsmithEvaluationResult[] = buildMultiGenerationResults(
+			aggregation,
+			numJudges,
+		);
 
-			const aggregation = aggregateGenerations(generationResults);
-			const multiGenFeedback: LangsmithEvaluationResult[] = buildMultiGenerationResults(
-				aggregation,
-				numJudges,
-			);
-
-			return { prompt, evals: evalCriteria, feedback: multiGenFeedback };
-		},
-		{ name: TRACEABLE_NAMES.PAIRWISE_EVALUATION, run_type: 'chain' },
-	);
+		return { prompt, evals: evalCriteria, feedback: multiGenFeedback };
+	};
 }
 
 /**
