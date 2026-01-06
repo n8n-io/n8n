@@ -1,4 +1,4 @@
-name: Docker Base Image CI
+name: 'Build: Base Image'
 
 on:
   push:

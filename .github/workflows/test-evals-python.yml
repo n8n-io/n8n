@@ -1,10 +1,10 @@
-name: AI Workflow Builder Evals Python CI
+name: 'Test: Evals Python'
 
 on:
   pull_request:
     paths:
       - packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**
-      - .github/workflows/ci-python-workflow-builder-evals.yml
+      - .github/workflows/test-evals-python.yml
   push:
     paths:
       - packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**

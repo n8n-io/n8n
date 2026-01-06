@@ -1,4 +1,4 @@
-name: Security - Scan GitHub Actions with Poutine
+name: 'Sec: Poutine Scan'
 
 on:
   workflow_dispatch:
