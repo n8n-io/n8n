@@ -240,7 +240,7 @@ export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
 	const PLACEHOLDER_REGEX = /<([A-Za-z0-9_-]+)>/g;
 
 	const urlMatch = curlCommand.match(CURL_URL_REGEX);
-	if (!urlMatch || !urlMatch[2]) return curlCommand;
+	if (!urlMatch?.[2]) return curlCommand;
 
 	const originalUrl = urlMatch[2];
 	const sanitizedUrl = originalUrl.replaceAll(PLACEHOLDER_REGEX, '{$1}');
