@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import { runJudgePanel, type EvalCriteria } from '../pairwise/judge-panel';
-import { aggregateGenerations, type GenerationDetail } from '../multi-gen';
 import type { Evaluator, Feedback } from '../harness-types';
+import { aggregateGenerations, type GenerationDetail } from '../multi-gen';
+import { runJudgePanel, type EvalCriteria } from '../pairwise/judge-panel';
 
 /**
  * Context for pairwise evaluator.
@@ -180,7 +180,7 @@ export function createPairwiseEvaluator(
 		async evaluate(workflow: SimpleWorkflow, ctx: PairwiseContext): Promise<Feedback[]> {
 			// Single generation (existing behavior)
 			if (numGenerations === 1) {
-				return evaluateSingleGeneration(llm, workflow, ctx, numJudges);
+				return await evaluateSingleGeneration(llm, workflow, ctx, numJudges);
 			}
 
 			// Multi-generation - validate required context
@@ -188,7 +188,7 @@ export function createPairwiseEvaluator(
 				throw new Error('Multi-gen requires generateWorkflow and prompt in context');
 			}
 
-			return evaluateMultiGeneration(llm, ctx, numJudges, numGenerations);
+			return await evaluateMultiGeneration(llm, ctx, numJudges, numGenerations);
 		},
 	};
 }

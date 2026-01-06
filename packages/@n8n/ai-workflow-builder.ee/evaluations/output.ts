@@ -7,8 +7,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import type { SimpleWorkflow } from '../src/types/workflow.js';
 import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
+import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
  * Interface for saving evaluation artifacts to disk.

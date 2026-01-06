@@ -1,3 +1,4 @@
+import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -49,6 +50,8 @@ export interface RunConfig {
 	langsmithOptions?: LangsmithOptions;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
+	/** Logger for verbose output (optional - defaults to silent) */
+	logger?: EvalLogger;
 }
 
 /**

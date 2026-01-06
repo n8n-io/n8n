@@ -43,8 +43,7 @@ export async function programmaticEvaluation(
 				preset,
 			);
 		} catch (error) {
-			console.warn('Multiple workflow similarity evaluation failed:', error);
-			// Fallback to neutral result if similarity check fails
+			// Fallback to neutral result if similarity check fails - error captured in violation
 			const violation: ProgrammaticViolation = {
 				name: 'workflow-similarity-evaluation-failed',
 				type: 'critical',
@@ -64,8 +63,7 @@ export async function programmaticEvaluation(
 				preset,
 			);
 		} catch (error) {
-			console.warn('Workflow similarity evaluation failed:', error);
-			// Fallback to neutral result if similarity check fails
+			// Fallback to neutral result if similarity check fails - error captured in violation
 			const violation: ProgrammaticViolation = {
 				name: 'workflow-similarity-evaluation-failed',
 				type: 'critical',

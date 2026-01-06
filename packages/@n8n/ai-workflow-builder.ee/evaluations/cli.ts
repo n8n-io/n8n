@@ -12,6 +12,8 @@ import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { EVAL_TYPES, EVAL_USERS } from './constants';
+import { parseEvaluationArgs } from './core/argument-parser';
+import { setupTestEnvironment, createAgent } from './core/environment';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -22,11 +24,10 @@ import {
 	type TestCase,
 	type Evaluator,
 } from './index';
-import { parseEvaluationArgs } from './core/argument-parser';
-import { setupTestEnvironment, createAgent } from './core/environment';
 import { generateRunId, isWorkflowStateValues } from './types/langsmith';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader';
 import { consumeGenerator, getChatPayload } from './utils/evaluation-helpers';
+import { createLogger } from './utils/logger';
 
 /**
  * Create a workflow generator function.
@@ -109,8 +110,9 @@ export async function runV2Evaluation(): Promise<void> {
 	const args = parseEvaluationArgs();
 
 	// Setup environment
+	const logger = createLogger(args.verbose);
 	const lifecycle = createConsoleLifecycle({ verbose: args.verbose });
-	const env = await setupTestEnvironment();
+	const env = await setupTestEnvironment(logger);
 
 	// Create workflow generator (tracing handled via traceable() in runner)
 	const generateWorkflow = createWorkflowGenerator(env.parsedNodeTypes, env.llm, args.featureFlags);
@@ -145,6 +147,7 @@ export async function runV2Evaluation(): Promise<void> {
 		generateWorkflow,
 		evaluators,
 		lifecycle,
+		logger,
 		// For multi-gen, pass generateWorkflow in context so evaluator can create multiple workflows
 		context: isMultiGen ? { generateWorkflow } : undefined,
 		langsmithOptions: args.mode.includes('langsmith')

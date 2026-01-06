@@ -13,9 +13,10 @@ import type {
 	RunSummary,
 	EvaluationLifecycle,
 } from './harness-types.js';
-import type { SimpleWorkflow } from '../src/types/workflow.js';
-import { extractMessageContent } from './types/langsmith';
 import { createArtifactSaver } from './output';
+import { extractMessageContent } from './types/langsmith';
+import { createLogger, type EvalLogger } from './utils/logger';
+import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /** Pass/fail threshold for overall score */
 const PASS_THRESHOLD = 0.7;
@@ -245,7 +246,11 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		context: globalContext,
 		langsmithOptions,
 		lifecycle,
+		logger: configLogger,
 	} = config;
+
+	// Create logger (defaults to silent if not provided)
+	const logger: EvalLogger = configLogger ?? createLogger(false);
 
 	if (!langsmithOptions) {
 		throw new Error('langsmithOptions required for LangSmith mode');
@@ -279,9 +284,7 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		const prompt = extractPrompt(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
-		console.log(
-			`[v2 target #${targetCallCount}] ➔ Starting workflow generation for: "${prompt.slice(0, 50)}..."`,
-		);
+		logger.verbose(`Starting workflow generation for: "${prompt.slice(0, 50)}..."`);
 		const genStart = Date.now();
 
 		// Generate workflow - wrapped in traceable for proper child trace visibility
@@ -290,9 +293,7 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 			run_type: 'chain',
 		});
 		const workflow = await traceableGenerate();
-		console.log(
-			`[v2 target] ➔ Workflow generated in ${((Date.now() - genStart) / 1000).toFixed(1)}s`,
-		);
+		logger.verbose(`Workflow generated in ${((Date.now() - genStart) / 1000).toFixed(1)}s`);
 
 		// Build context - merge global context with dataset-level context
 		// IMPORTANT: Include prompt so LLM-judge evaluator can access it
@@ -303,11 +304,11 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		} as Record<string, unknown>);
 
 		// Run all evaluators in parallel
-		console.log(`[v2 target] ➔ Running ${evaluators.length} evaluator(s)...`);
+		logger.verbose(`Running ${evaluators.length} evaluator(s)...`);
 		const evalStart = Date.now();
 		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
-		console.log(
-			`[v2 target] ➔ Evaluators completed in ${((Date.now() - evalStart) / 1000).toFixed(1)}s, ${feedback.length} feedback items`,
+		logger.verbose(
+			`Evaluators completed in ${((Date.now() - evalStart) / 1000).toFixed(1)}s, ${feedback.length} feedback items`,
 		);
 
 		return {
@@ -344,8 +345,8 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 	let data: string | Example[] = datasetName;
 
 	if (langsmithOptions.maxExamples && langsmithOptions.maxExamples > 0) {
-		console.log(
-			`[v2] ➔ Loading up to ${langsmithOptions.maxExamples} examples from dataset "${datasetName}"...`,
+		logger.info(
+			`Loading up to ${langsmithOptions.maxExamples} examples from dataset "${datasetName}"...`,
 		);
 		const examples: Example[] = [];
 		try {
@@ -362,16 +363,16 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		}
 
 		data = examples;
-		console.log(`[v2] ➔ Loaded ${examples.length} examples`);
+		logger.verbose(`Loaded ${examples.length} examples`);
 	}
 
 	// Run LangSmith evaluation
 	const exampleCount = Array.isArray(data) ? data.length : 'dataset';
 	if (Array.isArray(data)) {
-		console.log(`[v2] ➔ Example IDs in data: ${data.map((e) => e.id).join(', ')}`);
+		logger.verbose(`Example IDs in data: ${data.map((e) => e.id).join(', ')}`);
 	}
-	console.log(
-		`[v2] ➔ Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
+	logger.info(
+		`Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
 	);
 	const evalStartTime = Date.now();
 	await evaluate(target, {
@@ -383,15 +384,15 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 		maxConcurrency: langsmithOptions.concurrency,
 		client: lsClient,
 	});
-	console.log(
-		`[v2] ➔ evaluate() completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount} times)`,
+	logger.info(
+		`Evaluation completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount} times)`,
 	);
 
 	// Flush pending traces to ensure all data is sent to LangSmith
-	console.log('[v2] ➔ Flushing pending trace batches...');
+	logger.verbose('Flushing pending trace batches...');
 	const flushStartTime = Date.now();
 	await lsClient.awaitPendingTraceBatches();
-	console.log(`[v2] ➔ Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
+	logger.verbose(`Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
 
 	// Log trace filtering statistics if enabled
 	traceFilters?.logStats();

@@ -6,7 +6,6 @@
  */
 
 import type { ExampleResult, RunSummary, Feedback } from '../harness-types';
-
 import {
 	extractViolationSeverity,
 	calculateReportMetrics,

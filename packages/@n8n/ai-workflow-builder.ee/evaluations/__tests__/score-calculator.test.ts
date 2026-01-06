@@ -6,7 +6,6 @@
  */
 
 import type { Feedback } from '../harness-types';
-
 import {
 	parseFeedbackKey,
 	extractCategory,

@@ -3,8 +3,8 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -15,7 +15,16 @@ import { createArtifactSaver } from '../output';
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 	return {
 		name,
-		nodes: [{ id: '1', type: 'n8n-nodes-base.start', name: 'Start', position: [0, 0], typeVersion: 1, parameters: {} }],
+		nodes: [
+			{
+				id: '1',
+				type: 'n8n-nodes-base.start',
+				name: 'Start',
+				position: [0, 0],
+				typeVersion: 1,
+				parameters: {},
+			},
+		],
 		connections: {},
 	};
 }
