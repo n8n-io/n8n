@@ -136,18 +136,21 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 
 		mockWorkflowsStore = useWorkflowsStore();
+		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
+			value: true,
+		});
 		Object.defineProperty(mockWorkflowsStore, 'searchWorkflows', {
 			value: vi
 				.fn()
 				.mockImplementation(
-					async (params: { name?: string; nodeTypes?: string[]; tags?: string[] }) => {
+					async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
 						if (params.nodeTypes && params.nodeTypes.length > 0) {
 							return [{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] }];
 						}
 						if (params.tags && params.tags.length > 0) {
 							return [allWorkflows[0]];
 						}
-						if (typeof params.name === 'string') {
+						if (typeof params.query === 'string') {
 							return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
 						}
 						return [];
@@ -197,6 +200,24 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
 		expect(idsReadOnly).not.toContain('create-workflow');
+	});
+
+	it('should not include any commands when user is chat user', () => {
+		vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
+			workflow: {
+				create: false,
+			},
+		} as unknown as permissionsModule.PermissionsRecord);
+		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
+			value: false,
+		});
+
+		const { commands } = useWorkflowNavigationCommands({
+			lastQuery: ref(''),
+			activeNodeId: ref(null),
+			currentProjectName: ref('My Project'),
+		});
+		expect(commands.value.length).toBe(0);
 	});
 
 	it('initialize() loads tags', async () => {

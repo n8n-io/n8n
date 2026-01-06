@@ -43,7 +43,7 @@ export class CreateOAuthEntities1760116750277 implements ReversibleMigration {
 		// Create oauth_access_tokens table
 		await createTable('oauth_access_tokens')
 			.withColumns(
-				column('token').varchar(255).primary.notNull,
+				column('token').varchar().primary.notNull,
 				column('clientId').varchar().notNull,
 				column('userId').uuid.notNull,
 			)

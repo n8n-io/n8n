@@ -1057,9 +1057,8 @@ describe('VirtualSchema.vue', () => {
 
 	describe('execute event emission', () => {
 		it('should emit execute event when schema preview execute link is clicked', async () => {
-			// Set up schema preview mode
 			useWorkflowsStore().pinData({
-				node: mockNode1,
+				node: mockNode2,
 				data: [],
 			});
 
@@ -1079,22 +1078,68 @@ describe('VirtualSchema.vue', () => {
 
 			const { emitted, getByText } = renderComponent({
 				props: {
+					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			const executeLink = await waitFor(() => getByText('Execute the node'));
+			expect(executeLink).toBeInTheDocument();
+
+			fireEvent.click(executeLink);
+
+			await waitFor(() => {
+				expect(emitted()).toHaveProperty('execute');
+				expect(emitted().execute[0]).toEqual([mockNode2.name]);
+			});
+		});
+	});
+
+	describe('trigger node schema preview', () => {
+		it('should not call getSchemaPreview for trigger nodes', async () => {
+			const schemaPreviewStore = useSchemaPreviewStore();
+			const getSchemaPreviewSpy = vi.spyOn(schemaPreviewStore, 'getSchemaPreview');
+
+			const { getAllByText } = renderComponent({
+				props: {
 					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
 				},
 			});
 
-			// Wait for the preview execute link to appear
-			const executeLink = await waitFor(() => getByText('Execute the node'));
-			expect(executeLink).toBeInTheDocument();
-
-			// Click the execute link
-			fireEvent.click(executeLink);
-
-			// Verify the execute event was emitted with the node name
 			await waitFor(() => {
-				expect(emitted()).toHaveProperty('execute');
-				expect(emitted().execute[0]).toEqual([mockNode1.name]);
+				expect(getAllByText('Execute previous nodes').length).toBe(1);
 			});
+
+			expect(getSchemaPreviewSpy).not.toHaveBeenCalled();
+		});
+
+		it('should call getSchemaPreview for non-trigger nodes without data', async () => {
+			const schemaPreviewStore = useSchemaPreviewStore();
+			const getSchemaPreviewSpy = vi
+				.spyOn(schemaPreviewStore, 'getSchemaPreview')
+				.mockResolvedValue(
+					createResultOk({
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+						},
+					}),
+				);
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+			});
+
+			expect(getSchemaPreviewSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodeType: SET_NODE_TYPE,
+				}),
+			);
 		});
 	});
 

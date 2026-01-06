@@ -1,19 +1,23 @@
 <script setup lang="ts">
+import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
+import { useI18n } from '@n8n/i18n';
+import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
+import { computed, ref } from 'vue';
 import InputTriple from '../InputTriple/InputTriple.vue';
 import ParameterInputFull from '../ParameterInputFull.vue';
 import ParameterInputHint from '../ParameterInputHint.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
-import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { useI18n } from '@n8n/i18n';
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 
+import { removeExpressionPrefix } from '@/app/utils/expressions';
+import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { typeFromExpression } from '../../utils/assignmentCollection.utils';
+
 interface Props {
 	path: string;
 	modelValue: AssignmentValue;
@@ -127,6 +131,19 @@ const onBlur = (): void => {
 const onValueInputHoverChange = (hovered: boolean): void => {
 	valueInputHovered.value = hovered;
 };
+
+const onValueDrop = (droppedExpression: string) => {
+	if (props.disableType) {
+		return;
+	}
+
+	const droppedValue = removeExpressionPrefix(droppedExpression);
+	assignment.value.type = typeFromExpression(droppedValue);
+
+	if (!assignment.value.name) {
+		assignment.value.name = propertyNameFromExpression(droppedValue);
+	}
+};
 </script>
 
 <template>
@@ -161,7 +178,6 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 			<InputTriple middle-width="100px">
 				<template #left>
 					<ParameterInputFull
-						:key="nameParameter.type"
 						display-options
 						hide-label
 						hide-hint
@@ -191,7 +207,6 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">
 						<ParameterInputFull
-							:key="valueParameter.type"
 							display-options
 							hide-label
 							hide-issues
@@ -206,6 +221,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
 							@hover="onValueInputHoverChange"
+							@drop="onValueDrop"
 						/>
 						<ParameterInputHint
 							v-if="resolvedExpressionString"

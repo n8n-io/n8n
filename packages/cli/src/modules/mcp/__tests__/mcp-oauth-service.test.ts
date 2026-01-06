@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
@@ -17,6 +18,7 @@ let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
+let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -25,6 +27,7 @@ describe('McpOAuthService', () => {
 		oauthClientRepository = mockInstance(OAuthClientRepository);
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		userConsentRepository = mockInstance(UserConsentRepository);
 
 		service = new McpOAuthService(
 			logger,
@@ -32,6 +35,7 @@ describe('McpOAuthService', () => {
 			oauthClientRepository,
 			tokenService,
 			authorizationCodeService,
+			userConsentRepository,
 		);
 	});
 
@@ -64,6 +68,8 @@ describe('McpOAuthService', () => {
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
 					scope: SUPPORTED_SCOPES.join(' '),
+					logo_uri: undefined,
+					tos_uri: undefined,
 				});
 			});
 
@@ -107,6 +113,8 @@ describe('McpOAuthService', () => {
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
 					scope: 'read write',
+					logo_uri: undefined,
+					tos_uri: undefined,
 				};
 
 				oauthClientRepository.insert.mockResolvedValue({} as any);
@@ -136,6 +144,8 @@ describe('McpOAuthService', () => {
 					client_secret_expires_at: 1234567890,
 					response_types: ['code'],
 					scope: 'read',
+					logo_uri: undefined,
+					tos_uri: undefined,
 				};
 
 				oauthClientRepository.insert.mockResolvedValue({} as any);
@@ -162,6 +172,8 @@ describe('McpOAuthService', () => {
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
 					scope: 'read',
+					logo_uri: undefined,
+					tos_uri: undefined,
 				};
 
 				const error = new Error('Database error');
@@ -188,6 +200,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read write',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const params = {
@@ -218,6 +232,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const params = {
@@ -246,6 +262,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const params = {
@@ -287,6 +305,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			authorizationCodeService.getCodeChallenge.mockResolvedValue('challenge-123');
@@ -311,6 +331,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const authRecord = {
@@ -361,6 +383,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const authRecord = {
@@ -394,6 +418,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			const newTokens = {
@@ -443,6 +469,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			tokenService.revokeAccessToken.mockResolvedValue(true);
@@ -465,6 +493,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			tokenService.revokeRefreshToken.mockResolvedValue(true);
@@ -487,6 +517,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			tokenService.revokeAccessToken.mockResolvedValue(true);
@@ -508,6 +540,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			tokenService.revokeAccessToken.mockResolvedValue(false);
@@ -530,6 +564,8 @@ describe('McpOAuthService', () => {
 				token_endpoint_auth_method: 'none',
 				response_types: ['code'],
 				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
 			};
 
 			tokenService.revokeAccessToken.mockResolvedValue(false);

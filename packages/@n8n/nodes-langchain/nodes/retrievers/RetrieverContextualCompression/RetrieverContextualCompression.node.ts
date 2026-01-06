@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
-import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
+import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
+import { LLMChainExtractor } from '@langchain/classic/retrievers/document_compressors/chain_extract';
 import {
 	NodeConnectionTypes,
 	type INodeType,

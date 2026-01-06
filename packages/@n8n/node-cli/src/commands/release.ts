@@ -1,7 +1,9 @@
+import { intro } from '@clack/prompts';
 import { Command } from '@oclif/core';
 
 import { ChildProcessError, runCommand } from '../utils/child-process';
 import { detectPackageManager } from '../utils/package-manager';
+import { getCommandHeader } from '../utils/prompts';
 
 export default class Release extends Command {
 	static override description = 'Publish your community node package to npm';
@@ -10,6 +12,8 @@ export default class Release extends Command {
 
 	async run(): Promise<void> {
 		await this.parse(Release);
+
+		intro(await getCommandHeader('n8n-node release'));
 
 		const pm = (await detectPackageManager()) ?? 'npm';
 

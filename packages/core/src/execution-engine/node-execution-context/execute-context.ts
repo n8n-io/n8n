@@ -237,4 +237,9 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
 	}
+
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return false;
+	}
 }

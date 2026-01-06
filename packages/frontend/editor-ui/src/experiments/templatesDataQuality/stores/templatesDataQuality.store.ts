@@ -7,6 +7,8 @@ import batch1TemplateIds from '../data/batch1TemplateIds.json';
 import batch2TemplateIds from '../data/batch2TemplateIds.json';
 import batch3TemplateIds from '../data/batch3TemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 
 const NUMBER_OF_TEMPLATES = 6;
 
@@ -15,6 +17,7 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 	const posthogStore = usePostHog();
 	const templatesStore = useTemplatesStore();
 	const settingsStore = useSettingsStore();
+	const nodeTypesStore = useNodeTypesStore();
 
 	const isFeatureEnabled = () => {
 		return (
@@ -28,7 +31,7 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 		);
 	};
 
-	async function getTemplateData(templateId: number) {
+	async function getTemplateData(templateId: number): Promise<ITemplatesWorkflowFull | null> {
 		return await templatesStore.fetchTemplateById(templateId.toString());
 	}
 
@@ -70,6 +73,22 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 			templateId,
 		});
 	}
+
+	async function loadExperimentTemplates(): Promise<ITemplatesWorkflowFull[]> {
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+
+		const ids = getRandomTemplateIds();
+		const promises = ids.map(async (id) => await getTemplateData(id));
+		const results = await Promise.allSettled(promises);
+
+		const templates = results
+			.filter(
+				(result): result is PromiseFulfilledResult<ITemplatesWorkflowFull | null> =>
+					result.status === 'fulfilled' && result.value !== null,
+			)
+			.map((result) => result.value as ITemplatesWorkflowFull);
+		return templates;
+	}
 	return {
 		isFeatureEnabled,
 		getRandomTemplateIds,
@@ -77,5 +96,6 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 		getTemplateRoute,
 		trackTemplateTileClick,
 		trackTemplateShown,
+		loadExperimentTemplates,
 	};
 });

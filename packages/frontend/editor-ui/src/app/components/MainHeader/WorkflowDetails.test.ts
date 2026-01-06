@@ -13,7 +13,6 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { Mock } from 'vitest';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -27,13 +26,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRoute: vi.fn().mockReturnValue({
 		params: { name: 'test' },
 		query: { parentFolderId: '1' },
+		meta: {
+			nodeView: true,
+		},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: vi.fn().mockResolvedValue(undefined),
 		currentRoute: {
 			value: {
-				params: { name: 'test' },
+				params: {
+					name: 'test',
+				},
 				query: { parentFolderId: '1' },
 			},
 		},
@@ -77,7 +81,6 @@ const initialState = {
 		settings: {
 			enterprise: {
 				[EnterpriseEditionFeature.Sharing]: true,
-				[EnterpriseEditionFeature.WorkflowHistory]: true,
 				projects: {
 					team: {
 						limit: -1,
@@ -110,6 +113,13 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 				template: '<div><slot name="append" /></div>',
 			},
 		},
+		directives: {
+			loading: {
+				mounted() {},
+				updated() {},
+				unmounted() {},
+			},
+		},
 	},
 });
 
@@ -126,6 +136,8 @@ const workflow = {
 	tags: ['1', '2'],
 	active: false,
 	isArchived: false,
+	scopes: [],
+	meta: {},
 };
 
 describe('WorkflowDetails', () => {
@@ -136,6 +148,11 @@ describe('WorkflowDetails', () => {
 
 		// Set up default mocks
 		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+		workflowsStore.workflowsById = {
+			'1': workflow as unknown as IWorkflowDb,
+			'123': workflow as unknown as IWorkflowDb,
+		};
+		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 
@@ -149,9 +166,9 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('renders workflow name and tags', async () => {
-		(useRoute as Mock).mockReturnValue({
+		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
-		});
+		} as unknown as ReturnType<typeof useRoute>);
 		const { getByTestId, getByText } = renderComponent({
 			props: {
 				...workflow,
@@ -194,7 +211,8 @@ describe('WorkflowDetails', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('workflow-share-button'));
+		await userEvent.click(getByTestId('workflow-menu'));
+		await userEvent.click(getByTestId('workflow-menu-item-share'));
 		expect(openModalSpy).toHaveBeenCalledWith({
 			name: WORKFLOW_SHARE_MODAL_KEY,
 			data: { id: '1' },
@@ -203,12 +221,13 @@ describe('WorkflowDetails', () => {
 
 	describe('Workflow menu', () => {
 		beforeEach(() => {
-			(useRoute as Mock).mockReturnValue({
+			vi.mocked(useRoute).mockReturnValueOnce({
 				meta: {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
-			});
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
 		});
 
 		it('should not have workflow duplicate and import without update permission', async () => {
@@ -243,12 +262,23 @@ describe('WorkflowDetails', () => {
 			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
 		});
 
 		it("should have disabled 'Archive' option on new workflow", async () => {
+			vi.mocked(useRoute)
+				.mockReset()
+				.mockReturnValue({
+					meta: {
+						nodeView: true,
+					},
+					query: { parentFolderId: '1', new: 'true' },
+					params: { name: 'test' },
+				} as unknown as ReturnType<typeof useRoute>);
+
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
@@ -392,6 +422,72 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
+		it("should navigate to team project workflows page on 'Archive' for team project workflow", async () => {
+			const teamProjectId = 'team-project-123';
+			const teamWorkflow = {
+				...workflow,
+				homeProject: {
+					id: teamProjectId,
+					name: 'Team Project',
+					type: 'team',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...teamWorkflow,
+					active: false,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: teamProjectId },
+			});
+		});
+
+		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
+			const personalWorkflow = {
+				...workflow,
+				homeProject: {
+					id: 'personal-project-123',
+					name: 'Personal Project',
+					type: 'personal',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...personalWorkflow,
+					active: false,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
+		});
+
 		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
@@ -462,10 +558,76 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
+		it("should navigate to team project workflows page on 'Delete' for team project workflow", async () => {
+			const teamProjectId = 'team-project-456';
+			const teamWorkflow = {
+				...workflow,
+				isArchived: true,
+				homeProject: {
+					id: teamProjectId,
+					name: 'Team Project',
+					type: 'team',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
+			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...teamWorkflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-delete'));
+
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: teamProjectId },
+			});
+		});
+
+		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
+			const personalWorkflow = {
+				...workflow,
+				isArchived: true,
+				homeProject: {
+					id: 'personal-project-456',
+					name: 'Personal Project',
+					type: 'personal',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
+			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...personalWorkflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-delete'));
+
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
+		});
+
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsStore.workflowsById = { [workflow.id]: workflow as IWorkflowDb };
+			workflowsStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -486,6 +648,14 @@ describe('WorkflowDetails', () => {
 
 	describe('Toast notifications', () => {
 		it('should show personal toast when creating workflow without project context', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = null;
 
 			const { getByTestId } = renderComponent({
@@ -507,6 +677,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should show project toast when creating workflow in non-personal project', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = {
 				id: 'project-1',
 				name: 'Test Project',
@@ -538,6 +716,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should show folder toast when creating workflow in folder context', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { new: 'true' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			projectsStore.currentProject = {
 				id: 'project-1',
 				name: 'Test Project',
@@ -570,6 +756,14 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should not show toast when saving existing workflow', async () => {
+			vi.mocked(useRoute).mockReturnValueOnce({
+				meta: {
+					nodeView: true,
+				},
+				query: { parentFolderId: '1' },
+				params: { name: 'test' },
+			} as unknown as ReturnType<typeof useRoute>);
+
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,

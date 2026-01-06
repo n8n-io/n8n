@@ -1,8 +1,9 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Post, RootLevelController } from '@n8n/decorators';
+import { Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
@@ -30,6 +31,7 @@ export class McpController {
 		private readonly mcpService: McpService,
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
+		private readonly logger: Logger,
 	) {}
 
 	// Add CORS headers helper
@@ -51,6 +53,21 @@ export class McpController {
 	// 	res.status(204).send();
 	// }
 
+	/**
+	 * HEAD endpoint for authentication scheme discovery
+	 * Per RFC 6750 Section 3, returns 401 with WWW-Authenticate header
+	 * This allows MCP clients to probe the endpoint and discover Bearer token authentication
+	 */
+	@Head('/http', {
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async discoverAuthSchemeHead(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		res.status(401).end();
+	}
+
 	@Post('/http', {
 		rateLimit: { limit: 100 },
 		middlewares: [getAuthMiddleware()],
@@ -62,7 +79,9 @@ export class McpController {
 		this.setCorsHeaders(res);
 
 		const body = req.body;
+		this.logger.debug('MCP Request', { body });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
+		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
@@ -105,6 +124,8 @@ export class McpController {
 					...telemetryPayload,
 					mcp_connection_status: 'success',
 				});
+			} else if (isToolCallRequest) {
+				this.logger.debug('MCP Tool Call request', body);
 			}
 		} catch (error) {
 			this.errorReporter.error(error);

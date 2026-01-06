@@ -79,22 +79,40 @@ export function useWorkflowNavigationCommands(options: {
 
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
+				query: trimmed,
+				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
+							select: [
+								'id',
+								'name',
+								'active',
+								'nodes',
+								'ownedBy',
+								'parentFolder',
+								'isArchived',
+								'description',
+							],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
 				? workflowsStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
+						select: [
+							'id',
+							'name',
+							'active',
+							'ownedBy',
+							'tags',
+							'parentFolder',
+							'isArchived',
+							'description',
+						],
 					})
 				: Promise.resolve([]);
 
@@ -219,7 +237,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
+	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -242,6 +260,10 @@ export function useWorkflowNavigationCommands(options: {
 		const workflowName = workflow.name;
 		keywords = [...keywords, workflowName];
 
+		if (workflow.description) {
+			keywords = [...keywords, workflow.description];
+		}
+
 		if (workflow.tags && workflow.tags.length > 0) {
 			keywords = [
 				...keywords,
@@ -263,6 +285,7 @@ export function useWorkflowNavigationCommands(options: {
 
 		return {
 			id: workflow.id,
+			matchAnySearchTerm: !isRoot,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
@@ -285,14 +308,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !workflowsStore.canViewWorkflows) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -327,20 +350,24 @@ export function useWorkflowNavigationCommands(options: {
 		};
 		return [
 			...(hasCreatePermission ? [newWorkflowCommand] : []),
-			{
-				id: ITEM_ID.OPEN_WORKFLOW,
-				title: i18n.baseText('commandBar.workflows.open'),
-				section: i18n.baseText('commandBar.sections.workflows'),
-				placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
-				children: openWorkflowCommands.value,
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'arrow-right',
-						color: 'text-light',
-					},
-				},
-			},
+			...(workflowsStore.canViewWorkflows
+				? [
+						{
+							id: ITEM_ID.OPEN_WORKFLOW,
+							title: i18n.baseText('commandBar.workflows.open'),
+							section: i18n.baseText('commandBar.sections.workflows'),
+							placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
+							children: openWorkflowCommands.value,
+							icon: {
+								component: N8nIcon,
+								props: {
+									icon: 'arrow-right',
+									color: 'text-light',
+								},
+							},
+						},
+					]
+				: []),
 			...rootWorkflowItems.value,
 		];
 	});

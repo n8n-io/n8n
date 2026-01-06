@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -12,7 +13,9 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useToast } from '@/app/composables/useToast';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
+import { VIEWS } from '@/app/constants';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -23,19 +26,19 @@ const emit = defineEmits<{
 
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
+const workflowHistoryStore = useWorkflowHistoryStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
-const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
+const toast = useToast();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
-const trackedTools = ref(new Set<string>());
-const trackedCategorizations = ref(new Set<string>());
-const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
@@ -87,25 +90,22 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 async function onUserMessage(content: string) {
-	const isNewWorkflow = workflowsStore.isNewWorkflow;
-
-	// Save the workflow to get workflow ID which is used for session
-	if (isNewWorkflow) {
-		await workflowSaver.saveCurrentWorkflow();
-	}
+	// Reset tidy up flag for each new message exchange
+	shouldTidyUp.value = false;
 
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
-	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
+	await builderStore.sendChatMessage({
+		text: content,
+		initialGeneration: isInitialGeneration,
+	});
 }
 
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
-	trackedTools.value.clear();
-	trackedCategorizations.value.clear();
-	workflowUpdated.value = undefined;
+	shouldTidyUp.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -125,72 +125,7 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
-function dedupeToolNames(toolNames: string[]): string[] {
-	return [...new Set(toolNames)];
-}
-
-function isCategorizationData(
-	data: unknown,
-): data is { techniques: string[]; confidence?: number } {
-	return (
-		typeof data === 'object' &&
-		data !== null &&
-		'techniques' in data &&
-		Array.isArray(data.techniques) &&
-		data.techniques.every((t) => typeof t === 'string')
-	);
-}
-
-function trackWorkflowCategorization() {
-	// Track categorization telemetry
-	builderStore.toolMessages.forEach((toolMsg) => {
-		if (toolMsg.toolName !== 'categorize_prompt') return;
-		if (toolMsg.status !== 'completed') return;
-		if (!toolMsg.toolCallId) return;
-		if (trackedCategorizations.value.has(toolMsg.toolCallId)) return;
-
-		const outputUpdate = toolMsg.updates.find((u) => u.type === 'output');
-		const categorizationData = outputUpdate?.data?.categorization;
-
-		if (!isCategorizationData(categorizationData)) return;
-
-		trackedCategorizations.value.add(toolMsg.toolCallId);
-
-		telemetry.track('Classifier labels user prompt', {
-			user_id: usersStore.currentUserId ?? undefined,
-			workflow_id: workflowsStore.workflowId,
-			classifier_labels: categorizationData.techniques,
-			confidence: categorizationData.confidence,
-			session_id: builderStore.trackingSessionId,
-			timestamp: new Date().toISOString(),
-		});
-	});
-}
-
-function trackWorkflowModifications() {
-	if (workflowUpdated.value) {
-		// Track tool usage for telemetry
-		const newToolMessages = builderStore.toolMessages.filter(
-			(toolMsg) =>
-				toolMsg.status !== 'running' &&
-				toolMsg.toolCallId &&
-				!trackedTools.value.has(toolMsg.toolCallId),
-		);
-
-		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-		telemetry.track('Workflow modified by builder', {
-			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
-			session_id: builderStore.trackingSessionId,
-			start_workflow_json: workflowUpdated.value.start,
-			end_workflow_json: workflowUpdated.value.end,
-			workflow_id: workflowsStore.workflowId,
-		});
-
-		workflowUpdated.value = undefined;
-	}
-}
-
-function onWorkflowExecuted() {
+async function onWorkflowExecuted() {
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
@@ -199,7 +134,7 @@ function onWorkflowExecuted() {
 		: undefined;
 
 	if (!executionData) {
-		builderStore.sendChatMessage({
+		await builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
 			type: 'execution',
 			executionStatus: 'error',
@@ -209,7 +144,7 @@ function onWorkflowExecuted() {
 	}
 
 	if (executionStatus === 'success') {
-		builderStore.sendChatMessage({
+		await builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
 			executionStatus,
@@ -231,7 +166,7 @@ function onWorkflowExecuted() {
 
 	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
 
-	builderStore.sendChatMessage({
+	await builderStore.sendChatMessage({
 		text: scopedErrorMessage,
 		type: 'execution',
 		errorMessage: executionError,
@@ -252,24 +187,21 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const originalWorkflowJson =
-						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
+						// Only tidy up if new nodes are added per user message
+						const hasNewNodes = Boolean(result.newNodeIds && result.newNodeIds.length > 0);
+						shouldTidyUp.value = shouldTidyUp.value || hasNewNodes;
+
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
-							tidyUp: true,
+							tidyUp: shouldTidyUp.value,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
 						});
-
-						workflowUpdated.value = {
-							start: originalWorkflowJson,
-							end: msg.codeSnippet,
-						};
 					}
 				}
 			});
@@ -281,22 +213,18 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async (isStreaming) => {
-		if (!isStreaming) {
-			trackWorkflowModifications();
-			trackWorkflowCategorization();
+	async (isStreaming, wasStreaming) => {
+		// Only process when streaming just ended (was streaming, now not)
+		if (!wasStreaming || isStreaming) {
+			return;
 		}
 
-		if (
-			builderStore.initialGeneration &&
-			!isStreaming &&
-			workflowsStore.workflow.nodes.length > 0
-		) {
-			// Check if the generation completed successfully (no error or cancellation)
-			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-			const successful =
-				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
+		// Check if the response completed successfully (no error or cancellation)
+		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+		const successful =
+			lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
 
+		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
 
 			// Only save if generation completed successfully
@@ -307,9 +235,52 @@ watch(
 	},
 );
 
-// Reset on route change
+/**
+ * Handle restore confirmation
+ */
+async function onRestoreConfirm(versionId: string, messageId: string) {
+	try {
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId, messageId);
+		if (!updatedWorkflow) {
+			return;
+		}
+		builderStore.clearExistingWorkflow();
+		// Reload the workflow to reflect the restored state
+		nodeViewEventBus.emit('importWorkflowData', {
+			data: updatedWorkflow,
+			tidyUp: false,
+			regenerateIds: false,
+			trackEvents: false,
+			setStateDirty: false,
+		});
+	} catch (e: unknown) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('aiAssistant.builder.restoreError.title'),
+			message: e instanceof Error ? e.message : 'Unknown error',
+		});
+	}
+}
+
+/**
+ * Handle "Show version" click - opens workflow history in a new tab
+ */
+function onShowVersion(versionId: string) {
+	const route = router.resolve({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: workflowsStore.workflowId,
+			versionId,
+		},
+	});
+	window.open(route.href, '_blank');
+}
+
+// Reset on route change, but not if streaming is in progress
 watch(currentRoute, () => {
-	onNewWorkflow();
+	if (!builderStore.streaming) {
+		onNewWorkflow();
+	}
 });
 
 defineExpose({
@@ -335,11 +306,15 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:workflow-id="workflowsStore.workflowId"
+			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
-			@stop="builderStore.stopStreaming"
+			@stop="builderStore.abortStreaming"
+			@restore-confirm="onRestoreConfirm"
+			@show-version="onShowVersion"
 		>
 			<template #header>
 				<slot name="header" />

@@ -93,4 +93,10 @@ describe('PollContext', () => {
 			expect(parameter).toBe('fallback');
 		});
 	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(pollContext.getExecutionContext()).toBeUndefined();
+		});
+	});
 });

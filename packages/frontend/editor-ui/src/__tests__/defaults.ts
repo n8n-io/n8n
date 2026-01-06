@@ -34,7 +34,6 @@ export const defaultSettings: FrontendSettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,
@@ -106,7 +105,6 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
-	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',

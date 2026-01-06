@@ -4,11 +4,12 @@ import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/app/composables/useToast';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
@@ -20,6 +21,7 @@ interface TagsDropdownProps {
 	manageEnabled?: boolean;
 	createTag?: (name: string) => Promise<ITag>;
 	multipleLimit?: number;
+	createTagI18nKey?: BaseTextKey;
 }
 
 const i18n = useI18n();
@@ -34,6 +36,7 @@ const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	manageEnabled: true,
 	createTag: undefined,
 	multipleLimit: 0,
+	createTagI18nKey: 'tagsDropdown.createTag',
 });
 
 const emit = defineEmits<{
@@ -239,7 +242,7 @@ onClickOutside(
 			>
 				<N8nIcon icon="circle-plus" />
 				<span>
-					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+					{{ i18n.baseText(props.createTagI18nKey, { interpolate: { filter } }) }}
 				</span>
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
@@ -284,18 +287,26 @@ onClickOutside(
 		}
 	}
 
-	.el-tag {
-		padding: var(--spacing--5xs) var(--spacing--4xs);
-		color: var(--color--text);
-		background-color: var(--color--background);
-		border-radius: var(--radius);
-		font-size: var(--font-size--2xs);
-		border: 0;
+	.el-tag,
+	.el-tag.el-tag--info {
+		height: var(--tag--height);
+		padding: var(--tag--padding);
+		line-height: var(--tag--line-height);
+		color: var(--tag--color--text);
+		background-color: var(--tag--color--background);
+		border: 1px solid var(--tag--border-color);
+		border-radius: var(--tag--radius);
+		font-size: var(--tag--font-size);
 
 		.el-tag__close {
 			max-height: 14px;
 			max-width: 14px;
 			line-height: 14px;
+
+			&:hover {
+				background-color: transparent !important;
+				color: var(--color--primary--shade-1);
+			}
 		}
 	}
 }

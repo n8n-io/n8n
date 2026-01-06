@@ -47,15 +47,10 @@ const closeModal = () => {
 					<br />
 					<I18nT
 						v-if="props.data.isWorkflowActivated"
-						keypath="workflowHistory.action.restore.modal.text"
+						keypath="workflowHistory.action.restore.modal.publishedNote"
 						tag="span"
 						scope="global"
 					>
-						<template #buttonText>
-							&ldquo;{{
-								i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore')
-							}}&rdquo;
-						</template>
 					</I18nT>
 				</N8nText>
 			</div>

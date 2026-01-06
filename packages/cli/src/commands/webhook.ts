@@ -82,7 +82,7 @@ export class Webhook extends BaseCommand {
 		});
 		Container.get(LogStreamingEventRelay).init();
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 	}
 
 	async run() {
@@ -102,7 +102,9 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
+		const subscriber = Container.get(Subscriber);
+
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+		await subscriber.subscribe(subscriber.getCommandChannel());
 	}
 }

@@ -3,43 +3,76 @@ import Modal from '@/app/components/Modal.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { useUIStore } from '@/app/stores/ui.store';
-import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import {
+	emptyChatModelsResponse,
+	type ChatModelsResponse,
+	type ChatHubBaseLLMModel,
+	type AgentIconOrEmoji,
+	type ChatHubConversationModel,
+	type ChatHubProvider,
+	type ChatModelDto,
+} from '@n8n/api-types';
+import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
+import type { INode } from 'n8n-workflow';
+import ToolsSelector from './ToolsSelector.vue';
+import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
-	credentials: CredentialsMap;
-	agentId?: string;
-}>();
-
-const emit = defineEmits<{
-	createCustomAgent: [agent: ChatModelDto];
-	close: [];
+	modalName: string;
+	data: {
+		agentId?: string;
+		credentials: CredentialsMap;
+		onClose?: () => void;
+		onCreateCustomAgent?: (selection: ChatModelDto) => void;
+	};
 }>();
 
 const chatStore = useChatStore();
-const uiStore = useUIStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const uiStore = useUIStore();
+
 const modalBus = ref(createEventBus());
+const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
 const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
-const selectedModel = ref<ChatModelDto | null>(null);
+const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const isOpened = ref(false);
+const tools = ref<INode[]>([]);
+const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
+const isLoadingAgents = ref(false);
+const nameInputRef = useTemplateRef('nameInput');
+const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
+const credentialIdForSelectedModelProvider = computed(
+	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
+);
+const selectedAgent = computed(
+	() =>
+		selectedModel.value &&
+		chatStore.getAgent(selectedModel.value, { name: selectedModel.value.model }),
+);
 
-const isEditMode = computed(() => !!props.agentId);
+const isEditMode = computed(() => !!props.data.agentId);
+const isLoadingAgent = computed(() => isEditMode.value && isLoadingCustomAgent.value);
 const title = computed(() =>
 	isEditMode.value
 		? i18n.baseText('chatHub.agent.editor.title.edit')
@@ -55,62 +88,93 @@ const isValid = computed(() => {
 	return (
 		name.value.trim().length > 0 &&
 		systemPrompt.value.trim().length > 0 &&
-		selectedModel.value !== null
+		selectedModel.value !== null &&
+		!!credentialIdForSelectedModelProvider.value
 	);
 });
 
 const agentMergedCredentials = computed((): CredentialsMap => {
 	return {
-		...props.credentials,
+		...props.data.credentials,
 		...agentSelectedCredentials.value,
 	};
 });
 
-function loadAgent() {
-	const customAgent = chatStore.currentEditingAgent;
+const canSelectTools = computed(
+	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
+);
 
-	if (!customAgent) return;
+modalBus.value.once('opened', () => {
+	isOpened.value = true;
+});
 
-	name.value = customAgent.name;
-	description.value = customAgent.description ?? '';
-	systemPrompt.value = customAgent.systemPrompt;
-	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
-
-	if (customAgent.credentialId) {
-		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
-	}
-}
-
-function resetForm() {
-	name.value = '';
-	description.value = '';
-	systemPrompt.value = '';
-	selectedModel.value = null;
-	agentSelectedCredentials.value = {};
-}
-
-// Watch for modal opening
+// If the agent doesn't support tools anymore, reset tools
 watch(
-	() => uiStore.modalsById.agentEditor?.open,
-	(isOpen) => {
-		if (isOpen) {
-			if (props.agentId) {
-				loadAgent();
-			} else {
-				resetForm();
+	selectedAgent,
+	(agent) => {
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			tools.value = [];
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	customAgent,
+	(agent) => {
+		if (!agent) return;
+
+		icon.value = agent.icon ?? personalAgentDefaultIcon;
+		name.value = agent.name;
+		description.value = agent.description ?? '';
+		systemPrompt.value = agent.systemPrompt;
+		selectedModel.value = { provider: agent.provider, model: agent.model };
+		tools.value = agent.tools || [];
+
+		if (agent.credentialId) {
+			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	[isOpened, isLoadingAgent, nameInputRef],
+	([opened, isLoading, nameInput]) => {
+		if (opened && !isLoading) {
+			// autofocus attribute doesn't work in modal
+			// https://github.com/element-plus/element-plus/issues/15250
+			nameInput?.focus();
+		}
+	},
+	{ immediate: true, flush: 'post' },
+);
+
+// Update agents when credentials are updated
+watch(
+	agentMergedCredentials,
+	async (credentials) => {
+		if (credentials) {
+			isLoadingAgents.value = true;
+			try {
+				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			} finally {
+				isLoadingAgents.value = false;
 			}
 		}
 	},
+	{ immediate: true },
 );
 
-function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
 	agentSelectedCredentials.value = {
 		...agentSelectedCredentials.value,
 		[provider]: credentialId,
 	};
 }
 
-function onModelChange(model: ChatModelDto) {
+function onModelChange(model: ChatHubConversationModel) {
+	assert(isLlmProviderModel(model));
 	selectedModel.value = model;
 }
 
@@ -120,33 +184,27 @@ async function onSave() {
 	isSaving.value = true;
 	try {
 		assert(selectedModel.value);
-
-		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
-
-		assert(model);
-		assert(model.provider !== 'n8n' && model.provider !== 'custom-agent');
-
-		const credentialId = agentMergedCredentials.value[model.provider];
-
-		assert(credentialId);
+		assert(credentialIdForSelectedModelProvider.value);
 
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			...model,
-			credentialId,
+			...selectedModel.value,
+			credentialId: credentialIdForSelectedModelProvider.value,
+			tools: tools.value,
+			icon: icon.value,
 		};
 
-		if (isEditMode.value && props.agentId) {
-			await chatStore.updateCustomAgent(props.agentId, payload, props.credentials);
+		if (isEditMode.value && props.data.agentId) {
+			await chatStore.updateCustomAgent(props.data.agentId, payload, props.data.credentials);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(payload, props.credentials);
-			emit('createCustomAgent', agent);
+			const agent = await chatStore.createCustomAgent(payload, props.data.credentials);
+			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
@@ -164,7 +222,7 @@ async function onSave() {
 }
 
 async function onDelete() {
-	if (!isEditMode.value || !props.agentId || isDeleting.value) return;
+	if (!isEditMode.value || !props.data.agentId || isDeleting.value) return;
 
 	const confirmed = await message.confirm(
 		i18n.baseText('chatHub.agent.editor.delete.confirm.message'),
@@ -180,12 +238,12 @@ async function onDelete() {
 
 	isDeleting.value = true;
 	try {
-		await chatStore.deleteCustomAgent(props.agentId, props.credentials);
+		await chatStore.deleteCustomAgent(props.data.agentId, props.data.credentials);
 		toast.showMessage({
 			title: i18n.baseText('chatHub.agent.editor.success.delete'),
 			type: 'success',
 		});
-		emit('close');
+		props.data.onClose?.();
 		modalBus.value.emit('close');
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
@@ -194,19 +252,42 @@ async function onDelete() {
 		isDeleting.value = false;
 	}
 }
+
+function onSelectTools() {
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: tools.value,
+			onConfirm: (newTools: INode[]) => {
+				tools.value = newTools;
+			},
+		},
+	});
+}
 </script>
 
 <template>
 	<Modal
-		name="agentEditor"
+		:name="modalName"
 		:event-bus="modalBus"
 		width="600px"
 		:center="true"
+		:loading="isLoadingAgent"
 		max-width="90%"
 		min-height="400px"
 	>
 		<template #header>
-			<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+				<N8nButton
+					v-if="isEditMode"
+					type="secondary"
+					icon="trash-2"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
@@ -215,13 +296,20 @@ async function onDelete() {
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
 					:required="true"
 				>
-					<N8nInput
-						id="agent-name"
-						v-model="name"
-						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-						:maxlength="128"
-						:class="$style.input"
-					/>
+					<div :class="$style.agentName">
+						<N8nIconPicker
+							v-model="icon as IconOrEmoji"
+							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
+						/>
+						<N8nInput
+							id="agent-name"
+							ref="nameInput"
+							v-model="name"
+							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+							:maxlength="128"
+							:class="$style.agentNameInput"
+						/>
+					</div>
 				</N8nInputLabel>
 
 				<N8nInputLabel
@@ -254,42 +342,69 @@ async function onDelete() {
 					/>
 				</N8nInputLabel>
 
-				<N8nInputLabel
-					input-name="agent-model"
-					:label="i18n.baseText('chatHub.agent.editor.model.label')"
-					:required="true"
-				>
-					<ModelSelector
-						:selectedAgent="selectedModel"
-						:include-custom-agents="false"
-						:credentials="agentMergedCredentials"
-						@change="onModelChange"
-						@select-credential="onCredentialSelected"
-					/>
-				</N8nInputLabel>
+				<div :class="$style.row">
+					<N8nInputLabel
+						input-name="agent-model"
+						:class="$style.input"
+						:label="i18n.baseText('chatHub.agent.editor.model.label')"
+						:required="true"
+					>
+						<ModelSelector
+							:selected-agent="selectedAgent"
+							:include-custom-agents="false"
+							:credentials="agentMergedCredentials"
+							:agents="agents"
+							:is-loading="isLoadingAgents"
+							warn-missing-credentials
+							@change="onModelChange"
+							@select-credential="onCredentialSelected"
+						/>
+					</N8nInputLabel>
+
+					<N8nInputLabel
+						input-name="agent-model"
+						:class="$style.input"
+						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
+						:required="false"
+					>
+						<div>
+							<ToolsSelector
+								:disabled="!canSelectTools"
+								:disabled-tooltip="
+									canSelectTools
+										? undefined
+										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								"
+								:selected="tools"
+								@click="onSelectTools"
+							/>
+						</div>
+					</N8nInputLabel>
+				</div>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<div :class="$style.footerRight">
-					<N8nButton
-						v-if="isEditMode"
-						type="secondary"
-						icon="trash-2"
-						:disabled="isDeleting"
-						:loading="isDeleting"
-						@click="onDelete"
-					/>
-					<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
-						{{ saveButtonLabel }}
-					</N8nButton>
-				</div>
+				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+					i18n.baseText('chatHub.tools.editor.cancel')
+				}}</N8nButton>
+				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+					{{ saveButtonLabel }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style lang="scss" module>
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--s);
+	padding-right: var(--spacing--xl);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -301,15 +416,26 @@ async function onDelete() {
 	width: 100%;
 }
 
+.agentName {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.agentNameInput {
+	flex: 1;
+}
+
+.row {
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing--sm);
+}
+
 .footer {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	width: 100%;
-}
-
-.footerRight {
-	display: flex;
 	gap: var(--spacing--2xs);
 }
 </style>

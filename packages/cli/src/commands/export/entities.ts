@@ -11,12 +11,16 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Output directory path')
 		.default(safeJoinPath(__dirname, './outputs')),
-	includeExecutionHistoryDataTables: z
+	includeExecutionHistoryDataTables: z.coerce
 		.boolean()
 		.describe(
 			'Include execution history data tables, these are excluded by default as they can be very large',
 		)
 		.default(false),
+	keyFile: z
+		.string()
+		.describe('Optional path to a file containing a custom encryption key')
+		.optional(),
 });
 
 @Command({
@@ -27,14 +31,16 @@ const flagsSchema = z.object({
 		'--outputDir=./exports',
 		'--outputDir=/path/to/backup',
 		'--includeExecutionHistoryDataTables=true',
+		'--keyFile=/path/to/key.txt',
+		'--outputDir=./exports --keyFile=/path/to/key.txt',
 	],
 	flagsSchema,
 })
 export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const outputDir = this.flags.outputDir;
-
 		const excludedDataTables = new Set<string>();
+		const keyFilePath = this.flags.keyFile ? safeJoinPath(this.flags.keyFile) : undefined;
 
 		if (!this.flags.includeExecutionHistoryDataTables) {
 			excludedDataTables.add('execution_annotation_tags');
@@ -44,7 +50,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			excludedDataTables.add('execution_metadata');
 		}
 
-		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables);
+		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables, keyFilePath);
 	}
 
 	catch(error: Error) {

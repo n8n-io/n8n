@@ -58,6 +58,7 @@ import {
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	TEMPLATE_CATEGORY_AI,
+	DATA_TABLE_NODE_TYPE,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -428,10 +429,7 @@ export function TriggerView() {
 					name: WEBHOOK_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-					iconData: {
-						type: 'file',
-						fileBuffer: '/static/webhook-icon.svg',
-					},
+					iconData: { type: 'icon', icon: 'webhook' },
 				},
 			},
 			{
@@ -443,10 +441,7 @@ export function TriggerView() {
 					name: FORM_TRIGGER_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
-					iconData: {
-						type: 'file',
-						fileBuffer: '/static/form-grey.svg',
-					},
+					iconData: { type: 'icon', icon: 'form' },
 				},
 			},
 			{
@@ -495,6 +490,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 	const popularItemsSubcategory = [
 		SET_NODE_TYPE,
 		CODE_NODE_TYPE,
+		DATA_TABLE_NODE_TYPE,
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
@@ -590,7 +586,12 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, CODE_NODE_TYPE],
+							items: [
+								HTTP_REQUEST_NODE_TYPE,
+								WEBHOOK_NODE_TYPE,
+								CODE_NODE_TYPE,
+								DATA_TABLE_NODE_TYPE,
+							],
 						},
 					],
 				},

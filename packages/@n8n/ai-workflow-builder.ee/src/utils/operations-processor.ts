@@ -1,7 +1,6 @@
 import type { INode, IConnections } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import type { WorkflowState } from '../workflow-state';
 
 /**
  * Type for operation handler functions
@@ -313,7 +312,10 @@ export function applyOperations(
  * Process operations node for the LangGraph workflow
  * This node applies accumulated operations to the workflow state
  */
-export function processOperations(state: typeof WorkflowState.State) {
+export function processOperations(state: {
+	workflowJSON: SimpleWorkflow;
+	workflowOperations?: WorkflowOperation[] | null;
+}) {
 	const { workflowJSON, workflowOperations } = state;
 
 	// If no operations to process, return unchanged
@@ -328,6 +330,6 @@ export function processOperations(state: typeof WorkflowState.State) {
 	return {
 		workflowJSON: newWorkflow,
 		workflowOperations: null, // Clear processed operations
-		workflowValidation: null,
+		workflowValidation: null, // Invalidate stale validation results
 	};
 }

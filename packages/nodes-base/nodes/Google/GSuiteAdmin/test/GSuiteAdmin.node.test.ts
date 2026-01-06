@@ -320,6 +320,171 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 	});
 });
 
+describe('GSuiteAdmin Node - user:create logic', () => {
+	it('should include changePasswordAtNextLogin when set to true in create operation', async () => {
+		const mockCall = jest
+			.fn()
+			.mockResolvedValue({ id: 'user-123', primaryEmail: 'test@example.com' });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'John';
+					case 'lastName':
+						return 'Doe';
+					case 'password':
+						return 'SecurePassword123!';
+					case 'username':
+						return 'johndoe';
+					case 'additionalFields':
+						return {
+							changePasswordAtNextLogin: true,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			expect.objectContaining({
+				changePasswordAtNextLogin: true,
+				password: 'SecurePassword123!',
+				primaryEmail: 'johndoe@example.com',
+				name: {
+					givenName: 'John',
+					familyName: 'Doe',
+				},
+			}),
+			{},
+		);
+	});
+
+	it('should include changePasswordAtNextLogin when set to false in create operation', async () => {
+		const mockCall = jest
+			.fn()
+			.mockResolvedValue({ id: 'user-124', primaryEmail: 'test2@example.com' });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Jane';
+					case 'lastName':
+						return 'Smith';
+					case 'password':
+						return 'AnotherPassword456!';
+					case 'username':
+						return 'janesmith';
+					case 'additionalFields':
+						return {
+							changePasswordAtNextLogin: false,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			expect.objectContaining({
+				changePasswordAtNextLogin: false,
+				password: 'AnotherPassword456!',
+			}),
+			{},
+		);
+	});
+
+	it('should not include changePasswordAtNextLogin when undefined in create operation', async () => {
+		const mockCall = jest
+			.fn()
+			.mockResolvedValue({ id: 'user-125', primaryEmail: 'test3@example.com' });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Bob';
+					case 'lastName':
+						return 'Johnson';
+					case 'password':
+						return 'Password789!';
+					case 'username':
+						return 'bjohnson';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			{
+				name: { familyName: 'Johnson', givenName: 'Bob' },
+				password: 'Password789!',
+				primaryEmail: 'bjohnson@example.com',
+			},
+			{},
+		);
+	});
+});
+
 describe('GSuiteAdmin Node - user:update logic', () => {
 	it('should build suspended, roles, and customSchemas', async () => {
 		const mockCall = jest.fn().mockResolvedValue([{ success: true }]);
@@ -386,6 +551,94 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 				fieldX: 'valueX',
 			},
 		});
+	});
+
+	it('should include password and changePasswordAtNextLogin in update operation', async () => {
+		const mockCall = jest.fn().mockResolvedValue({ id: 'user-id-456', success: true });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-456';
+					case 'updateFields':
+						return {
+							password: 'NewSecurePassword123!',
+							changePasswordAtNextLogin: true,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-456',
+			expect.objectContaining({
+				password: 'NewSecurePassword123!',
+				changePasswordAtNextLogin: true,
+			}),
+			{},
+		);
+	});
+
+	it('should include changePasswordAtNextLogin set to false in update operation', async () => {
+		const mockCall = jest.fn().mockResolvedValue({ id: 'user-id-999', success: true });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-999';
+					case 'updateFields':
+						return {
+							changePasswordAtNextLogin: false,
+							password: 'TestPassword!',
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-999',
+			expect.objectContaining({
+				password: 'TestPassword!',
+				changePasswordAtNextLogin: false,
+			}),
+			{},
+		);
 	});
 
 	it('should throw error for invalid custom fields', async () => {

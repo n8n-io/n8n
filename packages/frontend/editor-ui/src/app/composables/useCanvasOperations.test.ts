@@ -10,7 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
@@ -37,7 +37,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	AGENT_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -45,7 +47,7 @@ import {
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -63,6 +65,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 
 const mockRoute = reactive({
 	query: {},
+	params: {},
 });
 
 const mockRouterReplace = vi.fn();
@@ -76,6 +79,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -93,9 +97,14 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useClipboard', async () => {
+vi.mock('@vueuse/core', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const original = await importOriginal<typeof import('@vueuse/core')>();
 	const copySpy = vi.fn();
-	return { useClipboard: vi.fn(() => ({ copy: copySpy })) };
+	return {
+		...original,
+		useClipboard: vi.fn(() => ({ copy: copySpy })),
+	};
 });
 
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -125,6 +134,29 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),
+	};
+});
+
+const canPinNodeMock = vi.fn();
+const setDataMock = vi.fn();
+const unsetDataMock = vi.fn();
+const getInputDataWithPinnedMock = vi.fn();
+
+vi.mock('@/app/composables/usePinnedData', () => {
+	return {
+		usePinnedData: vi.fn(() => ({
+			canPinNode: canPinNodeMock,
+			setData: setDataMock,
+			unsetData: unsetDataMock,
+		})),
+	};
+});
+
+vi.mock('@/app/composables/useDataSchema', () => {
+	return {
+		useDataSchema: vi.fn(() => ({
+			getInputDataWithPinned: getInputDataWithPinnedMock,
+		})),
 	};
 });
 
@@ -1072,6 +1104,41 @@ describe('useCanvasOperations', () => {
 				}),
 			);
 		});
+
+		it('should respect positionOffset', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeName = 'type';
+			const nodes: AddedNode[] = [
+				{ name: 'Node 1', type: nodeTypeName },
+				{ name: 'Node 2', type: nodeTypeName, positionOffset: [2 * GRID_SIZE, GRID_SIZE] },
+			];
+
+			workflowsStore.workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			nodeTypesStore.nodeTypes = {
+				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
+			};
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(nodes, { position: [32, 32] });
+
+			expect(workflowsStore.addNode).toHaveBeenCalledTimes(2);
+			expect(workflowsStore.addNode.mock.calls[0][0]).toMatchObject({
+				name: nodes[0].name,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [32, 32],
+				parameters: {},
+			});
+			expect(workflowsStore.addNode.mock.calls[1][0]).toMatchObject({
+				name: nodes[1].name,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				parameters: {},
+			});
+		});
 	});
 
 	describe('revertAddNode', () => {
@@ -1509,6 +1576,116 @@ describe('useCanvasOperations', () => {
 					disabled: true,
 				},
 			});
+		});
+	});
+
+	describe('toggleNodesPinned', () => {
+		beforeEach(() => {
+			canPinNodeMock.mockReset();
+			setDataMock.mockReset();
+			unsetDataMock.mockReset();
+			getInputDataWithPinnedMock.mockReset();
+		});
+
+		it('should only pin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const pinnableNode1 = createTestNode({ id: '1', name: 'PinnableNode1' });
+			const pinnableNode2 = createTestNode({ id: '2', name: 'PinnableNode2' });
+			const nonPinnableNode = createTestNode({ id: '3', name: 'NonPinnableNode' });
+
+			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			// Initially, none have pinned data
+			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
+
+			let checkIndex = 0;
+			const nodeOrder: string[] = [];
+
+			// Mock canPinNode based on which node is being checked
+			canPinNodeMock.mockImplementation(() => {
+				const currentNodeIndex = checkIndex % nodes.length;
+				const currentNode = nodes[currentNodeIndex];
+				nodeOrder.push(currentNode.id);
+				checkIndex++;
+				// Make nodes with id 1 and 2 pinnable, 3 non-pinnable
+				return currentNode.id !== '3';
+			});
+
+			getInputDataWithPinnedMock.mockReturnValue([{ json: { test: 'data' } }]);
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2', '3'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			expect(setDataMock).toHaveBeenCalledTimes(2);
+			expect(setDataMock).toHaveBeenCalledWith([{ json: { test: 'data' } }], 'pin-icon-click');
+			expect(unsetDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should correctly unpin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const pinnableNode1 = createTestNode({ id: '1', name: 'PinnableNode1' });
+			const pinnableNode2 = createTestNode({ id: '2', name: 'PinnableNode2' });
+			const nonPinnableNode = createTestNode({ id: '3', name: 'NonPinnableNode' });
+
+			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			// Set some initial pinned data for pinnable nodes
+			workflowsStore.pinDataByNodeName = vi.fn().mockImplementation((nodeName: string) => {
+				if (nodeName === 'PinnableNode1' || nodeName === 'PinnableNode2') {
+					return [{ json: { pinned: 'data' } }];
+				}
+				return undefined;
+			});
+
+			let checkIndex = 0;
+
+			canPinNodeMock.mockImplementation(() => {
+				const currentNodeIndex = checkIndex % nodes.length;
+				const currentNode = nodes[currentNodeIndex];
+				checkIndex++;
+				return currentNode.id !== '3';
+			});
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2', '3'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			expect(unsetDataMock).toHaveBeenCalledTimes(2);
+			expect(unsetDataMock).toHaveBeenCalledWith('pin-icon-click');
+			expect(setDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should handle case where all nodes are non-pinnable', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const nonPinnableNode1 = createTestNode({ id: '1', name: 'NonPinnableNode1' });
+			const nonPinnableNode2 = createTestNode({ id: '2', name: 'NonPinnableNode2' });
+
+			const nodes = [nonPinnableNode1, nonPinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
+			canPinNodeMock.mockReturnValue(false);
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+
+			// Verify no pinning or unpinning occurred
+			expect(setDataMock).not.toHaveBeenCalled();
+			expect(unsetDataMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2704,6 +2881,134 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
+
+		it('should remove connections if the input port index is no longer valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 },
+				],
+			});
+		});
+
+		it('should keep connections if the input port index is still valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [
+					NodeConnectionTypes.Main,
+					NodeConnectionTypes.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
+				],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((type) => {
+				if (type === AGENT_NODE_TYPE) return targetNodeType;
+				if (type === OPEN_AI_CHAT_MODEL_NODE_TYPE) return sourceNodeType;
+				return undefined;
+			});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('revalidateNodeOutputConnections', () => {
@@ -3083,7 +3388,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('initializeWorkspace', () => {
-		it('should initialize the workspace', () => {
+		it('should initialize the workspace', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const workflow = createTestWorkflow({
 				nodes: [createTestNode()],
@@ -3091,13 +3396,13 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflowsStore.setNodes).toHaveBeenCalled();
 			expect(workflowsStore.setConnections).toHaveBeenCalled();
 		});
 
-		it('should initialize node data from node type description', () => {
+		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
 			const version = 1;
@@ -3122,7 +3427,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflow.nodes[0].parameters).toEqual({ value: true });
 		});
@@ -3372,6 +3677,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
+			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations();
 
@@ -3390,7 +3696,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
+			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -3816,6 +4122,63 @@ describe('useCanvasOperations', () => {
 				setStateDirty: true,
 			});
 		});
+
+		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
+			const toast = useToast();
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+
+			// Create a node type with maxNodes: 1
+			const executeWorkflowTriggerNodeType = mockNodeTypeDescription({
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				maxNodes: 1,
+			});
+
+			nodeTypesStore.nodeTypes = {
+				[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: { 1: executeWorkflowTriggerNodeType },
+			};
+
+			// Create workflow data with two nodes of the same type (that has maxNodes: 1)
+			const nodesToImport = [
+				{
+					id: 'import-1',
+					name: 'Execute Workflow Trigger 1',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [200, 200] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'import-2',
+					name: 'Execute Workflow Trigger 2',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [300, 300] as [number, number],
+					parameters: {},
+				},
+			];
+
+			const workflowDataToImport = {
+				nodes: nodesToImport,
+				connections: {},
+				pinData: {
+					'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+					'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+				},
+			};
+
+			// Mock createWorkflowObject to return a workflow with no nodes (since none can be created due to maxNodes limit)
+			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+
+			// This should not throw even when nodes can't be added due to maxNodes limit
+			await expect(
+				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
+			).resolves.not.toThrow();
+			expect(toast.showError).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('duplicateNodes', () => {
@@ -3921,6 +4284,8 @@ describe('useCanvasOperations', () => {
 				'getNewWorkflowDataAndMakeShareable',
 			);
 
+			const addToWorkflowMetadataSpy = vi.spyOn(workflowState, 'addToWorkflowMetadata');
+
 			const { importTemplate } = useCanvasOperations();
 
 			const templateId = 'template-id';
@@ -3948,7 +4313,7 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
+			expect(addToWorkflowMetadataSpy).toHaveBeenCalledWith({
 				templateId,
 			});
 		});

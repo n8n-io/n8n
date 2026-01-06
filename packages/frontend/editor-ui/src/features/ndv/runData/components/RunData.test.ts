@@ -1276,7 +1276,6 @@ describe('RunData', () => {
 				isExecuting: false,
 				mappingEnabled: true,
 				distanceFromActive: 0,
-				tooMuchDataTitle: '',
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,

@@ -58,11 +58,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(user);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
@@ -74,11 +74,11 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(user);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -91,11 +91,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: false },
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(user);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -103,10 +103,10 @@ describe('McpServerMiddlewareService', () => {
 		it('should return null for invalid JWT format', async () => {
 			const invalidToken = 'not-a-jwt-token';
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(null);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 			const result = await service.getUserForToken(invalidToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
@@ -117,11 +117,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(null);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 
 		it('should return null when API key verification fails', async () => {
@@ -130,38 +130,45 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(null);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 	});
 
 	describe('getAuthMiddleware', () => {
-		it('should return 401 when authorization header is missing', async () => {
+		it('should return 401 with WWW-Authenticate header when authorization header is missing', async () => {
 			const req = mockReqWith(undefined);
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
+			res.header.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
+			expect(res.send).toHaveBeenCalledWith({
+				message: 'Unauthorized: Authorization header not sent',
+			});
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
+				auth_type: 'unknown',
+				error_details: 'Authorization header not sent',
+				reason: 'missing_authorization_header',
 			});
 		});
 
-		it('should throw error when authorization header does not start with Bearer', async () => {
+		it('should return 401 with WWW-Authenticate header when authorization header does not start with Bearer', async () => {
 			const req = mockReqWith('Basic sometoken');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
@@ -169,13 +176,26 @@ describe('McpServerMiddlewareService', () => {
 
 			const middleware = service.getAuthMiddleware();
 
-			await expect(middleware(req, res, next)).rejects.toThrow(
-				'Invalid authorization header format',
-			);
+			await middleware(req, res, next);
+
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalledWith({
+				message: 'Unauthorized: Invalid authorization header format - Missing Bearer prefix',
+			});
 			expect(next).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+				mcp_connection_status: 'error',
+				error: 'Unauthorized',
+				client_name: undefined,
+				client_version: undefined,
+				auth_type: 'unknown',
+				error_details: 'Invalid authorization header format - Missing Bearer prefix',
+				reason: 'invalid_bearer_format',
+			});
 		});
 
-		it('should throw error when Bearer token is malformed', async () => {
+		it('should return 401 with WWW-Authenticate header when Bearer token is malformed', async () => {
 			const req = mockReqWith('Bearer');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
@@ -183,10 +203,23 @@ describe('McpServerMiddlewareService', () => {
 
 			const middleware = service.getAuthMiddleware();
 
-			await expect(middleware(req, res, next)).rejects.toThrow(
-				'Invalid authorization header format',
-			);
+			await middleware(req, res, next);
+
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalledWith({
+				message: 'Unauthorized: Invalid authorization header format - Malformed Bearer token',
+			});
 			expect(next).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+				mcp_connection_status: 'error',
+				error: 'Unauthorized',
+				client_name: undefined,
+				client_version: undefined,
+				auth_type: 'unknown',
+				error_details: 'Invalid authorization header format - Malformed Bearer token',
+				reason: 'invalid_bearer_format',
+			});
 		});
 
 		it('should authenticate with valid OAuth token and call next', async () => {
@@ -201,7 +234,7 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(user);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
 
 			const middleware = service.getAuthMiddleware();
 
@@ -223,7 +256,7 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = jest.fn() as NextFunction;
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(user);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
 
 			const middleware = service.getAuthMiddleware();
 
@@ -234,7 +267,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(res.status).not.toHaveBeenCalled();
 		});
 
-		it('should return 401 when token validation fails', async () => {
+		it('should return 401 with WWW-Authenticate header when token validation fails', async () => {
 			const invalidToken = jwtService.sign({
 				sub: 'user-123',
 				aud: 'mcp-server-api',
@@ -245,14 +278,16 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
+			res.header.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(null);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();
@@ -270,33 +305,44 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
+			res.header.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalledWith({
+				message: 'Unauthorized: Authorization header not sent',
+			});
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
 				error: 'Unauthorized',
 				client_name: 'test-client',
 				client_version: '1.0.0',
+				auth_type: 'unknown',
+				error_details: 'Authorization header not sent',
+				reason: 'missing_authorization_header',
 			});
 		});
 
-		it('should handle invalid token format gracefully', async () => {
+		it('should handle invalid token format gracefully with WWW-Authenticate header', async () => {
 			const req = mockReqWith('Bearer invalid-token-format');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
+			res.header.mockReturnThis();
 			const next = jest.fn() as NextFunction;
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(null);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 
+			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();

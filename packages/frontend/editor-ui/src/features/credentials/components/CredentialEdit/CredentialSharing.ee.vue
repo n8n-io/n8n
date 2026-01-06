@@ -19,6 +19,7 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
 type Props = {
@@ -27,12 +28,14 @@ type Props = {
 	credentialPermissions: PermissionsRecord['credential'];
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
+	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null });
+const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
+	'update:shareWithAllUsers': [value: boolean];
 }>();
 
 const i18n = useI18n();
@@ -105,6 +108,11 @@ const sharingSelectPlaceholder = computed(() =>
 		: i18n.baseText('projects.sharing.select.placeholder.user'),
 );
 
+const canShareGlobally = computed(() => {
+	const permissions = getResourcePermissions(usersStore.currentUser?.globalScopes);
+	return permissions.credential?.shareGlobally ?? false;
+});
+
 watch(
 	sharedWithProjects,
 	(changedSharedWithProjects) => {
@@ -162,6 +170,9 @@ function goToUpgrade() {
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
 				:placeholder="sharingSelectPlaceholder"
+				:can-share-globally="canShareGlobally"
+				:is-shared-globally="isSharedGlobally"
+				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>
 	</div>

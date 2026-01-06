@@ -10,7 +10,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from './workflows.store';
-import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { LOCAL_STORAGE_FOCUS_PANEL } from '@/app/constants';
 import { useStorage } from '@/app/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
@@ -108,8 +108,9 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	}) {
 		const focusPanelDataCurrent = focusPanelData.value;
 
-		if (removeEmpty && PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelDataCurrent) {
-			delete focusPanelDataCurrent[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		// No need to remove empty workflow ID as all workflows now have unique IDs from the start
+		if (removeEmpty && '' in focusPanelDataCurrent) {
+			delete focusPanelDataCurrent[''];
 		}
 
 		focusPanelStorage.value = JSON.stringify({
@@ -128,11 +129,13 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
 	function onNewWorkflowSave(wid: string) {
-		if (!currentFocusPanelData.value || !(PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelData.value)) {
+		// With auto-generated IDs, workflows already have their final ID from the start
+		// So this migration is only needed for empty ID case (legacy)
+		if (!currentFocusPanelData.value || !('' in focusPanelData.value)) {
 			return;
 		}
 
-		const latestWorkflowData = focusPanelData.value[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		const latestWorkflowData = focusPanelData.value[''];
 		_setOptions({
 			wid,
 			parameters: latestWorkflowData.parameters,
