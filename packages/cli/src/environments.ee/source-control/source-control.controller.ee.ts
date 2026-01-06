@@ -1,6 +1,10 @@
 import { IWorkflowToImport } from '@/interfaces';
-import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
-import type { SourceControlledFile } from '@n8n/api-types';
+import {
+	PullWorkFolderRequestDto,
+	PushWorkFolderRequestDto,
+	type GitCommitInfo,
+	type SourceControlledFile,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import express from 'express';
@@ -174,7 +178,7 @@ export class SourceControlController {
 		req: AuthenticatedRequest,
 		res: express.Response,
 		@Body payload: PushWorkFolderRequestDto,
-	): Promise<SourceControlledFile[]> {
+	): Promise<{ files: SourceControlledFile[]; commit: GitCommitInfo | null }> {
 		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
 
 		try {
@@ -185,7 +189,20 @@ export class SourceControlController {
 
 			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
-			return result.statusResult;
+
+			// Extract commit info from push result if available
+			const commitInfo: GitCommitInfo | null = result.pushResult?.update?.hash?.to
+				? {
+						hash: result.pushResult.update.hash.to,
+						message: payload.commitMessage ?? 'Updated Workfolder',
+						branch: result.pushResult.update.head?.local ?? '',
+					}
+				: null;
+
+			return {
+				files: result.statusResult,
+				commit: commitInfo,
+			};
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
