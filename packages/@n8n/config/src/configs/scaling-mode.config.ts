@@ -83,11 +83,11 @@ class RedisConfig {
 
 	/** TCP keep-alive initial delay in milliseconds. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
-	keepAliveDelay: number = 0;
+	keepAliveDelay: number = 5000;
 
 	/** TCP keep-alive interval in milliseconds. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
-	keepAliveInterval: number = 1000;
+	keepAliveInterval: number = 5000;
 }
 
 @Config
