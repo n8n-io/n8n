@@ -7,21 +7,20 @@ import IntersectionObserved from '@/app/components/IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 
-import { ElTag } from 'element-plus';
+import { N8nTag } from '@n8n/design-system';
+
 interface TagsContainerProps {
 	tagIds: string[];
 	tagsById: { [id: string]: ITag };
 	limit?: number;
 	clickable?: boolean;
 	responsive?: boolean;
-	hoverable?: boolean;
 }
 
 const props = withDefaults(defineProps<TagsContainerProps>(), {
 	limit: 20,
 	clickable: false,
 	responsive: false,
-	hoverable: false,
 });
 
 const emit = defineEmits<{
@@ -80,8 +79,8 @@ const tags = computed(() => {
 
 // Methods
 const setMaxWidth = () => {
-	const container = tagsContainer.value?.$el as HTMLElement;
-	const parent = container?.parentNode as HTMLElement;
+	const container = (tagsContainer.value as { $el?: HTMLElement })?.$el;
+	const parent = container?.parentNode as HTMLElement | null;
 
 	if (parent) {
 		maxWidth.value = 0;
@@ -137,16 +136,13 @@ onBeforeUnmount(() => {
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
 			>
-				<ElTag
+				<N8nTag
 					v-if="tag.isCount"
 					:title="tag.title"
-					type="info"
-					size="small"
+					:text="tag.name"
+					:clickable="false"
 					class="count-container"
-					:disable-transitions="true"
-				>
-					{{ tag.name }}
-				</ElTag>
+				/>
 				<IntersectionObserved
 					v-else
 					:class="{ hideTag: tag.hidden }"
@@ -154,15 +150,7 @@ onBeforeUnmount(() => {
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
 				>
-					<ElTag
-						:title="tag.name"
-						type="info"
-						size="small"
-						:class="{ hoverable }"
-						:disable-transitions="true"
-					>
-						{{ tag.name }}
-					</ElTag>
+					<N8nTag :title="tag.name" :text="tag.name" :clickable="clickable" />
 				</IntersectionObserved>
 			</span>
 		</span>
@@ -175,23 +163,13 @@ onBeforeUnmount(() => {
 	max-width: 300px;
 }
 
-.tags {
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	max-width: 100%;
-
-	> span {
-		padding-right: 4px; // why not margin? for space between tags to be clickable
-	}
-}
-
 .hideTag {
 	visibility: hidden;
 }
 
-.el-tag.hoverable:hover {
-	border-color: $color-primary;
+.tags {
+	display: flex;
+	gap: var(--spacing--4xs);
 }
 
 .count-container {

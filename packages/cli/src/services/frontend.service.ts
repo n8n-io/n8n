@@ -1,9 +1,4 @@
-import type {
-	FrontendSettings,
-	IEnterpriseSettings,
-	ITelemetrySettings,
-	N8nEnvFeatFlags,
-} from '@n8n/api-types';
+import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -29,42 +24,85 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
+import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
+} from '@/workflows/workflow-history/workflow-history-helper';
 
-export type PublicEnterpriseSettings = Pick<
-	IEnterpriseSettings,
-	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
->;
+/**
+ * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
+ */
+export type PublicFrontendSettings = {
+	/** Controls initialization flow in settings store */
+	settingsMode: FrontendSettings['settingsMode'];
 
-export type PublicFrontendSettings = Pick<
-	FrontendSettings,
-	| 'settingsMode'
-	| 'instanceId'
-	| 'defaultLocale'
-	| 'versionCli'
-	| 'releaseChannel'
-	| 'versionNotifications'
-	| 'userManagement'
-	| 'sso'
-	| 'mfa'
-	| 'authCookie'
-	| 'oauthCallbackUrls'
-	| 'banners'
-	| 'previewMode'
-	| 'telemetry'
-> & {
-	enterprise: PublicEnterpriseSettings;
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
+
+	/** Used to bypass authentication on the workflows/demo page */
+	previewMode: FrontendSettings['previewMode'];
+
+	authCookie: {
+		/** Blocks insecure access incompatible with the authentication cookie. */
+		secure: FrontendSettings['authCookie']['secure'];
+	};
+
+	userManagement: {
+		/** Used to control login page UI behaviour and conditional SSO Login display */
+		authenticationMethod: FrontendSettings['userManagement']['authenticationMethod'];
+
+		/** Enables initial owner setup */
+		showSetupOnFirstLoad: FrontendSettings['userManagement']['showSetupOnFirstLoad'];
+
+		/** Determines forgot password page UX */
+		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+	};
+
+	enterprise: {
+		/** License check for SAML for SSO button visibility */
+		saml: FrontendSettings['enterprise']['saml'];
+
+		/** License check for OIDC for SSO button visibility */
+		oidc: FrontendSettings['enterprise']['oidc'];
+
+		/** License check for LDAP authentication */
+		ldap: FrontendSettings['enterprise']['ldap'];
+	};
+
+	sso: {
+		saml: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
+		};
+		ldap: {
+			/** Config flag for LDAP authentication */
+			loginEnabled: FrontendSettings['sso']['ldap']['loginEnabled'];
+
+			/** Customizes login form label (defaults to "Email") */
+			loginLabel: FrontendSettings['sso']['ldap']['loginLabel'];
+		};
+		oidc: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['oidc']['loginEnabled'];
+
+			/** Required for OIDC authentication redirect URL */
+			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+		};
+	};
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
 };
 
 @Service()
 export class FrontendService {
-	settings: FrontendSettings;
+	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -84,12 +122,10 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
-
-		this.initSettings();
-
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
@@ -112,7 +148,7 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
-	private initSettings() {
+	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -163,9 +199,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -201,7 +234,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -272,7 +305,6 @@ export class FrontendService {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				binaryDataS3: false,
-				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
@@ -312,8 +344,8 @@ export class FrontendService {
 				credits: 0,
 			},
 			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,
@@ -346,10 +378,12 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): FrontendSettings {
+	async getSettings(): Promise<FrontendSettings> {
+		if (!this.settings) {
+			await this.initSettings();
+		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
@@ -362,7 +396,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -407,8 +441,6 @@ export class FrontendService {
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
@@ -438,13 +470,6 @@ export class FrontendService {
 
 		if (this.license.isVariablesEnabled()) {
 			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
-
-		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
-			Object.assign(this.settings.workflowHistory, {
-				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-			});
 		}
 
 		if (this.communityPackagesService) {
@@ -498,42 +523,40 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	getPublicSettings(): PublicFrontendSettings {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
-			instanceId,
 			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
-		} = this.getSettings();
+			enterprise: { saml, ldap, oidc },
+			mfa,
+		} = await this.getSettings();
 
-		return {
+		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
-			instanceId,
 			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: {
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
+		return publicSettings;
 	}
 
 	getModuleSettings() {

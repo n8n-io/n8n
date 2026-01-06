@@ -138,7 +138,17 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
-				require(module);
+				try {
+					require(module);
+				} catch (error) {
+					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						);
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
@@ -590,6 +600,18 @@ export class JsTaskRunner extends TaskRunner {
 			'Reflect.getPrototypeOf = () => ({})',
 			'Object.setPrototypeOf = () => false',
 			'Reflect.setPrototypeOf = () => false',
+
+			// prevent Error.prepareStackTrace RCE attack BEFORE disabling defineProperty
+			// This V8 API allows accessing the real global object via stack frame's getThis()
+			'delete Error.prepareStackTrace',
+			'delete Error.captureStackTrace',
+			'Object.defineProperty(Error, "prepareStackTrace", { configurable: false, writable: false, value: undefined })',
+			'Object.defineProperty(Error, "captureStackTrace", { configurable: false, writable: false, value: undefined })',
+
+			// prevent defineProperty attacks (used to bypass sandbox via Error.prepareStackTrace)
+			// Must come AFTER we've locked down Error properties above
+			'Object.defineProperty = () => ({})',
+			'Object.defineProperties = () => ({})',
 
 			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,

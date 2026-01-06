@@ -7,4 +7,6 @@ export class CreateCredentialDto extends Z.class({
 	data: z.record(z.string(), z.unknown()),
 	projectId: z.string().optional(),
 	uiContext: z.string().optional(),
+	isGlobal: z.boolean().optional(),
+	isResolvable: z.boolean().optional(),
 }) {}

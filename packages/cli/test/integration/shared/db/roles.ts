@@ -1,3 +1,4 @@
+import { RoleCacheService } from '@/services/role-cache.service';
 import { Role, RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
@@ -7,6 +8,7 @@ import type { Scope as ScopeType } from '@n8n/permissions';
  */
 export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleRepository = Container.get(RoleRepository);
+	const roleCacheService = Container.get(RoleCacheService);
 
 	const defaultRole: Partial<Role> = {
 		slug: `test-role-${Math.random().toString(36).substring(7)}`,
@@ -20,7 +22,11 @@ export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleData = { ...defaultRole, ...overrides };
 	const role = Object.assign(new Role(), roleData);
 
-	return await roleRepository.save(role);
+	const createdRole = await roleRepository.save(role);
+
+	// Force refresh the role cache to include the newly created role (important when running concurrent tests)
+	await roleCacheService.refreshCache();
+	return createdRole;
 }
 
 /**

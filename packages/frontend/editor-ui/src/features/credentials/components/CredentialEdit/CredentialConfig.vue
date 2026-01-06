@@ -36,9 +36,9 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
-	N8nInlineAskAssistantButton,
 	N8nCallout,
 	N8nInfoTip,
+	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nNotice,
 	N8nText,
@@ -306,7 +306,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@click="$emit('retest')"
 			/>
 
-			<template v-if="credentialPermissions.update">
+			<template
+				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
+			>
 				<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
 					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
@@ -363,7 +365,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="credentialType && credentialPermissions.update"
+				v-if="
+					credentialType &&
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+				"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -376,7 +381,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					isOAuthType &&
 					requiredPropertiesFilled &&
 					!isOAuthConnected &&
-					credentialPermissions.update
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
 				"
 				:is-google-o-auth-type="isGoogleOAuthType"
 				data-test-id="oauth-connect-button"

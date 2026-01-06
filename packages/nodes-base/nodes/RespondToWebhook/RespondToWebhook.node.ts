@@ -83,8 +83,7 @@ export class RespondToWebhook implements INodeType {
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		// Keep the default version at 1.4 until streaming is fully supported
-		defaultVersion: 1.4,
+		defaultVersion: 1.5,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',

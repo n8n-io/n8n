@@ -24,10 +24,17 @@ import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
+import type {
+	IExecutionContext,
+	WorkflowExecuteModeValues as WorkflowExecuteMode,
+} from './execution-context';
 import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+
+export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -141,6 +148,8 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -231,6 +240,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void>;
 
 	abstract getCredentialsProperties(type: string): INodeProperties[];
@@ -686,13 +696,30 @@ export interface BaseHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
+const __brand = Symbol('resolvedFilePath');
+
+export type ResolvedFilePath = string & {
+	[__brand]: 'ResolvedFilePath';
+};
+
 export interface FileSystemHelperFunctions {
-	createReadStream(path: PathLike): Promise<Readable>;
+	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
+	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
+	createReadStream(filePath: ResolvedFilePath): Promise<Readable>;
 	getStoragePath(): string;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
 	writeContentToFile(
-		path: PathLike,
+		path: ResolvedFilePath,
 		content: string | Buffer | Readable,
-		flag?: string,
+		flag?: number,
 	): Promise<void>;
 }
 
@@ -925,6 +952,8 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
+	isNodeFeatureEnabled(featureName: string): boolean;
+	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -979,6 +1008,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			options?: {
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
+				executionMode?: WorkflowExecuteMode;
 			},
 		): Promise<ExecuteWorkflowData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
@@ -995,6 +1025,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendResponse(response: IExecuteResponsePromiseData): void;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
+		/** Returns true if the node is being executed as an AI Agent tool */
+		isToolExecution(): boolean;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -1041,6 +1073,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			settings: unknown,
 			itemIndex: number,
 		): Promise<Result<T, E>>;
+
+		getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string };
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -1074,6 +1108,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'startJob'
 		| 'helpers'
+		| 'isToolExecution'
 	> & {
 		getNextRunIndex(): number;
 		continueOnFail(): boolean;
@@ -1117,7 +1152,10 @@ export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
-	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
+	getWorkflowNodeContext(
+		nodeType: string,
+		useActiveVersion?: boolean,
+	): Promise<IWorkflowNodeContext | null>;
 }
 
 export interface IWorkflowLoader {
@@ -1320,6 +1358,8 @@ export interface INodeParameterResourceLocator {
 	__regex?: string;
 }
 
+export type IconOrEmoji = { type: 'icon'; value: string } | { type: 'emoji'; value: string };
+
 export type NodeParameterValueType =
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
 	| NodeParameterValue
@@ -1328,6 +1368,7 @@ export type NodeParameterValueType =
 	| ResourceMapperValue
 	| FilterValue
 	| AssignmentCollectionValue
+	| IconOrEmoji
 	| NodeParameterValue[]
 	| INodeParameters[]
 	| INodeParameterResourceLocator[]
@@ -1345,6 +1386,7 @@ export type NodePropertyTypes =
 	| 'dateTime'
 	| 'fixedCollection'
 	| 'hidden'
+	| 'icon'
 	| 'json'
 	| 'callout'
 	| 'notice'
@@ -1437,11 +1479,15 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
+	dateOnly?: boolean; // Supported by: dateTime
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	hideOptionalFields?: boolean; // Supported by: fixedCollection - hide non-required fields by default
+	addOptionalFieldButtonText?: string; // Supported by: fixedCollection with hideOptionalFields set to true
+	showEvenWhenOptional?: boolean; // Supported by: fixedCollection with hideOptionalFields
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
@@ -1487,7 +1533,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export type FilterTypeOptions = {
-	version: 1 | 2 | {}; // required so nodes are pinned on a version
+	version: 1 | 2 | 3 | {}; // required so nodes are pinned on a version
 	caseSensitive?: boolean | string; // default = true
 	leftValue?: string; // when set, user can't edit left side of condition
 	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
@@ -1515,12 +1561,17 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
+export type NodeFeatures = Record<string, boolean>;
+export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
+export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@feature'?: Array<string | DisplayCondition>;
 		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
@@ -1570,12 +1621,23 @@ export interface INodeProperties {
 	ignoreValidationDuringExecution?: boolean;
 	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
 	allowArbitraryValues?: boolean;
+	// This field indicates that the field is a resolvable field that should be resolved in dynamic credential setup
+	resolvableField?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	/**
+	 * If provided, a slow load notice will be shown to the user if the resource locator takes longer than the timeout to load.
+	 * @example
+	 * {
+	 *   message: 'If loading takes longer than expected, try selecting a resource using "By ID"',
+	 *   timeout: 10000,
+	 * }
+	 */
+	slowLoadNotice?: { message: string; timeout: number };
 	/**
 	 * If true, the resource locator will not show an error if the credentials are not selected
 	 */
@@ -2196,6 +2258,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	features?: NodeFeaturesDefinition;
 }
 
 export type TriggerPanelDefinition = {
@@ -2401,48 +2464,6 @@ export interface IRun {
 	jobId?: string;
 }
 
-// Contains all the data which is needed to execute a workflow and so also to
-// start restart it again after it did fail.
-// The RunData, ExecuteData and WaitForExecution contain often the same data.
-export interface IRunExecutionData {
-	startData?: {
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
-		runNodeFilter?: string[];
-	};
-	resultData: {
-		error?: ExecutionError;
-		runData: IRunData;
-		pinData?: IPinData;
-		lastNodeExecuted?: string;
-		metadata?: Record<string, string>;
-	};
-	executionData?: {
-		contextData: IExecuteContextData;
-		nodeExecutionStack: IExecuteData[];
-		metadata: {
-			// node-name: metadata by runIndex
-			[key: string]: ITaskMetadata[];
-		};
-		waitingExecution: IWaitingForExecution;
-		waitingExecutionSource: IWaitingForExecutionSource | null;
-	};
-	parentExecution?: RelatedExecution;
-	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
-	 */
-	validateSignature?: boolean;
-	waitTill?: Date;
-	pushRef?: string;
-
-	/** Data needed for a worker to run a manual execution. */
-	manualData?: Pick<
-		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
-	>;
-}
 export type SchemaType =
 	| 'string'
 	| 'number'
@@ -2477,6 +2498,7 @@ export interface RelatedExecution {
 	workflowId: string;
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
+	executionContext?: IExecutionContext;
 }
 
 type SubNodeExecutionDataAction = {
@@ -2508,6 +2530,17 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+
+	/**
+	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
+	 * dynamic time savings that can be calculated based on execution data (e.g., number of
+	 * items processed). The behavior determines how this value interacts with the workflow's
+	 * default timeSavedPerExecution setting.
+	 */
+	timeSaved?: {
+		/** Time saved in minutes */
+		minutes: number;
+	};
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2577,6 +2610,7 @@ export type WorkflowId = IWorkflowBase['id'];
 export interface IWorkflowBase {
 	id: string;
 	name: string;
+	description?: string | null;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: Date;
@@ -2588,8 +2622,22 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
+	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+}
+
+interface IWorkflowHistory {
+	versionId: string;
+	workflowId: string;
+	nodes: INode[];
+	connections: IConnections;
+	authors: string;
+	name: string | null;
+	description: string | null;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface IWorkflowCredentials {
@@ -2598,8 +2646,18 @@ export interface IWorkflowCredentials {
 	};
 }
 
+export interface IDestinationNode {
+	nodeName: string;
+	/**
+	 * Execution mode for the destination node:
+	 * - 'inclusive': Execute up to and including the destination node
+	 * - 'exclusive': Execute up to but excluding the destination node
+	 */
+	mode: 'inclusive' | 'exclusive';
+}
+
 export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
@@ -2636,6 +2694,7 @@ export interface ExecuteWorkflowOptions {
 	parentCallbackManager?: CallbackManager;
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
+	executionMode?: WorkflowExecuteMode;
 }
 
 export type AiEvent =
@@ -2718,19 +2777,8 @@ export interface IWorkflowExecuteAdditionalData {
 		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
+	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 }
-
-export type WorkflowExecuteMode =
-	| 'cli'
-	| 'error'
-	| 'integrated'
-	| 'internal'
-	| 'manual'
-	| 'retry'
-	| 'trigger'
-	| 'webhook'
-	| 'evaluation'
-	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2757,7 +2805,9 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
+	credentialResolverId?: string;
 }
 
 export interface WorkflowFEMeta {
@@ -3026,6 +3076,7 @@ export interface ResourceMapperField {
 	removed?: boolean;
 	options?: INodePropertyOptions[];
 	readOnly?: boolean;
+	defaultValue?: string | number | boolean | null;
 }
 
 export type FormFieldsParameter = Array<{
@@ -3040,6 +3091,7 @@ export type FormFieldsParameter = Array<{
 	formatDate?: string;
 	html?: string;
 	placeholder?: string;
+	defaultValue?: string;
 	fieldName?: string;
 	fieldValue?: string;
 	limitSelection?: 'exact' | 'range' | 'unlimited';
@@ -3111,7 +3163,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2;
+	version: 1 | 2 | 3;
 };
 
 export type FilterValue = {

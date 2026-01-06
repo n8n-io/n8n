@@ -23,7 +23,7 @@ export class OpenAiV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2],
+			version: [2, 2.1],
 			defaults: {
 				name: 'OpenAI',
 			},

@@ -31,7 +31,15 @@ import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nIcon, N8nInput, N8nLink, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
@@ -333,6 +341,7 @@ const onAddResourceClicked = async () => {
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
+			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
@@ -344,6 +353,18 @@ const onAddResourceClicked = async () => {
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</N8nText>
 				</div>
+			</template>
+			<template #item-badge="{ item, isHovered }">
+				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
+					<N8nTooltip
+						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+						placement="top"
+					>
+						<span :class="$style.inactiveBadge">
+							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
+						</span>
+					</N8nTooltip>
+				</span>
 			</template>
 			<div
 				:class="{
@@ -463,4 +484,16 @@ const onAddResourceClicked = async () => {
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+.inactiveBadgeWrapper {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
+.inactiveBadge {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--warning);
+}
 </style>

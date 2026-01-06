@@ -9,9 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { prepareReturnItem } from '../utils';
 import type { SetNodeOptions } from '../interfaces';
 import { INCLUDE } from '../interfaces';
+import { parseJsonParameter, prepareReturnItem } from '../utils';
 
 describe('prepareReturnItem', () => {
 	const mockNode = mock<INode>({
@@ -445,6 +445,47 @@ describe('prepareReturnItem', () => {
 				nullField: null,
 				undefinedField: null,
 			});
+		});
+	});
+});
+
+describe('parseJsonParameter', () => {
+	const mockNode = mock<INode>({
+		name: 'Set Node',
+		typeVersion: 3.4,
+	});
+
+	describe('Valid JSON input', () => {
+		it('should parse valid JSON string', () => {
+			const result = parseJsonParameter('{"key": "value"}', mockNode, 0);
+			expect(result).toEqual({ key: 'value' });
+		});
+
+		it('should parse valid JSON object directly', () => {
+			const input = { key: 'value' };
+			const result = parseJsonParameter(input, mockNode, 0);
+			expect(result).toEqual(input);
+		});
+
+		it('should parse complex valid JSON', () => {
+			const json = '{"nested": {"key": "value"}, "array": [1, 2, 3]}';
+			const result = parseJsonParameter(json, mockNode, 0);
+			expect(result).toEqual({ nested: { key: 'value' }, array: [1, 2, 3] });
+		});
+	});
+
+	describe('JSON repair', () => {
+		it('should repair JSON string', () => {
+			const result = parseJsonParameter('{key: "value"}', mockNode, 0);
+			expect(result).toEqual({ key: 'value' });
+		});
+	});
+
+	describe('Error cases', () => {
+		it('should throw error for invalid JSON that cannot be recovered', () => {
+			expect(() => parseJsonParameter('{key1: "value",, key2: "value2"}', mockNode, 0)).toThrow(
+				"The 'JSON Output' in item 0 contains invalid JSON",
+			);
 		});
 	});
 });

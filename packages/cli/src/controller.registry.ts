@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
+import type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
@@ -19,7 +19,7 @@ import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
+import { send } from '@/response-helper';
 
 @Service()
 export class ControllerRegistry {
@@ -52,7 +52,23 @@ export class ControllerRegistry {
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);
 
+		const staticRouters = (controllerClass as any).routers as StaticRouterMetadata[] | undefined;
+
+		if (staticRouters) {
+			for (const routerConfig of staticRouters) {
+				if (!routerConfig.router) {
+					throw new UnexpectedError(
+						`Router is undefined for path "${routerConfig.path}" in controller "${controllerClass.name}"`,
+					);
+				}
+				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
+				router.use(routerConfig.path, ...middlewares, routerConfig.router);
+			}
+		}
+
+		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
+			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',
 				controller,
@@ -63,7 +79,7 @@ export class ControllerRegistry {
 				const args: unknown[] = [req, res];
 				for (let index = 0; index < route.args.length; index++) {
 					const arg = route.args[index];
-					if (!arg) continue; // Skip args without any decorators
+					if (!arg) continue;
 					if (arg.type === 'param') args.push(req.params[arg.key]);
 					else if (['body', 'query'].includes(arg.type)) {
 						const paramType = argTypes[index] as ZodClass;
@@ -79,34 +95,64 @@ export class ControllerRegistry {
 				return await controller[handlerName](...args);
 			};
 
-			router[route.method](
-				route.path,
-				...(inProduction && route.rateLimit
-					? [this.createRateLimitMiddleware(route.rateLimit)]
-					: []),
+			const middlewares = this.buildMiddlewares(route, controllerMiddlewares);
+			const finalHandler = route.usesTemplates
+				? async (req: Request, res: Response) => {
+						await handler(req, res);
+					}
+				: send(handler);
 
-				...(route.skipAuth
-					? []
-					: ([
-							this.authService.createAuthMiddleware({
-								allowSkipMFA: route.allowSkipMFA,
-								allowSkipPreviewAuth: route.allowSkipPreviewAuth,
-							}),
-							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
-						] as RequestHandler[])),
-				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
-				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
-				...controllerMiddlewares,
-				...route.middlewares,
-				route.usesTemplates
-					? async (req, res) => {
-							// When using templates, intentionally drop the return value,
-							// since template rendering writes directly to the response.
-							await handler(req, res);
-						}
-					: send(handler),
+			router[route.method](route.path, ...middlewares, finalHandler);
+		}
+	}
+
+	/**
+	 * Builds middleware array based on route configuration.
+	 * Used for both static routers and inline router definitions.
+	 */
+	private buildMiddlewares(
+		route: {
+			skipAuth?: boolean;
+			allowSkipMFA?: boolean;
+			allowSkipPreviewAuth?: boolean;
+			rateLimit?: boolean | RateLimit;
+			licenseFeature?: BooleanLicenseFeature;
+			accessScope?: AccessScope;
+			middlewares?: RequestHandler[];
+		},
+		controllerMiddlewares: RequestHandler[],
+	): RequestHandler[] {
+		const middlewares: RequestHandler[] = [];
+
+		if (inProduction && route.rateLimit) {
+			middlewares.push(this.createRateLimitMiddleware(route.rateLimit));
+		}
+
+		if (!route.skipAuth) {
+			middlewares.push(
+				this.authService.createAuthMiddleware({
+					allowSkipMFA: route.allowSkipMFA ?? false,
+					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
+				}),
+				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
 			);
 		}
+
+		if (route.licenseFeature) {
+			middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+		}
+
+		if (route.accessScope) {
+			middlewares.push(this.createScopedMiddleware(route.accessScope));
+		}
+
+		middlewares.push(...controllerMiddlewares);
+
+		if (route.middlewares) {
+			middlewares.push(...route.middlewares);
+		}
+
+		return middlewares;
 	}
 
 	private createRateLimitMiddleware(rateLimit: true | RateLimit): RequestHandler {

@@ -2,6 +2,7 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref } from 'vue';
 
+import { useParentScroll } from '../../composables/useParentScroll';
 import type { IUser, UserAction } from '../../types';
 import type { IconOrientation, IconSize } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
@@ -22,24 +23,29 @@ interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAc
 	disabled?: boolean;
 	popperClass?: string;
 	trigger?: 'click' | 'hover';
+	closeOnParentScroll?: boolean;
 }
 
 type ActionValue = Actions[number]['value'];
 
 defineOptions({ name: 'N8nActionToggle' });
-withDefaults(defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(), {
-	actions: () => [],
-	placement: 'bottom',
-	size: 'medium',
-	theme: 'default',
-	iconSize: 'medium',
-	iconOrientation: 'vertical',
-	loading: false,
-	loadingRowCount: 3,
-	disabled: false,
-	popperClass: '',
-	trigger: 'click',
-});
+const props = withDefaults(
+	defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(),
+	{
+		actions: () => [],
+		placement: 'bottom',
+		size: 'medium',
+		theme: 'default',
+		iconSize: 'medium',
+		iconOrientation: 'vertical',
+		loading: false,
+		loadingRowCount: 3,
+		disabled: false,
+		popperClass: '',
+		trigger: 'click',
+		closeOnParentScroll: true,
+	},
+);
 
 const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 
@@ -49,8 +55,26 @@ const emit = defineEmits<{
 	'item-mouseup': [action: UserAction<UserType>];
 }>();
 
+// Close dropdown when parent scrolls
+const { attachScrollListeners, detachScrollListeners } = useParentScroll(actionToggleRef, () => {
+	if (props.closeOnParentScroll) {
+		actionToggleRef.value?.handleClose();
+	}
+});
+
 const onCommand = (value: string) => emit('action', value);
-const onVisibleChange = (value: boolean) => emit('visible-change', value);
+const onVisibleChange = (value: boolean) => {
+	emit('visible-change', value);
+
+	if (props.closeOnParentScroll) {
+		if (value) {
+			attachScrollListeners();
+		} else {
+			detachScrollListeners();
+		}
+	}
+};
+
 const openActionToggle = (isOpen: boolean) => {
 	if (isOpen) {
 		actionToggleRef.value?.handleOpen();

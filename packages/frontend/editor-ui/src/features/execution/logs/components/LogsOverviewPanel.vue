@@ -160,7 +160,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 </template>
 
 <style lang="scss" module>
-@use '@/app/styles/variables' as vars;
+@use '@/app/css/variables' as vars;
 
 .container {
 	flex-grow: 1;

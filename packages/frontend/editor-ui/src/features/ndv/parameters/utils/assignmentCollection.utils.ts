@@ -16,7 +16,7 @@ export function typeFromExpression(expression: string): string {
 	try {
 		const resolved = resolveParameter(`=${expression}`);
 		return inferAssignmentType(resolved);
-	} catch (error) {
+	} catch {
 		return 'string';
 	}
 }

@@ -137,6 +137,20 @@ describe('user.schema', () => {
 				isValid: false,
 			},
 			{
+				name: 'chat user',
+				data: {
+					id: '123',
+					firstName: 'John',
+					lastName: 'Doe',
+					email: 'johndoe@example.com',
+					role: 'global:chatUser',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+					projects: [],
+				},
+				isValid: true,
+			},
+			{
 				name: 'invalid role',
 				data: {
 					id: '123',

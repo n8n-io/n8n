@@ -103,6 +103,7 @@ export class MessageEventBusDestinationSyslog
 			);
 		} catch (error) {
 			if (error.message) this.logger.debug(error.message as string);
+			throw error;
 		}
 		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
 			await new Promise((resolve) => setTimeout(resolve, 500));

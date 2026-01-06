@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
 import { getFilterOperator } from './utils';
@@ -46,9 +46,7 @@ const getOperatorId = (operator: FilterOperator): string =>
 
 function onSelectVisibleChange(open: boolean) {
 	menuOpen.value = open;
-	if (!open) {
-		submenu.value = 'none';
-	}
+	submenu.value = 'none';
 }
 
 function onGroupSelect(group: string) {
@@ -56,6 +54,13 @@ function onGroupSelect(group: string) {
 		submenu.value = group;
 	}
 }
+
+watch(
+	() => props.selected,
+	(newSelected) => {
+		selected.value = newSelected;
+	},
+);
 </script>
 
 <template>
@@ -75,14 +80,18 @@ function onGroupSelect(group: string) {
 		<div v-if="shouldRenderItems" :class="$style.groups">
 			<div v-for="group of groups" :key="group.name">
 				<N8nPopover
-					:visible="submenu === group.id"
-					placement="right-start"
+					:open="submenu === group.id"
+					side="right"
+					align="start"
+					:side-offset="2"
 					:show-arrow="false"
-					:offset="2"
-					:popper-style="{ padding: 'var(--spacing--3xs) 0' }"
 					width="auto"
+					:content-class="$style.submenuContent"
+					:enable-scrolling="false"
+					:teleported="false"
+					:force-mount="true"
 				>
-					<template #reference>
+					<template #trigger>
 						<div
 							:class="[
 								$style.group,
@@ -101,14 +110,16 @@ function onGroupSelect(group: string) {
 							<N8nIcon icon="chevron-right" color="text-light" size="xsmall" />
 						</div>
 					</template>
-					<div>
-						<N8nOption
-							v-for="operator in group.children"
-							:key="getOperatorId(operator)"
-							:value="getOperatorId(operator)"
-							:label="i18n.baseText(operator.name)"
-						/>
-					</div>
+					<template #content>
+						<div>
+							<N8nOption
+								v-for="operator in group.children"
+								:key="getOperatorId(operator)"
+								:value="getOperatorId(operator)"
+								:label="i18n.baseText(operator.name)"
+							/>
+						</div>
+					</template>
 				</N8nPopover>
 			</div>
 		</div>
@@ -146,6 +157,11 @@ function onGroupSelect(group: string) {
 		font-weight: var(--font-weight--bold);
 	}
 
+	&.selected {
+		color: var(--color--primary);
+		font-weight: var(--font-weight--bold);
+	}
+
 	&:hover {
 		background: var(--color--background);
 	}
@@ -155,5 +171,9 @@ function onGroupSelect(group: string) {
 	display: flex;
 	gap: var(--spacing--2xs);
 	align-items: center;
+}
+
+.submenuContent {
+	padding: var(--spacing--3xs) 0;
 }
 </style>
