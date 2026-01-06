@@ -1,261 +1,180 @@
 # Test Plan: supplier-base.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2025-01-05
+**Date:** 2026-01-06
 **Coverage Target:** ≥95% all metrics
 **Test File:** `supplier-base.test.ts`
 
-## Code Analysis
+## Code Surface
 
-### Exports
-- `SupplierBase<TI, TS, TE>` (abstract class) - Generic supplier with retry logic
+**Exports:** `SupplierBase` (abstract class)
 
-### Properties
-- `connection: IntentoConnectionType` (protected readonly) - n8n connection type
-- `functions: IFunctions` (protected readonly) - n8n execution functions
-- `tracer: Tracer` (protected readonly) - Logging and tracing
-- `context: ExecutionContext` (protected readonly) - Execution configuration
-- `name: string` (readonly) - Supplier name
+**Dependencies:**
+- `IntentoConnectionType` - n8n workflow type (type import only)
+- `ContextFactory.read()` - needs mocking
+- `ExecutionContext` - needs mocking (provides maxAttempts, calculateDelay, createAbortSignal)
+- `Tracer` - needs mocking (debug, info, warn, bugDetected methods)
+- `IFunctions` - needs mocking (addInputData, addOutputData, getNode)
+- `Delay.apply()` - needs mocking
+- `SupplyRequestBase`, `SupplyResponseBase`, `SupplyErrorBase` - need concrete test implementations
 
-### Constructor Logic
-- Lines 50-57: Initializes supplier with name, connection, and functions
-- Creates Tracer instance
-- Reads ExecutionContext from functions
+**Branches:** 10 conditional branches
+- Line 63: `if (result instanceof SupplyResponseBase)` - success path
+- Line 65: `if (!result.isRetriable)` - non-retriable error path
+- Line 67: `if (result)` - result exists check
+- Line 95: `if (attempt === 0)` - first attempt (0 delay)
+- Line 103-105: try/catch block - error handling
+- Line 115: `if (result instanceof SupplyResponseBase)` - success completion
+- Line 120: `if (result.isRetriable)` - retriable vs non-retriable logging
 
-### Public Methods
-- `supplyWithRetries(request, signal?)` - Lines 68-81: Main retry orchestration
-  - Loops up to `context.maxAttempts` times
-  - Exits early on success or non-retryable errors
-  - Returns TS or TE
-  - Throws if no attempts made (bug scenario)
+**ESLint Considerations:**
+- File-level disables needed: `@typescript-eslint/no-unsafe-assignment` (for mock setups)
+- Type assertions needed: Mock return values, test class instantiation
+- Import order: external packages → types → implementation
 
-### Private Methods
-- `executeAttempt(attempt, request, signal?)` - Lines 97-112: Single attempt execution
-  - Applies exponential backoff delay
-  - Clones request for immutability
-  - Calls abstract `supply()` method
-  - Handles TimeoutError specially
-  - Tracks attempt in n8n UI
+## Test Cases
 
-- `startAttempt(request, attempt)` - Lines 114-119: Starts tracking in n8n
-  - Logs attempt start
-  - Calls `addInputData()` to register input
+### SupplierBase (Abstract Class - Test via Concrete Implementation)
 
-- `completeAttempt(index, result, attempt)` - Lines 121-130: Completes tracking in n8n
-  - Logs success/failure
-  - Calls `addOutputData()` with result or error
-
-- `failAndThrow(index, attempt, error)` - Lines 132-140: Handles unexpected errors
-  - Converts to NodeOperationError
-  - Tracks in n8n UI
-  - Throws error
-
-### Abstract Methods (Must be tested via concrete implementation)
-- `supply(request, signal?)` - Line 90: Actual supply implementation
-- `onTimeOut(request)` - Line 96: Timeout error creator
-
-### Dependencies to Mock
-- `IFunctions` - n8n execution functions
-- `Tracer` - Logging/tracing
-- `ExecutionContext` - Configuration (maxAttempts, timeouts, delays)
-- `ContextFactory` - Creates ExecutionContext
-- `Delay.apply()` - Exponential backoff delays
-- `AbortSignal` - Cancellation/timeout signals
-
-## Test Case Inventory
-
-### BL-XX: Business Logic
+#### Business Logic (BL-XX)
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-01 | should initialize supplier with name, connection, and functions | Lines 50-57, constructor |
-| BL-02 | should create Tracer instance during construction | Line 54, tracer initialization |
-| BL-03 | should read ExecutionContext during construction | Line 55, context initialization |
-| BL-04 | should return response on first successful attempt | Lines 75-76, early exit on success |
-| BL-05 | should retry on retryable error and succeed on second attempt | Lines 74-77, retry loop |
-| BL-06 | should exit early on non-retryable error without retrying | Lines 77-78, non-retryable exit |
-| BL-07 | should apply exponential backoff delay before each attempt | Line 102, delay application |
-| BL-08 | should clone request for each retry attempt | Line 104, request immutability |
-| BL-09 | should track input data in n8n UI for each attempt | Line 117, addInputData call |
-| BL-10 | should track output data in n8n UI for successful attempt | Line 127, addOutputData with response |
-| BL-11 | should track error in n8n UI for failed attempt | Line 130, addOutputData with error |
+| BL-01 | should initialize with name, connection, functions, tracer, and context | Constructor lines 35-41, property initialization |
+| BL-02 | should succeed on first attempt with valid response | Lines 55-68, happy path with immediate success |
+| BL-03 | should return success response immediately without retry | Lines 62-63, early return on SupplyResponseBase |
+| BL-04 | should track input data with addInputData on attempt start | Lines 124-127, startAttempt method |
+| BL-05 | should track output data with addOutputData on success | Lines 115-118, completeAttempt success path |
+| BL-06 | should clone request before supply call to prevent mutation | Line 101, request.clone() invocation |
+| BL-07 | should apply exponential backoff delay before each attempt | Lines 98-99, Delay.apply with calculateDelay |
+| BL-08 | should use context.createAbortSignal for cancellation | Line 58, createAbortSignal chaining |
 
-### EC-XX: Edge Cases
+#### Edge Cases (EC-XX)
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-01 | should handle timeout error and convert to TE | Lines 108-111, TimeoutError handling |
-| EC-02 | should retry up to maxAttempts for retryable errors | Lines 74-77, retry limit |
-| EC-03 | should return last retryable error after maxAttempts exhausted | Line 79, final error return |
-| EC-04 | should handle signal cancellation gracefully | Line 69, abort signal |
-| EC-05 | should calculate delay as zero for first attempt | Line 102, attempt 0 delay |
-| EC-06 | should pass abort signal through to supply method | Line 104, signal propagation |
-| EC-07 | should call onTimeOut when TimeoutError occurs | Line 109, timeout handler |
-| EC-08 | should track attempt number correctly in logs | Lines 115, 123, 126, attempt tracking |
-| EC-09 | should handle multiple retryable errors before success | Retry sequence validation |
-| EC-10 | should preserve runIndex correlation between input and output | Lines 118, 127, 130, index usage |
+| EC-01 | should retry up to maxAttempts times for retriable errors | Lines 61-66, retry loop with retriable errors |
+| EC-02 | should stop retrying on first non-retriable error | Lines 64-65, early exit on non-retriable |
+| EC-03 | should handle zero delay on first attempt (attempt 0) | Line 98, calculateDelay(0) |
+| EC-04 | should respect AbortSignal cancellation during delay | Line 99, signal passed to Delay.apply |
+| EC-05 | should respect AbortSignal cancellation during supply call | Lines 100, signal passed to supply() |
+| EC-06 | should return last retriable error when all attempts exhausted | Lines 61-67, loop completion with retriable errors |
+| EC-07 | should log retriable errors as info level | Lines 120-121, retriable error logging |
+| EC-08 | should log non-retriable errors as warn level | Lines 122-123, non-retriable error logging |
+| EC-09 | should log success as debug level | Line 116, success logging |
+| EC-10 | should add error output data for retriable errors | Line 125, addOutputData with error |
 
-### EH-XX: Error Handling
+#### Error Handling (EH-XX)
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should throw if no attempts were made (bug scenario) | Line 79, errorAndThrow call |
-| EH-02 | should handle CoreError with clear message | Line 136, CoreError handling |
-| EH-03 | should handle unexpected error with bug message | Lines 136-137, unexpected error |
-| EH-04 | should track unexpected error in n8n UI | Line 138, error output tracking |
-| EH-05 | should rethrow unexpected errors after tracking | Line 139, error propagation |
+| EH-01 | should catch exceptions and convert to error response via onError | Lines 103-106, catch block |
+| EH-02 | should complete attempt with error response after exception | Line 107, completeAttempt after catch |
+| EH-03 | should log bug detection if no attempts were made | Line 68, bugDetected for impossible state |
+| EH-04 | should pass original request to onError for context | Line 105, request passed to onError |
+| EH-05 | should add error output data for non-retriable errors | Line 125, addOutputData with non-retriable error |
 
 ## Mock Strategy
 
-### Mocked Dependencies
+**ExecutionContext mock:**
+- `maxAttempts: number` (default 3)
+- `calculateDelay(attempt: number): number` (returns attempt * 100)
+- `createAbortSignal(signal?: AbortSignal): AbortSignal`
+
+**Tracer mock:**
+- `debug(message: string, metadata?: LogMetadata): void`
+- `info(message: string, metadata?: LogMetadata): void`
+- `warn(message: string, metadata?: LogMetadata): void`
+- `bugDetected(where: string, message: string, metadata?: LogMetadata): void`
+
+**IFunctions mock:**
+- `addInputData(connection: IntentoConnectionType, data: any): { index: number }`
+- `addOutputData(connection: IntentoConnectionType, index: number, data: any): void`
+- `getNode(): INode`
+
+**Delay mock:**
+- `apply(ms: number, signal?: AbortSignal): Promise<void>`
+
+**ContextFactory mock:**
+- `read(ctor: typeof ExecutionContext, functions: IFunctions, tracer: Tracer): ExecutionContext`
+
+**Test implementations:**
+- `TestRequest extends SupplyRequestBase` with clone() method
+- `TestResponse extends SupplyResponseBase`
+- `TestError extends SupplyErrorBase` with isRetriable flag
+- `TestSupplier extends SupplierBase` implementing supply() and onError()
+
+## Test Data Fixtures
+
+**Test request:**
 ```typescript
-// Mock IFunctions
-const mockFunctions = mock<IFunctions>();
-mockFunctions.addInputData.mockReturnValue({ index: 0 });
-mockFunctions.addOutputData.mockReturnValue();
-mockFunctions.getNode.mockReturnValue(mockNode);
-
-// Mock Tracer
-jest.mock('../../tracing/tracer', () => ({
-  Tracer: jest.fn().mockImplementation(() => ({
-    debug: jest.fn(),
-    info: jest.fn(),
-    errorAndThrow: jest.fn((msg) => { throw new Error(msg); }),
-    nodeName: 'TestNode',
-  })),
-}));
-
-// Mock ExecutionContext
-const mockContext = mock<ExecutionContext>();
-mockContext.maxAttempts = 3;
-mockContext.calculateDelay.mockImplementation((attempt) => attempt * 100);
-mockContext.createAbortSignal.mockImplementation((signal) => signal || new AbortController().signal);
-
-// Mock ContextFactory
-jest.mock('../../context/context-factory', () => ({
-  ContextFactory: {
-    read: jest.fn().mockReturnValue(mockContext),
-  },
-}));
-
-// Mock Delay
-jest.mock('../../utils/delay', () => ({
-  Delay: {
-    apply: jest.fn().mockResolvedValue(undefined),
-  },
-}));
-```
-
-### Test Double Pattern
-```typescript
-// Concrete implementation for testing abstract class
-class TestSupplier extends SupplierBase<TestRequest, TestResponse, TestError> {
-  public supplyMock = jest.fn<Promise<TestResponse | TestError>, [TestRequest, AbortSignal?]>();
-  public onTimeOutMock = jest.fn<TestError, [TestRequest]>();
-
-  protected async supply(request: TestRequest, signal?: AbortSignal): Promise<TestResponse | TestError> {
-    return this.supplyMock(request, signal);
-  }
-
-  protected onTimeOut(request: TestRequest): TestError {
-    return this.onTimeOutMock(request);
-  }
-}
-
-// Test data classes
 class TestRequest extends SupplyRequestBase {
   constructor(public data: string) { super(); }
-  asLogMetadata() { return { requestId: this.requestId, data: this.data }; }
-  asDataObject() { return { requestId: this.requestId, data: this.data }; }
-  clone() { return new TestRequest(this.data) as this; }
+  asLogMetadata(): LogMetadata { return { requestId: this.requestId, data: this.data }; }
+  asDataObject(): IDataObject { return { requestId: this.requestId, data: this.data }; }
+  clone(): this { return new TestRequest(this.data) as this; }
 }
+```
 
+**Test response:**
+```typescript
 class TestResponse extends SupplyResponseBase {
   constructor(request: SupplyRequestBase, public result: string) { super(request); }
-  asLogMetadata() { return { requestId: this.requestId, result: this.result }; }
-  asDataObject() { return { requestId: this.requestId, result: this.result }; }
-}
-
-class TestError extends SupplyErrorBase {
-  constructor(request: SupplyRequestBase, code: number, reason: string) { super(request, code, reason); }
-  asLogMetadata() { return { requestId: this.requestId, code: this.code, reason: this.reason }; }
-  asDataObject() { return { requestId: this.requestId, code: this.code, reason: this.reason }; }
-  asError(node: INode) { return new NodeOperationError(node, this.reason); }
+  asLogMetadata(): LogMetadata { return { requestId: this.requestId, result: this.result }; }
+  asDataObject(): IDataObject { return { requestId: this.requestId, result: this.result }; }
 }
 ```
 
-## Coverage Mapping
-
-### Lines to Cover
-- **Lines 50-57**: Constructor (property initialization)
-- **Line 69**: Create abort signal
-- **Lines 74-78**: Retry loop with early exit conditions
-- **Line 79**: Error throw for no attempts (bug scenario)
-- **Line 102**: Apply exponential backoff delay
-- **Line 104**: Call supply() with cloned request
-- **Lines 108-109**: TimeoutError detection and handling
-- **Line 110**: Call onTimeOut()
-- **Line 111**: Complete attempt with timeout error
-- **Line 115**: Start attempt logging
-- **Line 117**: Add input data to n8n
-- **Lines 123, 126**: Complete attempt logging
-- **Line 127**: Add output data for success
-- **Line 130**: Add output data for error
-- **Lines 136-139**: Fail and throw logic
-
-### Branches to Cover
-- **Line 76**: `result instanceof SupplyResponseBase` (true/false)
-- **Line 77**: `!result.isRetryable()` (true/false)
-- **Line 108**: `error instanceof DOMException && error.name === 'TimeoutError'` (true/false)
-- **Line 122**: `result instanceof SupplyResponseBase` (true/false)
-- **Line 136**: `error instanceof CoreError` (true/false)
-
-### Uncovered Scenarios
-- Direct instantiation of abstract class (TypeScript compile-time check)
-
-## Expected Coverage Metrics
-- **Lines**: ≥95%
-- **Statements**: ≥95%
-- **Functions**: 100% (constructor + public/private methods)
-- **Branches**: 100% (all conditional paths)
-
-## Test Fixtures
-
-### Sample Data
+**Test error:**
 ```typescript
-const MOCK_CONNECTION_TYPE: IntentoConnectionType = 'intento_translationProvider';
-const MOCK_SUPPLIER_NAME = 'TestSupplier';
-const MOCK_MAX_ATTEMPTS = 3;
+class TestError extends SupplyErrorBase {
+  constructor(request: SupplyRequestBase, code: number, reason: string, isRetriable: boolean) {
+    super(request, code, reason, isRetriable);
+  }
+  asLogMetadata(): LogMetadata { return { requestId: this.requestId, code: this.code, reason: this.reason }; }
+  asDataObject(): IDataObject { return { error: this.reason, code: this.code }; }
+  asError(node: INode): NodeOperationError { return new NodeOperationError(node, this.reason); }
+}
 ```
 
-## Implementation Notes
+**Test supplier:**
+```typescript
+class TestSupplier extends SupplierBase<TestRequest, TestResponse, TestError> {
+  public supplyImpl: jest.Mock;
+  public onErrorImpl: jest.Mock;
 
-1. **Abstract Class Testing**: Create concrete TestSupplier with mockable supply() and onTimeOut()
-2. **Mock Management**: Mock IFunctions, Tracer, ExecutionContext, ContextFactory, Delay
-3. **Retry Testing**: Test various retry scenarios (success on attempt 1, 2, 3, exhaust all attempts)
-4. **Error Types**: Test retryable (429, 5xx), non-retryable (4xx), timeout, unexpected errors
-5. **Exponential Backoff**: Verify Delay.apply() called with correct values
-6. **Request Cloning**: Verify clone() called for each attempt
-7. **n8n Integration**: Verify addInputData() and addOutputData() called correctly
-8. **Signal Propagation**: Verify abort signal passed through chain
-9. **Attempt Tracking**: Verify attempt numbers logged correctly
+  constructor(name: string, connection: IntentoConnectionType, functions: IFunctions) {
+    super(name, connection, functions);
+    this.supplyImpl = jest.fn();
+    this.onErrorImpl = jest.fn();
+  }
 
-## Risk Assessment
+  protected async supply(request: TestRequest, signal?: AbortSignal): Promise<TestResponse | TestError> {
+    return this.supplyImpl(request, signal);
+  }
 
-### High Risk
-- Retry logic correctness is critical for reliability
-- Signal/timeout handling must be robust
-- n8n integration tracking must be accurate
+  protected onError(request: TestRequest, error: Error): TestError {
+    return this.onErrorImpl(request, error);
+  }
+}
+```
 
-### Medium Risk
-- Exponential backoff calculation
-- Request cloning immutability
-- Error type distinction (retryable vs non-retryable)
+## Coverage Goals
 
-### Mitigation
-- Test all retry scenarios exhaustively
-- Verify timeout handling with actual TimeoutError
-- Test early exit conditions (success, non-retryable error)
-- Verify n8n tracking called for every attempt
-- Test edge cases (0 attempts, signal cancellation)
-- Verify error message formatting for CoreError vs unexpected errors
+- **Statements:** ≥95%
+- **Branches:** 100% (all if/else paths)
+- **Functions:** 100% (all methods including private)
+- **Lines:** ≥95%
+
+## Success Criteria
+
+- [ ] Test plan created with author and date
+- [ ] All exports identified (SupplierBase abstract class)
+- [ ] All branches covered (10 conditional branches)
+- [ ] All error paths tested (3 error scenarios)
+- [ ] ESLint considerations documented
+- [ ] Mock strategy defined for all dependencies
+- [ ] Test data fixtures specified
+- [ ] Coverage ≥95% (statements, branches, functions, lines)
+- [ ] Tests pass linting and TypeScript compilation
+- [ ] All tests follow AAA pattern with test IDs

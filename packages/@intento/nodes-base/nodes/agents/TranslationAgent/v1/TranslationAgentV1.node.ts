@@ -57,12 +57,13 @@ export class TranslationAgentV1 implements INodeType {
 		tracer.debug('🤖 Executing Translation Agent node...');
 		const result = await TranslationAgentV1.supplyTranslation(this, tracer);
 		if (result instanceof TranslationResponse) return [[{ json: result.asDataObject() }]];
-		if (result instanceof TranslationError && this.continueOnFail()) {
-			const error = { json: { error: result.asDataObject() } };
-			const errorOutput = this.helpers.constructExecutionMetaData([error], { itemData: { item: 0 } });
-			return [errorOutput];
-		}
-		return tracer.errorAndThrow('🤖 All translation suppliers failed.', result?.asLogMetadata());
+		//	if (result instanceof TranslationError && this.continueOnFail()) {
+		const error = { json: { error: result.asDataObject() } };
+		const errorOutput = this.helpers.constructExecutionMetaData([error], { itemData: { item: 0 } });
+		return [errorOutput];
+		//	}
+		tracer.error('🤖 All translation suppliers failed.', result?.asLogMetadata());
+		return [[]];
 	}
 
 	private static async supplyTranslation(functions: IFunctions, tracer: Tracer): Promise<TranslationResponse | TranslationError> {

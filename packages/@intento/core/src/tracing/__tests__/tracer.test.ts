@@ -1,206 +1,144 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, Logger } from 'n8n-workflow';
+import type { INode, Logger } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { CoreError } from 'types/*';
-import { Pipeline } from 'utils/*';
+import type { IFunctions } from 'types/*';
 
+import { Pipeline } from '../../utils/pipeline';
 import { Tracer } from '../tracer';
 
 /**
- * Test suite for Tracer class
- *
+ * Tests for Tracer
  * @author Claude Sonnet 4.5
- * @date 2025-12-30
- * @see tracer.test.md for test plan
+ * @date 2026-01-06
  */
 
 describe('Tracer', () => {
-	let mockFunctions: IExecuteFunctions;
 	let mockLogger: Logger;
+	let mockNode: INode;
+	let mockFunctions: IFunctions;
 	let mockCustomData: Map<string, unknown>;
 
 	beforeEach(() => {
-		// Setup mock logger
-		mockLogger = mock<Logger>({
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		});
+		mockLogger = mock<Logger>();
+		mockNode = {
+			id: 'node-123',
+			name: 'TestNode',
+			type: 'n8n-nodes-base.test',
+			typeVersion: 1,
+			position: [100, 200],
+			parameters: {},
+		};
 
-		// Setup mock customData Map
 		mockCustomData = new Map<string, unknown>();
 
-		// Setup mock IExecuteFunctions
-		mockFunctions = mock<IExecuteFunctions>({
+		mockFunctions = {
 			logger: mockLogger,
-			getNode: jest.fn(() => ({ name: 'TestNode' })) as unknown as IExecuteFunctions['getNode'],
-			getWorkflow: jest.fn(() => ({ id: 'workflow-123' })) as unknown as IExecuteFunctions['getWorkflow'],
-			getExecutionId: jest.fn(() => 'exec-456'),
-			getWorkflowDataProxy: jest.fn(() => ({
+			getNode: jest.fn().mockReturnValue(mockNode),
+			getWorkflow: jest.fn().mockReturnValue({
+				id: 'workflow-456',
+				name: 'Test Workflow',
+				active: true,
+				nodes: [mockNode],
+				connections: {},
+			}),
+			getExecutionId: jest.fn().mockReturnValue('execution-789'),
+			getWorkflowDataProxy: jest.fn().mockReturnValue({
 				$execution: {
 					customData: mockCustomData,
 				},
-			})) as unknown as IExecuteFunctions['getWorkflowDataProxy'],
-		});
+			}),
+		} as unknown as IFunctions;
 
-		// Mock Pipeline.readPipeline by default to return empty
 		jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
-
-		// Mock crypto.randomUUID for deterministic testing
-		jest.spyOn(crypto, 'randomUUID').mockReturnValue('12345678-1234-1234-1234-123456789abc');
+		jest.spyOn(crypto, 'randomUUID').mockReturnValue('generated-uuid-123' as `${string}-${string}-${string}-${string}-${string}`);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
-	describe('constructor & traceId resolution', () => {
-		describe('business logic', () => {
-			// BL-01: should create tracer with resolved traceId from customData
-			it('[BL-01] should create tracer with resolved traceId from customData', () => {
-				// ARRANGE
-				mockCustomData.set('traceId', 'cached-trace-id');
+	describe('constructor', () => {
+		it('[BL-01] should create tracer with all properties initialized', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT
-				expect(tracer.traceId).toBe('cached-trace-id');
-				expect(mockLogger.debug).toHaveBeenCalledWith(
-					'🧭 Getting traceId ...',
-					expect.objectContaining({
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-					}),
-				);
-			});
-
-			// BL-02: should extract workflow metadata (nodeName, workflowId, executionId)
-			it('[BL-02] should extract workflow metadata (nodeName, workflowId, executionId)', () => {
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT
-				expect(tracer.nodeName).toBe('TestNode');
-				expect(tracer.workflowId).toBe('workflow-123');
-				expect(tracer.executionId).toBe('exec-456');
-			});
-
-			// BL-03: should freeze instance after construction
-			it('[BL-03] should freeze instance after construction', () => {
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT
-				expect(Object.isFrozen(tracer)).toBe(true);
-
-				// Attempting to modify should have no effect (in strict mode would throw)
-				expect(() => {
-					(tracer as { traceId: string }).traceId = 'new-value';
-				}).toThrow();
-			});
-
-			// BL-04: should log debug messages during traceId resolution
-			it('[BL-04] should log debug messages during traceId resolution', () => {
-				// ARRANGE
-				mockCustomData.set('traceId', 'cached-trace-id');
-
-				// ACT
-				new Tracer(mockFunctions);
-
-				// ASSERT
-				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 Getting traceId ...', expect.any(Object));
-				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 Checking custom data for traceId ...', expect.any(Object));
-				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 Found traceId in custom data: cached-trace-id', expect.any(Object));
-			});
+			// ASSERT
+			expect(tracer.log).toBe(mockLogger);
+			expect(tracer.traceId).toBe('generated-uuid-123');
+			expect(tracer.workflowId).toBe('workflow-456');
+			expect(tracer.executionId).toBe('execution-789');
 		});
 
-		describe('edge cases', () => {
-			// EC-01: should generate new UUID when no upstream traceId found
-			it('[EC-01] should generate new UUID when no upstream traceId found', () => {
-				// ARRANGE - no customData, empty pipeline
-				mockCustomData.clear();
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
+		it('[BL-02] should extract node from IFunctions', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT
-				const tracer = new Tracer(mockFunctions);
+			// ASSERT
+			expect(mockFunctions.getNode).toHaveBeenCalled();
+			expect((tracer as unknown as { node: unknown }).node).toBe(mockNode);
+		});
 
-				// ASSERT
-				expect(tracer.traceId).toBe('12345678-1234-1234-1234-123456789abc');
-				expect(crypto.randomUUID).toHaveBeenCalled();
-				expect(mockLogger.debug).toHaveBeenCalledWith(
-					expect.stringContaining('Generated new traceId: 12345678-1234-1234-1234-123456789abc'),
-				);
-			}); // EC-02: should use single traceId from pipeline
-			it('[EC-02] should use single traceId from pipeline', () => {
-				// ARRANGE
-				mockCustomData.clear();
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					UpstreamNode: [{ json: { traceId: 'pipeline-trace-id' } }],
-				});
+		it('[BL-03] should extract workflowId from workflow', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT
-				const tracer = new Tracer(mockFunctions);
+			// ASSERT
+			expect(mockFunctions.getWorkflow).toHaveBeenCalled();
+			expect(tracer.workflowId).toBe('workflow-456');
+		});
 
-				// ASSERT
-				expect(tracer.traceId).toBe('pipeline-trace-id');
-				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 Found single traceId in pipeline: pipeline-trace-id');
-			}); // EC-03: should use first traceId when multiple found and log warning
-			it('[EC-03] should use first traceId when multiple found and log warning', () => {
-				// ARRANGE
-				mockCustomData.clear();
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'trace-id-1' } }],
-					Node2: [{ json: { traceId: 'trace-id-2' } }],
-				});
+		it('[BL-04] should extract executionId from IFunctions', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT
-				const tracer = new Tracer(mockFunctions);
+			// ASSERT
+			expect(mockFunctions.getExecutionId).toHaveBeenCalled();
+			expect(tracer.executionId).toBe('execution-789');
+		});
 
-				// ASSERT
-				expect(tracer.traceId).toBe('trace-id-1');
-				expect(mockLogger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('Multiple traceIds found'),
-					expect.objectContaining({
-						traceIds: expect.arrayContaining(['trace-id-1', 'trace-id-2']),
-					}),
-				);
+		it('[BL-05] should resolve traceId via getTraceId', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
+
+			// ASSERT
+			expect(tracer.traceId).toBe('generated-uuid-123');
+			expect(crypto.randomUUID).toHaveBeenCalled();
+		});
+
+		it('[BL-06] should freeze instance after construction', () => {
+			// ARRANGE & ACT
+			const tracer = new Tracer(mockFunctions);
+
+			// ASSERT
+			expect(Object.isFrozen(tracer)).toBe(true);
+		});
+
+		it('[EC-01] should handle workflow with generated UUID workflowId', () => {
+			// ARRANGE
+			const uuidWorkflowId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+			(mockFunctions.getWorkflow as jest.Mock).mockReturnValue({
+				id: uuidWorkflowId,
+				name: 'UUID Workflow',
 			});
 
-			// EC-04: should handle customData unavailable (no Map)
-			it('[EC-04] should handle customData unavailable (no Map)', () => {
-				// ARRANGE - customData is not a Map
-				mockFunctions.getWorkflowDataProxy = jest.fn(() => ({
-					$execution: {
-						customData: null,
-					},
-				})) as unknown as IExecuteFunctions['getWorkflowDataProxy'];
+			// ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT
-				const tracer = new Tracer(mockFunctions);
+			// ASSERT
+			expect(tracer.workflowId).toBe(uuidWorkflowId);
+		});
 
-				// ASSERT - should fall back to pipeline/generation
-				expect(tracer.traceId).toBe('12345678-1234-1234-1234-123456789abc');
-			});
+		it('[EC-02] should handle empty executionId string', () => {
+			// ARRANGE
+			(mockFunctions.getExecutionId as jest.Mock).mockReturnValue('');
 
-			// EC-05: should handle rememberTraceId when customData unavailable
-			it('[EC-05] should handle rememberTraceId when customData unavailable', () => {
-				// ARRANGE - customData has no .set method
-				const badCustomData = { get: jest.fn() };
-				mockFunctions.getWorkflowDataProxy = jest.fn(() => ({
-					$execution: {
-						customData: badCustomData,
-					},
-				})) as unknown as IExecuteFunctions['getWorkflowDataProxy'];
+			// ACT
+			const tracer = new Tracer(mockFunctions);
 
-				// ACT - should not throw even if caching fails
-				expect(() => new Tracer(mockFunctions)).not.toThrow();
-			});
+			// ASSERT
+			expect(tracer.executionId).toBe('');
 		});
 	});
 
@@ -208,430 +146,906 @@ describe('Tracer', () => {
 		let tracer: Tracer;
 
 		beforeEach(() => {
-			mockCustomData.set('traceId', 'test-trace-id');
 			tracer = new Tracer(mockFunctions);
 		});
 
-		describe('business logic', () => {
-			// BL-05: should log debug with enriched metadata
-			it('[BL-05] should log debug with enriched metadata', () => {
+		describe('debug', () => {
+			it('[BL-07] should log debug message with metadata', () => {
+				// ARRANGE
+				const message = 'Debug test message';
+				const extension = { userId: '123' };
+
 				// ACT
-				tracer.debug('Test debug message', { extra: 'data' });
+				tracer.debug(message, extension);
 
 				// ASSERT
-				expect(mockLogger.debug).toHaveBeenCalledWith(
-					'Test debug message',
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						extra: 'data',
-					}),
-				);
-			});
-
-			// BL-06: should log info with enriched metadata
-			it('[BL-06] should log info with enriched metadata', () => {
-				// ACT
-				tracer.info('Test info message', { request: 'abc-123' });
-
-				// ASSERT
-				expect(mockLogger.info).toHaveBeenCalledWith(
-					'Test info message',
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						request: 'abc-123',
-					}),
-				);
-			});
-
-			// BL-07: should log warn with enriched metadata
-			it('[BL-07] should log warn with enriched metadata', () => {
-				// ACT
-				tracer.warn('Test warning', { attempt: 2 });
-
-				// ASSERT
-				expect(mockLogger.warn).toHaveBeenCalledWith(
-					'Test warning',
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						attempt: 2,
-					}),
-				);
-			});
-
-			// BL-08: should log error with enriched metadata
-			it('[BL-08] should log error with enriched metadata', () => {
-				// ACT
-				tracer.error('Test error', { errorCode: 'ERR_001' });
-
-				// ASSERT
-				expect(mockLogger.error).toHaveBeenCalledWith(
-					'Test error',
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						errorCode: 'ERR_001',
-					}),
-				);
-			});
-
-			// BL-09: should include base context in all logs
-			it('[BL-09] should include base context in all logs', () => {
-				// ACT
-				tracer.debug('Message 1');
-				tracer.info('Message 2');
-				tracer.warn('Message 3');
-				tracer.error('Message 4');
-
-				// ASSERT - all calls include base metadata
-				const baseMetadata = {
-					traceId: 'test-trace-id',
+				expect(mockLogger.debug).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
 					nodeName: 'TestNode',
-					workflowId: 'workflow-123',
-					executionId: 'exec-456',
-				};
-
-				expect(mockLogger.debug).toHaveBeenCalledWith('Message 1', baseMetadata);
-				expect(mockLogger.info).toHaveBeenCalledWith('Message 2', baseMetadata);
-				expect(mockLogger.warn).toHaveBeenCalledWith('Message 3', baseMetadata);
-				expect(mockLogger.error).toHaveBeenCalledWith('Message 4', baseMetadata);
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+					userId: '123',
+				});
 			});
 		});
 
-		describe('edge cases', () => {
-			// EC-06: should merge extension metadata with base context
-			it('[EC-06] should merge extension metadata with base context', () => {
+		describe('info', () => {
+			it('[BL-08] should log info message with metadata', () => {
+				// ARRANGE
+				const message = 'Info test message';
+				const extension = { requestId: 'req-456' };
+
 				// ACT
-				tracer.info('Test', { custom1: 'value1', custom2: 42, custom3: true });
+				tracer.info(message, extension);
 
 				// ASSERT
-				expect(mockLogger.info).toHaveBeenCalledWith(
-					'Test',
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						custom1: 'value1',
-						custom2: 42,
-						custom3: true,
-					}),
-				);
+				expect(mockLogger.info).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+					requestId: 'req-456',
+				});
+			});
+		});
+
+		describe('warn', () => {
+			it('[BL-09] should log warn message with metadata', () => {
+				// ARRANGE
+				const message = 'Warning test message';
+				const extension = { attempts: 3 };
+
+				// ACT
+				tracer.warn(message, extension);
+
+				// ASSERT
+				expect(mockLogger.warn).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+					attempts: 3,
+				});
+			});
+		});
+
+		describe('error', () => {
+			it('[BL-10] should log error message with metadata', () => {
+				// ARRANGE
+				const message = 'Error test message';
+				const extension = { errorCode: 'E001' };
+
+				// ACT
+				tracer.error(message, extension);
+
+				// ASSERT
+				expect(mockLogger.error).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+					errorCode: 'E001',
+				});
+			});
+		});
+
+		describe('metadata enrichment', () => {
+			it('[BL-11] should include standard metadata in all log calls', () => {
+				// ARRANGE
+				const message = 'Test message';
+
+				// ACT
+				tracer.debug(message);
+				tracer.info(message);
+				tracer.warn(message);
+				tracer.error(message);
+
+				// ASSERT
+				const expectedMetadata = {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+				};
+				expect(mockLogger.debug).toHaveBeenCalledWith(message, expectedMetadata);
+				expect(mockLogger.info).toHaveBeenCalledWith(message, expectedMetadata);
+				expect(mockLogger.warn).toHaveBeenCalledWith(message, expectedMetadata);
+				expect(mockLogger.error).toHaveBeenCalledWith(message, expectedMetadata);
 			});
 
-			// EC-07: should handle undefined extension metadata
-			it('[EC-07] should handle undefined extension metadata', () => {
+			it('[BL-12] should merge extension metadata with standard metadata', () => {
+				// ARRANGE
+				const message = 'Test message';
+				const extension = { custom: 'value', extra: 42 };
+
 				// ACT
-				tracer.debug('Test without extension');
+				tracer.info(message, extension);
 
 				// ASSERT
-				expect(mockLogger.debug).toHaveBeenCalledWith('Test without extension', {
-					traceId: 'test-trace-id',
+				expect(mockLogger.info).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
 					nodeName: 'TestNode',
-					workflowId: 'workflow-123',
-					executionId: 'exec-456',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+					custom: 'value',
+					extra: 42,
+				});
+			});
+
+			it('[EC-03] should log without extension metadata (undefined)', () => {
+				// ARRANGE
+				const message = 'Test message';
+
+				// ACT
+				tracer.info(message);
+
+				// ASSERT
+				expect(mockLogger.info).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+				});
+			});
+
+			it('[EC-04] should handle empty extension object', () => {
+				// ARRANGE
+				const message = 'Test message';
+
+				// ACT
+				tracer.info(message, {});
+
+				// ASSERT
+				expect(mockLogger.info).toHaveBeenCalledWith(message, {
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
+				});
+			});
+
+			it('[EC-05] should allow extension to override standard metadata', () => {
+				// ARRANGE
+				const message = 'Test message';
+				const extension = { traceId: 'overridden-trace', nodeName: 'OverriddenNode' };
+
+				// ACT
+				tracer.info(message, extension);
+
+				// ASSERT
+				expect(mockLogger.info).toHaveBeenCalledWith(message, {
+					traceId: 'overridden-trace',
+					nodeName: 'OverriddenNode',
+					workflowId: 'workflow-456',
+					executionId: 'execution-789',
 				});
 			});
 		});
 	});
 
-	describe('error handling & throwing', () => {
+	describe('bugDetected', () => {
 		let tracer: Tracer;
 
 		beforeEach(() => {
-			mockCustomData.set('traceId', 'test-trace-id');
 			tracer = new Tracer(mockFunctions);
 		});
 
-		describe('business logic', () => {
-			// BL-10: should log error and throw CoreError with metadata
-			it('[BL-10] should log error and throw CoreError with metadata', () => {
-				// ARRANGE
-				const message = 'Critical failure';
-				const extension = { attempt: 5, error: 'timeout' };
+		it('[BL-13] should log error with bug prefix and where location', () => {
+			// ARRANGE
+			const where = 'MyClass.myMethod';
+			const error = new Error('Something broke');
 
-				// ACT & ASSERT
-				expect(() => tracer.errorAndThrow(message, extension)).toThrow(CoreError);
-
-				// Verify error was logged first
-				expect(mockLogger.error).toHaveBeenCalledWith(
-					message,
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						attempt: 5,
-						error: 'timeout',
-					}),
-				);
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith("🐞 [BUG] at 'MyClass.myMethod'. Node TestNode thrown error: Something broke", {
+				where: 'MyClass.myMethod',
+				error,
 			});
 		});
 
-		describe('error handling', () => {
-			// EH-01: should throw CoreError with correct message and metadata
-			it('[EH-01] should throw CoreError with correct message and metadata', () => {
-				// ARRANGE
-				const message = 'Test error message';
-				const extension = { context: 'test' };
+		it('[BL-14] should throw NodeOperationError with formatted message', () => {
+			// ARRANGE
+			const where = 'TestLocation';
+			const error = 'Test error message';
 
-				// ACT & ASSERT
-				let caughtError: CoreError | undefined;
-				try {
-					tracer.errorAndThrow(message, extension);
-				} catch (error) {
-					caughtError = error as CoreError;
-				}
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(() => tracer.bugDetected(where, error)).toThrow("🐞 [BUG] at 'TestLocation'. Node TestNode thrown error: Test error message");
+		});
 
-				expect(caughtError).toBeInstanceOf(CoreError);
-				expect(caughtError?.message).toBe(message);
-				expect(caughtError?.metadata).toEqual(
-					expect.objectContaining({
-						traceId: 'test-trace-id',
-						nodeName: 'TestNode',
-						workflowId: 'workflow-123',
-						executionId: 'exec-456',
-						context: 'test',
-					}),
-				);
-			});
+		it('[BL-15] should handle Error object with message property', () => {
+			// ARRANGE
+			const where = 'ErrorHandler';
+			const error = new Error('Error object message');
 
-			// EH-02: should enrich CoreError with full tracing context
-			it('[EH-02] should enrich CoreError with full tracing context', () => {
-				// ARRANGE
-				const extension = { requestId: 'req-123', latencyMs: 5000 };
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Error object message'), expect.objectContaining({ error }));
+		});
 
-				// ACT
-				let error: CoreError | undefined;
-				try {
-					tracer.errorAndThrow('All attempts failed', extension);
-				} catch (e) {
-					error = e as CoreError;
-				}
+		it('[BL-16] should handle string error message', () => {
+			// ARRANGE
+			const where = 'StringHandler';
+			const error = 'String error message';
 
-				// ASSERT
-				expect(error?.metadata).toMatchObject({
-					traceId: 'test-trace-id',
-					nodeName: 'TestNode',
-					workflowId: 'workflow-123',
-					executionId: 'exec-456',
-					requestId: 'req-123',
-					latencyMs: 5000,
-				});
-			});
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('String error message'),
+				expect.objectContaining({ message: 'String error message' }),
+			);
+		});
+
+		it('[BL-17] should include where in metadata', () => {
+			// ARRANGE
+			const where = 'SpecificLocation';
+			const error = 'Test error';
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ where: 'SpecificLocation' }));
+		});
+
+		it('[BL-18] should include error in metadata when Error object', () => {
+			// ARRANGE
+			const where = 'ErrorTest';
+			const error = new Error('Error instance');
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ error }));
+		});
+
+		it('[BL-19] should include message in metadata when string', () => {
+			// ARRANGE
+			const where = 'StringTest';
+			const error = 'String message';
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ message: 'String message' }));
+		});
+
+		it('[BL-20] should merge extension metadata into error log', () => {
+			// ARRANGE
+			const where = 'ExtensionTest';
+			const error = 'Test error';
+			const extension = { userId: '123', requestId: 'req-456' };
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error, extension)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					where: 'ExtensionTest',
+					message: 'Test error',
+					userId: '123',
+					requestId: 'req-456',
+				}),
+			);
+		});
+
+		it('[EC-06] should handle bugDetected without extension metadata', () => {
+			// ARRANGE
+			const where = 'NoExtension';
+			const error = 'Test error';
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					where: 'NoExtension',
+					message: 'Test error',
+				}),
+			);
+		});
+
+		it('[EC-07] should format node name in error message', () => {
+			// ARRANGE
+			const where = 'NodeNameTest';
+			const error = 'Test error';
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow(NodeOperationError);
+			expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Node TestNode'), expect.any(Object));
+		});
+
+		it('[EH-01] should throw NodeOperationError with correct node', () => {
+			// ARRANGE
+			const where = 'NodeTest';
+			const error = 'Test error';
+
+			// ACT & ASSERT
+			try {
+				tracer.bugDetected(where, error);
+				fail('Should have thrown NodeOperationError');
+			} catch (caughtError) {
+				expect(caughtError).toBeInstanceOf(NodeOperationError);
+				expect((caughtError as NodeOperationError).node).toBe(mockNode);
+			}
+		});
+
+		it('[EH-02] should never return (return type is never)', () => {
+			// ARRANGE
+			const where = 'NeverReturn';
+			const error = 'Test error';
+
+			// ACT & ASSERT
+			expect(() => tracer.bugDetected(where, error)).toThrow();
+			// TypeScript type system enforces `never` return type at compile time
 		});
 	});
 
-	describe('pipeline traceId extraction', () => {
-		beforeEach(() => {
-			mockCustomData.clear(); // Force pipeline extraction
+	describe('traceId resolution', () => {
+		describe('from customData', () => {
+			it('[BL-26] should return traceId from customData if exists', () => {
+				// ARRANGE
+				mockCustomData.set('traceId', 'trace-from-custom');
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('trace-from-custom');
+				expect(crypto.randomUUID).not.toHaveBeenCalled();
+			});
+
+			it('[BL-37] should return traceId from customData if exists', () => {
+				// ARRANGE
+				mockCustomData.set('traceId', 'custom-trace-123');
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('custom-trace-123');
+			});
+
+			it('[BL-38] should access execution via workflow data proxy', () => {
+				// ARRANGE
+				mockCustomData.set('traceId', 'proxy-trace');
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(mockFunctions.getWorkflowDataProxy).toHaveBeenCalledWith(0);
+			});
+
+			it('[BL-39] should return undefined if customData missing', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {
+						customData: undefined,
+					},
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(crypto.randomUUID).toHaveBeenCalled();
+			});
+
+			it('[BL-40] should return undefined if customData.get not a function', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {
+						customData: { get: 'not-a-function' },
+					},
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(crypto.randomUUID).toHaveBeenCalled();
+			});
+
+			it('[BL-41] should return undefined if traceId is not a string', () => {
+				// ARRANGE
+				mockCustomData.set('traceId', 12345);
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(crypto.randomUUID).toHaveBeenCalled();
+			});
+
+			it('[EC-19] should return undefined when customData is null', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {
+						customData: null,
+					},
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+			});
+
+			it('[EC-20] should return undefined when customData is undefined', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {},
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+			});
+
+			it('[EC-21] should return undefined when traceId is number/boolean', () => {
+				// ARRANGE
+				mockCustomData.set('traceId', true);
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+			});
 		});
 
-		describe('business logic', () => {
-			// BL-11: should extract traceIds from pipeline node outputs
-			it('[BL-11] should extract traceIds from pipeline node outputs', () => {
+		describe('from pipeline', () => {
+			it('[BL-27] should extract traceId from pipeline if customData empty', () => {
 				// ARRANGE
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'trace-from-node1' } }],
-					Node2: [{ json: { traceId: 'trace-from-node2' } }],
+					NODE_1: [{ json: { traceId: 'trace-from-pipeline', data: 'value' } }],
 				});
 
 				// ACT
 				const tracer = new Tracer(mockFunctions);
 
-				// ASSERT - should extract both and use first
-				expect(tracer.traceId).toBe('trace-from-node1');
+				// ASSERT
+				expect(tracer.traceId).toBe('trace-from-pipeline');
+				expect(crypto.randomUUID).not.toHaveBeenCalled();
 			});
 
-			// BL-12: should deduplicate multiple instances of same traceId
-			it('[BL-12] should deduplicate multiple instances of same traceId', () => {
-				// ARRANGE - same traceId from multiple nodes (merge scenario)
+			it('[BL-33] should extract traceIds from pipeline node outputs', () => {
+				// ARRANGE
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'shared-trace-id' } }],
-					Node2: [{ json: { traceId: 'shared-trace-id' } }],
-					Node3: [{ json: { traceId: 'shared-trace-id' } }],
+					NODE_1: [{ json: { traceId: 'trace-111' } }],
+					NODE_2: [{ json: { traceId: 'trace-222' } }],
 				});
 
 				// ACT
 				const tracer = new Tracer(mockFunctions);
 
-				// ASSERT - should not log warning (only one unique ID)
-				expect(tracer.traceId).toBe('shared-trace-id');
-				expect(mockLogger.warn).not.toHaveBeenCalled();
-				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 Found single traceId in pipeline: shared-trace-id');
+				// ASSERT
+				expect(tracer.traceId).toBe('trace-111');
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('Multiple traceIds found'),
+					expect.objectContaining({ traceIds: ['trace-111', 'trace-222'] }),
+				);
 			});
-		});
 
-		describe('edge cases', () => {
-			// EC-08: should handle empty pipeline (no upstream nodes)
-			it('[EC-08] should handle empty pipeline (no upstream nodes)', () => {
+			it('[BL-34] should read pipeline using Pipeline.readPipeline', () => {
+				// ARRANGE
+				const readPipelineSpy = jest.spyOn(Pipeline, 'readPipeline');
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(readPipelineSpy).toHaveBeenCalledWith(mockFunctions);
+			});
+
+			it('[BL-35] should check json.traceId exists and is string', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'valid-trace' } }],
+					NODE_2: [{ json: { traceId: 123 } }], // non-string
+					NODE_3: [{ json: { data: 'no-traceId' } }], // missing
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('valid-trace');
+			});
+
+			it('[BL-36] should return deduplicated array via Set', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'trace-111' } }],
+					NODE_2: [{ json: { traceId: 'trace-111' } }], // duplicate
+					NODE_3: [{ json: { traceId: 'trace-111' } }], // duplicate
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('trace-111');
+				expect(mockLogger.warn).not.toHaveBeenCalled(); // Only one unique ID
+			});
+
+			it('[EC-13] should return empty array if pipeline is empty', () => {
 				// ARRANGE
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
 
 				// ACT
 				const tracer = new Tracer(mockFunctions);
 
-				// ASSERT - should generate new UUID
-				expect(tracer.traceId).toBe('12345678-1234-1234-1234-123456789abc');
-				expect(mockLogger.debug).toHaveBeenCalledWith(
-					expect.stringContaining('No traceId found in pipeline. Generated new traceId: 12345678-1234-1234-1234-123456789abc'),
-				);
-			}); // EC-09: should skip outputs without json.traceId field
-			it('[EC-09] should skip outputs without json.traceId field', () => {
-				// ARRANGE
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { someOtherField: 'value' } }],
-					Node2: [{ json: { traceId: 'valid-trace-id' } }],
-				});
-
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT - should only find one traceId
-				expect(tracer.traceId).toBe('valid-trace-id');
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(crypto.randomUUID).toHaveBeenCalled();
 			});
 
-			// EC-10: should skip outputs where traceId is not a string
-			it('[EC-10] should skip outputs where traceId is not a string', () => {
+			it('[EC-14] should skip entries without json.traceId', () => {
 				// ARRANGE
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 123 } }], // number
-					Node2: [{ json: { traceId: null } }], // null
-					Node3: [{ json: { traceId: undefined } }], // undefined
-					Node4: [{ json: { traceId: 'valid-string-id' } }],
+					NODE_1: [{ json: { data: 'no-traceId' } }],
+					NODE_2: [{ json: { traceId: 'valid-trace' } }],
 				});
-
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT - should only find string traceId
-				expect(tracer.traceId).toBe('valid-string-id');
-			});
-
-			// EC-11: should handle multiple nodes with different traceIds
-			it('[EC-11] should handle multiple nodes with different traceIds', () => {
-				// ARRANGE
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [
-						{ json: { traceId: 'trace-1' } },
-						{ json: { traceId: 'trace-1' } }, // duplicate
-					],
-					Node2: [{ json: { traceId: 'trace-2' } }],
-					Node3: [{ json: { data: 'no-trace' } }, { json: { traceId: 'trace-3' } }],
-				});
-
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT - should find 3 unique IDs and use first
-				expect(tracer.traceId).toBe('trace-1');
-				expect(mockLogger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('Multiple traceIds found'),
-					expect.objectContaining({
-						traceIds: expect.arrayContaining(['trace-1', 'trace-2', 'trace-3']),
-					}),
-				);
-			});
-		});
-	});
-
-	describe('customData cache operations', () => {
-		describe('business logic', () => {
-			// BL-13: should retrieve traceId from customData cache
-			it('[BL-13] should retrieve traceId from customData cache', () => {
-				// ARRANGE
-				mockCustomData.set('traceId', 'cached-from-previous-node');
 
 				// ACT
 				const tracer = new Tracer(mockFunctions);
 
 				// ASSERT
-				expect(tracer.traceId).toBe('cached-from-previous-node');
-				expect(Pipeline.readPipeline).not.toHaveBeenCalled(); // Should short-circuit
+				expect(tracer.traceId).toBe('valid-trace');
 			});
 
-			// BL-14: should cache traceId in customData for downstream nodes
-			it('[BL-14] should cache traceId in customData for downstream nodes', () => {
+			it('[EC-15] should skip entries with non-string traceId', () => {
 				// ARRANGE
-				mockCustomData.clear();
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'pipeline-trace' } }],
+					NODE_1: [{ json: { traceId: 12345 } }],
+					NODE_2: [{ json: { traceId: null } }],
+					NODE_3: [{ json: { traceId: 'valid-trace' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('valid-trace');
+			});
+
+			it('[EC-16] should handle multiple nodes with same traceId', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'shared-trace' } }],
+					NODE_2: [{ json: { traceId: 'shared-trace' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('shared-trace');
+				expect(mockLogger.warn).not.toHaveBeenCalled(); // Deduplicated to single ID
+			});
+
+			it('[EC-17] should handle multiple nodes with different traceIds', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'trace-aaa' } }],
+					NODE_2: [{ json: { traceId: 'trace-bbb' } }],
+					NODE_3: [{ json: { traceId: 'trace-ccc' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('trace-aaa');
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('Multiple traceIds found'),
+					expect.objectContaining({ traceIds: ['trace-aaa', 'trace-bbb', 'trace-ccc'] }),
+				);
+			});
+
+			it('[EC-18] should handle pipeline with mixed valid/invalid traceIds', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 123 } }], // invalid
+					NODE_2: [{ json: { data: 'value' } }], // missing
+					NODE_3: [{ json: { traceId: 'valid-1' } }], // valid
+					NODE_4: [{ json: { traceId: null } }], // invalid
+					NODE_5: [{ json: { traceId: 'valid-2' } }], // valid
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('valid-1');
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('Multiple traceIds found'),
+					expect.objectContaining({ traceIds: ['valid-1', 'valid-2'] }),
+				);
+			});
+		});
+
+		describe('generate new', () => {
+			it('[BL-28] should generate new UUID if no traceId found', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(crypto.randomUUID).toHaveBeenCalled();
+			});
+
+			it('[EC-10] should handle empty pipeline (no upstream nodes)', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('generated-uuid-123');
+				expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Generated new traceId'), expect.any(Object));
+			});
+
+			it('[EC-11] should handle pipeline with single traceId', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'single-trace' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('single-trace');
+				expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Found single traceId in pipeline'), expect.any(Object));
+			});
+
+			it('[EC-12] should deduplicate identical traceIds from pipeline', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'dup-trace' } }, { json: { traceId: 'dup-trace' } }],
+					NODE_2: [{ json: { traceId: 'dup-trace' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('dup-trace');
+				expect(mockLogger.warn).not.toHaveBeenCalled(); // Single unique ID after deduplication
+			});
+		});
+
+		describe('multiple traceIds', () => {
+			it('[BL-29] should use first traceId when multiple found', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'first-trace' } }],
+					NODE_2: [{ json: { traceId: 'second-trace' } }],
+					NODE_3: [{ json: { traceId: 'third-trace' } }],
+				});
+
+				// ACT
+				const tracer = new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(tracer.traceId).toBe('first-trace');
+			});
+
+			it('[BL-30] should warn when multiple traceIds in pipeline', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'trace-aaa' } }],
+					NODE_2: [{ json: { traceId: 'trace-bbb' } }],
 				});
 
 				// ACT
 				new Tracer(mockFunctions);
 
-				// ASSERT - traceId should be cached
-				expect(mockCustomData.get('traceId')).toBe('pipeline-trace');
+				// ASSERT
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'🧭 [Tracer] Multiple traceIds found in pipeline. Using the first one: trace-aaa',
+					expect.objectContaining({
+						traceIds: ['trace-aaa', 'trace-bbb'],
+					}),
+				);
 			});
 		});
 
-		describe('edge cases', () => {
-			// EC-12: should return undefined when customData.get is not a function
-			it('[EC-12] should return undefined when customData.get is not a function', () => {
-				// ARRANGE - customData object without get method
-				const badCustomData = { notAMap: true };
-				mockFunctions.getWorkflowDataProxy = jest.fn(() => ({
-					$execution: {
-						customData: badCustomData,
-					},
-				})) as unknown as IExecuteFunctions['getWorkflowDataProxy'];
-
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'fallback-trace' } }],
-				});
-
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT - should fall back to pipeline
-				expect(tracer.traceId).toBe('fallback-trace');
-			});
-
-			// EC-13: should return undefined when traceId in customData is not a string
-			it('[EC-13] should return undefined when traceId in customData is not a string', () => {
-				// ARRANGE - customData has non-string traceId
-				mockCustomData.set('traceId', 12345); // number instead of string
-
-				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
-					Node1: [{ json: { traceId: 'fallback-trace' } }],
-				});
-
-				// ACT
-				const tracer = new Tracer(mockFunctions);
-
-				// ASSERT - should fall back to pipeline
-				expect(tracer.traceId).toBe('fallback-trace');
-			});
-
-			// EC-14: should handle customData.set not being a function
-			it('[EC-14] should handle customData.set not being a function', () => {
-				// ARRANGE - customData has get but not set
-				const partialCustomData = {
-					get: jest.fn().mockReturnValue(undefined),
-					// no set method
-				};
-				mockFunctions.getWorkflowDataProxy = jest.fn(() => ({
-					$execution: {
-						customData: partialCustomData,
-					},
-				})) as unknown as IExecuteFunctions['getWorkflowDataProxy'];
-
+		describe('storage', () => {
+			it('[BL-31] should store traceId in customData after resolution', () => {
+				// ARRANGE
 				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
 
-				// ACT - should not throw even if caching fails
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(mockCustomData.get('traceId')).toBe('generated-uuid-123');
+			});
+
+			it('[BL-42] should store traceId in customData.set', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({
+					NODE_1: [{ json: { traceId: 'pipeline-trace' } }],
+				});
+				const setSpy = jest.spyOn(mockCustomData, 'set');
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(setSpy).toHaveBeenCalledWith('traceId', 'pipeline-trace');
+			});
+
+			it('[BL-43] should access execution via workflow data proxy', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(mockFunctions.getWorkflowDataProxy).toHaveBeenCalledWith(0);
+			});
+
+			it('[BL-44] should call customData.set with traceId key and value', () => {
+				// ARRANGE
+				const setSpy = jest.spyOn(mockCustomData, 'set');
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(setSpy).toHaveBeenCalledWith('traceId', 'generated-uuid-123');
+			});
+
+			it('[EC-22] should silently ignore if customData is null', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {
+						customData: null,
+					},
+				});
+
+				// ACT & ASSERT
 				expect(() => new Tracer(mockFunctions)).not.toThrow();
 			});
+
+			it('[EC-23] should silently ignore if customData is undefined', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {},
+				});
+
+				// ACT & ASSERT
+				expect(() => new Tracer(mockFunctions)).not.toThrow();
+			});
+
+			it('[EC-24] should silently ignore if customData.set not a function', () => {
+				// ARRANGE
+				(mockFunctions.getWorkflowDataProxy as jest.Mock).mockReturnValue({
+					$execution: {
+						customData: { set: 'not-a-function' },
+					},
+				});
+
+				// ACT & ASSERT
+				expect(() => new Tracer(mockFunctions)).not.toThrow();
+			});
+		});
+
+		describe('logging during resolution', () => {
+			it('[BL-32] should log debug messages during resolution process', () => {
+				// ARRANGE
+				jest.spyOn(Pipeline, 'readPipeline').mockReturnValue({});
+
+				// ACT
+				new Tracer(mockFunctions);
+
+				// ASSERT
+				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 [Tracer] Getting traceId ...', expect.any(Object));
+				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 [Tracer] Checking custom data for traceId ...', expect.any(Object));
+				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 [Tracer] Extracting traceIds from pipeline ...', expect.any(Object));
+				expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Generated new traceId'), expect.any(Object));
+				expect(mockLogger.debug).toHaveBeenCalledWith('🧭 [Tracer] Remembering traceId in custom data...', expect.any(Object));
+			});
+		});
+	});
+
+	describe('getLogMetadata (private)', () => {
+		let tracer: Tracer;
+
+		beforeEach(() => {
+			tracer = new Tracer(mockFunctions);
+		});
+
+		it('[BL-21] should return metadata with all standard fields', () => {
+			// ARRANGE & ACT
+			tracer.info('test');
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'test',
+				expect.objectContaining({
+					traceId: expect.any(String) as string,
+					nodeName: expect.any(String) as string,
+					workflowId: expect.any(String) as string,
+					executionId: expect.any(String) as string,
+				}),
+			);
+		});
+
+		it('[BL-22] should include traceId in metadata', () => {
+			// ARRANGE & ACT
+			tracer.info('test');
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith('test', expect.objectContaining({ traceId: 'generated-uuid-123' }));
+		});
+
+		it('[BL-23] should include nodeName in metadata', () => {
+			// ARRANGE & ACT
+			tracer.info('test');
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith('test', expect.objectContaining({ nodeName: 'TestNode' }));
+		});
+
+		it('[BL-24] should include workflowId in metadata', () => {
+			// ARRANGE & ACT
+			tracer.info('test');
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith('test', expect.objectContaining({ workflowId: 'workflow-456' }));
+		});
+
+		it('[BL-25] should include executionId in metadata', () => {
+			// ARRANGE & ACT
+			tracer.info('test');
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith('test', expect.objectContaining({ executionId: 'execution-789' }));
+		});
+
+		it('[EC-08] should merge extension with standard metadata (extension priority)', () => {
+			// ARRANGE
+			const extension = { traceId: 'override-trace', custom: 'value' };
+
+			// ACT
+			tracer.info('test', extension);
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'test',
+				expect.objectContaining({
+					traceId: 'override-trace',
+					nodeName: 'TestNode',
+					custom: 'value',
+				}),
+			);
+		});
+
+		it('[EC-09] should handle undefined extension gracefully', () => {
+			// ARRANGE & ACT
+			tracer.info('test', undefined);
+
+			// ASSERT
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'test',
+				expect.objectContaining({
+					traceId: 'generated-uuid-123',
+					nodeName: 'TestNode',
+				}),
+			);
 		});
 	});
 });

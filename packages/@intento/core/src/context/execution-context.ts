@@ -259,14 +259,14 @@ export class ExecutionContext implements IContext {
 	 * 1. First attempt (0) returns 0 delay (immediate execution)
 	 * 2. Base delay scaled so exponential growth reaches maxDelayMs at final retry
 	 * 3. Jitter adds uniform random variance to prevent thundering herd
-	 * 4. Result capped at maxDelayMs to prevent overflow on high attempts
+	 * 4. Result capped at maxDelayMs to handle jitter overflow
 	 *
 	 * **Example** (maxAttempts=5, maxDelayMs=5000, maxJitter=0.2):
 	 * - Attempt 0: 0ms (immediate)
-	 * - Attempt 1: ~625ms ± 62.5ms jitter (562-688ms)
-	 * - Attempt 2: ~1250ms ± 62.5ms jitter (1188-1312ms)
-	 * - Attempt 3: ~2500ms ± 62.5ms jitter (2438-2562ms)
-	 * - Attempt 4: ~5000ms ± 62.5ms jitter (4938-5000ms, capped at maxDelayMs)
+	 * - Attempt 1: ~625ms ± 125ms jitter (500-750ms range)
+	 * - Attempt 2: ~1250ms ± 250ms jitter (1000-1500ms range)
+	 * - Attempt 3: ~2500ms ± 500ms jitter (2000-3000ms range)
+	 * - Attempt 4: ~5000ms ± 1000ms jitter (4000-6000ms range, capped at 5000ms)
 	 *
 	 * @param attempt - Zero-based retry attempt number (0 = first attempt, no delay)
 	 * @returns Calculated delay in milliseconds, capped at maxDelayMs
@@ -279,9 +279,9 @@ export class ExecutionContext implements IContext {
 
 		// NOTE: Base delay scaled so exponential growth reaches maxDelayMs at final retry
 		const baseDelay = this.maxDelayMs / 2 ** (this.maxAttempts - 1);
-		// NOTE: Jitter prevents thundering herd via uniform random variance (range: -maxJitter to +maxJitter)
+		// NOTE: Jitter prevents thundering herd via uniform random variance scaled by maxJitter factor and baseDelay
 		const jitter = this.maxJitter * (Math.random() - 0.5) * 2 * baseDelay;
-		// NOTE: Cap at maxDelayMs to prevent overflow on edge cases or floating point errors
+		// NOTE: Cap at maxDelayMs since jitter can push delay above maximum (e.g., attempt 4 with positive jitter)
 		return Math.min(this.maxDelayMs, baseDelay * 2 ** attempt + jitter);
 	}
 

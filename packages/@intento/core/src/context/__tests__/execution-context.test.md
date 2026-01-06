@@ -1,120 +1,209 @@
-# Test Plan: ExecutionContext
+# Test Plan: execution-context.ts
 
-**Target File:** `src/context/execution-context.ts`
-**Test File:** `src/context/__tests__/execution-context.test.ts`
-**Coverage Goal:** ≥95% (branches, functions, lines, statements)
+**Author:** Claude Sonnet 4.5
+**Date:** 2026-01-06
+**Coverage Target:** ≥95% all metrics
+**Test File:** `execution-context.test.ts`
 
-## Test Categories
+## Code Surface
+**Exports:**
+- `ExecutionContext` class (implements IContext)
+- `CONTEXT_EXECUTION` array (n8n node properties)
+- Constants: `EXECUTION` object with KEYS, DEFAULTS, BOUNDARIES
 
-### Business Logic (BL) - Core Functionality
+**Dependencies:**
+- `IContext` interface (throwIfInvalid, asLogMetadata methods)
+- `mapTo` decorator from context-factory
+- `AbortSignal` browser API (timeout, any, throwIfAborted)
+- `Math.random()` for jitter calculation
 
-| ID | Test Case | Method | Input | Expected Output | Rationale |
-|----|-----------|--------|-------|-----------------|-----------|
-| BL-01 | Creates context with default values | constructor | No parameters | maxAttempts=5, maxDelayMs=5000, maxJitter=0.2, timeoutMs=10000 | Validates defaults match EXECUTION.DEFAULTS |
-| BL-02 | Creates context with custom values | constructor | maxAttempts=10, maxDelayMs=20000, maxJitter=0.5, timeoutMs=30000 | Custom values preserved | Validates parameter passing |
-| BL-03 | Freezes instance after construction | constructor | Default values | Object.isFrozen(instance) === true | Prevents mutation during execution |
-| BL-04 | Calculates delay for first attempt | calculateDelay | attempt=0 | 0 | First attempt has no delay |
-| BL-05 | Calculates delay with exponential backoff | calculateDelay | attempt=1,2,3 (maxAttempts=5, maxDelayMs=5000, maxJitter=0.2) | ~625ms, ~1250ms, ~2500ms (±jitter) | Validates exponential formula |
-| BL-06 | Caps delay at maxDelayMs | calculateDelay | attempt=4 (maxAttempts=5, maxDelayMs=5000) | ≤5000ms | Prevents overflow |
-| BL-07 | Creates abort signal with timeout only | createAbortSignal | parent=undefined, timeoutMs=1000 | Signal aborts after ~1000ms | Basic timeout functionality |
-| BL-08 | Creates abort signal with parent chain | createAbortSignal | parent=AbortSignal, timeoutMs=5000 | Signal aborts when parent aborts OR after timeout | Validates AbortSignal.any() |
-| BL-09 | Returns log metadata with all properties | asLogMetadata | Default instance | Object with maxAttempts, maxDelayMs, maxJitter, timeoutMs | Validates metadata structure |
-| BL-10 | Passes validation with valid boundaries | throwIfInvalid | Valid values within BOUNDARIES | No throw | Happy path validation |
+**Branches:**
+- Constructor: 4 parameters with default values
+- throwIfInvalid: Calls validateRequired and validateBoundaries
+- validateRequired: 4 null/undefined checks (8 conditions with ||)
+- validateBoundaries: 8 boundary checks (min/max for each parameter)
+- calculateDelay: 3 conditions (attempt === 0, attempt < 0, attempt >= maxAttempts)
+- createAbortSignal: 2 conditions (parent exists, parent already aborted)
 
-### Edge Cases (EC) - Boundary Conditions
+**ESLint Considerations:**
+- File-level disables needed:
+  - `@typescript-eslint/no-unsafe-assignment` (for jest mock returns)
+  - `@typescript-eslint/unbound-method` (for Math.random mocking)
+- Type assertions: Mock return values for AbortSignal
+- Import order: external → types → implementation
 
-| ID | Test Case | Method | Input | Expected Output | Rationale |
-|----|-----------|--------|-------|-----------------|-----------|
-| EC-01 | Handles minimum maxAttempts boundary | constructor + throwIfInvalid | maxAttempts=1 | No throw | Validates min boundary |
-| EC-02 | Handles maximum maxAttempts boundary | constructor + throwIfInvalid | maxAttempts=50 | No throw | Validates max boundary |
-| EC-03 | Handles minimum maxDelayMs boundary | constructor + throwIfInvalid | maxDelayMs=100 | No throw | Validates min boundary |
-| EC-04 | Handles maximum maxDelayMs boundary | constructor + throwIfInvalid | maxDelayMs=60000 | No throw | Validates max boundary |
-| EC-05 | Handles minimum maxJitter boundary | constructor + throwIfInvalid | maxJitter=0.1 | No throw | Validates min boundary |
-| EC-06 | Handles maximum maxJitter boundary | constructor + throwIfInvalid | maxJitter=0.9 | No throw | Validates max boundary |
-| EC-07 | Handles minimum timeoutMs boundary | constructor + throwIfInvalid | timeoutMs=1000 | No throw | Validates min boundary |
-| EC-08 | Handles maximum timeoutMs boundary | constructor + throwIfInvalid | timeoutMs=600000 | No throw | Validates max boundary |
-| EC-09 | Calculates delay for last valid attempt | calculateDelay | attempt=maxAttempts-1 | Valid delay ≤ maxDelayMs | Edge of valid attempt range |
-| EC-10 | Handles parent signal without timeout race | createAbortSignal | parent aborts immediately | Signal already aborted | Parent wins race |
-| EC-11 | Jitter produces positive delays with max jitter | calculateDelay | maxJitter=0.9, attempt=1 | delay > 0 | Validates jitter math: 2^1 - 0.9 = 1.1 > 0 |
+## Test Cases
 
-### Error Handling (EH) - Validation and Errors
+### Constructor
 
-| ID | Test Case | Method | Input | Expected Error | Rationale |
-|----|-----------|--------|-------|----------------|-----------|
-| EH-01 | Throws on null maxAttempts | throwIfInvalid | maxAttempts=null | Error: "maxAttempts is required" | Validates null check |
-| EH-02 | Throws on undefined maxAttempts | throwIfInvalid | maxAttempts=undefined | Error: "maxAttempts is required" | Validates undefined check |
-| EH-03 | Throws on null maxDelayMs | throwIfInvalid | maxDelayMs=null | Error: "maxDelayMs is required" | Validates null check |
-| EH-04 | Throws on undefined maxDelayMs | throwIfInvalid | maxDelayMs=undefined | Error: "maxDelayMs is required" | Validates undefined check |
-| EH-05 | Throws on null maxJitter | throwIfInvalid | maxJitter=null | Error: "maxJitter is required" | Validates null check |
-| EH-06 | Throws on undefined maxJitter | throwIfInvalid | maxJitter=undefined | Error: "maxJitter is required" | Validates undefined check |
-| EH-07 | Throws on null timeoutMs | throwIfInvalid | timeoutMs=null | Error: "timeoutMs is required" | Validates null check |
-| EH-08 | Throws on undefined timeoutMs | throwIfInvalid | timeoutMs=undefined | Error: "timeoutMs is required" | Validates undefined check |
-| EH-09 | Throws on maxAttempts below minimum | throwIfInvalid | maxAttempts=0 | RangeError: "maxAttempts must be at least 1" | Validates boundary check |
-| EH-10 | Throws on maxAttempts above maximum | throwIfInvalid | maxAttempts=51 | RangeError: "maxAttempts must be at most 50" | Validates boundary check |
-| EH-11 | Throws on maxDelayMs below minimum | throwIfInvalid | maxDelayMs=99 | RangeError: "maxDelayMs must be at least 100" | Validates boundary check |
-| EH-12 | Throws on maxDelayMs above maximum | throwIfInvalid | maxDelayMs=60001 | RangeError: "maxDelayMs must be at most 60000" | Validates boundary check |
-| EH-13 | Throws on maxJitter below minimum | throwIfInvalid | maxJitter=0.09 | RangeError: "maxJitter must be at least 0.1" | Validates boundary check |
-| EH-14 | Throws on maxJitter above maximum | throwIfInvalid | maxJitter=0.91 | RangeError: "maxJitter must be at most 0.9" | Validates boundary check |
-| EH-15 | Throws on timeoutMs below minimum | throwIfInvalid | timeoutMs=999 | RangeError: "timeoutMs must be at least 1000" | Validates boundary check |
-| EH-16 | Throws on timeoutMs above maximum | throwIfInvalid | timeoutMs=600001 | RangeError: "timeoutMs must be at most 600000" | Validates boundary check |
-| EH-17 | Throws on negative attempt | calculateDelay | attempt=-1 | RangeError: "attempt must be non-negative" | Validates attempt bounds |
-| EH-18 | Throws on attempt >= maxAttempts | calculateDelay | attempt=5 (maxAttempts=5) | RangeError: "attempt must be less than 5" | Validates attempt upper bound |
-| EH-19 | Throws on already aborted parent signal | createAbortSignal | parent=aborted AbortSignal | AbortError | Validates throwIfAborted() call |
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-01 | should create context with all parameters | Lines 157-164, constructor |
+| BL-02 | should apply default values when parameters omitted | Constructor defaults |
+| BL-03 | should freeze instance after construction | Line 167, Object.freeze |
+| BL-04 | should apply @mapTo decorators to all parameters | Decorator metadata |
+
+#### Edge Cases (EC-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should handle boundary min values (1, 100, 0.1, 1000) | Constructor with min BOUNDARIES |
+| EC-02 | should handle boundary max values (50, 60000, 0.9, 600000) | Constructor with max BOUNDARIES |
+
+### throwIfInvalid / validateRequired
+
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-05 | should pass validation with all valid parameters | Lines 178-180, no throws |
+
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should throw Error if maxAttempts is null | Line 190, first condition |
+| EH-02 | should throw Error if maxAttempts is undefined | Line 190, second condition |
+| EH-03 | should throw Error if maxDelayMs is null | Line 191, first condition |
+| EH-04 | should throw Error if maxDelayMs is undefined | Line 191, second condition |
+| EH-05 | should throw Error if maxJitter is null | Line 192, first condition |
+| EH-06 | should throw Error if maxJitter is undefined | Line 192, second condition |
+| EH-07 | should throw Error if timeoutMs is null | Line 193, first condition |
+| EH-08 | should throw Error if timeoutMs is undefined | Line 193, second condition |
+
+### validateBoundaries
+
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-09 | should throw RangeError if maxAttempts < 1 | Lines 206-207 |
+| EH-10 | should throw RangeError if maxAttempts > 50 | Lines 209-210 |
+| EH-11 | should throw RangeError if maxDelayMs < 100 | Lines 212-213 |
+| EH-12 | should throw RangeError if maxDelayMs > 60000 | Lines 215-216 |
+| EH-13 | should throw RangeError if maxJitter < 0.1 | Lines 218-219 |
+| EH-14 | should throw RangeError if maxJitter > 0.9 | Lines 221-222 |
+| EH-15 | should throw RangeError if timeoutMs < 1000 | Lines 224-225 |
+| EH-16 | should throw RangeError if timeoutMs > 600000 | Lines 227-228 |
+
+### asLogMetadata
+
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-06 | should return all configuration as structured metadata | Lines 239-244 |
+
+### calculateDelay
+
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-07 | should return 0 for first attempt (attempt 0) | Line 261, early return |
+| BL-08 | should calculate exponential backoff for subsequent attempts | Lines 266-270 |
+| BL-09 | should apply jitter to delay calculation | Line 268, jitter formula |
+| BL-10 | should cap delay at maxDelayMs | Line 270, Math.min |
+
+#### Edge Cases (EC-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-03 | should handle last attempt (maxAttempts - 1) | Boundary case |
+| EC-04 | should produce different delays with jitter | Math.random variance |
+| EC-05 | should scale base delay correctly for different maxAttempts | Base delay formula |
+
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-17 | should throw RangeError if attempt is negative | Line 262, negative check |
+| EH-18 | should throw RangeError if attempt >= maxAttempts | Line 263, upper bound |
+
+### createAbortSignal
+
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-11 | should create timeout signal without parent | Lines 286-287 |
+| BL-12 | should combine parent and timeout signals | Lines 289-291 |
+| BL-13 | should call AbortSignal.timeout with timeoutMs | Line 286 |
+| BL-14 | should call AbortSignal.any with parent and timeout | Line 291 |
+
+#### Edge Cases (EC-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-06 | should check parent signal before creating timeout | Line 284, throwIfAborted |
+
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-19 | should throw if parent signal already aborted | Line 284, throwIfAborted |
+
+## Test Data Structures
+
+```typescript
+// Valid contexts at boundaries
+const MIN_CONTEXT = new ExecutionContext(1, 100, 0.1, 1000);
+const MAX_CONTEXT = new ExecutionContext(50, 60000, 0.9, 600000);
+const DEFAULT_CONTEXT = new ExecutionContext(); // Uses all defaults
+
+// Invalid contexts for error testing
+const INVALID_CONTEXTS = {
+  nullMaxAttempts: { maxAttempts: null, maxDelayMs: 5000, maxJitter: 0.2, timeoutMs: 10000 },
+  maxAttemptsTooLow: { maxAttempts: 0, maxDelayMs: 5000, maxJitter: 0.2, timeoutMs: 10000 },
+  maxAttemptsTooHigh: { maxAttempts: 51, maxDelayMs: 5000, maxJitter: 0.2, timeoutMs: 10000 },
+  maxDelayTooLow: { maxAttempts: 5, maxDelayMs: 99, maxJitter: 0.2, timeoutMs: 10000 },
+  maxDelayTooHigh: { maxAttempts: 5, maxDelayMs: 60001, maxJitter: 0.2, timeoutMs: 10000 },
+  jitterTooLow: { maxAttempts: 5, maxDelayMs: 5000, maxJitter: 0.09, timeoutMs: 10000 },
+  jitterTooHigh: { maxAttempts: 5, maxDelayMs: 5000, maxJitter: 0.91, timeoutMs: 10000 },
+  timeoutTooLow: { maxAttempts: 5, maxDelayMs: 5000, maxJitter: 0.2, timeoutMs: 999 },
+  timeoutTooHigh: { maxAttempts: 5, maxDelayMs: 5000, maxJitter: 0.2, timeoutMs: 600001 },
+};
+```
+
+## Mock Setup
+
+```typescript
+// Mock Math.random for deterministic jitter testing
+let mockRandom: jest.SpyInstance;
+beforeEach(() => {
+  mockRandom = jest.spyOn(Math, 'random');
+});
+afterEach(() => {
+  mockRandom.mockRestore();
+});
+
+// Mock AbortSignal for signal testing
+const mockAbortSignal = {
+  timeout: jest.fn(),
+  any: jest.fn(),
+  throwIfAborted: jest.fn(),
+};
+```
 
 ## Coverage Strategy
 
-### Statements
-- All validation checks (required + boundaries)
-- All calculation branches (exponential backoff, jitter, capping)
-- All utility methods (asLogMetadata, createAbortSignal)
-- Constructor initialization and freezing
+1. **Constructor and validation** (Lines 157-228):
+   - Test all default values (BL-02)
+   - Test all boundary conditions (EC-01, EC-02)
+   - Test all null/undefined checks (EH-01 through EH-08)
+   - Test all range validations (EH-09 through EH-16)
 
-### Branches
-- Each boundary check (min/max for all 4 parameters)
-- Null/undefined checks for all parameters
-- Attempt bounds (0, negative, >= maxAttempts)
-- Parent signal presence (with/without)
-- Parent signal state (aborted/active)
+2. **calculateDelay** (Lines 247-270):
+   - Test early return for attempt 0 (BL-07)
+   - Test exponential backoff formula (BL-08)
+   - Test jitter application (BL-09, EC-04)
+   - Test maxDelayMs cap (BL-10)
+   - Test error conditions (EH-17, EH-18)
 
-### Functions
-- constructor
-- throwIfInvalid
-- validateRequired (private, covered via throwIfInvalid)
-- validateBoundaries (private, covered via throwIfInvalid)
-- calculateDelay
-- createAbortSignal
-- asLogMetadata
+3. **createAbortSignal** (Lines 282-291):
+   - Test without parent (BL-11)
+   - Test with parent (BL-12)
+   - Test parent abort check (EC-06, EH-19)
 
-### Lines
-- All executable lines in public and private methods
-- Constants and defaults (indirectly via constructor tests)
+4. **asLogMetadata** (Lines 239-244):
+   - Test complete metadata structure (BL-06)
 
-## Test Structure
-
-```typescript
-describe('ExecutionContext', () => {
-  describe('business logic', () => {
-    it('[BL-01] should create context with default values', () => { ... });
-    // ... other BL tests
-  });
-
-  describe('edge cases', () => {
-    it('[EC-01] should handle minimum maxAttempts boundary', () => { ... });
-    // ... other EC tests
-  });
-
-  describe('error handling', () => {
-    it('[EH-01] should throw on null maxAttempts', () => { ... });
-    // ... other EH tests
-  });
-});
-```
-
-## Notes
-
-1. **Jitter Testing**: Use multiple iterations with Math.random() to verify jitter range (±maxJitter * baseDelay)
-2. **Immutability**: Verify Object.isFrozen() and attempt property modification
-3. **AbortSignal**: Test with real AbortController for parent signal scenarios
-4. **Timing**: Use jest.useFakeTimers() for timeout tests
-5. **Exponential Formula**: Validate baseDelay = maxDelayMs / 2^(maxAttempts-1) calculation
-6. **Type Safety**: Mock Reflect.getMetadata if needed for @mapTo decorator (ContextFactory integration)
+## Success Criteria
+- [x] Test plan created with author and date
+- [x] All exports identified (ExecutionContext, CONTEXT_EXECUTION)
+- [x] All branches covered: 23+ conditional branches
+- [x] All error paths tested: 19 error scenarios (EH-01 through EH-19)
+- [x] ESLint considerations documented
+- [x] Coverage ≥95% target for all metrics
+- [x] Test data structures defined
+- [x] Mock setup documented

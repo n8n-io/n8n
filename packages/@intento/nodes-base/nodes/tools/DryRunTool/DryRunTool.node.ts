@@ -1,15 +1,16 @@
+import { DryRunDescriptor } from 'intento-translation';
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { DryRunProviderV1 } from './v1/DryRunProviderV1.node';
+import { DryRunToolV1 } from './v1/DryRunToolV1.node';
 
-export class DryRunProvider extends VersionedNodeType {
+export class DryRunTool extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Dry Run Provider',
-			name: 'dryRunProvider',
+			displayName: `${DryRunDescriptor.displayName}`,
+			name: `${DryRunDescriptor.tool}`,
 			group: ['transform'],
-			description: 'A tool for testing and validation that returns input data as-is',
+			description: `${DryRunDescriptor.description}`,
 			icon: {
 				light: 'file:dry-run.light.svg',
 				dark: 'file:dry-run.dark.svg',
@@ -17,7 +18,7 @@ export class DryRunProvider extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new DryRunProviderV1(baseDescription),
+			1: new DryRunToolV1(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

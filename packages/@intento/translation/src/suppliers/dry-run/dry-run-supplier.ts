@@ -1,9 +1,12 @@
 import { ContextFactory, Delay, type IFunctions } from 'intento-core';
-import type { IntentoConnectionType } from 'n8n-workflow';
+import { NodeApiError, type IntentoConnectionType } from 'n8n-workflow';
 
-import { DelayContext, DryRunContext } from 'context/*';
+import { DelayContext } from 'context/*';
+import { DryRunContext } from 'suppliers/dry-run/dry-run-context';
 import type { TranslationRequest } from 'supply/*';
 import { TranslationResponse, TranslationSupplierBase, TranslationError } from 'supply/*';
+
+import { DryRunDescriptor } from './dry-run-descriptor';
 
 /**
  * Test supplier for simulating translation behavior without external API calls.
@@ -28,7 +31,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 	 * @param functions - n8n execution functions for reading node parameters
 	 */
 	constructor(connection: IntentoConnectionType, functions: IFunctions) {
-		super('dry-run-supplier', connection, functions);
+		super(DryRunDescriptor.name, connection, functions);
 
 		this.delayContext = ContextFactory.read<DelayContext>(DelayContext, this.functions, this.tracer);
 		this.dryRunContext = ContextFactory.read<DryRunContext>(DryRunContext, this.functions, this.tracer);
@@ -60,8 +63,10 @@ export class DryRunSupplier extends TranslationSupplierBase {
 				this.tracer.info(`🧪 [${this.name}] Overriding translation with predefined text.`);
 				return new TranslationResponse(request, this.dryRunContext.override!, request.from);
 			case 'fail':
-				this.tracer.info(`🧪 [${this.name}] Simulating translation error as per dry-run configuration.`);
-				return new TranslationError(request, this.dryRunContext.errorCode!, this.dryRunContext.errorMessage!);
+				throw new NodeApiError(this.functions.getNode(), {
+					httpCode: this.dryRunContext.errorCode!,
+					message: `🧪 [${this.name}] Simulated translation failure: ${this.dryRunContext.errorMessage}`,
+				});
 		}
 	}
 }

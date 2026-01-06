@@ -1,7 +1,7 @@
 # Test Plan: supply-error-base.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2025-01-05
+**Date:** 2026-01-06
 **Coverage Target:** ≥95% all metrics
 **Test File:** `supply-error-base.test.ts`
 
@@ -10,40 +10,37 @@
 ### Exports
 - `SupplyErrorBase` (abstract class) - implements `ITraceable`, `IDataProvider`
 
-### Properties
-- `requestId: string` (readonly) - Copied from request
-- `latencyMs: number` (readonly) - Calculated as `Date.now() - request.requestedAt`
-- `code: number` (readonly) - HTTP status code or error code
-- `reason: string` (readonly) - Error reason/message
+### Properties (all readonly)
+- `requestId: string` - Copied from request
+- `latencyMs: number` - Calculated from request.requestedAt to Date.now()
+- `code: number` - Provider error code
+- `reason: string` - Human-readable error message
+- `isRetriable: boolean` - Retry eligibility flag
 
 ### Constructor Logic
-- Lines 42-48: Accepts `SupplyRequestBase`, `code`, and `reason` parameters
-- Line 43: Copies requestId from request
-- Line 45: Calculates latency from request timestamp to error creation
-- Lines 46-47: Stores error code and reason
-
-### Methods
-- `isRetryable(): boolean` - Lines 63-66: Determines retryability based on HTTP status codes
-  - Returns `true` for code 429 (rate limit)
-  - Returns `true` for codes 500-599 (server errors)
-  - Returns `false` for all other codes
+- Line 56: Extract requestId from request
+- Lines 57-59: Calculate latency from request.requestedAt to current time
+- Lines 60-62: Assign code, reason, isRetriable from parameters
+- **Dependencies**: `Date.now()` for latency calculation
+- **Branches**: None (straightforward assignment)
 
 ### Abstract Methods (Must be tested via concrete implementation)
-- `asLogMetadata(): LogMetadata` - Line 50
-- `asDataObject(): IDataObject` - Line 51
-- `asError(node: INode): NodeOperationError` - Line 57
+- `asLogMetadata(): LogMetadata` - Lines 64-72
+- `asDataObject(): IDataObject` - Lines 74-83
+- `asError(node: INode): NodeOperationError` - Lines 85-93
 
 ### Dependencies to Mock
-- `Date.now()` - For predictable latency calculation testing
-- `SupplyRequestBase` - Mock request objects with known timestamps
-- `INode` - Mock n8n node for asError testing
+- `Date.now()` - For predictable latency calculation
+- `SupplyRequestBase` - Mock request with requestId and requestedAt
+- `INode` - For asError() parameter in concrete implementation
 
 ### Edge Cases
-- Retryable error codes: 429, 500, 501, 502, 503, 504, 599
-- Non-retryable error codes: 400, 401, 403, 404, 200, 201
-- Boundary values: 499 (not retryable), 500 (retryable), 600 (not retryable)
-- Zero latency, large latency values
-- Empty reason strings, long reason strings
+- Latency calculation with various time differences
+- Zero latency (same timestamp)
+- Large latency values (long-running requests)
+- Negative latency (clock skew - should not occur in practice)
+- Property immutability
+- Abstract method enforcement
 
 ## Test Case Inventory
 
@@ -51,83 +48,106 @@
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-01 | should copy requestId from request | Line 43, requestId assignment |
-| BL-02 | should calculate latencyMs from request timestamp | Line 45, latency calculation |
-| BL-03 | should store error code | Line 46, code assignment |
-| BL-04 | should store error reason | Line 47, reason assignment |
-| BL-05 | should implement ITraceable interface with requestId | Interface contract validation |
-| BL-06 | should implement IDataProvider interface | Interface contract validation |
-| BL-07 | should return true for retryable error code 429 | Line 65, rate limit check |
-| BL-08 | should return true for retryable server error 500 | Line 65, server error check |
-| BL-09 | should return true for retryable server error 503 | Line 65, server error range |
-| BL-10 | should return false for non-retryable client error 400 | Line 65, client error check |
-| BL-11 | should return false for non-retryable client error 404 | Line 65, not found check |
+| BL-01 | should extract requestId from supply request | Line 56, requestId assignment |
+| BL-02 | should calculate latencyMs from request timestamp to current time | Lines 57-59, latency calculation |
+| BL-03 | should assign code from constructor parameter | Line 60, code assignment |
+| BL-04 | should assign reason from constructor parameter | Line 61, reason assignment |
+| BL-05 | should assign isRetriable from constructor parameter | Line 62, isRetriable assignment |
+| BL-06 | should implement ITraceable interface with requestId | Interface contract validation |
+| BL-07 | should implement IDataProvider interface | Interface contract validation |
+| BL-08 | should create error with all properties initialized | Full constructor coverage |
 
 ### EC-XX: Edge Cases
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-01 | should handle zero latency (same millisecond as request) | Immediate error scenario |
-| EC-02 | should handle large latency values | Long-running request before error |
-| EC-03 | should preserve requestId from request without modification | ID immutability |
-| EC-04 | should handle empty reason string | Edge case validation |
-| EC-05 | should handle long reason string | Large text handling |
-| EC-06 | should return true for boundary retryable code 500 | Boundary: first 5xx |
-| EC-07 | should return true for boundary retryable code 599 | Boundary: last 5xx |
-| EC-08 | should return false for boundary non-retryable code 499 | Boundary: before 5xx |
-| EC-09 | should return false for boundary non-retryable code 600 | Boundary: after 5xx |
-| EC-10 | should require concrete implementation of asLogMetadata | Abstract method enforcement |
-| EC-11 | should require concrete implementation of asDataObject | Abstract method enforcement |
-| EC-12 | should require concrete implementation of asError | Abstract method enforcement |
+| EC-01 | should calculate zero latency when instantiated at same timestamp | Edge case: latencyMs = 0 |
+| EC-02 | should calculate latency for long-running request (large time diff) | Edge case: large latencyMs |
+| EC-03 | should handle HTTP status codes (400, 500, etc.) | Common error codes |
+| EC-04 | should handle API-specific error codes (custom ranges) | Provider-specific codes |
+| EC-05 | should handle empty reason string | Edge case: empty error message |
+| EC-06 | should handle long reason strings (verbose errors) | Edge case: large error message |
+| EC-07 | should preserve requestId immutability | Readonly property validation |
+| EC-08 | should preserve latencyMs immutability | Readonly property validation |
+| EC-09 | should preserve code immutability | Readonly property validation |
+| EC-10 | should preserve reason immutability | Readonly property validation |
+| EC-11 | should preserve isRetriable immutability | Readonly property validation |
+| EC-12 | should handle isRetriable true (transient errors) | Retry flag true case |
+| EC-13 | should handle isRetriable false (permanent errors) | Retry flag false case |
 
 ### EH-XX: Error Handling
 
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should enforce abstract class pattern via TypeScript | TypeScript abstract enforcement |
+| EH-01 | should require concrete implementation of asLogMetadata | Abstract method enforcement |
+| EH-02 | should require concrete implementation of asDataObject | Abstract method enforcement |
+| EH-03 | should require concrete implementation of asError | Abstract method enforcement |
 
 ## Mock Strategy
 
 ### Mocked Dependencies
+
 ```typescript
 // Mock Date.now for predictable latency calculation
 const mockDateNow = jest.spyOn(Date, 'now');
 
-// Mock SupplyRequestBase for testing
-class MockRequest extends SupplyRequestBase {
-  constructor(testRequestId: string, testRequestedAt: number) {
-    super();
-    (this as any).requestId = testRequestId;
-    (this as any).requestedAt = testRequestedAt;
-  }
+// Mock SupplyRequestBase
+const createMockRequest = (requestId: string, requestedAt: number): SupplyRequestBase => ({
+  requestId,
+  requestedAt,
+  asLogMetadata: jest.fn(),
+  asDataObject: jest.fn(),
+  clone: jest.fn(),
+});
 
-  asLogMetadata() { return {}; }
-  asDataObject() { return {}; }
-  clone() { return this; }
-}
-
-// Mock INode for asError testing
-const mockNode = mock<INode>();
+// Mock INode for asError() testing
+const mockNode: INode = {
+  id: 'node-123',
+  name: 'TestNode',
+  type: 'n8n-nodes-base.test',
+  typeVersion: 1,
+  position: [100, 200],
+  parameters: {},
+};
 ```
 
 ### Test Double Pattern
+
 ```typescript
 // Concrete implementation for testing abstract class
 class TestError extends SupplyErrorBase {
-  constructor(request: SupplyRequestBase, code: number, reason: string, private details?: string) {
-    super(request, code, reason);
+  constructor(
+    request: SupplyRequestBase,
+    code: number,
+    reason: string,
+    isRetriable: boolean,
+  ) {
+    super(request, code, reason, isRetriable);
   }
 
   asLogMetadata(): LogMetadata {
-    return { requestId: this.requestId, latencyMs: this.latencyMs, code: this.code, reason: this.reason };
+    return {
+      requestId: this.requestId,
+      code: this.code,
+      reason: this.reason,
+      isRetriable: this.isRetriable,
+      latencyMs: this.latencyMs,
+    };
   }
 
   asDataObject(): IDataObject {
-    return { requestId: this.requestId, latencyMs: this.latencyMs, code: this.code, reason: this.reason, details: this.details };
+    return {
+      requestId: this.requestId,
+      error: this.reason,
+      code: this.code,
+      retriable: this.isRetriable,
+    };
   }
 
   asError(node: INode): NodeOperationError {
-    return new NodeOperationError(node, this.reason, { description: this.details });
+    return new NodeOperationError(node, this.reason, {
+      description: `Error code: ${this.code}`,
+    });
   }
 }
 ```
@@ -135,78 +155,193 @@ class TestError extends SupplyErrorBase {
 ## Coverage Mapping
 
 ### Lines to Cover
-- **Line 43**: `this.requestId = request.requestId` - Request ID copy
-- **Line 45**: `this.latencyMs = Date.now() - request.requestedAt` - Latency calculation
-- **Line 46**: `this.code = code` - Code assignment
-- **Line 47**: `this.reason = reason` - Reason assignment
-- **Line 50**: asLogMetadata abstract declaration (via concrete implementation)
-- **Line 51**: asDataObject abstract declaration (via concrete implementation)
-- **Line 57**: asError abstract declaration (via concrete implementation)
-- **Line 65**: `return this.code === 429 || (this.code >= 500 && this.code < 600)` - Retry logic
+- **Line 56**: `this.requestId = request.requestId;`
+- **Lines 57-59**: Latency calculation with inline comment
+- **Line 60**: `this.code = code;`
+- **Line 61**: `this.reason = reason;`
+- **Line 62**: `this.isRetriable = isRetriable;`
+- **Lines 64-72**: asLogMetadata abstract declaration (via concrete implementation)
+- **Lines 74-83**: asDataObject abstract declaration (via concrete implementation)
+- **Lines 85-93**: asError abstract declaration (via concrete implementation)
 
 ### Branches to Cover
-- **Line 65 - Branch 1**: `this.code === 429` (true path)
-- **Line 65 - Branch 2**: `this.code === 429` (false path) AND `this.code >= 500` (true path)
-- **Line 65 - Branch 3**: `this.code === 429` (false path) AND `this.code >= 500` (true path) AND `this.code < 600` (true path)
-- **Line 65 - Branch 4**: All conditions false (non-retryable)
+- No explicit branches in SupplyErrorBase (abstract class with simple constructor)
+- Coverage achieved through concrete implementation tests
 
-### Uncovered Scenarios
-- None expected - all branches covered by test cases
+### Critical Paths
+1. **Constructor path**: request → extract requestId → calculate latency → assign parameters
+2. **Interface compliance**: ITraceable (requestId) + IDataProvider (abstract methods)
+3. **Abstract method contracts**: Subclass must implement all three methods
 
 ## Expected Coverage Metrics
-- **Lines**: 100% (6 executable lines)
-- **Statements**: 100% (5 assignments + 1 return)
-- **Functions**: 100% (constructor + isRetryable + abstract methods via test implementation)
-- **Branches**: 100% (isRetryable conditions)
+
+- **Lines**: 100% (5 executable lines in constructor)
+- **Statements**: 100% (requestId extraction + latency calculation + 3 assignments)
+- **Functions**: 100% (constructor + 3 abstract methods via test implementation)
+- **Branches**: N/A (no conditional logic)
 
 ## Test Fixtures
 
 ### Sample Data
-```typescript
-const MOCK_REQUEST_ID = 'test-request-uuid-001';
-const MOCK_REQUEST_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
-const MOCK_ERROR_TIMESTAMP_100 = 1704412800100; // +100ms latency
-const MOCK_ERROR_TIMESTAMP_1000 = 1704412801000; // +1000ms latency
 
-// HTTP Status Codes
-const CODE_RATE_LIMIT = 429;
-const CODE_SERVER_ERROR = 500;
-const CODE_BAD_GATEWAY = 502;
-const CODE_SERVICE_UNAVAILABLE = 503;
-const CODE_GATEWAY_TIMEOUT = 504;
-const CODE_BAD_REQUEST = 400;
-const CODE_UNAUTHORIZED = 401;
-const CODE_FORBIDDEN = 403;
-const CODE_NOT_FOUND = 404;
-const CODE_BOUNDARY_499 = 499;
-const CODE_BOUNDARY_599 = 599;
-const CODE_BOUNDARY_600 = 600;
+```typescript
+// Timestamps for latency testing
+const BASE_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
+const TIMESTAMP_PLUS_100MS = BASE_TIMESTAMP + 100;
+const TIMESTAMP_PLUS_5000MS = BASE_TIMESTAMP + 5000;
+
+// Request fixtures
+const MOCK_REQUEST_ID = 'test-request-uuid-123';
+
+// Error code fixtures
+const HTTP_400_BAD_REQUEST = 400;
+const HTTP_429_RATE_LIMIT = 429;
+const HTTP_500_SERVER_ERROR = 500;
+const CUSTOM_ERROR_CODE = 9999;
+
+// Error reason fixtures
+const RATE_LIMIT_REASON = 'Rate limit exceeded. Retry after 60 seconds.';
+const AUTH_FAILURE_REASON = 'Invalid API key provided.';
+const SERVER_ERROR_REASON = 'Internal server error. Please try again later.';
+const EMPTY_REASON = '';
+const LONG_REASON = 'A'.repeat(1000); // 1000 character error message
+
+// Retry flag scenarios
+const RETRIABLE = true;  // Rate limits, transient errors
+const NON_RETRIABLE = false;  // Auth errors, invalid input
+```
+
+## Latency Calculation Test Scenarios
+
+### Scenario 1: Zero Latency (Same Timestamp)
+```typescript
+// Request created at time T, error instantiated at time T
+request.requestedAt = 1000;
+Date.now() = 1000;
+Expected latencyMs = 0;
+```
+
+### Scenario 2: Normal Latency (100ms)
+```typescript
+// Request created at time T, error instantiated at time T+100
+request.requestedAt = 1000;
+Date.now() = 1100;
+Expected latencyMs = 100;
+```
+
+### Scenario 3: High Latency (5 seconds)
+```typescript
+// Request created at time T, error instantiated at time T+5000
+request.requestedAt = 1000;
+Date.now() = 6000;
+Expected latencyMs = 5000;
+```
+
+### Scenario 4: Very High Latency (1 minute)
+```typescript
+// Request created at time T, error instantiated at time T+60000
+request.requestedAt = 1000;
+Date.now() = 61000;
+Expected latencyMs = 60000;
 ```
 
 ## Implementation Notes
 
-1. **Abstract Class Testing**: Create concrete test implementation that extends SupplyErrorBase
-2. **Mock Cleanup**: Restore Date.now after each test
-3. **Retry Logic Testing**: Test all branches of isRetryable() method
-4. **Boundary Testing**: Test edge cases around 500-599 range (499, 500, 599, 600)
-5. **HTTP Status Codes**: Cover common retryable (429, 5xx) and non-retryable (4xx) codes
-6. **Request Correlation**: Verify requestId and latency propagate correctly
-7. **Interface Compliance**: Verify ITraceable and IDataProvider contracts are satisfied
-8. **Error Conversion**: Test asError() method returns proper NodeOperationError
+### Test Organization
+```typescript
+describe('SupplyErrorBase', () => {
+  describe('constructor', () => {
+    // BL-01 to BL-08: Property initialization and assignments
+  });
+
+  describe('latency calculation', () => {
+    // BL-02, EC-01, EC-02: Various latency scenarios
+  });
+
+  describe('error codes and reasons', () => {
+    // EC-03 to EC-06: Different code/reason combinations
+  });
+
+  describe('retry flag', () => {
+    // EC-12, EC-13: Retriable vs non-retriable errors
+  });
+
+  describe('immutability', () => {
+    // EC-07 to EC-11: Readonly property validation
+  });
+
+  describe('abstract method contracts', () => {
+    // EH-01 to EH-03: Abstract method enforcement
+  });
+
+  describe('concrete implementation', () => {
+    // Test asLogMetadata, asDataObject, asError via TestError class
+  });
+});
+```
+
+### Key Testing Patterns
+
+1. **Arrange**: Create mock request with specific requestedAt, mock Date.now() for current time
+2. **Act**: Instantiate TestError (concrete subclass)
+3. **Assert**: Verify properties, latency calculation, abstract method implementations
+
+### Mock Cleanup
+
+```typescript
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+});
+```
+
+### Immutability Testing
+
+```typescript
+// TypeScript enforces readonly at compile-time, but verify at runtime
+const error = new TestError(mockRequest, 500, 'Server error', true);
+expect(Object.isFrozen(error)).toBe(false); // Properties are readonly, but object not frozen
+expect(() => {
+  (error as any).requestId = 'new-id'; // Should throw in strict mode
+}).toThrow(); // Runtime immutability check
+```
+
+## Special Considerations
+
+### Latency Calculation Formula
+```
+latencyMs = Date.now() - request.requestedAt
+```
+
+**Includes:**
+- Network round-trip time
+- Provider processing time
+- Error handling time
+
+**Excludes:**
+- Time spent in retry queue
+- Time before request instantiation
+
+### Abstract Method Implementation Requirements
+
+Subclasses must implement:
+1. **asLogMetadata()**: Must include requestId, code, reason, isRetriable, latencyMs at minimum
+2. **asDataObject()**: Should be user-facing, exclude internal debugging details
+3. **asError()**: Must provide actionable guidance for workflow authors
 
 ## Risk Assessment
 
 ### Low Risk
-- Simple constructor logic
-- Well-defined retry logic with clear conditions
-- Standard HTTP status code patterns
+- Simple constructor with direct assignments
+- Well-defined latency calculation
+- Clear abstract method contracts
 
 ### Medium Risk
-- Retry logic correctness is critical for system reliability
-- Boundary conditions (499, 500, 599, 600) must be tested thoroughly
+- Latency depends on Date.now() accuracy (system clock)
+- Abstract methods need proper implementation testing
 
 ### Mitigation
-- Test all HTTP status code categories (4xx, 429, 5xx, others)
-- Test boundary values explicitly
-- Verify latency calculation consistency with SupplyResponseBase pattern
-- Test error conversion to NodeOperationError
+- Mock Date.now() for deterministic latency testing
+- Test concrete implementation to verify abstract method contracts
+- Test various latency scenarios (zero, normal, high)
+- Verify property immutability at runtime

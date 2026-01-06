@@ -1,7 +1,6 @@
 import { SupplyErrorBase } from 'intento-core';
 import type { LogMetadata, INode, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import type { TranslationRequest } from 'supply/translation-request';
 
 /**
@@ -25,8 +24,8 @@ export class TranslationError extends SupplyErrorBase {
 	 * @param code - Error code (typically HTTP status or custom error code)
 	 * @param reason - Human-readable error description
 	 */
-	constructor(request: TranslationRequest, code: number, reason: string) {
-		super(request, code, reason);
+	constructor(request: TranslationRequest, code: number, reason: string, isRetriable: boolean) {
+		super(request, code, reason, isRetriable);
 		this.from = request.from;
 		this.to = request.to;
 		this.text = request.text;
@@ -62,7 +61,6 @@ export class TranslationError extends SupplyErrorBase {
 	}
 
 	asError(node: INode): NodeOperationError {
-		const message = `🌍 Translation has been failed: [${this.code}] ${this.reason}`;
-		return new NodeOperationError(node, message);
+		return new NodeOperationError(node, this.reason);
 	}
 }

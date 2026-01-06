@@ -1,38 +1,22 @@
 import type { IntentoConnectionType } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { ContextFactory, ExecutionContext } from 'context/*';
 import type { SupplyErrorBase } from 'supply/supply-error-base';
 import type { SupplyRequestBase } from 'supply/supply-request-base';
 import { SupplyResponseBase } from 'supply/supply-response-base';
 import { Tracer } from 'tracing/*';
-import { CoreError, type IFunctions } from 'types/*';
+import type { IFunctions } from 'types/*';
 import { Delay } from 'utils/*';
 
 /**
- * Base class for supply providers with automatic retry, timeout handling, and n8n execution tracking.
+ * Abstract base class for supply chain operations with automatic retry logic and error handling.
  *
- * Orchestrates the retry loop with exponential backoff, tracks each attempt in n8n's execution UI,
- * and handles timeouts gracefully. Exits early on non-retryable errors (4xx client errors).
- * Subclasses implement the actual supply logic and error conversion.
+ * Manages request/response lifecycle with configurable retry attempts, exponential backoff,
+ * and integration with n8n's execution context for input/output tracking.
  *
- * @example
- * ```typescript
- * class TranslationSupplier extends SupplierBase<TranslationRequest, TranslationResponse, TranslationError> {
- *   protected async supply(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
- *     try {
- *       const result = await this.api.translate(request.text, request.from, request.to, { signal });
- *       return new TranslationResponse(request, result.translatedText);
- *     } catch (error) {
- *       return new TranslationError(request, error.code, error.message);
- *     }
- *   }
- *
- *   protected onTimeOut(request: TranslationRequest): TranslationError {
- *     return new TranslationError(request, 408, 'Request timeout');
- *   }
- * }
- * ```
+ * @template TI - Request type extending SupplyRequestBase
+ * @template TS - Success response type extending SupplyResponseBase
+ * @template TE - Error response type extending SupplyErrorBase
  */
 export abstract class SupplierBase<TI extends SupplyRequestBase, TS extends SupplyResponseBase, TE extends SupplyErrorBase> {
 	protected readonly connection: IntentoConnectionType;
@@ -41,6 +25,13 @@ export abstract class SupplierBase<TI extends SupplyRequestBase, TS extends Supp
 	protected readonly context: ExecutionContext;
 	readonly name: string;
 
+	/**
+	 * Initializes supplier with connection, n8n functions, and execution context.
+	 *
+	 * @param name - Supplier identifier for logging and tracing
+	 * @param connection - n8n connection type for input/output data tracking
+	 * @param functions - n8n workflow functions for node execution context
+	 */
 	constructor(name: string, connection: IntentoConnectionType, functions: IFunctions) {
 		this.connection = connection;
 		this.functions = functions;
@@ -51,14 +42,15 @@ export abstract class SupplierBase<TI extends SupplyRequestBase, TS extends Supp
 	}
 
 	/**
-	 * Executes supply with automatic retry and exponential backoff.
+	 * Executes supply request with automatic retry logic and error handling.
 	 *
-	 * Retries up to `context.maxAttempts` times for retryable errors (429, 5xx). Exits early on
-	 * success or non-retryable errors (4xx client errors). Each attempt is tracked in n8n's execution UI.
+	 * Attempts are made up to context.maxAttempts times with exponential backoff.
+	 * Returns success response on first successful attempt, or error response if all attempts fail
+	 * or a non-retriable error occurs.
 	 *
-	 * @param request - Supply request to execute
-	 * @param signal - Optional abort signal for cancellation
-	 * @returns Successful response or error (retryable after max attempts, or non-retryable immediately)
+	 * @param request - Supply request containing operation parameters
+	 * @param signal - Optional AbortSignal for cancellation support
+	 * @returns Success response or error response (never throws)
 	 */
 	async supplyWithRetries(request: TI, signal?: AbortSignal): Promise<TS | TE> {
 		this.tracer.debug(`🚚 [${this.name}] Supplying data ...`, request.asLogMetadata());
@@ -68,77 +60,92 @@ export abstract class SupplierBase<TI extends SupplyRequestBase, TS extends Supp
 
 		for (let attempt = 0; attempt < this.context.maxAttempts; attempt++) {
 			result = await this.executeAttempt(attempt, request, cancellationSignal);
-			// NOTE: Exit early on success or non-retryable errors (4xx); continue loop for retryable errors (429, 5xx)
 			if (result instanceof SupplyResponseBase) return result;
-			if (!result.isRetryable()) return result;
+			// NOTE: Stop retrying if error is marked as non-retriable (e.g., validation errors, auth failures)
+			if (!result.isRetriable) return result;
 		}
 		if (result) return result;
-		this.tracer.errorAndThrow(`🐞 [BUG] at '${this.tracer.nodeName}'. No supply attempts were made.`);
+		// NOTE: Should never reach here if maxAttempts > 0; indicates configuration or logic error
+		this.tracer.bugDetected(SupplierBase.name, 'No supply attempts were made.', request.asLogMetadata());
 	}
 
 	/**
-	 * Executes the supply operation with the given request.
+	 * Executes single supply operation (must be implemented by subclass).
 	 *
-	 * Must handle all expected errors and return TE instead of throwing.
-	 * Only throw for unexpected developer errors (CoreError).
-	 *
-	 * @param request - Supply request to execute
-	 * @param signal - Abort signal for cancellation and timeout
-	 * @returns Successful response or error (never throws expected errors)
+	 * @param request - Supply request containing operation parameters
+	 * @param signal - Optional AbortSignal for cancellation support
+	 * @returns Success response or error response (never throws)
 	 */
 	protected abstract supply(request: TI, signal?: AbortSignal): Promise<TS | TE>;
 
 	/**
-	 * Creates an error object when supply operation times out.
+	 * Converts caught exception into typed error response (must be implemented by subclass).
 	 *
-	 * @param request - The request that timed out
-	 * @returns Error object representing timeout condition
+	 * @param request - Original supply request for error context
+	 * @param error - Caught exception during supply operation
+	 * @returns Typed error response with retriability and diagnostic information
 	 */
-	protected abstract onTimeOut(request: TI): TE;
+	protected abstract onError(request: TI, error: Error): TE;
 
+	/**
+	 * Executes single supply attempt with delay, input/output tracking, and error handling.
+	 *
+	 * @param attempt - Zero-based attempt number for delay calculation and logging
+	 * @param request - Supply request (cloned to prevent mutation across retries)
+	 * @param signal - Optional AbortSignal for cancellation support
+	 * @returns Success response or error response
+	 */
 	private async executeAttempt(attempt: number, request: TI, signal?: AbortSignal): Promise<TS | TE> {
 		const runIndex = this.startAttempt(request, attempt);
 		try {
 			// NOTE: Apply exponential backoff delay before attempt (first attempt has 0 delay)
 			const delay = this.context.calculateDelay(attempt);
 			await Delay.apply(delay, signal);
-			// NOTE: Clone request to ensure immutability across retry attempts
+			// NOTE: Clone request to prevent mutation across retry attempts
 			const result = await this.supply(request.clone(), signal);
 			this.completeAttempt(runIndex, result, attempt);
 			return result;
 		} catch (error) {
-			// NOTE: TimeoutError is expected; convert to TE. All other errors are unexpected bugs.
-			if (!(error instanceof DOMException && error.name === 'TimeoutError')) this.failAndThrow(runIndex, attempt, error as Error);
-			const timeoutError = this.onTimeOut(request);
-			this.completeAttempt(runIndex, timeoutError, attempt);
-			return timeoutError;
+			const supplyError = this.onError(request, error as Error);
+			this.completeAttempt(runIndex, supplyError, attempt);
+			return supplyError;
 		}
 	}
 
+	/**
+	 * Logs attempt start and registers input data with n8n for execution tracking.
+	 *
+	 * @param request - Supply request to log and track
+	 * @param attempt - Zero-based attempt number for logging
+	 * @returns n8n run index for matching output data
+	 */
 	private startAttempt(request: TI, attempt: number): number {
 		this.tracer.debug(`🚚 [${this.name}] Starting supply attempt ${attempt + 1}...`, request.asLogMetadata());
-		// NOTE: addInputData() returns runIndex used to correlate output data in n8n execution UI
 		const runIndex = this.functions.addInputData(this.connection, [[{ json: request.asDataObject() }]]);
 		return runIndex.index;
 	}
 
+	/**
+	 * Logs attempt completion and registers output data or error with n8n for execution tracking.
+	 *
+	 * Success responses are added as output data. Retriable errors are logged as info (will retry),
+	 * non-retriable errors as warnings (terminal failure).
+	 *
+	 * @param index - n8n run index from startAttempt for matching input/output
+	 * @param result - Success or error response from attempt
+	 * @param attempt - Zero-based attempt number for logging
+	 */
 	private completeAttempt(index: number, result: TS | TE, attempt: number): void {
 		if (result instanceof SupplyResponseBase) {
 			this.tracer.debug(`🚚 [${this.name}] supplied data successfully on attempt ${attempt + 1}`, result.asLogMetadata());
 			this.functions.addOutputData(this.connection, index, [[{ json: result.asDataObject() }]]);
 			return;
 		}
-		this.tracer.info(`🚚 [${this.name}] failed supply attempt ${attempt + 1}`, result.asLogMetadata());
-		// NOTE: Convert error to NodeOperationError for n8n execution UI error display
+		if (result.isRetriable) {
+			this.tracer.info(`🚚 [${this.name}] failed supply on attempt ${attempt + 1}`, result.asLogMetadata());
+		} else {
+			this.tracer.warn(`🚚 [${this.name}] failed supply on attempt ${attempt + 1} with non-retriable error`, result.asLogMetadata());
+		}
 		this.functions.addOutputData(this.connection, index, result.asError(this.functions.getNode()));
-	}
-
-	private failAndThrow(index: number, attempt: number, error: Error): never {
-		const node = this.tracer.nodeName;
-		// NOTE: CoreError = developer error with clear message; other errors = unexpected bugs needing investigation
-		const message = error instanceof CoreError ? error.message : `🐞 [BUG] Unexpected error at ${node}: ${error.message}`;
-		const nodeError = new NodeOperationError(this.functions.getNode(), message);
-		this.functions.addOutputData(this.connection, index, nodeError);
-		this.tracer.errorAndThrow(message, { attempt, error });
 	}
 }

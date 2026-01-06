@@ -22,11 +22,12 @@
   ],
   "n8n": {
     "credentials": [
-
+      "dist/credentials/DeeplApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/agents/TranslationAgent/TranslationAgent.node.js",
-      "dist/nodes/providers/DryRunProvider/DryRunProvider.node.js"
+      "dist/nodes/tools/DryRunTool/DryRunTool.node.js",
+      "dist/nodes/tools/DeeplTool/DeeplTool.node.js"
     ]
   },
   "devDependencies": {

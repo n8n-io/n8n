@@ -17,7 +17,7 @@ export type * from './types/context-interface';
 export type * from './types/data-provider-interface';
 export type * from './types/functions-interface';
 export type * from './types/traceable-interface';
-export * from './types/core-error';
+export type * from './types/descriptor-interface';
 
 // intento-core/utils
 export * from './utils/delay';

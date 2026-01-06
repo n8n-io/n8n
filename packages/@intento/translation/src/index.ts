@@ -6,8 +6,13 @@ export * from './supply/translation-supplier-base';
 
 // intento-translation/context
 export * from './context/delay-context';
-export * from './context/dry-run-context';
 export * from './context/translation-context';
 
 // intento-translation/suppliers
-export * from './suppliers/dry-run-supplier';
+// Dry Run Supplier
+export * from './suppliers/dry-run/dry-run-supplier';
+export * from './suppliers/dry-run/dry-run-descriptor';
+export * from './suppliers/dry-run/dry-run-context';
+// DeepL Supplier
+export * from './suppliers/deepl/deepl-descriptor';
+export * from './suppliers/deepl/deepl-supplier';

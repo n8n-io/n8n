@@ -1,25 +1,33 @@
-import { CONTEXT_EXECUTION } from 'intento-core';
-import { DryRunSupplier, CONTEXT_DELAY, CONTEXT_DRY_RUN } from 'intento-translation';
+import { DeeplDescriptor, DeeplSupplier } from 'intento-translation';
 import type { INodeType, INodeTypeDescription, INodeTypeBaseDescription, ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-export class DryRunProviderV1 implements INodeType {
+export class DeeplToolV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
 			version: 1,
-			defaults: { name: 'DryRun' },
+			defaults: {
+				name: 'DeepL',
+			},
+			usableAsTool: true,
 			inputs: [],
 			outputs: [NodeConnectionTypes.IntentoTranslationProvider],
-			properties: [...CONTEXT_DELAY, ...CONTEXT_DRY_RUN, ...CONTEXT_EXECUTION],
+			credentials: [
+				{
+					name: `${DeeplDescriptor.credentials}`,
+					required: true,
+				},
+			],
+			properties: [],
 		};
 	}
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		return await Promise.resolve({
-			response: new DryRunSupplier(NodeConnectionTypes.IntentoTranslationProvider, this),
+			response: new DeeplSupplier(NodeConnectionTypes.IntentoTranslationProvider, this),
 		});
 	}
 }

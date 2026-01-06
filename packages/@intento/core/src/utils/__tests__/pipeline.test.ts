@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { ExecuteContext } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, ITaskData } from 'n8n-workflow';
 
@@ -69,13 +68,13 @@ describe('Pipeline', () => {
 			it('should return single node output when node has single execution', () => {
 				const nodeOutput = [createExecutionData({ id: 1 })];
 				const functions = createMockFunctions({
-					'Node A': [createTaskData(nodeOutput)],
+					nodeA: [createTaskData(nodeOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Node A': nodeOutput,
+					nodeA: nodeOutput,
 				});
 			});
 
@@ -85,17 +84,17 @@ describe('Pipeline', () => {
 				const outputC = [createExecutionData({ c: 3 })];
 
 				const functions = createMockFunctions({
-					'Node A': [createTaskData(outputA)],
-					'Node B': [createTaskData(outputB)],
-					'Node C': [createTaskData(outputC)],
+					nodeA: [createTaskData(outputA)],
+					nodeB: [createTaskData(outputB)],
+					nodeC: [createTaskData(outputC)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Node A': outputA,
-					'Node B': outputB,
-					'Node C': outputC,
+					nodeA: outputA,
+					nodeB: outputB,
+					nodeC: outputC,
 				});
 			});
 
@@ -105,13 +104,13 @@ describe('Pipeline', () => {
 				const output3 = [createExecutionData({ iter: 3 })];
 
 				const functions = createMockFunctions({
-					'Loop Node': [createTaskData(output1), createTaskData(output2), createTaskData(output3)],
+					loopNode: [createTaskData(output1), createTaskData(output2), createTaskData(output3)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Loop Node': output3,
+					loopNode: output3,
 				});
 			});
 
@@ -131,13 +130,13 @@ describe('Pipeline', () => {
 				};
 
 				const functions = createMockFunctions({
-					'Split Node': [taskData],
+					splitNode: [taskData],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Split Node': primaryBranch,
+					splitNode: primaryBranch,
 				});
 			});
 
@@ -145,27 +144,27 @@ describe('Pipeline', () => {
 				const batchOutput = [createExecutionData({ id: 1 }), createExecutionData({ id: 2 }), createExecutionData({ id: 3 })];
 
 				const functions = createMockFunctions({
-					'Batch Node': [createTaskData(batchOutput)],
+					batchNode: [createTaskData(batchOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Batch Node': batchOutput,
+					batchNode: batchOutput,
 				});
 			});
 
 			it('should return Record<string, INodeExecutionData[]> type', () => {
 				const output = [createExecutionData({ test: 'data' })];
 				const functions = createMockFunctions({
-					'Test Node': [createTaskData(output)],
+					testNode: [createTaskData(output)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(typeof result).toBe('object');
-				expect(Array.isArray(result['Test Node'])).toBe(true);
-				expect(result['Test Node']).toEqual(output);
+				expect(Array.isArray(result.testNode)).toBe(true);
+				expect(result.testNode).toEqual(output);
 			});
 		});
 
@@ -210,16 +209,16 @@ describe('Pipeline', () => {
 				const validOutput = [createExecutionData({ valid: true })];
 
 				const functions = createMockFunctions({
-					'Empty Node': [],
-					'Valid Node': [createTaskData(validOutput)],
+					emptyNode: [],
+					validNode: [createTaskData(validOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Valid Node': validOutput,
+					validNode: validOutput,
 				});
-				expect(result['Empty Node']).toBeUndefined();
+				expect(result.emptyNode).toBeUndefined();
 			});
 
 			it('should exclude node when data property is missing', () => {
@@ -235,16 +234,16 @@ describe('Pipeline', () => {
 				};
 
 				const functions = createMockFunctions({
-					'No Data': [taskDataWithoutData],
-					'Valid Node': [createTaskData(validOutput)],
+					noData: [taskDataWithoutData],
+					validNode: [createTaskData(validOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Valid Node': validOutput,
+					validNode: validOutput,
 				});
-				expect(result['No Data']).toBeUndefined();
+				expect(result.noData).toBeUndefined();
 			});
 
 			it('should exclude node when main property is missing', () => {
@@ -261,16 +260,16 @@ describe('Pipeline', () => {
 					executionIndex: 0,
 				};
 				const functions = createMockFunctions({
-					'No Main': [taskDataWithoutMain],
-					'Valid Node': [createTaskData(validOutput)],
+					noMain: [taskDataWithoutMain],
+					validNode: [createTaskData(validOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Valid Node': validOutput,
+					validNode: validOutput,
 				});
-				expect(result['No Main']).toBeUndefined();
+				expect(result.noMain).toBeUndefined();
 			});
 
 			it('should exclude node when main array is empty', () => {
@@ -288,16 +287,16 @@ describe('Pipeline', () => {
 				};
 
 				const functions = createMockFunctions({
-					'Empty Main': [taskDataWithEmptyMain],
-					'Valid Node': [createTaskData(validOutput)],
+					emptyMain: [taskDataWithEmptyMain],
+					validNode: [createTaskData(validOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Valid Node': validOutput,
+					validNode: validOutput,
 				});
-				expect(result['Empty Main']).toBeUndefined();
+				expect(result.emptyMain).toBeUndefined();
 			});
 
 			it('should exclude node when main[0] is null', () => {
@@ -315,16 +314,16 @@ describe('Pipeline', () => {
 				};
 
 				const functions = createMockFunctions({
-					'Null Output': [taskDataWithNullMain],
-					'Valid Node': [createTaskData(validOutput)],
+					nullOutput: [taskDataWithNullMain],
+					validNode: [createTaskData(validOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Valid Node': validOutput,
+					validNode: validOutput,
 				});
-				expect(result['Null Output']).toBeUndefined();
+				expect(result.nullOutput).toBeUndefined();
 			});
 		});
 
@@ -343,31 +342,31 @@ describe('Pipeline', () => {
 				};
 
 				const functions = createMockFunctions({
-					'Success 1': [createTaskData(success1Output)],
-					Failed: [failedTaskData],
-					'Success 2': [createTaskData(success2Output)],
-					Pending: [],
+					success1: [createTaskData(success1Output)],
+					failed: [failedTaskData],
+					success2: [createTaskData(success2Output)],
+					pending: [],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					'Success 1': success1Output,
-					'Success 2': success2Output,
+					success1: success1Output,
+					success2: success2Output,
 				});
-				expect(result['Failed']).toBeUndefined();
-				expect(result['Pending']).toBeUndefined();
+				expect(result.failed).toBeUndefined();
+				expect(result.pending).toBeUndefined();
 			});
 
 			it('should handle type cast from IFunctions to ExecuteContext', () => {
 				const output = [createExecutionData({ test: 'cast' })];
 				const mockFunctions = createMockFunctions({
-					'Cast Test': [createTaskData(output)],
+					castTest: [createTaskData(output)],
 				});
 
 				expect(() => {
 					const result = Pipeline.readPipeline(mockFunctions as IFunctions);
-					expect(result['Cast Test']).toEqual(output);
+					expect(result.castTest).toEqual(output);
 				}).not.toThrow();
 			});
 
@@ -389,21 +388,21 @@ describe('Pipeline', () => {
 				const finalOutput = [createExecutionData({ final: 'aggregated' })];
 
 				const functions = createMockFunctions({
-					Trigger: [createTaskData(triggerOutput)],
-					'Transform 1': [createTaskData(transform1Output)],
-					Loop: [createTaskData(loopOutputs[0]), createTaskData(loopOutputs[1]), createTaskData(loopOutputs[2])],
-					'Transform 2': [createTaskData(transform2Output)],
-					Output: [createTaskData(finalOutput)],
+					trigger: [createTaskData(triggerOutput)],
+					transform1: [createTaskData(transform1Output)],
+					loop: [createTaskData(loopOutputs[0]), createTaskData(loopOutputs[1]), createTaskData(loopOutputs[2])],
+					transform2: [createTaskData(transform2Output)],
+					output: [createTaskData(finalOutput)],
 				});
 
 				const result = Pipeline.readPipeline(functions as IFunctions);
 
 				expect(result).toEqual({
-					Trigger: triggerOutput,
-					'Transform 1': transform1Output,
-					Loop: loopOutputs[2],
-					'Transform 2': transform2Output,
-					Output: finalOutput,
+					trigger: triggerOutput,
+					transform1: transform1Output,
+					loop: loopOutputs[2],
+					transform2: transform2Output,
+					output: finalOutput,
 				});
 				expect(Object.keys(result)).toHaveLength(5);
 			});

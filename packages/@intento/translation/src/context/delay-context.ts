@@ -66,9 +66,9 @@ export class DelayContext implements IContext {
 			case DELAY.MODES.FIXED_DELAY:
 				if (!this.delayValue) throw new Error(`delayValue is required for the delayMode ${this.delayMode}`);
 				if (this.delayValue < DELAY.BOUNDARIES.DELAY_VALUE.min)
-					throw new Error(`delayValue must be at least ${DELAY.BOUNDARIES.DELAY_VALUE.min}`);
+					throw new RangeError(`delayValue must be at least ${DELAY.BOUNDARIES.DELAY_VALUE.min}`);
 				if (this.delayValue > DELAY.BOUNDARIES.DELAY_VALUE.max)
-					throw new Error(`delayValue must be at most ${DELAY.BOUNDARIES.DELAY_VALUE.max}`);
+					throw new RangeError(`delayValue must be at most ${DELAY.BOUNDARIES.DELAY_VALUE.max}`);
 				break;
 			default:
 				throw new Error(`delayMode must be one of: ${Object.values(DELAY.MODES).join(', ')}`);

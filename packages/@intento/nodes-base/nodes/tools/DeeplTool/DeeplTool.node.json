@@ -1,0 +1,23 @@
+{
+	"node": "@intento/nodes.tools.deepl",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"description": "Access high-quality neural machine translation powered by DeepL's AI. Translate text across 30+ languages with natural-sounding results for professional content.",
+	"keywords": ["intento", "deepl", "translation", "localization", "multilingual"],
+	"subcategories": {
+		"Core Nodes": ["Translation"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://www.deepl.com/pro-api"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://developers.deepl.com/docs"
+			}
+		]
+	}
+}

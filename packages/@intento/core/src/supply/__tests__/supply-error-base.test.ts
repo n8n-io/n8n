@@ -1,517 +1,496 @@
 import { mock } from 'jest-mock-extended';
-import type { IDataObject, INode, LogMetadata, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INode, LogMetadata } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SupplyErrorBase } from '../supply-error-base';
-import { SupplyRequestBase } from '../supply-request-base';
+import type { SupplyRequestBase } from '../supply-request-base';
 
 /**
  * Tests for SupplyErrorBase
  * @author Claude Sonnet 4.5
- * @date 2025-01-05
+ * @date 2026-01-06
  */
-
-// Mock request implementation for testing
-class MockRequest extends SupplyRequestBase {
-	constructor(testRequestId: string, testRequestedAt: number) {
-		super();
-		// Override generated values with test values for predictable testing
-		Object.assign(this, { requestId: testRequestId, requestedAt: testRequestedAt });
-	}
-
-	asLogMetadata(): LogMetadata {
-		return { requestId: this.requestId };
-	}
-
-	asDataObject(): IDataObject {
-		return { requestId: this.requestId };
-	}
-
-	clone(): this {
-		return new MockRequest(this.requestId, this.requestedAt) as this;
-	}
-}
 
 // Concrete test implementation of abstract SupplyErrorBase
 class TestError extends SupplyErrorBase {
-	constructor(
-		request: SupplyRequestBase,
-		code: number,
-		reason: string,
-		private readonly details?: string,
-	) {
-		super(request, code, reason);
+	constructor(request: SupplyRequestBase, code: number, reason: string, isRetriable: boolean) {
+		super(request, code, reason, isRetriable);
 	}
 
 	asLogMetadata(): LogMetadata {
 		return {
 			requestId: this.requestId,
-			latencyMs: this.latencyMs,
 			code: this.code,
 			reason: this.reason,
+			isRetriable: this.isRetriable,
+			latencyMs: this.latencyMs,
 		};
 	}
 
 	asDataObject(): IDataObject {
 		return {
 			requestId: this.requestId,
-			latencyMs: this.latencyMs,
+			error: this.reason,
 			code: this.code,
-			reason: this.reason,
-			details: this.details,
+			retriable: this.isRetriable,
 		};
 	}
 
 	asError(node: INode): NodeOperationError {
-		// Simple implementation for testing - actual NodeOperationError would require n8n-workflow
-		const error: Partial<NodeOperationError> = {
-			message: this.reason,
-			description: this.details,
-			node,
-		};
-		return error as NodeOperationError;
+		return new NodeOperationError(node, this.reason, {
+			description: `Error code: ${this.code}`,
+		});
 	}
 }
 
 describe('SupplyErrorBase', () => {
-	const MOCK_REQUEST_ID = 'test-request-uuid-001';
-	const MOCK_REQUEST_TIMESTAMP = 1704412800000; // 2025-01-05 00:00:00 UTC
-	const MOCK_ERROR_TIMESTAMP_ZERO = 1704412800000; // Same millisecond (0ms latency)
-	const MOCK_ERROR_TIMESTAMP_100 = 1704412800100; // +100ms latency
-	const MOCK_ERROR_TIMESTAMP_1000 = 1704412801000; // +1000ms latency
-	const MOCK_ERROR_TIMESTAMP_5000 = 1704412805000; // +5000ms latency
-
-	// HTTP Status Codes
-	const CODE_RATE_LIMIT = 429;
-	const CODE_SERVER_ERROR = 500;
-	const CODE_SERVICE_UNAVAILABLE = 503;
-	const CODE_GATEWAY_TIMEOUT = 504;
-	const CODE_BAD_REQUEST = 400;
-	const CODE_NOT_FOUND = 404;
-	const CODE_BOUNDARY_499 = 499;
-	const CODE_BOUNDARY_599 = 599;
-	const CODE_BOUNDARY_600 = 600;
-
-	let mockDateNow: jest.SpyInstance;
+	let mockRequest: SupplyRequestBase;
 	let mockNode: INode;
 
 	beforeEach(() => {
-		mockDateNow = jest.spyOn(Date, 'now');
-		mockNode = mock<INode>();
+		mockRequest = mock<SupplyRequestBase>({
+			requestId: 'test-request-uuid-123',
+			requestedAt: 1000,
+		});
+
+		mockNode = {
+			id: 'node-123',
+			name: 'TestNode',
+			type: 'n8n-nodes-base.test',
+			typeVersion: 1,
+			position: [100, 200],
+			parameters: {},
+		};
+
+		jest.spyOn(Date, 'now').mockReturnValue(1100); // 100ms after request
 	});
 
 	afterEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
-	describe('business logic', () => {
-		it('[BL-01] should copy requestId from request', () => {
+	describe('constructor', () => {
+		it('[BL-01] should extract requestId from supply request', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			Object.defineProperty(mockRequest, 'requestId', { value: 'custom-request-id-456', writable: true });
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error occurred');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
-			expect(error.requestId).toBe(MOCK_REQUEST_ID);
-			expect(error.requestId).toBe(request.requestId);
+			expect(error.requestId).toBe('custom-request-id-456');
 		});
 
-		it('[BL-02] should calculate latencyMs from request timestamp', () => {
+		it('[BL-02] should calculate latencyMs from request timestamp to current time', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(1100);
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error occurred');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
 			expect(error.latencyMs).toBe(100);
-			expect(error.latencyMs).toBe(MOCK_ERROR_TIMESTAMP_100 - MOCK_REQUEST_TIMESTAMP);
 		});
 
-		it('[BL-03] should store error code', () => {
+		it('[BL-03] should assign code from constructor parameter', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			const code = 429;
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error occurred');
+			const error = new TestError(mockRequest, code, 'Rate limit', true);
 
 			// ASSERT
-			expect(error.code).toBe(CODE_SERVER_ERROR);
-			expect(error.code).toBe(500);
+			expect(error.code).toBe(429);
 		});
 
-		it('[BL-04] should store error reason', () => {
+		it('[BL-04] should assign reason from constructor parameter', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-			const reason = 'Server error occurred';
+			const reason = 'Rate limit exceeded. Retry after 60 seconds.';
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, reason);
+			const error = new TestError(mockRequest, 429, reason, true);
 
 			// ASSERT
-			expect(error.reason).toBe(reason);
+			expect(error.reason).toBe('Rate limit exceeded. Retry after 60 seconds.');
 		});
 
-		it('[BL-05] should implement ITraceable interface with requestId', () => {
+		it('[BL-05] should assign isRetriable from constructor parameter', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			const isRetriable = true;
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error occurred');
-			const metadata = error.asLogMetadata();
+			const error = new TestError(mockRequest, 429, 'Rate limit', isRetriable);
 
 			// ASSERT
-			expect(metadata.requestId).toBe(MOCK_REQUEST_ID);
-			expect(typeof metadata.requestId).toBe('string');
+			expect(error.isRetriable).toBe(true);
 		});
 
-		it('[BL-06] should implement IDataProvider interface', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error occurred', 'Additional details');
-			const dataObject = error.asDataObject();
+		it('[BL-06] should implement ITraceable interface with requestId', () => {
+			// ARRANGE & ACT
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
-			expect(dataObject).toBeInstanceOf(Object);
-			expect(dataObject.requestId).toBe(MOCK_REQUEST_ID);
-			expect(dataObject.latencyMs).toBe(100);
-			expect(dataObject.code).toBe(CODE_SERVER_ERROR);
-			expect(dataObject.reason).toBe('Server error occurred');
-			expect(dataObject.details).toBe('Additional details');
+			expect(error.requestId).toBeDefined();
+			expect(typeof error.requestId).toBe('string');
 		});
 
-		it('[BL-07] should return true for retryable error code 429', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_RATE_LIMIT, 'Rate limit exceeded');
+		it('[BL-07] should implement IDataProvider interface', () => {
+			// ARRANGE & ACT
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
-			expect(error.isRetryable()).toBe(true);
+			expect(error.asLogMetadata).toBeDefined();
+			expect(error.asDataObject).toBeDefined();
+			expect(typeof error.asLogMetadata).toBe('function');
+			expect(typeof error.asDataObject).toBe('function');
 		});
 
-		it('[BL-08] should return true for retryable server error 500', () => {
+		it('[BL-08] should create error with all properties initialized', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			Object.defineProperty(mockRequest, 'requestId', { value: 'req-123', writable: true });
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 2000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(2500);
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Internal server error');
+			const error = new TestError(mockRequest, 400, 'Bad request', false);
 
 			// ASSERT
-			expect(error.isRetryable()).toBe(true);
-		});
-
-		it('[BL-09] should return true for retryable server error 503', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_SERVICE_UNAVAILABLE, 'Service unavailable');
-
-			// ASSERT
-			expect(error.isRetryable()).toBe(true);
-		});
-
-		it('[BL-10] should return false for non-retryable client error 400', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_BAD_REQUEST, 'Bad request');
-
-			// ASSERT
-			expect(error.isRetryable()).toBe(false);
-		});
-
-		it('[BL-11] should return false for non-retryable client error 404', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_NOT_FOUND, 'Not found');
-
-			// ASSERT
-			expect(error.isRetryable()).toBe(false);
+			expect(error.requestId).toBe('req-123');
+			expect(error.latencyMs).toBe(500);
+			expect(error.code).toBe(400);
+			expect(error.reason).toBe('Bad request');
+			expect(error.isRetriable).toBe(false);
 		});
 	});
 
-	describe('edge cases', () => {
-		it('[EC-01] should handle zero latency (same millisecond as request)', () => {
+	describe('latency calculation', () => {
+		it('[EC-01] should calculate zero latency when instantiated at same timestamp', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_ZERO);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 5000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(5000);
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Immediate error');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
 			expect(error.latencyMs).toBe(0);
 		});
 
-		it('[EC-02] should handle large latency values', () => {
+		it('[EC-02] should calculate latency for long-running request (large time diff)', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_5000);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(61000); // 60 seconds later
 
 			// ACT
-			const error = new TestError(request, CODE_GATEWAY_TIMEOUT, 'Timeout after 5 seconds');
+			const error = new TestError(mockRequest, 504, 'Gateway timeout', true);
+
+			// ASSERT
+			expect(error.latencyMs).toBe(60000);
+		});
+
+		it('should calculate latency for normal request (100ms)', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(1100);
+
+			// ACT
+			const error = new TestError(mockRequest, 500, 'Server error', true);
+
+			// ASSERT
+			expect(error.latencyMs).toBe(100);
+		});
+
+		it('should calculate latency for high latency request (5 seconds)', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(6000);
+
+			// ACT
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
 			expect(error.latencyMs).toBe(5000);
-			expect(error.latencyMs).toBeGreaterThan(1000);
 		});
+	});
 
-		it('[EC-03] should preserve requestId from request without modification', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error');
+	describe('error codes and reasons', () => {
+		it('[EC-03] should handle HTTP status codes (400, 500, etc.)', () => {
+			// ARRANGE & ACT
+			const error400 = new TestError(mockRequest, 400, 'Bad request', false);
+			const error401 = new TestError(mockRequest, 401, 'Unauthorized', false);
+			const error429 = new TestError(mockRequest, 429, 'Rate limit', true);
+			const error500 = new TestError(mockRequest, 500, 'Server error', true);
+			const error503 = new TestError(mockRequest, 503, 'Service unavailable', true);
 
 			// ASSERT
-			expect(error.requestId).toBe(MOCK_REQUEST_ID);
-			expect(error.requestId).toBe(request.requestId);
-			expect(error.requestId.length).toBe(MOCK_REQUEST_ID.length);
+			expect(error400.code).toBe(400);
+			expect(error401.code).toBe(401);
+			expect(error429.code).toBe(429);
+			expect(error500.code).toBe(500);
+			expect(error503.code).toBe(503);
 		});
 
-		it('[EC-04] should handle empty reason string', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+		it('[EC-04] should handle API-specific error codes (custom ranges)', () => {
+			// ARRANGE & ACT
+			const customError1 = new TestError(mockRequest, 9999, 'Custom error', false);
+			const customError2 = new TestError(mockRequest, 1001, 'Provider error', true);
 
-			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, '');
+			// ASSERT
+			expect(customError1.code).toBe(9999);
+			expect(customError2.code).toBe(1001);
+		});
+
+		it('[EC-05] should handle empty reason string', () => {
+			// ARRANGE & ACT
+			const error = new TestError(mockRequest, 500, '', true);
 
 			// ASSERT
 			expect(error.reason).toBe('');
-			expect(error.reason.length).toBe(0);
 		});
 
-		it('[EC-05] should handle long reason string', () => {
+		it('[EC-06] should handle long reason strings (verbose errors)', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
 			const longReason = 'A'.repeat(1000);
 
 			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, longReason);
+			const error = new TestError(mockRequest, 500, longReason, true);
 
 			// ASSERT
 			expect(error.reason).toBe(longReason);
 			expect(error.reason.length).toBe(1000);
 		});
+	});
 
-		it('[EC-06] should return true for boundary retryable code 500', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_SERVER_ERROR, 'First 5xx code');
-
-			// ASSERT
-			expect(error.isRetryable()).toBe(true);
-		});
-
-		it('[EC-07] should return true for boundary retryable code 599', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_BOUNDARY_599, 'Last 5xx code');
+	describe('retry flag', () => {
+		it('[EC-12] should handle isRetriable true (transient errors)', () => {
+			// ARRANGE & ACT
+			const rateLimitError = new TestError(mockRequest, 429, 'Rate limit exceeded', true);
+			const serverError = new TestError(mockRequest, 500, 'Internal server error', true);
 
 			// ASSERT
-			expect(error.isRetryable()).toBe(true);
+			expect(rateLimitError.isRetriable).toBe(true);
+			expect(serverError.isRetriable).toBe(true);
 		});
 
-		it('[EC-08] should return false for boundary non-retryable code 499', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_BOUNDARY_499, 'Before 5xx range');
+		it('[EC-13] should handle isRetriable false (permanent errors)', () => {
+			// ARRANGE & ACT
+			const authError = new TestError(mockRequest, 401, 'Invalid API key', false);
+			const badRequestError = new TestError(mockRequest, 400, 'Invalid input', false);
 
 			// ASSERT
-			expect(error.isRetryable()).toBe(false);
+			expect(authError.isRetriable).toBe(false);
+			expect(badRequestError.isRetriable).toBe(false);
 		});
+	});
 
-		it('[EC-09] should return false for boundary non-retryable code 600', () => {
+	describe('immutability', () => {
+		it('[EC-07] should declare properties as readonly', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT
-			const error = new TestError(request, CODE_BOUNDARY_600, 'After 5xx range');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ASSERT
-			expect(error.isRetryable()).toBe(false);
+			// NOTE: TypeScript enforces readonly at compile-time
+			// Properties are assigned once in constructor and not meant to be modified
+			expect(error.requestId).toBe('test-request-uuid-123');
+			expect(error.latencyMs).toBe(100);
+			expect(error.code).toBe(500);
+			expect(error.reason).toBe('Server error');
+			expect(error.isRetriable).toBe(true);
 		});
+	});
 
-		it('[EC-10] should require concrete implementation of asLogMetadata', () => {
+	describe('abstract method contracts', () => {
+		it('[EH-01] should require concrete implementation of asLogMetadata', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ACT
 			const metadata = error.asLogMetadata();
 
 			// ASSERT
 			expect(metadata).toBeDefined();
-			expect(metadata.requestId).toBe(MOCK_REQUEST_ID);
-			expect(metadata.latencyMs).toBe(100);
-			expect(metadata.code).toBe(CODE_SERVER_ERROR);
+			expect(metadata.requestId).toBe('test-request-uuid-123');
+			expect(metadata.code).toBe(500);
 			expect(metadata.reason).toBe('Server error');
+			expect(metadata.isRetriable).toBe(true);
+			expect(metadata.latencyMs).toBe(100);
 		});
 
-		it('[EC-11] should require concrete implementation of asDataObject', () => {
+		it('[EH-02] should require concrete implementation of asDataObject', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error', 'Details');
+			const error = new TestError(mockRequest, 429, 'Rate limit', true);
 
 			// ACT
 			const dataObject = error.asDataObject();
 
 			// ASSERT
 			expect(dataObject).toBeDefined();
-			expect(dataObject.requestId).toBe(MOCK_REQUEST_ID);
-			expect(dataObject.latencyMs).toBe(100);
-			expect(dataObject.code).toBe(CODE_SERVER_ERROR);
-			expect(dataObject.reason).toBe('Server error');
-			expect(dataObject.details).toBe('Details');
+			expect(dataObject.requestId).toBe('test-request-uuid-123');
+			expect(dataObject.error).toBe('Rate limit');
+			expect(dataObject.code).toBe(429);
+			expect(dataObject.retriable).toBe(true);
 		});
 
-		it('[EC-12] should require concrete implementation of asError', () => {
+		it('[EH-03] should require concrete implementation of asError', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error', 'Error details');
+			const error = new TestError(mockRequest, 500, 'Server error', true);
 
 			// ACT
 			const nodeError = error.asError(mockNode);
 
 			// ASSERT
-			expect(nodeError).toBeDefined();
+			expect(nodeError).toBeInstanceOf(NodeOperationError);
 			expect(nodeError.message).toBe('Server error');
-			expect(nodeError.description).toBe('Error details');
 			expect(nodeError.node).toBe(mockNode);
+			expect(nodeError.description).toBe('Error code: 500');
 		});
 	});
 
-	describe('error handling', () => {
-		it('[EH-01] should enforce abstract class pattern via TypeScript', () => {
+	describe('concrete implementation', () => {
+		it('should produce complete log metadata with all required fields', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestId', { value: 'log-test-123', writable: true });
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 5000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(5250);
+
+			// ACT
+			const error = new TestError(mockRequest, 429, 'Rate limit exceeded', true);
+			const metadata = error.asLogMetadata();
+
 			// ASSERT
-			// TypeScript prevents direct instantiation at compile time
-			// This test validates the design enforces abstract pattern
-			// @ts-expect-error Cannot instantiate abstract class - TypeScript compile-time check
-			const abstractCheck: SupplyErrorBase = SupplyErrorBase;
-			expect(abstractCheck).toBeDefined(); // Validates abstract keyword presence
+			expect(metadata).toEqual({
+				requestId: 'log-test-123',
+				code: 429,
+				reason: 'Rate limit exceeded',
+				isRetriable: true,
+				latencyMs: 250,
+			});
+		});
+
+		it('should produce user-facing data object for workflow data', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestId', { value: 'data-test-456', writable: true });
+
+			// ACT
+			const error = new TestError(mockRequest, 401, 'Invalid API key', false);
+			const dataObject = error.asDataObject();
+
+			// ASSERT
+			expect(dataObject).toEqual({
+				requestId: 'data-test-456',
+				error: 'Invalid API key',
+				code: 401,
+				retriable: false,
+			});
+		});
+
+		it('should produce NodeOperationError with actionable message', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestId', { value: 'error-test-789', writable: true });
+
+			// ACT
+			const error = new TestError(mockRequest, 503, 'Service unavailable', true);
+			const nodeError = error.asError(mockNode);
+
+			// ASSERT
+			expect(nodeError).toBeInstanceOf(NodeOperationError);
+			expect(nodeError.message).toBe('Service unavailable');
+			expect(nodeError.description).toBe('Error code: 503');
+			expect(nodeError.node).toBe(mockNode);
+			expect(nodeError.node.name).toBe('TestNode');
+		});
+
+		it('should handle error with all edge case values', () => {
+			// ARRANGE
+			Object.defineProperty(mockRequest, 'requestId', { value: 'edge-case-test', writable: true });
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 0, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(0);
+
+			// ACT
+			const error = new TestError(mockRequest, 0, '', false);
+
+			// ASSERT
+			expect(error.requestId).toBe('edge-case-test');
+			expect(error.latencyMs).toBe(0);
+			expect(error.code).toBe(0);
+			expect(error.reason).toBe('');
+			expect(error.isRetriable).toBe(false);
+		});
+
+		it('should maintain property values across method calls', () => {
+			// ARRANGE
+			const error = new TestError(mockRequest, 500, 'Server error', true);
+
+			// ACT
+			const metadata1 = error.asLogMetadata();
+			const metadata2 = error.asLogMetadata();
+			const dataObject1 = error.asDataObject();
+			const dataObject2 = error.asDataObject();
+
+			// ASSERT
+			expect(metadata1).toEqual(metadata2);
+			expect(dataObject1).toEqual(dataObject2);
+			expect(error.requestId).toBe('test-request-uuid-123');
+			expect(error.latencyMs).toBe(100);
 		});
 	});
 
 	describe('integration scenarios', () => {
-		it('should work with real Date.now for latency calculation', () => {
+		it('should handle HTTP 429 rate limit error with retry flag', () => {
 			// ARRANGE
-			const requestTime = Date.now();
-			const request = new MockRequest(MOCK_REQUEST_ID, requestTime);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(1250);
 
-			// ACT - Wait a tiny bit (test execution time adds natural delay)
-			const error = new TestError(request, CODE_SERVER_ERROR, 'Server error');
+			// ACT
+			const error = new TestError(mockRequest, 429, 'Rate limit exceeded. Retry after 60 seconds.', true);
 
 			// ASSERT
-			expect(error.latencyMs).toBeGreaterThanOrEqual(0);
+			expect(error.code).toBe(429);
+			expect(error.reason).toContain('Rate limit');
+			expect(error.isRetriable).toBe(true);
+			expect(error.latencyMs).toBe(250);
+			expect(error.asLogMetadata()).toMatchObject({
+				code: 429,
+				isRetriable: true,
+			});
 		});
 
-		it('should handle all common HTTP error codes correctly', () => {
+		it('should handle HTTP 401 authentication error without retry', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
-
-			// ACT & ASSERT - Retryable codes
-			expect(new TestError(request, 429, 'Rate limit').isRetryable()).toBe(true);
-			expect(new TestError(request, 500, 'Internal server error').isRetryable()).toBe(true);
-			expect(new TestError(request, 502, 'Bad gateway').isRetryable()).toBe(true);
-			expect(new TestError(request, 503, 'Service unavailable').isRetryable()).toBe(true);
-			expect(new TestError(request, 504, 'Gateway timeout').isRetryable()).toBe(true);
-
-			// ACT & ASSERT - Non-retryable codes
-			expect(new TestError(request, 400, 'Bad request').isRetryable()).toBe(false);
-			expect(new TestError(request, 401, 'Unauthorized').isRetryable()).toBe(false);
-			expect(new TestError(request, 403, 'Forbidden').isRetryable()).toBe(false);
-			expect(new TestError(request, 404, 'Not found').isRetryable()).toBe(false);
-		});
-
-		it('should correlate error to originating request', () => {
-			// ARRANGE
-			const request1 = new MockRequest('request-001', MOCK_REQUEST_TIMESTAMP);
-			const request2 = new MockRequest('request-002', MOCK_REQUEST_TIMESTAMP + 1000);
-			mockDateNow.mockReturnValueOnce(MOCK_ERROR_TIMESTAMP_100).mockReturnValueOnce(MOCK_ERROR_TIMESTAMP_100 + 1000);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 2000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(2100);
 
 			// ACT
-			const error1 = new TestError(request1, CODE_SERVER_ERROR, 'Error 1');
-			const error2 = new TestError(request2, CODE_BAD_REQUEST, 'Error 2');
-
-			// ASSERT - Each error correlates to correct request
-			expect(error1.requestId).toBe('request-001');
-			expect(error2.requestId).toBe('request-002');
-			expect(error1.latencyMs).toBe(100);
-			expect(error2.latencyMs).toBe(100);
-		});
-
-		it('should include all error context in both log metadata and data object', () => {
-			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_1000);
-
-			// ACT
-			const error = new TestError(request, CODE_SERVICE_UNAVAILABLE, 'Service unavailable', 'Backend is down');
+			const error = new TestError(mockRequest, 401, 'Invalid API key provided.', false);
 
 			// ASSERT
-			const metadata = error.asLogMetadata();
-			const dataObject = error.asDataObject();
-
-			expect(metadata.requestId).toBe(MOCK_REQUEST_ID);
-			expect(metadata.latencyMs).toBe(1000);
-			expect(metadata.code).toBe(CODE_SERVICE_UNAVAILABLE);
-			expect(metadata.reason).toBe('Service unavailable');
-
-			expect(dataObject.requestId).toBe(MOCK_REQUEST_ID);
-			expect(dataObject.latencyMs).toBe(1000);
-			expect(dataObject.code).toBe(CODE_SERVICE_UNAVAILABLE);
-			expect(dataObject.reason).toBe('Service unavailable');
-			expect(dataObject.details).toBe('Backend is down');
+			expect(error.code).toBe(401);
+			expect(error.reason).toContain('Invalid API key');
+			expect(error.isRetriable).toBe(false);
+			expect(error.latencyMs).toBe(100);
+			expect(error.asDataObject()).toMatchObject({
+				code: 401,
+				retriable: false,
+			});
 		});
 
-		it('should determine retryability consistently for same error code', () => {
+		it('should handle HTTP 500 server error with high latency', () => {
 			// ARRANGE
-			const request = new MockRequest(MOCK_REQUEST_ID, MOCK_REQUEST_TIMESTAMP);
-			mockDateNow.mockReturnValue(MOCK_ERROR_TIMESTAMP_100);
+			Object.defineProperty(mockRequest, 'requestedAt', { value: 1000, writable: true });
+			jest.spyOn(Date, 'now').mockReturnValue(31000); // 30 seconds
 
 			// ACT
-			const error1 = new TestError(request, CODE_SERVER_ERROR, 'Error 1');
-			const error2 = new TestError(request, CODE_SERVER_ERROR, 'Error 2');
+			const error = new TestError(mockRequest, 500, 'Internal server error. Please try again later.', true);
+			const nodeError = error.asError(mockNode);
 
-			// ASSERT - Same code = same retryability
-			expect(error1.isRetryable()).toBe(error2.isRetryable());
-			expect(error1.isRetryable()).toBe(true);
+			// ASSERT
+			expect(error.code).toBe(500);
+			expect(error.latencyMs).toBe(30000);
+			expect(error.isRetriable).toBe(true);
+			expect(nodeError).toBeInstanceOf(NodeOperationError);
+			expect(nodeError.message).toContain('Internal server error');
 		});
 	});
 });

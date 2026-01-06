@@ -4,94 +4,73 @@ import type { Tracer } from 'tracing/*';
 import type { IFunctions } from 'types/*';
 
 /**
- * Factory for retrieving suppliers from n8n's connection system.
+ * Factory for retrieving supplier instances from n8n AI node connections.
  *
- * Provides centralized access to connected suppliers with automatic type casting,
- * priority ordering (LIFO), and comprehensive logging. Used by supplier-based nodes
- * to discover and instantiate their data sources.
+ * Retrieves configured supplier instances (translation providers, AI models, etc.)
+ * from upstream nodes connected via n8n's AI agent connection system. Handles both
+ * single and multiple supplier configurations with automatic array normalization.
  *
- * **Key Responsibilities:**
- * - Query n8n connection system for connected suppliers
- * - Handle single and multiple supplier scenarios
- * - Apply LIFO ordering (reverse array) for priority processing
- * - Provide type-safe supplier retrieval with generics
- *
- * **Design Assumptions:**
- * - n8n's connection system validates supplier structure before delivery
- * - Supplier type compatibility enforced by connection type definitions
- * - Empty supplier lists are valid (optional connections)
+ * **Connection resolution:**
+ * - Single supplier → Wrapped in array for consistent interface
+ * - Multiple suppliers → Returned as-is, reversed for priority order
+ * - No suppliers → Returns empty array (logged as warning)
  *
  * @example
  * ```typescript
- * // Retrieve translation suppliers
- * const suppliers = await SupplyFactory.getSuppliers<ITranslationSupplier>(
- *   functions,
- *   'IntentoTranslation',
+ * const tracer = new Tracer(this);
+ * const suppliers = await SupplyFactory.getSuppliers<TranslationSupplier>(
+ *   this,
+ *   'translation',
  *   tracer
  * );
- *
- * // suppliers[0] is highest priority (last connected)
- * // suppliers[n-1] is lowest priority (first connected)
+ * // → [supplier3, supplier2, supplier1] (reversed for fallback priority)
  * ```
  */
 export class SupplyFactory {
 	/**
-	 * Retrieves connected suppliers from n8n connection system.
+	 * Retrieves supplier instances from n8n AI node input connections.
 	 *
-	 * Queries n8n's connection data for the specified connection type and returns
-	 * suppliers in reverse order (LIFO) for priority-based processing. Handles three
-	 * scenarios: multiple suppliers (array), single supplier (object), or no suppliers (null).
+	 * Queries n8n connection system for suppliers of specified type, normalizes single/array
+	 * results, and reverses array order for fallback priority (last connected = first tried).
+	 * Logs retrieval process with supplier counts for debugging connection issues.
 	 *
-	 * **Priority Ordering (LIFO):**
-	 * - Last connected supplier = highest priority (index 0 after reverse)
-	 * - First connected supplier = lowest priority (index n-1 after reverse)
-	 * - Enables fallback chains: try [0], if fails try [1], etc.
+	 * **Array reversal rationale:** n8n connection order is first-connected-first, but fallback
+	 * logic typically tries last-added-first (e.g., prefer newest config over legacy).
 	 *
-	 * **Type Safety:**
-	 * - Generic type T defines expected supplier interface
-	 * - Type assertions justified by n8n's connection validation
-	 * - IntentoConnectionType compatible with AINodeConnectionType (both string unions)
-	 *
-	 * @param functions - n8n function interface for accessing connection data
-	 * @param connectionType - Intento connection type identifier (e.g., 'IntentoTranslation')
-	 * @param tracer - Tracer instance for debug/warn logging throughout retrieval
-	 * @returns Array of suppliers in LIFO order (last connected first), empty if none connected
+	 * @param functions - n8n functions for accessing workflow context and connections
+	 * @param connectionType - Intento connection type identifier (e.g., 'translation', 'ai-model')
+	 * @param tracer - Tracer instance for distributed logging with correlation
+	 * @returns Array of supplier instances in reverse connection order (empty if none found)
 	 *
 	 * @example
 	 * ```typescript
-	 * // Multiple suppliers: returns [supplier3, supplier2, supplier1]
-	 * const suppliers = await SupplyFactory.getSuppliers<ISupplier>(
-	 *   functions,
-	 *   'IntentoTranslation',
-	 *   tracer
-	 * );
-	 *
-	 * // Single supplier: returns [supplier1]
-	 * // No suppliers: returns []
+	 * // Multiple suppliers connected: OpenAI → DeepL → Google
+	 * const suppliers = await SupplyFactory.getSuppliers<TranslationSupplier>(...);
+	 * // Returns: [Google, DeepL, OpenAI] (reversed)
 	 * ```
 	 */
 	static async getSuppliers<T>(functions: IFunctions, connectionType: IntentoConnectionType, tracer: Tracer): Promise<T[]> {
-		tracer.debug(`🔮 Getting '${connectionType}' suppliers ...`);
+		tracer.debug(`🔮 [Reflection] Getting '${connectionType}' suppliers ...`);
 
-		// NOTE: IntentoConnectionType extends AINodeConnectionType string union, cast is safe
+		// NOTE: Type cast necessary as IntentoConnectionType extends AINodeConnectionType
+		// but n8n's getInputConnectionData requires exact AINodeConnectionType parameter
 		const data = await functions.getInputConnectionData(connectionType as AINodeConnectionType, 0);
 
 		if (Array.isArray(data)) {
-			tracer.debug(`🔮 Retrieved ${data.length} suppliers for connection type '${connectionType}'`);
+			tracer.debug(`🔮 [Reflection] Retrieved ${data.length} suppliers for connection type '${connectionType}'`);
 
-			// NOTE: Reverse array for LIFO priority - last connected supplier becomes first choice
-			// Type assertion justified: n8n validates supplier structure matches connection type
+			// NOTE: Reverse array so last-connected supplier is tried first in fallback logic
+			// Connection order: [first, second, third] → Priority order: [third, second, first]
 			return data.map((item) => item as T).reverse();
 		}
 
 		if (data) {
-			// NOTE: Single supplier case - n8n returns object instead of array
-			tracer.debug(`🔮 Retrieved 1 supplier for connection type '${connectionType}'`);
+			tracer.debug(`🔮 [Reflection] Retrieved 1 supplier for connection type '${connectionType}'`);
+			// NOTE: Wrap single supplier in array for consistent return type
 			return [data as T];
 		}
 
-		// NOTE: No suppliers connected - valid for optional connections, caller handles empty array
-		tracer.warn(`🔮 No suppliers found for connection type '${connectionType}'`);
+		tracer.warn(`🔮 [Reflection] No suppliers found for connection type '${connectionType}'`);
 		return [];
 	}
 }
