@@ -55,6 +55,7 @@ const aggregatedInsightsByTimeParser = z
 		periodStart: z.union([z.date(), z.string()]).transform((value) => {
 			if (value instanceof Date) {
 				return value.toISOString();
+			}
 
 
 			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
