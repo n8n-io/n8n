@@ -5,12 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
-import type { ResponseInputImage } from 'openai/resources/responses/responses';
 
-import { getBinaryDataFile } from '../../../helpers/binary-data';
+import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
+import { getBinaryDataFile } from '../../../helpers/binary-data';
 
 const properties: INodeProperties[] = [
 	{

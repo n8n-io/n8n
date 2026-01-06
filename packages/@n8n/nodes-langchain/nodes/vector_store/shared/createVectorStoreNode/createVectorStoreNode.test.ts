@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { DynamicTool } from '@langchain/classic/tools';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { mock } from 'jest-mock-extended';
+import type { DynamicTool } from '@langchain/classic/tools';
 import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,

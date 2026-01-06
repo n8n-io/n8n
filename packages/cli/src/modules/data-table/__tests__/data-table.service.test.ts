@@ -1,9 +1,7 @@
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository } from '@n8n/db';
-
-import { RoleService } from '@/services/role.service';
 
 import { CsvParserService } from '../csv-parser.service';
 import type { DataTableColumn } from '../data-table-column.entity';
@@ -16,6 +14,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;

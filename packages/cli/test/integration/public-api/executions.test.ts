@@ -10,12 +10,6 @@ import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { Telemetry } from '@/telemetry';
-
 import {
 	createdExecutionWithStatus,
 	createErrorExecution,
@@ -27,6 +21,11 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
 let owner: User;
 let user1: User;

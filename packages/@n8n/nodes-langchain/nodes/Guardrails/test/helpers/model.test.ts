@@ -1,13 +1,12 @@
-import type { AgentExecutor } from '@langchain/classic/agents';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { StructuredOutputParser } from '@langchain/core/output_parsers';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { AgentExecutor } from '@langchain/classic/agents';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { GuardrailError } from '../../actions/types';
 import { getChatModel, runLLMValidation } from '../../helpers/model';
-
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { StructuredOutputParser } from '@langchain/core/output_parsers';
 
 jest.mock('@langchain/core/prompts', () => ({
 	ChatPromptTemplate: {

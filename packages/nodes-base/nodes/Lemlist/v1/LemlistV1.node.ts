@@ -302,7 +302,7 @@ export class LemlistV1 implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
@@ -313,7 +313,7 @@ export class LemlistV1 implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		return [returnData];

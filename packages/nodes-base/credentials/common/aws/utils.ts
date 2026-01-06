@@ -1,5 +1,3 @@
-import type { Request } from 'aws4';
-import { sign } from 'aws4';
 import {
 	ApplicationError,
 	type IHttpRequestMethods,
@@ -10,8 +8,7 @@ import {
 	type IRequestOptions,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-
-import { getSystemCredentials } from './system-credentials-utils';
+import type { Request } from 'aws4';
 import {
 	AWS_GLOBAL_DOMAIN,
 	type AwsCredentialsTypeBase,
@@ -20,8 +17,9 @@ import {
 	type AwsAssumeRoleCredentialsType,
 	type AwsSecurityHeaders,
 } from './types';
+import { sign } from 'aws4';
 
-
+import { getSystemCredentials } from './system-credentials-utils';
 
 /**
  * Checks if a request body value should be JSON stringified for AWS requests.

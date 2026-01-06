@@ -1,4 +1,4 @@
- 
+/* eslint-disable vue/one-component-per-file */
 import { renderComponent } from '@/__tests__/render';
 import { type CanvasNode } from '../canvas.types';
 import { fireEvent } from '@testing-library/dom';

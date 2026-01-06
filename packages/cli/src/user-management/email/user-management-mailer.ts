@@ -10,15 +10,14 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
-
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
-import { NodeMailer } from './node-mailer';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =

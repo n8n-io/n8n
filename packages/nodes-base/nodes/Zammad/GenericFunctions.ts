@@ -98,7 +98,7 @@ export async function zammadApiRequestAllItems(
 
 	do {
 		responseData = await zammadApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push.apply(returnData, responseData as IDataObject[]);
+		returnData.push(...(responseData as IDataObject[]));
 
 		if (limit && returnData.length > limit) {
 			return returnData.slice(0, limit);

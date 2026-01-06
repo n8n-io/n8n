@@ -23,12 +23,6 @@ import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { STARTING_NODES } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
-
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -36,6 +30,11 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { STARTING_NODES } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 

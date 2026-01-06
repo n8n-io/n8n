@@ -1,6 +1,6 @@
-import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import { VectorStore } from '@langchain/core/vectorstores';
+import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
 import {
 	NodeConnectionTypes,
 	type INodeType,

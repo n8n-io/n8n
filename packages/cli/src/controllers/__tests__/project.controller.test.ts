@@ -1,9 +1,9 @@
 import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
-import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { ProjectController } from '@/controllers/project.controller';
 import type { EventService } from '@/events/event.service';
+import type { Response } from 'express';
+import { ProjectController } from '@/controllers/project.controller';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 

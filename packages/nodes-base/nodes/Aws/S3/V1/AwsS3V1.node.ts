@@ -151,7 +151,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 
 					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
@@ -171,7 +171,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
@@ -202,7 +202,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -275,7 +275,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -318,7 +318,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
@@ -402,7 +402,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -466,7 +466,7 @@ export class AwsS3V1 implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						}
 					}
 				}
@@ -578,7 +578,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
@@ -675,7 +675,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -741,7 +741,7 @@ export class AwsS3V1 implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						}
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
@@ -883,7 +883,7 @@ export class AwsS3V1 implements INodeType {
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -892,7 +892,7 @@ export class AwsS3V1 implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;

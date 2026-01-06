@@ -601,7 +601,7 @@ export class GoogleChat implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					// Return the actual reason as error
@@ -612,7 +612,7 @@ export class GoogleChat implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionErrorData);
+						returnData.push(...executionErrorData);
 					}
 					continue;
 				}

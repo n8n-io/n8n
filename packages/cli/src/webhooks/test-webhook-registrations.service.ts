@@ -1,4 +1,3 @@
-import { isObjectLiteral } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -10,6 +9,7 @@ import {
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
+import { isObjectLiteral } from '@n8n/backend-common';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 

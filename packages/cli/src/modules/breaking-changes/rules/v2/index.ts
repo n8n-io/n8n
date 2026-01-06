@@ -12,10 +12,10 @@ import { RemovedDatabaseTypesRule } from './removed-database-types.rule';
 import { RemovedNodesRule } from './removed-nodes.rule';
 import { SettingsFilePermissionsRule } from './settings-file-permissions.rule';
 import { SqliteLegacyDriverRule } from './sqlite-legacy-driver.rule';
-import { StartNodeRemovedRule } from './start-node-removed.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
 import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
+import { StartNodeRemovedRule } from './start-node-removed.rule';
 import { WaitNodeSubworkflowRule } from './wait-node-subworkflow.rule';
 import { WorkflowHooksDeprecatedRule } from './workflow-hooks-deprecated.rule';
 

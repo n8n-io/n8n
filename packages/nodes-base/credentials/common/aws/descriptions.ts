@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-
 import { regions } from './types';
 
 export const awsRegionProperty: INodeProperties = {

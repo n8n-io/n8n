@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -7,12 +6,12 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { ExternalHooks } from '@/external-hooks';
-import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
-
+import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import { Logger } from '@n8n/backend-common';
+import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {

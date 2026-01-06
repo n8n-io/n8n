@@ -10,7 +10,6 @@ import { SourceControlPreferencesService } from '@/environments.ee/source-contro
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
-
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';

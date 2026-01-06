@@ -14,14 +14,6 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-
-import { EventService } from '@/events/event.service';
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { ManualExecutionService } from '@/manual-execution.service';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
 import type {
 	Job,
 	JobFinishedMessage,
@@ -31,6 +23,13 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+
+import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { ManualExecutionService } from '@/manual-execution.service';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.

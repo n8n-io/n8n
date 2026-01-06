@@ -18,15 +18,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
 
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
-
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
@@ -34,6 +25,14 @@ import {
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',

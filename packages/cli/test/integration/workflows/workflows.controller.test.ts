@@ -29,17 +29,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { createFolder } from '@test-integration/db/folders';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -50,6 +44,11 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 let owner: User;
 let member: User;

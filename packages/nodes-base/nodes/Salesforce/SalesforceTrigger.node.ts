@@ -279,7 +279,7 @@ export class SalesforceTrigger implements INodeType {
 			workflowData.lastTimeChecked = endDate;
 
 			if (newItems.length > 0) {
-				return [this.helpers.returnJsonArray(newItems)];
+				return [this.helpers.returnJsonArray(newItems as IDataObject[])];
 			}
 
 			return null;

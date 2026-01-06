@@ -10,8 +10,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { FieldsTracker } from './utils';
 import { prepareFieldsArray } from '../utils/utils';
+import { FieldsTracker } from './utils';
 
 export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
@@ -266,7 +266,7 @@ export class SplitOut implements INodeType {
 		const hints = fieldsTracker.getHints();
 
 		if (hints.length) {
-			this.addExecutionHints.apply(this, hints);
+			this.addExecutionHints(...hints);
 		}
 
 		return [returnData];

@@ -127,7 +127,7 @@ export async function execute(
 			{ itemData: { item: i } },
 		);
 
-		returnData.push.apply(returnData, executionData);
+		returnData.push(...executionData);
 	}
 	return returnData;
 }

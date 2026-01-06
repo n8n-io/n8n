@@ -130,9 +130,9 @@ export function parseCompositeFilter(
 	// Handle composite filters (AND/OR)
 	if (typeof filter === 'object' && ('AND' in filter || 'OR' in filter)) {
 		if ('AND' in filter) {
-			return Filters.and.apply(Filters, filter.AND.map(buildFilter));
+			return Filters.and(...filter.AND.map(buildFilter));
 		} else if ('OR' in filter) {
-			return Filters.or.apply(Filters, filter.OR.map(buildFilter));
+			return Filters.or(...filter.OR.map(buildFilter));
 		}
 	}
 

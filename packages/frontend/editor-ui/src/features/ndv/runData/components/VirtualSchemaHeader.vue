@@ -68,14 +68,14 @@ const emit = defineEmits<{
 				scope="global"
 			>
 				<template #execute>
-					<N8nLink size="small" bold @click="() => emit('execute', title)">
+					<N8nLink @click="() => emit('execute', title)" size="small" bold>
 						{{ i18n.baseText('dataMapping.schemaView.previewLastExecution.executePreviousNodes') }}
 					</N8nLink>
 				</template>
 			</I18nT>
 			<I18nT v-else keypath="dataMapping.schemaView.preview" scope="global">
 				<template #execute>
-					<N8nLink size="small" bold @click="() => emit('execute', title)">
+					<N8nLink @click="() => emit('execute', title)" size="small" bold>
 						{{ i18n.baseText('dataMapping.schemaView.preview.executeNode') }}
 					</N8nLink>
 				</template>

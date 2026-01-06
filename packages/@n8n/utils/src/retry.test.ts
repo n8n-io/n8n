@@ -61,7 +61,7 @@ describe('retry', () => {
 
 	it('should reject if the function throws an error', async () => {
 		const fn = vi.fn(async () => {
-			throw new Error('Test error');  
+			throw new Error('Test error'); // eslint-disable-line n8n-local-rules/no-plain-errors
 		});
 
 		// Since the error is thrown on the first call, no timer advancement is needed.

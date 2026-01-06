@@ -1,3 +1,4 @@
+import { getConnectedTools } from '@utils/helpers';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
@@ -8,8 +9,6 @@ import {
 	validateNodeParameters,
 } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
-
-import { getConnectedTools } from '@utils/helpers';
 
 import type {
 	GenerateContentRequest,
@@ -523,7 +522,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push.apply(contents, response.candidates.map((c) => c.content));
+		contents.push(...response.candidates.map((c) => c.content));
 
 		for (const { functionCall } of toolCalls) {
 			let toolResponse;

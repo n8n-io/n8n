@@ -1,10 +1,8 @@
-import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
-import { Response } from 'express';
-
+import { LicenseState } from '@n8n/backend-common';
 import { ProvisioningService } from './provisioning.service.ee';
-
+import { Response } from 'express';
 
 @RestController('/sso/provisioning')
 export class ProvisioningController {

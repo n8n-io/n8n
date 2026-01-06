@@ -1,18 +1,16 @@
-import { CredentialsEntity } from '@n8n/db';
 import { Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
-import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
-
+import { CredentialsEntity } from '@n8n/db';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverRegistry } from './services';
 import { getBearerToken } from './utils';
-
+import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 @RestController('/credentials')
 export class DynamicCredentialsController {

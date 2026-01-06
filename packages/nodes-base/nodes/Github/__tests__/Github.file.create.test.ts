@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import * as GenericFunctions from '../GenericFunctions';
 import { Github } from '../Github.node';
+import * as GenericFunctions from '../GenericFunctions';
 
 jest.mock('../GenericFunctions', () => ({
 	...jest.requireActual('../GenericFunctions'),

@@ -1,7 +1,8 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
-import { ProjectRepository, RoleRepository, UserRepository  } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 

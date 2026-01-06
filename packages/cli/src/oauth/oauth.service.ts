@@ -1,37 +1,18 @@
 import { Logger } from '@n8n/backend-common';
-import {
-	ClientOAuth2,
-	type ClientOAuth2Options,
-	type OAuth2AuthenticationMethod,
-	type OAuth2CredentialData,
-	type OAuth2GrantType,
-} from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
-import { createHmac } from 'crypto';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import split from 'lodash/split';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import type { RequestOptions } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
-import pkceChallenge from 'pkce-challenge';
-import * as qs from 'querystring';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import {
-	oAuthAuthorizationServerMetadataSchema,
-	dynamicClientRegistrationResponseSchema,
-} from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -40,12 +21,26 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
-
-
+import {
+	ClientOAuth2,
+	type ClientOAuth2Options,
+	type OAuth2AuthenticationMethod,
+	type OAuth2CredentialData,
+	type OAuth2GrantType,
+} from '@n8n/client-oauth2';
+import axios from 'axios';
+import {
+	oAuthAuthorizationServerMetadataSchema,
+	dynamicClientRegistrationResponseSchema,
+} from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
+import pkceChallenge from 'pkce-challenge';
+import * as qs from 'querystring';
+import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
-
-
+import type { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 import {
 	algorithmMap,
 	MAX_CSRF_AGE,
@@ -54,7 +49,6 @@ import {
 	type CsrfState,
 	type OAuth1CredentialData,
 } from './types';
-
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 

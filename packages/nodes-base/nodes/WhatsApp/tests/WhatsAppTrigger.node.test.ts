@@ -3,7 +3,6 @@ import type * as express from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IDataObject, IHookFunctions, INode, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import * as GenericFunctions from '../GenericFunctions';
 import type { WhatsAppAppWebhookSubscription, WhatsAppPageEvent } from '../types';
 import { WhatsAppTrigger, filterStatuses } from '../WhatsAppTrigger.node';

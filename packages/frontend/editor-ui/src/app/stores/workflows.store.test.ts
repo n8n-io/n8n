@@ -1646,8 +1646,8 @@ describe('useWorkflowsStore', () => {
 
 			// Should not fetch since cached with versionId exists
 			expect(getWorkflowSpy).not.toHaveBeenCalled();
-			expect(workflowsStore.workflowsById.w2.versionId).toBe('v3');
-			expect(workflowsStore.workflowsById.w2.settings).toEqual({
+			expect(workflowsStore.workflowsById['w2'].versionId).toBe('v3');
+			expect(workflowsStore.workflowsById['w2'].settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'Europe/Berlin',
 			});
@@ -1690,8 +1690,8 @@ describe('useWorkflowsStore', () => {
 				{ baseUrl: '/rest', pushRef: expect.any(String) },
 				'w3',
 			);
-			expect(workflowsStore.workflowsById.w3.versionId).toBe('v101');
-			expect(workflowsStore.workflowsById.w3.settings).toEqual({
+			expect(workflowsStore.workflowsById['w3'].versionId).toBe('v101');
+			expect(workflowsStore.workflowsById['w3'].settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'Asia/Tokyo',
 			});

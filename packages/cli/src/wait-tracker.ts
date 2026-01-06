@@ -9,7 +9,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
-
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,

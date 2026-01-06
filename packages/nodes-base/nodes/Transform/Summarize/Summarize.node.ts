@@ -345,7 +345,7 @@ export class Summarize implements INodeType {
 		}
 
 		if (fieldsNotFound.length) {
-			this.addExecutionHints.apply(this, fieldsNotFound);
+			this.addExecutionHints(...fieldsNotFound);
 		}
 
 		if (options.outputFormat === 'singleItem') {

@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import type {
 	AssignmentCollectionValue,
 	FilterValue,
@@ -47,6 +45,7 @@ import type {
 	INodeRequestSend,
 	GenericValue,
 } from './interfaces';
+import { z } from 'zod';
 
 export const INodeParameterResourceLocatorSchema: z.ZodType<INodeParameterResourceLocator> =
 	z.object({

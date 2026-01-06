@@ -134,7 +134,7 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			} else {
 				responseData = result.find((data: IDataObject) => {
 					return data[lookupColumn]?.toString() === lookupValue;
@@ -144,7 +144,7 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -152,7 +152,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			throw error;

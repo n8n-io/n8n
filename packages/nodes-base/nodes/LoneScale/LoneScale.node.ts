@@ -383,7 +383,7 @@ export class LoneScale implements INodeType {
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'item') {
@@ -463,7 +463,7 @@ export class LoneScale implements INodeType {
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -472,7 +472,7 @@ export class LoneScale implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;

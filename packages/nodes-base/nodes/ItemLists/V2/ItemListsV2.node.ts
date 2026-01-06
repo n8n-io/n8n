@@ -1026,7 +1026,7 @@ return 0;`,
 									}
 
 									if (Array.isArray(value) && mergeLists) {
-										values[_outputFieldName].push.apply(values[_outputFieldName], value);
+										values[_outputFieldName].push(...value);
 									} else {
 										values[_outputFieldName].push(value);
 									}
@@ -1042,7 +1042,7 @@ return 0;`,
 									}
 
 									if (Array.isArray(value) && mergeLists) {
-										values[_outputFieldName].push.apply(values[_outputFieldName], value);
+										values[_outputFieldName].push(...value);
 									} else {
 										values[_outputFieldName].push(value);
 									}

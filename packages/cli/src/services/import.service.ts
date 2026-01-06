@@ -1,5 +1,4 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import { DatabaseConfig } from '@n8n/config';
 import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
 import {
 	Project,
@@ -10,19 +9,21 @@ import {
 	TagRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager } from '@n8n/typeorm';
-import { readdir, readFile } from 'fs/promises';
-import { Cipher } from 'n8n-core';
+import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { readdir, readFile } from 'fs/promises';
 
+import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { Cipher } from 'n8n-core';
+import { decompressFolder } from '@/utils/compression.util';
+import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { decompressFolder } from '@/utils/compression.util';
-import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
-import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { DatabaseConfig } from '@n8n/config';
 
 @Service()
 export class ImportService {
@@ -279,7 +280,7 @@ export class ImportService {
 		customEncryptionKey?: string,
 	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: Array<Record<string, unknown>> = [];
+		const entities: Record<string, unknown>[] = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {

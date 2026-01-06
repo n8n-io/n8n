@@ -343,7 +343,7 @@ function normalizeOutBinds(
 
 	// execute case outBinds-> [[col1Row1Val], [col2Row1Val]]
 	const row: Record<string, any> = {};
-	for (let i = 0; i < (outBinds).length; i++) {
+	for (let i = 0; i < (outBinds as any[]).length; i++) {
 		row[`${outputColumns[i]}`] = outBinds[i][0];
 	}
 	rows.push(row);
@@ -365,7 +365,7 @@ function _getResponseForOutbinds(
 				itemData: { item: j },
 			});
 			if (executionData) {
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		}
 	}

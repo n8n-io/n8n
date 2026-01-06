@@ -30,9 +30,9 @@ import type {
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
-import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 

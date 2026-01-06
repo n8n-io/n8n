@@ -1,12 +1,11 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
-import { assert, NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
-
 import { createToolFromNode } from '@utils/fromAIToolFactory';
 import { getMetadataFiltersValues } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
+import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
+import { assert, NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
 

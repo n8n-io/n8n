@@ -1,9 +1,9 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	ChatPromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
 } from '@langchain/core/prompts';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { distance } from 'fastest-levenshtein';
 import { NodeOperationError, nodeNameToToolName } from 'n8n-workflow';
 import type {
@@ -98,7 +98,7 @@ export const metricHandlers = {
 		const toolUsageScores = normalizedExpectedTools.map((normalizedTool) => {
 			return intermediateSteps.some((step) => {
 				// Handle malformed intermediate steps gracefully
-				if (!step?.action || typeof step.action.tool !== 'string') {
+				if (!step || !step.action || typeof step.action.tool !== 'string') {
 					return false;
 				}
 				return step.action.tool.toLowerCase() === normalizedTool;

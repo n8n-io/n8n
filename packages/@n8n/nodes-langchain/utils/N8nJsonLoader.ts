@@ -1,7 +1,7 @@
-import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
-import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
+import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
+import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -26,7 +26,7 @@ export class N8nJsonLoader {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const processedDocuments = await this.processItem(items[itemIndex], itemIndex);
 
-			docs.push.apply(docs, processedDocuments);
+			docs.push(...processedDocuments);
 		}
 
 		return docs;

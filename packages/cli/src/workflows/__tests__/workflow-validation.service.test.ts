@@ -1,6 +1,6 @@
 import type { WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 

@@ -1,3 +1,4 @@
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -12,7 +13,16 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookService } from './webhook.service';
+import type {
+	IWebhookResponseCallbackData,
+	IWebhookManager,
+	WebhookAccessControlOptions,
+	WebhookRequest,
+} from './webhook.types';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
@@ -26,16 +36,6 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-
-import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	IWebhookManager,
-	WebhookAccessControlOptions,
-	WebhookRequest,
-} from './webhook.types';
 
 const SINGLE_WEBHOOK_TRIGGERS = [
 	'n8n-nodes-base.telegramTrigger',

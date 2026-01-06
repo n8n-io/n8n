@@ -1,15 +1,12 @@
-import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UrlService } from '@/services/url.service';
-
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
+import { WorkflowExecutionStatus } from '@n8n/api-types';
 import { getBearerToken } from './utils';
-
-
+import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 @RestController('/workflows')
 export class WorkflowStatusController {

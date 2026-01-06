@@ -209,14 +209,14 @@ export class GoogleBigQueryV1 implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData },
 						);
-						returnData.push.apply(returnData, executionErrorData);
+						returnData.push(...executionErrorData);
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: 0 });
 				}
@@ -284,14 +284,14 @@ export class GoogleBigQueryV1 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });

@@ -1,6 +1,5 @@
-import { ApplicationError } from '@n8n/errors';
-
 import { NodeError } from './abstract/node.error';
+import { ApplicationError } from '@n8n/errors';
 import type { NodeOperationErrorOptions } from './node-api.error';
 import type { INode, JsonObject } from '../interfaces';
 

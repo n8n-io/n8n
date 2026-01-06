@@ -124,7 +124,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });

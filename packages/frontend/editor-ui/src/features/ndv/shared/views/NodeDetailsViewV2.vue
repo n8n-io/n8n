@@ -25,7 +25,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
-import { dataPinningEventBus, nodeViewEventBus  } from '@/app/event-bus';
+import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -40,6 +40,7 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{

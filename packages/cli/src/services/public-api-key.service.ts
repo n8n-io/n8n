@@ -10,11 +10,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { EventService } from '@/events/event.service';
-
 import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';
 
+import { EventService } from '@/events/event.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';

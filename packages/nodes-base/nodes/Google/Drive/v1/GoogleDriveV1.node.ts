@@ -2076,7 +2076,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					if (operation === 'delete') {
 						// ----------------------------------
@@ -2094,7 +2094,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					if (operation === 'get') {
 						// ----------------------------------
@@ -2122,7 +2122,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					if (operation === 'list') {
 						// ----------------------------------
@@ -2156,7 +2156,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					if (operation === 'update') {
 						// ----------------------------------
@@ -2183,7 +2183,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -2224,7 +2224,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'download') {
 						// ----------------------------------
 						//         download
@@ -2422,7 +2422,7 @@ export class GoogleDriveV1 implements INodeType {
 							return [executionData];
 						}
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -2578,7 +2578,7 @@ export class GoogleDriveV1 implements INodeType {
 							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         file:update
@@ -2623,7 +2623,7 @@ export class GoogleDriveV1 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -2651,7 +2651,7 @@ export class GoogleDriveV1 implements INodeType {
 							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 				if (['file', 'folder'].includes(resource)) {
@@ -2681,7 +2681,7 @@ export class GoogleDriveV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					if (operation === 'share') {
 						const fileId = this.getNodeParameter('fileId', i, undefined, {
@@ -2716,7 +2716,7 @@ export class GoogleDriveV1 implements INodeType {
 							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {

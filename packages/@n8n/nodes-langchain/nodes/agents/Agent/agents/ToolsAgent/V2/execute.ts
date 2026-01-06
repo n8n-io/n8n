@@ -1,3 +1,9 @@
+import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
+import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
 import {
 	AgentExecutor,
 	type AgentRunnableSequence,
@@ -5,13 +11,6 @@ import {
 } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
-import { ChatOpenAI } from '@langchain/openai';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
@@ -33,6 +32,7 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { ChatOpenAI } from '@langchain/openai';
 
 /**
  * Creates an agent executor with the given configuration

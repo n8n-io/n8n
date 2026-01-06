@@ -218,29 +218,17 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 
 class SpeechSynthesisUtterance {
 	text = '';
-
 	lang = '';
-
 	voice = null;
-
 	volume = 1;
-
 	rate = 1;
-
 	pitch = 1;
-
 	onstart = null;
-
 	onend = null;
-
 	onerror = null;
-
 	onpause = null;
-
 	onresume = null;
-
 	onmark = null;
-
 	onboundary = null;
 
 	constructor(text?: string) {
@@ -250,9 +238,7 @@ class SpeechSynthesisUtterance {
 	}
 
 	addEventListener = vi.fn();
-
 	removeEventListener = vi.fn();
-
 	dispatchEvent = vi.fn(() => true);
 }
 

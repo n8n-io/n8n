@@ -15,12 +15,6 @@ import path from 'path';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { createOwner } from './shared/db/users';
-import {
-	validateRootContext,
-	validateChildContextInheritance,
-	validateContextInheritanceChain,
-	validateBasicContextStructure,
-} from './shared/execution-context-helpers';
 import * as utils from './shared/utils';
 import {
 	createSubWorkflowFixture,
@@ -28,6 +22,12 @@ import {
 	createMiddleWorkflowFixture,
 	createSimpleWorkflowFixture,
 } from './shared/workflow-fixtures';
+import {
+	validateRootContext,
+	validateChildContextInheritance,
+	validateContextInheritanceChain,
+	validateBasicContextStructure,
+} from './shared/execution-context-helpers';
 
 // ============================================================
 // Helper to load nodes from dist folder

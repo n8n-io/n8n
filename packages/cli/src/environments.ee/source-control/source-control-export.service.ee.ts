@@ -45,10 +45,10 @@ import { VariablesService } from '../variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import { ExportableProject } from './types/exportable-project';
-import { ExportableVariable } from './types/exportable-variable';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
+import { ExportableVariable } from './types/exportable-variable';
 
 @Service()
 export class SourceControlExportService {

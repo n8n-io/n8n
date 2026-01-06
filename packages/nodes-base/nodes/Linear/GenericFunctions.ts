@@ -87,7 +87,7 @@ export async function linearApiRequestAllItems(
 	do {
 		responseData = await linearApiRequest.call(this, body);
 		const nodes = get(responseData, nodesPath) as IDataObject[];
-		returnData.push.apply(returnData, nodes);
+		returnData.push(...nodes);
 		body.variables.after = get(responseData, endCursorPath);
 		if (limit && returnData.length >= limit) {
 			return returnData;

@@ -13,11 +13,11 @@ import type {
 	JsonValue,
 	DataTableColumnJsType,
 } from 'n8n-workflow';
-import assert from 'node:assert';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { metricHandlers } from './metricHandlers';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
+import assert from 'node:assert';
 
 function withEvaluationData(this: IExecuteFunctions, data: JsonObject): INodeExecutionData[] {
 	const inputData = this.getInputData();

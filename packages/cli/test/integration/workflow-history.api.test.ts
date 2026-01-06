@@ -1,12 +1,11 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User, WorkflowHistory } from '@n8n/db';
 
-import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
-
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

@@ -12,13 +12,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { listQueryMiddleware } from '@/middlewares';
-import type { ListQuery } from '@/requests';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -26,6 +19,12 @@ import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { McpSettingsService } from './mcp.settings.service';
 import { findMcpSupportedTrigger } from './mcp.utils';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { listQueryMiddleware } from '@/middlewares';
+import type { ListQuery } from '@/requests';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/mcp')
 export class McpSettingsController {

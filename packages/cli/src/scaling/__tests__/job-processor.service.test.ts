@@ -15,6 +15,8 @@ import {
 	type ExecutionError,
 } from 'n8n-workflow';
 
+import { JobProcessor } from '../job-processor';
+import type { Job } from '../scaling.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -25,9 +27,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
 
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),

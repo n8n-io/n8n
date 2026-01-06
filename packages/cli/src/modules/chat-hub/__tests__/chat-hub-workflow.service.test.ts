@@ -1,12 +1,12 @@
-import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
+import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
-import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 

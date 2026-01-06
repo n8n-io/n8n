@@ -418,7 +418,7 @@ export class GoogleSlides implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'getThumbnail') {
 						// ----------------------------------
 						//         page: getThumbnail
@@ -460,14 +460,14 @@ export class GoogleSlides implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						}
 					}
 				} else if (resource === 'presentation') {
@@ -491,7 +491,7 @@ export class GoogleSlides implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         presentation: get
@@ -509,7 +509,7 @@ export class GoogleSlides implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'getSlides') {
 						// ----------------------------------
 						//      presentation: getSlides
@@ -534,7 +534,7 @@ export class GoogleSlides implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else if (operation === 'replaceText') {
 						// ----------------------------------
 						//      presentation: replaceText
@@ -577,7 +577,7 @@ export class GoogleSlides implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -586,7 +586,7 @@ export class GoogleSlides implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

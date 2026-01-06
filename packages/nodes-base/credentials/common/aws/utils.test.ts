@@ -1,5 +1,4 @@
 import { ApplicationError } from 'n8n-workflow';
-
 import type { AwsAssumeRoleCredentialsType, AWSRegion } from './types';
 
 global.fetch = jest.fn();
@@ -14,7 +13,6 @@ jest.mock('xml2js', () => ({
 
 import { sign } from 'aws4';
 import { parseString } from 'xml2js';
-
 import { assumeRole } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
 
@@ -31,7 +29,7 @@ describe('assumeRole', () => {
 		mockParseString = parseString as jest.MockedFunction<typeof parseString>;
 		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-		mockSign.mockImplementation((request: any) => request);
+		mockSign.mockImplementation((request: any) => request as any);
 	});
 
 	afterEach(() => {

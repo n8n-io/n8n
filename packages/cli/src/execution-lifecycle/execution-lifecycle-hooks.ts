@@ -23,8 +23,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
-import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // eslint-disable-next-line import-x/no-cycle
@@ -38,6 +36,8 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
 @Service()
 class ModulesHooksRegistry {

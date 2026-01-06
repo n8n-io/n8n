@@ -1,7 +1,7 @@
-import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -187,7 +187,7 @@ export class SentimentAnalysis implements INodeType {
 
 					// Initialize returnData with empty arrays for each category
 					if (returnData.length === 0) {
-						returnData.push.apply(returnData, Array.from({ length: categories.length }, () => []));
+						returnData.push(...Array.from({ length: categories.length }, () => []));
 					}
 
 					const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -287,7 +287,7 @@ export class SentimentAnalysis implements INodeType {
 								{ itemData: { item: itemIndex } },
 							);
 
-							returnData[0].push.apply(returnData[0], executionErrorData);
+							returnData[0].push(...executionErrorData);
 							return;
 						} else {
 							throw error;
@@ -327,7 +327,7 @@ export class SentimentAnalysis implements INodeType {
 
 					// Initialize returnData with empty arrays for each category
 					if (returnData.length === 0) {
-						returnData.push.apply(returnData, Array.from({ length: categories.length }, () => []));
+						returnData.push(...Array.from({ length: categories.length }, () => []));
 					}
 
 					const options = this.getNodeParameter('options', i, {}) as {
@@ -406,7 +406,7 @@ export class SentimentAnalysis implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData[0].push.apply(returnData[0], executionErrorData);
+						returnData[0].push(...executionErrorData);
 						continue;
 					}
 					throw error;

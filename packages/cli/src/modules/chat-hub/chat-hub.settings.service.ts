@@ -1,3 +1,4 @@
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import {
 	ChatHubConversationModel,
 	ChatHubLLMProvider,
@@ -7,8 +8,6 @@ import {
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>

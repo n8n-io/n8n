@@ -307,10 +307,12 @@ export async function execute(
 				qs,
 			);
 
-			returnData.push.apply(returnData, prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+			returnData.push(
+				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					rawData,
 					dataProperty,
-				}));
+				}),
+			);
 		} else {
 			if (worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1) {
 				throw new NodeOperationError(
@@ -363,11 +365,13 @@ export async function execute(
 
 			const { updatedRows } = updateSummary;
 
-			returnData.push.apply(returnData, prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+			returnData.push(
+				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					updatedRows,
 					rawData,
 					dataProperty,
-				}));
+				}),
+			);
 		}
 	} catch (error) {
 		if (this.continueOnFail()) {
@@ -376,7 +380,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push.apply(returnData, executionErrorData);
+			returnData.push(...executionErrorData);
 		} else {
 			throw error;
 		}

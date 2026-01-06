@@ -1,6 +1,6 @@
-import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
 import { BaseClient } from '@xata.io/client';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,

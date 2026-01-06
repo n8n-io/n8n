@@ -368,7 +368,7 @@ export class DebugHelper implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

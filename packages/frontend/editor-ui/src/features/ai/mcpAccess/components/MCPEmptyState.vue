@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { N8nActionBox, N8nText  } from '@n8n/design-system';
+import { N8nActionBox } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useI18n } from '@n8n/i18n';
 

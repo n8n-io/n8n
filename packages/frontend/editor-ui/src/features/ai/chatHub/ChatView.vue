@@ -642,7 +642,7 @@ function onFilesDropped(files: File[]) {
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div ref="scrollable" :class="$style.scrollable">
+			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
 					v-if="isNewSession"
 					:class="$style.starter"

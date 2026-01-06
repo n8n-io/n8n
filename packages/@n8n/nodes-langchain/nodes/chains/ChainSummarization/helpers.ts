@@ -1,5 +1,5 @@
-import type { SummarizationChainParams } from '@langchain/classic/chains';
 import { PromptTemplate } from '@langchain/core/prompts';
+import type { SummarizationChainParams } from '@langchain/classic/chains';
 interface ChainTypeOptions {
 	combineMapPrompt?: string;
 	prompt?: string;

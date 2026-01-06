@@ -1,12 +1,12 @@
-import { SecurityConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import * as fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
+import { Container } from '@n8n/di';
+import { SecurityConfig } from '@n8n/config';
 
-import { ALLOWED_CONFIG_KEYS } from '../descriptions';
 import { Git } from '../Git.node';
+import { ALLOWED_CONFIG_KEYS } from '../descriptions';
 
 // Mock simple-git
 const mockGit = {

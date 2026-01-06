@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-
 import { verifySignature } from '../SlackTriggerHelpers';
 
 jest.mock('crypto', () => ({

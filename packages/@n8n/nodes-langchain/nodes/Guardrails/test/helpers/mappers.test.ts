@@ -1,14 +1,14 @@
 import { describe, it, expect } from '@jest/globals';
 
 import {
+	mapGuardrailResultToUserResult,
+	wrapResultsToNodeExecutionData,
+} from '../../helpers/mappers';
+import {
 	GuardrailError,
 	type GuardrailResult,
 	type GuardrailUserResult,
 } from '../../actions/types';
-import {
-	mapGuardrailResultToUserResult,
-	wrapResultsToNodeExecutionData,
-} from '../../helpers/mappers';
 
 describe('mappers helper', () => {
 	describe('mapGuardrailResultToUserResult', () => {

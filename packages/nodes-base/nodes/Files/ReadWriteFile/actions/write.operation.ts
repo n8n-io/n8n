@@ -5,12 +5,12 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
-import { constants } from 'node:fs';
 import type { Readable } from 'stream';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { errorMapper } from '../helpers/utils';
+import { constants } from 'node:fs';
 
 export const properties: INodeProperties[] = [
 	{

@@ -6,10 +6,9 @@ import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Readable } from 'node:stream';
 
-import type { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
-
 import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor';
 
+import type { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 
 describe('extractWebhookLastNodeResponse', () => {
 	let context: MockProxy<WebhookExecutionContext>;

@@ -4,7 +4,9 @@ import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRo
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useVirtualList } from '@vueuse/core';
-import { watch, nextTick , computed, toRef  } from 'vue';
+import { watch } from 'vue';
+import { nextTick } from 'vue';
+import { computed, toRef } from 'vue';
 import { useRouter } from 'vue-router';
 
 const {

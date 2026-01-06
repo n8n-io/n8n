@@ -123,7 +123,7 @@ export async function createRequest(
 	};
 
 	if (options.truncation !== undefined) {
-		body.truncation = options.truncation ? 'auto' : 'disabled';
+		body.truncation = !!options.truncation ? 'auto' : 'disabled';
 	}
 
 	if (options.conversationId) {

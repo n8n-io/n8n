@@ -48,6 +48,13 @@ import {
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
+import { WebhookService } from './webhook.service';
+import type {
+	IWebhookResponseCallbackData,
+	WebhookRequest,
+	WebhookNodeResponseHeaders,
+	WebhookResponseHeaders,
+} from './webhook.types';
 
 import { ActiveExecutions } from '@/active-executions';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
@@ -67,14 +74,6 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-
-import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	WebhookRequest,
-	WebhookNodeResponseHeaders,
-	WebhookResponseHeaders,
-} from './webhook.types';
 
 export function handleHostedChatResponse(
 	res: express.Response,

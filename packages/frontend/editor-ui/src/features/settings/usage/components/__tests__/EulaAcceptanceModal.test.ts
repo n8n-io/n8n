@@ -25,7 +25,7 @@ describe('EulaAcceptanceModal', () => {
 			},
 		});
 
-		const link = (await findByTestId('eula-link'));
+		const link = (await findByTestId('eula-link')) as HTMLAnchorElement;
 		expect(link).toBeInTheDocument();
 		expect(link.href).toBe(eulaUrl);
 		expect(link.target).toBe('_blank');

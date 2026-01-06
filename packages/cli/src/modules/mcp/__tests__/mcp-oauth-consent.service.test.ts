@@ -1,13 +1,13 @@
-import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { mock } from 'jest-mock-extended';
 
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthConsentService } from '../mcp-oauth-consent.service';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;

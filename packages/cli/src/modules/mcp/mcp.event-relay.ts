@@ -3,8 +3,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Event relay for MCP module to handle workflow events

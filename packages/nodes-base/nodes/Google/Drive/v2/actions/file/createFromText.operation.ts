@@ -1,4 +1,3 @@
-import FormData from 'form-data';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,6 +12,7 @@ import { setFileProperties, setParentFolder, setUpdateCommonParams } from '../..
 import { googleApiRequest } from '../../transport';
 import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
 
+import FormData from 'form-data';
 
 const properties: INodeProperties[] = [
 	{

@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { readFile } from 'fs/promises';
 import { ApplicationError } from 'n8n-workflow';
+import { readFile } from 'fs/promises';
 
 type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
 type RetrunData = {

@@ -11,7 +11,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
 import type { LoadedResource, Resource } from './types';
 
 export async function getAuthorization(

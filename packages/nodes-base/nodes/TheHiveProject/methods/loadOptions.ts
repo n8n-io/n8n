@@ -331,7 +331,7 @@ export async function loadObservableFields(
 			return field;
 		});
 
-	returnData.push.apply(returnData, fields);
+	returnData.push(...fields);
 	return returnData;
 }
 

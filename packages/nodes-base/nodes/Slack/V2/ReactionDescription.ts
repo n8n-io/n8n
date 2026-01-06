@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-
 import { slackChannelModes } from './utils';
 
 export const reactionOperations: INodeProperties[] = [

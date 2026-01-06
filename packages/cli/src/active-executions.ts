@@ -20,8 +20,8 @@ import {
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 

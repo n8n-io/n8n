@@ -1,6 +1,4 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { AiConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -11,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';

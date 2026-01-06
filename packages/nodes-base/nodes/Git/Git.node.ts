@@ -1,5 +1,3 @@
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { access, mkdir } from 'fs/promises';
 import type {
 	IExecuteFunctions,
@@ -28,6 +26,8 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
+import { Container } from '@n8n/di';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -459,12 +459,15 @@ export class Git implements INodeType {
 
 					const log = await git.log(logOptions);
 
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(log.all).map((item) => {
+					returnItems.push(
+						// @ts-ignore
+						...this.helpers.returnJsonArray(log.all).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },
 							};
-						}));
+						}),
+					);
 				} else if (operation === 'pull') {
 					// ----------------------------------
 					//         pull
@@ -555,12 +558,14 @@ export class Git implements INodeType {
 						});
 					}
 
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(data).map((item) => {
+					returnItems.push(
+						...this.helpers.returnJsonArray(data).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },
 							};
-						}));
+						}),
+					);
 				} else if (operation === 'status') {
 					// ----------------------------------
 					//         status
@@ -568,12 +573,15 @@ export class Git implements INodeType {
 
 					const status = await git.status();
 
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray([status]).map((item) => {
+					returnItems.push(
+						// @ts-ignore
+						...this.helpers.returnJsonArray([status]).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },
 							};
-						}));
+						}),
+					);
 				} else if (operation === 'switchBranch') {
 					// ----------------------------------
 					//         switchBranch

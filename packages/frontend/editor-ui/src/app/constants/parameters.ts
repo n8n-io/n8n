@@ -1,5 +1,5 @@
 import { SWITCH_NODE_TYPE } from './nodeTypes';
-import type { IconName } from "@n8n/design-system";
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export const DATA_TYPE_ICON_MAP = {
 	['string']: 'type',

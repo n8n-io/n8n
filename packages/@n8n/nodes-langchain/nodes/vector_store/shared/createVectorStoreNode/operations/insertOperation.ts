@@ -44,10 +44,10 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 		const processedDocuments = await processDocument(documentInput, itemData, itemIndex);
 
 		// Add the serialized documents to the result
-		resultData.push.apply(resultData, processedDocuments.serializedDocuments);
+		resultData.push(...processedDocuments.serializedDocuments);
 
 		// Add the processed documents to the documents to embedd
-		documentsForEmbedding.push.apply(documentsForEmbedding, processedDocuments.processedDocuments);
+		documentsForEmbedding.push(...processedDocuments.processedDocuments);
 
 		// For the version 1, we run the populateVectorStore(embedding and insert) function for each item
 		if (nodeVersion === 1) {

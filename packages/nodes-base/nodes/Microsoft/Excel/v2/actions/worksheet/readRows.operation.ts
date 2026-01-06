@@ -174,17 +174,21 @@ export async function execute(
 				const keyRow = this.getNodeParameter('keyRow', i, 0) as number;
 				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
-				returnData.push.apply(returnData, prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+				returnData.push(
+					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						keyRow,
 						firstDataRow,
-					}));
+					}),
+				);
 			} else {
 				const dataProperty = (options.dataProperty as string) || 'data';
-				returnData.push.apply(returnData, prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+				returnData.push(
+					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						dataProperty,
-					}));
+					}),
+				);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -192,7 +196,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			throw error;

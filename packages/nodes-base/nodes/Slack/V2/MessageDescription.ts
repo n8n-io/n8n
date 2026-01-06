@@ -1,5 +1,4 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
-
 import { slackChannelModes } from './utils';
 
 export const messageOperations: INodeProperties[] = [

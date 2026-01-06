@@ -55,8 +55,8 @@ jest.mock('../shared/descriptions', () => ({
 
 import { QdrantVectorStore } from '@langchain/qdrant';
 
-import { createQdrantClient } from './Qdrant.utils';
 import * as QdrantNode from './VectorStoreQdrant.node';
+import { createQdrantClient } from './Qdrant.utils';
 
 const MockCreateQdrantClient = createQdrantClient as jest.MockedFunction<typeof createQdrantClient>;
 const MockQdrantVectorStore = QdrantVectorStore as jest.MockedClass<typeof QdrantVectorStore>;

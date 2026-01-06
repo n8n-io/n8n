@@ -372,13 +372,13 @@ export class GoToWebinar implements INodeType {
 
 						if (additionalFields.simpleResponses) {
 							//@ts-ignore
-							body.responses.push.apply(body.responses, additionalFields.simpleResponses.details);
+							body.responses.push(...additionalFields.simpleResponses.details);
 							additionalFields = omit(additionalFields, ['simpleResponses']);
 						}
 
 						if (additionalFields.multiChoiceResponses) {
 							//@ts-ignore
-							body.responses.push.apply(body.responses, additionalFields.multiChoiceResponses.details);
+							body.responses.push(...additionalFields.multiChoiceResponses.details);
 							additionalFields = omit(additionalFields, ['multiChoiceResponses']);
 						}
 
@@ -635,7 +635,7 @@ export class GoToWebinar implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
@@ -647,7 +647,7 @@ export class GoToWebinar implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		return [returnData];

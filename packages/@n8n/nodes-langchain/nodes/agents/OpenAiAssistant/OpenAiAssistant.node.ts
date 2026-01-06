@@ -1,8 +1,6 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
-import { AiConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -16,6 +14,8 @@ import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {

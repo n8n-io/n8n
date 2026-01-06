@@ -1,3 +1,5 @@
+import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
+import { isCredentialsDataImap } from '@credentials/Imap.credentials';
 import type {
 	ImapSimple,
 	ImapSimpleOptions,
@@ -24,9 +26,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
-
-import { isCredentialsDataImap } from '@credentials/Imap.credentials';
-import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { getNewEmails } from './utils';
 

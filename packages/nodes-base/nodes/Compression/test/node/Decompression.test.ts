@@ -1,15 +1,15 @@
-import * as fflate from 'fflate';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import * as fflate from 'fflate';
 
 import { Compression } from '../../Compression.node';
 
 jest.mock('fflate');
 
 const mockFflate = (
-	method: 'unzip' | 'gunzip' | 'zip'  ,
+	method: 'unzip' | 'gunzip' | 'zip' | 'gunzip',
 	data: any,
 	error: any = null,
 ) => {

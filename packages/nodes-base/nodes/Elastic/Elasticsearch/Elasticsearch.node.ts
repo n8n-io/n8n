@@ -382,7 +382,7 @@ export class Elasticsearch implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 			if (Object.keys(bulkBody).length >= 50) {
 				responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
@@ -394,10 +394,12 @@ export class Elasticsearch implements INodeType {
 						const description = errorData.reason as string;
 						const itemIndex = parseInt(Object.keys(bulkBody)[j]);
 						if (this.continueOnFail()) {
-							returnData.push.apply(returnData, this.helpers.constructExecutionMetaData(
+							returnData.push(
+								...this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ error: message, message: itemData.error }),
 									{ itemData: { item: itemIndex } },
-								));
+								),
+							);
 							continue;
 						} else {
 							throw new NodeApiError(this.getNode(), {
@@ -411,7 +413,7 @@ export class Elasticsearch implements INodeType {
 						this.helpers.returnJsonArray(itemData),
 						{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 				bulkBody = {};
 			}
@@ -426,10 +428,12 @@ export class Elasticsearch implements INodeType {
 					const description = errorData.reason as string;
 					const itemIndex = parseInt(Object.keys(bulkBody)[j]);
 					if (this.continueOnFail()) {
-						returnData.push.apply(returnData, this.helpers.constructExecutionMetaData(
+						returnData.push(
+							...this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: message, message: itemData.error }),
 								{ itemData: { item: itemIndex } },
-							));
+							),
+						);
 						continue;
 					} else {
 						throw new NodeApiError(this.getNode(), {
@@ -443,7 +447,7 @@ export class Elasticsearch implements INodeType {
 					this.helpers.returnJsonArray(itemData),
 					{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
 				);
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		}
 		return [returnData];

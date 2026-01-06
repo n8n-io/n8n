@@ -89,14 +89,14 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			} else if (responseData !== undefined) {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -104,7 +104,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			throw error;

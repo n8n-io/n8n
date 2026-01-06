@@ -1,13 +1,12 @@
-import { mockInstance } from '@n8n/backend-test-utils';
-import type { User,
+import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type SharedCredentials,
 	CredentialsRepository,
 	SharedCredentialsRepository,
-	CredentialsEntity 
- 
+	CredentialsEntity,
 } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
@@ -17,9 +16,9 @@ import {
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import { mockInstance } from '@n8n/backend-test-utils';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-
 import { RoleService } from '../role.service';
 
 describe('CredentialsFinderService', () => {
@@ -38,7 +37,7 @@ describe('CredentialsFinderService', () => {
 		jest.clearAllMocks();
 
 		// Setup manager mock for global credentials fetching
-		 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		// @ts-ignore
 		credentialsRepository.manager = {
 			find: jest.fn().mockResolvedValue([]),

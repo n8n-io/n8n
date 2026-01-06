@@ -4,11 +4,10 @@ import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { ApiKeyAudience, ensureError } from 'n8n-workflow';
 
-import { JwtService } from '@/services/jwt.service';
-
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { UserWithContext } from './mcp.types';
 
+import { JwtService } from '@/services/jwt.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';

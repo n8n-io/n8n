@@ -17,10 +17,10 @@ import type {
 import { deepCopy, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();

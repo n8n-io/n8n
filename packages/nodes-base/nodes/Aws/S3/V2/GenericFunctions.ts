@@ -9,7 +9,6 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-
 import { getAwsCredentials } from '../../GenericFunctions';
 
 export async function awsApiRequest(

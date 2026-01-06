@@ -1,5 +1,4 @@
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
-
 import { TheHiveProjectTrigger } from '../TheHiveProjectTrigger.node';
 
 describe('TheHiveProjectTrigger', () => {

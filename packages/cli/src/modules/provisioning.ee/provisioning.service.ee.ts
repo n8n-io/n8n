@@ -10,20 +10,18 @@ import {
 	ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { Not, In } from '@n8n/typeorm';
-import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { ZodError } from 'zod';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { Not, In } from '@n8n/typeorm';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { EventService } from '@/events/event.service';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
+import { InstanceSettings } from 'n8n-core';
 import { UserService } from '@/services/user.service';
-
-import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 
 @Service()
 export class ProvisioningService {

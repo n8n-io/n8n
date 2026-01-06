@@ -374,7 +374,7 @@ export function addFormResponseDataToReturnItem(
 		}
 		if (field.fieldType === 'date' && value && field.formatDate) {
 			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
-			value = datetime.toFormat(field.formatDate);
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];
@@ -413,7 +413,7 @@ export async function prepareFormReturnItem(
 				mimetype: file.mimetype,
 				size: file.size,
 			}));
-			processFiles.push.apply(processFiles, filesInput);
+			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
 			bodyData[key] = {

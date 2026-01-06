@@ -1153,7 +1153,7 @@ export class MonicaCrm implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
@@ -1169,7 +1169,7 @@ export class MonicaCrm implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		return [returnData];

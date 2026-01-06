@@ -23,15 +23,17 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { N8nAlert,
+import { N8nAlert } from '@n8n/design-system';
+
+import {
 	N8nButton,
 	N8nFormInput,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
 	N8nText,
-	N8nUserSelect } from '@n8n/design-system';
-
+	N8nUserSelect,
+} from '@n8n/design-system';
 type FormDataDiff = {
 	name?: string;
 	description?: string;
@@ -573,8 +575,8 @@ onMounted(async () => {
 						:current-user-id="usersStore.currentUser?.id"
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
-						:disabled="isProjectRoleProvisioningEnabled"
 						@update:model-value="onAddMember"
+						:disabled="isProjectRoleProvisioningEnabled"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />

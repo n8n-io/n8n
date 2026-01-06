@@ -15,10 +15,6 @@ import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import { DateTime } from 'luxon';
-import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import {
 	createCredentials,
 	getCredentialSharings,
@@ -28,11 +24,14 @@ import {
 } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
+import { DateTime } from 'luxon';
+import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 let owner: User;
 let member: User;

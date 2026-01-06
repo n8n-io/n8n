@@ -1,4 +1,5 @@
 import FormData from 'form-data';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -211,7 +212,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		this.helpers.returnJsonArray(response as IDataObject[]),
 		{ itemData: { item: i } },
 	);
-	returnData.push.apply(returnData, executionData);
+	returnData.push(...executionData);
 
 	return returnData;
 }

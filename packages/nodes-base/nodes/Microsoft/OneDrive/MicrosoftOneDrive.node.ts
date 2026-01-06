@@ -360,7 +360,7 @@ export class MicrosoftOneDrive implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionErrorData);
+						returnData.push(...executionErrorData);
 					}
 					continue;
 				}
@@ -371,7 +371,7 @@ export class MicrosoftOneDrive implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items

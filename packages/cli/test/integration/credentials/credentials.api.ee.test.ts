@@ -17,7 +17,6 @@ import { In } from '@n8n/typeorm';
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import {
@@ -35,6 +34,7 @@ import {
 } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
+import { RoleCacheService } from '@/services/role-cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],

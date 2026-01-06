@@ -38,9 +38,9 @@ const getSqlParser = () => {
 				Bytes: t.string,
 				Bool: t.bool,
 				Null: t.null,
-				// eslint-disable-next-line id-denylist
+				// eslint-disable-next-line @typescript-eslint/naming-convention, id-denylist
 				Number: t.number,
-				// eslint-disable-next-line id-denylist
+				// eslint-disable-next-line @typescript-eslint/naming-convention, id-denylist
 				String: t.string,
 				Identifier: t.name,
 				QuotedIdentifier: t.special(t.string),

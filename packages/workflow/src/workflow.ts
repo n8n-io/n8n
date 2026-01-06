@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	getConnectedNodes,
 	getChildNodes,
 	getParentNodes,
 	mapConnectionsByDestination,
 } from './common';
+
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
@@ -17,6 +16,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
+import { ApplicationError } from '@n8n/errors';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
 import type {

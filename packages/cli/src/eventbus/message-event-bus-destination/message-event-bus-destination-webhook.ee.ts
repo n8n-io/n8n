@@ -1,11 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import {
-	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
-	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
-	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
-	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
-} from '@n8n/constants';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults, Method } from 'axios';
@@ -26,6 +20,12 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import {
+	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+} from '@n8n/constants';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,

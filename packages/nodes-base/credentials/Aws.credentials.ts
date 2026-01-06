@@ -5,13 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import type { AwsIamCredentialsType, AWSRegion } from './common/aws/types';
 import {
 	awsCredentialsTest,
 	awsGetSignInOptionsAndUpdateRequest,
 	signOptions,
 } from './common/aws/utils';
+import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 
 export class Aws implements ICredentialType {
 	name = 'aws';

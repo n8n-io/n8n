@@ -1,10 +1,10 @@
-import { Toolkit } from '@langchain/classic/agents';
-import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
+import { Toolkit } from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,

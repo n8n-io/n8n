@@ -6,7 +6,6 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-
 import type { AwsIamCredentialsType } from '../../../../credentials/common/aws/types';
 
 export async function awsApiRequest(
@@ -63,7 +62,7 @@ export async function awsApiRequestAllItems(
 		)) as IDataObject;
 
 		const items = (response[propertyName] ?? []) as IDataObject[];
-		returnData.push.apply(returnData, items);
+		returnData.push(...items);
 
 		nextToken = response.NextToken as string | undefined;
 	} while (nextToken);

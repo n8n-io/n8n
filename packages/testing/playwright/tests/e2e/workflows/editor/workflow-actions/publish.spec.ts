@@ -20,7 +20,7 @@ test.skip('Workflow Publish', () => {
 
 	test('should be able to publish workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
+		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
 
 		await n8n.canvas.publishWorkflow();
 

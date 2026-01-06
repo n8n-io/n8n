@@ -10,12 +10,14 @@ import type {
 } from '@codemirror/autocomplete';
 import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
-import type { Alias, DocMetadata, IDataObject, NativeDoc,
+import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
+import {
 	Expression,
 	ExpressionExtensions,
 	NativeMethods,
 	validateFieldType,
-	type AliasCompletion } from 'n8n-workflow';
+	type AliasCompletion,
+} from 'n8n-workflow';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,

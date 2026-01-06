@@ -532,7 +532,7 @@ export function addWhereClauses(
 		}${valueReplacement}${operator}`;
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat.apply(replacements, values)];
+	return [`${query}${whereQuery}`, replacements.concat(...values)];
 }
 
 export function addSortRules(
@@ -551,7 +551,7 @@ export function addSortRules(
 		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${rule.direction}${endWith}`;
 	});
 
-	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
+	return [`${query}${orderByQuery}`, replacements.concat(...values)];
 }
 
 export function replaceEmptyStringsByNulls(

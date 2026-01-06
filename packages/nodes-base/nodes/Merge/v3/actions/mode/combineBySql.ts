@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import alasqlImport from 'alasql';
 import { ErrorReporter } from 'n8n-core';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,7 +11,6 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';

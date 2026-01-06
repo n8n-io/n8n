@@ -217,7 +217,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			throw new NodeOperationError(this.getNode(), error.message as string, {
@@ -267,7 +267,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					this.helpers.returnJsonArray({ error: errors.join('\n, ') }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 
@@ -286,7 +286,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			{ itemData },
 		);
 
-		returnData.push.apply(returnData, executionData);
+		returnData.push(...executionData);
 	}
 
 	return returnData;

@@ -1,5 +1,5 @@
-import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { FakeLLM, FakeListChatModel } from '@langchain/core/utils/testing';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { makeZodSchemaFromAttributes } from '../helpers';

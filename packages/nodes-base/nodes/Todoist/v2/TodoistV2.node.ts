@@ -1983,20 +1983,20 @@ export class TodoistV2 implements INodeType {
 						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: responseData.success }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData?.data as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -2005,7 +2005,7 @@ export class TodoistV2 implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;

@@ -139,7 +139,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 			await n8n.page.reload();
 
-			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeHidden();
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).not.toBeVisible();
 		});
 	});
 

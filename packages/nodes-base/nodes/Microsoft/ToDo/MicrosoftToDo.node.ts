@@ -417,7 +417,7 @@ export class MicrosoftToDo implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
@@ -428,7 +428,7 @@ export class MicrosoftToDo implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 		return [returnData];
 	}

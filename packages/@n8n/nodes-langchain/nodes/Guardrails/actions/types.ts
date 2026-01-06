@@ -1,5 +1,4 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-
 import type { PIIEntity } from './checks/pii';
 
 export interface GuardrailResult<TInfo extends Record<string, unknown> = Record<string, unknown>> {

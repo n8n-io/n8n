@@ -18,10 +18,9 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { UM_FIX_INSTRUCTION } from '@/constants';
-
 import { BaseCommand } from '../base-command';
 
+import { UM_FIX_INSTRUCTION } from '@/constants';
 
 const flagsSchema = z.object({
 	input: z

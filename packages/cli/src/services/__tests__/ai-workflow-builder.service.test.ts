@@ -7,10 +7,10 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { License } from '@/license';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { UrlService } from '@/services/url.service';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@n8n/ai-workflow-builder');

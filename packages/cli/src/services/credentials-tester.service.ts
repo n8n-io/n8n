@@ -34,14 +34,13 @@ import {
 	createEmptyRunExecutionData,
 } from 'n8n-workflow';
 
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsHelper } from '../credentials-helper';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

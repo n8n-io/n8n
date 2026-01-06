@@ -80,7 +80,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', i, {});
+	const options = this.getNodeParameter('options', i, {}) as IDataObject;
 	const messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 
 	const body: IDataObject = {
@@ -90,7 +90,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (options.metadata) {
 		const metadata = jsonParse(options.metadata as string, {
 			errorMessage: 'Invalid JSON in metadata field',
-		});
+		}) as IDataObject;
 		if (!isObjectEmpty(metadata)) {
 			body.metadata = metadata;
 		}

@@ -1,16 +1,16 @@
-import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
+
+import { OAuthRequest } from '@/requests';
 
 import {
 	OauthService,
 	skipAuthOnOAuthCallback,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
-import { OAuthRequest } from '@/requests';
-
+import { Logger } from '@n8n/backend-common';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {

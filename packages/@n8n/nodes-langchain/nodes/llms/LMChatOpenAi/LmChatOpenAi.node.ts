@@ -1,6 +1,4 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import { AiConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
@@ -21,6 +19,8 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 const INCLUDE_JSON_WARNING: INodeProperties = {
 	displayName:

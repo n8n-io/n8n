@@ -31,7 +31,7 @@ export async function awsApiRequest(
 		body: JSON.stringify(body),
 		url: '',
 		headers,
-		region: credentials?.region,
+		region: credentials?.region as string,
 	} as IHttpRequestOptions;
 
 	try {
@@ -89,7 +89,7 @@ export async function awsApiRequestAllItems(
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push.apply(returnData, responseData.Items as IDataObject[]);
+		returnData.push(...(responseData.Items as IDataObject[]));
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;

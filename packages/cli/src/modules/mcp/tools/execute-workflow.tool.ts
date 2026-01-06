@@ -20,11 +20,6 @@ import {
 } from 'n8n-workflow';
 import z from 'zod';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError } from '../mcp.errors';
 import type {
@@ -34,6 +29,10 @@ import type {
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
 
+import type { ActiveExecutions } from '@/active-executions';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
 

@@ -8,8 +8,6 @@ import { MoreThanOrEqual } from '@n8n/typeorm';
 import { ensureError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
-
 import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
@@ -17,6 +15,7 @@ import { RefreshTokenRepository } from './database/repositories/oauth-refresh-to
 import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
 import { UserWithContext } from './mcp.types';
 
+import { JwtService } from '@/services/jwt.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server

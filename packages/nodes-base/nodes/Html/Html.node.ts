@@ -499,7 +499,7 @@ export class Html implements INodeType {
 						},
 					);
 
-					returnData.push.apply(returnData, result);
+					returnData.push(...result);
 				} else if (operation === 'extractHtmlContent') {
 					// ----------------------------------
 					//         extractHtmlContent

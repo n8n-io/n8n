@@ -1,5 +1,5 @@
-import axios from 'axios';
 import nock from 'nock';
+import axios from 'axios';
 
 import { paginatedRequest } from '../strapi-utils';
 

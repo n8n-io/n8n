@@ -1,4 +1,4 @@
- 
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { type INodeProperties } from 'n8n-workflow';
 
 import { JAILBREAK_PROMPT } from './actions/checks/jailbreak';

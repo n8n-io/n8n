@@ -10,7 +10,6 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
-
 import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
@@ -34,7 +33,7 @@ export async function awsApiRequest(
 		method,
 		url: '',
 		body,
-		region: credentials?.region,
+		region: credentials?.region as string,
 	} as IHttpRequestOptions;
 
 	try {

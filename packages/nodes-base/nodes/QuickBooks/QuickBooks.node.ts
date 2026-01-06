@@ -1136,7 +1136,7 @@ export class QuickBooks implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionErrorData);
+						returnData.push(...executionErrorData);
 					}
 					continue;
 				}
@@ -1147,7 +1147,7 @@ export class QuickBooks implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		const download = this.getNodeParameter('download', 0, false);

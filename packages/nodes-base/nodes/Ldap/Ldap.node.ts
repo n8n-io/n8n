@@ -180,7 +180,7 @@ export class Ldap implements INodeType {
 					if (typeof entry.objectClass === 'string') {
 						objects.push(entry.objectClass);
 					} else {
-						objects.push.apply(objects, entry.objectClass);
+						objects.push(...entry.objectClass);
 					}
 				}
 
@@ -190,7 +190,7 @@ export class Ldap implements INodeType {
 				for (const value of unique) {
 					if (value === 'custom') {
 						result.push({ name: 'custom', value: 'custom' });
-					} else result.push({ name: value, value: `(objectclass=${value})` });
+					} else result.push({ name: value as string, value: `(objectclass=${value})` });
 				}
 				return result;
 			},

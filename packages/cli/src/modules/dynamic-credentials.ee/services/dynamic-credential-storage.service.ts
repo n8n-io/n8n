@@ -1,25 +1,21 @@
-import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
-import { Cipher } from 'n8n-core';
+import type {
+	CredentialStoreMetadata,
+	IDynamicCredentialStorageProvider,
+} from '@/credentials/dynamic-credential-storage.interface';
 import {
 	type ICredentialContext,
 	type ICredentialDataDecryptedObject,
 	type IWorkflowSettings,
 	jsonParse,
 } from 'n8n-workflow';
-
-import type {
-	CredentialStoreMetadata,
-	IDynamicCredentialStorageProvider,
-} from '@/credentials/dynamic-credential-storage.interface';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { extractSharedFields } from './shared-fields';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { Cipher } from 'n8n-core';
 import { CredentialStorageError } from '../errors/credential-storage.error';
-
-
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+import { extractSharedFields } from './shared-fields';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {

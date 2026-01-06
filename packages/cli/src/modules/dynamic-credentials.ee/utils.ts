@@ -1,7 +1,6 @@
-import type { Request } from 'express';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import type { Request } from 'express';
 
 const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
 

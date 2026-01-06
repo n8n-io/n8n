@@ -7,7 +7,6 @@ import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../../saml-helpers';
 import type { SamlService } from '../../saml.service.ee';
 import { getServiceProviderConfigTestReturnUrl } from '../../service-provider.ee';
 import type { SamlUserAttributes } from '../../types';
@@ -19,6 +18,7 @@ jest.mock('../../saml-helpers', () => ({
 	isSamlLicensedAndEnabled: jest.fn(),
 }));
 
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../../saml-helpers';
 
 const authService = mock<AuthService>();
 const samlService = mock<SamlService>();

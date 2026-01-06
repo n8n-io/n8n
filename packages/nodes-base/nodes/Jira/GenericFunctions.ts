@@ -298,7 +298,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 			{},
 			{ ...query, startAt: users.length },
 		)) as IDataObject[];
-		users.push.apply(users, usersPage);
+		users.push(...usersPage);
 		hasNextPage = usersPage.length === maxResults;
 	} while (hasNextPage);
 

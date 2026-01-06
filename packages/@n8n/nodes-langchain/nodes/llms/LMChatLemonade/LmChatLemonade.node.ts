@@ -7,9 +7,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
+
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-
 
 import { lemonadeModel, lemonadeOptions, lemonadeDescription } from '../LMLemonade/description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -55,7 +55,7 @@ export class LmChatLemonade implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('lemonadeApi'));
+		const credentials = (await this.getCredentials('lemonadeApi')) as LemonadeApiCredentialsType;
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {

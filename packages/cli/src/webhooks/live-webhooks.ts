@@ -5,15 +5,6 @@ import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
 import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type {
@@ -22,6 +13,14 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { NodeTypes } from '@/node-types';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks

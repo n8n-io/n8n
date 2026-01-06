@@ -2,16 +2,15 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
-import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
-import { DynamicCredentialResolverRegistry } from '@/modules/dynamic-credentials.ee/services';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverRegistry } from '@/modules/dynamic-credentials.ee/services';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 
 jest.mock('axios');
 

@@ -6,9 +6,6 @@ import { Container } from '@n8n/di';
 import { IsNull } from '@n8n/typeorm';
 import type { Response } from 'express';
 
-import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
-import type { VariablesRequest } from '@/requests';
-
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -16,6 +13,8 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
+import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
+import type { VariablesRequest } from '@/requests';
 
 export = {
 	createVariable: [

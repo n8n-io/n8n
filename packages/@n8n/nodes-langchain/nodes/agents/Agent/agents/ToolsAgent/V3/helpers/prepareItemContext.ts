@@ -1,5 +1,5 @@
-import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
 

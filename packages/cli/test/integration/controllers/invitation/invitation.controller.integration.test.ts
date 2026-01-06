@@ -16,11 +16,6 @@ import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { PasswordUtility } from '@/services/password.utility';
-import { UserManagementMailer } from '@/user-management/email';
-
 import {
 	assertReturnedUserProps,
 	assertStoredUserProps,
@@ -30,6 +25,10 @@ import { createMember, createOwner, createUserShell } from '../../shared/db/user
 import * as utils from '../../shared/utils';
 import type { UserInvitationResult } from '../../shared/utils/users';
 
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserManagementMailer } from '@/user-management/email';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);

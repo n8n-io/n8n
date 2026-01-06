@@ -7,7 +7,10 @@ const DEFAULT_LOCALE = 'en';
 
 if (hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
-	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true });
+	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true }) as Record<
+		string,
+		{ default?: LocaleMessages }
+	>;
 	const localePaths = Object.keys(localeModules);
 
 	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? DEFAULT_LOCALE;
@@ -56,7 +59,7 @@ if (hot) {
 		async (payload: { updates?: Array<{ path?: string; acceptedPath?: string }> }) => {
 			const updates = payload?.updates ?? [];
 			const files = updates
-				.map((u) => (u.path ?? u.acceptedPath ?? ''))
+				.map((u) => (u.path ?? u.acceptedPath ?? '') as string)
 				.filter((p) => p.includes('/locales/') && p.endsWith('.json'));
 			if (files.length === 0) return;
 			for (const file of files) await fetchAndApply(file);

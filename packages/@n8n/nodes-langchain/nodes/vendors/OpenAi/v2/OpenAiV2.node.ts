@@ -8,11 +8,12 @@ import {
 
 import { configureNodeInputs } from '../helpers/description';
 import { listSearch, loadOptions } from '../methods';
+import { router } from './actions/router';
+
 import * as audio from './actions/audio';
 import * as conversation from './actions/conversation';
 import * as file from './actions/file';
 import * as image from './actions/image';
-import { router } from './actions/router';
 import * as text from './actions/text';
 import * as video from './actions/video';
 

@@ -10,7 +10,6 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-
 import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
@@ -35,7 +34,7 @@ export async function awsApiRequest(
 		body,
 		url: '',
 		headers,
-		region: credentials?.region,
+		region: credentials?.region as string,
 	} as IHttpRequestOptions;
 
 	if (Object.keys(option).length !== 0) {

@@ -103,7 +103,7 @@ test.describe('Workflow Production Checklist', () => {
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
 
-	 
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
 	test.skip('should show completed state for configured actions', async ({ n8n, api }) => {
 		const errorWorkflow = await api.workflows.createWorkflow({
 			name: 'Error Handler',

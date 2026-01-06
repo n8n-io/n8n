@@ -1,13 +1,15 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { Project,
+import { Project } from '@n8n/db';
+import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	ProjectRelation,
 	ProjectRepository,
 	Role,
 	User,
-	UserRepository } from '@n8n/db';
+	UserRepository,
+} from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';

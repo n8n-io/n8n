@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { getConnectedTools } from '@utils/helpers';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -7,16 +8,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-
-import { getConnectedTools } from '@utils/helpers';
-
-import { createRequest } from './helpers/responses';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
 import type { ChatResponse } from '../../../helpers/interfaces';
-import { pollUntilAvailable } from '../../../helpers/polling';
 import { formatToOpenAIResponsesTool } from '../../../helpers/utils';
+import { pollUntilAvailable } from '../../../helpers/polling';
 import { apiRequest } from '../../../transport';
 import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
+import { createRequest } from './helpers/responses';
 
 const jsonSchemaExample = `{
   "type": "object",

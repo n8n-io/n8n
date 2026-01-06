@@ -6,8 +6,8 @@ import * as helpers from '@utils/helpers';
 
 import * as image from './actions/image';
 import * as text from './actions/text';
-import type { OllamaChatResponse, OllamaMessage } from './helpers/interfaces';
 import * as transport from './transport';
+import type { OllamaChatResponse, OllamaMessage } from './helpers/interfaces';
 
 describe('Ollama Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();

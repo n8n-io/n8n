@@ -210,7 +210,7 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
-				returnData.push.apply(returnData, itemWithAttachments);
+				returnData.push(...itemWithAttachments);
 				continue;
 			}
 
@@ -226,7 +226,7 @@ export async function execute(
 				itemData,
 			});
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error }, pairedItem: { item: i } });

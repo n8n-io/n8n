@@ -1,7 +1,6 @@
 import type { z } from 'zod';
 
 import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
-import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
@@ -13,6 +12,7 @@ import type {
 	workflowSharingRoleSchema,
 	assignableProjectRoleSchema,
 } from './schemas.ee';
+import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import { ALL_API_KEY_SCOPES } from './scope-information';
 
 export type ScopeInformation = {

@@ -117,7 +117,7 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 		// check that source control is disconnected
 		await n8n.navigate.toHome();
-		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeHidden();
+		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).not.toBeVisible();
 
 		// Reconnect
 		await n8n.navigate.toEnvironments();

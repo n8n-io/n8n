@@ -1,10 +1,9 @@
 import type { TokenTextSplitterParams } from '@langchain/textsplitters';
 import { TextSplitter } from '@langchain/textsplitters';
-import type * as tiktoken from 'js-tiktoken';
-
 import { hasLongSequentialRepeat } from '@utils/helpers';
 import { getEncoding } from '@utils/tokenizer/tiktoken';
 import { estimateTextSplitsByTokens } from '@utils/tokenizer/token-estimator';
+import type * as tiktoken from 'js-tiktoken';
 
 /**
  * Implementation of splitter which looks at tokens.
