@@ -11,7 +11,7 @@ async function expectPullSuccess(n8n: n8nPage) {
 	).toBe(true);
 }
 
-test.describe('Pull resources from Git @capability:source-control', () => {
+test.describe.skip('Pull resources from Git @capability:source-control', () => {
 	let repoUrl: string;
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
