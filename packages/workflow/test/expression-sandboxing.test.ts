@@ -84,6 +84,16 @@ describe('PrototypeSanitizer', () => {
 			}).toThrowError(errorRegex);
 		});
 
+		it.each([
+			['getPrototypeOf', '{{ Object.getPrototypeOf }}'],
+			['binding', '{{ process.binding }}'],
+			['_load', '{{ module._load }}'],
+		])('should not allow access to %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, Object, process: {}, module: {} });
+			}).toThrowError(errorRegex);
+		});
+
 		describe('Dollar sign identifier handling', () => {
 			it('should not allow bare $ identifier', () => {
 				expect(() => {
