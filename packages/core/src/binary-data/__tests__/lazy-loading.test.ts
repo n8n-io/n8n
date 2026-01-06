@@ -278,6 +278,29 @@ describe('BinaryDataService - Lazy Loading', () => {
 
 			expect(fsManager).toBe(fsV2Manager);
 		});
+
+		it('should lazy-load filesystem manager when accessing filesystem-v2 with different configured mode', async () => {
+			config.mode = 's3';
+
+			const s3Loader = jest.fn().mockResolvedValue(mockManager);
+			binaryDataService.registerLoader('s3', s3Loader);
+
+			await binaryDataService.init();
+
+			// Filesystem should not be eagerly loaded when mode is s3
+			expect(s3Loader).not.toHaveBeenCalled();
+
+			// Access filesystem-v2 manager (should lazy-load filesystem)
+			const fsV2Manager = await binaryDataService.getManager('filesystem-v2');
+
+			// Should successfully return a manager
+			expect(fsV2Manager).toBeDefined();
+			expect(fsV2Manager.init).toBeDefined();
+
+			// Both filesystem and filesystem-v2 should point to the same instance
+			const fsManager = await binaryDataService.getManager('filesystem');
+			expect(fsManager).toBe(fsV2Manager);
+		});
 	});
 
 	describe('Integration with binary data operations', () => {

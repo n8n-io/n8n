@@ -297,12 +297,13 @@ export class BinaryDataService {
 		const loadingPromise = this.loadingPromises.get(mode);
 		if (loadingPromise) return await loadingPromise;
 
-		const loader = this.managerLoaders[mode];
+		const loaderMode = mode === 'filesystem-v2' ? 'filesystem' : mode;
+		const loader = this.managerLoaders[loaderMode];
 		if (!loader) {
 			throw new InvalidManagerError(mode);
 		}
 
-		const promise = this.loadManager(mode, loader);
+		const promise = this.loadManager(loaderMode, loader);
 		this.loadingPromises.set(mode, promise);
 
 		try {
