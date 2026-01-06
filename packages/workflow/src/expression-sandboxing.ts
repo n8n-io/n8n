@@ -229,8 +229,9 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 };
 
 export const sanitizer = (value: unknown): unknown => {
-	if (!isSafeObjectProperty(value as string)) {
-		throw new ExpressionError(`Cannot access "${value as string}" due to security concerns`);
+	const propertyKey = String(value);
+	if (!isSafeObjectProperty(propertyKey)) {
+		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
 	return value;
 };
