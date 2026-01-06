@@ -322,6 +322,7 @@ function validateInputConfiguration(
 	}
 }
 
+// eslint-disable-next-line complexity
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
 	workflow: Workflow,
@@ -439,31 +440,33 @@ export async function getInputConnectionData(
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
-				const response = supplyData.response;
+				if (supplyData) {
+					const response = supplyData?.response;
 
-				// Ensure sourceNodeName is set for proper routing
-				if (response instanceof DynamicStructuredTool) {
-					response.metadata ??= {};
-					response.metadata.sourceNodeName = connectedNode.name;
-				}
+					// Ensure sourceNodeName is set for proper routing
+					if (response instanceof DynamicStructuredTool) {
+						response.metadata ??= {};
+						response.metadata.sourceNodeName = connectedNode.name;
+					}
 
-				if (response instanceof Toolkit) {
-					for (const tool of response.tools) {
-						if (tool instanceof DynamicStructuredTool) {
-							tool.metadata ??= {};
-							tool.metadata.sourceNodeName = connectedNode.name;
+					if (response instanceof Toolkit) {
+						for (const tool of response.tools) {
+							if (tool instanceof DynamicStructuredTool) {
+								tool.metadata ??= {};
+								tool.metadata.sourceNodeName = connectedNode.name;
+							}
 						}
 					}
-				}
 
-				if (supplyData.closeFunction) {
-					closeFunctions.push(supplyData.closeFunction);
+					if (supplyData.closeFunction) {
+						closeFunctions.push(supplyData.closeFunction);
+					}
+					// Add hints from context to supply data
+					if (context.hints.length > 0) {
+						supplyData.hints = context.hints;
+					}
+					nodes.push(supplyData);
 				}
-				// Add hints from context to supply data
-				if (context.hints.length > 0) {
-					supplyData.hints = context.hints;
-				}
-				nodes.push(supplyData);
 			} catch (error) {
 				// Propagate errors from sub-nodes
 				if (error instanceof ExecutionBaseError) {
