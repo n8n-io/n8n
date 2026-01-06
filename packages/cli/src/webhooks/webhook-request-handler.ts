@@ -238,6 +238,8 @@ class WebhookRequestHandler {
 			}
 		}
 
+		res.setHeader('Access-Control-Allow-Credentials', 'true');
+
 		return null;
 	}
 }

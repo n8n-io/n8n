@@ -996,6 +996,7 @@
 					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
+						credentials: "include",
 					})
 						.then(async function (response) {
 							const useResponseData = document.getElementById("useResponseData").value;
