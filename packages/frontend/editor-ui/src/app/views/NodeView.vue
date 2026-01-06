@@ -1204,10 +1204,13 @@ const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
+	const doesNotHaveExecutePermission = !workflowPermissions.value.execute;
+	console.log(workflowPermissions.value);
 	if (
-		containsChatTriggerNodes.value &&
-		isOnlyChatTriggerNodeActive.value &&
-		!chatTriggerNodePinnedData.value
+		doesNotHaveExecutePermission ||
+		(containsChatTriggerNodes.value &&
+			isOnlyChatTriggerNodeActive.value &&
+			!chatTriggerNodePinnedData.value)
 	) {
 		return true;
 	}

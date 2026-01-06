@@ -41,6 +41,7 @@ const label = computed(() => {
 	if (!props.executing) {
 		return props.label ?? i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
+	// TODO: show special label for missing workflow:execute scope
 
 	if (props.waitingForWebhook) {
 		return i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
