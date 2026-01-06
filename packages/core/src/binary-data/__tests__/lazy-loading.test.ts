@@ -255,12 +255,13 @@ describe('BinaryDataService - Lazy Loading', () => {
 
 			await binaryDataService.init();
 
-			// Try to access unregistered mode
+			await expect(binaryDataService.getManager('unknown-mode')).rejects.toThrow(
+				InvalidManagerError,
+			);
+
 			try {
 				await binaryDataService.getManager('unknown-mode');
-				fail('Should have thrown InvalidManagerError');
 			} catch (error) {
-				expect(error).toBeInstanceOf(InvalidManagerError);
 				expect((error as InvalidManagerError).message).toContain('unknown-mode');
 			}
 		});
