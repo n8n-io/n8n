@@ -66,6 +66,7 @@ const { settingsItems } = useSettingsItems();
 const basePath = ref('');
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const hasOverflow = ref(false);
+const hasScrolledFromTop = ref(false);
 let resizeObserver: ResizeObserver | null = null;
 
 const showWhatsNewNotification = computed(
@@ -227,8 +228,11 @@ const visibleMenuItems = computed<IMenuItem[]>(() =>
 const checkOverflow = () => {
 	const position = scrollAreaRef.value?.getScrollPosition();
 	if (position && scrollAreaRef.value?.$el) {
-		const hasVerticalOverflow = position.height > scrollAreaRef.value.$el.clientHeight;
+		const element = scrollAreaRef.value.$el as HTMLElement;
+		const hasVerticalOverflow = position.height > element.clientHeight;
 		hasOverflow.value = hasVerticalOverflow;
+		// Check if scrolled from top - only show border if there's overflow AND scrolled
+		hasScrolledFromTop.value = hasVerticalOverflow && position.top > 0;
 	}
 };
 
@@ -250,10 +254,14 @@ onMounted(() => {
 
 		// Set up resize observer to watch for height changes
 		if (scrollAreaRef.value?.$el) {
+			const element = scrollAreaRef.value.$el as HTMLElement;
 			resizeObserver = new ResizeObserver(() => {
 				checkOverflow();
 			});
-			resizeObserver.observe(scrollAreaRef.value.$el);
+			resizeObserver.observe(element);
+
+			// Initial check after mount
+			checkOverflow();
 		}
 	});
 
@@ -392,10 +400,11 @@ useKeybindings({
 		<div
 			:class="{
 				[$style.scrollAreaWrapper]: true,
-				[$style.scrollAreaWrapperWithBorder]: hasOverflow && !isCollapsed,
+				[$style.scrollAreaWrapperWithBottomBorder]: hasOverflow && !isCollapsed,
+				[$style.scrollAreaWrapperWithTopBorder]: hasScrolledFromTop && !isCollapsed,
 			}"
 		>
-			<N8nScrollArea ref="scrollAreaRef">
+			<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
@@ -435,9 +444,14 @@ useKeybindings({
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	padding-top: var(--spacing--2xs);
 }
 
-.scrollAreaWrapperWithBorder {
+.scrollAreaWrapperWithBottomBorder {
 	border-bottom: var(--border);
+}
+
+.scrollAreaWrapperWithTopBorder {
+	border-top: var(--border);
 }
 </style>
