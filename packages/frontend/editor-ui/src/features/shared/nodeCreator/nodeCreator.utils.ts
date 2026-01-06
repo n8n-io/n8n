@@ -7,6 +7,7 @@ import type {
 	SectionCreateElement,
 	ActionTypeDescription,
 	NodeFilterType,
+	OpenTemplateElement,
 	LinkCreateElement,
 } from '@/Interface';
 import {
