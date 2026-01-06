@@ -35,12 +35,15 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Select dataset
+        env:
+          DATASET_INPUT: ${{ github.event.inputs.dataset }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           DATASET="workflow-builder-canvas-prompts"
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$EVENT_NAME" = "schedule" ]; then
             DATASET="prompts-v2"
-          elif [ -n "${{ github.event.inputs.dataset }}" ]; then
-            DATASET="${{ github.event.inputs.dataset }}"
+          elif [ -n "$DATASET_INPUT" ]; then
+            DATASET="$DATASET_INPUT"
           fi
           echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
 
