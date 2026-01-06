@@ -118,7 +118,6 @@ export class WorkflowsController {
 			// Discard active fields
 			delete body.activeVersionId;
 			delete body.activeVersion;
-			body.active = false;
 		}
 
 		const { autosaved = false } = body;
@@ -130,6 +129,8 @@ export class WorkflowsController {
 		// triggerCount, versionCounter, isArchived, etc. are never set from user input
 		Object.assign(newWorkflow, body);
 
+		// Ensure workflow is created as inactive
+		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 
 		await validateEntity(newWorkflow);
