@@ -73,17 +73,29 @@ type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors
 	| 'not-published-eligible' // Can be published for first time
 	| 'published-no-changes' // Published and up to date
-	| 'published-with-changes'; // Published but has unpublished changes
+	| 'published-with-changes' // Published but has unpublished changes
+	| 'published-node-issues' // Published but has node issues
+	| 'published-invalid-trigger'; // Published but no trigger nodes
 
 const workflowPublishState = computed((): WorkflowPublishState => {
 	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
 	const hasChanges =
 		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
 		uiStore.stateIsDirty;
-	const canPublish = containsTrigger.value && !workflowsStore.nodesIssuesExist;
 
+	// Not published states
 	if (!hasBeenPublished) {
+		const canPublish = containsTrigger.value && !workflowsStore.nodesIssuesExist;
 		return canPublish ? 'not-published-eligible' : 'not-published-not-eligible';
+	}
+
+	// Published states
+	if (!containsTrigger.value) {
+		return 'published-invalid-trigger';
+	}
+
+	if (workflowsStore.nodesIssuesExist) {
+		return 'published-node-issues';
 	}
 
 	return hasChanges ? 'published-with-changes' : 'published-no-changes';
@@ -143,6 +155,7 @@ const publishButtonConfig = computed(() => {
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
+			showVersionInfo: false,
 		};
 	}
 
@@ -161,6 +174,7 @@ const publishButtonConfig = computed(() => {
 							adjustToNumber: workflowsStore.nodesWithIssues.length,
 						})
 					: '',
+			showVersionInfo: false,
 		};
 	}
 
@@ -177,6 +191,7 @@ const publishButtonConfig = computed(() => {
 						interpolate: { count: workflowsStore.nodesWithIssues.length },
 						adjustToNumber: workflowsStore.nodesWithIssues.length,
 					}),
+			showVersionInfo: false,
 		},
 		'not-published-eligible': {
 			text: i18n.baseText('workflows.publish'),
@@ -184,6 +199,7 @@ const publishButtonConfig = computed(() => {
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: '',
+			showVersionInfo: false,
 		},
 		'published-no-changes': {
 			text: i18n.baseText('generic.published'),
@@ -191,6 +207,7 @@ const publishButtonConfig = computed(() => {
 			showIndicator: true,
 			indicatorClass: 'published',
 			tooltip: '',
+			showVersionInfo: true,
 		},
 		'published-with-changes': {
 			text: i18n.baseText('workflows.publish'),
@@ -198,6 +215,29 @@ const publishButtonConfig = computed(() => {
 			showIndicator: true,
 			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.changes'),
+			showVersionInfo: false,
+		},
+		'published-node-issues': {
+			text: i18n.baseText('generic.published'),
+			enabled: false,
+			showIndicator: true,
+			indicatorClass: 'published',
+			tooltip: i18n.baseText(
+				'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
+				{
+					interpolate: { count: workflowsStore.nodesWithIssues.length },
+					adjustToNumber: workflowsStore.nodesWithIssues.length,
+				},
+			),
+			showVersionInfo: true,
+		},
+		'published-invalid-trigger': {
+			text: i18n.baseText('generic.published'),
+			enabled: false,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
+			showVersionInfo: false,
 		},
 	};
 
@@ -241,14 +281,7 @@ defineExpose({
 						<template v-if="publishButtonConfig.tooltip">
 							{{ publishButtonConfig.tooltip }} <br />
 						</template>
-						<template
-							v-if="
-								activeVersion &&
-								publishButtonConfig.showIndicator &&
-								workflowPublishState !== 'not-published-not-eligible' &&
-								workflowPublishState !== 'published-with-changes'
-							"
-						>
+						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
 							{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
 							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 						</template>
@@ -258,7 +291,6 @@ defineExpose({
 					:loading="autoSaveForPublish"
 					:disabled="!publishButtonConfig.enabled || isWorkflowSaving || readOnlyForPublish"
 					type="secondary"
-					size="small"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
 				>
@@ -271,7 +303,13 @@ defineExpose({
 								publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
 							]"
 						/>
-						{{ publishButtonConfig.text }}
+						<span
+							:class="[
+								workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
+							]"
+						>
+							{{ publishButtonConfig.text }}
+						</span>
 					</div>
 				</N8nButton>
 			</N8nTooltip>
@@ -316,11 +354,35 @@ defineExpose({
 	width: 8px;
 	border-radius: 50%;
 	display: inline-block;
-	margin-right: var(--spacing--3xs);
+	margin-right: var(--spacing--2xs);
 }
 
 .indicatorPublished {
 	background-color: var(--color--mint-600);
+
+	:global(body[data-theme='dark']) & {
+		background-color: var(--color--mint-600);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(body:not([data-theme])) & {
+			background-color: var(--color--mint-600);
+		}
+	}
+}
+
+.indicatorPublishedText {
+	color: var(--color--mint-700);
+
+	:global(body[data-theme='dark']) & {
+		color: var(--color--mint-700);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(body:not([data-theme])) & {
+			color: var(--color--mint-700);
+		}
+	}
 }
 
 .indicatorChanges {
