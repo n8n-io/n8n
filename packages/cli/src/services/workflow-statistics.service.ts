@@ -90,16 +90,24 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
-		const manual = runData.mode === 'manual';
+		const manualExecution = runData.mode === 'manual';
+		const chatExecution = runData.mode === 'chat';
+
+		if (chatExecution) {
+			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
+			// They are also not counted towards execution limits.
+			return;
+		}
+
 		let name: StatisticsNames;
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
 		if (isSuccess) {
-			if (manual) name = StatisticsNames.manualSuccess;
+			if (manualExecution) name = StatisticsNames.manualSuccess;
 			else name = StatisticsNames.productionSuccess;
 		} else {
-			if (manual) name = StatisticsNames.manualError;
+			if (manualExecution) name = StatisticsNames.manualError;
 			else name = StatisticsNames.productionError;
 		}
 
