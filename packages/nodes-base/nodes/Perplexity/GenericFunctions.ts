@@ -111,10 +111,9 @@ export function validateModelParameters(
 	const model = typeof parameters.model === 'string' ? parameters.model : '';
 	const reasoningEffort =
 		typeof parameters.reasoningEffort === 'string' ? parameters.reasoningEffort : '';
-	const webSearchOptions =
-		parameters.webSearchOptions && typeof parameters.webSearchOptions === 'object'
-			? (parameters.webSearchOptions as Record<string, unknown>)
-			: undefined;
+	const webSearchOptions = isJsonObject(parameters.webSearchOptions)
+		? parameters.webSearchOptions
+		: undefined;
 	const searchType =
 		typeof webSearchOptions?.searchType === 'string' ? webSearchOptions.searchType : undefined;
 	const stream = typeof parameters.stream === 'boolean' ? parameters.stream : false;
@@ -267,9 +266,9 @@ function processChunkArray(
 	}
 
 	const finalResponse: JsonObject = {
-		id: id || ((finalChunk?.id as string | undefined) ?? ''),
-		model: model || ((finalChunk?.model as string | undefined) ?? ''),
-		created: created || ((finalChunk?.created as number | undefined) ?? 0),
+		id: id || (typeof finalChunk?.id === 'string' ? finalChunk.id : ''),
+		model: model || (typeof finalChunk?.model === 'string' ? finalChunk.model : ''),
+		created: created || (typeof finalChunk?.created === 'number' ? finalChunk.created : 0),
 		object: 'chat.completion',
 		choices: [
 			{
