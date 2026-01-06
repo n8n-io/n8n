@@ -33,22 +33,21 @@ skip:
       - pkg:githubactions/tomi/paths-filter-action
       - pkg:githubactions/useblacksmith/setup-docker-builder
 
-  # === TEMPORARY SKIPS ===
-  # These findings need to be addressed in a follow-up ticket.
-  # Do not add new entries to this section.
-
-  # TODO: Fix injection vulnerability - use environment variable instead of
-  # direct interpolation of github.event.inputs.dataset
-  - rule: injection
-    path:
-      - .github/workflows/ci-evals.yml
-
-  # TODO: Review untrusted checkout execution patterns.
-  # These workflows run local actions or package managers after checking out
-  # untrusted PR code, which is a potential security risk.
+  # === UNTRUSTED CHECKOUT EXECUTION (DOCUMENTED FALSE POSITIVES) ===
+  # These workflows check out code and run local actions/package managers.
+  # Poutine flags them as potential risks, but they are safe due to their
+  # invocation context.
   - rule: untrusted_checkout_exec
     path:
+      # Only called from release-publish.yml with release tag refs (e.g., n8n@1.2.3),
+      # never PR code. The checked out code is already-released, trusted code.
       - .github/workflows/sbom-generation-callable.yml
+      # Uses merge commit SHA from GitHub - the code has already been reviewed
+      # and merged, not arbitrary PR code.
       - .github/workflows/linting-reusable.yml
-      - .github/workflows/test-workflows-callable.yml
+      # Uses merge commit SHA from GitHub - the code has already been reviewed
+      # and merged, not arbitrary PR code.
       - .github/workflows/units-tests-reusable.yml
+      # Permission-gated: only maintainers (admin/write/maintain) can trigger
+      # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
+      - .github/workflows/test-workflows-callable.yml
