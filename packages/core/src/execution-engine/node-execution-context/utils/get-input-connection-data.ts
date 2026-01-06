@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { Toolkit } from '@langchain/classic/agents';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import isObject from 'lodash/isObject';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
@@ -449,8 +449,9 @@ export async function getInputConnectionData(
 						response.metadata.sourceNodeName = connectedNode.name;
 					}
 
-					if (response instanceof Toolkit) {
-						for (const tool of response.tools) {
+					if (isObject(response) && 'tools' in response) {
+						const toolkitTools = response.tools as unknown[];
+						for (const tool of toolkitTools) {
 							if (tool instanceof DynamicStructuredTool) {
 								tool.metadata ??= {};
 								tool.metadata.sourceNodeName = connectedNode.name;
