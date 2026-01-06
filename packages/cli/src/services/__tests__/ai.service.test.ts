@@ -6,6 +6,7 @@ import type {
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -21,6 +22,7 @@ describe('AiService', () => {
 	let aiService: AiService;
 
 	const baseUrl = 'https://ai-assistant-url.com';
+	const instanceId = 'mock-instance-id';
 	const user = mock<IUser>({ id: 'user123' });
 	const client = mock<AiAssistantClient>();
 	const license = mock<License>();
@@ -28,11 +30,12 @@ describe('AiService', () => {
 		logging: { level: 'info' },
 		aiAssistant: { baseUrl },
 	});
+	const instanceSettings = mock<InstanceSettings>({ instanceId });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		(AiAssistantClient as jest.Mock).mockImplementation(() => client);
-		aiService = new AiService(license, globalConfig);
+		aiService = new AiService(license, globalConfig, instanceSettings);
 	});
 
 	afterEach(() => {
@@ -61,6 +64,7 @@ describe('AiService', () => {
 				n8nVersion: N8N_VERSION,
 				baseUrl,
 				logLevel: 'info',
+				instanceId,
 			});
 		});
 	});
