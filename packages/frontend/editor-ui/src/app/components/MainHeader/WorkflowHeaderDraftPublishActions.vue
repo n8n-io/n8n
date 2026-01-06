@@ -45,7 +45,6 @@ const readOnlyForPublish = computed(() => {
 	);
 });
 
-const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
@@ -61,6 +60,34 @@ const isWorkflowSaving = computed(() => {
 });
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
+
+const foundTriggers = computed(() =>
+	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
+);
+
+const containsTrigger = computed((): boolean => {
+	return foundTriggers.value.length > 0;
+});
+
+type WorkflowPublishState =
+	| 'not-published-not-eligible' // No trigger nodes or has errors
+	| 'not-published-eligible' // Can be published for first time
+	| 'published-no-changes' // Published and up to date
+	| 'published-with-changes'; // Published but has unpublished changes
+
+const workflowPublishState = computed((): WorkflowPublishState => {
+	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
+	const hasChanges =
+		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
+		uiStore.stateIsDirty;
+	const canPublish = containsTrigger.value && !workflowsStore.nodesIssuesExist;
+
+	if (!hasBeenPublished) {
+		return canPublish ? 'not-published-eligible' : 'not-published-not-eligible';
+	}
+
+	return hasChanges ? 'published-with-changes' : 'published-no-changes';
+});
 
 /**
  * Cancel autosave if scheduled or wait for it to finish if in progress
@@ -88,7 +115,6 @@ const saveBeforePublish = async () => {
 		} finally {
 			autoSaveForPublish.value = false;
 		}
-	} else {
 	}
 };
 
@@ -97,7 +123,7 @@ const onPublishButtonClick = async () => {
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
 		try {
 			await saveBeforePublish();
-		} catch (error) {
+		} catch {
 			return;
 		}
 	}
@@ -108,58 +134,74 @@ const onPublishButtonClick = async () => {
 	});
 };
 
-const foundTriggers = computed(() =>
-	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
-);
-
-const containsTrigger = computed((): boolean => {
-	return foundTriggers.value.length > 0;
-});
-
-const publishButtonEnabled = computed(() => {
+const publishButtonConfig = computed(() => {
+	// Handle permission-denied state first
 	if (!props.workflowPermissions.publish) {
-		return false;
+		return {
+			text: i18n.baseText('workflows.publish'),
+			enabled: false,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
+		};
 	}
 
-	if (!containsTrigger.value) {
-		return false;
+	// Handle new workflow state
+	if (props.isNewWorkflow) {
+		return {
+			text: i18n.baseText('workflows.publish'),
+			enabled: containsTrigger.value && !workflowsStore.nodesIssuesExist,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: !containsTrigger.value
+				? i18n.baseText('workflows.publishModal.noTriggerMessage')
+				: workflowsStore.nodesIssuesExist
+					? i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+							interpolate: { count: workflowsStore.nodesWithIssues.length },
+							adjustToNumber: workflowsStore.nodesWithIssues.length,
+						})
+					: '',
+		};
 	}
 
-	if (workflowsStore.nodesIssuesExist) {
-		return false;
-	}
+	// Map workflow state to UI configuration
+	const configs = {
+		'not-published-not-eligible': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: false,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: !containsTrigger.value
+				? i18n.baseText('workflows.publishModal.noTriggerMessage')
+				: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+						interpolate: { count: workflowsStore.nodesWithIssues.length },
+						adjustToNumber: workflowsStore.nodesWithIssues.length,
+					}),
+		},
+		'not-published-eligible': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: '',
+		},
+		'published-no-changes': {
+			text: i18n.baseText('generic.published'),
+			enabled: false,
+			showIndicator: true,
+			indicatorClass: 'published',
+			tooltip: '',
+		},
+		'published-with-changes': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			showIndicator: true,
+			indicatorClass: 'changes',
+			tooltip: i18n.baseText('workflows.publishModal.changes'),
+		},
+	};
 
-	return (
-		(workflowsStore.workflow.versionId &&
-			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
-		uiStore.stateIsDirty
-	);
-});
-
-const publishTooltipText = computed(() => {
-	if (!props.workflowPermissions.publish) {
-		return i18n.baseText('workflows.publish.permissionDenied');
-	}
-
-	const wfHasAnyChanges =
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
-
-	if (!containsTrigger.value) {
-		return i18n.baseText('workflows.publishModal.noTriggerMessage');
-	}
-
-	if (workflowsStore.nodesIssuesExist) {
-		return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-			interpolate: { count: workflowsStore.nodesWithIssues.length },
-			adjustToNumber: workflowsStore.nodesWithIssues.length,
-		});
-	}
-
-	if (!wfHasAnyChanges && !uiStore.stateIsDirty) {
-		return i18n.baseText('workflows.publishModal.noChanges');
-	}
-
-	return '';
+	return configs[workflowPublishState.value];
 });
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
@@ -168,7 +210,7 @@ const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
 		return '';
 	}
-	return activeVersion.value.name || generateVersionName(activeVersion.value.versionId);
+	return activeVersion.value.name ?? generateVersionName(activeVersion.value.versionId);
 });
 
 const latestPublishDate = computed(() => {
@@ -187,43 +229,49 @@ onBeforeUnmount(() => {
 defineExpose({
 	importFileRef,
 });
-
-const publishButtonText = computed(() => {
-	if (props.isNewWorkflow) {
-		return locale.baseText('workflows.publish');
-	}
-	if (publishButtonEnabled.value) {
-		return locale.baseText('workflows.publish');
-	}
-	return locale.baseText('workflows.published');
-});
 </script>
 
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div :class="$style.publishButtonWrapper">
-			<N8nTooltip :disabled="!publishTooltipText">
+			<N8nTooltip>
 				<template #content>
-					{{ publishTooltipText }}
-					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
-					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
+					<div>
+						<template v-if="publishButtonConfig.tooltip">
+							{{ publishButtonConfig.tooltip }} <br />
+						</template>
+						<template
+							v-if="
+								activeVersion &&
+								publishButtonConfig.showIndicator &&
+								workflowPublishState !== 'not-published-not-eligible' &&
+								workflowPublishState !== 'published-with-changes'
+							"
+						>
+							{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
+							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
+						</template>
+					</div>
 				</template>
 				<N8nButton
 					:loading="autoSaveForPublish"
-					:disabled="!publishButtonEnabled || isWorkflowSaving || !readOnlyForPublish"
+					:disabled="!publishButtonConfig.enabled || isWorkflowSaving || readOnlyForPublish"
 					type="secondary"
+					size="small"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
 				>
-					<div :class="$style.flex">
+					<div :class="[$style.flex]">
 						<span
-							:class="{
-								[$style.indicatorDot]: activeVersion,
-								[$style.indicatorDotChanges]: publishButtonEnabled,
-							}"
+							v-if="publishButtonConfig.showIndicator"
+							:class="[
+								$style.indicatorDot,
+								publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
+								publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
+							]"
 						/>
-						{{ publishButtonText }}
+						{{ publishButtonConfig.text }}
 					</div>
 				</N8nButton>
 			</N8nTooltip>
@@ -266,19 +314,21 @@ const publishButtonText = computed(() => {
 .indicatorDot {
 	height: 8px;
 	width: 8px;
-	background-color: var(--color--mint-600);
 	border-radius: 50%;
 	display: inline-block;
 	margin-right: var(--spacing--3xs);
 }
 
-.indicatorDotChanges {
+.indicatorPublished {
+	background-color: var(--color--mint-600);
+}
+
+.indicatorChanges {
 	background-color: var(--color--yellow-500);
 }
 
 .flex {
 	display: flex;
 	align-items: center;
-	color: var(--color--text);
 }
 </style>
