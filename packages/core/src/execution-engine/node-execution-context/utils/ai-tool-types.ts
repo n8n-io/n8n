@@ -1,9 +1,8 @@
-import type { DynamicStructuredTool, StructuredToolInterface } from '@langchain/core/tools';
-
-abstract class BaseToolkit {
-	abstract tools: StructuredToolInterface[];
-	abstract getTools(): StructuredToolInterface[];
-}
+import {
+	type DynamicStructuredTool,
+	type StructuredToolInterface,
+	BaseToolkit,
+} from '@langchain/core/tools';
 
 /**
  * A Toolkit that contains only DynamicStructuredTool instances.
