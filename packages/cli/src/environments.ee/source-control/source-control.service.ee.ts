@@ -343,6 +343,12 @@ export class SourceControlService {
 				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
 			}
 
+			const dataTablesChanges = filterByType(filesToPush, 'datatable')[0];
+			if (dataTablesChanges) {
+				filesToBePushed.add(dataTablesChanges.file);
+				await this.sourceControlExportService.exportDataTablesToWorkFolder();
+			}
+
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
@@ -465,6 +471,16 @@ export class SourceControlService {
 		}
 		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
+
+		const dataTablesToBeImported = getNonDeletedResources(statusResult, 'datatable')[0];
+		if (dataTablesToBeImported) {
+			await this.sourceControlImportService.importDataTablesFromWorkFolder(
+				dataTablesToBeImported,
+				user.id,
+			);
+		}
+		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
+		await this.sourceControlImportService.deleteDataTablesNotInWorkfolder(dataTablesToBeDeleted);
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);

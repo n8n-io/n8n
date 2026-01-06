@@ -11,6 +11,7 @@ import { EventService } from '@/events/event.service';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
+	getDataTablesPath,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
@@ -21,6 +22,7 @@ import {
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
+import type { ExportableDataTable } from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
@@ -81,6 +83,9 @@ export class SourceControlStatusService {
 		const { varMissingInLocal, varMissingInRemote, varModifiedInEither } =
 			await this.getStatusVariables(options, sourceControlledFiles);
 
+		const { dtMissingInLocal, dtMissingInRemote, dtModifiedInEither } =
+			await this.getStatusDataTables(options, sourceControlledFiles);
+
 		const {
 			tagsMissingInLocal,
 			tagsMissingInRemote,
@@ -127,6 +132,9 @@ export class SourceControlStatusService {
 				varMissingInLocal,
 				varMissingInRemote,
 				varModifiedInEither,
+				dtMissingInLocal,
+				dtMissingInRemote,
+				dtModifiedInEither,
 				tagsMissingInLocal,
 				tagsMissingInRemote,
 				tagsModifiedInEither,
@@ -447,6 +455,81 @@ export class SourceControlStatusService {
 			varMissingInLocal,
 			varMissingInRemote,
 			varModifiedInEither,
+		};
+	}
+
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
+		const dataTablesRemote =
+			(await this.sourceControlImportService.getRemoteDataTablesFromFile()) ?? [];
+		const dataTablesLocal =
+			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+
+		const dtMissingInLocal = dataTablesRemote.filter(
+			(remote) => dataTablesLocal.findIndex((local) => local.id === remote.id) === -1,
+		);
+
+		const dtMissingInRemote = dataTablesLocal.filter(
+			(local) => dataTablesRemote.findIndex((remote) => remote.id === local.id) === -1,
+		);
+
+		const dtModifiedInEither: ExportableDataTable[] = [];
+		dataTablesLocal.forEach((local) => {
+			const mismatchingIds = dataTablesRemote.find(
+				(remote) =>
+					(remote.id === local.id && remote.name !== local.name) ||
+					(remote.id !== local.id && remote.name === local.name),
+			);
+			if (mismatchingIds) {
+				dtModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
+			}
+		});
+
+		dtMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getDataTablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		dtMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getDataTablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		dtModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'datatable',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getDataTablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		return {
+			dtMissingInLocal,
+			dtMissingInRemote,
+			dtModifiedInEither,
 		};
 	}
 

@@ -10,6 +10,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -31,6 +32,7 @@ import {
 } from './constants';
 import {
 	getCredentialExportPath,
+	getDataTablesPath,
 	getFoldersPath,
 	getProjectExportPath,
 	getVariablesPath,
@@ -72,6 +74,7 @@ export class SourceControlExportService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		instanceSettings: InstanceSettings,
+		private readonly dataTableRepository: DataTableRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -232,6 +235,52 @@ export class SourceControlExportService {
 		} catch (error) {
 			this.logger.error('Failed to export variables to work folder', { error });
 			throw new UnexpectedError('Failed to export variables to work folder', {
+				cause: error,
+			});
+		}
+	}
+
+	async exportDataTablesToWorkFolder(): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.gitFolder]);
+			const dataTables = await this.dataTableRepository.find({
+				relations: ['columns'],
+			});
+			if (dataTables.length === 0) {
+				return {
+					count: 0,
+					folder: this.gitFolder,
+					files: [],
+				};
+			}
+			const fileName = getDataTablesPath(this.gitFolder);
+			const exportableDataTables = dataTables.map((table) => ({
+				id: table.id,
+				name: table.name,
+				projectId: table.projectId,
+				columns: table.columns.map((col) => ({
+					id: col.id,
+					name: col.name,
+					type: col.type,
+					index: col.index,
+				})),
+				createdAt: table.createdAt.toISOString(),
+				updatedAt: table.updatedAt.toISOString(),
+			}));
+			await fsWriteFile(fileName, JSON.stringify(exportableDataTables, null, 2));
+			return {
+				count: exportableDataTables.length,
+				folder: this.gitFolder,
+				files: [
+					{
+						id: '',
+						name: fileName,
+					},
+				],
+			};
+		} catch (error) {
+			this.logger.error('Failed to export data tables to work folder', { error });
+			throw new UnexpectedError('Failed to export data tables to work folder', {
 				cause: error,
 			});
 		}

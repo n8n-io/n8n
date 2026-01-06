@@ -115,6 +115,7 @@
 	"generic.update": "Update",
 	"generic.credential": "Credential | {count} Credential | {count} Credentials",
 	"generic.credentials": "Credentials",
+	"generic.datatable": "Data table | {count} Data table | {count} Data tables",
 	"generic.workflow": "Workflow | {count} Workflow | {count} Workflows",
 	"generic.workflowSaved": "Workflow changes saved",
 	"generic.editor": "Editor",

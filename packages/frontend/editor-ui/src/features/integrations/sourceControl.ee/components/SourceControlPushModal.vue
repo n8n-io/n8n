@@ -139,6 +139,7 @@ type SourceControlledFileWithProject = SourceControlledFile & { project?: Projec
 type Changes = {
 	tags: SourceControlledFileWithProject[];
 	variables: SourceControlledFileWithProject[];
+	datatable: SourceControlledFileWithProject[];
 	credential: SourceControlledFileWithProject[];
 	workflow: SourceControlledFileWithProject[];
 	currentWorkflow?: SourceControlledFileWithProject;
@@ -164,6 +165,11 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.variables) {
 				acc.variables.push({ ...file, project });
+				return acc;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.datatable) {
+				acc.datatable.push({ ...file, project });
 				return acc;
 			}
 
@@ -201,6 +207,7 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 		{
 			tags: [],
 			variables: [],
+			datatable: [],
 			credential: [],
 			workflow: [],
 			folders: [],
@@ -215,6 +222,13 @@ const userNotices = computed(() => {
 	if (changes.value.variables.length) {
 		messages.push({
 			title: 'Variables',
+			content: 'at least one new or modified',
+		});
+	}
+
+	if (changes.value.datatable.length) {
+		messages.push({
+			title: 'Data tables',
 			content: 'at least one new or modified',
 		});
 	}
@@ -386,6 +400,7 @@ const isSubmitDisabled = computed(() => {
 		selectedCredentials.size +
 		changes.value.tags.length +
 		changes.value.variables.length +
+		changes.value.datatable.length +
 		changes.value.folders.length +
 		changes.value.projects.length +
 		selectedWorkflows.size;
@@ -475,6 +490,15 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
+	if (changes.value.datatable.length) {
+		messages.push(
+			i18n.baseText('generic.datatable', {
+				adjustToNumber: changes.value.datatable.length,
+				interpolate: { count: changes.value.datatable.length },
+			}),
+		);
+	}
+
 	if (changes.value.folders.length) {
 		messages.push(i18n.baseText('generic.folders_plural'));
 	}
@@ -496,6 +520,7 @@ const successNotificationMessage = () => {
 async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
+		.concat(changes.value.datatable)
 		.concat(changes.value.credential.filter((file) => selectedCredentials.has(file.id)))
 		.concat(changes.value.folders)
 		.concat(changes.value.projects)
@@ -960,7 +985,9 @@ onMounted(async () => {
 				class="mt-0"
 				id="source-control-push-modal-notice"
 			>
-				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
+				<N8nText bold size="medium"
+					>Changes to variables, data tables, tags, folders and projects
+				</N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
 					<N8nText bold size="small"> {{ title }}</N8nText>
