@@ -23,7 +23,7 @@ describe('RemovedDatabaseTypesRule', () => {
 		});
 
 		it('should be affected when using MySQL', async () => {
-			globalConfig.database.type = 'mysqldb';
+			globalConfig.database.type = 'mysqldb' as any;
 
 			const result = await rule.detect();
 
@@ -33,7 +33,7 @@ describe('RemovedDatabaseTypesRule', () => {
 		});
 
 		it('should be affected when using MariaDB', async () => {
-			globalConfig.database.type = 'mariadb';
+			globalConfig.database.type = 'mariadb' as any;
 
 			const result = await rule.detect();
 
