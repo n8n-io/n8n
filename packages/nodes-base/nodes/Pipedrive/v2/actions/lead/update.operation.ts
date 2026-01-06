@@ -6,8 +6,20 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { pipedriveApiRequest } from '../../transport';
-import { visibleToOption } from '../common.description';
+import type { ICustomProperties } from '../../transport';
+import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	addFieldsToBody,
+	flattenCustomFieldsToRoot,
+	nestRootCustomFields,
+} from '../../helpers';
+import {
+	customFieldsCollection,
+	rawCustomFieldKeysOption,
+	visibleToOption,
+} from '../common.description';
 import { currencies } from '../../../utils';
 
 const properties: INodeProperties[] = [
@@ -116,8 +128,10 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether the lead was seen by someone in the Pipedrive UI',
 			},
+			customFieldsCollection,
 		],
 	},
+	rawCustomFieldKeysOption,
 ];
 
 const displayOptions = {
@@ -133,11 +147,33 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
+	// Resolving custom field keys/IDs to human-readable names on output was added
+	// after v2 shipped without lead custom field support. Gate it to v2.1+ so leads
+	// created on v2 keep the raw Pipedrive keys they returned before.
+	const resolveOutput = this.getNode().typeVersion >= 2.1;
+
+	const rawKeys = this.getNodeParameter('rawCustomFieldKeys', 0, false) as boolean;
+	// Fetch the lead field metadata once, but surface a failure through the
+	// per-item error path below so `continueOnFail` keeps working.
+	let customProperties: ICustomProperties | undefined;
+	let customPropertiesError: Error | undefined;
+	if (!rawKeys) {
+		try {
+			customProperties = await pipedriveGetCustomProperties.call(this, 'lead');
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+			customPropertiesError = error as Error;
+		}
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		try {
+			if (customPropertiesError) throw customPropertiesError;
+
 			const leadId = this.getNodeParameter('leadId', i) as string;
 
-			const { value, expected_close_date, ...rest } = this.getNodeParameter('updateFields', i) as {
+			const updateFields = this.getNodeParameter('updateFields', i);
+			const { value, expected_close_date, ...rest } = updateFields as {
 				value?: {
 					valueProperties: {
 						amount: number;
@@ -151,7 +187,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const body: IDataObject = {};
 
 			if (Object.keys(rest).length) {
-				Object.assign(body, rest);
+				addFieldsToBody(body, rest as IDataObject);
 			}
 
 			if (value) {
@@ -161,6 +197,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (expected_close_date) {
 				body.expected_close_date = expected_close_date.split('T')[0];
 			}
+
+			if (customProperties) {
+				encodeCustomFieldsV2(customProperties, body);
+			}
+			// The v1 Leads endpoint takes custom fields as top-level keys, not nested.
+			flattenCustomFieldsToRoot(body);
 
 			const responseData = await pipedriveApiRequest.call(
 				this,
@@ -175,6 +217,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				this.helpers.returnJsonArray(responseData.data as IDataObject),
 				{ itemData: { item: i } },
 			);
+
+			if (customProperties && resolveOutput) {
+				for (const item of executionData) {
+					// v1 returns custom fields at the root; nest them so the shared
+					// resolver can map keys/IDs to human-readable names.
+					nestRootCustomFields(customProperties, item);
+					resolveCustomFieldsV2(customProperties, item);
+				}
+			}
+
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
