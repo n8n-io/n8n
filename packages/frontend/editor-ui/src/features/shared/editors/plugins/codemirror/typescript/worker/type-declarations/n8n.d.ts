@@ -84,6 +84,28 @@ declare global {
 	const $vars: N8nVars;
 	const $nodeVersion: number;
 
+	interface N8nNodeData<J extends N8nJson = N8nJson, B extends string = string> {
+		json: J & N8nJson;
+		binary: Record<B, N8nBinary>;
+	}
+
+	type SomeOtherString = string & NonNullable<unknown>;
+
+	// @ts-expect-error NodeName is created dynamically
+	function $<K extends NodeName>(
+		nodeName: K | SomeOtherString,
+		// @ts-expect-error NodeDataMap is created dynamically
+	): K extends keyof NodeDataMap ? NodeDataMap[K] : N8nNodeData;
+
+	// @ts-expect-error NodeName is created dynamically
+	const $node: {
+		<K extends NodeName>(
+			nodeName: K | SomeOtherString,
+			// @ts-expect-error NodeDataMap is created dynamically
+		): K extends keyof NodeDataMap ? NodeDataMap[K] : N8nNodeData;
+		[nodeName: string]: N8nNodeData;
+	};
+
 	function $jmespath(object: Object | Array<any>, expression: string): any;
 	function $if<B extends boolean, T, F>(
 		condition: B,
