@@ -126,7 +126,8 @@
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
-      "jws@4": "4.0.1"
+      "jws@4": "4.0.1",
+      "qs@6": "6.14.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
