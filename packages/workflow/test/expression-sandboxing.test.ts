@@ -7,6 +7,7 @@ import {
 	sanitizer,
 	DOLLAR_SIGN_ERROR,
 } from '../src/expression-sandboxing';
+import { ExpressionDestructuringError } from '../src/errors';
 
 const tournament = new Tournament(
 	(e) => {
@@ -310,6 +311,86 @@ describe('PrototypeSanitizer', () => {
 					});
 				}).toThrowError(errorRegex);
 			});
+		});
+	});
+
+	describe('Destructuring patterns', () => {
+		it('should not allow destructuring constructor from arrow function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {constructor} = ()=>{}; return constructor; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring constructor from regular function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {constructor} = function(){}; return constructor; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring constructor with alias', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {constructor: c} = ()=>{}; return c; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring __proto__', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {__proto__} = {}; return __proto__; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring prototype', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {prototype} = function(){}; return prototype; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring mainModule', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {mainModule} = process; return mainModule; })() }}', {
+					__sanitize: sanitizer,
+					process: { mainModule: {} },
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should allow destructuring safe properties', () => {
+			const result = tournament.execute(
+				'{{ (() => { const {name, value} = {name: "test", value: 42}; return name + value; })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe('test42');
+		});
+
+		it('should allow destructuring multiple safe properties', () => {
+			const result = tournament.execute(
+				'{{ (() => { const {a, b, c} = {a: 1, b: 2, c: 3}; return a + b + c; })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(6);
 		});
 	});
 });
