@@ -635,30 +635,14 @@ const tags = computed(
 					@update:workflow-active="onWorkflowActiveToggle"
 				/>
 				<div
-					v-if="isDraftPublishEnabled && !data.isArchived"
+					v-if="isDraftPublishEnabled && data.activeVersionId !== null"
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
-					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
 				</div>
 
 				<N8nActionToggle
@@ -759,36 +743,23 @@ const tags = computed(
 .publishIndicator {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	margin-left: var(--spacing--2xs);
-}
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
 
-.publishIndicatorColor {
-	color: var(--color--mint-700);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--mint-600);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--mint-600);
-		}
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
 	}
 }
 
-.notPublishedIndicatorColor {
-	color: var(--color--neutral-600);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--neutral-400);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--neutral-400);
-		}
-	}
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

@@ -275,7 +275,7 @@ defineExpose({
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div :class="$style.publishButtonWrapper">
-			<N8nTooltip>
+			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'">
 				<template #content>
 					<div>
 						<template v-if="publishButtonConfig.tooltip">
@@ -359,30 +359,10 @@ defineExpose({
 
 .indicatorPublished {
 	background-color: var(--color--mint-600);
-
-	:global(body[data-theme='dark']) & {
-		background-color: var(--color--mint-600);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			background-color: var(--color--mint-600);
-		}
-	}
 }
 
 .indicatorPublishedText {
-	color: var(--color--mint-700);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--mint-700);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--mint-700);
-		}
-	}
+	color: var(--color--text--tint-1);
 }
 
 .indicatorChanges {
