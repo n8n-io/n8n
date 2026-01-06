@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 
