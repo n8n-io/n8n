@@ -21,7 +21,6 @@ import { i18n } from '@n8n/i18n';
 import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -110,12 +109,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 				languageProperty,
 				nodeTypeDescription,
 			);
-			if (customParsedItems) {
-				// temporary until native Python runner is GA
-				return useSettingsStore().isNativePythonRunnerEnabled
-					? customParsedItems.filter((item) => item.actionKey !== 'language_python')
-					: customParsedItems.filter((item) => item.actionKey !== 'language_pythonNative');
-			}
+			if (customParsedItems) return customParsedItems;
 		}
 	}
 

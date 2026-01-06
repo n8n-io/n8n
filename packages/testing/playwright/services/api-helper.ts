@@ -7,6 +7,7 @@ import {
 	INSTANCE_OWNER_CREDENTIALS,
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_ADMIN_CREDENTIALS,
+	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
@@ -24,13 +25,14 @@ export interface LoginResponseData {
 	[key: string]: unknown;
 }
 
-export type UserRole = 'owner' | 'admin' | 'member';
+export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
 const AUTH_TAGS = {
 	ADMIN: '@auth:admin',
 	OWNER: '@auth:owner',
 	MEMBER: '@auth:member',
+	CHAT: '@auth:chat',
 	NONE: '@auth:none',
 } as const;
 
@@ -135,6 +137,7 @@ export class ApiHelpers {
 				owner: INSTANCE_OWNER_CREDENTIALS,
 				members: INSTANCE_MEMBER_CREDENTIALS,
 				admin: INSTANCE_ADMIN_CREDENTIALS,
+				chat: INSTANCE_CHAT_CREDENTIALS,
 			},
 		});
 
@@ -413,6 +416,8 @@ export class ApiHelpers {
 					throw new TestError(`No member credentials found for index ${memberIndex}`);
 				}
 				return INSTANCE_MEMBER_CREDENTIALS[memberIndex];
+			case 'chat':
+				return INSTANCE_CHAT_CREDENTIALS;
 			default:
 				throw new TestError(`Unknown role: ${role as string}`);
 		}
@@ -436,6 +441,7 @@ export class ApiHelpers {
 		if (lowerTags.includes(AUTH_TAGS.ADMIN.toLowerCase())) return 'admin';
 		if (lowerTags.includes(AUTH_TAGS.OWNER.toLowerCase())) return 'owner';
 		if (lowerTags.includes(AUTH_TAGS.MEMBER.toLowerCase())) return 'member';
+		if (lowerTags.includes(AUTH_TAGS.CHAT.toLowerCase())) return 'chat';
 		if (lowerTags.includes(AUTH_TAGS.NONE.toLowerCase())) return null;
 		return 'owner';
 	}

@@ -60,6 +60,30 @@ describe('PrototypeSanitizer', () => {
 			}).toThrowError(errorRegex);
 		});
 
+		it.each([
+			['dot notation', '{{ Error.prepareStackTrace }}'],
+			['bracket notation', '{{ Error["prepareStackTrace"] }}'],
+			['assignment', '{{ Error.prepareStackTrace = (e, s) => s }}'],
+		])('should not allow access to prepareStackTrace via %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, Error });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['constructor', '{{ Number[`constructor`] }}', { Number }],
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			['constructor (Number)', '{{ Number[`constr${`uct`}or`] }}', { Number }],
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			['constructor (Object)', "{{ Object[`constr${'uct'}or`] }}", { Object }],
+			['__proto__', '{{ ({})[`__proto__`] }}', {}],
+			['mainModule', '{{ process[`mainModule`] }}', { process: {} }],
+		])('should not allow access to %s via template literal', (_, expression, context) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, ...context });
+			}).toThrowError(errorRegex);
+		});
+
 		describe('Dollar sign identifier handling', () => {
 			it('should not allow bare $ identifier', () => {
 				expect(() => {
