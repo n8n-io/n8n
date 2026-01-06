@@ -1,6 +1,4 @@
-import { defineStore } from 'pinia';
 import {
-	AGENT_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
@@ -9,49 +7,40 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
-import { STORES } from '@n8n/stores';
 import type {
-	NodeFilterType,
-	NodeCreatorOpenSource,
-	SimplifiedNodeType,
 	ActionsRecord,
-	ToggleNodeCreatorOptions,
 	INodeCreateElement,
-	INodeUi,
+	NodeCreatorOpenSource,
+	NodeFilterType,
+	SimplifiedNodeType,
+	ToggleNodeCreatorOptions,
 } from '@/Interface';
+import { STORES } from '@n8n/stores';
+import { defineStore } from 'pinia';
 
-import { computed, nextTick, ref } from 'vue';
-import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeCreator.utils';
-import type {
-	IDataObject,
-	INodeInputConfiguration,
-	NodeConnectionType,
-	Workflow,
-} from 'n8n-workflow';
-import {
-	NodeConnectionTypes,
-	NodeHelpers,
-	isCommunityPackageName,
-	isHitlToolType,
-} from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { type NodeCreatorFilter, useViewStacks } from './composables/useViewStacks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { TelemetryNdvType } from '@/app/types/telemetry';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
+import { isVueFlowConnection } from '@/app/utils/typeGuards';
+import type { PartialBy } from '@/app/utils/typeHelpers';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
 } from '@/features/workflows/canvas/canvas.utils';
 import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import { isVueFlowConnection } from '@/app/utils/typeGuards';
-import type { PartialBy } from '@/app/utils/typeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { TelemetryNdvType } from '@/app/types/telemetry';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import get from 'lodash/get';
+import type { IDataObject, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
+import { computed, nextTick, ref } from 'vue';
+import { useGetNodeCreatorFilter } from './composables/useGetNodeCreatorFilter';
+import { useViewStacks } from './composables/useViewStacks';
+import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeCreator.utils';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -60,6 +49,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const { getNodeCreatorFilter } = useGetNodeCreatorFilter();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
@@ -75,8 +65,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const allNodeCreatorNodes = computed(() =>
 		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
 	);
-
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function setMergeNodes(nodes: SimplifiedNodeType[]) {
 		mergedNodes.value = nodes;
@@ -319,48 +307,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				{ resetStacks: true },
 			);
 		});
-	}
-
-	function getNodeCreatorFilter(
-		nodeName: string,
-		outputType: NodeConnectionType,
-		sourceNode: INodeUi,
-	) {
-		let filter: NodeCreatorFilter | undefined;
-		const workflowNode = workflowObject.value.getNode(nodeName);
-		if (!workflowNode) return { nodes: [] };
-
-		const nodeType =
-			nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion) ??
-			nodeTypesStore.communityNodeType(workflowNode?.type)?.nodeDescription;
-		if (nodeType) {
-			const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
-
-			const filterFound = inputs.filter((input) => {
-				if (typeof input === 'string' || input.type !== outputType || !input.filter) {
-					// No filters defined or wrong connection type
-					return false;
-				}
-
-				return true;
-			}) as INodeInputConfiguration[];
-
-			if (filterFound.length) {
-				filter = filterFound[0].filter;
-			}
-		}
-
-		if (outputType === NodeConnectionTypes.AiTool) {
-			const isConnectionToAgent = sourceNode.type === AGENT_NODE_TYPE;
-			// show HITL tools only for agent node
-			// HITL tools are not compatible with other nodes
-			const conditions: NodeCreatorFilter['conditions'] = [
-				(node) => (isConnectionToAgent ? true : !isHitlToolType(node.key)),
-			];
-			filter = { ...filter, conditions };
-		}
-
-		return filter;
 	}
 
 	function resetNodesPanelSession() {
