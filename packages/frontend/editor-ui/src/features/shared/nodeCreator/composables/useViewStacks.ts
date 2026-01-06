@@ -43,7 +43,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
-import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
+import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -64,6 +64,9 @@ import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
 
+export type NodeCreatorFilter = INodeFilter & {
+	conditions?: Array<(item: INodeCreateElement) => boolean>;
+};
 export interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -340,7 +343,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
 		isOutput?: boolean,
-		filter?: INodeInputFilter,
+		filter?: NodeCreatorFilter,
 	) {
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: { properties: NodeViewItem['properties'] } | undefined;
@@ -395,11 +398,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					//       input connections. However, it does not work for output connections.
 					//       For that reason does it currently display nodes that are maybe not compatible
 					//       but then errors once it got selected by the user.
-					if (displayNode && filter?.nodes?.length) {
-						return filter.nodes.includes(i.key);
-					}
-					if (displayNode && filter?.excludedNodes?.length) {
-						return !filter.excludedNodes.includes(i.key);
+					if (displayNode) {
+						const isIncluded = filter?.nodes?.length ? filter?.nodes?.includes(i.key) : true;
+						const isExcluded = filter?.excludedNodes?.length
+							? filter?.excludedNodes?.includes(i.key)
+							: false;
+						const isConditionMet = filter?.conditions?.length
+							? filter?.conditions?.every((condition) => condition(i))
+							: true;
+						return isIncluded && !isExcluded && isConditionMet;
 					}
 
 					return displayNode;

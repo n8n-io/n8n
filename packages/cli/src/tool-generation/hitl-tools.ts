@@ -191,6 +191,9 @@ export function convertNodeToHitlTool<
 			{
 				displayName: 'Human Review',
 				type: NodeConnectionTypes.AiTool,
+				filter: {
+					nodes: ['@n8n/n8n-nodes-langchain.agent'],
+				},
 			},
 		];
 

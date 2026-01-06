@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import {
+	AGENT_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
@@ -16,6 +17,7 @@ import type {
 	ActionsRecord,
 	ToggleNodeCreatorOptions,
 	INodeCreateElement,
+	INodeUi,
 } from '@/Interface';
 
 import { computed, nextTick, ref } from 'vue';
@@ -26,12 +28,17 @@ import type {
 	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, isCommunityPackageName } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	isCommunityPackageName,
+	isHitlToolType,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useViewStacks } from './composables/useViewStacks';
+import { type NodeCreatorFilter, useViewStacks } from './composables/useViewStacks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
@@ -212,7 +219,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// after the node creator is opened
 		if (isScopedConnection) {
 			useViewStacks()
-				.gotoCompatibleConnectionView(type, isOutput, getNodeCreatorFilter(sourceNode.name, type))
+				.gotoCompatibleConnectionView(
+					type,
+					isOutput,
+					getNodeCreatorFilter(sourceNode.name, type, sourceNode),
+				)
 				.catch(() => {});
 		}
 	}
@@ -310,8 +321,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
-		let filter;
+	function getNodeCreatorFilter(
+		nodeName: string,
+		outputType: NodeConnectionType,
+		sourceNode: INodeUi,
+	) {
+		let filter: NodeCreatorFilter | undefined;
 		const workflowNode = workflowObject.value.getNode(nodeName);
 		if (!workflowNode) return { nodes: [] };
 
@@ -333,6 +348,16 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			if (filterFound.length) {
 				filter = filterFound[0].filter;
 			}
+		}
+
+		if (outputType === NodeConnectionTypes.AiTool) {
+			const isConnectionToAgent = sourceNode.type === AGENT_NODE_TYPE;
+			// show HITL tools only for agent node
+			// HITL tools are not compatible with other nodes
+			const conditions: NodeCreatorFilter['conditions'] = [
+				(node) => (isConnectionToAgent ? true : !isHitlToolType(node.key)),
+			];
+			filter = { ...filter, conditions };
 		}
 
 		return filter;
