@@ -23,8 +23,8 @@ export async function sendErrorPostReceive(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const errorBody = response.body as JsonObject;
-		const error = (errorBody?.error ?? {}) as JsonObject;
+		const errorBody = isJsonObject(response.body) ? response.body : {};
+		const error = isJsonObject(errorBody.error) ? errorBody.error : {};
 
 		const errorMessage =
 			typeof error.message === 'string'
@@ -176,8 +176,8 @@ function parseSSEString(str: string): JsonObject[] {
 
 		try {
 			const parsed: unknown = JSON.parse(jsonStr);
-			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-				chunks.push(parsed as JsonObject);
+			if (isJsonObject(parsed)) {
+				chunks.push(parsed);
 			}
 		} catch {
 			continue;
@@ -201,8 +201,8 @@ function processChunkArray(
 	let created = 0;
 
 	for (const chunk of chunks) {
-		if (!chunk || typeof chunk !== 'object') continue;
-		const chunkObj = chunk as JsonObject;
+		if (!isJsonObject(chunk)) continue;
+		const chunkObj = chunk;
 		const objectType = typeof chunkObj.object === 'string' ? chunkObj.object : '';
 
 		if (chunkObj.id && typeof chunkObj.id === 'string') id = chunkObj.id;
@@ -213,8 +213,8 @@ function processChunkArray(
 			const choices = Array.isArray(chunkObj.choices) ? chunkObj.choices : [];
 			const firstChoice = isJsonObject(choices[0]) ? choices[0] : undefined;
 			if (firstChoice) {
-				const message = firstChoice.message as JsonObject | undefined;
-				const delta = firstChoice.delta as JsonObject | undefined;
+				const message = isJsonObject(firstChoice.message) ? firstChoice.message : undefined;
+				const delta = isJsonObject(firstChoice.delta) ? firstChoice.delta : undefined;
 
 				if (message?.content && typeof message.content === 'string') {
 					accumulatedContent = message.content;
@@ -240,7 +240,7 @@ function processChunkArray(
 			const choices = Array.isArray(chunkObj.choices) ? chunkObj.choices : [];
 			const firstChoice = isJsonObject(choices[0]) ? choices[0] : undefined;
 			if (firstChoice) {
-				const delta = firstChoice.delta as JsonObject | undefined;
+				const delta = isJsonObject(firstChoice.delta) ? firstChoice.delta : undefined;
 				if (Array.isArray(delta?.reasoning_steps)) {
 					allReasoningSteps.push(...delta.reasoning_steps.filter(isJsonObject));
 				}
@@ -258,8 +258,8 @@ function processChunkArray(
 	}
 
 	for (const step of allReasoningSteps) {
-		if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
-			const webSearch = step.web_search as JsonObject;
+		if (step.type === 'web_search' && isJsonObject(step.web_search)) {
+			const webSearch = step.web_search;
 			if (Array.isArray(webSearch.search_results)) {
 				allSearchResults.push(...webSearch.search_results.filter(isJsonObject));
 			}
@@ -334,8 +334,8 @@ function processSingleResponse(
 	}
 
 	for (const step of reasoningSteps) {
-		if (step.type === 'web_search' && step.web_search && typeof step.web_search === 'object') {
-			const webSearch = step.web_search as JsonObject;
+		if (step.type === 'web_search' && isJsonObject(step.web_search)) {
+			const webSearch = step.web_search;
 			if (Array.isArray(webSearch.search_results)) {
 				searchResults.push(...webSearch.search_results.filter(isJsonObject));
 			}
@@ -356,21 +356,18 @@ function processSingleResponse(
 	};
 
 	if (Array.isArray(responseData.choices)) {
-		enhancedJson.choices = responseData.choices
-			.filter((choice: unknown) => choice && typeof choice === 'object')
-			.map((choice: unknown) => {
-				const choiceObj = choice as JsonObject;
-				const choiceMessage = choiceObj.message as JsonObject | undefined;
-				return {
-					...choiceObj,
-					message: {
-						...(choiceMessage ?? {}),
-						content:
-							content || (typeof choiceMessage?.content === 'string' ? choiceMessage.content : ''),
-						...(reasoningSteps.length > 0 && { reasoning_steps: reasoningSteps }),
-					},
-				};
-			});
+		enhancedJson.choices = responseData.choices.filter(isJsonObject).map((choice) => {
+			const choiceMessage = isJsonObject(choice.message) ? choice.message : undefined;
+			return {
+				...choice,
+				message: {
+					...(choiceMessage ?? {}),
+					content:
+						content || (typeof choiceMessage?.content === 'string' ? choiceMessage.content : ''),
+					...(reasoningSteps.length > 0 && { reasoning_steps: reasoningSteps }),
+				},
+			};
+		});
 	}
 
 	return {
