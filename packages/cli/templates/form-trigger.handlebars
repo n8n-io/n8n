@@ -994,14 +994,15 @@
 					}
 
 					const authToken = '{{{ authToken }}}';
+					const headers = {};
 					if(authToken) {
-						const separator = postUrl.includes('?') ? '&' : '?';
-						postUrl = `${postUrl}${separator}token=${authToken}`;
+						headers['x-auth-token'] = authToken;
 					}
 
 					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
+						headers,
 					})
 						.then(async function (response) {
 							const useResponseData = document.getElementById("useResponseData").value;

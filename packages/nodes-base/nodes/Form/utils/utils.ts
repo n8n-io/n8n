@@ -10,7 +10,6 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
-	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -23,11 +22,10 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
-import crypto from 'crypto';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import { generateFormPostBasicAuthToken, validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
 
@@ -576,13 +574,11 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
-	const method = context.getRequestObject().method;
-
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (node.typeVersion > 1 && method === 'GET') {
+		if (node.typeVersion > 1) {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -596,6 +592,8 @@ export async function formWebhook(
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
+	const method = context.getRequestObject().method;
 
 	validateResponseModeConfiguration(context);
 
@@ -643,7 +641,7 @@ export async function formWebhook(
 
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
-			authToken = await generateFormPostAuthToken(context);
+			authToken = await generateFormPostBasicAuthToken(context, authProperty);
 		}
 
 		renderForm({
@@ -666,8 +664,6 @@ export async function formWebhook(
 			noWebhookResponse: true,
 		};
 	}
-
-	if (node.typeVersion > 1) await validatePostRequest(context);
 
 	let { useWorkflowTimezone } = options;
 
@@ -705,55 +701,4 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
-}
-
-export function getAuthentication(context: IWebhookFunctions) {
-	const node = context.getNode();
-	let authPropertyName = FORM_TRIGGER_AUTHENTICATION_PROPERTY;
-	if (node.type === WAIT_NODE_TYPE) {
-		authPropertyName = 'incomingAuthentication';
-	}
-
-	return context.getNodeParameter(authPropertyName) as string;
-}
-
-export async function generateFormPostAuthToken(context: IWebhookFunctions) {
-	const node = context.getNode();
-
-	const authentication = getAuthentication(context);
-	if (authentication === 'none') return;
-
-	let credentials: ICredentialDataDecryptedObject | undefined;
-
-	try {
-		credentials = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
-	} catch {}
-
-	if (credentials === undefined || !credentials.user || !credentials.password) {
-		throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
-	}
-
-	const token = crypto
-		.createHmac('sha256', `${credentials.user}:${credentials.password}`)
-		.update(`${node.id}-${node.webhookId}`)
-		.digest('hex');
-
-	return token;
-}
-
-export async function validatePostRequest(context: IWebhookFunctions) {
-	const authentication = getAuthentication(context);
-	if (authentication === 'none') return;
-
-	const authToken = context.getRequestObject()?.query?.token;
-
-	if (!authToken) {
-		throw new WebhookAuthorizationError(403, 'Missing form post authentication token');
-	}
-
-	const expectedAuthToken = await generateFormPostAuthToken(context);
-
-	if (authToken !== expectedAuthToken) {
-		throw new WebhookAuthorizationError(403, 'Invalid form post authentication token');
-	}
 }
