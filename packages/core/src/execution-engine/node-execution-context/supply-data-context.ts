@@ -45,8 +45,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
-	readonly parentNode?: INode;
-
 	readonly hints: NodeExecutionHint[] = [];
 
 	constructor(
@@ -61,8 +59,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		private readonly connectionType: NodeConnectionType,
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
+		readonly parentNode: INode,
+		readonly parentNodeRunIndex: number,
 		abortSignal?: AbortSignal,
-		parentNode?: INode,
 	) {
 		super(
 			workflow,
@@ -78,6 +77,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		);
 
 		this.parentNode = parentNode;
+		this.parentNodeRunIndex = parentNodeRunIndex;
 
 		this.helpers = {
 			createDeferredPromise,
@@ -136,8 +136,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.connectionType,
 			this.executeData,
 			this.closeFunctions,
-			this.abortSignal,
 			this.parentNode,
+			this.parentNodeRunIndex,
+			this.abortSignal,
 		);
 		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
@@ -186,7 +187,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	addInputData(
 		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
-		runIndex?: number,
 	): { index: number } {
 		const nodeName = this.node.name;
 		const currentNodeRunIndex = this.getNextRunIndex();
@@ -197,8 +197,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			connectionType,
 			nodeName,
 			currentNodeRunIndex,
-			undefined,
-			runIndex,
 		).catch((error) => {
 			this.logger.warn(
 				`There was a problem logging input data of node "${nodeName}": ${
@@ -217,7 +215,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		currentNodeRunIndex: number,
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
-		sourceNodeRunIndex?: number,
 	): void {
 		const nodeName = this.node.name;
 		this.addExecutionDataFunctions(
@@ -227,7 +224,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			nodeName,
 			currentNodeRunIndex,
 			metadata,
-			sourceNodeRunIndex,
 		).catch((error) => {
 			this.logger.warn(
 				`There was a problem logging output data of node "${nodeName}": ${
@@ -245,24 +241,20 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		sourceNodeName: string,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
-		sourceNodeRunIndex?: number,
 	): Promise<void> {
 		const {
 			additionalData,
 			runExecutionData,
-			runIndex: currentRunIndex,
 			node: { name: nodeName },
 		} = this;
 
 		let taskData: ITaskData | undefined;
-		const source: ISourceData[] = this.parentNode
-			? [
-					{
-						previousNode: this.parentNode.name,
-						previousNodeRun: sourceNodeRunIndex ?? currentRunIndex,
-					},
-				]
-			: [];
+		const source: ISourceData[] = [
+			{
+				previousNode: this.parentNode.name,
+				previousNodeRun: this.parentNodeRunIndex,
+			},
+		];
 
 		if (type === 'input') {
 			taskData = {

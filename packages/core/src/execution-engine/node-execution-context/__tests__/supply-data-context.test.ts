@@ -84,6 +84,8 @@ describe('SupplyDataContext', () => {
 		connectionType,
 		executeData,
 		[closeFn],
+		mock<INode>(),
+		0,
 		abortSignal,
 	);
 
@@ -216,6 +218,8 @@ describe('SupplyDataContext', () => {
 				connectionType,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -244,6 +248,8 @@ describe('SupplyDataContext', () => {
 				connectionType,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -301,6 +307,8 @@ describe('SupplyDataContext', () => {
 				'ai_agent',
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortedSignal,
 			);
 
@@ -339,6 +347,8 @@ describe('SupplyDataContext', () => {
 				connectionType,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -366,6 +376,8 @@ describe('SupplyDataContext', () => {
 				connectionType,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -399,6 +411,8 @@ describe('SupplyDataContext', () => {
 				connectionType,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -458,6 +472,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.AiTool,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -532,6 +548,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.AiTool,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -581,6 +599,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.AiTool,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -611,6 +631,80 @@ describe('SupplyDataContext', () => {
 			expect(taskData.hints![0].message).toContain('null or undefined');
 			expect(taskData.hints![0].location).toBe('outputPane');
 		});
+
+		it('should use parentNodeRunIndex for previousNodeRun when provided', async () => {
+			// This test verifies the fix for CAT-1377: previousNodeRun should match parent's run index
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+
+			const parentNode = mock<INode>({ name: 'AI Agent' });
+			const toolNode = mock<INode>({ name: 'Tool' });
+
+			// Scenario: AI Agent runs twice (run 0, run 1), each invoking the tool twice
+			// Tool invocations should be: [0, 1, 2, 3] but previousNodeRun should be [0, 0, 1, 1]
+			const testCases = [
+				{ toolRunIndex: 0, parentRunIndex: 0, expectedPreviousNodeRun: 0 },
+				{ toolRunIndex: 1, parentRunIndex: 0, expectedPreviousNodeRun: 0 },
+				{ toolRunIndex: 2, parentRunIndex: 1, expectedPreviousNodeRun: 1 },
+				{ toolRunIndex: 3, parentRunIndex: 1, expectedPreviousNodeRun: 1 },
+			];
+
+			for (const { toolRunIndex, parentRunIndex, expectedPreviousNodeRun } of testCases) {
+				const testRunExecutionData = createRunExecutionData({
+					resultData: {
+						runData: {},
+					},
+					executionData: {
+						metadata: {},
+						contextData: {},
+						nodeExecutionStack: [],
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				});
+
+				// Create context with parentNode and parentNodeRunIndex
+				const testContext = new SupplyDataContext(
+					workflow,
+					toolNode,
+					testAdditionalData,
+					mode,
+					testRunExecutionData,
+					toolRunIndex, // Tool's own run index (0, 1, 2, 3)
+					connectionInputData,
+					{},
+					NodeConnectionTypes.AiTool,
+					executeData,
+					[closeFn],
+					parentNode, // Parent AI Agent node
+					parentRunIndex, // Parent's run index (0, 0, 1, 1)
+					abortSignal,
+				);
+
+				// Add input data (simulates tool invocation)
+				await testContext.addExecutionDataFunctions(
+					'input',
+					[[{ json: { query: 'test' } }]],
+					NodeConnectionTypes.AiTool,
+					toolNode.name,
+					toolRunIndex,
+				);
+
+				// Verify that previousNodeRun matches the parent's run index
+				const taskData = testRunExecutionData.resultData.runData[toolNode.name][toolRunIndex];
+				expect(taskData).toBeDefined();
+				expect(taskData.source).toBeDefined();
+				expect(taskData.source).toHaveLength(1);
+				expect(taskData.source[0]!.previousNode).toBe(parentNode.name);
+				expect(taskData.source[0]!.previousNodeRun).toBe(expectedPreviousNodeRun);
+			}
+		});
 	});
 
 	describe('isToolExecution', () => {
@@ -627,6 +721,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.AiTool,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -646,6 +742,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.Main,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 
@@ -665,6 +763,8 @@ describe('SupplyDataContext', () => {
 				NodeConnectionTypes.AiAgent,
 				executeData,
 				[closeFn],
+				mock<INode>(),
+				0,
 				abortSignal,
 			);
 

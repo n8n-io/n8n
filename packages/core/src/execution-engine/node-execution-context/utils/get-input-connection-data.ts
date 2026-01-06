@@ -306,8 +306,9 @@ export async function getInputConnectionData(
 				connectionType,
 				executeData,
 				closeFunctions,
-				abortSignal,
 				parentNode,
+				parentRunIndex,
+				abortSignal,
 			);
 
 		if (!connectedNodeType.supplyData) {
