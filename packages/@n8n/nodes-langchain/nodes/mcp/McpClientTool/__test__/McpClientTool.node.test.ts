@@ -229,6 +229,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
+				fetch: expect.any(Function),
 				requestInit: { headers: { 'my-header': 'header-value' } },
 			});
 
@@ -278,6 +279,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
+				fetch: expect.any(Function),
 				requestInit: { headers: { Authorization: 'Bearer my-token' } },
 			});
 
@@ -290,7 +292,9 @@ describe('McpClientTool', () => {
 
 		it('should successfully execute a tool', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: 'Sunny' });
+			jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ toolResult: 'Sunny', content: [] });
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
@@ -324,9 +328,11 @@ describe('McpClientTool', () => {
 
 		it('should handle tool errors', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest
-				.spyOn(Client.prototype, 'callTool')
-				.mockResolvedValue({ isError: true, content: [{ text: 'Weather unknown at location' }] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				toolResult: 'Weather unknown at location',
+				content: [{ text: 'Weather unknown at location' }],
+			});
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{

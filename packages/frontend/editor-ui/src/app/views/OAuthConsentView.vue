@@ -108,6 +108,7 @@ onMounted(async () => {
 					<ul :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span

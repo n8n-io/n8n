@@ -11,7 +11,23 @@
 			}
 		]
 	},
-	"alias": ["data", "table", "knowledge", "data table", "table", "sheet"],
+	"alias": [
+		"data",
+		"table",
+		"knowledge",
+		"data table",
+		"table",
+		"sheet",
+		"database",
+		"data base",
+		"mysql",
+		"postgres",
+		"postgresql",
+		"airtable",
+		"supabase",
+		"noco",
+		"notion"
+	],
 	"subcategories": {
 		"Core Nodes": ["Helpers"]
 	}

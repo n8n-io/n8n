@@ -137,23 +137,11 @@ export const parseJsonParameter = (
 
 	if (typeof jsonData === 'string') {
 		try {
-			returnData = jsonParse<IDataObject>(jsonData);
+			returnData = jsonParse<IDataObject>(jsonData, { repairJSON: true });
 		} catch (error) {
-			let recoveredData = '';
-			try {
-				recoveredData = jsonData
-					.replace(/'/g, '"') // Replace single quotes with double quotes
-					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
-					.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
-					.replace(/,+$/, ''); // Remove trailing comma
-				returnData = jsonParse<IDataObject>(recoveredData);
-			} catch (err) {
-				const description =
-					recoveredData === jsonData ? jsonData : `${recoveredData};\n Original input: ${jsonData}`;
-				throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
-					description,
-				});
-			}
+			throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
+				description: jsonData,
+			});
 		}
 	} else {
 		returnData = jsonData;

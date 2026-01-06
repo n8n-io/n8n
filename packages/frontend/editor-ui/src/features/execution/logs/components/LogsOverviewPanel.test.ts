@@ -124,7 +124,9 @@ describe('LogsOverviewPanel', () => {
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
-			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
+			expect(spyRun).toHaveBeenCalledWith(
+				expect.objectContaining({ destinationNode: { nodeName: 'AI Agent', mode: 'inclusive' } }),
+			),
 		);
 	});
 });

@@ -21,6 +21,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	RENAME: 'rename',
 	DELETE: 'delete',
 	CLEAR: 'clear',
+	DOWNLOAD_CSV: 'download-csv',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';

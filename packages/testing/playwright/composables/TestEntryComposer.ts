@@ -22,8 +22,7 @@ export class TestEntryComposer {
 	 * Start UI test from a blank canvas (assumes already on canvas)
 	 */
 	async fromBlankCanvas() {
-		await this.n8n.goHome();
-		await this.n8n.workflows.addResource.workflow();
+		await this.n8n.navigate.toWorkflow('new');
 		// Verify we're on canvas
 		await this.n8n.canvas.canvasPane().isVisible();
 	}

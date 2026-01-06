@@ -213,7 +213,7 @@ describe('McpOAuthTokenService', () => {
 			const invalidToken = 'invalid.jwt.token';
 
 			await expect(service.verifyAccessToken(invalidToken)).rejects.toThrow(
-				'Invalid access token: JWT verification failed',
+				'JWT Verification Failed',
 			);
 		});
 
@@ -225,7 +225,7 @@ describe('McpOAuthTokenService', () => {
 			});
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
-				'Invalid access token: JWT verification failed',
+				'JWT Verification Failed',
 			);
 		});
 
@@ -237,7 +237,7 @@ describe('McpOAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.verifyAccessToken(accessToken)).rejects.toThrow(
-				'Invalid access token: not found in database',
+				'Access Token Not Found in Database',
 			);
 		});
 	});
@@ -261,7 +261,7 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -273,7 +273,7 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(invalidToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 
 		it('should return null when user not found', async () => {
@@ -292,7 +292,7 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 	});
 

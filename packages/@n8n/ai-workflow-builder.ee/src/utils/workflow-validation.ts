@@ -27,6 +27,7 @@ export function formatWorkflowValidation(validation: ProgrammaticChecksResult | 
 	const violationLines = formatViolationsByCategory([
 		['Connections', validation.connections],
 		['Trigger', validation.trigger],
+		['Nodes', validation.nodes],
 		['Agent Prompt', validation.agentPrompt],
 		['Tools', validation.tools],
 		['From AI', validation.fromAi],

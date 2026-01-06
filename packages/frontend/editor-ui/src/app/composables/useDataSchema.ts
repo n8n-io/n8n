@@ -319,7 +319,7 @@ const icons = {
 	object: DATA_TYPE_ICON_MAP.object,
 	array: DATA_TYPE_ICON_MAP.array,
 	['string']: DATA_TYPE_ICON_MAP.string,
-	null: 'case-upper',
+	null: 'square-minus',
 	['number']: DATA_TYPE_ICON_MAP.number,
 	['boolean']: DATA_TYPE_ICON_MAP.boolean,
 	function: 'code',

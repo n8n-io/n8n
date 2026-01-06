@@ -13,13 +13,12 @@ import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 
 vi.mock('@/app/composables/useCanvasOperations');
 vi.mock('@/app/composables/useWorkflowHelpers');
 vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
-vi.mock('@/app/composables/useWorkflowActivate');
+vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
 vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
@@ -59,13 +58,6 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	}),
 }));
 
-const updateWorkflowActivationMock = vi.fn();
-vi.mock('@/app/composables/useWorkflowActivate', () => ({
-	useWorkflowActivate: () => ({
-		updateWorkflowActivation: updateWorkflowActivationMock,
-	}),
-}));
-
 describe('useWorkflowCommands', () => {
 	let mockWorkflow: Ref<IWorkflowDb>;
 	let mockUIStore: ReturnType<typeof useUIStore>;
@@ -95,9 +87,10 @@ describe('useWorkflowCommands', () => {
 
 		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
-		updateWorkflowActivationMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
+		// Mark workflow as existing by adding it to workflowsById
+		mockWorkflowsStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -296,47 +289,48 @@ describe('useWorkflowCommands', () => {
 		});
 	});
 
-	describe('activate/deactivate commands', () => {
-		it('should show activate command when workflow is inactive', () => {
-			mockWorkflowsStore.workflow.active = false;
-
+	describe('publish/unpublish commands', () => {
+		it('should show publish command when user has update permission and workflow is not archived', () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
-			expect(activateCommand).toBeDefined();
-			expect(deactivateCommand).toBeUndefined();
+			expect(publishCommand).toBeDefined();
 		});
 
-		it('should show deactivate command when workflow is active', () => {
-			mockWorkflowsStore.workflow.active = true;
-
+		it('should show unpublish command when user has update permission and workflow is not archived', () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
-			expect(activateCommand).toBeUndefined();
-			expect(deactivateCommand).toBeDefined();
+			expect(unpublishCommand).toBeDefined();
 		});
 
-		it('should not show activate/deactivate commands when workflow is archived', () => {
+		it('should not show publish/unpublish commands when workflow is archived', () => {
 			mockWorkflowsStore.workflow.isArchived = true;
 
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
-			expect(activateCommand).toBeUndefined();
-			expect(deactivateCommand).toBeUndefined();
+			expect(publishCommand).toBeUndefined();
+			expect(unpublishCommand).toBeUndefined();
 		});
 
-		it('should handle activate workflow', async () => {
+		it('should handle publish workflow', async () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
-			await activateCommand?.handler?.();
+			await publishCommand?.handler?.();
 
-			expect(updateWorkflowActivationMock).toHaveBeenCalledWith('workflow-123', true);
+			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('publishWorkflow');
+		});
+
+		it('should handle unpublish workflow', async () => {
+			const { commands } = useWorkflowCommands();
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
+
+			await unpublishCommand?.handler?.();
+
+			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('unpublishWorkflow');
 		});
 	});
 
@@ -493,7 +487,8 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
-			mockWorkflowsStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			// For new workflows, remove from workflowsById so isNewWorkflow returns true
+			mockWorkflowsStore.workflowsById = {};
 			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
 
 			const { commands } = useWorkflowCommands();

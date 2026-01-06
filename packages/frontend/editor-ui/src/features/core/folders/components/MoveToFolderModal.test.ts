@@ -84,6 +84,7 @@ const homeProject = createProjectSharingData();
 const enableSharing = {
 	enterprise: {
 		sharing: true,
+		projects: { team: { limit: -1 } },
 	},
 } as FrontendSettings;
 
@@ -152,7 +153,9 @@ describe('MoveToFolderModal', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings = {
-			enterprise: {},
+			enterprise: {
+				projects: { team: { limit: -1 } },
+			},
 		} as FrontendSettings;
 
 		credentialsStore = mockedStore(useCredentialsStore);

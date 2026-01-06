@@ -349,6 +349,8 @@ describe('ProjectVariables', () => {
 			const { getByTestId, queryAllByTestId } = renderComponent();
 			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
+			// Open filter popover first
+			await userEvent.click(getByTestId('resources-list-filters-trigger'));
 			await userEvent.click(getByTestId('variable-filter-incomplete'));
 
 			expect(queryAllByTestId('variables-row')).toHaveLength(1);

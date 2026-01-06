@@ -118,6 +118,7 @@ describe('AiController', () => {
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
+				id: '12345',
 				text: 'Create a workflow',
 				type: 'message',
 				role: 'user',
@@ -146,6 +147,8 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 				{
+					id: '12345',
+					featureFlags: undefined,
 					message: 'Create a workflow',
 					workflowContext: {
 						currentWorkflow: { id: 'workflow123' },
@@ -471,6 +474,71 @@ describe('AiController', () => {
 			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
 				payload.workflowId,
 				request.user,
+			);
+		});
+	});
+
+	describe('truncateMessages', () => {
+		it('should call workflowBuilderService.truncateMessagesAfter with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				payload.messageId,
+			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should return success: true when truncation succeeds', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should return success: false when truncation fails', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(false);
+
+			const result = await controller.truncateMessages(request, response, payload);
+
+			expect(result).toEqual({ success: false });
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+				messageId: 'message456',
+			};
+
+			const mockError = new Error('Database error');
+			workflowBuilderService.truncateMessagesAfter.mockRejectedValue(mockError);
+
+			await expect(controller.truncateMessages(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				payload.messageId,
 			);
 		});
 	});

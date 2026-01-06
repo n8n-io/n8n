@@ -80,6 +80,13 @@ export async function process(
 		input: [],
 	};
 
+	const checkModelAvailable = (model: BaseChatModel | null): model is BaseChatModel => {
+		if (!model) {
+			throw new NodeOperationError(this.getNode(), 'Chat Model is required');
+		}
+		return true;
+	};
+
 	if (guardrails.pii?.value) {
 		const { entities } = guardrails.pii.value;
 		stageGuardrails.preflight.push({
@@ -121,10 +128,6 @@ export async function process(
 	}
 
 	if (operation === 'classify') {
-		if (!model) {
-			throw new NodeOperationError(this.getNode(), 'Chat Model is required for classify operation');
-		}
-
 		if (guardrails.keywords) {
 			stageGuardrails.input.push({
 				name: 'keywords',
@@ -132,7 +135,7 @@ export async function process(
 			});
 		}
 
-		if (guardrails.jailbreak?.value) {
+		if (guardrails.jailbreak?.value && checkModelAvailable(model)) {
 			const { prompt, threshold } = guardrails.jailbreak.value;
 			stageGuardrails.input.push({
 				name: 'jailbreak',
@@ -145,7 +148,7 @@ export async function process(
 			});
 		}
 
-		if (guardrails.nsfw?.value) {
+		if (guardrails.nsfw?.value && checkModelAvailable(model)) {
 			const { prompt, threshold } = guardrails.nsfw.value;
 			stageGuardrails.input.push({
 				name: 'nsfw',
@@ -158,7 +161,7 @@ export async function process(
 			});
 		}
 
-		if (guardrails.topicalAlignment?.value) {
+		if (guardrails.topicalAlignment?.value && checkModelAvailable(model)) {
 			const { prompt, threshold } = guardrails.topicalAlignment.value;
 			stageGuardrails.input.push({
 				name: 'topicalAlignment',
@@ -171,7 +174,7 @@ export async function process(
 			});
 		}
 
-		if (guardrails.custom?.guardrail) {
+		if (guardrails.custom?.guardrail && checkModelAvailable(model)) {
 			for (const customGuardrail of guardrails.custom.guardrail) {
 				const { prompt, threshold, name } = customGuardrail;
 				stageGuardrails.input.push({

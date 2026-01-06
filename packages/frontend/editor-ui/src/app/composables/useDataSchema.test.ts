@@ -5,6 +5,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
+	createRunExecutionData,
 	NodeConnectionTypes,
 	type INodeExecutionData,
 	type ITaskDataConnections,
@@ -731,7 +732,7 @@ describe('useDataSchema', () => {
 
 		const name = 'a';
 		const makeMockData = (data: ITaskDataConnections | undefined, runDataKey?: string) => ({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						[runDataKey ?? name]: [
@@ -739,7 +740,7 @@ describe('useDataSchema', () => {
 						],
 					},
 				},
-			},
+			}),
 		});
 
 		const mockExecutionDataMarker = Symbol() as unknown as INodeExecutionData[];
@@ -757,8 +758,16 @@ describe('useDataSchema', () => {
 			[[null, 0, 0, null], []],
 			[[{ name }, 0, 0, null], []],
 			[[{ name }, 0, 0, { data: undefined }], []],
-			[[{ name }, 0, 0, { data: { resultData: { runData: {} } } }], []],
-			[[{ name }, 0, 0, { data: { resultData: { runData: { [name]: [] } } } }], []],
+			[[{ name }, 0, 0, { data: createRunExecutionData({ resultData: { runData: {} } }) }], []],
+			[
+				[
+					{ name },
+					0,
+					0,
+					{ data: createRunExecutionData({ resultData: { runData: { [name]: [] } } }) },
+				],
+				[],
+			],
 			[[{ name }, 0, 0, makeMockData(undefined)], []],
 			[[{ name }, 1, 0, makeMockData({})], []],
 			[[{ name }, -1, 0, makeMockData({})], []],
@@ -795,7 +804,7 @@ describe('useDataSchema', () => {
 					2,
 					1,
 					{
-						data: {
+						data: createRunExecutionData({
 							resultData: {
 								runData: {
 									[name]: [
@@ -821,7 +830,7 @@ describe('useDataSchema', () => {
 									],
 								},
 							},
-						},
+						}),
 					},
 				],
 				mockExecutionDataMarker,

@@ -6,7 +6,6 @@ import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators'
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,6 +16,7 @@ import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')
@@ -31,6 +31,7 @@ export class InvitationController {
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -64,7 +65,7 @@ export class InvitationController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (!(await this.ownershipService.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);

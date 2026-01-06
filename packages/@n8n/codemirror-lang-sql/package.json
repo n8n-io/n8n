@@ -1,6 +1,6 @@
 {
   "name": "@n8n/codemirror-lang-sql",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "SQL + n8n expression language support for CodeMirror 6",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -8,6 +8,7 @@
     "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
     "generate": "pnpm generate:sql:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
+    "test:unit": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",

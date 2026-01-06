@@ -23,6 +23,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 
+	const workflowsCountLoaded = ref(false);
 	const totalWorkflowCount = ref<number>(0);
 
 	// Resource that is currently being dragged
@@ -98,6 +99,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<number> {
+		workflowsCountLoaded.value = false;
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			{ projectId, parentFolderId },
@@ -105,6 +107,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			true,
 		);
 		totalWorkflowCount.value = count;
+		workflowsCountLoaded.value = true;
 		return count;
 	}
 
@@ -348,6 +351,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		createFolder,
 		getFolderPath,
 		totalWorkflowCount,
+		workflowsCountLoaded,
 		deleteFolder,
 		deleteFoldersFromCache,
 		renameFolder,
