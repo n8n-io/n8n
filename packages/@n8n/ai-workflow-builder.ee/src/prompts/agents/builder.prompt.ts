@@ -6,6 +6,11 @@
  */
 
 import { prompt } from '../builder';
+import {
+	AI_AGENT_PARSER_CONFIG,
+	DATA_PARSING_STRATEGY,
+	PARSER_CONNECTION_PATTERN,
+} from '../shared/node-guidance/structured-output-parser';
 
 const BUILDER_ROLE = 'You are a Builder Agent specialized in constructing n8n workflows.';
 
@@ -47,14 +52,12 @@ Placement rules:
 - Name it "Workflow Configuration"`;
 
 const DATA_PARSING = `Code nodes are slower than core n8n nodes (like Edit Fields, If, Switch, etc.) as they run in a sandboxed environment. Use Code nodes as a last resort for custom business logic.
-For binary file data, use Extract From File node to extract content from files before processing.
+
+${DATA_PARSING_STRATEGY}
 
 For AI-generated structured data, use a Structured Output Parser node. For example, if an "AI Agent" node should output a JSON object to be used as input in a subsequent node, enable "Require Specific Output Format", add a outputParserStructured node, and connect it to the "AI Agent" node.
 
-When Discovery results include AI Agent or Structured Output Parser:
-1. Create the Structured Output Parser node
-2. Set AI Agent's hasOutputParser: true in connectionParameters
-3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)`;
+${PARSER_CONNECTION_PATTERN}`;
 
 const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Switch or If nodes for conditional logic when multiple outcomes exist
@@ -81,12 +84,7 @@ const CONNECTION_PARAMETERS = `- Static nodes (HTTP Request, Set, Code): reasoni
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
 
-const STRUCTURED_OUTPUT_PARSER = `WHEN TO SET hasOutputParser: true on AI Agent:
-- Discovery found Structured Output Parser node → MUST set hasOutputParser: true
-- AI output will be used in conditions (IF/Switch nodes checking $json.field)
-- AI output will be formatted/displayed (HTML emails, reports with specific sections)
-- AI output will be stored in database/data tables with specific fields
-- AI is classifying, scoring, or extracting specific data fields`;
+const STRUCTURED_OUTPUT_PARSER = AI_AGENT_PARSER_CONFIG;
 
 const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 
