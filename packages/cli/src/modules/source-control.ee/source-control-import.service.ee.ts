@@ -61,7 +61,7 @@ import {
 	getWorkflowExportPath,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../variables/variables.service.ee';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type {
 	ExportableCredential,
 	StatusExportableCredential,
