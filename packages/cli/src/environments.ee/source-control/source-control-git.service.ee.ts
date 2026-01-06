@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
 import { UnexpectedError } from 'n8n-workflow';
+import { proxyFromEnv } from 'proxy-from-env';
 import path from 'path';
 import type {
 	CommitResult,
@@ -46,7 +47,7 @@ export class SourceControlGitService {
 		private readonly logger: Logger,
 		private readonly ownershipService: OwnershipService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
-	) {}
+	) { }
 
 	/**
 	 * Run pre-checks before initialising git
@@ -124,7 +125,6 @@ export class SourceControlGitService {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
 			const escapeShellArg = (arg: string) => `'${arg.replace(/'/g, "'\"'\"'")}'`;
 			const credentialScript = `!f() { echo username=${escapeShellArg(credentials.username)}; echo password=${escapeShellArg(credentials.password)}; }; f`;
-
 			const httpsGitOptions = {
 				...this.gitOptions,
 				config: [
@@ -133,7 +133,10 @@ export class SourceControlGitService {
 					'credential.useHttpPath=true',
 				],
 			};
-
+			const httpProxy = proxyFromEnv.getProxyForUrl(preferences.repositoryUrl) ?? undefined;
+			if (httpProxy) {
+				httpsGitOptions.config?.push(`https.proxy=${httpProxy}`);
+			}
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
 		} else if (preferences.connectionType === 'ssh') {
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
