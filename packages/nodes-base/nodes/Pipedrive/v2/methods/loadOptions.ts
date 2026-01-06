@@ -223,6 +223,39 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 	return sortOptionParameters(labels.map(({ id, name }) => ({ value: id, name })));
 }
 
+/**
+ * Get all lead channels
+ * Uses v1 endpoint: /leadFields
+ */
+export async function getLeadChannels(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const { data } = await pipedriveApiRequest.call(
+		this,
+		'GET',
+		'/leadFields',
+		{},
+		{},
+		{ apiVersion: 'v1' },
+	);
+	for (const field of data as Array<{
+		key: string;
+		options?: Array<{ id: number; label: string }>;
+	}>) {
+		if (field.key === 'channel' && field.options) {
+			for (const option of field.options) {
+				returnData.push({
+					name: option.label,
+					value: option.id,
+				});
+			}
+		}
+	}
+
+	return sortOptionParameters(returnData);
+}
+
 export async function getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	return await getLabelsForResource.call(this, '/dealFields');
 }
