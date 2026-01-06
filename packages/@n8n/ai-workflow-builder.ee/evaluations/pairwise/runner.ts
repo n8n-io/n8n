@@ -4,7 +4,7 @@ import pc from 'picocolors';
 import { createPairwiseTarget, generateWorkflow } from './generator';
 import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
 import { pairwiseLangsmithEvaluator } from './metrics-builder';
-import type { PairwiseExample } from './types';
+import { isPairwiseExample, type PairwiseExample } from './types';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
@@ -389,7 +389,11 @@ export async function runPairwiseLangsmithEvaluation(
 		const allExamples: PairwiseExample[] = [];
 		log.verbose('➔ Fetching examples from dataset...');
 		for await (const example of lsClient.listExamples({ datasetId })) {
-			allExamples.push(example as PairwiseExample);
+			if (isPairwiseExample(example)) {
+				allExamples.push(example);
+			} else {
+				log.verbose(`⚠️ Skipping invalid example: ${example.id}`);
+			}
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
