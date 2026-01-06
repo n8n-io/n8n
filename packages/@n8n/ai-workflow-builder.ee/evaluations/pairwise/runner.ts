@@ -36,7 +36,81 @@ function getCategories(metadata: unknown): string[] | undefined {
 	return undefined;
 }
 
-/** Filter examples by notion_id, technique, doSearch, dontSearch, or limit count */
+/** Filter examples by a search string in a specific eval field (do or don't) */
+function filterByEvalField(
+	examples: PairwiseExample[],
+	field: 'dos' | 'donts',
+	search: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	const searchLower = search.toLowerCase();
+	const fieldLabel = field === 'dos' ? 'do' : "don't";
+
+	log.warn(`🔍 Filtering by ${fieldLabel} containing: "${search}"`);
+	const filtered = examples.filter((e) =>
+		e.inputs.evals[field].toLowerCase().includes(searchLower),
+	);
+
+	if (filtered.length === 0) {
+		throw new Error(`No examples found with ${fieldLabel} containing: "${search}"`);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) matching "${search}" in ${fieldLabel}`);
+	return filtered;
+}
+
+/** Filter examples by notion_id */
+function filterByNotionId(
+	examples: PairwiseExample[],
+	notionId: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	log.warn(`🔍 Filtering by notion_id: ${notionId}`);
+	const filtered = examples.filter((e) => getNotionId(e.metadata) === notionId);
+
+	if (filtered.length === 0) {
+		const availableIds = examples.map((e) => getNotionId(e.metadata)).filter(Boolean);
+		throw new Error(
+			`No example found with notion_id: ${notionId}. Available: ${availableIds.join(', ')}`,
+		);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) with notion_id "${notionId}"`);
+	return filtered;
+}
+
+/** Filter examples by technique/category */
+function filterByTechnique(
+	examples: PairwiseExample[],
+	technique: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	log.warn(`🔍 Filtering by technique: ${technique}`);
+	const filtered = examples.filter((e) => {
+		const categories = getCategories(e.metadata);
+		return categories?.includes(technique);
+	});
+
+	if (filtered.length === 0) {
+		const availableTechniques = new Set<string>();
+		for (const example of examples) {
+			const categories = getCategories(example.metadata);
+			if (categories) {
+				for (const category of categories) {
+					availableTechniques.add(category);
+				}
+			}
+		}
+		throw new Error(
+			`No examples found with technique: ${technique}. Available techniques: ${Array.from(availableTechniques).sort().join(', ')}`,
+		);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) with technique "${technique}"`);
+	return filtered;
+}
+
+/** Filter examples by all provided criteria progressively */
 function filterExamples(
 	allExamples: PairwiseExample[],
 	notionId: string | undefined,
@@ -46,87 +120,30 @@ function filterExamples(
 	maxExamples: number | undefined,
 	log: EvalLogger,
 ): PairwiseExample[] {
+	let filtered = allExamples;
+
 	if (notionId) {
-		log.warn(`🔍 Filtering by notion_id: ${notionId}`);
-		const filtered = allExamples.filter((e) => getNotionId(e.metadata) === notionId);
-
-		if (filtered.length === 0) {
-			const availableIds = allExamples.map((e) => getNotionId(e.metadata)).filter(Boolean);
-			throw new Error(
-				`No example found with notion_id: ${notionId}. Available: ${availableIds.join(', ')}`,
-			);
-		}
-
-		log.success(`✅ Found ${filtered.length} example(s)`);
-		log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
-		return filtered;
+		filtered = filterByNotionId(filtered, notionId, log);
 	}
 
 	if (technique) {
-		log.warn(`🔍 Filtering by technique: ${technique}`);
-		const filtered = allExamples.filter((e) => {
-			const categories = getCategories(e.metadata);
-			return categories?.includes(technique);
-		});
-
-		if (filtered.length === 0) {
-			const availableTechniques = new Set<string>();
-			for (const example of allExamples) {
-				const categories = getCategories(example.metadata);
-				if (categories) {
-					for (const category of categories) {
-						availableTechniques.add(category);
-					}
-				}
-			}
-			throw new Error(
-				`No examples found with technique: ${technique}. Available techniques: ${Array.from(availableTechniques).sort().join(', ')}`,
-			);
-		}
-
-		log.success(`✅ Found ${filtered.length} example(s) with technique "${technique}"`);
-		log.verbose(`First example metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
-		return filtered;
+		filtered = filterByTechnique(filtered, technique, log);
 	}
 
 	if (doSearch) {
-		const searchLower = doSearch.toLowerCase();
-		log.warn(`🔍 Filtering by dos containing: "${doSearch}"`);
-		const filtered = allExamples.filter((e) =>
-			e.inputs.evals.dos.toLowerCase().includes(searchLower),
-		);
-
-		if (filtered.length === 0) {
-			throw new Error(`No examples found with dos containing: "${doSearch}"`);
-		}
-
-		log.success(`✅ Found ${filtered.length} example(s) matching "${doSearch}" in dos`);
-		log.verbose(`First example evals: ${JSON.stringify(filtered[0].inputs.evals, null, 2)}`);
-		return filtered;
+		filtered = filterByEvalField(filtered, 'dos', doSearch, log);
 	}
 
 	if (dontSearch) {
-		const searchLower = dontSearch.toLowerCase();
-		log.warn(`🔍 Filtering by don'ts containing: "${dontSearch}"`);
-		const filtered = allExamples.filter((e) =>
-			e.inputs.evals.donts.toLowerCase().includes(searchLower),
-		);
-
-		if (filtered.length === 0) {
-			throw new Error(`No examples found with don'ts containing: "${dontSearch}"`);
-		}
-
-		log.success(`✅ Found ${filtered.length} example(s) matching "${dontSearch}" in don'ts`);
-		log.verbose(`First example evals: ${JSON.stringify(filtered[0].inputs.evals, null, 2)}`);
-		return filtered;
+		filtered = filterByEvalField(filtered, 'donts', dontSearch, log);
 	}
 
 	if (maxExamples && maxExamples > 0) {
 		log.warn(`➔ Limiting to ${maxExamples} example(s)`);
-		return allExamples.slice(0, maxExamples);
+		filtered = filtered.slice(0, maxExamples);
 	}
 
-	return allExamples;
+	return filtered;
 }
 
 /** Log enabled feature flags */
@@ -175,29 +192,43 @@ function validatePairwiseInputs(numJudges: number, numGenerations: number): void
 	}
 }
 
-type RunType = 'full' | 'by-category' | 'by-id' | 'by-do' | 'by-dont';
-
 /** Determine run type and filter value for metadata */
 function determineRunType(options: {
 	notionId?: string;
 	technique?: string;
 	doSearch?: string;
 	dontSearch?: string;
-}): { runType: RunType; filterValue: string | undefined } {
+}): { runType: string; filterValue: string | undefined } {
 	const { notionId, technique, doSearch, dontSearch } = options;
+
+	const filters: string[] = [];
+	const values: string[] = [];
+
 	if (notionId) {
-		return { runType: 'by-id', filterValue: notionId };
+		filters.push('id');
+		values.push(`id:${notionId}`);
 	}
 	if (technique) {
-		return { runType: 'by-category', filterValue: technique };
+		filters.push('category');
+		values.push(`category:${technique}`);
 	}
 	if (doSearch) {
-		return { runType: 'by-do', filterValue: doSearch };
+		filters.push('do');
+		values.push(`do:${doSearch}`);
 	}
 	if (dontSearch) {
-		return { runType: 'by-dont', filterValue: dontSearch };
+		filters.push('dont');
+		values.push(`dont:${dontSearch}`);
 	}
-	return { runType: 'full', filterValue: undefined };
+
+	if (filters.length === 0) {
+		return { runType: 'full', filterValue: undefined };
+	}
+
+	return {
+		runType: `by-${filters.join('-and-')}`,
+		filterValue: values.join(' '),
+	};
 }
 
 /** Display results for local pairwise evaluation */
