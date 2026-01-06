@@ -55,6 +55,18 @@ const generatedTestCasesSchema = z.object({
 	),
 });
 
+/** Inferred type from the Zod schema */
+type GeneratedTestCasesOutput = z.infer<typeof generatedTestCasesSchema>;
+
+/** Parse and validate LLM output using the Zod schema */
+function parseTestCasesOutput(value: unknown): GeneratedTestCasesOutput {
+	const parsed = generatedTestCasesSchema.safeParse(value);
+	if (!parsed.success) {
+		throw new Error(`Invalid LLM output: ${parsed.error.message}`);
+	}
+	return parsed.data;
+}
+
 /**
  * System prompt for test case generation.
  */
@@ -155,10 +167,13 @@ export function createTestCaseGenerator(
 		async generate(): Promise<GeneratedTestCase[]> {
 			const humanMessage = buildHumanMessage(count, focus);
 
-			const result = await llmWithStructuredOutput.invoke([
+			const rawResult = await llmWithStructuredOutput.invoke([
 				new SystemMessage(systemPrompt),
 				new HumanMessage(humanMessage),
 			]);
+
+			// Validate and parse the LLM output using Zod
+			const result = parseTestCasesOutput(rawResult);
 
 			return result.testCases;
 		},

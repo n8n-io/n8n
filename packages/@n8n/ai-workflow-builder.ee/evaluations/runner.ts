@@ -359,7 +359,8 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 				examples.push(example);
 			}
 		} catch (error) {
-			throw new Error(`Dataset "${datasetName}" not found: ${error}`);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new Error(`Dataset "${datasetName}" not found: ${errorMessage}`);
 		}
 
 		data = examples;

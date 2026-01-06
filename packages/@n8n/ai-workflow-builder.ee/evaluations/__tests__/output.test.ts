@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -10,6 +11,36 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 import type { ExampleResult, RunSummary } from '../harness-types';
 import { createArtifactSaver } from '../output';
+
+/** Type for parsed workflow JSON */
+interface ParsedWorkflow {
+	name: string;
+	nodes: unknown[];
+	connections: Record<string, unknown>;
+}
+
+/** Type for parsed feedback JSON */
+interface ParsedFeedback {
+	index: number;
+	status: string;
+	evaluators: Array<{
+		name: string;
+		feedback: Array<{ key: string; score: number }>;
+	}>;
+}
+
+/** Type for parsed summary JSON */
+interface ParsedSummary {
+	totalExamples: number;
+	passed: number;
+	failed: number;
+	passRate: number;
+	timestamp: string;
+	evaluatorAverages: Record<string, number>;
+	results: Array<{
+		prompt: string;
+	}>;
+}
 
 /** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
@@ -110,7 +141,7 @@ describe('Artifact Saver', () => {
 			const workflowPath = path.join(tempDir, 'example-001', 'workflow.json');
 			expect(fs.existsSync(workflowPath)).toBe(true);
 
-			const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf-8'));
+			const workflow = jsonParse<ParsedWorkflow>(fs.readFileSync(workflowPath, 'utf-8'));
 			expect(workflow.name).toBe('Test Workflow');
 			expect(workflow.nodes).toHaveLength(1);
 			expect(workflow.connections).toEqual({});
@@ -125,7 +156,7 @@ describe('Artifact Saver', () => {
 			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
 			expect(fs.existsSync(feedbackPath)).toBe(true);
 
-			const feedback = JSON.parse(fs.readFileSync(feedbackPath, 'utf-8'));
+			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
 			expect(feedback.index).toBe(1);
 			expect(feedback.status).toBe('pass');
 			expect(feedback.evaluators).toHaveLength(2); // llm-judge and programmatic
@@ -138,15 +169,13 @@ describe('Artifact Saver', () => {
 			saver.saveExample(result);
 
 			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
-			const feedback = JSON.parse(fs.readFileSync(feedbackPath, 'utf-8'));
+			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
 
-			const llmJudge = feedback.evaluators.find((e: { name: string }) => e.name === 'llm-judge');
-			expect(llmJudge.feedback).toHaveLength(2);
+			const llmJudge = feedback.evaluators.find((e) => e.name === 'llm-judge');
+			expect(llmJudge?.feedback).toHaveLength(2);
 
-			const programmatic = feedback.evaluators.find(
-				(e: { name: string }) => e.name === 'programmatic',
-			);
-			expect(programmatic.feedback).toHaveLength(1);
+			const programmatic = feedback.evaluators.find((e) => e.name === 'programmatic');
+			expect(programmatic?.feedback).toHaveLength(1);
 		});
 
 		it('should save error to error.txt when present', () => {
@@ -201,7 +230,7 @@ describe('Artifact Saver', () => {
 			const summaryPath = path.join(tempDir, 'summary.json');
 			expect(fs.existsSync(summaryPath)).toBe(true);
 
-			const savedSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+			const savedSummary = jsonParse<ParsedSummary>(fs.readFileSync(summaryPath, 'utf-8'));
 			expect(savedSummary.totalExamples).toBe(3);
 			expect(savedSummary.passed).toBe(2);
 			expect(savedSummary.failed).toBe(1);
@@ -213,7 +242,7 @@ describe('Artifact Saver', () => {
 			saver.saveSummary(createMockSummary(), [createMockResult()]);
 
 			const summaryPath = path.join(tempDir, 'summary.json');
-			const savedSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+			const savedSummary = jsonParse<ParsedSummary>(fs.readFileSync(summaryPath, 'utf-8'));
 
 			expect(savedSummary.timestamp).toBeDefined();
 			expect(new Date(savedSummary.timestamp).getTime()).not.toBeNaN();
@@ -226,7 +255,7 @@ describe('Artifact Saver', () => {
 			saver.saveSummary(createMockSummary(), results);
 
 			const summaryPath = path.join(tempDir, 'summary.json');
-			const savedSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+			const savedSummary = jsonParse<ParsedSummary>(fs.readFileSync(summaryPath, 'utf-8'));
 
 			expect(savedSummary.evaluatorAverages).toBeDefined();
 			expect(savedSummary.evaluatorAverages['llm-judge']).toBeCloseTo(0.85);
@@ -241,7 +270,7 @@ describe('Artifact Saver', () => {
 			saver.saveSummary(createMockSummary(), results);
 
 			const summaryPath = path.join(tempDir, 'summary.json');
-			const savedSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+			const savedSummary = jsonParse<ParsedSummary>(fs.readFileSync(summaryPath, 'utf-8'));
 
 			expect(savedSummary.results[0].prompt.length).toBeLessThan(longPrompt.length);
 			expect(savedSummary.results[0].prompt).toContain('...');

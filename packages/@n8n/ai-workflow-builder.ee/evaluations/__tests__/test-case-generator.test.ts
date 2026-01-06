@@ -6,7 +6,6 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage } from '@langchain/core/messages';
 import { mock } from 'jest-mock-extended';
 
 import {
@@ -14,6 +13,52 @@ import {
 	basicTestCases,
 	type GeneratedTestCase,
 } from '../test-case-generator';
+
+/** Type guard for message objects with content */
+function isMessageWithContent(msg: unknown): msg is { content: unknown } {
+	return msg !== null && typeof msg === 'object' && 'content' in msg;
+}
+
+/** Type guard for objects with _getType method */
+function hasGetTypeMethod(msg: unknown): msg is { _getType: () => string } {
+	if (msg === null || typeof msg !== 'object') return false;
+	if (!('_getType' in msg)) return false;
+	const obj = msg as { _getType: unknown };
+	return typeof obj._getType === 'function';
+}
+
+/** Helper to extract messages from mock invoke calls */
+function getMessagesFromMockCall(mockInvoke: jest.Mock): { system: string; human: string } {
+	const calls = mockInvoke.mock.calls;
+	if (calls.length === 0) throw new Error('No calls recorded');
+
+	const firstCall = calls[0];
+	if (!Array.isArray(firstCall) || firstCall.length === 0) {
+		throw new Error('First call has no arguments');
+	}
+
+	const messages = firstCall[0];
+	if (!Array.isArray(messages) || messages.length < 2) {
+		throw new Error('Messages array invalid');
+	}
+
+	const systemMsg = messages[0];
+	const humanMsg = messages[1];
+
+	// Type-safe content extraction
+	const getContent = (msg: unknown): string => {
+		if (isMessageWithContent(msg)) {
+			const content = msg.content;
+			if (typeof content === 'string') return content;
+		}
+		return '';
+	};
+
+	return {
+		system: getContent(systemMsg),
+		human: getContent(humanMsg),
+	};
+}
 
 describe('Test Case Generator', () => {
 	describe('createTestCaseGenerator()', () => {
@@ -49,19 +94,16 @@ describe('Test Case Generator', () => {
 			const generator = createTestCaseGenerator(mockLlm, { count: 20 });
 			await generator.generate();
 
-			// The invoke receives an array of messages
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
-			const humanMessageContent = messages[1].content as string;
-			expect(humanMessageContent).toContain('20');
+			const { human } = getMessagesFromMockCall(mockInvoke);
+			expect(human).toContain('20');
 		});
 
 		it('should use default count of 10', async () => {
 			const generator = createTestCaseGenerator(mockLlm);
 			await generator.generate();
 
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
-			const humanMessageContent = messages[1].content as string;
-			expect(humanMessageContent).toContain('10');
+			const { human } = getMessagesFromMockCall(mockInvoke);
+			expect(human).toContain('10');
 		});
 
 		it('should include custom focus in generated prompt', async () => {
@@ -70,9 +112,8 @@ describe('Test Case Generator', () => {
 			});
 			await generator.generate();
 
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
-			const humanMessageContent = messages[1].content as string;
-			expect(humanMessageContent).toContain('API integrations only');
+			const { human } = getMessagesFromMockCall(mockInvoke);
+			expect(human).toContain('API integrations only');
 		});
 
 		it('should return properly typed test cases', async () => {
@@ -116,28 +157,48 @@ describe('Test Case Generator', () => {
 			const generator = createTestCaseGenerator(mockLlm, { complexity: 'complex' });
 			await generator.generate();
 
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
-			const humanMessageContent = messages[1].content as string;
-			expect(humanMessageContent.toLowerCase()).toContain('complex');
+			const { human } = getMessagesFromMockCall(mockInvoke);
+			expect(human.toLowerCase()).toContain('complex');
 		});
 
 		it('should use simple complexity focus', async () => {
 			const generator = createTestCaseGenerator(mockLlm, { complexity: 'simple' });
 			await generator.generate();
 
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
-			const humanMessageContent = messages[1].content as string;
-			expect(humanMessageContent.toLowerCase()).toContain('simple');
+			const { human } = getMessagesFromMockCall(mockInvoke);
+			expect(human.toLowerCase()).toContain('simple');
 		});
 
 		it('should include system prompt in messages', async () => {
 			const generator = createTestCaseGenerator(mockLlm);
 			await generator.generate();
 
-			const messages = mockInvoke.mock.calls[0][0] as BaseMessage[];
+			const calls = mockInvoke.mock.calls;
+			expect(calls.length).toBeGreaterThan(0);
+
+			// Extract messages from mock calls with proper type narrowing
+			const firstCall = calls[0];
+			if (!Array.isArray(firstCall) || firstCall.length === 0) {
+				throw new Error('Expected firstCall to be a non-empty array');
+			}
+			const firstArg = firstCall[0];
+			if (!Array.isArray(firstArg)) {
+				throw new Error('Expected first argument to be an array');
+			}
+			const messages = firstArg;
 			expect(messages).toHaveLength(2);
-			expect(messages[0]._getType()).toBe('system');
-			expect(messages[1]._getType()).toBe('human');
+
+			// Verify message types using type guard
+			const systemMsg = messages[0];
+			const humanMsg = messages[1];
+			expect(hasGetTypeMethod(systemMsg)).toBe(true);
+			expect(hasGetTypeMethod(humanMsg)).toBe(true);
+			if (hasGetTypeMethod(systemMsg)) {
+				expect(systemMsg._getType()).toBe('system');
+			}
+			if (hasGetTypeMethod(humanMsg)) {
+				expect(humanMsg._getType()).toBe('human');
+			}
 		});
 	});
 
