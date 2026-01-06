@@ -89,8 +89,11 @@ Pitfalls:
 
 Store data immediately after collection or generation:
 
-\`\`\`
-Trigger → Process Data → Storage Node → Continue Workflow
+\`\`\`mermaid
+flowchart LR
+    Trigger --> Process_Data["Process Data"]
+    Process_Data --> Storage_Node["Storage Node"]
+    Storage_Node --> Continue_Workflow["Continue Workflow"]
 \`\`\`
 
 Best for: Raw data preservation, audit trails, form submissions
@@ -99,8 +102,12 @@ Best for: Raw data preservation, audit trails, form submissions
 
 Collect multiple items and store them together:
 
-\`\`\`
-Trigger → Loop/Split → Process → Aggregate → Storage Node
+\`\`\`mermaid
+flowchart LR
+    Trigger --> Loop_Split["Loop/Split"]
+    Loop_Split --> Process["Process"]
+    Process --> Aggregate["Aggregate"]
+    Aggregate --> Storage_Node["Storage Node"]
 \`\`\`
 
 Best for: Processing lists, batch operations, scheduled aggregations
@@ -109,8 +116,11 @@ Best for: Processing lists, batch operations, scheduled aggregations
 
 Retrieve, modify, and update existing records:
 
-\`\`\`
-Trigger → Retrieve from Storage → Modify → Update Storage Node
+\`\`\`mermaid
+flowchart LR
+    Trigger --> Retrieve["Retrieve from Storage"]
+    Retrieve --> Modify["Modify"]
+    Modify --> Update_Storage["Update Storage Node"]
 \`\`\`
 
 Best for: Maintaining state, updating records, tracking changes
@@ -119,8 +129,11 @@ Best for: Maintaining state, updating records, tracking changes
 
 Query storage to retrieve specific records:
 
-\`\`\`
-Trigger → Query Storage Node → Use Retrieved Data → Continue Workflow
+\`\`\`mermaid
+flowchart LR
+    Trigger --> Query_Storage["Query Storage Node"]
+    Query_Storage --> Use_Data["Use Retrieved Data"]
+    Use_Data --> Continue_Workflow["Continue Workflow"]
 \`\`\`
 
 Best for: Enrichment, validation, conditional logic based on stored data
