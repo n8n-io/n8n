@@ -6,7 +6,6 @@ import type {
 	Feedback,
 	RunConfig,
 	EvaluationLifecycle,
-	EvaluationContext,
 } from '../harness-types';
 
 /** Helper to create a minimal valid workflow for tests */
@@ -130,15 +129,15 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should pass context from test case to evaluators', async () => {
+			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
+				expect(ctx.dos).toBe('Use Slack');
+				expect(ctx.donts).toBe('No HTTP');
+				return [{ key: 'contextual.score', score: 1 }];
+			};
+
 			const evaluator: Evaluator = {
 				name: 'contextual',
-				evaluate: jest
-					.fn()
-					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
-						expect(ctx.dos).toBe('Use Slack');
-						expect(ctx.donts).toBe('No HTTP');
-						return [{ key: 'contextual.score', score: 1 }];
-					}),
+				evaluate: jest.fn(evaluate),
 			};
 
 			const config: RunConfig = {
@@ -160,15 +159,15 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should merge global context with test case context', async () => {
+			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
+				expect(ctx.dos).toBe('Use Slack');
+				expect(ctx.donts).toBe('No HTTP');
+				return [{ key: 'merged.score', score: 1 }];
+			};
+
 			const evaluator: Evaluator = {
 				name: 'merged',
-				evaluate: jest
-					.fn()
-					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
-						expect(ctx.dos).toBe('Use Slack');
-						expect(ctx.donts).toBe('No HTTP');
-						return [{ key: 'merged.score', score: 1 }];
-					}),
+				evaluate: jest.fn(evaluate),
 			};
 
 			const config: RunConfig = {

@@ -2,8 +2,8 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import { createEvaluatorChain, invokeEvaluatorChain } from '../chains/evaluators/base';
+import type { SimpleWorkflow } from '../../../src/types/workflow';
+import { createEvaluatorChain, invokeEvaluatorChain } from '../../chains/evaluators/base';
 
 export interface PairwiseEvaluationInput {
 	evalCriteria: {

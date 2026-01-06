@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { SimpleWorkflow } from '../../../src/types/workflow';
 
 // ============================================================================
 // Types

@@ -3,9 +3,9 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
-import type { EvaluationInput } from '../types/evaluation';
+import { evaluateWorkflow } from '../../chains/workflow-evaluator';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
+import type { EvaluationInput } from '../../types/evaluation';
 
 const EVALUATOR_NAME = 'llm-judge';
 

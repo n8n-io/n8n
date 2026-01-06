@@ -58,12 +58,14 @@ function filterNodeTypes(
 }
 
 export function loadNodesFromFile(): INodeTypeDescription[] {
-	const nodesPath = join(__dirname, 'nodes.json');
+	const preferredPath = join(__dirname, '.data', 'nodes.json');
+	const legacyPath = join(__dirname, 'nodes.json');
+	const nodesPath = existsSync(preferredPath) ? preferredPath : legacyPath;
 
 	if (!existsSync(nodesPath)) {
 		throw new Error(
 			`nodes.json not found at ${nodesPath}. ` +
-				'Run n8n and export node definitions to evaluations/nodes.json',
+				'Run n8n and export node definitions to evaluations/.data/nodes.json',
 		);
 	}
 

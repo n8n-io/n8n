@@ -9,7 +9,7 @@
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { Evaluator, Feedback, RunConfig, EvaluationContext } from '../harness-types';
+import type { Evaluator, Feedback, RunConfig } from '../harness-types';
 
 // Mock langsmith/evaluation
 jest.mock('langsmith/evaluation', () => ({
@@ -319,8 +319,8 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should pass dataset-level context to evaluators', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
+			const { evaluate: langsmithEvaluate } = await import('langsmith/evaluation');
+			const mockEvaluate = langsmithEvaluate as jest.Mock;
 
 			let capturedTarget: (inputs: { prompt: string; evals?: unknown }) => Promise<unknown>;
 			mockEvaluate.mockImplementation(async (target, _options) => {
@@ -328,13 +328,13 @@ describe('Runner - LangSmith Mode', () => {
 				return undefined;
 			});
 
+			const evaluateContextual: Evaluator['evaluate'] = async (_workflow, ctx) => {
+				return [{ key: 'contextual.score', score: ctx.dos ? 1 : 0 }];
+			};
+
 			const evaluator: Evaluator = {
 				name: 'contextual',
-				evaluate: jest
-					.fn()
-					.mockImplementation((_workflow: SimpleWorkflow, ctx: EvaluationContext) => {
-						return [{ key: 'contextual.score', score: ctx.dos ? 1 : 0 }];
-					}),
+				evaluate: jest.fn(evaluateContextual),
 			};
 
 			const config: RunConfig = {

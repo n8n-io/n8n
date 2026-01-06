@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
-import { aggregateGenerations, type GenerationDetail } from '../multi-gen';
-import { runJudgePanel, type EvalCriteria } from '../pairwise/judge-panel';
+import { runJudgePanel, type EvalCriteria } from './judge-panel';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
+import { aggregateGenerations, type GenerationDetail } from '../../multi-gen';
 
 type MultiGenContext = EvaluationContext & {
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;

@@ -1,10 +1,10 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
 import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,
-} from '../programmatic/evaluators/workflow-similarity';
+} from '../../programmatic/evaluators/workflow-similarity';
 
 /**
  * Options for creating a similarity evaluator.

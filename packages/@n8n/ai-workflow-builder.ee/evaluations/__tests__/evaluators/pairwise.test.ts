@@ -14,7 +14,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 const mockRunJudgePanel = jest.fn();
 
 // Mock the judge panel module
-jest.mock('../../pairwise/judge-panel', () => ({
+jest.mock('../../evaluators/pairwise/judge-panel', () => ({
 	runJudgePanel: (...args: unknown[]): unknown => mockRunJudgePanel(...args),
 }));
 
