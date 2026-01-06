@@ -224,7 +224,7 @@ await evaluate(target, { data, evaluators, client });
 
 ### Harmonized Approach
 
-Both the main runner and the pairwise runner (`evaluations/pairwise/`) follow the same pattern:
+All evaluation targets in this package follow the same pattern:
 1. **Do NOT** wrap the target function with `traceable()`
 2. **Do** wrap inner operations (workflow generation, judge panels) with `traceable()` for child traces
 3. Let `evaluate()` handle target tracing automatically
