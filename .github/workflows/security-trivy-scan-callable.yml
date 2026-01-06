@@ -245,7 +245,7 @@ jobs:
             blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}
 
       - name: Generate Critical Vulnerability Blocks for Mission Security
-        if: steps.process_results.outputs.critical_count != '0'
+        if: steps.process_results.outputs.vulnerabilities_found == 'true' && steps.process_results.outputs.critical_count != '0'
         id: generate_critical_blocks
         run: |
           CRITICAL_BLOCKS_JSON=$(jq -c --arg image_ref "${{ inputs.image_ref }}" \
