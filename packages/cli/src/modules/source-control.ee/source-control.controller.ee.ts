@@ -11,10 +11,7 @@ import express from 'express';
 import type { PullResult } from 'simple-git';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
-import {
-	sourceControlLicensedMiddleware,
-	sourceControlLicensedAndEnabledMiddleware,
-} from './middleware/source-control-enabled-middleware.ee';
+import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
@@ -37,14 +34,14 @@ export class SourceControlController {
 		private readonly eventService: EventService,
 	) {}
 
-	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
+	@Get('/preferences', { skipAuth: true })
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
 		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
 	}
 
-	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@Post('/preferences')
 	@GlobalScope('sourceControl:manage')
 	async setPreferences(req: SourceControlRequest.UpdatePreferences) {
 		if (
@@ -91,7 +88,7 @@ export class SourceControlController {
 					throw error;
 				}
 			}
-			await this.sourceControlService.init();
+			await this.sourceControlService.start();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
@@ -109,7 +106,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Patch('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@Patch('/preferences')
 	@GlobalScope('sourceControl:manage')
 	async updatePreferences(req: SourceControlRequest.UpdatePreferences) {
 		try {
@@ -139,7 +136,7 @@ export class SourceControlController {
 					true,
 				);
 			}
-			await this.sourceControlService.init();
+			await this.sourceControlService.start();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			this.eventService.emit('source-control-settings-updated', {
 				branchName: resultingPreferences.branchName,
@@ -154,7 +151,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Post('/disconnect', { middlewares: [sourceControlLicensedMiddleware] })
+	@Post('/disconnect')
 	@GlobalScope('sourceControl:manage')
 	async disconnect(req: SourceControlRequest.Disconnect) {
 		try {
@@ -164,7 +161,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/get-branches', { middlewares: [sourceControlLicensedMiddleware] })
+	@Get('/get-branches')
 	async getBranches() {
 		try {
 			return await this.sourceControlService.getBranches();
@@ -173,7 +170,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@Post('/push-workfolder', { middlewares: [sourceControlEnabledMiddleware] })
 	async pushWorkfolder(
 		req: AuthenticatedRequest,
 		res: express.Response,
@@ -208,7 +205,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Post('/pull-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@Post('/pull-workfolder', { middlewares: [sourceControlEnabledMiddleware] })
 	@GlobalScope('sourceControl:pull')
 	async pullWorkfolder(
 		req: AuthenticatedRequest,
@@ -224,7 +221,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/reset-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@Get('/reset-workfolder', { middlewares: [sourceControlEnabledMiddleware] })
 	@GlobalScope('sourceControl:manage')
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		try {
@@ -234,7 +231,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
 			const result = await this.sourceControlService.getStatus(
@@ -247,7 +244,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
+	@Get('/status')
 	async status(req: SourceControlRequest.GetStatus) {
 		try {
 			return await this.sourceControlService.getStatus(
@@ -259,7 +256,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Post('/generate-key-pair', { middlewares: [sourceControlLicensedMiddleware] })
+	@Post('/generate-key-pair')
 	@GlobalScope('sourceControl:manage')
 	async generateKeyPair(
 		req: SourceControlRequest.GenerateKeyPair,
@@ -274,7 +271,7 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@Get('/remote-content/:type/:id', { middlewares: [sourceControlEnabledMiddleware] })
 	async getFileContent(
 		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
 	): Promise<{ content: IWorkflowToImport; type: SourceControlledFile['type'] }> {
