@@ -499,14 +499,14 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Mailing Latitude',
 				name: 'mailingLatitude',
 				type: 'number',
-				default: '',
+				default: undefined,
 				description: 'Latitude for the mailing address. Values between -90 and 90.',
 			},
 			{
 				displayName: 'Mailing Longitude',
 				name: 'mailingLongitude',
 				type: 'number',
-				default: '',
+				default: undefined,
 				description: 'Longitude for the mailing address. Values between -180 and 180.',
 			},
 			{
@@ -534,14 +534,14 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Other Latitude',
 				name: 'otherLatitude',
 				type: 'number',
-				default: '',
+				default: undefined,
 				description: 'Latitude for the alternate address. Values between -90 and 90.',
 			},
 			{
 				displayName: 'Other Longitude',
 				name: 'otherLongitude',
 				type: 'number',
-				default: '',
+				default: undefined,
 				description: 'Longitude for the alternate address. Values between -180 and 180.',
 			},
 			{
