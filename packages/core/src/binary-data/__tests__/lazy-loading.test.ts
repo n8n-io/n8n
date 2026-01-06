@@ -1,11 +1,12 @@
-import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
 
-import { BinaryDataService } from '../binary-data.service';
-import { BinaryDataConfig } from '../binary-data.config';
-import { ErrorReporter } from '@/errors';
+import type { ErrorReporter } from '@/errors';
 import type { BinaryData } from '../types';
 import { InvalidManagerError } from '../../errors/invalid-manager.error';
+
+import { BinaryDataConfig } from '../binary-data.config';
+import { BinaryDataService } from '../binary-data.service';
 
 describe('BinaryDataService - Lazy Loading', () => {
 	let binaryDataService: BinaryDataService;
@@ -22,7 +23,7 @@ describe('BinaryDataService - Lazy Loading', () => {
 		const executionsConfig = {
 			mode: 'regular',
 		};
-		config = new BinaryDataConfig(instanceSettings as any, executionsConfig as any);
+		config = new BinaryDataConfig(instanceSettings, executionsConfig);
 		config.mode = 'filesystem';
 
 		errorReporter = mock<ErrorReporter>();
