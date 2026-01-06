@@ -1,0 +1,193 @@
+/**
+ * Score Calculation Utilities
+ *
+ * Provides functions for calculating weighted scores and aggregating
+ * feedback from multiple evaluators.
+ */
+
+import type { Feedback } from './harness-types';
+
+/**
+ * Weights for each evaluator type.
+ */
+export interface ScoreWeights {
+	[evaluatorPrefix: string]: number;
+}
+
+/**
+ * Result of score aggregation.
+ */
+export interface AggregatedScore {
+	/** Weighted overall score (0-1) */
+	overall: number;
+	/** Average score per evaluator */
+	byEvaluator: Record<string, number>;
+	/** Average score per category */
+	byCategory: Record<string, number>;
+}
+
+/**
+ * Parsed feedback key structure.
+ */
+export interface FeedbackKeyParts {
+	evaluator: string;
+	category: string;
+	subcategory?: string;
+}
+
+/**
+ * Default weights for standard evaluators.
+ * Weights should sum to approximately 1.0.
+ */
+export const DEFAULT_WEIGHTS: ScoreWeights = {
+	'llm-judge': 0.4,
+	programmatic: 0.3,
+	pairwise: 0.3,
+};
+
+/** Default weight for unknown evaluators */
+const UNKNOWN_EVALUATOR_WEIGHT = 0.1;
+
+/**
+ * Parse a feedback key into its component parts.
+ *
+ * @example
+ * parseFeedbackKey('llm-judge.functionality')
+ * // => { evaluator: 'llm-judge', category: 'functionality' }
+ *
+ * parseFeedbackKey('pairwise.gen1.majorityPass')
+ * // => { evaluator: 'pairwise', category: 'gen1', subcategory: 'majorityPass' }
+ */
+export function parseFeedbackKey(key: string): FeedbackKeyParts {
+	const parts = key.split('.');
+	return {
+		evaluator: parts[0],
+		category: parts[1] ?? '',
+		subcategory: parts[2],
+	};
+}
+
+/**
+ * Extract the category from a feedback key.
+ *
+ * @example
+ * extractCategory('llm-judge.functionality') // => 'functionality'
+ * extractCategory('programmatic.trigger') // => 'trigger'
+ */
+export function extractCategory(key: string): string {
+	return parseFeedbackKey(key).category;
+}
+
+/**
+ * Group feedback items by their evaluator prefix.
+ *
+ * @example
+ * groupByEvaluator([
+ *   { key: 'llm-judge.a', score: 0.8 },
+ *   { key: 'programmatic.b', score: 0.6 },
+ * ])
+ * // => { 'llm-judge': [...], 'programmatic': [...] }
+ */
+export function groupByEvaluator(feedback: Feedback[]): Record<string, Feedback[]> {
+	const grouped: Record<string, Feedback[]> = {};
+
+	for (const item of feedback) {
+		const { evaluator } = parseFeedbackKey(item.key);
+		if (!grouped[evaluator]) {
+			grouped[evaluator] = [];
+		}
+		grouped[evaluator].push(item);
+	}
+
+	return grouped;
+}
+
+/**
+ * Calculate average score for an array of feedback items.
+ */
+function calculateAverage(items: Feedback[]): number {
+	if (items.length === 0) return 0;
+	const total = items.reduce((sum, f) => sum + f.score, 0);
+	return total / items.length;
+}
+
+/**
+ * Calculate weighted overall score from feedback.
+ *
+ * Each evaluator's average score is weighted according to the weights map.
+ * Unknown evaluators receive the default weight.
+ *
+ * @param feedback - Array of feedback items
+ * @param weights - Weight per evaluator (defaults to DEFAULT_WEIGHTS)
+ * @returns Weighted average score (0-1)
+ */
+export function calculateWeightedScore(
+	feedback: Feedback[],
+	weights: ScoreWeights = DEFAULT_WEIGHTS,
+): number {
+	if (feedback.length === 0) return 0;
+
+	const byEvaluator = groupByEvaluator(feedback);
+
+	let totalWeight = 0;
+	let weightedSum = 0;
+
+	for (const [evaluator, items] of Object.entries(byEvaluator)) {
+		const avgScore = calculateAverage(items);
+		const weight = weights[evaluator] ?? UNKNOWN_EVALUATOR_WEIGHT;
+		weightedSum += avgScore * weight;
+		totalWeight += weight;
+	}
+
+	return totalWeight > 0 ? weightedSum / totalWeight : 0;
+}
+
+/**
+ * Aggregate scores by evaluator and category.
+ *
+ * @param feedback - Array of feedback items
+ * @returns Aggregated scores with overall, by-evaluator, and by-category breakdowns
+ */
+export function aggregateScores(feedback: Feedback[]): AggregatedScore {
+	if (feedback.length === 0) {
+		return {
+			overall: 0,
+			byEvaluator: {},
+			byCategory: {},
+		};
+	}
+
+	// Calculate overall weighted score
+	const overall = calculateWeightedScore(feedback);
+
+	// Calculate by-evaluator averages
+	const byEvaluator: Record<string, number> = {};
+	const grouped = groupByEvaluator(feedback);
+	for (const [evaluator, items] of Object.entries(grouped)) {
+		byEvaluator[evaluator] = calculateAverage(items);
+	}
+
+	// Calculate by-category averages
+	const byCategory: Record<string, number> = {};
+	const categoryGroups: Record<string, Feedback[]> = {};
+
+	for (const item of feedback) {
+		const category = extractCategory(item.key);
+		if (category) {
+			if (!categoryGroups[category]) {
+				categoryGroups[category] = [];
+			}
+			categoryGroups[category].push(item);
+		}
+	}
+
+	for (const [category, items] of Object.entries(categoryGroups)) {
+		byCategory[category] = calculateAverage(items);
+	}
+
+	return {
+		overall,
+		byEvaluator,
+		byCategory,
+	};
+}

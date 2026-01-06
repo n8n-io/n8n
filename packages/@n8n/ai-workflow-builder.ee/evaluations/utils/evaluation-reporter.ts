@@ -3,7 +3,7 @@ import pc from 'picocolors';
 
 import type { ProgrammaticViolation } from '@/validation/types';
 
-import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
+import { aggregateCacheStats, formatCacheStats } from '../cache-analyzer.js';
 import {
 	formatColoredScore,
 	formatHeader,

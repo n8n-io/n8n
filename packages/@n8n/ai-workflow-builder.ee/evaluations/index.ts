@@ -1,70 +1,109 @@
-import { runCliEvaluation } from './cli/runner.js';
-import { parseEvaluationArgs } from './core/argument-parser.js';
-import { runLLMJudgeLangsmith } from './runners/llm-judge-runner.js';
-import { runPairwiseLangsmith, runPairwiseLocal } from './runners/pairwise-runner.js';
-import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
-
-// Re-export for external use
-export { runCliEvaluation } from './cli/runner.js';
-export { runLLMJudgeLangsmith, LLMJudgeRunner } from './runners/llm-judge-runner.js';
-export {
-	runPairwiseLangsmith,
-	runPairwiseLocal,
-	PairwiseRunner,
-} from './runners/pairwise-runner.js';
-export { runSingleTest } from './core/test-runner.js';
-export { setupTestEnvironment, createAgent } from './core/environment.js';
-export {
-	parseEvaluationArgs,
-	type EvaluationArgs,
-	type EvaluationMode,
-} from './core/argument-parser.js';
-export { createProgressReporter, OrderedProgressReporter } from './core/progress-reporter.js';
-export { EvaluationRunnerBase } from './core/runner-base.js';
-
 /**
- * Main entry point for evaluation.
- * Uses unified argument parser and new runner architecture.
+ * V2 Evaluation Harness
+ *
+ * A factory-based, testable evaluation system for AI workflow generation.
+ *
+ * Key features:
+ * - Factory pattern for evaluator creation
+ * - Parallel evaluator execution
+ * - Both local and LangSmith modes
+ * - Centralized lifecycle hooks for logging
+ * - Pre-computed feedback pattern for LangSmith compatibility
  */
-async function main(): Promise<void> {
-	const args = parseEvaluationArgs();
 
-	switch (args.mode) {
-		case 'pairwise-local':
-			// Local pairwise - run single evaluation with custom criteria
-			await runPairwiseLocal({
-				args,
-				testCases: args.prompt ? [{ prompt: args.prompt }] : undefined,
-			});
-			break;
+// Core runner
+export { runEvaluation, getLastResults } from './runner';
 
-		case 'pairwise-langsmith':
-			// LangSmith pairwise evaluation
-			await runPairwiseLangsmith({ args });
-			break;
+// Types
+export type {
+	Feedback,
+	Evaluator,
+	TestCase,
+	RunConfig,
+	ExampleResult,
+	RunSummary,
+	EvaluationLifecycle,
+	LangsmithOptions,
+} from './harness-types';
 
-		case 'llm-judge-langsmith':
-			// LangSmith LLM-as-judge evaluation (the key fix)
-			await runLLMJudgeLangsmith({ args });
-			break;
+// Lifecycle
+export {
+	createConsoleLifecycle,
+	createQuietLifecycle,
+	mergeLifecycles,
+	type ConsoleLifecycleOptions,
+} from './lifecycle';
 
-		case 'llm-judge-local':
-		default: {
-			// Local CLI evaluation (original behavior)
-			const csvTestCases = args.promptsCsv ? loadTestCasesFromCsv(args.promptsCsv) : undefined;
-			await runCliEvaluation({
-				testCases: csvTestCases,
-				testCaseFilter: args.testCase,
-				repetitions: args.repetitions,
-				featureFlags: args.featureFlags,
-				verbose: args.verbose,
-			});
-			break;
-		}
-	}
-}
+// Evaluator factories
+export {
+	createLLMJudgeEvaluator,
+	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
+	createSimilarityEvaluator,
+	type LLMJudgeContext,
+	type ProgrammaticContext,
+	type PairwiseContext,
+	type PairwiseEvaluatorOptions,
+	type SimilarityContext,
+	type SimilarityEvaluatorOptions,
+} from './evaluators';
 
-// Run if called directly
-if (require.main === module) {
-	main().catch(console.error);
-}
+// Output
+export { createArtifactSaver, type ArtifactSaver, type ArtifactSaverOptions } from './output';
+
+// Cache analyzer
+export {
+	calculateCacheStats,
+	aggregateCacheStats,
+	formatCacheStats,
+	type CacheStatistics,
+	type UsageMetadata,
+	type FormattedCacheStatistics,
+} from './cache-analyzer';
+
+// Multi-generation utilities
+export {
+	getMajorityThreshold,
+	aggregateGenerations,
+	type GenerationDetail,
+	type MultiGenerationResult,
+} from './multi-gen';
+
+// Trace filtering (re-exported from v1 for convenience)
+export {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from './core/trace-filters';
+
+// Score calculation utilities
+export {
+	parseFeedbackKey,
+	extractCategory,
+	groupByEvaluator,
+	calculateWeightedScore,
+	aggregateScores,
+	DEFAULT_WEIGHTS,
+	type ScoreWeights,
+	type AggregatedScore,
+	type FeedbackKeyParts,
+} from './score-calculator';
+
+// Report generation
+export {
+	extractViolationSeverity,
+	calculateReportMetrics,
+	generateMarkdownReport,
+	type ViolationSeverity,
+	type ReportOptions,
+	type ReportMetrics,
+} from './report-generator';
+
+// Test case generation
+export {
+	createTestCaseGenerator,
+	basicTestCases,
+	type TestCaseGeneratorOptions,
+	type GeneratedTestCase,
+	type TestCaseGenerator,
+} from './test-case-generator';
