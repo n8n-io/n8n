@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import { Response } from 'express';
+import type { Response } from 'express';
 
 import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
