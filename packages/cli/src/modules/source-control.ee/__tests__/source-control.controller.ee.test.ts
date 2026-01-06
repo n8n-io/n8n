@@ -51,6 +51,71 @@ describe('SourceControlController', () => {
 			);
 			expect(sourceControlService.pushWorkfolder).toHaveBeenCalledWith(req.user, payload);
 		});
+
+		it('should return commit info when push result includes commit hash', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = mock<Response>();
+			const payload = { force: true, commitMessage: 'Test commit' } as PushWorkFolderRequestDto;
+
+			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+				statusCode: 200,
+				statusResult: [{ file: 'test.json', status: 'modified' }],
+				pushResult: {
+					update: {
+						hash: { to: 'abc123def456' },
+						head: { local: 'main' },
+					},
+				},
+			});
+
+			const result = await controller.pushWorkfolder(req, res, payload);
+
+			expect(result).toEqual({
+				files: [{ file: 'test.json', status: 'modified' }],
+				commit: {
+					hash: 'abc123def456',
+					message: 'Test commit',
+					branch: 'main',
+				},
+			});
+		});
+
+		it('should return null commit info when push result has no commit hash', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = mock<Response>();
+			const payload = { force: true } as PushWorkFolderRequestDto;
+
+			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+				statusCode: 200,
+				statusResult: [],
+				pushResult: null,
+			});
+
+			const result = await controller.pushWorkfolder(req, res, payload);
+
+			expect(result).toEqual({
+				files: [],
+				commit: null,
+			});
+		});
+
+		it('should throw BadRequestError when push fails', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = mock<Response>();
+			const payload = { force: true } as PushWorkFolderRequestDto;
+
+			(sourceControlService.pushWorkfolder as jest.Mock).mockRejectedValueOnce(
+				new Error('Git push failed'),
+			);
+
+			await expect(controller.pushWorkfolder(req, res, payload)).rejects.toThrow('Git push failed');
+		});
 	});
 
 	describe('pullWorkfolder', () => {
