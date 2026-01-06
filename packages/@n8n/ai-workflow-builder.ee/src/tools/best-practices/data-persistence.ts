@@ -20,6 +20,7 @@ Use data persistence when you need to:
 - Archive historical data for reporting or compliance
 - Build data that persists across workflow executions
 - Track changes or maintain state over time
+- Store raw form inputs
 
 ## Choosing the Right Storage Node
 
