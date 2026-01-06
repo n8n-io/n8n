@@ -81,7 +81,7 @@ export function processHitlResponses(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
 ): HitlProcessingResult {
-	if (!response || !response.actionResponses || response.actionResponses.length === 0) {
+	if (!response?.actionResponses || response.actionResponses.length === 0) {
 		return {
 			processedResponse: response ?? { actionResponses: [], metadata: {} },
 			hasApprovedHitlTools: false,
@@ -127,7 +127,7 @@ export function processHitlResponses(
 							[
 								{
 									json: {
-										response: 'Tool execution was denied by human reviewer.',
+										response: 'The user rejected permission to use this specific tool call.',
 										approved: false,
 									},
 								},
