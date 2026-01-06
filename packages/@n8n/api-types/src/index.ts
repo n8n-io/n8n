@@ -50,7 +50,6 @@ export {
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
 	type EnrichedStructuredChunk,
-	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
 } from './chat-hub';

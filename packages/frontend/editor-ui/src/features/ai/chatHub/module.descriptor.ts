@@ -4,7 +4,7 @@ import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_WORKFLOW_AGENTS_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
-	TOOLS_SELECTOR_MODAL_KEY,
+	TOOL_SETTINGS_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
@@ -30,12 +30,12 @@ export const ChatModule: FrontendModuleDescription = {
 	icon: 'chat',
 	modals: [
 		{
-			key: TOOLS_SELECTOR_MODAL_KEY,
-			component: async () => await import('./components/ToolsSelectorModal.vue'),
+			key: TOOL_SETTINGS_MODAL_KEY,
+			component: async () => await import('./components/ToolSettingsModal.vue'),
 			initialState: {
 				open: false,
 				data: {
-					selected: [],
+					node: null,
 					onConfirm: () => {},
 				},
 			},
