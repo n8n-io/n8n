@@ -114,9 +114,17 @@ export class SourceControlService {
 				[this.gitFolder, this.sshFolder],
 				false,
 			);
+
+			// Recovery for secondary instances in multi-main: folders don't exist locally
+			// but source control is configured in the shared database.
 			if (!foldersExisted) {
-				throw new UserError('No folders exist');
+				if (this.sourceControlPreferencesService.isSourceControlConnected()) {
+					await this.initGitService();
+				} else {
+					throw new UserError('No folders exist');
+				}
 			}
+
 			if (!this.gitService.git) {
 				await this.initGitService();
 			}
@@ -565,6 +573,7 @@ export class SourceControlService {
 
 		if (instanceSettings.isMultiMain) {
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
+			this.logger.debug('Reloading source control configuration on other main instances');
 		}
 	}
 }

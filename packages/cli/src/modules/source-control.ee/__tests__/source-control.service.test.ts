@@ -15,6 +15,7 @@ import type { SourceControlExportService } from '../source-control-export.servic
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
@@ -25,6 +26,11 @@ const mockStatusService = {
 jest.mock('@n8n/backend-common', () => ({
 	...jest.requireActual('@n8n/backend-common'),
 	isContainedWithin: jest.fn(() => true),
+}));
+
+jest.mock('../source-control-helper.ee', () => ({
+	...jest.requireActual('../source-control-helper.ee'),
+	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
 
 describe('SourceControlService', () => {
@@ -1008,6 +1014,50 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('sanityCheck', () => {
+		beforeEach(() => {
+			// Restore the actual sanityCheck implementation for these tests
+			jest.spyOn(sourceControlService, 'sanityCheck').mockRestore();
+		});
+
+		it('should initialize git service when folders do not exist but source control is connected', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			gitService.initService.mockResolvedValue(undefined);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT
+			await sourceControlService.sanityCheck();
+
+			// ASSERT
+			expect(gitService.initService).toHaveBeenCalled();
+		});
+
+		it('should throw error when folders do not exist and source control is not connected', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+			expect(gitService.initService).not.toHaveBeenCalled();
+		});
+
+		it('should pass when folders exist and branch matches', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
 		});
 	});
 });
