@@ -8,13 +8,15 @@ interface Props {
 	items: ChatUI.ThinkingItem[];
 	latestStatusText: string;
 	isStreaming?: boolean;
+	defaultExpanded?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isStreaming: false,
+	defaultExpanded: false,
 });
 
-const isExpanded = ref(false);
+const isExpanded = ref(props.defaultExpanded);
 
 const hasRunningItem = computed(() => props.items.some((item) => item.status === 'running'));
 
