@@ -29,7 +29,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
-			'workflow-executed-by-user': (event) => this.workflowExecutedByUser(event),
+			'workflow-executed': (event) => this.workflowExecuted(event),
 			'node-pre-execute': (event) => this.nodePreExecute(event),
 			'node-post-execute': (event) => this.nodePostExecute(event),
 			'user-deleted': (event) => this.userDeleted(event),
@@ -245,16 +245,22 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowExecutedByUser({
+	private workflowExecuted({
 		user,
 		workflowId,
 		workflowName,
 		executionId,
-		executionMode,
-	}: RelayEventMap['workflow-executed-by-user']) {
+		source,
+	}: RelayEventMap['workflow-executed']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.user.workflow.executed',
-			payload: { ...user, workflowId, workflowName, executionId, executionMode },
+			eventName: 'n8n.audit.workflow.executed',
+			payload: {
+				...(user && { ...user }),
+				workflowId,
+				workflowName,
+				executionId,
+				source,
+			},
 		});
 	}
 

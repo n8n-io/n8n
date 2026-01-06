@@ -125,12 +125,22 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
-	'workflow-executed-by-user': {
-		user: UserLike;
+	'workflow-executed': {
+		user?: UserLike;
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
-		executionMode: 'manual' | 'retry';
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'internal'
+			| 'evaluation'
+			| 'chat';
 	};
 
 	// #endregion

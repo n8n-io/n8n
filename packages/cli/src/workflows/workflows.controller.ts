@@ -593,7 +593,7 @@ export class WorkflowsController {
 		);
 
 		if ('executionId' in result) {
-			this.eventService.emit('workflow-executed-by-user', {
+			this.eventService.emit('workflow-executed', {
 				user: {
 					id: req.user.id,
 					email: req.user.email,
@@ -604,7 +604,7 @@ export class WorkflowsController {
 				workflowId: req.body.workflowData.id,
 				workflowName: req.body.workflowData.name,
 				executionId: result.executionId,
-				executionMode: 'manual',
+				source: 'user-manual',
 			});
 		}
 

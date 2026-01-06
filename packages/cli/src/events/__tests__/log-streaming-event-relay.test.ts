@@ -1447,8 +1447,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-executed-by-user` event for manual execution', () => {
-			const event: RelayEventMap['workflow-executed-by-user'] = {
+		it('should log on `workflow-executed` event for manual user execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
 				user: {
 					id: 'user789',
 					email: 'executor@example.com',
@@ -1459,13 +1459,13 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-manual',
 				workflowName: 'Manual Test Workflow',
 				executionId: 'exec-manual-123',
-				executionMode: 'manual',
+				source: 'user-manual',
 			};
 
-			eventService.emit('workflow-executed-by-user', event);
+			eventService.emit('workflow-executed', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.user.workflow.executed',
+				eventName: 'n8n.audit.workflow.executed',
 				payload: {
 					userId: 'user789',
 					_email: 'executor@example.com',
@@ -1475,13 +1475,13 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-manual',
 					workflowName: 'Manual Test Workflow',
 					executionId: 'exec-manual-123',
-					executionMode: 'manual',
+					source: 'user-manual',
 				},
 			});
 		});
 
-		it('should log on `workflow-executed-by-user` event for retry execution', () => {
-			const event: RelayEventMap['workflow-executed-by-user'] = {
+		it('should log on `workflow-executed` event for retry user execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
 				user: {
 					id: 'user101',
 					email: 'retrier@example.com',
@@ -1492,13 +1492,13 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-retry',
 				workflowName: 'Retry Test Workflow',
 				executionId: 'exec-retry-456',
-				executionMode: 'retry',
+				source: 'user-retry',
 			};
 
-			eventService.emit('workflow-executed-by-user', event);
+			eventService.emit('workflow-executed', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.user.workflow.executed',
+				eventName: 'n8n.audit.workflow.executed',
 				payload: {
 					userId: 'user101',
 					_email: 'retrier@example.com',
@@ -1508,7 +1508,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-retry',
 					workflowName: 'Retry Test Workflow',
 					executionId: 'exec-retry-456',
-					executionMode: 'retry',
+					source: 'user-retry',
 				},
 			});
 		});
