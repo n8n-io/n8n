@@ -58,6 +58,8 @@ export interface LangsmithOptions {
 	experimentName: string;
 	repetitions: number;
 	concurrency: number;
+	/** Maximum number of examples to evaluate from the dataset */
+	maxExamples?: number;
 	/** Enable trace filtering to reduce payload sizes (default: true) */
 	enableTraceFiltering?: boolean;
 }

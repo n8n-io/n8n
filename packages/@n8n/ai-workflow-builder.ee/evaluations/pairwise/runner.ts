@@ -395,6 +395,7 @@ export async function runPairwiseLangsmithEvaluation(
 		const evalStartTime = Date.now();
 
 		// Run evaluation using LangSmith's built-in features
+		log.verbose('➔ Starting LangSmith evaluate()...');
 		await evaluate(target, {
 			data,
 			evaluators: [evaluator],
@@ -410,6 +411,13 @@ export async function runPairwiseLangsmithEvaluation(
 				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
 			},
 		});
+		log.verbose(`➔ evaluate() completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s`);
+
+		// Flush pending traces to ensure all data is sent to LangSmith
+		log.verbose('➔ Flushing pending trace batches...');
+		const flushStartTime = Date.now();
+		await lsClient.awaitPendingTraceBatches();
+		log.verbose(`➔ Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
 
 		const totalEvalTime = Date.now() - evalStartTime;
 

@@ -30,6 +30,7 @@ import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
  * Create a workflow generator function.
+ * NOTE: Don't pass a tracer - LangSmith tracing is handled via traceable() in the runner.
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -111,7 +112,7 @@ export async function runV2Evaluation(): Promise<void> {
 	const lifecycle = createConsoleLifecycle({ verbose: args.verbose });
 	const env = await setupTestEnvironment();
 
-	// Create workflow generator
+	// Create workflow generator (tracing handled via traceable() in runner)
 	const generateWorkflow = createWorkflowGenerator(env.parsedNodeTypes, env.llm, args.featureFlags);
 
 	// Create evaluators based on mode
@@ -139,7 +140,7 @@ export async function runV2Evaluation(): Promise<void> {
 	const config: RunConfig = {
 		mode: args.mode.includes('langsmith') ? 'langsmith' : 'local',
 		dataset: args.mode.includes('langsmith')
-			? (process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts')
+			? (args.datasetName ?? 'workflow-builder-canvas-prompts')
 			: loadTestCases(args),
 		generateWorkflow,
 		evaluators,
@@ -151,6 +152,7 @@ export async function runV2Evaluation(): Promise<void> {
 					experimentName: args.experimentName ?? 'v2-evaluation',
 					repetitions: args.repetitions,
 					concurrency: args.concurrency,
+					maxExamples: args.maxExamples,
 				}
 			: undefined,
 	};
@@ -159,6 +161,13 @@ export async function runV2Evaluation(): Promise<void> {
 	const summary = await runEvaluation(config);
 
 	// Exit with appropriate code
+	// In LangSmith mode, summary is a placeholder (results are in LangSmith dashboard)
+	// so we exit successfully if no errors occurred
+	if (config.mode === 'langsmith') {
+		process.exit(0);
+	}
+
+	// In local mode, check pass rate
 	const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
 	process.exit(passRate >= 0.7 ? 0 : 1);
 }

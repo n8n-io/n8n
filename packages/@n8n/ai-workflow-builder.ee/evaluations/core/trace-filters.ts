@@ -112,11 +112,30 @@ function summarizeMessages(messages: unknown[]): string {
 	for (const msg of messages) {
 		if (msg && typeof msg === 'object') {
 			const msgObj = msg as Record<string, unknown>;
-			const type =
-				(msgObj._getType as () => string)?.() ??
-				(msgObj.type as string) ??
-				msgObj.constructor?.name ??
-				'unknown';
+			let type = 'unknown';
+
+			// Try _getType method (LangChain messages)
+			if (typeof msgObj._getType === 'function') {
+				try {
+					type = msgObj._getType();
+				} catch {
+					// Ignore errors
+				}
+			}
+			// Try type property
+			else if (typeof msgObj.type === 'string' && msgObj.type.length < 50) {
+				type = msgObj.type;
+			}
+			// Try constructor name (but validate it's a reasonable string)
+			else if (
+				msgObj.constructor &&
+				typeof msgObj.constructor.name === 'string' &&
+				msgObj.constructor.name.length < 50 &&
+				msgObj.constructor.name !== 'Object'
+			) {
+				type = msgObj.constructor.name;
+			}
+
 			typeCounts[type] = (typeCounts[type] ?? 0) + 1;
 		}
 	}

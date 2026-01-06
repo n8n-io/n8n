@@ -12,6 +12,7 @@ const VALID_FLAGS = [
 	'--concurrency',
 	'--name',
 	'--output-dir',
+	'--dataset',
 
 	// Test case selection
 	'--test-case',
@@ -51,6 +52,7 @@ export interface EvaluationArgs {
 	concurrency: number;
 	experimentName?: string;
 	outputDir?: string;
+	datasetName?: string;
 	featureFlags?: BuilderFeatureFlags;
 
 	// Test case selection
@@ -196,6 +198,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	const concurrency = getIntFlag(argv, '--concurrency', DEFAULTS.CONCURRENCY);
 	const experimentName = getFlagValue(argv, '--name');
 	const outputDir = getFlagValue(argv, '--output-dir');
+	const datasetName = getFlagValue(argv, '--dataset') ?? process.env.LANGSMITH_DATASET_NAME;
 
 	// Parse test case selection
 	const testCase = getFlagValue(argv, '--test-case');
@@ -229,6 +232,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		concurrency,
 		experimentName,
 		outputDir,
+		datasetName,
 		testCase,
 		promptsCsv: mode === 'llm-judge-local' ? promptsCsv : undefined,
 		maxExamples,

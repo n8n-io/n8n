@@ -238,22 +238,20 @@ export abstract class EvaluationRunnerBase<
 		const datasetName = this.getDatasetName();
 		this.logger.info(`➔ Dataset: ${datasetName}`);
 
-		// Load examples from dataset
+		// Load examples from dataset (use limit parameter if maxExamples is set)
 		let examples: Example[] = [];
 		try {
 			const dataset = await lsClient.readDataset({ datasetName });
-			for await (const example of lsClient.listExamples({ datasetId: dataset.id })) {
+			const listOptions: { datasetId: string; limit?: number } = { datasetId: dataset.id };
+			if (args.maxExamples && args.maxExamples > 0) {
+				listOptions.limit = args.maxExamples;
+				this.logger.warn(`➔ Limiting to ${args.maxExamples} examples`);
+			}
+			for await (const example of lsClient.listExamples(listOptions)) {
 				examples.push(example);
 			}
 		} catch {
 			throw new Error(`Dataset "${datasetName}" not found`);
-		}
-
-		// Apply maxExamples limit if specified
-		const totalExamples = examples.length;
-		if (args.maxExamples && args.maxExamples > 0 && args.maxExamples < totalExamples) {
-			examples = examples.slice(0, args.maxExamples);
-			this.logger.warn(`➔ Limiting to ${args.maxExamples} of ${totalExamples} examples`);
 		}
 
 		// Log config
@@ -290,14 +288,28 @@ export abstract class EvaluationRunnerBase<
 
 		// Run LangSmith evaluation
 		// Use examples array when maxExamples is set, otherwise use dataset name
-		const useMaxExamples =
-			args.maxExamples && args.maxExamples > 0 && args.maxExamples < totalExamples;
+		const useExamplesArray = args.maxExamples && args.maxExamples > 0;
 
-		if (useMaxExamples) {
+		this.logger.verbose('➔ Starting LangSmith evaluate()...');
+		const evalStartTime = Date.now();
+
+		if (useExamplesArray) {
 			await evaluate(target, { ...evaluateOptions, data: examples });
 		} else {
 			await evaluate(target, { ...evaluateOptions, data: datasetName });
 		}
+
+		this.logger.verbose(
+			`➔ evaluate() completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s`,
+		);
+
+		// Flush pending traces to ensure all data is sent to LangSmith
+		this.logger.verbose('➔ Flushing pending trace batches...');
+		const flushStartTime = Date.now();
+		await lsClient.awaitPendingTraceBatches();
+		this.logger.verbose(
+			`➔ Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`,
+		);
 
 		const totalTime = Date.now() - startTime;
 		this.logger.success(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`);
