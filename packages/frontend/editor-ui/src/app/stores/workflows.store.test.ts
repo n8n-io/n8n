@@ -19,7 +19,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import type {
-	IPinData,
 	IConnection,
 	IConnections,
 	INodeExecutionData,
