@@ -143,6 +143,7 @@ async function main(): Promise<void> {
 				maxExamples: args.maxExamples,
 				featureFlags,
 				splits: args.splits,
+				outputDir: args.outputDir,
 			});
 		}
 	} else if (useLangsmith) {

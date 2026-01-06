@@ -231,6 +231,7 @@ export interface PairwiseEvaluationOptions {
 	maxExamples?: number;
 	featureFlags?: BuilderFeatureFlags;
 	splits?: string[];
+	outputDir?: string;
 }
 
 /**
@@ -252,11 +253,15 @@ export async function runPairwiseLangsmithEvaluation(
 		maxExamples,
 		featureFlags,
 		splits,
+		outputDir,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
 	logPairwiseConfig(log, { experimentName, numGenerations, numJudges, repetitions, concurrency });
+	if (outputDir) {
+		log.info(`➔ Output directory: ${outputDir}`);
+	}
 
 	logFeatureFlags(log, featureFlags);
 
@@ -302,8 +307,20 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		const data = filterExamples(allExamples, notionId, technique, maxExamples, log);
-		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
+		const filteredExamples = filterExamples(allExamples, notionId, technique, maxExamples, log);
+		log.info(`➔ Running ${filteredExamples.length} example(s) × ${repetitions} rep(s)`);
+
+		// Create artifact saver if output directory is configured
+		const artifactSaver = createArtifactSaver(outputDir, log);
+
+		// Inject example IDs into inputs for artifact saving
+		const data = filteredExamples.map((example) => ({
+			...example,
+			inputs: {
+				...example.inputs,
+				exampleId: example.id,
+			},
+		}));
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
 		const target = createPairwiseTarget({
@@ -313,6 +330,7 @@ export async function runPairwiseLangsmithEvaluation(
 			numGenerations,
 			featureFlags,
 			experimentName,
+			artifactSaver,
 		});
 		const evaluator = pairwiseLangsmithEvaluator;
 

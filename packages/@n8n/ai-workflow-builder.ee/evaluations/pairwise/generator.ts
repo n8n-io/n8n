@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import * as crypto from 'crypto';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -11,6 +12,7 @@ import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
+import type { ArtifactSaver } from '../utils/artifact-saver';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 // ============================================================================
@@ -24,6 +26,13 @@ export interface CreatePairwiseTargetOptions {
 	numGenerations: number;
 	featureFlags?: BuilderFeatureFlags;
 	experimentName?: string;
+	artifactSaver?: ArtifactSaver | null;
+}
+
+/** Generate a fallback prompt ID from prompt text when no example ID is available */
+function generateFallbackPromptId(prompt: string): string {
+	const hash = crypto.createHash('sha256').update(prompt).digest('hex').slice(0, 8);
+	return hash;
 }
 
 /**
@@ -36,11 +45,22 @@ export interface CreatePairwiseTargetOptions {
  * This avoids 403 errors from nested traceable in evaluator context.
  */
 export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
-	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName } = options;
+	const {
+		parsedNodeTypes,
+		llm,
+		numJudges,
+		numGenerations,
+		featureFlags,
+		experimentName,
+		artifactSaver,
+	} = options;
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
-			const { prompt, evals: evalCriteria } = inputs;
+			const { prompt, evals: evalCriteria, exampleId: promptId } = inputs;
+
+			// Save prompt artifacts if output directory is configured
+			artifactSaver?.savePrompt(promptId, prompt, evalCriteria);
 
 			// Generate ALL workflows and run judges in parallel
 			const generationResults: GenerationResult[] = await Promise.all(
@@ -65,6 +85,13 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					return { workflow, ...panelResult };
 				}),
 			);
+
+			// Save generation artifacts if output directory is configured
+			if (artifactSaver) {
+				for (let i = 0; i < generationResults.length; i++) {
+					artifactSaver.saveGeneration(promptId, i, generationResults[i]);
+				}
+			}
 
 			if (numGenerations === 1) {
 				const singleGenFeedback = buildSingleGenerationResults(generationResults[0], numJudges);
