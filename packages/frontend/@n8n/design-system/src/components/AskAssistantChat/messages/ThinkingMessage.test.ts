@@ -116,4 +116,43 @@ describe('ThinkingMessage', () => {
 		const statusText = container.querySelector('button > span');
 		expect(statusText?.className).not.toContain('shimmer');
 	});
+
+	it('auto-collapses when all items transition from running to completed', async () => {
+		const runningItems: ChatUI.ThinkingItem[] = [
+			{
+				id: 'tool-1',
+				displayTitle: 'Processing',
+				status: 'running',
+			},
+		];
+
+		const { rerender, getByText, queryByText } = render(ThinkingMessage, {
+			props: {
+				items: runningItems,
+				latestStatusText: 'Processing...',
+				defaultExpanded: true,
+			},
+		});
+
+		// Initially expanded and showing the item
+		expect(getByText('Processing')).toBeInTheDocument();
+
+		// Update items to completed status
+		const completedItems: ChatUI.ThinkingItem[] = [
+			{
+				id: 'tool-1',
+				displayTitle: 'Processing',
+				status: 'completed',
+			},
+		];
+
+		await rerender({
+			items: completedItems,
+			latestStatusText: 'Completed',
+			defaultExpanded: true,
+		});
+
+		// Should auto-collapse - item no longer visible
+		expect(queryByText('Processing')).toBeNull();
+	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
@@ -19,6 +19,12 @@ const props = withDefaults(defineProps<Props>(), {
 const isExpanded = ref(props.defaultExpanded);
 
 const hasRunningItem = computed(() => props.items.some((item) => item.status === 'running'));
+
+watch(hasRunningItem, (newValue, oldValue) => {
+	if (oldValue && !newValue) {
+		isExpanded.value = false;
+	}
+});
 
 const shouldShowShimmer = computed(() => hasRunningItem.value);
 
