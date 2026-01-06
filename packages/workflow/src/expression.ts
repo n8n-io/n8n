@@ -66,6 +66,7 @@ setErrorHandler((error: Error) => {
 const createSafeObject = (): typeof Object => {
 	const safeCreate = (proto: object | null): object => {
 		// Only allow single-argument create (no property descriptors)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Object.create(proto);
 	};
 
@@ -97,6 +98,7 @@ const createSafeObject = (): typeof Object => {
 				return safeCreate;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return Reflect.get(target, prop, receiver);
 		},
 		// Block defineProperty trap to prevent __defineGetter__ from working
@@ -139,6 +141,7 @@ const createSafeError = (): typeof Error => {
 				return undefined;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return Reflect.get(target, prop, receiver);
 		},
 		set() {
