@@ -3,11 +3,11 @@ import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
+import ThinkingMessagePlaceholder from './messages/ThinkingMessagePlaceholder.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
 import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
@@ -196,27 +196,6 @@ function groupToolMessagesIntoThinking(
 		i = j;
 	}
 
-	// If streaming with a loadingMessage but no thinking-group exists yet (no tool messages received),
-	// create an initial thinking-group with just the "Thinking" item
-	// Use the same stable ID as tool-based thinking-groups so Vue preserves component state
-	const hasThinkingGroup = result.some((msg) => msg.type === 'thinking-group');
-	if (options.streaming && options.loadingMessage && !hasThinkingGroup) {
-		const initialThinkingGroup: ChatUI.ThinkingGroupMessage = {
-			id: 'thinking-group',
-			role: 'assistant',
-			type: 'thinking-group',
-			items: [
-				{
-					id: 'thinking-item',
-					displayTitle: options.loadingMessage,
-					status: 'running',
-				},
-			],
-			latestStatusText: options.loadingMessage,
-		};
-		result.push(initialThinkingGroup);
-	}
-
 	return result;
 }
 
@@ -262,10 +241,14 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group - hides the generic loading message when tool status is shown
-// The ThinkingMessage component handles displaying the current status with shimmer animation
+// Check if we have any thinking group (tool messages grouped into thinking blocks)
 const hasAnyThinkingGroup = computed(() => {
 	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
+});
+
+// Show placeholder when streaming with loading message but no tool messages have arrived yet
+const showThinkingPlaceholder = computed(() => {
+	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
 });
 
 const showBottomInput = computed(() => {
@@ -477,16 +460,11 @@ defineExpose({
 							</data>
 							<slot name="messagesFooter" />
 						</div>
-						<div
-							v-if="loadingMessage && !hasAnyThinkingGroup"
-							:class="{
-								[$style.message]: true,
-								[$style.loading]: normalizedMessages?.length,
-								[$style.lastToolMessage]: true,
-							}"
-						>
-							<AssistantLoadingMessage :message="loadingMessage" />
-						</div>
+						<ThinkingMessagePlaceholder
+							v-if="showThinkingPlaceholder"
+							:message="loadingMessage!"
+							:class="$style.lastToolMessage"
+						/>
 					</div>
 				</N8nScrollArea>
 			</div>

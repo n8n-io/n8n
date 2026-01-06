@@ -48,7 +48,7 @@ const stubs = [
 	'AssistantIcon',
 	'AssistantText',
 	'InlineAskAssistantButton',
-	'AssistantLoadingMessage',
+	'ThinkingMessagePlaceholder',
 ];
 
 // Stub MessageWrapper to render message as stringified JSON
@@ -316,10 +316,27 @@ describe('AskAssistantChat', () => {
 		const MessageWrapperMock = vi.fn(() => ({
 			template: '<div data-testid="message-wrapper-mock"></div>',
 		}));
+
+		const thinkingPlaceholderProps: Array<{ message: string }> = [];
+		let thinkingPlaceholderCallCount = 0;
+		const ThinkingMessagePlaceholderMock = {
+			name: 'ThinkingMessagePlaceholder',
+			props: ['message'],
+			setup(props: Record<string, unknown>) {
+				thinkingPlaceholderCallCount++;
+				thinkingPlaceholderProps.push({
+					message: props.message as string,
+				});
+				return {};
+			},
+			template: '<div data-testid="thinking-placeholder-mock"></div>',
+		};
+
 		const stubsWithMocks = {
 			...Object.fromEntries(stubs.map((stub) => [stub, true])),
 			MessageWrapper: MessageWrapperMock,
 			ThinkingMessage: ThinkingMessageMock,
+			ThinkingMessagePlaceholder: ThinkingMessagePlaceholderMock,
 		};
 
 		const createToolMessage = (
@@ -339,6 +356,8 @@ describe('AskAssistantChat', () => {
 			MessageWrapperMock.mockClear();
 			thinkingMessageCallCount = 0;
 			thinkingMessageProps.length = 0;
+			thinkingPlaceholderCallCount = 0;
+			thinkingPlaceholderProps.length = 0;
 			return render(AskAssistantChat, {
 				global: { stubs: stubsWithMocks },
 				props: {
@@ -353,6 +372,8 @@ describe('AskAssistantChat', () => {
 			MessageWrapperMock.mockClear();
 			thinkingMessageCallCount = 0;
 			thinkingMessageProps.length = 0;
+			thinkingPlaceholderCallCount = 0;
+			thinkingPlaceholderProps.length = 0;
 			return render(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },
@@ -608,16 +629,14 @@ describe('AskAssistantChat', () => {
 			);
 		});
 
-		it('should show initial thinking-group when streaming with no tool messages', () => {
+		it('should show ThinkingMessagePlaceholder when streaming with no tool messages', () => {
 			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking' });
 
-			// Should create an initial thinking-group
-			expect(thinkingMessageCallCount).toBe(1);
+			// Should render ThinkingMessagePlaceholder, not ThinkingMessage
+			expect(thinkingPlaceholderCallCount).toBe(1);
+			expect(thinkingMessageCallCount).toBe(0);
 
-			const props = getThinkingMessageProps();
-			expect(props.items).toHaveLength(1);
-			expect(props.items[0].displayTitle).toBe('Thinking');
-			expect(props.items[0].status).toBe('running');
+			expect(thinkingPlaceholderProps[0].message).toBe('Thinking');
 		});
 
 		it('should pass defaultExpanded as true to ThinkingMessage', () => {
