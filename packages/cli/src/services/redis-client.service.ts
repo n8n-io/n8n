@@ -130,7 +130,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, dualStack, keepAlive, keepAliveDelay, keepAliveInterval } =
+			this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -155,6 +156,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		if (dualStack) options.family = 0;
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+
+		// Add keep-alive configuration
+		if (keepAlive) {
+			options.keepAlive = keepAliveDelay;
+			// @ts-ignore: keepAliveInterval is missing in ioRedis types but supported in node js socket since v18.4.0
+			options.keepAliveInterval = keepAliveInterval;
+		}
 
 		return options;
 	}
