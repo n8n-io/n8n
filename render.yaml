@@ -23,12 +23,6 @@ services:
     dockerfilePath: ./docker/images/n8n/Dockerfile.hardened
     dockerContext: .
 
-    # Build
-    buildCommand: pnpm build:deploy
-
-    # Démarrage
-    startCommand: n8n start
-
     # Configuration réseau
     healthCheckPath: /healthz
 
