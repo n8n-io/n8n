@@ -68,6 +68,12 @@ export namespace BinaryData {
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
 
+	/**
+	 * Function that creates and returns a binary data manager instance.
+	 * Used for lazy-loading managers on demand.
+	 */
+	export type ManagerLoader = () => Promise<Manager>;
+
 	export type SigningPayload = {
 		id: string;
 	};

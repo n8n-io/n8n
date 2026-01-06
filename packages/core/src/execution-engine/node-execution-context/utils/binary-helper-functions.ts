@@ -37,8 +37,8 @@ export async function binaryToString(body: Buffer | Readable, encoding?: string)
 	return iconv.decode(buffer, encoding ?? 'utf-8');
 }
 
-function getBinaryPath(binaryDataId: string): string {
-	return Container.get(BinaryDataService).getPath(binaryDataId);
+async function getBinaryPath(binaryDataId: string): Promise<string> {
+	return await Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
