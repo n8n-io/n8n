@@ -44,7 +44,6 @@ export class BinaryDataService {
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		// Register filesystem loader
 		this.registerLoader('filesystem', async () => {
 			const { FileSystemManager } = await import('./file-system.manager');
 			return new FileSystemManager(config.localStoragePath, this.errorReporter);
@@ -293,20 +292,16 @@ export class BinaryDataService {
 	}
 
 	async getManager(mode: string): Promise<BinaryData.Manager> {
-		// If manager already exists, return it
 		if (this.managers[mode]) return this.managers[mode];
 
-		// If currently loading, wait for that promise
 		const loadingPromise = this.loadingPromises.get(mode);
 		if (loadingPromise) return await loadingPromise;
 
-		// If no loader registered, throw error
 		const loader = this.managerLoaders[mode];
 		if (!loader) {
 			throw new InvalidManagerError(mode);
 		}
 
-		// Start loading the manager
 		const promise = this.loadManager(mode, loader);
 		this.loadingPromises.set(mode, promise);
 
