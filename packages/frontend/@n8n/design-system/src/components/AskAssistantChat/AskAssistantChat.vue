@@ -3,7 +3,6 @@ import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
-import ThinkingMessagePlaceholder from './messages/ThinkingMessagePlaceholder.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
 import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
@@ -88,7 +87,11 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 
 function groupToolMessagesIntoThinking(
 	messages: ChatUI.AssistantMessage[],
-	options: { streaming?: boolean; loadingMessage?: string } = {},
+	options: {
+		streaming?: boolean;
+		loadingMessage?: string;
+		t: (key: string) => string;
+	},
 ): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
@@ -166,7 +169,7 @@ function groupToolMessagesIntoThinking(
 					.split('_')
 					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 					.join(' ') ||
-				'Processing...';
+				options.t('assistantChat.thinking.processing');
 		} else if (
 			isLastToolGroup &&
 			allToolsCompleted &&
@@ -175,11 +178,12 @@ function groupToolMessagesIntoThinking(
 		) {
 			// Still streaming after tools completed - show thinking message
 			latestStatus = options.loadingMessage;
+		} else if (allToolsCompleted && !options.streaming) {
+			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
 		} else if (allToolsCompleted) {
-			// All tools completed and not streaming - show "Workflow generated"
-			latestStatus = 'Workflow generated';
+			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
 		} else {
-			latestStatus = 'Processing...';
+			latestStatus = options.t('assistantChat.thinking.thinking');
 		}
 
 		// Create a ThinkingGroup message with deduplicated items
@@ -205,6 +209,7 @@ const normalizedMessages = computed(() => {
 	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
 		streaming: props.streaming,
 		loadingMessage: props.loadingMessage,
+		t,
 	});
 });
 
@@ -222,7 +227,6 @@ const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
-const messagesRef = ref<HTMLDivElement | null>(null);
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
@@ -460,9 +464,15 @@ defineExpose({
 							</data>
 							<slot name="messagesFooter" />
 						</div>
-						<ThinkingMessagePlaceholder
+						<!-- Placeholder thinking message when there are no tools yet called -->
+						<ThinkingMessage
 							v-if="showThinkingPlaceholder"
-							:message="loadingMessage!"
+							:items="[
+								{ id: 'thinking-placeholder', displayTitle: loadingMessage!, status: 'running' },
+							]"
+							:latest-status-text="loadingMessage!"
+							:default-expanded="true"
+							:is-streaming="true"
 							:class="$style.lastToolMessage"
 						/>
 					</div>

@@ -20,11 +20,14 @@ const isExpanded = ref(props.defaultExpanded);
 
 const hasRunningItem = computed(() => props.items.some((item) => item.status === 'running'));
 
-watch(hasRunningItem, (newValue, oldValue) => {
-	if (oldValue && !newValue) {
-		isExpanded.value = false;
-	}
-});
+watch(
+	() => props.isStreaming,
+	(newValue, oldValue) => {
+		if (oldValue && !newValue) {
+			isExpanded.value = false;
+		}
+	},
+);
 
 const shouldShowShimmer = computed(() => hasRunningItem.value);
 

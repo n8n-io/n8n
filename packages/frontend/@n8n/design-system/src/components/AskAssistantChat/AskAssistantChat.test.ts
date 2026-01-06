@@ -48,7 +48,6 @@ const stubs = [
 	'AssistantIcon',
 	'AssistantText',
 	'InlineAskAssistantButton',
-	'ThinkingMessagePlaceholder',
 ];
 
 // Stub MessageWrapper to render message as stringified JSON
@@ -297,6 +296,7 @@ describe('AskAssistantChat', () => {
 			items: ChatUI.ThinkingItem[];
 			latestStatusText: string;
 			defaultExpanded?: boolean;
+			isStreaming?: boolean;
 		}> = [];
 		let thinkingMessageCallCount = 0;
 		const ThinkingMessageMock = {
@@ -308,6 +308,7 @@ describe('AskAssistantChat', () => {
 					items: props.items as ChatUI.ThinkingItem[],
 					latestStatusText: props.latestStatusText as string,
 					defaultExpanded: props.defaultExpanded as boolean | undefined,
+					isStreaming: props.isStreaming as boolean | undefined,
 				});
 				return {};
 			},
@@ -317,26 +318,10 @@ describe('AskAssistantChat', () => {
 			template: '<div data-testid="message-wrapper-mock"></div>',
 		}));
 
-		const thinkingPlaceholderProps: Array<{ message: string }> = [];
-		let thinkingPlaceholderCallCount = 0;
-		const ThinkingMessagePlaceholderMock = {
-			name: 'ThinkingMessagePlaceholder',
-			props: ['message'],
-			setup(props: Record<string, unknown>) {
-				thinkingPlaceholderCallCount++;
-				thinkingPlaceholderProps.push({
-					message: props.message as string,
-				});
-				return {};
-			},
-			template: '<div data-testid="thinking-placeholder-mock"></div>',
-		};
-
 		const stubsWithMocks = {
 			...Object.fromEntries(stubs.map((stub) => [stub, true])),
 			MessageWrapper: MessageWrapperMock,
 			ThinkingMessage: ThinkingMessageMock,
-			ThinkingMessagePlaceholder: ThinkingMessagePlaceholderMock,
 		};
 
 		const createToolMessage = (
@@ -356,8 +341,6 @@ describe('AskAssistantChat', () => {
 			MessageWrapperMock.mockClear();
 			thinkingMessageCallCount = 0;
 			thinkingMessageProps.length = 0;
-			thinkingPlaceholderCallCount = 0;
-			thinkingPlaceholderProps.length = 0;
 			return render(AskAssistantChat, {
 				global: { stubs: stubsWithMocks },
 				props: {
@@ -372,8 +355,6 @@ describe('AskAssistantChat', () => {
 			MessageWrapperMock.mockClear();
 			thinkingMessageCallCount = 0;
 			thinkingMessageProps.length = 0;
-			thinkingPlaceholderCallCount = 0;
-			thinkingPlaceholderProps.length = 0;
 			return render(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },
@@ -629,14 +610,20 @@ describe('AskAssistantChat', () => {
 			);
 		});
 
-		it('should show ThinkingMessagePlaceholder when streaming with no tool messages', () => {
+		it('should show ThinkingMessage with placeholder item when streaming with no tool messages', () => {
 			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking' });
 
-			// Should render ThinkingMessagePlaceholder, not ThinkingMessage
-			expect(thinkingPlaceholderCallCount).toBe(1);
-			expect(thinkingMessageCallCount).toBe(0);
+			// Should render ThinkingMessage with a single "Thinking" item
+			expect(thinkingMessageCallCount).toBe(1);
 
-			expect(thinkingPlaceholderProps[0].message).toBe('Thinking');
+			const props = getThinkingMessageProps();
+			expect(props.items).toHaveLength(1);
+			expect(props.items[0].id).toBe('thinking-placeholder');
+			expect(props.items[0].displayTitle).toBe('Thinking');
+			expect(props.items[0].status).toBe('running');
+			expect(props.latestStatusText).toBe('Thinking');
+			expect(props.defaultExpanded).toBe(true);
+			expect(props.isStreaming).toBe(true);
 		});
 
 		it('should pass defaultExpanded as true to ThinkingMessage', () => {

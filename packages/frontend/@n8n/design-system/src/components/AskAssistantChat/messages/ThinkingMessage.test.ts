@@ -117,8 +117,8 @@ describe('ThinkingMessage', () => {
 		expect(statusText?.className).not.toContain('shimmer');
 	});
 
-	it('auto-collapses when all items transition from running to completed', async () => {
-		const runningItems: ChatUI.ThinkingItem[] = [
+	it('auto-collapses when isStreaming transitions from true to false', async () => {
+		const items: ChatUI.ThinkingItem[] = [
 			{
 				id: 'tool-1',
 				displayTitle: 'Processing',
@@ -128,28 +128,22 @@ describe('ThinkingMessage', () => {
 
 		const { rerender, getByText, queryByText } = render(ThinkingMessage, {
 			props: {
-				items: runningItems,
+				items,
 				latestStatusText: 'Processing...',
 				defaultExpanded: true,
+				isStreaming: true,
 			},
 		});
 
 		// Initially expanded and showing the item
 		expect(getByText('Processing')).toBeInTheDocument();
 
-		// Update items to completed status
-		const completedItems: ChatUI.ThinkingItem[] = [
-			{
-				id: 'tool-1',
-				displayTitle: 'Processing',
-				status: 'completed',
-			},
-		];
-
+		// isStreaming transitions to false
 		await rerender({
-			items: completedItems,
-			latestStatusText: 'Completed',
+			items,
+			latestStatusText: 'Processing...',
 			defaultExpanded: true,
+			isStreaming: false,
 		});
 
 		// Should auto-collapse - item no longer visible
