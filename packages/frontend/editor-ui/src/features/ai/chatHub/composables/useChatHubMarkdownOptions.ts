@@ -3,15 +3,30 @@ import { type HLJSApi } from 'highlight.js';
 import { computed, ref } from 'vue';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
+import { detectTexSyntax } from '../chat.utils';
+
+type Loading<T> =
+	| { status: 'inProgress'; promise: Promise<T> }
+	| { status: 'uninitialized' }
+	| { status: 'done' };
+
+type HljsModules = [typeof import('highlight.js'), typeof import('./languageModules')];
+
+type TexModules = [
+	typeof import('markdown-it-texmath'),
+	typeof import('katex'),
+	typeof import('katex/dist/katex.min.css'),
+];
 
 let hljsInstance: HLJSApi | undefined;
-let asyncImport:
-	| {
-			status: 'inProgress';
-			promise: Promise<[typeof import('highlight.js'), typeof import('./languageModules')]>;
-	  }
-	| { status: 'uninitialized' }
-	| { status: 'done' } = { status: 'uninitialized' };
+let katexModules: TexModules | undefined;
+
+const asyncImports: { hljs: Loading<HljsModules>; katex: Loading<TexModules> } = {
+	hljs: { status: 'uninitialized' },
+	katex: { status: 'uninitialized' },
+};
+
+type AsyncImports = typeof asyncImports;
 
 export function useChatHubMarkdownOptions(
 	codeBlockActionsClassName: string,
@@ -40,34 +55,92 @@ export function useChatHubMarkdownOptions(
 		},
 	};
 
+	const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+		vueMarkdownItInstance.use(markdownLink, {
+			attrs: {
+				target: '_blank',
+				rel: 'noopener',
+			},
+		});
+	};
+
 	async function loadLanguageModules() {
-		if (asyncImport.status === 'done') {
+		await loadModules(
+			'hljs',
+			async () => await Promise.all([import('highlight.js'), import('./languageModules')]),
+			([hljs, languages]) => {
+				hljsInstance = hljs.default.newInstance();
+
+				for (const [lang, module] of Object.entries(languages)) {
+					hljsInstance.registerLanguage(lang, module);
+				}
+			},
+		);
+	}
+
+	async function loadKatexModules() {
+		await loadModules(
+			'katex',
+			async () =>
+				await Promise.all([
+					import('markdown-it-texmath'),
+					import('katex'),
+					import('katex/dist/katex.min.css'),
+				]),
+			(modules) => {
+				katexModules = modules;
+			},
+		);
+	}
+
+	async function loadModules<
+		K extends keyof AsyncImports,
+		M extends AsyncImports[K] extends Loading<infer MM> ? MM : never,
+	>(name: K, loader: () => Promise<M>, onReady: (modules: M) => void) {
+		if (asyncImports[name].status === 'done') {
 			return;
 		}
 
-		if (asyncImport.status === 'inProgress') {
-			await asyncImport.promise;
+		if (asyncImports[name].status === 'inProgress') {
+			await asyncImports[name].promise;
 			forceReRenderKey.value++;
 			return;
 		}
 
 		try {
-			const promise = Promise.all([import('highlight.js'), import('./languageModules')]);
+			const promise = loader();
 
-			asyncImport = { status: 'inProgress', promise };
+			asyncImports[name] = { status: 'inProgress', promise } as AsyncImports[K];
 
-			const [hljs, languages] = await asyncImport.promise;
+			const modules = await promise;
 
-			asyncImport = { status: 'done' };
-			hljsInstance = hljs.default.newInstance();
-
-			for (const [lang, module] of Object.entries(languages)) {
-				hljsInstance.registerLanguage(lang, module);
-			}
-
+			onReady(modules);
+			asyncImports[name] = { status: 'done' };
 			forceReRenderKey.value++;
 		} catch (error) {
-			console.warn('Failed to load syntax highlighting modules', error);
+			console.warn(`Failed to load ${name} modules`, error);
+		}
+	}
+
+	function texmathDetectorPlugin(md: MarkdownIt) {
+		const originalRender = md.render.bind(md);
+
+		md.render = (src: string, env?: unknown) => {
+			if (detectTexSyntax(src)) {
+				void loadKatexModules();
+			}
+			return originalRender(src, env);
+		};
+	}
+
+	function texmathPlugin(md: MarkdownIt) {
+		if (katexModules) {
+			md.use(katexModules[0].default, {
+				engine: katexModules[1].default,
+			});
+		} else {
+			// If modules not loaded yet, register detector plugin
+			texmathDetectorPlugin(md);
 		}
 	}
 
@@ -124,8 +197,13 @@ export function useChatHubMarkdownOptions(
 			};
 		};
 
-		return [linksNewTabPlugin, codeBlockPlugin, tablePlugin];
+		return [linksNewTabPlugin, codeBlockPlugin, tablePlugin, texmathPlugin];
 	});
 
-	return { options, forceReRenderKey, plugins, codeBlockContents };
+	return {
+		options,
+		forceReRenderKey,
+		plugins,
+		codeBlockContents,
+	};
 }

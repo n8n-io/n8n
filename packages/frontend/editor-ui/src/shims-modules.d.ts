@@ -4,6 +4,31 @@
 
 declare module 'vue-agile';
 
+declare module 'markdown-it-texmath' {
+	import type MarkdownIt from 'markdown-it';
+
+	interface Delimiter {
+		left: string;
+		right: string;
+		display: boolean;
+	}
+
+	type DelimiterPreset = 'dollars' | 'brackets' | 'gitlab' | 'kramdown' | 'julia' | 'beg_end';
+
+	interface TexmathOptions {
+		engine: {
+			renderToString: (tex: string, options: { displayMode?: boolean }) => string;
+		};
+		delimiters?: DelimiterPreset | DelimiterPreset[] | Delimiter[];
+		katexOptions?: Record<string, unknown>;
+		outerSpace?: boolean;
+	}
+
+	function texmath(md: MarkdownIt, options?: TexmathOptions): void;
+
+	export default texmath;
+}
+
 declare module 'v3-infinite-loading' {
 	import { Plugin, DefineComponent } from 'vue';
 

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import VueMarkdown from 'vue-markdown-render';
+import ChatMessageActions from './ChatMessageActions.vue';
+import { ref, useCssModule, watch, useTemplateRef, computed, onBeforeMount } from 'vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
-import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
-import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';

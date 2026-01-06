@@ -2685,12 +2685,18 @@ importers:
       jsonpath:
         specifier: ^1.1.1
         version: 1.1.1
+      katex:
+        specifier: ^0.16.25
+        version: 0.16.25
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
+      markdown-it-texmath:
+        specifier: ^1.0.0
+        version: 1.0.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -10443,6 +10449,10 @@ packages:
     resolution: {integrity: sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==}
     engines: {node: '>= 10'}
 
+  commander@8.3.0:
+    resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
+    engines: {node: '>= 12'}
+
   commander@9.4.1:
     resolution: {integrity: sha512-5EEkTNyHNGFPD2H+c/dXXfQZYa/scCKasxWcXJaWnNJ99pnQN9Vnmqow+p+PlFPE63Q6mThaZws1T+HxfpgtPw==}
     engines: {node: ^12.20.0 || >=14}
@@ -13514,6 +13524,10 @@ packages:
     resolution: {integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==}
     engines: {node: '>=14.0.0'}
 
+  katex@0.16.25:
+    resolution: {integrity: sha512-woHRUZ/iF23GBP1dkDQMh1QBad9dmr8/PAwNA54VrSOVYgI12MAcE14TqnDdQOdzyEonGzMepYnqBMYdsoAr8Q==}
+    hasBin: true
+
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
@@ -14034,6 +14048,9 @@ packages:
 
   markdown-it-task-lists@2.1.1:
     resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
+
+  markdown-it-texmath@1.0.0:
+    resolution: {integrity: sha512-4hhkiX8/gus+6e53PLCUmUrsa6ZWGgJW2XCW6O0ASvZUiezIK900ZicinTDtG3kAO2kon7oUA/ReWmpW2FByxg==}
 
   markdown-it@13.0.2:
     resolution: {integrity: sha512-FtwnEuuK+2yVU7goGn/MJ0WBZMM9ZPgU9spqlFs7/A/pDIUNSOQZhUgOqYCficIuR2QaFnrt8LHqBWsbTAoI5w==}
@@ -25884,7 +25901,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.35.0(typescript@5.9.2)
       '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       eslint: 9.29.0(jiti@2.6.1)
       ts-api-utils: 2.1.0(typescript@5.9.2)
       typescript: 5.9.2
@@ -27680,6 +27697,8 @@ snapshots:
   commander@6.2.1: {}
 
   commander@7.2.0: {}
+
+  commander@8.3.0: {}
 
   commander@9.4.1: {}
 
@@ -31765,6 +31784,10 @@ snapshots:
 
   kafkajs@2.2.4: {}
 
+  katex@0.16.25:
+    dependencies:
+      commander: 8.3.0
+
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -32272,6 +32295,8 @@ snapshots:
   markdown-it-link-attributes@4.0.1: {}
 
   markdown-it-task-lists@2.1.1: {}
+
+  markdown-it-texmath@1.0.0: {}
 
   markdown-it@13.0.2:
     dependencies:

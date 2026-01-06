@@ -476,3 +476,15 @@ export function promisifyStreamingApi<T>(
 		return await promise;
 	};
 }
+
+// Matches TeX delimiters: $...$, $$..$$, \[...\], \(...\)
+// Uses simple pattern that checks for delimiter presence only (not full validation)
+const TEX_DELIMITER_PATTERN = /(?<!\\)\$(?:\$|[^\s$])|\\[\[\(]/;
+
+/**
+ * Loosely detect TeX syntax
+ * Over-detection is tolerated in favor of fast detection in the hot path.
+ */
+export function detectTexSyntax(content: string): boolean {
+	return TEX_DELIMITER_PATTERN.test(content);
+}
