@@ -402,7 +402,8 @@ async function initializeRoute(force = false) {
 				return;
 			}
 
-			await openWorkflowTemplateFromJSON(workflow);
+			const skipCredentialAutoOpen = route.query.skipCredentialAutoOpen === 'true';
+			await openWorkflowTemplateFromJSON(workflow, { skipCredentialAutoOpen });
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}

@@ -1036,7 +1036,11 @@ const openAIWorkflow = async (source: string) => {
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: easyAiWorkflowJson.meta.templateId },
-		query: { fromJson: 'true', parentFolderId: route.params.folderId },
+		query: {
+			fromJson: 'true',
+			skipCredentialAutoOpen: 'true',
+			parentFolderId: route.params.folderId,
+		},
 	});
 };
 
