@@ -1,3 +1,4 @@
+import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import { expect } from '@playwright/test';
 import type { GiteaHelper } from 'n8n-containers';
 
@@ -83,8 +84,8 @@ export interface GitRepoHelper {
 		n8n: n8nPage,
 		commitMessage: string,
 	): Promise<{
-		files: unknown[];
-		commit: { hash: string; message: string; branch: string } | null;
+		files: SourceControlledFile[];
+		commit: GitCommitInfo | null;
 	}>;
 }
 
