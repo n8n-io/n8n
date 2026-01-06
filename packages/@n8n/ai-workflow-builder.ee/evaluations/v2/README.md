@@ -144,19 +144,92 @@ const config: RunConfig = {
 await runEvaluation(config);
 ```
 
-**Key fix for LangSmith 0.4.x:** The target function does ALL work (generation + evaluation). The LangSmith evaluator just extracts pre-computed feedback. This avoids the "Run not created by target function" error.
+**Architecture:** The target function does ALL work (generation + evaluation). The LangSmith evaluator just extracts pre-computed feedback.
 
 ```typescript
 // Inside runLangsmith():
-const target = traceable(async (inputs) => {
-  const workflow = await generateWorkflow(prompt);
+// IMPORTANT: Do NOT wrap target with traceable() - see "LangSmith Tracing" section below
+const target = async (inputs) => {
+  // Wrap inner operations with traceable() for child traces
+  const traceableGenerate = traceable(
+    async () => await generateWorkflow(prompt),
+    { name: 'workflow_generation', run_type: 'chain' }
+  );
+  const workflow = await traceableGenerate();
   const feedback = await evaluateWithPlugins(workflow, evaluators);
   return { workflow, prompt, feedback };  // Pre-computed!
-});
+};
 
 // LangSmith evaluator just extracts:
 const feedbackExtractor = (run) => run.outputs.feedback;
 ```
+
+## LangSmith Tracing (Critical)
+
+### The Problem
+
+When using LangSmith's `evaluate()` function with `traceable()`, there's a subtle but critical interaction that can cause issues like:
+- Target function executing multiple times per example
+- Infinite loops
+- Missing traces
+
+### Root Cause
+
+The LangSmith SDK's `evaluate()` function internally checks if the target is already a traceable function:
+
+```javascript
+// From langsmith/dist/evaluation/_runner.js
+const wrappedFn = isTraceableFunction(fn)
+    ? fn  // Uses function AS-IS, without applying defaultOptions!
+    : traceable(fn, defaultOptions);
+```
+
+When you pre-wrap your target with `traceable()`:
+1. The SDK detects it via `isTraceableFunction()` (checks for `"langsmith:traceable"` property)
+2. It uses your function **as-is** without applying its critical `defaultOptions`
+3. `defaultOptions` contains essential configuration:
+   - `on_end` callback (captures the run for linking to dataset example)
+   - `reference_example_id` (links run to dataset example)
+   - `client` (the properly configured LangSmith client)
+   - `project_name` (experiment name)
+
+Without these options, the SDK cannot properly track the run, leading to undefined behavior.
+
+### The Solution
+
+**DO NOT** wrap the target function with `traceable()`. Let `evaluate()` handle it automatically.
+
+**DO** wrap inner operations (like workflow generation) with `traceable()` to create child traces.
+
+```typescript
+// ❌ WRONG - causes multiple executions or missing traces
+const target = traceable(async (inputs) => {
+  const workflow = await generateWorkflow(prompt);
+  return { workflow };
+}, { name: 'my_target' });
+
+// ✅ CORRECT - let evaluate() wrap the target, wrap inner operations
+const target = async (inputs) => {
+  // This creates a child trace under the automatically-created parent
+  const traceableGenerate = traceable(
+    async () => await generateWorkflow(prompt),
+    { name: 'workflow_generation', run_type: 'chain' }
+  );
+  const workflow = await traceableGenerate();
+  return { workflow };
+};
+
+await evaluate(target, { data, evaluators, client });
+```
+
+### Harmonized Approach
+
+Both the v2 runner and the pairwise runner (`evaluations/pairwise/`) now follow the same pattern:
+1. **Do NOT** wrap the target function with `traceable()`
+2. **Do** wrap inner operations (workflow generation, judge panels) with `traceable()` for child traces
+3. Let `evaluate()` handle target tracing automatically
+
+This ensures consistent behavior and avoids the client mismatch issues that can occur when mixing `traceable()` with `evaluate()`.
 
 ## Available Evaluators
 
@@ -204,17 +277,49 @@ const evaluator = createProgrammaticEvaluator(nodeTypes);
 
 ## CLI Usage
 
+### NPM Scripts
+
+```bash
+# Local mode with LLM-judge evaluator
+pnpm eval:v2 --prompt "Create a workflow..." --verbose
+
+# LangSmith mode (results in LangSmith dashboard)
+pnpm eval:v2:langsmith --name "my-experiment" --verbose
+
+# Pairwise mode (local)
+pnpm eval:v2:pairwise --prompt "..." --dos "Must use Slack" --donts "No HTTP"
+
+# Pairwise mode with LangSmith
+pnpm eval:v2:pairwise:langsmith --name "pairwise-exp" --verbose
+```
+
+### Common Flags
+
+```bash
+--verbose, -v       # Enable verbose output
+--name <name>       # Experiment name (LangSmith mode)
+--dataset <name>    # LangSmith dataset name
+--max-examples <n>  # Limit number of examples to evaluate
+--concurrency <n>   # Max concurrent evaluations (default: 5)
+--repetitions <n>   # Number of repetitions per example
+--prompt <text>     # Single prompt for local testing
+--dos <text>        # Pairwise: things the workflow should do
+--donts <text>      # Pairwise: things the workflow should not do
+--template-examples # Enable template examples feature flag
+--multi-agent       # Enable multi-agent feature flag
+```
+
+### Direct Usage
+
 ```bash
 # Local mode (default)
 tsx evaluations/v2/cli.ts --prompt "Create a workflow..." --verbose
 
 # LangSmith mode
-LANGSMITH_TRACING=true USE_LANGSMITH_EVAL=true \
-  tsx evaluations/v2/cli.ts --name "my-experiment" --verbose
+USE_LANGSMITH_EVAL=true tsx evaluations/v2/cli.ts --name "my-experiment" --verbose
 
 # Pairwise mode
-USE_PAIRWISE_EVAL=true \
-  tsx evaluations/v2/cli.ts --prompt "..." --dos "Must use Slack" --donts "No HTTP"
+USE_PAIRWISE_EVAL=true tsx evaluations/v2/cli.ts --prompt "..." --dos "Must use Slack"
 ```
 
 ## Adding a New Evaluator
@@ -261,12 +366,18 @@ evaluations/v2/
 │   ├── llm-judge.ts
 │   ├── pairwise.ts
 │   └── programmatic.ts
-├── cli.ts           # CLI entry point
-├── index.ts         # Public exports
-├── lifecycle.ts     # Console logging hooks
-├── runner.ts        # Core runEvaluation()
-├── types.ts         # TypeScript interfaces
-└── README.md        # This file
+├── cache-analyzer.ts      # Analyzes template cache usage
+├── cli.ts                 # CLI entry point
+├── index.ts               # Public exports
+├── lifecycle.ts           # Console logging hooks
+├── multi-gen.ts           # Multi-generation support
+├── output.ts              # Artifact saving utilities
+├── report-generator.ts    # Evaluation report generation
+├── runner.ts              # Core runEvaluation()
+├── score-calculator.ts    # Score aggregation utilities
+├── test-case-generator.ts # Test case generation
+├── types.ts               # TypeScript interfaces
+└── README.md              # This file
 ```
 
 ## Error Handling
@@ -281,3 +392,78 @@ The harness uses "skip and continue" error handling:
 // Error feedback format:
 { key: 'evaluator-name.error', score: 0, comment: 'Error message' }
 ```
+
+## LangSmith SDK Tips & Gotchas
+
+Additional findings from working with LangSmith SDK 0.4.x that may help future development:
+
+### Environment Variables
+
+```bash
+LANGSMITH_TRACING=true      # Required for tracing to work (0.4.x)
+LANGSMITH_API_KEY=ls_...    # Your API key
+LANGSMITH_PROJECT=name      # Optional: default project for traces
+LANGSMITH_MINIMAL_TRACING=false  # Set to disable trace filtering (default: true)
+```
+
+### Flushing Traces
+
+Always call `awaitPendingTraceBatches()` before the process exits to ensure all traces are sent:
+
+```typescript
+await evaluate(target, options);
+await client.awaitPendingTraceBatches();  // Don't forget this!
+```
+
+Without this, traces may be lost if the process exits before the background upload completes.
+
+### Trace Filtering (Reducing Payload Size)
+
+Large payloads can cause 403 errors. Use `hideInputs`/`hideOutputs` on the Client:
+
+```typescript
+const client = new Client({
+  hideInputs: (inputs) => filterLargeFields(inputs),
+  hideOutputs: (outputs) => filterLargeFields(outputs),
+  batchSizeBytesLimit: 2_000_000,  // 2MB limit
+  batchSizeLimit: 10,              // Max runs per batch
+});
+```
+
+Our trace filtering achieves ~80% reduction in payload size by:
+- Summarizing large arrays (messages, node types, templates)
+- Truncating large string inputs
+- Summarizing workflow JSON for large workflows
+
+### numRepetitions Behavior
+
+When `numRepetitions` is set, the SDK duplicates examples in the array:
+
+```typescript
+// numRepetitions: 3 with 2 examples = 6 total executions
+// [ex1, ex2] becomes [ex1, ex2, ex1, ex2, ex1, ex2]
+```
+
+### AsyncLocalStorage for Trace Context
+
+The SDK uses `AsyncLocalStorage` to track the current run tree. This enables:
+- Nested traces (child runs automatically link to parent)
+- Context propagation across async boundaries
+
+If traces aren't nesting correctly, ensure you're not breaking the async context chain.
+
+### Client Consistency
+
+The `traceable()` function uses the default client (from environment variables) unless you pass a custom client. If you create a custom client for `evaluate()`, inner `traceable()` calls may use a different client, causing:
+- Traces appearing in different projects
+- Missing parent-child relationships
+- Potential duplicate executions
+
+**Solution:** Use `setupTestEnvironment()` which creates a properly configured client, or ensure all code uses the same client instance.
+
+### Debugging Tips
+
+1. **Check trace count:** Add logging to track how many times target is called
+2. **Verify client:** Log which client is being used for evaluate() vs traceable()
+3. **Check environment:** Ensure `LANGSMITH_TRACING=true` is set
+4. **Inspect SDK source:** The evaluate logic is in `node_modules/langsmith/dist/evaluation/_runner.js`
