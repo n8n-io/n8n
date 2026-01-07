@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
+    "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",

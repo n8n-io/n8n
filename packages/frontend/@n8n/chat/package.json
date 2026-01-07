@@ -2,6 +2,7 @@
   "name": "@n8n/chat",
   "version": "1.3.0",
   "scripts": {
+    "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",
     "build": "pnpm build:vite && pnpm build:bundle",
     "build:vite": "cross-env vite build",
     "build:bundle": "cross-env INCLUDE_VUE=true vite build",
