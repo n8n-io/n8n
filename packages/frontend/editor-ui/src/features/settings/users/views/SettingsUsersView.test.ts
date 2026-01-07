@@ -130,6 +130,10 @@ let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
+		// Reset mock to default state before each test
+		mockIsVariantEnabled.mockReset();
+		mockIsVariantEnabled.mockReturnValue(false);
+
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -172,6 +176,8 @@ describe('SettingsUsersView', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		// Reset mock implementation to default (feature flag disabled)
+		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
 	});
 
@@ -492,6 +498,21 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
+		it('should show copy invite link action when feature flag is disabled', () => {
+			// Ensure feature flag is disabled - reset mock to ensure clean state
+			// The beforeEach already sets this, but be explicit to avoid test order issues
+			mockIsVariantEnabled.mockReset();
+			mockIsVariantEnabled.mockReturnValue(false);
+
+			renderComponent();
+
+			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
+			// when feature flag is disabled
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
+		});
+
 		it('should handle generate invite link action when feature flag is enabled', async () => {
 			mockIsVariantEnabled.mockImplementation(
 				(experiment: string, variant: string) =>
@@ -702,18 +723,6 @@ describe('SettingsUsersView', () => {
 			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
 
 			spy.mockRestore();
-		});
-
-		it('should show copy invite link action when feature flag is disabled', () => {
-			// Ensure feature flag is disabled (default from afterEach, but be explicit)
-			mockIsVariantEnabled.mockReturnValue(false);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
 		});
 
 		it('should handle copy password reset link error', async () => {
