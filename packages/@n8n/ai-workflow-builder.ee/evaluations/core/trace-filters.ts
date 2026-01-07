@@ -46,27 +46,6 @@ function hasFilterableFields(obj: KVMap): boolean {
 }
 
 /**
- * Get approximate size of an object in characters (JSON string length).
- * For ASCII content this approximates byte size.
- */
-function getApproxSize(obj: unknown): number {
-	try {
-		return JSON.stringify(obj).length;
-	} catch {
-		return 0;
-	}
-}
-
-/**
- * Format bytes to human readable string.
- */
-function formatBytes(bytes: number): string {
-	if (bytes < 1024) return `${bytes}B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
-}
-
-/**
  * Summarize a workflow for minimal trace output.
  * Preserves node counts and names without full definitions.
  */
@@ -241,81 +220,21 @@ export function isMinimalTracingEnabled(): boolean {
 }
 
 /**
- * Trace filter functions with closure-scoped statistics.
+ * Trace filter functions used by LangSmith client configuration.
  */
 export interface TraceFilters {
 	/** Filter function for hideInputs */
 	filterInputs: (inputs: KVMap) => KVMap;
 	/** Filter function for hideOutputs */
 	filterOutputs: (outputs: KVMap) => KVMap;
-	/** Log filtering statistics to console */
-	logStats: () => void;
-	/** Reset statistics (call at start of each evaluation run) */
-	resetStats: () => void;
 }
 
 /**
- * Creates trace filter functions with closure-scoped state.
- * Each call returns a new set of filters with independent statistics,
- * avoiding global state issues with parallel evaluations.
+ * Creates trace filter functions.
  * @param logger - Optional logger for output (uses console.log if not provided)
  */
 export function createTraceFilters(logger?: EvalLogger): TraceFilters {
-	// Closure-scoped state - isolated per client instance
 	let hasLoggedFilteringActive = false;
-	let totalInputBefore = 0;
-	let totalInputAfter = 0;
-	let totalOutputBefore = 0;
-	let totalOutputAfter = 0;
-	let inputCallCount = 0;
-	let outputCallCount = 0;
-
-	const resetStats = (): void => {
-		hasLoggedFilteringActive = false;
-		totalInputBefore = 0;
-		totalInputAfter = 0;
-		totalOutputBefore = 0;
-		totalOutputAfter = 0;
-		inputCallCount = 0;
-		outputCallCount = 0;
-	};
-
-	const logStats = (): void => {
-		if (inputCallCount === 0 && outputCallCount === 0) {
-			return;
-		}
-
-		const inputReduction =
-			totalInputBefore > 0 ? ((1 - totalInputAfter / totalInputBefore) * 100).toFixed(1) : '0';
-		const outputReduction =
-			totalOutputBefore > 0 ? ((1 - totalOutputAfter / totalOutputBefore) * 100).toFixed(1) : '0';
-		const totalBefore = totalInputBefore + totalOutputBefore;
-		const totalAfter = totalInputAfter + totalOutputAfter;
-		const totalReduction =
-			totalBefore > 0 ? ((1 - totalAfter / totalBefore) * 100).toFixed(1) : '0';
-
-		const log = logger?.info ?? console.log;
-		log('\n📊 ═══════════════ TRACE FILTERING SUMMARY ═══════════════');
-		log(
-			`   INPUTS:  ${formatBytes(totalInputBefore)} → ${formatBytes(totalInputAfter)} (${inputReduction}% reduction, ${inputCallCount} traces)`,
-		);
-		log(
-			`   OUTPUTS: ${formatBytes(totalOutputBefore)} → ${formatBytes(totalOutputAfter)} (${outputReduction}% reduction, ${outputCallCount} traces)`,
-		);
-		log(
-			`   TOTAL:   ${formatBytes(totalBefore)} → ${formatBytes(totalAfter)} (${totalReduction}% reduction)`,
-		);
-		log('═══════════════════════════════════════════════════════════\n');
-	};
-
-	/** Track input stats and return the object unchanged */
-	const trackInputPassthrough = (inputs: KVMap): KVMap => {
-		const size = getApproxSize(inputs);
-		inputCallCount++;
-		totalInputBefore += size;
-		totalInputAfter += size;
-		return inputs;
-	};
 
 	const filterInputs = (inputs: KVMap): KVMap => {
 		// Log once per client to confirm filtering is active
@@ -327,15 +246,14 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Skip LangChain serializable objects - copying them causes size inflation
 		if (isLangChainSerializable(inputs)) {
-			return trackInputPassthrough(inputs);
+			return inputs;
 		}
 
 		// Skip if no filterable fields - avoid unnecessary copy overhead
 		if (!hasFilterableFields(inputs)) {
-			return trackInputPassthrough(inputs);
+			return inputs;
 		}
 
-		const beforeSize = getApproxSize(inputs);
 		const filtered = { ...inputs };
 
 		// Handle large top-level fields
@@ -358,27 +276,14 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 			filtered.input = `[input truncated: ${filtered.input.length} chars]`;
 		}
 
-		// Track stats for final summary
-		const afterSize = getApproxSize(filtered);
-		inputCallCount++;
-		totalInputBefore += beforeSize;
-		totalInputAfter += afterSize;
-
 		return filtered;
 	};
 
 	const filterOutputs = (outputs: KVMap): KVMap => {
 		// Skip LangChain serializable objects - copying them causes size inflation
 		if (isLangChainSerializable(outputs)) {
-			const size = getApproxSize(outputs);
-			outputCallCount++;
-			totalOutputBefore += size;
-			totalOutputAfter += size;
 			return outputs;
 		}
-
-		const beforeSize = getApproxSize(outputs);
-		outputCallCount++;
 
 		// Check if there are any filterable fields in outputs
 		const hasFilterableOutputFields =
@@ -386,8 +291,6 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Skip if no filterable fields
 		if (!hasFilterableOutputFields) {
-			totalOutputBefore += beforeSize;
-			totalOutputAfter += beforeSize;
 			return outputs;
 		}
 
@@ -403,13 +306,8 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 
 		// Keep feedback array as-is - it's essential for evaluation results
 
-		// Track stats for final summary
-		const afterSize = getApproxSize(filtered);
-		totalOutputBefore += beforeSize;
-		totalOutputAfter += afterSize;
-
 		return filtered;
 	};
 
-	return { filterInputs, filterOutputs, logStats, resetStats };
+	return { filterInputs, filterOutputs };
 }

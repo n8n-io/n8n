@@ -527,14 +527,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Get properly configured client from setupTestEnvironment
 	// This ensures traceable() and evaluate() use the same client configuration
 	const { setupTestEnvironment } = await import('./core/environment');
-	const { lsClient, traceFilters } = await setupTestEnvironment();
+	const { lsClient } = await setupTestEnvironment();
 
 	if (!lsClient) {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
-
-	// Reset filtering stats for this run
-	traceFilters?.resetStats();
 
 	// Create target function that does ALL work (generation + evaluation)
 	// NOTE: Do NOT wrap target with traceable() - evaluate() handles that automatically
@@ -661,9 +658,6 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const flushStartTime = Date.now();
 	await lsClient.awaitPendingTraceBatches();
 	logger.verbose(`Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
-
-	// Log trace filtering statistics if enabled
-	traceFilters?.logStats();
 
 	// Return placeholder summary - LangSmith handles actual results
 	const summary: RunSummary = {

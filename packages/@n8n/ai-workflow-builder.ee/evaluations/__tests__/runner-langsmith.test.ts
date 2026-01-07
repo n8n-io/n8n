@@ -97,8 +97,6 @@ function createMockTraceFilters(): TraceFilters {
 	return {
 		filterInputs: (inputs) => inputs,
 		filterOutputs: (outputs) => outputs,
-		resetStats: jest.fn(),
-		logStats: jest.fn(),
 	};
 }
 
