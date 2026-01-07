@@ -112,7 +112,7 @@ Structure per rule:
     "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
     "conditions": [
       {{
-				"leftValue": "={{{{ $json.fieldName }}}}",
+        "leftValue": "={{{{ $json.fieldName }}}}",
         "rightValue": <value>,
         "operator": {{ "type": "number|string", "operation": "lt|gt|equals|etc" }}
       }}
