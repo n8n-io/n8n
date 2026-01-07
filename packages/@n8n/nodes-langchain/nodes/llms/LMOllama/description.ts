@@ -80,14 +80,6 @@ export const ollamaOptions: INodeProperties = {
 			type: 'number',
 		},
 		{
-			displayName: 'Enable Thinking',
-			name: 'think',
-			type: 'boolean',
-			default: true,
-			description:
-				"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
-		},
-		{
 			displayName: 'Top K',
 			name: 'topK',
 			default: -1,

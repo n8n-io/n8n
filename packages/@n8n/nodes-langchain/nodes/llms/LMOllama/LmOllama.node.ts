@@ -1,4 +1,4 @@
-import { Ollama } from '@langchain/ollama';
+import { Ollama, type OllamaInput } from '@langchain/ollama';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -56,7 +56,7 @@ export class LmOllama implements INodeType {
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as OllamaInput;
 		const headers = credentials.apiKey
 			? {
 					Authorization: `Bearer ${credentials.apiKey as string}`,
