@@ -3,7 +3,8 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { calendarRLC, eventRLC } from '../../descriptions';
-import { decodeOutlookId, executeDeletion } from '../../helpers/utils';
+import { decodeOutlookId } from '../../helpers/utils';
+import { executeDeletion } from '../../helpers/delete';
 
 export const properties: INodeProperties[] = [
 	calendarRLC,
