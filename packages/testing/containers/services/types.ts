@@ -56,7 +56,12 @@ export interface StackConfig {
 	postgres?: boolean;
 	env?: Record<string, string>;
 	projectName?: string;
+	/** Resource quota applied to all n8n containers (main and worker) */
 	resourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota applied only to main instances (overrides resourceQuota for main) */
+	mainResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota applied only to worker instances (overrides resourceQuota for worker) */
+	workerResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
 }
 

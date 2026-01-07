@@ -2,7 +2,13 @@ import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
-import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
+import {
+	createElapsedLogger,
+	getMainResourceQuotaFromEnv,
+	getResourceQuotaFromEnv,
+	getWorkerResourceQuotaFromEnv,
+	pollContainerHttpEndpoint,
+} from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
 import { createN8NInstances } from './services/n8n';
@@ -73,7 +79,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		postgres: usePostgresConfig = false,
 		env = {},
 		projectName,
-		resourceQuota,
+		resourceQuota = getResourceQuotaFromEnv(),
+		mainResourceQuota = getMainResourceQuotaFromEnv(),
+		workerResourceQuota = getWorkerResourceQuotaFromEnv(),
 		services: enabledServices = [],
 	} = config;
 
@@ -174,6 +182,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		baseUrl: needsLoadBalancer ? undefined : baseUrl,
 		allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 		resourceQuota,
+		mainResourceQuota,
+		workerResourceQuota,
 		filesToMount,
 	});
 	containers.push(...n8nResult.containers);
