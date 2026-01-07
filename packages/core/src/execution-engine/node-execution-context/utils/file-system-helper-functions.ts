@@ -130,21 +130,27 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			}
 		}
 
-		// Verify that the handle we've opened is the same as the path we checked earlier.
-		// This ensures nothing has changed between checking and reading.
-		const fileHandleIdentity = await fileHandle.stat();
-		if (
-			fileHandleIdentity.dev !== pathIdentity.dev ||
-			fileHandleIdentity.ino !== pathIdentity.ino
-		) {
-			throw new NodeOperationError(node, 'The file has changed and cannot be accessed.', {
-				level: 'warning',
-			});
-		}
+		try {
+			// Verify that the handle we've opened is the same as the path we checked earlier.
+			// This ensures nothing has changed between checking and reading.
+			const fileHandleIdentity = await fileHandle.stat();
+			if (
+				fileHandleIdentity.dev !== pathIdentity.dev ||
+				fileHandleIdentity.ino !== pathIdentity.ino
+			) {
+				throw new NodeOperationError(node, 'The file has changed and cannot be accessed.', {
+					level: 'warning',
+				});
+			}
 
-		// The file handle we opened matches the path we checked, and the path is allowed,
-		// so we can go ahead and read the file.
-		return fileHandle.createReadStream();
+			// The file handle we opened matches the path we checked, and the path is allowed,
+			// so we can go ahead and read the file.
+			return fileHandle.createReadStream();
+		} catch (error) {
+			// Ensure the file handle is closed if verification fails or an error occurs.
+			await fileHandle.close();
+			throw error;
+		}
 	},
 
 	getStoragePath() {
