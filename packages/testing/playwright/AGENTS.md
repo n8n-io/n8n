@@ -2,8 +2,7 @@
 
 ## Commands
 
-- Use `pnpm test:local -- --reporter=line --grep="..."` to execute tests.
-
+- Use `pnpm --filter=n8n-playwright test:local <test-file>` to execute tests.
 
 ## Code Styles
 
