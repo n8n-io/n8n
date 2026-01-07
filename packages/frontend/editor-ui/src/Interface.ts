@@ -33,6 +33,7 @@ import type {
 	ISourceData,
 	PublicInstalledPackage,
 	IDestinationNode,
+	WorkflowFEMeta,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -290,6 +291,7 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
+	meta?: WorkflowFEMeta;
 };
 
 export type VariableResource = BaseResource & {

@@ -2815,6 +2815,10 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	/** ISO timestamp when workflow was auto-deactivated due to repeated crashes */
+	autoDeactivatedAt?: string;
+	/** Number of consecutive crashed executions that triggered auto-deactivation */
+	autoDeactivationThreshold?: number;
 }
 
 export interface WorkflowTestData {

@@ -12,6 +12,12 @@ export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated)
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
 
+	// Update meta with auto-deactivation info for workflow card display
+	workflowsStore.setWorkflowAutoDeactivatedMeta(data.workflowId, {
+		autoDeactivatedAt: data.autoDeactivatedAt,
+		autoDeactivationThreshold: data.threshold,
+	});
+
 	if (workflowsStore.workflowId === data.workflowId) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {

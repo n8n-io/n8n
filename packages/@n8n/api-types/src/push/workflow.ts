@@ -25,6 +25,8 @@ export type WorkflowAutoDeactivated = {
 	type: 'workflowAutoDeactivated';
 	data: {
 		workflowId: string;
+		autoDeactivatedAt: string;
+		threshold: number;
 	};
 };
 

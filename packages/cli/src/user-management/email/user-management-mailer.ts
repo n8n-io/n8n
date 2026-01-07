@@ -142,9 +142,11 @@ export class UserManagementMailer {
 	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
+		threshold,
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
+		threshold: number;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -156,8 +158,9 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				threshold,
 			}),
-			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
+			subjectBuilder: () => 'n8n has automatically deactivated a workflow',
 			messageType: 'Workflow auto-deactivated',
 		});
 	}
