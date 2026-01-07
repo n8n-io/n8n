@@ -98,6 +98,14 @@ const versionPublishInfo = computed(() => {
 	return publishInfo;
 });
 
+const getPublishedUserName = (userId: string | undefined | null) => {
+	if (!userId) {
+		return null;
+	}
+	const user = usersStore.usersById[userId];
+	return user?.fullName ?? user?.email ?? null;
+};
+
 const mainTooltipContent = computed(() => {
 	if (props.isGrouped) {
 		return null;
@@ -129,6 +137,22 @@ const mainTooltipDate = computed(() => {
 
 	if (versionPublishInfo.value) {
 		return versionPublishInfo.value.createdAt;
+	}
+
+	return null;
+});
+
+const mainTooltipUser = computed(() => {
+	if (props.isGrouped) {
+		return null;
+	}
+
+	if (props.isVersionActive && lastPublishInfo.value) {
+		return getPublishedUserName(lastPublishInfo.value.userId);
+	}
+
+	if (versionPublishInfo.value) {
+		return getPublishedUserName(versionPublishInfo.value.userId);
 	}
 
 	return null;
@@ -167,9 +191,15 @@ onMounted(() => {
 <template>
 	<N8nTooltip placement="left" :disabled="!mainTooltipContent">
 		<template #content>
-			<div>
+			<div v-if="props.index === 0 && !props.isVersionActive">
+				{{ mainTooltipContent }}
+			</div>
+			<div v-else :class="$style.tooltipContent">
 				{{ mainTooltipContent }}
 				<TimeAgo v-if="mainTooltipDate" :date="mainTooltipDate" />
+				<div v-if="mainTooltipUser">
+					{{ mainTooltipUser }}
+				</div>
 			</div>
 		</template>
 		<li
@@ -202,7 +232,7 @@ onMounted(() => {
 
 			<div :class="$style.wrapper">
 				<div :class="$style.content">
-					<!-- Named version: show name + badge on first row, author + time on second -->
+					<!-- Named version: show name on first row, author + time on second -->
 					<template v-if="versionName">
 						<div :class="$style.mainRow">
 							<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
