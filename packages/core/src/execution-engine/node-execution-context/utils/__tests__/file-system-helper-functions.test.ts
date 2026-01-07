@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { constants } from 'node:fs';
+import { close, constants } from 'node:fs';
 import {
 	access as fsAccess,
 	realpath as fsRealpath,
@@ -358,12 +358,13 @@ describe('getFileSystemHelperFunctions', () => {
 			).rejects.toThrow('Symlinks are not allowed.');
 		});
 
-		it('should reject when file identity changes (TOCTOU prevention)', async () => {
+		it('should reject when file identity changes', async () => {
 			const filePath = '/allowed/path/file';
 			const differentStats = { dev: 999, ino: 888 };
 			const mockFileHandle = {
 				stat: jest.fn().mockResolvedValue(differentStats),
 				createReadStream: jest.fn(),
+				close: jest.fn(),
 			};
 
 			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
