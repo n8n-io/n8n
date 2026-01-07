@@ -14,11 +14,7 @@ export const examplePrompts = [
 	},
 	{
 		prompt: 'Collect partner referral submissions and verify client instances via BigQuery',
-		techniques: [
-			WorkflowTechnique.FORM_INPUT,
-			WorkflowTechnique.HUMAN_IN_THE_LOOP,
-			WorkflowTechnique.NOTIFICATION,
-		],
+		techniques: [WorkflowTechnique.FORM_INPUT, WorkflowTechnique.HUMAN_IN_THE_LOOP],
 	},
 	{
 		prompt: 'Scrape competitor pricing pages weekly and generate a summary report of changes',
@@ -26,6 +22,7 @@ export const examplePrompts = [
 			WorkflowTechnique.SCHEDULING,
 			WorkflowTechnique.SCRAPING_AND_RESEARCH,
 			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_PERSISTENCE,
 			WorkflowTechnique.DATA_ANALYSIS,
 		],
 	},
@@ -44,6 +41,19 @@ export const examplePrompts = [
 			WorkflowTechnique.DATA_TRANSFORMATION,
 			WorkflowTechnique.DATA_ANALYSIS,
 			WorkflowTechnique.KNOWLEDGE_BASE,
+		],
+	},
+	{
+		prompt: 'Store customer feedback from our webhook for later analysis',
+		techniques: [WorkflowTechnique.DATA_PERSISTENCE],
+	},
+	{
+		prompt:
+			'Collect form submissions and save them to Google Sheets with automatic email notifications',
+		techniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.DATA_PERSISTENCE,
+			WorkflowTechnique.NOTIFICATION,
 		],
 	},
 ];
