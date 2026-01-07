@@ -45,6 +45,14 @@ const readOnlyForPublish = computed(() => {
 	);
 });
 
+const shouldHidePublishButton = computed(() => {
+	return (
+		props.readOnly ||
+		props.isArchived ||
+		(!props.workflowPermissions.publish && !props.workflowPermissions.update)
+	);
+});
+
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
@@ -102,13 +110,10 @@ const workflowPublishState = computed((): WorkflowPublishState => {
  * Save immediately if autosave idle or cancelled
  */
 const saveBeforePublish = async () => {
-	let saved = true;
 	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
 		autoSaveForPublish.value = true;
 		try {
 			await autosaveStore.pendingAutoSave;
-		} catch {
-			saved = false;
 		} finally {
 			autoSaveForPublish.value = false;
 		}
@@ -118,19 +123,25 @@ const saveBeforePublish = async () => {
 
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
 		autoSaveForPublish.value = true;
-		saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
+		try {
+			const saved = await saveCurrentWorkflow({}, true);
+			if (!saved) {
+				throw new Error('Failed to save workflow before publish');
+			}
+		} finally {
+			autoSaveForPublish.value = false;
+		}
 	}
-
-	return saved;
 };
 
 const onPublishButtonClick = async () => {
-	// Save the workflow first
-	const saved = await saveBeforePublish();
-	if (!saved) {
-		// If save failed, don't open the modal
-		return;
+	// If there are unsaved changes, save the workflow first
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		try {
+			await saveBeforePublish();
+		} catch {
+			return;
+		}
 	}
 
 	uiStore.openModalWithData({
@@ -230,7 +241,7 @@ const publishButtonConfig = computed(() => {
 			showIndicator: true,
 			indicatorClass: 'published',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
-			showVersionInfo: false,
+			showVersionInfo: true,
 		},
 	};
 
@@ -267,7 +278,7 @@ defineExpose({
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
-		<div :class="$style.publishButtonWrapper">
+		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'">
 				<template #content>
 					<div>
@@ -275,7 +286,7 @@ defineExpose({
 							{{ publishButtonConfig.tooltip }} <br />
 						</template>
 						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
-							{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
+							<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span><br />{{ i18n.baseText('workflowHistory.item.active') }}
 							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 						</template>
 					</div>
