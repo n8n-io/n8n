@@ -534,6 +534,10 @@ export type RelayEventMap = {
 		errorMessage?: string;
 	};
 
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
+	};
+
 	// #endregion
 
 	// #region LDAP
