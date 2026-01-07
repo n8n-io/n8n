@@ -111,7 +111,16 @@ function calculateAverage(items: Feedback[]): number {
 	return total / items.length;
 }
 
-function selectScoringItems(items: Feedback[]): Feedback[] {
+/**
+ * Pick which feedback items should be used for evaluator-level scoring.
+ *
+ * Order of preference:
+ * - `kind: 'score'` (single authoritative score)
+ * - `kind: 'metric'` (stable category metrics)
+ * - any non-`detail` items (includes items with undefined `kind`)
+ * - otherwise, all items
+ */
+export function selectScoringItems(items: Feedback[]): Feedback[] {
 	const scoreItems = items.filter((i) => i.kind === 'score');
 	if (scoreItems.length > 0) return scoreItems;
 
@@ -177,7 +186,7 @@ export function aggregateScores(feedback: Feedback[]): AggregatedScore {
 	const byEvaluator: Record<string, number> = {};
 	const grouped = groupByEvaluator(feedback);
 	for (const [evaluator, items] of Object.entries(grouped)) {
-		byEvaluator[evaluator] = calculateAverage(items);
+		byEvaluator[evaluator] = calculateAverage(selectScoringItems(items));
 	}
 
 	// Calculate by-category averages
@@ -185,6 +194,7 @@ export function aggregateScores(feedback: Feedback[]): AggregatedScore {
 	const categoryGroups: Record<string, Feedback[]> = {};
 
 	for (const item of feedback) {
+		if (item.kind === 'detail') continue;
 		const category = item.metric.split('.')[0] ?? '';
 		if (category) {
 			if (!categoryGroups[category]) {

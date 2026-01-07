@@ -6,7 +6,7 @@
 
 import { feedbackKey } from './feedback';
 import type { ExampleResult, RunSummary, Feedback } from './harness-types';
-import { groupByEvaluator } from './score-calculator';
+import { groupByEvaluator, selectScoringItems } from './score-calculator';
 
 /**
  * Violation severity levels.
@@ -89,24 +89,31 @@ function calculateAverage(items: Feedback[]): number {
  * @returns Calculated metrics including evaluator averages and violation counts
  */
 export function calculateReportMetrics(results: ExampleResult[]): ReportMetrics {
-	// Collect all feedback from non-error results
-	const allFeedback: Feedback[] = results
-		.filter((r) => r.status !== 'error')
-		.flatMap((r) => r.feedback);
+	const okResults = results.filter((r) => r.status !== 'error');
 
-	// Calculate evaluator averages
+	// Calculate evaluator averages (per-example, then average; avoids key-count skew)
+	const evaluatorScores: Record<string, number[]> = {};
+	for (const result of okResults) {
+		const grouped = groupByEvaluator(result.feedback);
+		for (const [evaluator, items] of Object.entries(grouped)) {
+			if (!evaluatorScores[evaluator]) evaluatorScores[evaluator] = [];
+			evaluatorScores[evaluator].push(calculateAverage(selectScoringItems(items)));
+		}
+	}
+
 	const evaluatorAverages: Record<string, number> = {};
-	const grouped = groupByEvaluator(allFeedback);
-	for (const [evaluator, items] of Object.entries(grouped)) {
-		evaluatorAverages[evaluator] = calculateAverage(items);
+	for (const [evaluator, scores] of Object.entries(evaluatorScores)) {
+		evaluatorAverages[evaluator] = scores.reduce((sum, s) => sum + s, 0) / scores.length;
 	}
 
 	// Count violations by severity
 	const violationCounts = { critical: 0, major: 0, minor: 0 };
-	for (const feedback of allFeedback) {
-		const severity = extractViolationSeverity(feedback.comment);
-		if (severity) {
-			violationCounts[severity]++;
+	for (const result of okResults) {
+		for (const feedback of result.feedback) {
+			const severity = extractViolationSeverity(feedback.comment);
+			if (severity) {
+				violationCounts[severity]++;
+			}
 		}
 	}
 

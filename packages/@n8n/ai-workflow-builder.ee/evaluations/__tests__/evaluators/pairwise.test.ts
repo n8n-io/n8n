@@ -10,6 +10,8 @@ import { mock } from 'jest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
+import { PAIRWISE_METRICS } from '../../evaluators/pairwise/metrics';
+
 // Store mock for runJudgePanel
 const mockRunJudgePanel = jest.fn();
 
@@ -146,10 +148,10 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			const majorityFeedback = findFeedback(feedback, 'majorityPass');
+			const majorityFeedback = findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_PRIMARY);
 			expect(majorityFeedback).toEqual({
 				evaluator: 'pairwise',
-				metric: 'majorityPass',
+				metric: PAIRWISE_METRICS.PAIRWISE_PRIMARY,
 				score: 1,
 				kind: 'score',
 				comment: '2/3 judges passed',
@@ -165,10 +167,10 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			const diagnosticFeedback = findFeedback(feedback, 'diagnosticScore');
+			const diagnosticFeedback = findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_DIAGNOSTIC);
 			expect(diagnosticFeedback).toEqual({
 				evaluator: 'pairwise',
-				metric: 'diagnosticScore',
+				metric: PAIRWISE_METRICS.PAIRWISE_DIAGNOSTIC,
 				score: 0.85,
 				kind: 'metric',
 			});
@@ -249,10 +251,12 @@ describe('Pairwise Evaluator', () => {
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			// Should have single-gen feedback keys
-			expect(findFeedback(feedback, 'majorityPass')).toBeDefined();
-			expect(findFeedback(feedback, 'diagnosticScore')).toBeDefined();
+			expect(findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_PRIMARY)).toBeDefined();
+			expect(findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_DIAGNOSTIC)).toBeDefined();
 			// Should NOT have multi-gen keys
-			expect(findFeedback(feedback, 'generationCorrectness')).toBeUndefined();
+			expect(
+				findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_GENERATION_CORRECTNESS),
+			).toBeUndefined();
 		});
 
 		it('should generate multiple workflows when numGenerations > 1', async () => {
@@ -302,11 +306,11 @@ describe('Pairwise Evaluator', () => {
 			});
 
 			// Should have multi-gen feedback
-			const correctness = findFeedback(feedback, 'generationCorrectness');
+			const correctness = findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_GENERATION_CORRECTNESS);
 			expect(correctness?.score).toBeCloseTo(2 / 3); // 2 of 3 passed
 			expect(correctness?.comment).toBe('2/3 generations passed');
 
-			const diagnostic = findFeedback(feedback, 'aggregatedDiagnostic');
+			const diagnostic = findFeedback(feedback, PAIRWISE_METRICS.PAIRWISE_AGGREGATED_DIAGNOSTIC);
 			expect(diagnostic?.score).toBeCloseTo((0.9 + 0.8 + 0.5) / 3);
 		});
 

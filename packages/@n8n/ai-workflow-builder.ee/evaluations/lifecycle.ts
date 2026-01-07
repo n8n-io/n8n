@@ -7,6 +7,7 @@ import type {
 	ExampleResult,
 	RunSummary,
 } from './harness-types.js';
+import { selectScoringItems } from './score-calculator';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -102,8 +103,11 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		onEvaluatorComplete(name: string, feedback: Feedback[]): void {
 			if (!verbose) return;
 
+			const scoringItems = selectScoringItems(feedback);
 			const avgScore =
-				feedback.length > 0 ? feedback.reduce((sum, f) => sum + f.score, 0) / feedback.length : 0;
+				scoringItems.length > 0
+					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
+					: 0;
 
 			const colorFn = scoreColor(avgScore);
 			console.log(

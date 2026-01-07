@@ -9,6 +9,7 @@ import * as path from 'path';
 
 import { feedbackKey } from './feedback';
 import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
+import { selectScoringItems } from './score-calculator';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -147,7 +148,12 @@ function formatFeedbackForExport(result: ExampleResult): object {
 				...(f.kind ? { kind: f.kind } : {}),
 				...(f.comment ? { comment: f.comment } : {}),
 			})),
-			averageScore: items.reduce((sum, f) => sum + f.score, 0) / items.length,
+			averageScore: (() => {
+				const scoringItems = selectScoringItems(items);
+				return scoringItems.length > 0
+					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
+					: 0;
+			})(),
 		})),
 		allFeedback: result.feedback,
 	};
@@ -158,15 +164,24 @@ function formatFeedbackForExport(result: ExampleResult): object {
  */
 function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): object {
 	// Calculate per-evaluator statistics
-	const evaluatorStats: Record<string, { scores: number[]; count: number }> = {};
+	const evaluatorStats: Record<string, { scores: number[] }> = {};
 	for (const result of results) {
+		const byEvaluator: Record<string, Feedback[]> = {};
 		for (const fb of result.feedback) {
 			const evaluator = fb.evaluator;
+			if (!byEvaluator[evaluator]) byEvaluator[evaluator] = [];
+			byEvaluator[evaluator].push(fb);
+		}
+		for (const [evaluator, items] of Object.entries(byEvaluator)) {
 			if (!evaluatorStats[evaluator]) {
-				evaluatorStats[evaluator] = { scores: [], count: 0 };
+				evaluatorStats[evaluator] = { scores: [] };
 			}
-			evaluatorStats[evaluator].scores.push(fb.score);
-			evaluatorStats[evaluator].count++;
+			const scoringItems = selectScoringItems(items);
+			const avg =
+				scoringItems.length > 0
+					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
+					: 0;
+			evaluatorStats[evaluator].scores.push(avg);
 		}
 	}
 

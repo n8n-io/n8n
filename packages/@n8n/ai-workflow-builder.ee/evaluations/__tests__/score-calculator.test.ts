@@ -220,7 +220,7 @@ describe('Score Calculator', () => {
 
 		it('should be invariant to extra detail keys', () => {
 			const base: Feedback[] = [
-				{ evaluator: 'pairwise', metric: 'majorityPass', score: 1, kind: 'score' },
+				{ evaluator: 'pairwise', metric: 'pairwise_primary', score: 1, kind: 'score' },
 			];
 			const withDetails: Feedback[] = [
 				...base,

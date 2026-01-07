@@ -81,7 +81,7 @@ describe('Core Types', () => {
 			const evaluator: Evaluator<PairwiseContext> = {
 				name: 'pairwise',
 				evaluate: async (_workflow: SimpleWorkflow, ctx: PairwiseContext) => [
-					{ evaluator: 'pairwise', metric: 'majorityPass', score: ctx.dos ? 1 : 0 },
+					{ evaluator: 'pairwise', metric: 'pairwise_primary', score: ctx.dos ? 1 : 0 },
 				],
 			};
 

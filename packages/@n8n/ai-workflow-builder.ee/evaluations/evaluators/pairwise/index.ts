@@ -3,6 +3,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { runJudgePanel, type EvalCriteria } from './judge-panel';
+import { PAIRWISE_METRICS } from './metrics';
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
 import { aggregateGenerations, type GenerationDetail } from '../../multi-gen';
 
@@ -45,21 +46,40 @@ async function evaluateSingleGeneration(
 
 	const feedback: Feedback[] = [];
 
-	// Overall pairwise result
+	const totalViolations = result.judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
+	const totalPasses = result.judgeResults.reduce((sum, r) => sum + r.passes.length, 0);
+
+	// v1-compatible single-generation metrics
 	feedback.push({
 		evaluator: 'pairwise',
-		metric: 'majorityPass',
+		metric: PAIRWISE_METRICS.PAIRWISE_PRIMARY,
 		score: result.majorityPass ? 1 : 0,
 		kind: 'score',
 		comment: `${result.primaryPasses}/${numJudges} judges passed`,
 	});
-
-	// Diagnostic score
 	feedback.push({
 		evaluator: 'pairwise',
-		metric: 'diagnosticScore',
+		metric: PAIRWISE_METRICS.PAIRWISE_DIAGNOSTIC,
 		score: result.avgDiagnosticScore,
 		kind: 'metric',
+	});
+	feedback.push({
+		evaluator: 'pairwise',
+		metric: PAIRWISE_METRICS.PAIRWISE_JUDGES_PASSED,
+		score: result.primaryPasses,
+		kind: 'detail',
+	});
+	feedback.push({
+		evaluator: 'pairwise',
+		metric: PAIRWISE_METRICS.PAIRWISE_TOTAL_PASSES,
+		score: totalPasses,
+		kind: 'detail',
+	});
+	feedback.push({
+		evaluator: 'pairwise',
+		metric: PAIRWISE_METRICS.PAIRWISE_TOTAL_VIOLATIONS,
+		score: totalViolations,
+		kind: 'detail',
 	});
 
 	// Individual judge results
@@ -119,16 +139,28 @@ async function evaluateMultiGeneration(
 	const feedback: Feedback[] = [
 		{
 			evaluator: 'pairwise',
-			metric: 'generationCorrectness',
+			metric: PAIRWISE_METRICS.PAIRWISE_GENERATION_CORRECTNESS,
 			score: aggregation.generationCorrectness,
 			kind: 'score',
 			comment: `${aggregation.passingGenerations}/${aggregation.totalGenerations} generations passed`,
 		},
 		{
 			evaluator: 'pairwise',
-			metric: 'aggregatedDiagnostic',
+			metric: PAIRWISE_METRICS.PAIRWISE_AGGREGATED_DIAGNOSTIC,
 			score: aggregation.aggregatedDiagnosticScore,
 			kind: 'metric',
+		},
+		{
+			evaluator: 'pairwise',
+			metric: PAIRWISE_METRICS.PAIRWISE_GENERATIONS_PASSED,
+			score: aggregation.passingGenerations,
+			kind: 'detail',
+		},
+		{
+			evaluator: 'pairwise',
+			metric: PAIRWISE_METRICS.PAIRWISE_TOTAL_JUDGE_CALLS,
+			score: aggregation.totalGenerations * numJudges,
+			kind: 'detail',
 		},
 	];
 

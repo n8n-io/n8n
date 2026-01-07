@@ -267,7 +267,11 @@ const evaluator = createPairwiseEvaluator(llm, { numJudges: 3 });
 
 **Evaluator:** `pairwise`
 
-**Metrics:** `majorityPass`, `diagnosticScore`, `judge1`, `judge2`, ... (and multi-gen: `generationCorrectness`, `gen1.majorityPass`, etc.)
+**Metrics (v1-compatible):**
+- Single-gen: `pairwise_primary`, `pairwise_diagnostic`, `pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`
+- Multi-gen: `pairwise_generation_correctness`, `pairwise_aggregated_diagnostic`, `pairwise_generations_passed`, `pairwise_total_judge_calls`
+
+Additional per-judge/per-generation details may also be emitted (e.g. `judge1`, `gen1.majorityPass`).
 
 **Context required:** `{ dos?: string, donts?: string }`
 
