@@ -10,6 +10,10 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
@@ -331,7 +335,7 @@ defineExpose({
 
 <template>
 	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
-		<div :class="$style.wrapper">
+		<div v-bind="$attrs" :class="$style.wrapper">
 			<div
 				ref="containerRef"
 				:class="[
