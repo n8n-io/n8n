@@ -94,21 +94,22 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
-const isInputDisabled = computed(() => {
-	const isAutosaving =
+const isAutosaving = computed(() => {
+	return (
 		workflowAutosaveStore.autoSaveState === AutoSaveState.Scheduled ||
-		workflowAutosaveStore.autoSaveState === AutoSaveState.InProgress;
-	return collaborationStore.shouldBeReadOnly || isAutosaving;
+		workflowAutosaveStore.autoSaveState === AutoSaveState.InProgress
+	);
+});
+
+const isInputDisabled = computed(() => {
+	return collaborationStore.shouldBeReadOnly || isAutosaving.value;
 });
 
 const disabledTooltip = computed(() => {
 	if (!isInputDisabled.value) {
 		return undefined;
 	}
-	const isAutosaving =
-		workflowAutosaveStore.autoSaveState === AutoSaveState.Scheduled ||
-		workflowAutosaveStore.autoSaveState === AutoSaveState.InProgress;
-	if (isAutosaving) {
+	if (isAutosaving.value) {
 		return i18n.baseText('aiAssistant.builder.disabledTooltip.autosaving');
 	}
 	if (collaborationStore.shouldBeReadOnly) {
