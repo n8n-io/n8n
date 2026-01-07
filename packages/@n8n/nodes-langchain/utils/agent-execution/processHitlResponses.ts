@@ -110,7 +110,7 @@ export function processHitlResponses(
 				nodeName: hitl.gatedToolNodeName,
 				input: { tool: hitl.toolName, ...hitl.originalInput },
 				type: NodeConnectionTypes.AiTool,
-				id: `hitl_approved_${actionResponse.action.id}`,
+				id: actionResponse.action.id,
 				metadata: {
 					itemIndex,
 					// Set the parent node to the HITL node for proper log tree structure
