@@ -17,7 +17,12 @@ import {
 	workflowAgentDefaultIcon,
 } from './chat.utils';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
-import { MAX_AGENT_NAME_CHARS_MENU, NEW_AGENT_MENU_ID, providerDisplayNames } from './constants';
+import {
+	LLM_AGGREGATORS,
+	MAX_AGENT_NAME_CHARS_MENU,
+	NEW_AGENT_MENU_ID,
+	providerDisplayNames,
+} from './constants';
 
 type MenuItem = DropdownMenuItemProps<
 	string,
@@ -371,8 +376,16 @@ export function buildModelSelectorMenuItems(
 		menuItems.push(n8nAgentsItem);
 	}
 
-	for (let i = 0; i < chatHubLLMProviderSchema.options.length; i++) {
-		const provider = chatHubLLMProviderSchema.options[i];
+	// Move aggregators to lower
+	const sortedProviders = chatHubLLMProviderSchema.options.toSorted((a, b) => {
+		const aInt = LLM_AGGREGATORS.includes(a) ? 1 : -1;
+		const bInt = LLM_AGGREGATORS.includes(b) ? 1 : -1;
+
+		return aInt - bInt;
+	});
+
+	for (let i = 0; i < sortedProviders.length; i++) {
+		const provider = sortedProviders[i];
 		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
 
 		if (item) {

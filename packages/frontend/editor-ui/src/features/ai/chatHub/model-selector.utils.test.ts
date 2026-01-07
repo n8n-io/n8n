@@ -56,18 +56,16 @@ describe(buildModelSelectorMenuItems, () => {
 			'custom-agent': { models: [mockPersonalAgent] },
 		});
 
-		const resultWithCustomAgents = buildModelSelectorMenuItems(agents, buildMenuOptions);
-		const resultWithNoCustomAgents = buildModelSelectorMenuItems(agents, {
+		const result1 = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result2 = buildModelSelectorMenuItems(agents, {
 			...buildMenuOptions,
 			includeCustomAgents: false,
 		});
-		const expectedShapeWithCustomAgents = expect.arrayContaining([
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents' }),
-			expect.objectContaining({ label: 'chatHub.agent.personalAgents' }),
-		]);
 
-		expect(resultWithCustomAgents).toEqual(expectedShapeWithCustomAgents);
-		expect(resultWithNoCustomAgents).not.toEqual(expectedShapeWithCustomAgents);
+		expect(result1.some(({ label }) => label === 'chatHub.agent.personalAgents')).toBeTruthy();
+		expect(result1.some(({ label }) => label === 'chatHub.agent.workflowAgents')).toBeTruthy();
+		expect(result2.find(({ label }) => label === 'chatHub.agent.personalAgents')).toBeTruthy();
+		expect(result2.find(({ label }) => label === 'chatHub.agent.workflowAgents')).toBeUndefined();
 	});
 
 	it('should group workflow agents by project when multiple projects exist', () => {
@@ -91,23 +89,21 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'chatHub.agent.workflowAgents',
-					children: expect.arrayContaining([
-						expect.objectContaining({
-							label: 'Project A',
-							children: expect.arrayContaining([expect.objectContaining({ label: 'Agent 1' })]),
-						}),
-						expect.objectContaining({
-							label: 'Project B',
-							children: expect.arrayContaining([expect.objectContaining({ label: 'Agent 2' })]),
-						}),
-					]),
-				}),
-			]),
+		const workflowAgentsGroup = result.find(
+			(item) => item.label === 'chatHub.agent.workflowAgents',
 		);
+		expect(workflowAgentsGroup).toBeDefined();
+		expect(workflowAgentsGroup?.children).toHaveLength(2);
+
+		const projectA = workflowAgentsGroup?.children?.find((item) => item.label === 'Project A');
+		expect(projectA).toBeDefined();
+		expect(projectA?.children).toHaveLength(1);
+		expect(projectA?.children?.[0].label).toBe('Agent 1');
+
+		const projectB = workflowAgentsGroup?.children?.find((item) => item.label === 'Project B');
+		expect(projectB).toBeDefined();
+		expect(projectB?.children).toHaveLength(1);
+		expect(projectB?.children?.[0].label).toBe('Agent 2');
 	});
 
 	it('should not group n8n agents when only one project exists', () => {
@@ -129,17 +125,13 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'chatHub.agent.workflowAgents',
-					children: expect.arrayContaining([
-						expect.objectContaining({ label: 'Agent 1' }),
-						expect.objectContaining({ label: 'Agent 2' }),
-					]),
-				}),
-			]),
+		const workflowAgentsGroup = result.find(
+			(item) => item.label === 'chatHub.agent.workflowAgents',
 		);
+		expect(workflowAgentsGroup).toBeDefined();
+		expect(workflowAgentsGroup?.children).toHaveLength(2);
+		expect(workflowAgentsGroup?.children?.[0].label).toBe('Agent 1');
+		expect(workflowAgentsGroup?.children?.[1].label).toBe('Agent 2');
 	});
 
 	it('should include personal agents with "add" menu', () => {
@@ -154,17 +146,13 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'chatHub.agent.personalAgents',
-					children: expect.arrayContaining([
-						expect.objectContaining({ label: 'My Personal Agent' }),
-						expect.objectContaining({ label: 'chatHub.agent.newAgent' }),
-					]),
-				}),
-			]),
+		const personalAgentsGroup = result.find(
+			(item) => item.label === 'chatHub.agent.personalAgents',
 		);
+		expect(personalAgentsGroup).toBeDefined();
+		expect(personalAgentsGroup?.children).toHaveLength(2);
+		expect(personalAgentsGroup?.children?.[0].label).toBe('My Personal Agent');
+		expect(personalAgentsGroup?.children?.[1].label).toBe('chatHub.agent.newAgent');
 	});
 
 	it('should include LLM provider models with "configure" and "add" menu', () => {
@@ -174,18 +162,12 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'OpenAI',
-					children: expect.arrayContaining([
-						expect.objectContaining({ label: 'chatHub.agent.configureCredentials' }),
-						expect.objectContaining({ label: 'GPT-4' }),
-						expect.objectContaining({ label: 'chatHub.agent.addModel' }),
-					]),
-				}),
-			]),
-		);
+		const openaiGroup = result.find((item) => item.label === 'OpenAI');
+		expect(openaiGroup).toBeDefined();
+		expect(openaiGroup?.children).toHaveLength(3);
+		expect(openaiGroup?.children?.[0].label).toBe('chatHub.agent.configureCredentials');
+		expect(openaiGroup?.children?.[1].label).toBe('GPT-4');
+		expect(openaiGroup?.children?.[2].label).toBe('chatHub.agent.addModel');
 	});
 
 	it('should add divided property to first LLM provider', () => {
@@ -196,9 +178,13 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([expect.objectContaining({ id: 'openai', divided: true })]),
-		);
+		const openaiGroup = result.find((item) => item.id === 'openai');
+		expect(openaiGroup).toBeDefined();
+		expect(openaiGroup?.divided).toBe(true);
+
+		const anthropicGroup = result.find((item) => item.id === 'anthropic');
+		expect(anthropicGroup).toBeDefined();
+		expect(anthropicGroup?.divided).toBeUndefined();
 	});
 
 	it('should filter out disabled providers', () => {
@@ -221,7 +207,8 @@ describe(buildModelSelectorMenuItems, () => {
 			settings: settings.providers,
 		});
 
-		expect(result).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'openai' })]));
+		const openaiGroup = result.find((item) => item.id === 'openai');
+		expect(openaiGroup).toBeUndefined();
 	});
 
 	it('should show loading state', () => {
@@ -232,20 +219,15 @@ describe(buildModelSelectorMenuItems, () => {
 			isLoading: true,
 		});
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'chatHub.agent.personalAgents',
-					children: expect.arrayContaining([
-						expect.objectContaining({
-							id: 'custom-agent::loading',
-							label: 'generic.loadingEllipsis',
-							disabled: true,
-						}),
-					]),
-				}),
-			]),
+		const personalAgentsGroup = result.find(
+			(item) => item.label === 'chatHub.agent.personalAgents',
 		);
+		expect(personalAgentsGroup).toBeDefined();
+		expect(personalAgentsGroup?.children).toHaveLength(2);
+		expect(personalAgentsGroup?.children?.[0].id).toBe('custom-agent::loading');
+		expect(personalAgentsGroup?.children?.[0].label).toBe('generic.loadingEllipsis');
+		expect(personalAgentsGroup?.children?.[0].disabled).toBe(true);
+		expect(personalAgentsGroup?.children?.[1].label).toBe('chatHub.agent.newAgent');
 	});
 
 	it('should show empty state for workflow agents', () => {
@@ -253,20 +235,14 @@ describe(buildModelSelectorMenuItems, () => {
 
 		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(result).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					label: 'chatHub.agent.workflowAgents',
-					children: [
-						expect.objectContaining({
-							id: 'n8n::no-agents',
-							label: 'chatHub.workflowAgents.empty.noAgents',
-							disabled: true,
-						}),
-					],
-				}),
-			]),
+		const workflowAgentsGroup = result.find(
+			(item) => item.label === 'chatHub.agent.workflowAgents',
 		);
+		expect(workflowAgentsGroup).toBeDefined();
+		expect(workflowAgentsGroup?.children).toHaveLength(1);
+		expect(workflowAgentsGroup?.children?.[0].id).toBe('n8n::no-agents');
+		expect(workflowAgentsGroup?.children?.[0].label).toBe('chatHub.workflowAgents.empty.noAgents');
+		expect(workflowAgentsGroup?.children?.[0].disabled).toBe(true);
 	});
 });
 
@@ -289,13 +265,11 @@ describe(applySearch, () => {
 		});
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result = applySearch(menuItems, 'gpt', mockI18n);
 
-		expect(applySearch(menuItems, 'gpt', mockI18n)).toEqual([
-			expect.objectContaining({
-				label: 'GPT-4',
-				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
-			}),
-		]);
+		expect(result).toHaveLength(1);
+		expect(result[0].label).toBe('GPT-4');
+		expect(result[0].data?.parts).toEqual(['OpenAI', 'GPT-4']);
 	});
 
 	it('should flatten nested groups in search results for n8n agents with project groups', () => {
@@ -323,27 +297,15 @@ describe(applySearch, () => {
 		});
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result = applySearch(menuItems, 'agent', mockI18n);
 
-		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
-			expect.objectContaining({
-				label: 'Agent 1',
-				data: expect.objectContaining({
-					parts: ['chatHub.agent.workflowAgents', 'ProjectA', 'Agent 1'],
-				}),
-			}),
-			expect.objectContaining({
-				label: 'Agent 2',
-				data: expect.objectContaining({
-					parts: ['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 2'],
-				}),
-			}),
-			expect.objectContaining({
-				label: 'Agent 3',
-				data: expect.objectContaining({
-					parts: ['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 3'],
-				}),
-			}),
-		]);
+		expect(result).toHaveLength(3);
+		expect(result[0].label).toBe('Agent 1');
+		expect(result[0].data?.parts).toEqual(['chatHub.agent.workflowAgents', 'ProjectA', 'Agent 1']);
+		expect(result[1].label).toBe('Agent 2');
+		expect(result[1].data?.parts).toEqual(['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 2']);
+		expect(result[2].label).toBe('Agent 3');
+		expect(result[2].data?.parts).toEqual(['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 3']);
 	});
 
 	it('should not group workflow agents if all matched agents belong to the same group', () => {
@@ -363,19 +325,13 @@ describe(applySearch, () => {
 		});
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result = applySearch(menuItems, 'agent', mockI18n);
 
-		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
-			expect.objectContaining({
-				label: 'My Agent',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'My Agent'] }),
-			}),
-			expect.objectContaining({
-				label: 'Another Agent',
-				data: expect.objectContaining({
-					parts: ['chatHub.agent.workflowAgents', 'Another Agent'],
-				}),
-			}),
-		]);
+		expect(result).toHaveLength(2);
+		expect(result[0].label).toBe('My Agent');
+		expect(result[0].data?.parts).toEqual(['chatHub.agent.workflowAgents', 'My Agent']);
+		expect(result[1].label).toBe('Another Agent');
+		expect(result[1].data?.parts).toEqual(['chatHub.agent.workflowAgents', 'Another Agent']);
 	});
 
 	it('should limit flattened results and show "More" item when exceeding limit', () => {
@@ -391,56 +347,18 @@ describe(applySearch, () => {
 		});
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result = applySearch(menuItems, 'agent', mockI18n);
 
-		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
-			expect.objectContaining({
-				label: 'Agent 0',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 0'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 1',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 1'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 2',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 2'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 3',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 3'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 4',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 4'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 5',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 5'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 6',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 6'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 7',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 7'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 8',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 8'] }),
-			}),
-			expect.objectContaining({
-				label: 'Agent 9',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 9'] }),
-			}),
-			expect.objectContaining({
-				label: 'chatHub.models.selector.moreModels',
-				children: [
-					expect.objectContaining({ label: 'Agent 10' }),
-					expect.objectContaining({ label: 'Agent 11' }),
-				],
-			}),
-		]);
+		expect(result).toHaveLength(11);
+		for (let i = 0; i < 10; i++) {
+			expect(result[i].label).toBe(`Agent ${i}`);
+			expect(result[i].data?.parts).toEqual(['chatHub.agent.workflowAgents', `Agent ${i}`]);
+		}
+
+		expect(result[10].label).toBe('chatHub.models.selector.moreModels');
+		expect(result[10].children).toHaveLength(2);
+		expect(result[10].children?.[0].label).toBe('Agent 10');
+		expect(result[10].children?.[1].label).toBe('Agent 11');
 	});
 
 	it('should not match non-model menu items', () => {
@@ -474,17 +392,13 @@ describe(applySearch, () => {
 		});
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
+		const result = applySearch(menuItems, 'gpt', mockI18n);
 
-		expect(applySearch(menuItems, 'gpt', mockI18n)).toEqual([
-			expect.objectContaining({
-				label: 'GPT-4',
-				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
-			}),
-			expect.objectContaining({
-				label: 'GPT-3.5 Turbo',
-				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-3.5 Turbo'] }),
-			}),
-		]);
+		expect(result).toHaveLength(2);
+		expect(result[0].label).toBe('GPT-4');
+		expect(result[0].data?.parts).toEqual(['OpenAI', 'GPT-4']);
+		expect(result[1].label).toBe('GPT-3.5 Turbo');
+		expect(result[1].data?.parts).toEqual(['OpenAI', 'GPT-3.5 Turbo']);
 	});
 
 	it('should not include providers with only special menu items', () => {

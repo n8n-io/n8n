@@ -1,4 +1,4 @@
-import type { ChatHubProvider } from '@n8n/api-types';
+import type { ChatHubLLMProvider, ChatHubProvider } from '@n8n/api-types';
 
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
@@ -39,3 +39,9 @@ export const AGENT_EDITOR_MODAL_KEY = 'agentEditorModal';
 export const CHAT_CREDENTIAL_SELECTOR_MODAL_KEY = 'chatCredentialSelectorModal';
 export const CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY = 'chatModelByIdSelectorModal';
 export const CHAT_PROVIDER_SETTINGS_MODAL_KEY = 'chatProviderSettingsModal';
+
+export const LLM_AGGREGATORS: ChatHubLLMProvider[] = [
+	'awsBedrock',
+	'vercelAiGateway',
+	'openRouter',
+];
