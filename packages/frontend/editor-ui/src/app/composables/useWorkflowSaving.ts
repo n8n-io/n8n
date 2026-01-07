@@ -17,6 +17,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -203,7 +204,7 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
-			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
+			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 
 			uiStore.markStateClean();
 			uiStore.removeActiveAction('workflowSaving');
@@ -391,7 +392,7 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
+			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;

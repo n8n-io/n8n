@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onMounted, ref, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
@@ -23,7 +23,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -39,7 +38,6 @@ import ProjectNavigation from '@/features/collaboration/projects/components/Proj
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
-const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -223,12 +221,6 @@ const visibleMenuItems = computed<IMenuItem[]>(() =>
 
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
-
-	becomeTemplateCreatorStore.startMonitoringCta();
-});
-
-onBeforeUnmount(() => {
-	becomeTemplateCreatorStore.stopMonitoringCta();
 });
 
 const trackHelpItemClick = (itemType: string) => {

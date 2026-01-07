@@ -130,7 +130,6 @@ describe('useWorkflowSaving', () => {
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
-			workflowsStore.convertWorkflowTagsToIds = vi.fn(() => []);
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -552,7 +551,6 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflow(workflow);
 			workflowsStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
-			workflowsStore.convertWorkflowTagsToIds = vi.fn(() => ['tag1', 'tag2']);
 
 			// Create a mock workflowState with spy functions
 			const setWorkflowTagIdsSpy = vi.fn();
@@ -596,7 +594,6 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflow(workflow);
 			workflowsStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
-			workflowsStore.convertWorkflowTagsToIds = vi.fn(() => ['tag1', 'tag2']);
 
 			const setWorkflowTagIdsSpy = vi.fn();
 			const mockWorkflowState: Partial<WorkflowState> = {
