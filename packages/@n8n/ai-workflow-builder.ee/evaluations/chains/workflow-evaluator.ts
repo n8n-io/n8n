@@ -13,50 +13,65 @@ import {
 import type { EvaluationInput, EvaluationResult } from '../types/evaluation';
 
 /**
+ * Weights for each evaluation category used in overall score calculation.
+ * Exported for use in tests.
+ */
+export const EVALUATION_WEIGHTS = {
+	functionality: 0.25,
+	connections: 0.15,
+	expressions: 0.15,
+	nodeConfiguration: 0.15,
+	efficiency: 0.1,
+	dataFlow: 0.1,
+	maintainability: 0.05,
+	bestPractices: 0.1,
+	structuralSimilarity: 0.05,
+} as const;
+
+/**
+ * Total weight when structural similarity is not applicable.
+ */
+export const TOTAL_WEIGHT_WITHOUT_STRUCTURAL =
+	EVALUATION_WEIGHTS.functionality +
+	EVALUATION_WEIGHTS.connections +
+	EVALUATION_WEIGHTS.expressions +
+	EVALUATION_WEIGHTS.nodeConfiguration +
+	EVALUATION_WEIGHTS.efficiency +
+	EVALUATION_WEIGHTS.dataFlow +
+	EVALUATION_WEIGHTS.maintainability +
+	EVALUATION_WEIGHTS.bestPractices;
+
+/**
+ * Total weight when structural similarity is applicable.
+ */
+export const TOTAL_WEIGHT_WITH_STRUCTURAL =
+	TOTAL_WEIGHT_WITHOUT_STRUCTURAL + EVALUATION_WEIGHTS.structuralSimilarity;
+
+/**
  * Calculate weighted score for the overall evaluation
  * @param result - Evaluation result with all category scores
  * @returns Weighted overall score
  */
 export function calculateWeightedScore(result: EvaluationResult): number {
-	// Define weights for each category
-	const weights = {
-		functionality: 0.25,
-		connections: 0.15,
-		expressions: 0.15,
-		nodeConfiguration: 0.15,
-		efficiency: 0.1,
-		dataFlow: 0.1,
-		maintainability: 0.05,
-		bestPractices: 0.1,
+	const w = EVALUATION_WEIGHTS;
 
-		// Structural similarity (5% if applicable)
-		structuralSimilarity: 0.05,
-	};
+	// Calculate weighted sum for all categories
+	const weightedSum =
+		result.functionality.score * w.functionality +
+		result.connections.score * w.connections +
+		result.expressions.score * w.expressions +
+		result.nodeConfiguration.score * w.nodeConfiguration +
+		result.efficiency.score * w.efficiency +
+		result.dataFlow.score * w.dataFlow +
+		result.maintainability.score * w.maintainability +
+		result.bestPractices.score * w.bestPractices +
+		(result.structuralSimilarity?.applicable
+			? result.structuralSimilarity.score * w.structuralSimilarity
+			: 0);
 
-	let totalWeight = 0;
-	let weightedSum = 0;
-
-	// Add scores for core categories (always present)
-	weightedSum += result.functionality.score * weights.functionality;
-	weightedSum += result.connections.score * weights.connections;
-	weightedSum += result.expressions.score * weights.expressions;
-	weightedSum += result.nodeConfiguration.score * weights.nodeConfiguration;
-	totalWeight +=
-		weights.functionality + weights.connections + weights.expressions + weights.nodeConfiguration;
-
-	// Add scores for new metrics (now required)
-	weightedSum += result.efficiency.score * weights.efficiency;
-	weightedSum += result.dataFlow.score * weights.dataFlow;
-	weightedSum += result.maintainability.score * weights.maintainability;
-	weightedSum += result.bestPractices.score * weights.bestPractices;
-	totalWeight +=
-		weights.efficiency + weights.dataFlow + weights.maintainability + weights.bestPractices;
-
-	// Add structural similarity only if applicable
-	if (result.structuralSimilarity?.applicable) {
-		weightedSum += result.structuralSimilarity.score * weights.structuralSimilarity;
-		totalWeight += weights.structuralSimilarity;
-	}
+	const totalWeight = result.structuralSimilarity?.applicable
+		? TOTAL_WEIGHT_WITH_STRUCTURAL
+		: TOTAL_WEIGHT_WITHOUT_STRUCTURAL;
 
 	return totalWeight > 0 ? weightedSum / totalWeight : 0;
 }
@@ -66,7 +81,7 @@ export function calculateWeightedScore(result: EvaluationResult): number {
  * @param result - Complete evaluation result
  * @returns Summary string describing strengths and weaknesses
  */
-function generateEvaluationSummary(result: EvaluationResult): string {
+export function generateEvaluationSummary(result: EvaluationResult): string {
 	const strengths: string[] = [];
 	const weaknesses: string[] = [];
 
@@ -116,7 +131,7 @@ function generateEvaluationSummary(result: EvaluationResult): string {
  * @param result - Complete evaluation result
  * @returns Array of critical issues if any
  */
-function identifyCriticalIssues(result: EvaluationResult): string[] | undefined {
+export function identifyCriticalIssues(result: EvaluationResult): string[] | undefined {
 	const criticalIssues: string[] = [];
 
 	// Check all categories for critical violations
