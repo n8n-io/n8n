@@ -1,9 +1,9 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
 
+import { toLangsmithEvaluationResult } from './feedback';
 import type {
 	Evaluator,
 	TestCase,
@@ -49,7 +49,7 @@ async function evaluateWithPlugins(
 	lifecycle?: Partial<EvaluationLifecycle>,
 ): Promise<Feedback[]> {
 	const results = await Promise.all(
-		evaluators.map(async (evaluator) => {
+		evaluators.map(async (evaluator): Promise<Feedback[]> => {
 			try {
 				const feedback = await evaluator.evaluate(workflow, context);
 				lifecycle?.onEvaluatorComplete?.(evaluator.name, feedback);
@@ -57,13 +57,14 @@ async function evaluateWithPlugins(
 			} catch (error) {
 				const evaluatorError = error instanceof Error ? error : new Error(String(error));
 				lifecycle?.onEvaluatorError?.(evaluator.name, evaluatorError);
-				return [
-					{
-						key: `${evaluator.name}.error`,
-						score: 0,
-						comment: evaluatorError.message,
-					},
-				];
+				const errorFeedback: Feedback = {
+					evaluator: evaluator.name,
+					metric: 'error',
+					score: 0,
+					kind: 'score',
+					comment: evaluatorError.message,
+				};
+				return [errorFeedback];
 			}
 		}),
 	);
@@ -215,24 +216,23 @@ async function runLocalExample(args: {
 /**
  * Run evaluation in local mode.
  */
-async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
-	const {
-		dataset,
-		generateWorkflow,
-		evaluators,
-		context: globalContext,
-		lifecycle,
-		outputDir,
-	} = config;
+function createArtifactSaverIfRequested(outputDir?: string): ArtifactSaver | null {
+	if (!outputDir) return null;
+	return createArtifactSaver({ outputDir, verbose: true });
+}
 
-	const testCases: TestCase[] = dataset;
+async function runLocalDataset(params: {
+	testCases: TestCase[];
+	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	evaluators: Array<Evaluator<EvaluationContext>>;
+	globalContext?: GlobalRunContext;
+	lifecycle?: Partial<EvaluationLifecycle>;
+	artifactSaver: ArtifactSaver | null;
+}): Promise<ExampleResult[]> {
+	const { testCases, generateWorkflow, evaluators, globalContext, lifecycle, artifactSaver } =
+		params;
+
 	const results: ExampleResult[] = [];
-
-	// Create artifact saver if outputDir is provided
-	const artifactSaver = outputDir ? createArtifactSaver({ outputDir, verbose: true }) : null;
-
-	lifecycle?.onStart?.(config);
-
 	for (let i = 0; i < testCases.length; i++) {
 		const testCase = testCases[i];
 		const index = i + 1;
@@ -248,8 +248,10 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		});
 		results.push(result);
 	}
+	return results;
+}
 
-	// Build summary
+function buildRunSummary(results: ExampleResult[]): RunSummary {
 	const passed = results.filter((r) => r.status === 'pass').length;
 	const failed = results.filter((r) => r.status === 'fail').length;
 	const errors = results.filter((r) => r.status === 'error').length;
@@ -258,7 +260,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		results.length > 0 ? results.reduce((sum, r) => sum + r.score, 0) / results.length : 0;
 	const totalDurationMs = results.reduce((sum, r) => sum + r.durationMs, 0);
 
-	const summary: RunSummary = {
+	return {
 		totalExamples: results.length,
 		passed,
 		failed,
@@ -266,6 +268,34 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		averageScore,
 		totalDurationMs,
 	};
+}
+
+async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
+	const {
+		dataset,
+		generateWorkflow,
+		evaluators,
+		context: globalContext,
+		lifecycle,
+		outputDir,
+	} = config;
+
+	const testCases: TestCase[] = dataset;
+
+	// Create artifact saver if outputDir is provided
+	const artifactSaver = createArtifactSaverIfRequested(outputDir);
+
+	lifecycle?.onStart?.(config);
+
+	const results = await runLocalDataset({
+		testCases,
+		generateWorkflow,
+		evaluators,
+		globalContext,
+		lifecycle,
+		artifactSaver,
+	});
+	const summary = buildRunSummary(results);
 
 	// Save summary to disk if outputDir is provided
 	artifactSaver?.saveSummary(summary, results);
@@ -394,11 +424,10 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	// Create LangSmith evaluator that extracts pre-computed feedback
 	// This does NOT do any LLM calls - just returns outputs.feedback
-	const stripEvaluatorPrefix = langsmithOptions.stripEvaluatorPrefix;
 	const feedbackExtractor = async (
 		rootRun: Run,
 		_example?: Example,
-	): Promise<LangsmithEvaluationResult[]> => {
+	): Promise<Array<{ key: string; score: number; comment?: string }>> => {
 		const outputs = rootRun.outputs as LangsmithTargetOutput | undefined;
 
 		if (!outputs?.feedback) {
@@ -411,14 +440,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			];
 		}
 
-		// Convert our Feedback to LangSmith format (they're compatible)
-		if (!stripEvaluatorPrefix) return outputs.feedback;
-
-		const prefix = `${stripEvaluatorPrefix}.`;
-		return outputs.feedback.map((item) => ({
-			...item,
-			key: item.key.startsWith(prefix) ? item.key.slice(prefix.length) : item.key,
-		}));
+		return outputs.feedback.map((fb) =>
+			toLangsmithEvaluationResult(fb, {
+				stripEvaluatorPrefix: langsmithOptions.stripEvaluatorPrefix,
+			}),
+		);
 	};
 
 	// Load examples if maxExamples is set

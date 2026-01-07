@@ -16,7 +16,7 @@ function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 /** Helper to create a simple evaluator */
 function createMockEvaluator(
 	name: string,
-	feedback: Feedback[] = [{ key: name, score: 1 }],
+	feedback: Feedback[] = [{ evaluator: name, metric: 'score', score: 1 }],
 ): Evaluator {
 	return {
 		name,
@@ -61,9 +61,15 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should run all evaluators in parallel for each example', async () => {
-			const evaluator1 = createMockEvaluator('eval1', [{ key: 'e1', score: 0.8 }]);
-			const evaluator2 = createMockEvaluator('eval2', [{ key: 'e2', score: 0.9 }]);
-			const evaluator3 = createMockEvaluator('eval3', [{ key: 'e3', score: 1.0 }]);
+			const evaluator1 = createMockEvaluator('eval1', [
+				{ evaluator: 'eval1', metric: 'score', score: 0.8 },
+			]);
+			const evaluator2 = createMockEvaluator('eval2', [
+				{ evaluator: 'eval2', metric: 'score', score: 0.9 },
+			]);
+			const evaluator3 = createMockEvaluator('eval3', [
+				{ evaluator: 'eval3', metric: 'score', score: 1.0 },
+			]);
 
 			const config: RunConfig = {
 				mode: 'local',
@@ -85,7 +91,9 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should skip and continue when evaluator throws error', async () => {
-			const goodEvaluator = createMockEvaluator('good', [{ key: 'good', score: 1.0 }]);
+			const goodEvaluator = createMockEvaluator('good', [
+				{ evaluator: 'good', metric: 'score', score: 1.0 },
+			]);
 			const badEvaluator = createFailingEvaluator('bad', new Error('Evaluator crashed'));
 
 			const config: RunConfig = {
@@ -132,7 +140,7 @@ describe('Runner - Local Mode', () => {
 			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
 				expect(ctx.dos).toBe('Use Slack');
 				expect(ctx.donts).toBe('No HTTP');
-				return [{ key: 'contextual.score', score: 1 }];
+				return [{ evaluator: 'contextual', metric: 'score', score: 1 }];
 			};
 
 			const evaluator: Evaluator = {
@@ -162,7 +170,7 @@ describe('Runner - Local Mode', () => {
 			const evaluate: Evaluator['evaluate'] = async (_workflow, ctx) => {
 				expect(ctx.dos).toBe('Use Slack');
 				expect(ctx.donts).toBe('No HTTP');
-				return [{ key: 'merged.score', score: 1 }];
+				return [{ evaluator: 'merged', metric: 'score', score: 1 }];
 			};
 
 			const evaluator: Evaluator = {
@@ -185,8 +193,12 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should calculate pass/fail status based on threshold', async () => {
-			const highScoreEvaluator = createMockEvaluator('high', [{ key: 'high', score: 0.9 }]);
-			const lowScoreEvaluator = createMockEvaluator('low', [{ key: 'low', score: 0.3 }]);
+			const highScoreEvaluator = createMockEvaluator('high', [
+				{ evaluator: 'high', metric: 'score', score: 0.9 },
+			]);
+			const lowScoreEvaluator = createMockEvaluator('low', [
+				{ evaluator: 'low', metric: 'score', score: 0.3 },
+			]);
 
 			// High score should pass (>= 0.7 threshold)
 			const config1: RunConfig = {
@@ -214,10 +226,12 @@ describe('Runner - Local Mode', () => {
 
 		it('should aggregate feedback from all evaluators', async () => {
 			const evaluator1 = createMockEvaluator('e1', [
-				{ key: 'func', score: 0.8 },
-				{ key: 'conn', score: 0.9 },
+				{ evaluator: 'e1', metric: 'func', score: 0.8 },
+				{ evaluator: 'e1', metric: 'conn', score: 0.9 },
 			]);
-			const evaluator2 = createMockEvaluator('e2', [{ key: 'overall', score: 0.85 }]);
+			const evaluator2 = createMockEvaluator('e2', [
+				{ evaluator: 'e2', metric: 'overall', score: 0.85 },
+			]);
 
 			const config: RunConfig = {
 				mode: 'local',
@@ -304,8 +318,8 @@ describe('Runner - Local Mode', () => {
 				onEvaluatorComplete: jest.fn(),
 			};
 
-			const feedback1: Feedback[] = [{ key: 'e1', score: 0.8 }];
-			const feedback2: Feedback[] = [{ key: 'e2', score: 0.9 }];
+			const feedback1: Feedback[] = [{ evaluator: 'eval1', metric: 'score', score: 0.8 }];
+			const feedback2: Feedback[] = [{ evaluator: 'eval2', metric: 'score', score: 0.9 }];
 
 			const config: RunConfig = {
 				mode: 'local',

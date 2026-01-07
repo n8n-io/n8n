@@ -62,14 +62,14 @@ export function createSimilarityEvaluator(
 		async evaluate(workflow: SimpleWorkflow, ctx: EvaluationContext): Promise<Feedback[]> {
 			const feedback: Feedback[] = [];
 
-			// Check if we have any reference workflows to compare against
-			const hasMultiple = ctx.referenceWorkflows && ctx.referenceWorkflows.length > 0;
-			const hasSingle = ctx.referenceWorkflow !== undefined;
+			const referenceWorkflows = ctx.referenceWorkflows;
+			const referenceWorkflow = ctx.referenceWorkflow;
 
-			if (!hasMultiple && !hasSingle) {
-				// No reference workflows provided - return neutral feedback
+			// No reference workflows provided - return neutral feedback
+			if (!referenceWorkflows?.length && !referenceWorkflow) {
 				feedback.push({
-					key: 'similarity.score',
+					evaluator: 'similarity',
+					metric: 'score',
 					score: 1,
 					kind: 'score',
 					comment: 'No reference workflow provided for comparison',
@@ -88,27 +88,28 @@ export function createSimilarityEvaluator(
 					score: number;
 				};
 
-				if (hasMultiple) {
-					// Compare against multiple reference workflows
+				if (referenceWorkflows?.length) {
 					result = await evaluateWorkflowSimilarityMultiple(
 						workflow,
-						ctx.referenceWorkflows!,
+						referenceWorkflows,
+						preset,
+						customConfigPath,
+					);
+				} else if (referenceWorkflow) {
+					result = await evaluateWorkflowSimilarity(
+						workflow,
+						referenceWorkflow,
 						preset,
 						customConfigPath,
 					);
 				} else {
-					// Compare against single reference workflow
-					result = await evaluateWorkflowSimilarity(
-						workflow,
-						ctx.referenceWorkflow!,
-						preset,
-						customConfigPath,
-					);
+					throw new Error('No reference workflow provided for similarity evaluation');
 				}
 
 				// Overall similarity score
 				feedback.push({
-					key: 'similarity.score',
+					evaluator: 'similarity',
+					metric: 'score',
 					score: result.score,
 					kind: 'score',
 					comment: formatViolations(result.violations),
@@ -124,7 +125,8 @@ export function createSimilarityEvaluator(
 				// Add individual violation counts as feedback
 				for (const [type, count] of Object.entries(violationsByType)) {
 					feedback.push({
-						key: `similarity.${type}`,
+						evaluator: 'similarity',
+						metric: type,
 						score: Math.max(0, 1 - count * 0.1), // Penalty per violation
 						kind: 'detail',
 						comment: `${count} ${type} edit(s)`,
@@ -134,7 +136,8 @@ export function createSimilarityEvaluator(
 				// Return error feedback
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				feedback.push({
-					key: 'similarity.error',
+					evaluator: 'similarity',
+					metric: 'error',
 					score: 0,
 					kind: 'score',
 					comment: errorMessage,

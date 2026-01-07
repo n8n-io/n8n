@@ -35,7 +35,10 @@ export type GlobalRunContext = Omit<Partial<EvaluationContext>, 'prompt'>;
  * What evaluators return - a single piece of feedback.
  */
 export interface Feedback {
-	key: string;
+	/** Evaluator name emitting this feedback (e.g. `llm-judge`, `programmatic`) */
+	evaluator: string;
+	/** Metric name within the evaluator (e.g. `functionality`, `efficiency.nodeCountEfficiency`) */
+	metric: string;
 	score: number;
 	comment?: string;
 	/**

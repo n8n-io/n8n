@@ -130,8 +130,8 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ key: 'func', score: 0.8 },
-				{ key: 'conn', score: 0.9 },
+				{ evaluator: 'llm-judge', metric: 'func', score: 0.8 },
+				{ evaluator: 'llm-judge', metric: 'conn', score: 0.9 },
 			]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
@@ -143,7 +143,9 @@ describe('Console Lifecycle', () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false });
 
-			lifecycle.onEvaluatorComplete('llm-judge', [{ key: 'func', score: 0.8 }]);
+			lifecycle.onEvaluatorComplete('llm-judge', [
+				{ evaluator: 'llm-judge', metric: 'func', score: 0.8 },
+			]);
 
 			expect(mockConsole.log).not.toHaveBeenCalled();
 		});
@@ -153,10 +155,10 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ key: 'llm-judge.functionality', score: 0.95 },
-				{ key: 'llm-judge.connections', score: 0.8 },
-				{ key: 'llm-judge.overallScore', score: 0.85 },
-				{ key: 'other.metric', score: 0.5 },
+				{ evaluator: 'llm-judge', metric: 'functionality', score: 0.95 },
+				{ evaluator: 'llm-judge', metric: 'connections', score: 0.8 },
+				{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.85 },
+				{ evaluator: 'other', metric: 'metric', score: 0.5 },
 			]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
@@ -171,8 +173,18 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ key: 'llm-judge.functionality', score: 0.5, comment: 'Missing trigger node' },
-				{ key: 'llm-judge.connections', score: 0.3, comment: 'Disconnected node found' },
+				{
+					evaluator: 'llm-judge',
+					metric: 'functionality',
+					score: 0.5,
+					comment: 'Missing trigger node',
+				},
+				{
+					evaluator: 'llm-judge',
+					metric: 'connections',
+					score: 0.3,
+					comment: 'Disconnected node found',
+				},
 			]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
@@ -187,13 +199,13 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ key: 'v1', score: 0.5, comment: 'Violation 1' },
-				{ key: 'v2', score: 0.5, comment: 'Violation 2' },
-				{ key: 'v3', score: 0.5, comment: 'Violation 3' },
-				{ key: 'v4', score: 0.5, comment: 'Violation 4' },
-				{ key: 'v5', score: 0.5, comment: 'Violation 5' },
-				{ key: 'v6', score: 0.5, comment: 'Violation 6' },
-				{ key: 'v7', score: 0.5, comment: 'Violation 7' },
+				{ evaluator: 'llm-judge', metric: 'v1', score: 0.5, comment: 'Violation 1' },
+				{ evaluator: 'llm-judge', metric: 'v2', score: 0.5, comment: 'Violation 2' },
+				{ evaluator: 'llm-judge', metric: 'v3', score: 0.5, comment: 'Violation 3' },
+				{ evaluator: 'llm-judge', metric: 'v4', score: 0.5, comment: 'Violation 4' },
+				{ evaluator: 'llm-judge', metric: 'v5', score: 0.5, comment: 'Violation 5' },
+				{ evaluator: 'llm-judge', metric: 'v6', score: 0.5, comment: 'Violation 6' },
+				{ evaluator: 'llm-judge', metric: 'v7', score: 0.5, comment: 'Violation 7' },
 			]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
@@ -206,7 +218,7 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ key: 'llm-judge.error', score: 0, comment: 'Evaluator crashed' },
+				{ evaluator: 'llm-judge', metric: 'error', score: 0, comment: 'Evaluator crashed' },
 			]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
@@ -247,7 +259,7 @@ describe('Console Lifecycle', () => {
 				prompt: 'Test',
 				status: 'pass',
 				score: 0.9,
-				feedback: [{ key: 'test', score: 0.9 }],
+				feedback: [{ evaluator: 'test-eval', metric: 'test', score: 0.9 }],
 				durationMs: 2000,
 			};
 
@@ -256,7 +268,7 @@ describe('Console Lifecycle', () => {
 				prompt: 'Test',
 				status: 'fail',
 				score: 0.3,
-				feedback: [{ key: 'test', score: 0.3 }],
+				feedback: [{ evaluator: 'test-eval', metric: 'test', score: 0.3 }],
 				durationMs: 1500,
 			};
 
@@ -297,7 +309,7 @@ describe('Console Lifecycle', () => {
 				prompt: 'Test',
 				status: 'pass',
 				score: 0.9,
-				feedback: [{ key: 'test', score: 0.9 }],
+				feedback: [{ evaluator: 'test-eval', metric: 'test', score: 0.9 }],
 				durationMs: 2000,
 			};
 
@@ -321,13 +333,15 @@ describe('Console Lifecycle', () => {
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
 			// High score (>= 0.9) - green
-			lifecycle.onEvaluatorComplete('high', [{ key: 'test', score: 0.95 }]);
+			lifecycle.onEvaluatorComplete('high', [{ evaluator: 'high', metric: 'test', score: 0.95 }]);
 
 			// Medium score (>= 0.7, < 0.9) - yellow
-			lifecycle.onEvaluatorComplete('medium', [{ key: 'test', score: 0.75 }]);
+			lifecycle.onEvaluatorComplete('medium', [
+				{ evaluator: 'medium', metric: 'test', score: 0.75 },
+			]);
 
 			// Low score (< 0.7) - red
-			lifecycle.onEvaluatorComplete('low', [{ key: 'test', score: 0.5 }]);
+			lifecycle.onEvaluatorComplete('low', [{ evaluator: 'low', metric: 'test', score: 0.5 }]);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			// The coloring is applied, tests verify that the function runs without error
@@ -516,7 +530,7 @@ describe('Console Lifecycle', () => {
 			const lifecycle2: Partial<EvaluationLifecycle> = { onEvaluatorComplete: hook2 };
 
 			const merged = mergeLifecycles(lifecycle1, lifecycle2);
-			const feedback = [{ key: 'test', score: 0.9 }];
+			const feedback = [{ evaluator: 'test-eval', metric: 'test', score: 0.9 }];
 			merged.onEvaluatorComplete('test-eval', feedback);
 
 			expect(hook1).toHaveBeenCalledWith('test-eval', feedback);

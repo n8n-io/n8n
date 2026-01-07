@@ -47,7 +47,8 @@ async function evaluateSingleGeneration(
 
 	// Overall pairwise result
 	feedback.push({
-		key: 'pairwise.majorityPass',
+		evaluator: 'pairwise',
+		metric: 'majorityPass',
 		score: result.majorityPass ? 1 : 0,
 		kind: 'score',
 		comment: `${result.primaryPasses}/${numJudges} judges passed`,
@@ -55,7 +56,8 @@ async function evaluateSingleGeneration(
 
 	// Diagnostic score
 	feedback.push({
-		key: 'pairwise.diagnosticScore',
+		evaluator: 'pairwise',
+		metric: 'diagnosticScore',
 		score: result.avgDiagnosticScore,
 		kind: 'metric',
 	});
@@ -69,7 +71,8 @@ async function evaluateSingleGeneration(
 				? judge.violations.map((v) => `[${v.rule}] ${v.justification}`).join('; ')
 				: undefined;
 		feedback.push({
-			key: `pairwise.judge${i + 1}`,
+			evaluator: 'pairwise',
+			metric: `judge${i + 1}`,
 			score: judge.primaryPass ? 1 : 0,
 			kind: 'detail',
 			comment: violationSummary,
@@ -115,13 +118,15 @@ async function evaluateMultiGeneration(
 	// Build feedback
 	const feedback: Feedback[] = [
 		{
-			key: 'pairwise.generationCorrectness',
+			evaluator: 'pairwise',
+			metric: 'generationCorrectness',
 			score: aggregation.generationCorrectness,
 			kind: 'score',
 			comment: `${aggregation.passingGenerations}/${aggregation.totalGenerations} generations passed`,
 		},
 		{
-			key: 'pairwise.aggregatedDiagnostic',
+			evaluator: 'pairwise',
+			metric: 'aggregatedDiagnostic',
 			score: aggregation.aggregatedDiagnosticScore,
 			kind: 'metric',
 		},
@@ -130,13 +135,15 @@ async function evaluateMultiGeneration(
 	// Per-generation details
 	aggregation.generationDetails.forEach((gen, i) => {
 		feedback.push({
-			key: `pairwise.gen${i + 1}.majorityPass`,
+			evaluator: 'pairwise',
+			metric: `gen${i + 1}.majorityPass`,
 			score: gen.majorityPass ? 1 : 0,
 			kind: 'detail',
 			comment: `${gen.primaryPasses}/${gen.numJudges} judges`,
 		});
 		feedback.push({
-			key: `pairwise.gen${i + 1}.diagnosticScore`,
+			evaluator: 'pairwise',
+			metric: `gen${i + 1}.diagnosticScore`,
 			score: gen.diagnosticScore,
 			kind: 'detail',
 		});

@@ -16,8 +16,13 @@ import {
 } from '../score-calculator';
 
 /** Helper to create feedback items */
-function createFeedback(key: string, score: number, comment?: string): Feedback {
-	return { key, score, comment };
+function createFeedback(
+	evaluator: string,
+	metric: string,
+	score: number,
+	comment?: string,
+): Feedback {
+	return { evaluator, metric, score, ...(comment ? { comment } : {}) };
 }
 
 describe('Score Calculator', () => {
@@ -84,9 +89,9 @@ describe('Score Calculator', () => {
 	describe('groupByEvaluator()', () => {
 		it('should group feedback by evaluator prefix', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.functionality', 0.8),
-				createFeedback('llm-judge.connections', 0.9),
-				createFeedback('programmatic.trigger', 1.0),
+				createFeedback('llm-judge', 'functionality', 0.8),
+				createFeedback('llm-judge', 'connections', 0.9),
+				createFeedback('programmatic', 'trigger', 1.0),
 			];
 
 			const grouped = groupByEvaluator(feedback);
@@ -98,10 +103,10 @@ describe('Score Calculator', () => {
 
 		it('should handle mixed evaluators', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 0.5),
-				createFeedback('programmatic.b', 0.6),
-				createFeedback('pairwise.c', 0.7),
-				createFeedback('similarity.d', 0.8),
+				createFeedback('llm-judge', 'a', 0.5),
+				createFeedback('programmatic', 'b', 0.6),
+				createFeedback('pairwise', 'c', 0.7),
+				createFeedback('similarity', 'd', 0.8),
 			];
 
 			const grouped = groupByEvaluator(feedback);
@@ -119,12 +124,13 @@ describe('Score Calculator', () => {
 		});
 
 		it('should preserve feedback properties', () => {
-			const feedback: Feedback[] = [createFeedback('llm-judge.test', 0.75, 'Test comment')];
+			const feedback: Feedback[] = [createFeedback('llm-judge', 'test', 0.75, 'Test comment')];
 
 			const grouped = groupByEvaluator(feedback);
 
 			expect(grouped['llm-judge'][0]).toEqual({
-				key: 'llm-judge.test',
+				evaluator: 'llm-judge',
+				metric: 'test',
 				score: 0.75,
 				comment: 'Test comment',
 			});
@@ -134,9 +140,9 @@ describe('Score Calculator', () => {
 	describe('calculateWeightedScore()', () => {
 		it('should use default weights', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 1.0),
-				createFeedback('programmatic.b', 0.5),
-				createFeedback('pairwise.c', 0.5),
+				createFeedback('llm-judge', 'a', 1.0),
+				createFeedback('programmatic', 'b', 0.5),
+				createFeedback('pairwise', 'c', 0.5),
 			];
 
 			const score = calculateWeightedScore(feedback);
@@ -150,8 +156,8 @@ describe('Score Calculator', () => {
 
 		it('should use custom weights', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 1.0),
-				createFeedback('programmatic.b', 0.0),
+				createFeedback('llm-judge', 'a', 1.0),
+				createFeedback('programmatic', 'b', 0.0),
 			];
 
 			const score = calculateWeightedScore(feedback, {
@@ -166,7 +172,7 @@ describe('Score Calculator', () => {
 		});
 
 		it('should handle missing evaluators with default weight', () => {
-			const feedback: Feedback[] = [createFeedback('unknown-evaluator.a', 0.5)];
+			const feedback: Feedback[] = [createFeedback('unknown-evaluator', 'a', 0.5)];
 
 			const score = calculateWeightedScore(feedback);
 
@@ -181,9 +187,9 @@ describe('Score Calculator', () => {
 
 		it('should average multiple items from same evaluator', () => {
 			const feedback: Feedback[] = [
-				{ ...createFeedback('llm-judge.a', 1.0), kind: 'metric' },
-				{ ...createFeedback('llm-judge.b', 0.5), kind: 'metric' },
-				{ ...createFeedback('llm-judge.c', 0.5), kind: 'metric' },
+				{ ...createFeedback('llm-judge', 'a', 1.0), kind: 'metric' },
+				{ ...createFeedback('llm-judge', 'b', 0.5), kind: 'metric' },
+				{ ...createFeedback('llm-judge', 'c', 0.5), kind: 'metric' },
 			];
 
 			const score = calculateWeightedScore(feedback, { 'llm-judge': 1.0 });
@@ -194,27 +200,39 @@ describe('Score Calculator', () => {
 
 		it('should ignore detail items when score items exist', () => {
 			const feedback: Feedback[] = [
-				{ key: 'llm-judge.overallScore', score: 0.8, kind: 'score' },
-				{ key: 'llm-judge.efficiency.nodeCountEfficiency', score: 0.0, kind: 'detail' },
-				{ key: 'llm-judge.efficiency.pathOptimization', score: 0.0, kind: 'detail' },
+				{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.8, kind: 'score' },
+				{
+					evaluator: 'llm-judge',
+					metric: 'efficiency.nodeCountEfficiency',
+					score: 0.0,
+					kind: 'detail',
+				},
+				{
+					evaluator: 'llm-judge',
+					metric: 'efficiency.pathOptimization',
+					score: 0.0,
+					kind: 'detail',
+				},
 			];
 
 			expect(calculateWeightedScore(feedback)).toBeCloseTo(0.8, 5);
 		});
 
 		it('should be invariant to extra detail keys', () => {
-			const base: Feedback[] = [{ key: 'pairwise.majorityPass', score: 1, kind: 'score' }];
+			const base: Feedback[] = [
+				{ evaluator: 'pairwise', metric: 'majorityPass', score: 1, kind: 'score' },
+			];
 			const withDetails: Feedback[] = [
 				...base,
-				{ key: 'pairwise.judge1', score: 0, kind: 'detail' },
-				{ key: 'pairwise.judge2', score: 0, kind: 'detail' },
+				{ evaluator: 'pairwise', metric: 'judge1', score: 0, kind: 'detail' },
+				{ evaluator: 'pairwise', metric: 'judge2', score: 0, kind: 'detail' },
 			];
 
 			expect(calculateWeightedScore(base)).toBeCloseTo(calculateWeightedScore(withDetails), 10);
 		});
 
 		it('should normalize weights', () => {
-			const feedback: Feedback[] = [createFeedback('a.x', 1.0), createFeedback('b.x', 0.0)];
+			const feedback: Feedback[] = [createFeedback('a', 'x', 1.0), createFeedback('b', 'x', 0.0)];
 
 			// Weights don't sum to 1.0
 			const score = calculateWeightedScore(feedback, {
@@ -232,8 +250,8 @@ describe('Score Calculator', () => {
 	describe('aggregateScores()', () => {
 		it('should calculate overall score', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 0.8),
-				createFeedback('programmatic.b', 0.6),
+				createFeedback('llm-judge', 'a', 0.8),
+				createFeedback('programmatic', 'b', 0.6),
 			];
 
 			const result = aggregateScores(feedback);
@@ -246,9 +264,9 @@ describe('Score Calculator', () => {
 
 		it('should calculate by-evaluator averages', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 0.8),
-				createFeedback('llm-judge.b', 0.6),
-				createFeedback('programmatic.c', 1.0),
+				createFeedback('llm-judge', 'a', 0.8),
+				createFeedback('llm-judge', 'b', 0.6),
+				createFeedback('programmatic', 'c', 1.0),
 			];
 
 			const result = aggregateScores(feedback);
@@ -259,9 +277,9 @@ describe('Score Calculator', () => {
 
 		it('should calculate by-category averages', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.functionality', 0.8),
-				createFeedback('llm-judge.connections', 0.6),
-				createFeedback('programmatic.trigger', 1.0),
+				createFeedback('llm-judge', 'functionality', 0.8),
+				createFeedback('llm-judge', 'connections', 0.6),
+				createFeedback('programmatic', 'trigger', 1.0),
 			];
 
 			const result = aggregateScores(feedback);
@@ -273,8 +291,8 @@ describe('Score Calculator', () => {
 
 		it('should average same categories from different evaluators', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.functionality', 0.8),
-				createFeedback('programmatic.functionality', 0.6),
+				createFeedback('llm-judge', 'functionality', 0.8),
+				createFeedback('programmatic', 'functionality', 0.6),
 			];
 
 			const result = aggregateScores(feedback);

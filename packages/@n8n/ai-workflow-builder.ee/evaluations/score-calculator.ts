@@ -83,8 +83,8 @@ export function extractCategory(key: string): string {
  *
  * @example
  * groupByEvaluator([
- *   { key: 'llm-judge.a', score: 0.8 },
- *   { key: 'programmatic.b', score: 0.6 },
+ *   { evaluator: 'llm-judge', metric: 'a', score: 0.8 },
+ *   { evaluator: 'programmatic', metric: 'b', score: 0.6 },
  * ])
  * // => { 'llm-judge': [...], 'programmatic': [...] }
  */
@@ -92,7 +92,7 @@ export function groupByEvaluator(feedback: Feedback[]): Record<string, Feedback[
 	const grouped: Record<string, Feedback[]> = {};
 
 	for (const item of feedback) {
-		const { evaluator } = parseFeedbackKey(item.key);
+		const evaluator = item.evaluator;
 		if (!grouped[evaluator]) {
 			grouped[evaluator] = [];
 		}
@@ -185,7 +185,7 @@ export function aggregateScores(feedback: Feedback[]): AggregatedScore {
 	const categoryGroups: Record<string, Feedback[]> = {};
 
 	for (const item of feedback) {
-		const category = extractCategory(item.key);
+		const category = item.metric.split('.')[0] ?? '';
 		if (category) {
 			if (!categoryGroups[category]) {
 				categoryGroups[category] = [];

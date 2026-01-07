@@ -67,6 +67,9 @@ function createMockPanelResult(
 
 describe('Pairwise Evaluator', () => {
 	let mockLlm: BaseChatModel;
+	type PairwiseFeedback = { evaluator: string; metric: string; score: number; comment?: string };
+	const findFeedback = (feedback: PairwiseFeedback[], metric: string) =>
+		feedback.find((f) => f.evaluator === 'pairwise' && f.metric === metric);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -143,9 +146,10 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			const majorityFeedback = feedback.find((f) => f.key === 'pairwise.majorityPass');
+			const majorityFeedback = findFeedback(feedback, 'majorityPass');
 			expect(majorityFeedback).toEqual({
-				key: 'pairwise.majorityPass',
+				evaluator: 'pairwise',
+				metric: 'majorityPass',
 				score: 1,
 				kind: 'score',
 				comment: '2/3 judges passed',
@@ -161,9 +165,10 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			const diagnosticFeedback = feedback.find((f) => f.key === 'pairwise.diagnosticScore');
+			const diagnosticFeedback = findFeedback(feedback, 'diagnosticScore');
 			expect(diagnosticFeedback).toEqual({
-				key: 'pairwise.diagnosticScore',
+				evaluator: 'pairwise',
+				metric: 'diagnosticScore',
 				score: 0.85,
 				kind: 'metric',
 			});
@@ -179,13 +184,13 @@ describe('Pairwise Evaluator', () => {
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			expect(feedback).toContainEqual(
-				expect.objectContaining({ key: 'pairwise.judge1', score: 1 }),
+				expect.objectContaining({ evaluator: 'pairwise', metric: 'judge1', score: 1 }),
 			);
 			expect(feedback).toContainEqual(
-				expect.objectContaining({ key: 'pairwise.judge2', score: 1 }),
+				expect.objectContaining({ evaluator: 'pairwise', metric: 'judge2', score: 1 }),
 			);
 			expect(feedback).toContainEqual(
-				expect.objectContaining({ key: 'pairwise.judge3', score: 0 }),
+				expect.objectContaining({ evaluator: 'pairwise', metric: 'judge3', score: 0 }),
 			);
 		});
 
@@ -212,7 +217,7 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			const judgeFeedback = feedback.find((f) => f.key === 'pairwise.judge1');
+			const judgeFeedback = findFeedback(feedback, 'judge1');
 			// Full violation output without truncation
 			expect(judgeFeedback?.comment).toContain('[Has Slack] Missing Slack node for notifications');
 			expect(judgeFeedback?.comment).toContain('[Has trigger] No trigger node found');
@@ -244,10 +249,10 @@ describe('Pairwise Evaluator', () => {
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
 			// Should have single-gen feedback keys
-			expect(feedback.find((f) => f.key === 'pairwise.majorityPass')).toBeDefined();
-			expect(feedback.find((f) => f.key === 'pairwise.diagnosticScore')).toBeDefined();
+			expect(findFeedback(feedback, 'majorityPass')).toBeDefined();
+			expect(findFeedback(feedback, 'diagnosticScore')).toBeDefined();
 			// Should NOT have multi-gen keys
-			expect(feedback.find((f) => f.key === 'pairwise.generationCorrectness')).toBeUndefined();
+			expect(findFeedback(feedback, 'generationCorrectness')).toBeUndefined();
 		});
 
 		it('should generate multiple workflows when numGenerations > 1', async () => {
@@ -297,11 +302,11 @@ describe('Pairwise Evaluator', () => {
 			});
 
 			// Should have multi-gen feedback
-			const correctness = feedback.find((f) => f.key === 'pairwise.generationCorrectness');
+			const correctness = findFeedback(feedback, 'generationCorrectness');
 			expect(correctness?.score).toBeCloseTo(2 / 3); // 2 of 3 passed
 			expect(correctness?.comment).toBe('2/3 generations passed');
 
-			const diagnostic = feedback.find((f) => f.key === 'pairwise.aggregatedDiagnostic');
+			const diagnostic = findFeedback(feedback, 'aggregatedDiagnostic');
 			expect(diagnostic?.score).toBeCloseTo((0.9 + 0.8 + 0.5) / 3);
 		});
 
@@ -326,19 +331,19 @@ describe('Pairwise Evaluator', () => {
 			});
 
 			// Gen 1 feedback
-			const gen1Pass = feedback.find((f) => f.key === 'pairwise.gen1.majorityPass');
+			const gen1Pass = findFeedback(feedback, 'gen1.majorityPass');
 			expect(gen1Pass?.score).toBe(1);
 			expect(gen1Pass?.comment).toBe('3/3 judges');
 
-			const gen1Diag = feedback.find((f) => f.key === 'pairwise.gen1.diagnosticScore');
+			const gen1Diag = findFeedback(feedback, 'gen1.diagnosticScore');
 			expect(gen1Diag?.score).toBe(0.9);
 
 			// Gen 2 feedback
-			const gen2Pass = feedback.find((f) => f.key === 'pairwise.gen2.majorityPass');
+			const gen2Pass = findFeedback(feedback, 'gen2.majorityPass');
 			expect(gen2Pass?.score).toBe(0);
 			expect(gen2Pass?.comment).toBe('1/3 judges');
 
-			const gen2Diag = feedback.find((f) => f.key === 'pairwise.gen2.diagnosticScore');
+			const gen2Diag = findFeedback(feedback, 'gen2.diagnosticScore');
 			expect(gen2Diag?.score).toBe(0.4);
 		});
 

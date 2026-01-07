@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { feedbackKey } from './feedback';
 import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
@@ -125,7 +126,7 @@ function formatFeedbackForExport(result: ExampleResult): object {
 	// Group feedback by evaluator
 	const byEvaluator: Record<string, Feedback[]> = {};
 	for (const fb of result.feedback) {
-		const [evaluator] = fb.key.split('.');
+		const evaluator = fb.evaluator;
 		if (!byEvaluator[evaluator]) {
 			byEvaluator[evaluator] = [];
 		}
@@ -137,14 +138,16 @@ function formatFeedbackForExport(result: ExampleResult): object {
 		status: result.status,
 		durationMs: result.durationMs,
 		score: result.score,
-		evaluators: Object.entries(byEvaluator).map(([name, feedback]) => ({
+		evaluators: Object.entries(byEvaluator).map(([name, items]) => ({
 			name,
-			feedback: feedback.map((f) => ({
-				key: f.key,
+			feedback: items.map((f) => ({
+				key: feedbackKey(f),
+				metric: f.metric,
 				score: f.score,
+				...(f.kind ? { kind: f.kind } : {}),
 				...(f.comment ? { comment: f.comment } : {}),
 			})),
-			averageScore: feedback.reduce((sum, f) => sum + f.score, 0) / feedback.length,
+			averageScore: items.reduce((sum, f) => sum + f.score, 0) / items.length,
 		})),
 		allFeedback: result.feedback,
 	};
@@ -158,7 +161,7 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 	const evaluatorStats: Record<string, { scores: number[]; count: number }> = {};
 	for (const result of results) {
 		for (const fb of result.feedback) {
-			const [evaluator] = fb.key.split('.');
+			const evaluator = fb.evaluator;
 			if (!evaluatorStats[evaluator]) {
 				evaluatorStats[evaluator] = { scores: [], count: 0 };
 			}

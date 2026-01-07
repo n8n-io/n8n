@@ -114,31 +114,25 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 
 			// Show critical metrics (handle both prefixed and non-prefixed keys)
 			const criticalFeedback = feedback.filter((f) => {
-				const keyParts = f.key.split('.');
-				const metricName = keyParts.length > 1 ? keyParts[1] : keyParts[0];
-				return CRITICAL_METRICS.includes(metricName);
+				return CRITICAL_METRICS.includes(f.metric);
 			});
 			if (criticalFeedback.length > 0) {
 				const metricsLine = criticalFeedback
 					.map((f) => {
-						const keyParts = f.key.split('.');
-						const shortKey = keyParts.length > 1 ? keyParts[1] : keyParts[0];
 						const color = scoreColor(f.score);
-						return `${shortKey}: ${color(formatScore(f.score))}`;
+						return `${f.metric}: ${color(formatScore(f.score))}`;
 					})
 					.join(pc.dim(' | '));
 				console.log(pc.dim('      ') + metricsLine);
 			}
 
 			// Show violations (feedback items with comments that indicate issues)
-			const violations = feedback.filter(
-				(f) => f.comment && f.score < 1.0 && !f.key.endsWith('.error'),
-			);
+			const violations = feedback.filter((f) => f.comment && f.score < 1.0 && f.metric !== 'error');
 			if (violations.length > 0) {
 				console.log(pc.dim('      Violations:'));
 				for (const v of violations.slice(0, 5)) {
 					// Limit to 5 violations
-					console.log(pc.dim(`        - [${v.key}] `) + pc.red(v.comment ?? ''));
+					console.log(pc.dim(`        - [${v.metric}] `) + pc.red(v.comment ?? ''));
 				}
 				if (violations.length > 5) {
 					console.log(pc.dim(`        ... and ${violations.length - 5} more`));

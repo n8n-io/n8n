@@ -42,6 +42,9 @@ describe('Similarity Evaluator', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
+	type SimilarityFeedback = { evaluator: string; metric: string; score: number; comment?: string };
+	const findFeedback = (feedback: SimilarityFeedback[], metric: string) =>
+		feedback.find((f) => f.evaluator === 'similarity' && f.metric === metric);
 
 	describe('createSimilarityEvaluator()', () => {
 		it('should create an evaluator with correct name', async () => {
@@ -62,7 +65,8 @@ describe('Similarity Evaluator', () => {
 			expect(mockEvaluateWorkflowSimilarityMultiple).not.toHaveBeenCalled();
 
 			expect(feedback).toContainEqual({
-				key: 'similarity.score',
+				evaluator: 'similarity',
+				metric: 'score',
 				score: 1,
 				kind: 'score',
 				comment: 'No reference workflow provided for comparison',
@@ -143,7 +147,7 @@ describe('Similarity Evaluator', () => {
 				referenceWorkflow,
 			});
 
-			const scoreFeedback = feedback.find((f) => f.key === 'similarity.score');
+			const scoreFeedback = findFeedback(feedback, 'score');
 			expect(scoreFeedback?.score).toBe(0.92);
 		});
 
@@ -173,7 +177,7 @@ describe('Similarity Evaluator', () => {
 				referenceWorkflow,
 			});
 
-			const scoreFeedback = feedback.find((f) => f.key === 'similarity.score');
+			const scoreFeedback = findFeedback(feedback, 'score');
 			expect(scoreFeedback?.comment).toContain('[major] Missing Slack node');
 		});
 
@@ -214,11 +218,11 @@ describe('Similarity Evaluator', () => {
 				referenceWorkflow,
 			});
 
-			const nodeDeleteFeedback = feedback.find((f) => f.key === 'similarity.node-delete');
+			const nodeDeleteFeedback = findFeedback(feedback, 'node-delete');
 			expect(nodeDeleteFeedback).toBeDefined();
 			expect(nodeDeleteFeedback?.comment).toContain('2 node-delete');
 
-			const edgeInsertFeedback = feedback.find((f) => f.key === 'similarity.edge-insert');
+			const edgeInsertFeedback = findFeedback(feedback, 'edge-insert');
 			expect(edgeInsertFeedback).toBeDefined();
 			expect(edgeInsertFeedback?.comment).toContain('1 edge-insert');
 		});
@@ -237,9 +241,10 @@ describe('Similarity Evaluator', () => {
 				referenceWorkflow,
 			});
 
-			const errorFeedback = feedback.find((f) => f.key === 'similarity.error');
+			const errorFeedback = findFeedback(feedback, 'error');
 			expect(errorFeedback).toEqual({
-				key: 'similarity.error',
+				evaluator: 'similarity',
+				metric: 'error',
 				score: 0,
 				kind: 'score',
 				comment: 'uvx command not found',

@@ -69,9 +69,9 @@ function createMockResult(overrides: Partial<ExampleResult> = {}): ExampleResult
 		status: 'pass',
 		score: 0.9,
 		feedback: [
-			{ key: 'llm-judge.functionality', score: 0.9 },
-			{ key: 'llm-judge.connections', score: 0.8 },
-			{ key: 'programmatic.overall', score: 1.0 },
+			{ evaluator: 'llm-judge', metric: 'functionality', score: 0.9 },
+			{ evaluator: 'llm-judge', metric: 'connections', score: 0.8 },
+			{ evaluator: 'programmatic', metric: 'overall', score: 1.0 },
 		],
 		durationMs: 1500,
 		workflow: createMockWorkflow(),

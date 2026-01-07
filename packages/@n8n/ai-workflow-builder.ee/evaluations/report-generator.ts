@@ -4,6 +4,7 @@
  * Generates human-readable markdown reports from evaluation results.
  */
 
+import { feedbackKey } from './feedback';
 import type { ExampleResult, RunSummary, Feedback } from './harness-types';
 import { groupByEvaluator } from './score-calculator';
 
@@ -193,7 +194,7 @@ export function generateMarkdownReport(
 				for (const fb of result.feedback) {
 					const scoreStr = formatPercentage(fb.score);
 					const commentStr = fb.comment ? ` - ${fb.comment}` : '';
-					report += `  - [${fb.key}] ${scoreStr}${commentStr}
+					report += `  - [${feedbackKey(fb)}] ${scoreStr}${commentStr}
 `;
 				}
 			}

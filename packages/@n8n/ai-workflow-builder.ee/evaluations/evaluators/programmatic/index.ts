@@ -31,7 +31,8 @@ export function createProgrammaticEvaluator(
 		kind: Feedback['kind'],
 		comment?: string,
 	): Feedback => ({
-		key: `programmatic.${metric}`,
+		evaluator: 'programmatic',
+		metric,
 		score,
 		kind,
 		...(comment ? { comment } : {}),

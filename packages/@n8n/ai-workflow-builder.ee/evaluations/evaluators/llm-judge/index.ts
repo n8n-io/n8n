@@ -43,7 +43,8 @@ export function createLLMJudgeEvaluator(
 		kind: Feedback['kind'],
 		comment?: string,
 	): Feedback => ({
-		key: `${EVALUATOR_NAME}.${metric}`,
+		evaluator: EVALUATOR_NAME,
+		metric,
 		score,
 		kind,
 		...(comment ? { comment } : {}),

@@ -48,6 +48,14 @@ function createMockEvaluationResult(
 
 describe('Programmatic Evaluator', () => {
 	const mockNodeTypes: INodeTypeDescription[] = [];
+	type ProgrammaticFeedback = {
+		evaluator: string;
+		metric: string;
+		score: number;
+		comment?: string;
+	};
+	const findFeedback = (feedback: ProgrammaticFeedback[], metric: string) =>
+		feedback.find((f) => f.evaluator === 'programmatic' && f.metric === metric);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -115,9 +123,10 @@ describe('Programmatic Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const overallFeedback = feedback.find((f) => f.key === 'programmatic.overall');
+			const overallFeedback = findFeedback(feedback, 'overall');
 			expect(overallFeedback).toEqual({
-				key: 'programmatic.overall',
+				evaluator: 'programmatic',
+				metric: 'overall',
 				score: 0.92,
 				kind: 'score',
 			});
@@ -132,13 +141,13 @@ describe('Programmatic Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const feedbackKeys = feedback.map((f) => f.key);
-			expect(feedbackKeys).toContain('programmatic.overall');
-			expect(feedbackKeys).toContain('programmatic.connections');
-			expect(feedbackKeys).toContain('programmatic.trigger');
-			expect(feedbackKeys).toContain('programmatic.agentPrompt');
-			expect(feedbackKeys).toContain('programmatic.tools');
-			expect(feedbackKeys).toContain('programmatic.fromAi');
+			const metrics = feedback.filter((f) => f.evaluator === 'programmatic').map((f) => f.metric);
+			expect(metrics).toContain('overall');
+			expect(metrics).toContain('connections');
+			expect(metrics).toContain('trigger');
+			expect(metrics).toContain('agentPrompt');
+			expect(metrics).toContain('tools');
+			expect(metrics).toContain('fromAi');
 		});
 
 		it('should include violations in feedback comments', async () => {
@@ -160,7 +169,7 @@ describe('Programmatic Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const connectionsFeedback = feedback.find((f) => f.key === 'programmatic.connections');
+			const connectionsFeedback = findFeedback(feedback, 'connections');
 			expect(connectionsFeedback?.comment).toContain(
 				'[disconnected-node] Node A has no connections',
 			);
@@ -182,7 +191,7 @@ describe('Programmatic Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const triggerFeedback = feedback.find((f) => f.key === 'programmatic.trigger');
+			const triggerFeedback = findFeedback(feedback, 'trigger');
 			expect(triggerFeedback?.comment).toBeUndefined();
 		});
 
@@ -206,9 +215,10 @@ describe('Programmatic Evaluator', () => {
 				referenceWorkflow,
 			});
 
-			const similarityFeedback = feedback.find((f) => f.key === 'programmatic.similarity');
+			const similarityFeedback = findFeedback(feedback, 'similarity');
 			expect(similarityFeedback).toEqual({
-				key: 'programmatic.similarity',
+				evaluator: 'programmatic',
+				metric: 'similarity',
 				score: 0.75,
 				kind: 'metric',
 				comment: '[node-mismatch] Missing expected node',
@@ -228,7 +238,7 @@ describe('Programmatic Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const similarityFeedback = feedback.find((f) => f.key === 'programmatic.similarity');
+			const similarityFeedback = findFeedback(feedback, 'similarity');
 			expect(similarityFeedback).toBeUndefined();
 		});
 

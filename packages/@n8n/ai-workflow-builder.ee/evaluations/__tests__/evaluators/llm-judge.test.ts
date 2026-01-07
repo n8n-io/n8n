@@ -98,18 +98,30 @@ describe('LLM-Judge Evaluator', () => {
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
 			// Should have feedback for each category
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.functionality' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.connections' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.expressions' }));
 			expect(feedback).toContainEqual(
-				expect.objectContaining({ key: 'llm-judge.nodeConfiguration' }),
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'functionality' }),
 			);
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.efficiency' }));
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.dataFlow' }));
 			expect(feedback).toContainEqual(
-				expect.objectContaining({ key: 'llm-judge.maintainability' }),
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'connections' }),
 			);
-			expect(feedback).toContainEqual(expect.objectContaining({ key: 'llm-judge.overallScore' }));
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'expressions' }),
+			);
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'nodeConfiguration' }),
+			);
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'efficiency' }),
+			);
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'dataFlow' }),
+			);
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'maintainability' }),
+			);
+			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'overallScore' }),
+			);
 		});
 
 		it('should include violations in feedback comments', async () => {
@@ -131,7 +143,9 @@ describe('LLM-Judge Evaluator', () => {
 			const workflow = createMockWorkflow();
 			const feedback = await evaluator.evaluate(workflow, { prompt: 'Test' });
 
-			const funcFeedback = feedback.find((f) => f.key === 'llm-judge.functionality');
+			const funcFeedback = feedback.find(
+				(f) => f.evaluator === 'llm-judge' && f.metric === 'functionality',
+			);
 			expect(funcFeedback?.comment).toContain('Missing HTTP node');
 		});
 

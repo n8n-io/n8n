@@ -38,9 +38,11 @@ A factory-based, testable evaluation system for AI workflow generation.
                            ┌──────────────┐
                            │  Feedback[]  │
                            │              │
-                           │ key: string  │
-                           │ score: 0-1   │
-                           │ comment?: str│
+                           │ evaluator: str│
+                           │ metric: str   │
+                           │ score: 0-1    │
+                           │ kind?: str    │
+                           │ comment?: str │
                            └──────────────┘
 ```
 
@@ -51,7 +53,7 @@ A factory-based, testable evaluation system for AI workflow generation.
 A function that takes a workflow and returns feedback:
 
 ```typescript
-interface Evaluator<TContext = void> {
+interface Evaluator<TContext = EvaluationContext> {
   name: string;
   evaluate(workflow: SimpleWorkflow, ctx: TContext): Promise<Feedback[]>;
 }
@@ -68,9 +70,11 @@ The universal output format from all evaluators:
 
 ```typescript
 interface Feedback {
-  key: string;      // e.g., "functionality", "pairwise.judge1"
+  evaluator: string; // e.g., "llm-judge", "pairwise"
+  metric: string;    // e.g., "functionality", "judge1", "efficiency.nodeCountEfficiency"
   score: number;    // 0.0 to 1.0
   comment?: string; // Optional explanation/violations
+  kind?: 'score' | 'metric' | 'detail';
 }
 ```
 
@@ -134,12 +138,14 @@ const config: RunConfig = {
   dataset: 'my-dataset-name',  // LangSmith dataset
   generateWorkflow,
   evaluators: [llmJudge, programmatic],
-  langsmithOptions: {
-    experimentName: 'experiment-1',
-    repetitions: 1,
-    concurrency: 4,
-  },
-};
+	  langsmithOptions: {
+	    experimentName: 'experiment-1',
+	    repetitions: 1,
+	    concurrency: 4,
+	    // Optional: strip `<evaluator>.` from metric keys sent to LangSmith
+	    stripEvaluatorPrefix: 'llm-judge',
+	  },
+	};
 
 await runEvaluation(config);
 ```
@@ -160,8 +166,8 @@ const target = async (inputs) => {
   return { workflow, prompt, feedback };  // Pre-computed!
 };
 
-// LangSmith evaluator just extracts:
-const feedbackExtractor = (run) => run.outputs.feedback;
+	// LangSmith evaluator converts internal `{ evaluator, metric }` into `{ key, score, comment? }`:
+	const feedbackExtractor = (run) => run.outputs.feedback.map(toLangsmithEvaluationResult);
 ```
 
 ## LangSmith Tracing (Critical)
@@ -243,7 +249,9 @@ import { createLLMJudgeEvaluator } from './evaluators';
 const evaluator = createLLMJudgeEvaluator(llm, nodeTypes);
 ```
 
-**Feedback keys:** `functionality`, `connections`, `expressions`, `nodeConfiguration`, `efficiency`, `dataFlow`, `maintainability`, `overallScore`
+**Evaluator:** `llm-judge`
+
+**Metrics:** `functionality`, `connections`, `expressions`, `nodeConfiguration`, `efficiency`, `dataFlow`, `maintainability`, `overallScore`
 
 **Context required:** `{ prompt: string }`
 
@@ -257,7 +265,9 @@ import { createPairwiseEvaluator } from './evaluators';
 const evaluator = createPairwiseEvaluator(llm, { numJudges: 3 });
 ```
 
-**Feedback keys:** `pairwise.majorityPass`, `pairwise.diagnosticScore`, `pairwise.judge1`, etc.
+**Evaluator:** `pairwise`
+
+**Metrics:** `majorityPass`, `diagnosticScore`, `judge1`, `judge2`, ... (and multi-gen: `generationCorrectness`, `gen1.majorityPass`, etc.)
 
 **Context required:** `{ dos?: string, donts?: string }`
 
@@ -271,7 +281,9 @@ import { createProgrammaticEvaluator } from './evaluators';
 const evaluator = createProgrammaticEvaluator(nodeTypes);
 ```
 
-**Feedback keys:** `programmatic.overall`, `programmatic.connections`, `programmatic.trigger`, etc.
+**Evaluator:** `programmatic`
+
+**Metrics:** `overall`, `connections`, `trigger`, `agentPrompt`, `tools`, `fromAi` (optional: `similarity`)
 
 **Context required:** None
 
@@ -332,18 +344,18 @@ tsx evaluations/cli.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 
 ```typescript
 // evaluators/my-evaluator.ts
-export function createMyEvaluator(options): Evaluator<MyContext> {
-  return {
-    name: 'my-evaluator',
-    async evaluate(workflow, ctx) {
-      // Your evaluation logic
-      return [
-        { key: 'my-evaluator.score', score: 0.9 },
-        { key: 'my-evaluator.detail', score: 0.8, comment: '...' },
-      ];
-    },
-  };
-}
+	export function createMyEvaluator(options): Evaluator<MyContext> {
+	  return {
+	    name: 'my-evaluator',
+	    async evaluate(workflow, ctx) {
+	      // Your evaluation logic
+	      return [
+	        { evaluator: 'my-evaluator', metric: 'score', score: 0.9, kind: 'score' },
+	        { evaluator: 'my-evaluator', metric: 'detail', score: 0.8, kind: 'detail', comment: '...' },
+	      ];
+	    },
+	  };
+	}
 ```
 
 2. Export from `evaluators/index.ts`
@@ -395,7 +407,7 @@ The harness uses "skip and continue" error handling:
 
 ```typescript
 // Error feedback format:
-{ key: 'evaluator-name.error', score: 0, comment: 'Error message' }
+{ evaluator: 'evaluator-name', metric: 'error', score: 0, kind: 'score', comment: 'Error message' }
 ```
 
 ## LangSmith SDK Tips & Gotchas
