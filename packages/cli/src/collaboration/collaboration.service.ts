@@ -11,6 +11,7 @@ import type {
 	WorkflowOpenedMessage,
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
+	WriteAccessHeartbeatMessage,
 } from './collaboration.message';
 import { parseWorkflowMessage } from './collaboration.message';
 
@@ -63,6 +64,8 @@ export class CollaborationService {
 			await this.handleWriteAccessRequested(userId, workflowMessage);
 		} else if (workflowMessage.type === 'writeAccessReleaseRequested') {
 			await this.handleWriteAccessReleaseRequested(userId, workflowMessage);
+		} else if (workflowMessage.type === 'writeAccessHeartbeat') {
+			await this.handleWriteAccessHeartbeat(userId, workflowMessage);
 		}
 	}
 
@@ -160,6 +163,21 @@ export class CollaborationService {
 
 		await this.state.releaseWriteLock(workflowId);
 		await this.sendWriteAccessReleasedMessage(workflowId);
+	}
+
+	private async handleWriteAccessHeartbeat(userId: User['id'], msg: WriteAccessHeartbeatMessage) {
+		const { workflowId, userId: requestedUserId } = msg;
+
+		if (userId !== requestedUserId) {
+			return;
+		}
+
+		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
+			return;
+		}
+
+		// Renew the write lock TTL if the user holds it
+		await this.state.renewWriteLock(workflowId, userId);
 	}
 
 	private async sendWriteAccessAcquiredMessage(workflowId: Workflow['id'], userId: User['id']) {

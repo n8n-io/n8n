@@ -109,9 +109,23 @@ export class CollaborationState {
 		return Date.now() > expiryTime;
 	}
 
+	/**
+	 * TTL for write locks. After this time without renewal, the lock expires.
+	 */
+	readonly writeLockTtl = 2 * Time.minutes.toMilliseconds;
+
 	async setWriteLock(workflowId: Workflow['id'], userId: User['id']) {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		await this.cache.set(cacheKey, userId);
+		await this.cache.set(cacheKey, userId, this.writeLockTtl);
+	}
+
+	async renewWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+		const cacheKey = this.formWriteLockCacheKey(workflowId);
+		const currentHolder = await this.getWriteLock(workflowId);
+
+		if (currentHolder === userId) {
+			await this.cache.set(cacheKey, userId, this.writeLockTtl);
+		}
 	}
 
 	async getWriteLock(workflowId: Workflow['id']): Promise<User['id'] | null> {

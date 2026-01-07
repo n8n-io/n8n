@@ -461,7 +461,7 @@ const handleImportWorkflowFromFile = () => {
 
 const handleWorkflowSaved = (data: { isFirstSave: boolean }) => {
 	if (data.isFirstSave) {
-		showCreateWorkflowSuccessToast();
+		showCreateWorkflowSuccessToast(props.id, true);
 	}
 };
 
