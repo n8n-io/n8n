@@ -1,4 +1,4 @@
-name: Reusable units test workflow
+name: 'Test: Unit'
 
 on:
   workflow_call:

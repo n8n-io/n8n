@@ -1,4 +1,4 @@
-name: Weekly Coverage Tests
+name: 'Test: E2E Coverage Weekly'
 
 on:
   schedule:

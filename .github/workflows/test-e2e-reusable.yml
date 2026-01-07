@@ -1,4 +1,4 @@
-name: Playwright Tests - Reusable
+name: 'Test: E2E'
 
 on:
   workflow_call:

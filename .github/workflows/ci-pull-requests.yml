@@ -1,4 +1,4 @@
-name: Build, unit test and lint branch
+name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
   pull_request:
@@ -89,7 +89,7 @@ jobs:
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/units-tests-reusable.yml
+    uses: ./.github/workflows/test-unit-reusable.yml
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -115,7 +115,7 @@ jobs:
   lint:
     name: Lint
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/linting-reusable.yml
+    uses: ./.github/workflows/test-linting-reusable.yml
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -129,7 +129,7 @@ jobs:
       needs.unit-test.result != 'failure' &&
       needs.typecheck.result != 'failure' &&
       needs.lint.result != 'failure'
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     secrets: inherit
 
   e2e-checks:

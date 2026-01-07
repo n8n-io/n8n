@@ -1,4 +1,4 @@
-name: Data tooling, test exports and imports of data to various db types
+name: 'Util: Data Tooling'
 
 # TODO: Uncomment this after it works on a manual invocation
 # on:

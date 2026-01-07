@@ -1,4 +1,4 @@
-name: Run Workflow Builder Evals
+name: 'Test: Evals AI'
 
 on:
   push:

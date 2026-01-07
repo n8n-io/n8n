@@ -1,4 +1,4 @@
-name: Storybook
+name: 'Test: Visual Storybook'
 
 on:
   schedule:

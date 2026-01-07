@@ -1,4 +1,4 @@
-name: Windows CI
+name: 'Build: Windows'
 
 on:
   workflow_dispatch:

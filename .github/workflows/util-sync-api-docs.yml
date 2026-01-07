@@ -1,4 +1,4 @@
-name: Sync Public API Schema to Docs Repo
+name: 'Util: Sync API Docs'
 
 on:
   # Triggers for the master branch if relevant Public API files have changed
@@ -107,7 +107,7 @@ jobs:
 
             # Find all commits between the last success and now that touched the relevant files
             # NOTE: The pathspecs here mirror the workflow's 'paths' trigger for precision
-            RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" $LAST_SUCCESS_SHA..${{ github.sha }} -- \
+            RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" "$LAST_SUCCESS_SHA..${{ github.sha }}" -- \
               'packages/cli/src/public-api/**/*.css' \
               'packages/cli/src/public-api/**/*.yaml' \
               'packages/cli/src/public-api/**/*.yml')
@@ -129,9 +129,11 @@ jobs:
             SOURCE_LINK="Source commit(s):"$'\n'"$RELEVANT_COMMITS"
           fi
 
-          echo "source_link<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$SOURCE_LINK" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "source_link<<EOF"
+            echo "$SOURCE_LINK"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create PR in Docs Repo
         if: steps.verify_file.outputs.file_exists == 'true'

@@ -1,4 +1,4 @@
-name: Check PR title
+name: 'CI: Check PR Title'
 
 on:
   pull_request:
