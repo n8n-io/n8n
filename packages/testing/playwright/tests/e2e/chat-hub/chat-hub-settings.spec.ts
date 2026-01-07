@@ -107,7 +107,7 @@ test.describe('Settings @capability:proxy', () => {
 		await expect(chatPage.getVisiblePopoverMenuItem('OpenAI')).not.toBeVisible();
 		await chatPage.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
 
-		const anthropicModels = chatPage.getVisiblePopoverMenuItem(/^Claude/).getByRole('menuitem');
+		const anthropicModels = chatPage.getVisiblePopoverMenuItem(/^Claude/);
 		await expect(anthropicModels).toHaveText(['Claude Opus 4.5']);
 
 		await memberN8n.api.credentials.deleteCredential(cred.id);
