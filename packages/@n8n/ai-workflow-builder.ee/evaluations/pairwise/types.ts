@@ -1,4 +1,5 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
+import type { Example } from 'langsmith/schemas';
 
 import type { EvalCriteria } from './judge-panel';
 
@@ -9,6 +10,11 @@ import type { EvalCriteria } from './judge-panel';
 export interface PairwiseDatasetInput {
 	evals: EvalCriteria;
 	prompt: string;
+}
+
+/** LangSmith Example with typed inputs for pairwise evaluation */
+export interface PairwiseExample extends Omit<Example, 'inputs'> {
+	inputs: PairwiseDatasetInput;
 }
 
 export interface PairwiseTargetOutput {
@@ -30,5 +36,19 @@ export function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTar
 		Array.isArray(obj.feedback) &&
 		obj.evals !== undefined &&
 		typeof obj.evals === 'object'
+	);
+}
+
+export function isPairwiseExample(example: Example): example is PairwiseExample {
+	const inputs = example.inputs as Record<string, unknown> | undefined;
+	if (!inputs || typeof inputs !== 'object') return false;
+
+	const evals = inputs.evals as Record<string, unknown> | undefined;
+	if (!evals || typeof evals !== 'object') return false;
+
+	return (
+		typeof inputs.prompt === 'string' &&
+		typeof evals.dos === 'string' &&
+		typeof evals.donts === 'string'
 	);
 }

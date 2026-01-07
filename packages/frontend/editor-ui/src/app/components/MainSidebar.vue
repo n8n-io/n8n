@@ -23,7 +23,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -39,7 +38,6 @@ import ProjectNavigation from '@/features/collaboration/projects/components/Proj
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
-const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -246,8 +244,6 @@ watch(isCollapsed, () => {
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 
-	becomeTemplateCreatorStore.startMonitoringCta();
-
 	// Check for overflow after component is mounted
 	void nextTick(() => {
 		checkOverflow();
@@ -270,7 +266,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	becomeTemplateCreatorStore.stopMonitoringCta();
 
 	// Clean up resize observer
 	if (resizeObserver) {
