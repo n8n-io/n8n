@@ -2,11 +2,19 @@ import { v4 as uuid } from 'uuid';
 
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
+import type { LlmCallLimiter } from '../harness-types';
 
 export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {
 		/* consume all */
 	}
+}
+
+export async function runWithOptionalLimiter<T>(
+	limiter: LlmCallLimiter | undefined,
+	fn: () => Promise<T>,
+): Promise<T> {
+	return limiter ? await limiter(fn) : await fn();
 }
 
 export interface GetChatPayloadOptions {

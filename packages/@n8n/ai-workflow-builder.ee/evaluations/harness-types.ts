@@ -1,5 +1,9 @@
+import type pLimit from 'p-limit';
+
 import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
+
+export type LlmCallLimiter = ReturnType<typeof pLimit>;
 
 /**
  * Shared context passed to all evaluators.
@@ -23,6 +27,11 @@ export interface EvaluationContext {
 	 * When present, pairwise evaluator can generate multiple workflows from the same prompt.
 	 */
 	generateWorkflow?: (prompt: string) => Promise<SimpleWorkflow>;
+	/**
+	 * Optional limiter for LLM-bound work (generation + evaluators).
+	 * When provided, treat it as the global knob for overall parallel LLM calls.
+	 */
+	llmCallLimiter?: LlmCallLimiter;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */

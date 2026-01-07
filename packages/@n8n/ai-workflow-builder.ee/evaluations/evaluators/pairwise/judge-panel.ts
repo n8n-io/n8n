@@ -2,6 +2,8 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
+import type { EvaluationContext } from '../../harness-types';
+import { runWithOptionalLimiter } from '../../utils/evaluation-helpers';
 
 // ============================================================================
 // Types
@@ -70,6 +72,8 @@ export interface JudgePanelOptions {
 	generationIndex?: number;
 	/** Experiment name for metadata */
 	experimentName?: string;
+	/** Optional limiter for LLM calls (shared across harness) */
+	llmCallLimiter?: EvaluationContext['llmCallLimiter'];
 }
 
 /**
@@ -90,27 +94,31 @@ export async function runJudgePanel(
 	numJudges: number,
 	options?: JudgePanelOptions,
 ): Promise<JudgePanelResult> {
-	const { generationIndex, experimentName } = options ?? {};
+	const { generationIndex, experimentName, llmCallLimiter } = options ?? {};
 	const panelStartTime = Date.now();
 
 	// Run all judges in parallel, tracking timing for each
 	const judgeTimings: number[] = [];
 	const judgeResults = await Promise.all(
 		Array.from({ length: numJudges }, async (_, judgeIndex) => {
-			const judgeStartTime = Date.now();
-			const result = await evaluateWorkflowPairwise(
-				llm,
-				{ workflowJSON: workflow, evalCriteria },
-				{
-					runName: `judge_${judgeIndex + 1}`,
-					metadata: {
-						...(experimentName && { experiment_name: experimentName }),
-						...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
+			const runJudge = async (): Promise<PairwiseEvaluationResult> => {
+				const judgeStartTime = Date.now();
+				const result = await evaluateWorkflowPairwise(
+					llm,
+					{ workflowJSON: workflow, evalCriteria },
+					{
+						runName: `judge_${judgeIndex + 1}`,
+						metadata: {
+							...(experimentName && { experiment_name: experimentName }),
+							...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
+						},
 					},
-				},
-			);
-			judgeTimings[judgeIndex] = Date.now() - judgeStartTime;
-			return result;
+				);
+				judgeTimings[judgeIndex] = Date.now() - judgeStartTime;
+				return result;
+			};
+
+			return await runWithOptionalLimiter(llmCallLimiter, runJudge);
 		}),
 	);
 

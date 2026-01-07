@@ -7,6 +7,7 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
@@ -182,6 +183,7 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Build context - include generateWorkflow for multi-gen pairwise
 	const isMultiGen = args.suite === 'pairwise' && args.numGenerations > 1;
+	const llmCallLimiter = pLimit(args.concurrency);
 
 	const baseConfig = {
 		generateWorkflow,
@@ -189,7 +191,7 @@ export async function runV2Evaluation(): Promise<void> {
 		lifecycle,
 		logger,
 		outputDir: args.outputDir,
-		context: isMultiGen ? { generateWorkflow } : undefined,
+		context: isMultiGen ? { generateWorkflow, llmCallLimiter } : { llmCallLimiter },
 	};
 
 	const config: RunConfig =

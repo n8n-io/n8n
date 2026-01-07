@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
+import pLimit from 'p-limit';
 
 import { toLangsmithEvaluationResult } from './feedback';
 import type {
@@ -22,6 +23,7 @@ import type {
 import { createArtifactSaver, type ArtifactSaver } from './output';
 import { calculateWeightedScore } from './score-calculator';
 import { extractMessageContent } from './types/langsmith';
+import { runWithOptionalLimiter } from './utils/evaluation-helpers';
 import { createLogger, type EvalLogger } from './utils/logger';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
@@ -316,7 +318,10 @@ async function runLocalExample(args: {
 	try {
 		// Generate workflow
 		const genStartTime = Date.now();
-		const workflow = await generateWorkflow(testCase.prompt);
+		const workflow = await runWithOptionalLimiter(
+			globalContext?.llmCallLimiter,
+			async () => await generateWorkflow(testCase.prompt),
+		);
 		const genDurationMs = Date.now() - genStartTime;
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -439,6 +444,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 
 	const testCases: TestCase[] = dataset;
 
+	const effectiveGlobalContext: GlobalRunContext = {
+		...(globalContext ?? {}),
+		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(4),
+	};
+
 	// Create artifact saver if outputDir is provided
 	const artifactSaver = createArtifactSaverIfRequested(outputDir);
 
@@ -448,7 +458,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		testCases,
 		generateWorkflow,
 		evaluators,
-		globalContext,
+		globalContext: effectiveGlobalContext,
 		lifecycle,
 		artifactSaver,
 	});
@@ -533,6 +543,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
+	const effectiveGlobalContext: GlobalRunContext = {
+		...(globalContext ?? {}),
+		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(langsmithOptions.concurrency),
+	};
+
 	// Create target function that does ALL work (generation + evaluation)
 	// NOTE: Do NOT wrap target with traceable() - evaluate() handles that automatically
 	// and applies critical options (on_end callback, reference_example_id, client).
@@ -550,11 +565,16 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const startTime = Date.now();
 		const genStart = Date.now();
 
+		const limiter = effectiveGlobalContext.llmCallLimiter;
+
 		// Generate workflow - wrapped in traceable for proper child trace visibility
-		const traceableGenerate = traceable(async () => await generateWorkflow(prompt), {
-			name: 'workflow_generation',
-			run_type: 'chain',
-		});
+		const traceableGenerate = traceable(
+			async () => await runWithOptionalLimiter(limiter, async () => await generateWorkflow(prompt)),
+			{
+				name: 'workflow_generation',
+				run_type: 'chain',
+			},
+		);
 		const workflow = await traceableGenerate();
 		const genDurationMs = Date.now() - genStart;
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
@@ -563,7 +583,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			...asRecord(datasetContext),
 			...asRecord(rest),
 		});
-		const context = buildContext({ prompt, globalContext, testCaseContext: extracted });
+		const context = buildContext({
+			prompt,
+			globalContext: effectiveGlobalContext,
+			testCaseContext: extracted,
+		});
 
 		// Run all evaluators in parallel
 		const evalStart = Date.now();

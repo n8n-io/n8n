@@ -6,6 +6,7 @@ import { runJudgePanel, type EvalCriteria } from './judge-panel';
 import { PAIRWISE_METRICS } from './metrics';
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
 import { aggregateGenerations, type GenerationDetail } from '../../multi-gen';
+import { runWithOptionalLimiter } from '../../utils/evaluation-helpers';
 
 type MultiGenContext = EvaluationContext & {
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
@@ -42,7 +43,9 @@ async function evaluateSingleGeneration(
 		donts: ctx?.donts ?? 'Do not add unnecessary complexity',
 	};
 
-	const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+	const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+		llmCallLimiter: ctx.llmCallLimiter,
+	});
 
 	const feedback: Feedback[] = [];
 
@@ -119,9 +122,14 @@ async function evaluateMultiGeneration(
 
 	// Generate all workflows and evaluate in parallel
 	const generationDetails: GenerationDetail[] = await Promise.all(
-		Array.from({ length: numGenerations }, async () => {
-			const workflow = await ctx.generateWorkflow(ctx.prompt);
-			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+		Array.from({ length: numGenerations }, async (_, i) => {
+			const workflow = await runWithOptionalLimiter(ctx.llmCallLimiter, async () => {
+				return await ctx.generateWorkflow(ctx.prompt);
+			});
+			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+				generationIndex: i + 1,
+				llmCallLimiter: ctx.llmCallLimiter,
+			});
 			return {
 				workflow,
 				majorityPass: result.majorityPass,

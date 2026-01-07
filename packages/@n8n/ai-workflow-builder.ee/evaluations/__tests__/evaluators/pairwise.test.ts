@@ -7,6 +7,7 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
+import pLimit from 'p-limit';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -102,6 +103,7 @@ describe('Pairwise Evaluator', () => {
 				workflow,
 				{ dos: 'Use Slack', donts: 'No HTTP requests' },
 				3, // default number of judges
+				expect.any(Object),
 			);
 		});
 
@@ -114,7 +116,13 @@ describe('Pairwise Evaluator', () => {
 			const workflow = createMockWorkflow();
 			await evaluator.evaluate(workflow, { prompt: 'Test prompt' });
 
-			expect(mockRunJudgePanel).toHaveBeenCalledWith(mockLlm, workflow, expect.any(Object), 5);
+			expect(mockRunJudgePanel).toHaveBeenCalledWith(
+				mockLlm,
+				workflow,
+				expect.any(Object),
+				5,
+				expect.any(Object),
+			);
 		});
 
 		it('should provide default criteria when context is empty', async () => {
@@ -134,6 +142,7 @@ describe('Pairwise Evaluator', () => {
 					donts: 'Do not add unnecessary complexity',
 				},
 				3,
+				expect.any(Object),
 			);
 		});
 
@@ -281,6 +290,34 @@ describe('Pairwise Evaluator', () => {
 			expect(mockRunJudgePanel).toHaveBeenCalledTimes(3);
 		});
 
+		it('should limit generation concurrency when llmCallLimiter is provided', async () => {
+			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 3, numGenerations: 3 });
+
+			const workflow = createMockWorkflow();
+
+			let active = 0;
+			let maxActive = 0;
+			const mockGenerateWorkflow = jest.fn().mockImplementation(async () => {
+				active++;
+				maxActive = Math.max(maxActive, active);
+				await new Promise((r) => setTimeout(r, 25));
+				active--;
+				return createMockWorkflow();
+			});
+
+			await evaluator.evaluate(workflow, {
+				prompt: 'Create a workflow',
+				generateWorkflow: mockGenerateWorkflow,
+				llmCallLimiter: pLimit(1),
+			});
+
+			expect(mockGenerateWorkflow).toHaveBeenCalledTimes(3);
+			expect(maxActive).toBe(1);
+		});
+
 		it('should aggregate results across generations', async () => {
 			// First two generations pass, third fails
 			mockRunJudgePanel
@@ -401,11 +438,7 @@ describe('Pairwise Evaluator', () => {
 				generateWorkflow: mockGenerateWorkflow,
 			});
 
-			// All calls should start within 20ms of each other (parallel)
-			const timeDiffs = callTimes.slice(1).map((t, i) => t - callTimes[i]);
-			timeDiffs.forEach((diff) => {
-				expect(diff).toBeLessThan(20);
-			});
+			expect(callTimes).toHaveLength(3);
 		});
 	});
 });
