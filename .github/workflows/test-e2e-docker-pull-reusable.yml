@@ -1,4 +1,4 @@
-name: Run Playwright Tests (Docker Pull)
+name: 'Test: E2E Docker Pull'
 # This workflow is used to run Playwright tests in a Docker container pulled from the registry
 
 on:
@@ -7,8 +7,8 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1]'
-        type: string
+        default: 1
+        type: number
       image:
         description: 'Image to use'
         required: false
@@ -19,8 +19,8 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1]'
-        type: string
+        default: 1
+        type: number
       image:
         description: 'Image to use'
         required: false
@@ -29,7 +29,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-pull
       shards: ${{ inputs.shards }}

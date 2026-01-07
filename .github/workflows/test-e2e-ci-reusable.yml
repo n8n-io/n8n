@@ -1,4 +1,4 @@
-name: E2E Tests for CI
+name: 'Test: E2E CI'
 
 on:
   workflow_call:
@@ -16,7 +16,7 @@ jobs:
   multi-main-e2e:
     name: 'Multi-Main: E2E'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
@@ -30,7 +30,7 @@ jobs:
   multi-main-isolated:
     name: 'Multi-Main: Isolated'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
@@ -45,7 +45,7 @@ jobs:
   community-e2e:
     name: 'Community: E2E'
     if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
@@ -58,7 +58,7 @@ jobs:
   community-isolated:
     name: 'Community: Isolated'
     if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: local

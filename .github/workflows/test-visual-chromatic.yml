@@ -1,4 +1,4 @@
-name: Chromatic
+name: 'Test: Visual Chromatic'
 
 on:
   schedule:
@@ -23,7 +23,7 @@ jobs:
           filters: |
             design_system:
               - 'packages/frontend/@n8n/design-system/**'
-              - '.github/workflows/storybook.yml'
+              - '.github/workflows/test-visual-storybook.yml'
     outputs:
       has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
 

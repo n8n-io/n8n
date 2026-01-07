@@ -1,4 +1,4 @@
-name: Update Node Popularity Data
+name: 'Util: Update Node Popularity'
 
 on:
   schedule:

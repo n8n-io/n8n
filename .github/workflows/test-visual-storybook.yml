@@ -1,4 +1,4 @@
-name: Storybook
+name: 'Test: Visual Storybook'
 
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
       - master
     paths:
       - 'packages/frontend/@n8n/design-system/**'
-      - '.github/workflows/storybook.yml'
+      - '.github/workflows/test-visual-storybook.yml'
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

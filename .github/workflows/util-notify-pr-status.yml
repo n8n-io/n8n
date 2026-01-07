@@ -1,4 +1,4 @@
-name: Notify PR status changed
+name: 'Util: Notify PR Status'
 
 on:
   pull_request_review:
