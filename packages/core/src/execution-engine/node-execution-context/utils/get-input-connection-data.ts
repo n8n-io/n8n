@@ -29,9 +29,10 @@ import {
 	UserError,
 	sleepWithAbort,
 } from 'n8n-workflow';
+import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
-import { createNodeAsTool } from './create-node-as-tool';
+import { createNodeAsTool, getSchema } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
@@ -50,6 +51,44 @@ function ensureArray<T>(value: T | T[] | undefined): T[] {
  */
 function isHitlTool(node: INode): boolean {
 	return node.type.endsWith('HitlTool');
+}
+
+export function createHitlToolkit(
+	connectedToolsOrToolkits: SupplyDataToolResponse[] | SupplyDataToolResponse | undefined,
+	hitlNode: INode,
+) {
+	const connectedTools = ensureArray(connectedToolsOrToolkits).flatMap((toolOrToolkit) => {
+		if (toolOrToolkit instanceof StructuredToolkit) {
+			return toolOrToolkit.tools;
+		}
+		return toolOrToolkit;
+	});
+
+	const hitlNodeSchema = getSchema(hitlNode);
+	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
+	const gatedTools = connectedTools.map((tool) => {
+		let schema = tool.schema;
+		if (tool.schema instanceof ZodType) {
+			schema = z.object({
+				toolParameters: tool.schema.describe('Input parameters for the tool'),
+				hitlParameters: hitlNodeSchema.describe('Parameters for the Human-in-the-Loop layer'),
+			});
+		}
+
+		return new DynamicStructuredTool({
+			name: tool.name,
+			description: tool.description,
+			schema,
+			func: async () => await Promise.resolve(''),
+			metadata: {
+				sourceNodeName: hitlNode.name,
+				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+			},
+		});
+	});
+
+	const toolkit = new StructuredToolkit(gatedTools);
+	return toolkit;
 }
 
 /**
@@ -100,28 +139,7 @@ async function createHitlToolSupplyData(
 		itemIndex,
 	)) as SupplyDataToolResponse[] | SupplyDataToolResponse | undefined;
 
-	const connectedTools = ensureArray(connectedToolsOrToolkits).flatMap((toolOrToolkit) => {
-		if (toolOrToolkit instanceof StructuredToolkit) {
-			return toolOrToolkit.tools;
-		}
-		return toolOrToolkit;
-	});
-
-	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
-	const gatedTools = connectedTools.map((tool) => {
-		return new DynamicStructuredTool({
-			name: tool.name,
-			description: tool.description,
-			schema: tool.schema,
-			func: async () => await Promise.resolve(''),
-			metadata: {
-				sourceNodeName: hitlNode.name,
-				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
-			},
-		});
-	});
-
-	const toolkit = new StructuredToolkit(gatedTools);
+	const toolkit = createHitlToolkit(connectedToolsOrToolkits, hitlNode);
 	return { response: toolkit };
 }
 

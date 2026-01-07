@@ -54,10 +54,15 @@ describe('createEngineRequests', () => {
 				createMockTool('hitl_tool', {
 					sourceNodeName: 'HITL Node',
 					gatedToolNodeName: 'Gated Tool Node',
+					isFromToolkit: true,
 				}),
 			];
 			const toolCalls: ToolCallRequest[] = [
-				{ tool: 'hitl_tool', toolInput: { query: 'test' }, toolCallId: 'call-1' },
+				{
+					tool: 'hitl_tool',
+					toolInput: { toolParameters: { query: 'test' }, hitlParameters: { param: 'test' } },
+					toolCallId: 'call-1',
+				},
 			];
 
 			const result = await createEngineRequests(toolCalls, 0, tools);
@@ -68,6 +73,12 @@ describe('createEngineRequests', () => {
 				toolName: 'hitl_tool',
 				originalInput: { query: 'test' },
 			});
+			expect(result[0].input).toEqual({
+				toolParameters: { query: 'test' },
+				hitlParameters: { param: 'test' },
+				param: 'test',
+				tool: 'hitl_tool',
+			});
 		});
 
 		it('adds toolName to input for HITL tools', async () => {
@@ -75,15 +86,20 @@ describe('createEngineRequests', () => {
 				createMockTool('hitl_tool', {
 					sourceNodeName: 'HITL Node',
 					gatedToolNodeName: 'Gated Tool Node',
+					isFromToolkit: true,
 				}),
 			];
 			const toolCalls: ToolCallRequest[] = [
-				{ tool: 'hitl_tool', toolInput: { query: 'test' }, toolCallId: 'call-1' },
+				{
+					tool: 'hitl_tool',
+					toolInput: { toolParameters: { query: 'test' } },
+					toolCallId: 'call-1',
+				},
 			];
 
 			const result = await createEngineRequests(toolCalls, 0, tools);
 
-			expect(result[0].input).toEqual({ query: 'test', toolName: 'hitl_tool' });
+			expect(result[0].input).toEqual({ toolParameters: { query: 'test' }, tool: 'hitl_tool' });
 		});
 	});
 
