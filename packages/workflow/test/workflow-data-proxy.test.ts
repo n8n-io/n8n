@@ -729,7 +729,7 @@ describe('WorkflowDataProxy', () => {
 	});
 
 	describe('$tool', () => {
-		const fixture = loadFixture('from_ai_multiple_items');
+		const fixture = loadFixture('from_ai_tool_alias');
 		const getToolProxy = (runIndex = 0, additionalKeys?: IWorkflowDataProxyAdditionalKeys) =>
 			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
 				connectionType: NodeConnectionTypes.AiTool,
