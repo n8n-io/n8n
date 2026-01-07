@@ -376,6 +376,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			return runWorkflowApiResponse;
 		} catch (error) {
+			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
