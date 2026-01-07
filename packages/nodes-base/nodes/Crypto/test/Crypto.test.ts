@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import fs from 'fs';
+import type fs from 'fs';
 import fsPromises, { type FileHandle } from 'fs/promises';
 import { Readable } from 'stream';
 
