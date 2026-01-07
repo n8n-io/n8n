@@ -1028,7 +1028,8 @@ export class WorkflowDataProxy {
 				);
 			}
 
-			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			const resultData =
+				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
 			let inputData;
 			let placeholdersDataInputData;
 
@@ -1062,7 +1063,9 @@ export class WorkflowDataProxy {
 			} catch (error) {
 				const isNoExecutionDataError =
 					error instanceof ExpressionError && error.context.type === 'no_execution_data';
-				if (isNoExecutionDataError && fallbackValue) {
+				// always suppress no_execution_data error
+				// $tool can get accessed in some cases where no execution data is available, e.g. task runners
+				if (isNoExecutionDataError) {
 					return fallbackValue;
 				}
 				if (throwOnError) {

@@ -803,54 +803,6 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$tool).toEqual('fallback-tool-value');
 		});
 
-		test('Throws error when no execution data and no fallback provided', () => {
-			// Create a workflow with no data at all
-			const workflowWithNoData: IWorkflowBase = {
-				id: '123',
-				name: 'test workflow',
-				nodes: [
-					{
-						id: 'aiNode',
-						name: 'AI Node',
-						type: 'n8n-nodes-base.aiAgent',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			};
-
-			const dataProxy = new WorkflowDataProxy(
-				new Workflow({
-					id: '123',
-					name: 'test workflow',
-					nodes: workflowWithNoData.nodes,
-					connections: workflowWithNoData.connections,
-					active: false,
-					nodeTypes: Helpers.NodeTypes(),
-				}),
-				null, // No run execution data
-				0,
-				0,
-				'AI Node',
-				[], // Empty connectionInputData
-				{},
-				'manual',
-				{}, // No fallback value
-				undefined,
-			);
-
-			const proxy = dataProxy.getDataProxy();
-
-			expect(() => proxy.$tool).toThrow(ExpressionError);
-		});
-
 		test('Uses execution data when available, ignoring fallback', () => {
 			// When execution data exists, it should use that instead of fallback
 			const proxy = getToolProxy(0, { $tool: 'fallback-tool-value' });
