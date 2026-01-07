@@ -14,7 +14,7 @@ export interface Props {
 	 */
 	label: string;
 	/**
-	 * Optional tooltip text (if not provided, uses label)
+	 * Optional tooltip text (if not provided, no tooltip is shown)
 	 */
 	tooltip?: string;
 	/**

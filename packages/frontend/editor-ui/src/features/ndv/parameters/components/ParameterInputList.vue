@@ -590,6 +590,8 @@ watch(
 				(el) => {
 					if (el && newlyAddedParameters.has(item.parameter.name)) {
 						parameterRefItems.set(item.parameter.name, el as HTMLElement);
+					} else {
+						parameterRefItems.delete(item.parameter.name);
 					}
 				}
 			"

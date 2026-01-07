@@ -225,7 +225,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 	});
 
 	describe('Drag and drop reordering', () => {
-		it('updates local state and emits reordered values when items are dragged', async () => {
+		it('maintains correct display indexes after values are reordered', async () => {
 			const rendered = renderComponent({
 				props: {
 					...baseProps,
@@ -529,28 +529,6 @@ describe('FixedCollectionParameterNew.vue', () => {
 		});
 
 		it('hides add dropdown when all options are added', () => {
-			const { queryByTestId } = renderComponent({
-				props: {
-					...topLevelMultipleOptionsProps,
-					values: {
-						option1: { field1: 'test1' },
-						option2: { field2: 'test2' },
-					},
-					nodeValues: {
-						parameters: {
-							rules: {
-								option1: { field1: 'test1' },
-								option2: { field2: 'test2' },
-							},
-						},
-					},
-				},
-			});
-
-			expect(queryByTestId('fixed-collection-add-top-level-dropdown')).not.toBeInTheDocument();
-		});
-
-		it('hides add controls when all options are added', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...topLevelMultipleOptionsProps,

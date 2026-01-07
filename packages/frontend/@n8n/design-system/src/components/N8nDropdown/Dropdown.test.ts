@@ -45,19 +45,33 @@ describe('N8nDropdown', () => {
 		expect(trigger.exists()).toBe(true);
 	});
 
-	it('should emit update:modelValue when selection changes', async () => {
+	it('should emit select when an option is clicked', async () => {
 		const wrapper = mount(N8nDropdown, {
 			props: {
 				options: defaultOptions,
-				modelValue: 'option1',
 			},
+			attachTo: document.body,
 		});
 
-		// Simulate value change
-		await wrapper.vm.$emit('update:modelValue', 'option2');
+		// Open the dropdown by clicking the trigger
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
+		await trigger.trigger('click');
 
-		expect(wrapper.emitted('update:modelValue')).toBeTruthy();
-		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['option2']);
+		// Wait for dropdown content to be rendered in portal
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Find and click the option in the document (since it's rendered in a portal)
+		const option = document.querySelector('[data-test-id="dropdown-option-option2"]');
+		expect(option).not.toBeNull();
+		option?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Wait for event to propagate
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(wrapper.emitted('select')).toBeTruthy();
+		expect(wrapper.emitted('select')?.[0]).toEqual(['option2']);
+
+		wrapper.unmount();
 	});
 
 	it('should apply disabled state correctly', () => {

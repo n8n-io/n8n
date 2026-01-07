@@ -97,6 +97,15 @@ const getPropertyPath = (name: string, index?: number): string => {
 	return `${props.path}.${name}${index !== undefined ? `[${index}]` : ''}`;
 };
 
+const isArrayValue = (propertyName: string): boolean => {
+	return Array.isArray(mutableValues.value[propertyName]);
+};
+
+const getArrayValues = (propertyName: string): INodeParameters[] => {
+	const value = mutableValues.value[propertyName];
+	return Array.isArray(value) ? value : [];
+};
+
 const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
 
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
@@ -603,10 +612,10 @@ const onAddButtonClick = () => {
 			</N8nSectionHeader>
 
 			<div v-for="property in properties" :key="property.name" :class="$style.propertySection">
-				<template v-if="multipleValues && mutableValues[property.name]">
+				<template v-if="multipleValues && isArrayValue(property.name)">
 					<FixedCollectionItemList
 						:property="property"
-						:values="mutableValues[property.name] as INodeParameters[]"
+						:values="getArrayValues(property.name)"
 						:node-values="nodeValues"
 						:get-property-path="getPropertyPath"
 						:item-state="itemState"
@@ -796,10 +805,10 @@ const onAddButtonClick = () => {
 
 		<template v-else>
 			<div v-for="property in properties" :key="property.name" :class="$style.propertySection">
-				<template v-if="multipleValues && mutableValues[property.name]">
+				<template v-if="multipleValues && isArrayValue(property.name)">
 					<FixedCollectionItemList
 						:property="property"
-						:values="mutableValues[property.name] as INodeParameters[]"
+						:values="getArrayValues(property.name)"
 						:node-values="nodeValues"
 						:get-property-path="getPropertyPath"
 						:item-state="itemState"

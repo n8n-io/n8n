@@ -141,7 +141,7 @@ describe('CollectionParameterNew.vue', () => {
 	});
 
 	describe('Adding items', () => {
-		it('emits valueChanged event when adding a collection via dropdown', async () => {
+		it('renders dropdown for adding collection items', async () => {
 			const { getByTestId } = renderComponent();
 
 			// Click the dropdown trigger
@@ -150,12 +150,10 @@ describe('CollectionParameterNew.vue', () => {
 
 			await nextTick();
 
-			// The dropdown should have opened - this would require clicking an option
-			// For now, we test the event emission indirectly
 			expect(dropdown).toBeInTheDocument();
 		});
 
-		it('opens dropdown and scrolls into view when header add button clicked', async () => {
+		it('renders add button in header', async () => {
 			const { getByTestId } = renderComponent();
 
 			const addButton = getByTestId('collection-parameter-add-header');
@@ -206,7 +204,7 @@ describe('CollectionParameterNew.vue', () => {
 			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
 		});
 
-		it('does not show delete actions when isReadOnly is true', () => {
+		it('renders parameters in read-only mode', () => {
 			const { getByText } = renderComponent({
 				props: {
 					...baseProps,
