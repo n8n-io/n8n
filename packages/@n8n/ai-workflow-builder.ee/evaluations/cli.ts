@@ -190,7 +190,7 @@ export async function runV2Evaluation(): Promise<void> {
 		logger,
 		outputDir: args.outputDir,
 		context: isMultiGen ? { generateWorkflow } : undefined,
-	} as const;
+	};
 
 	const config: RunConfig =
 		args.backend === 'langsmith'
@@ -203,7 +203,7 @@ export async function runV2Evaluation(): Promise<void> {
 						repetitions: args.repetitions,
 						concurrency: args.concurrency,
 						maxExamples: args.maxExamples,
-						stripEvaluatorPrefix: args.suite,
+						filters: args.filters,
 					},
 				}
 			: {

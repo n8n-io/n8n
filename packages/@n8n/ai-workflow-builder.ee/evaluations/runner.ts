@@ -17,6 +17,7 @@ import type {
 	ExampleResult,
 	RunSummary,
 	EvaluationLifecycle,
+	LangsmithExampleFilters,
 } from './harness-types.js';
 import { createArtifactSaver, type ArtifactSaver } from './output';
 import { calculateWeightedScore } from './score-calculator';
@@ -109,12 +110,164 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isUnknownArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
 	return isUnknownRecord(value) ? value : {};
 }
 
 function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
 	return !!value && typeof value === 'object' && 'nodes' in value && 'connections' in value;
+}
+
+function getNotionIdFromMetadata(metadata: unknown): string | undefined {
+	const record = asRecord(metadata);
+	return typeof record.notion_id === 'string' ? record.notion_id : undefined;
+}
+
+function getCategoriesFromMetadata(metadata: unknown): string[] | undefined {
+	const record = asRecord(metadata);
+	const categories = record.categories;
+	if (!Array.isArray(categories)) return undefined;
+	const strings = categories.filter((c): c is string => typeof c === 'string');
+	return strings.length > 0 ? strings : undefined;
+}
+
+function getEvalsFromExampleInputs(exampleInputs: unknown): { dos?: string; donts?: string } {
+	const inputs = asRecord(exampleInputs);
+	const evals = asRecord(inputs.evals);
+	const result: { dos?: string; donts?: string } = {};
+	if (typeof evals.dos === 'string') result.dos = evals.dos;
+	if (typeof evals.donts === 'string') result.donts = evals.donts;
+	return result;
+}
+
+function isFeedback(value: unknown): value is Feedback {
+	return (
+		isUnknownRecord(value) &&
+		typeof value.evaluator === 'string' &&
+		typeof value.metric === 'string' &&
+		typeof value.score === 'number'
+	);
+}
+
+function exampleMatchesFilters(example: Example, filters: LangsmithExampleFilters): boolean {
+	if (filters.notionId) {
+		if (getNotionIdFromMetadata(example.metadata) !== filters.notionId) return false;
+	}
+
+	if (filters.technique) {
+		const categories = getCategoriesFromMetadata(example.metadata) ?? [];
+		if (!categories.includes(filters.technique)) return false;
+	}
+
+	if (filters.doSearch || filters.dontSearch) {
+		const { dos, donts } = getEvalsFromExampleInputs(example.inputs);
+		if (filters.doSearch) {
+			const haystack = (dos ?? '').toLowerCase();
+			if (!haystack.includes(filters.doSearch.toLowerCase())) return false;
+		}
+		if (filters.dontSearch) {
+			const haystack = (donts ?? '').toLowerCase();
+			if (!haystack.includes(filters.dontSearch.toLowerCase())) return false;
+		}
+	}
+
+	return true;
+}
+
+async function loadExamplesFromDataset(params: {
+	lsClient: {
+		readDataset: (args: { datasetName: string }) => Promise<{ id: string }>;
+		listExamples: (args: { datasetId: string; limit?: number }) => AsyncIterable<Example>;
+	};
+	datasetName: string;
+	maxExamples?: number;
+	filters?: LangsmithExampleFilters;
+}): Promise<Example[]> {
+	const { lsClient, datasetName, maxExamples, filters } = params;
+
+	const datasetInfo = await lsClient.readDataset({ datasetName });
+	const matches: Example[] = [];
+
+	let scanned = 0;
+	const listArgs: { datasetId: string; limit?: number } = { datasetId: datasetInfo.id };
+	if (!filters && maxExamples) listArgs.limit = maxExamples;
+
+	for await (const example of lsClient.listExamples(listArgs)) {
+		scanned++;
+		if (filters && !exampleMatchesFilters(example, filters)) continue;
+		matches.push(example);
+		if (maxExamples && matches.length >= maxExamples) break;
+	}
+
+	if (filters && matches.length === 0) {
+		const filterSummary = [
+			filters.notionId ? `id:${filters.notionId}` : undefined,
+			filters.technique ? `technique:${filters.technique}` : undefined,
+			filters.doSearch ? `do:${filters.doSearch}` : undefined,
+			filters.dontSearch ? `dont:${filters.dontSearch}` : undefined,
+		]
+			.filter((v): v is string => v !== undefined)
+			.join(', ');
+
+		throw new Error(
+			`No examples matched filters (${filterSummary}) in dataset "${datasetName}" (scanned ${scanned})`,
+		);
+	}
+
+	if (!filters && maxExamples && matches.length === 0) {
+		throw new Error(`No examples found in dataset "${datasetName}"`);
+	}
+
+	return matches;
+}
+
+async function resolveLangsmithData(params: {
+	dataset: string;
+	langsmithOptions: LangsmithRunConfig['langsmithOptions'];
+	lsClient: {
+		readDataset: (args: { datasetName: string }) => Promise<{ id: string }>;
+		listExamples: (args: { datasetId: string; limit?: number }) => AsyncIterable<Example>;
+	};
+	logger: EvalLogger;
+}): Promise<string | Example[]> {
+	const { dataset, langsmithOptions, lsClient, logger } = params;
+
+	const datasetName = dataset;
+	const maxExamples = langsmithOptions.maxExamples;
+	const filters = langsmithOptions.filters;
+
+	const shouldLoadExamples =
+		(typeof maxExamples === 'number' && maxExamples > 0) || filters !== undefined;
+
+	if (!shouldLoadExamples) return datasetName;
+
+	logger.info(
+		filters
+			? `Loading examples from dataset "${datasetName}" with filters...`
+			: `Loading up to ${maxExamples} examples from dataset "${datasetName}"...`,
+	);
+
+	try {
+		return await loadExamplesFromDataset({
+			lsClient,
+			datasetName,
+			maxExamples,
+			filters,
+		});
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		if (
+			errorMessage.startsWith('No examples matched filters') ||
+			errorMessage.startsWith('No examples found in dataset')
+		) {
+			throw error instanceof Error ? error : new Error(errorMessage);
+		}
+		throw new Error(`Dataset "${datasetName}" not found: ${errorMessage}`);
+	}
 }
 
 function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
@@ -428,9 +581,15 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		rootRun: Run,
 		_example?: Example,
 	): Promise<Array<{ key: string; score: number; comment?: string }>> => {
-		const outputs = rootRun.outputs as LangsmithTargetOutput | undefined;
+		const outputs = rootRun.outputs;
+		const feedback =
+			isUnknownRecord(outputs) &&
+			isUnknownArray(outputs.feedback) &&
+			outputs.feedback.every(isFeedback)
+				? outputs.feedback
+				: undefined;
 
-		if (!outputs?.feedback) {
+		if (!feedback) {
 			return [
 				{
 					key: 'evaluationError',
@@ -440,11 +599,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			];
 		}
 
-		return outputs.feedback.map((fb) =>
-			toLangsmithEvaluationResult(fb, {
-				stripEvaluatorPrefix: langsmithOptions.stripEvaluatorPrefix,
-			}),
-		);
+		return feedback.map((fb) => toLangsmithEvaluationResult(fb));
 	};
 
 	// Load examples if maxExamples is set
@@ -452,31 +607,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		throw new Error('LangSmith mode requires dataset to be a dataset name string');
 	}
 
-	const datasetName = dataset;
-	let data: string | Example[] = datasetName;
+	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
 
-	if (langsmithOptions.maxExamples && langsmithOptions.maxExamples > 0) {
-		logger.info(
-			`Loading up to ${langsmithOptions.maxExamples} examples from dataset "${datasetName}"...`,
-		);
-		const examples: Example[] = [];
-		try {
-			const datasetInfo = await lsClient.readDataset({ datasetName });
-			// Use limit parameter directly instead of fetching all and slicing
-			for await (const example of lsClient.listExamples({
-				datasetId: datasetInfo.id,
-				limit: langsmithOptions.maxExamples,
-			})) {
-				examples.push(example);
-			}
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Dataset "${datasetName}" not found: ${errorMessage}`);
-		}
-
-		data = examples;
-		logger.verbose(`Loaded ${examples.length} examples`);
-	}
+	logger.verbose(`Loaded ${Array.isArray(data) ? data.length : 0} examples`);
 
 	// Run LangSmith evaluation
 	const exampleCount = Array.isArray(data) ? data.length : 'dataset';

@@ -138,14 +138,12 @@ const config: RunConfig = {
   dataset: 'my-dataset-name',  // LangSmith dataset
   generateWorkflow,
   evaluators: [llmJudge, programmatic],
-	  langsmithOptions: {
-	    experimentName: 'experiment-1',
-	    repetitions: 1,
-	    concurrency: 4,
-	    // Optional: strip `<evaluator>.` from metric keys sent to LangSmith
-	    stripEvaluatorPrefix: 'llm-judge',
-	  },
-	};
+		  langsmithOptions: {
+		    experimentName: 'experiment-1',
+		    repetitions: 1,
+		    concurrency: 4,
+		  },
+		};
 
 await runEvaluation(config);
 ```

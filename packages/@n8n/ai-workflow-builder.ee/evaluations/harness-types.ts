@@ -115,15 +115,21 @@ export interface LangsmithOptions {
 	concurrency: number;
 	/** Maximum number of examples to evaluate from the dataset */
 	maxExamples?: number;
-	/**
-	 * Strip a leading `<prefix>.` from metric keys before sending results to LangSmith.
-	 *
-	 * This helps keep metric names stable across refactors (e.g. `llm-judge.functionality` -> `functionality`).
-	 * Leave unset to preserve keys as-is.
-	 */
-	stripEvaluatorPrefix?: string;
+	/** Optional dataset filtering (requires pre-loading examples). */
+	filters?: LangsmithExampleFilters;
 	/** Enable trace filtering to reduce payload sizes (default: true) */
 	enableTraceFiltering?: boolean;
+}
+
+export interface LangsmithExampleFilters {
+	/** Filter by `example.metadata.notion_id`. */
+	notionId?: string;
+	/** Filter by `example.metadata.categories` (contains). */
+	technique?: string;
+	/** Filter by `example.inputs.evals.dos` (substring match, case-insensitive). */
+	doSearch?: string;
+	/** Filter by `example.inputs.evals.donts` (substring match, case-insensitive). */
+	dontSearch?: string;
 }
 
 /**

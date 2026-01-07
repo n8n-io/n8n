@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { DEFAULTS } from '../constants';
+import type { LangsmithExampleFilters } from '../harness-types';
 
 export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';
@@ -17,6 +18,7 @@ export interface EvaluationArgs {
 	outputDir?: string;
 	datasetName?: string;
 	maxExamples?: number;
+	filters?: LangsmithExampleFilters;
 
 	testCase?: string;
 	promptsCsv?: string;
@@ -33,37 +35,6 @@ export interface EvaluationArgs {
 
 type CliValueKind = 'boolean' | 'string';
 
-const FLAG_TO_KEY = {
-	'--suite': { key: 'suite', kind: 'string' },
-	'--mode': { key: 'suite', kind: 'string' }, // alias
-	'--backend': { key: 'backend', kind: 'string' },
-	'--langsmith': { key: 'langsmith', kind: 'boolean' }, // alias for --backend langsmith
-
-	'--verbose': { key: 'verbose', kind: 'boolean' },
-	'-v': { key: 'verbose', kind: 'boolean' },
-	'--repetitions': { key: 'repetitions', kind: 'string' },
-	'--concurrency': { key: 'concurrency', kind: 'string' },
-	'--name': { key: 'experimentName', kind: 'string' },
-	'--output-dir': { key: 'outputDir', kind: 'string' },
-	'--dataset': { key: 'datasetName', kind: 'string' },
-	'--max-examples': { key: 'maxExamples', kind: 'string' },
-
-	'--test-case': { key: 'testCase', kind: 'string' },
-	'--prompts-csv': { key: 'promptsCsv', kind: 'string' },
-
-	'--prompt': { key: 'prompt', kind: 'string' },
-	'--dos': { key: 'dos', kind: 'string' },
-	'--donts': { key: 'donts', kind: 'string' },
-
-	'--judges': { key: 'numJudges', kind: 'string' },
-	'--generations': { key: 'numGenerations', kind: 'string' },
-
-	'--template-examples': { key: 'templateExamples', kind: 'boolean' },
-	'--multi-agent': { key: 'multiAgent', kind: 'boolean' },
-} as const satisfies Record<string, { key: string; kind: CliValueKind }>;
-
-type CliKey = (typeof FLAG_TO_KEY)[keyof typeof FLAG_TO_KEY]['key'];
-
 const cliSchema = z
 	.object({
 		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
@@ -76,6 +47,9 @@ const cliSchema = z
 		outputDir: z.string().min(1).optional(),
 		datasetName: z.string().min(1).optional(),
 		maxExamples: z.coerce.number().int().positive().optional(),
+		filter: z.array(z.string().min(1)).default([]),
+		notionId: z.string().min(1).optional(),
+		technique: z.string().min(1).optional(),
 
 		testCase: z.string().min(1).optional(),
 		promptsCsv: z.string().min(1).optional(),
@@ -93,6 +67,43 @@ const cliSchema = z
 	})
 	.strict();
 
+type CliKey = keyof z.infer<typeof cliSchema>;
+
+type FlagDef = { key: CliKey; kind: CliValueKind };
+
+const FLAG_TO_KEY: Record<string, FlagDef> = {
+	'--suite': { key: 'suite', kind: 'string' },
+	'--mode': { key: 'suite', kind: 'string' }, // alias
+	'--backend': { key: 'backend', kind: 'string' },
+	'--langsmith': { key: 'langsmith', kind: 'boolean' }, // alias for --backend langsmith
+
+	'--verbose': { key: 'verbose', kind: 'boolean' },
+	'-v': { key: 'verbose', kind: 'boolean' },
+	'--repetitions': { key: 'repetitions', kind: 'string' },
+	'--concurrency': { key: 'concurrency', kind: 'string' },
+	'--name': { key: 'experimentName', kind: 'string' },
+	'--output-dir': { key: 'outputDir', kind: 'string' },
+	'--dataset': { key: 'datasetName', kind: 'string' },
+	'--max-examples': { key: 'maxExamples', kind: 'string' },
+
+	'--filter': { key: 'filter', kind: 'string' },
+	'--notion-id': { key: 'notionId', kind: 'string' },
+	'--technique': { key: 'technique', kind: 'string' },
+
+	'--test-case': { key: 'testCase', kind: 'string' },
+	'--prompts-csv': { key: 'promptsCsv', kind: 'string' },
+
+	'--prompt': { key: 'prompt', kind: 'string' },
+	'--dos': { key: 'dos', kind: 'string' },
+	'--donts': { key: 'donts', kind: 'string' },
+
+	'--judges': { key: 'numJudges', kind: 'string' },
+	'--generations': { key: 'numGenerations', kind: 'string' },
+
+	'--template-examples': { key: 'templateExamples', kind: 'boolean' },
+	'--multi-agent': { key: 'multiAgent', kind: 'boolean' },
+};
+
 function formatValidFlags(): string {
 	return Object.keys(FLAG_TO_KEY)
 		.filter((f) => f.startsWith('--'))
@@ -106,35 +117,55 @@ function ensureValue(argv: string[], i: number, flag: string): string {
 	return value;
 }
 
-function parseCli(argv: string[]): { values: Record<CliKey, unknown>; seenKeys: Set<CliKey> } {
-	const values: Record<string, unknown> = {};
+function splitFlagToken(token: string): { flag: string; inlineValue?: string } {
+	if (!token.startsWith('--')) return { flag: token };
+	const equalsIndex = token.indexOf('=');
+	if (equalsIndex === -1) return { flag: token };
+	return { flag: token.slice(0, equalsIndex), inlineValue: token.slice(equalsIndex + 1) };
+}
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((v): v is string => typeof v === 'string');
+}
+
+function parseCli(argv: string[]): {
+	values: Partial<Record<CliKey, unknown>>;
+	seenKeys: Set<CliKey>;
+} {
+	const values: Partial<Record<CliKey, unknown>> = {};
 	const seenKeys = new Set<CliKey>();
 
 	for (let i = 0; i < argv.length; i++) {
 		const token = argv[i];
 		if (!token.startsWith('-')) continue;
 
-		const [flag, inlineValue] = token.startsWith('--') ? token.split(/=(.*)/s) : [token, undefined];
-		const def = FLAG_TO_KEY[flag as keyof typeof FLAG_TO_KEY];
+		const { flag, inlineValue } = splitFlagToken(token);
+		const def = FLAG_TO_KEY[flag];
 
 		if (!def) {
 			throw new Error(`Unknown flag: ${flag}\n\nValid flags:\n  ${formatValidFlags()}`);
 		}
 
-		const key = def.key;
-		seenKeys.add(key);
+		seenKeys.add(def.key);
 
 		if (def.kind === 'boolean') {
-			values[key] = true;
+			values[def.key] = true;
 			continue;
 		}
 
 		const value = inlineValue ?? ensureValue(argv, i, flag);
 		if (inlineValue === undefined) i++;
-		values[key] = value;
+
+		if (def.key === 'filter') {
+			const existing = values.filter;
+			values.filter = isStringArray(existing) ? [...existing, value] : [value];
+			continue;
+		}
+
+		values[def.key] = value;
 	}
 
-	return { values: values as Record<CliKey, unknown>, seenKeys };
+	return { values, seenKeys };
 }
 
 function parseFeatureFlags(args: { templateExamples: boolean; multiAgent: boolean }):
@@ -154,6 +185,45 @@ function parseFeatureFlags(args: { templateExamples: boolean; multiAgent: boolea
 	};
 }
 
+function parseFilters(args: {
+	filter: string[];
+	notionId?: string;
+	technique?: string;
+}): LangsmithExampleFilters | undefined {
+	const filters: LangsmithExampleFilters = {};
+
+	for (const raw of args.filter) {
+		const match = raw.match(/^(\w+):(.+)$/);
+		if (!match) {
+			throw new Error('Invalid `--filter` format. Expected: --filter "key:value"');
+		}
+
+		const [, key, value] = match;
+		switch (key) {
+			case 'do':
+				filters.doSearch = value;
+				break;
+			case 'dont':
+				filters.dontSearch = value;
+				break;
+			case 'technique':
+				filters.technique = value;
+				break;
+			case 'id':
+				filters.notionId = value;
+				break;
+			default:
+				throw new Error(`Unknown filter key "${key}". Expected one of: do, dont, technique, id`);
+		}
+	}
+
+	if (args.notionId && !filters.notionId) filters.notionId = args.notionId;
+	if (args.technique && !filters.technique) filters.technique = args.technique;
+
+	const hasAny = Object.values(filters).some((v) => typeof v === 'string' && v.length > 0);
+	return hasAny ? filters : undefined;
+}
+
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
 	const { values, seenKeys } = parseCli(argv);
 
@@ -166,10 +236,23 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	}
 
 	const parsed = cliSchema.parse(values);
+
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
 		multiAgent: parsed.multiAgent,
 	});
+
+	const filters = parseFilters({
+		filter: parsed.filter,
+		notionId: parsed.notionId,
+		technique: parsed.technique,
+	});
+
+	if (parsed.suite !== 'pairwise' && (filters?.doSearch || filters?.dontSearch)) {
+		throw new Error(
+			'`--filter do:` and `--filter dont:` are only supported for `--suite pairwise`',
+		);
+	}
 
 	return {
 		suite: parsed.suite,
@@ -181,6 +264,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		outputDir: parsed.outputDir,
 		datasetName: parsed.datasetName,
 		maxExamples: parsed.maxExamples,
+		filters,
 		testCase: parsed.testCase,
 		promptsCsv: parsed.promptsCsv,
 		prompt: parsed.prompt,

@@ -51,4 +51,43 @@ describe('parseEvaluationArgs', () => {
 		expect(args.repetitions).toBe(3);
 		expect(args.concurrency).toBe(2);
 	});
+
+	it('parses repeated --filter flags and aliases', () => {
+		const args = parseEvaluationArgs([
+			'--suite',
+			'pairwise',
+			'--backend',
+			'langsmith',
+			'--filter',
+			'do:Slack',
+			'--filter',
+			'technique:data_transformation',
+			'--notion-id',
+			'n123',
+		]);
+
+		expect(args.filters).toEqual({
+			doSearch: 'Slack',
+			technique: 'data_transformation',
+			notionId: 'n123',
+		});
+	});
+
+	it('throws on unknown --filter keys', () => {
+		expect(() =>
+			parseEvaluationArgs(['--suite', 'pairwise', '--backend', 'langsmith', '--filter', 'nope:x']),
+		).toThrow('Unknown filter key');
+	});
+
+	it('throws on malformed --filter syntax', () => {
+		expect(() =>
+			parseEvaluationArgs(['--suite', 'pairwise', '--backend', 'langsmith', '--filter', 'nope']),
+		).toThrow('Invalid `--filter` format');
+	});
+
+	it('rejects do/dont filters for non-pairwise suites', () => {
+		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--filter', 'do:Slack'])).toThrow(
+			'only supported for `--suite pairwise`',
+		);
+	});
 });

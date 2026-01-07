@@ -10,18 +10,9 @@ export function feedbackKey(feedback: Feedback): string {
 	return `${feedback.evaluator}.${feedback.metric}`;
 }
 
-export function toLangsmithEvaluationResult(
-	feedback: Feedback,
-	options?: { stripEvaluatorPrefix?: string },
-): LangsmithEvaluationResultLike {
-	const stripEvaluatorPrefix = options?.stripEvaluatorPrefix;
-	const key =
-		stripEvaluatorPrefix && feedback.evaluator === stripEvaluatorPrefix
-			? feedback.metric
-			: feedbackKey(feedback);
-
+export function toLangsmithEvaluationResult(feedback: Feedback): LangsmithEvaluationResultLike {
 	return {
-		key,
+		key: feedback.metric,
 		score: feedback.score,
 		...(feedback.comment ? { comment: feedback.comment } : {}),
 	};

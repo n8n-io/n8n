@@ -4,19 +4,27 @@
  * These tests mock the LangSmith evaluate() function to verify:
  * - Target function does all work (generation + evaluation)
  * - Evaluator just extracts pre-computed feedback
- * - Proper trace propagation
+ * - Dataset context extraction is respected
+ * - Filters trigger dataset example preloading
  */
+
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { mock } from 'jest-mock-extended';
+import type { Client } from 'langsmith/client';
+import { evaluate as langsmithEvaluate } from 'langsmith/evaluation';
+import type { Dataset, Example } from 'langsmith/schemas';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
+import { setupTestEnvironment, type TestEnvironment } from '../core/environment';
+import type { TraceFilters } from '../core/trace-filters';
 import type { Evaluator, Feedback, RunConfig } from '../harness-types';
 
-// Mock langsmith/evaluation
 jest.mock('langsmith/evaluation', () => ({
 	evaluate: jest.fn(),
 }));
 
-// Mock langsmith/traceable
 jest.mock('langsmith/traceable', () => ({
 	traceable: jest.fn(
 		<T extends (...args: unknown[]) => unknown>(fn: T, _options: unknown): T => fn,
@@ -25,25 +33,13 @@ jest.mock('langsmith/traceable', () => ({
 
 // Mock core/environment module (dynamically imported in runner.ts)
 jest.mock('../core/environment', () => ({
-	setupTestEnvironment: jest.fn().mockResolvedValue({
-		lsClient: {
-			readDataset: jest.fn().mockResolvedValue({ id: 'test-dataset-id' }),
-			listExamples: jest.fn().mockReturnValue([]),
-			awaitPendingTraceBatches: jest.fn().mockResolvedValue(undefined),
-		},
-		traceFilters: {
-			resetStats: jest.fn(),
-			logStats: jest.fn(),
-		},
-	}),
+	setupTestEnvironment: jest.fn(),
 }));
 
-/** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 	return { name, nodes: [], connections: {} };
 }
 
-/** Helper to create a simple evaluator */
 function createMockEvaluator(
 	name: string,
 	feedback: Feedback[] = [{ evaluator: name, metric: 'score', score: 1 }],
@@ -54,16 +50,90 @@ function createMockEvaluator(
 	};
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
+	return typeof value === 'function';
+}
+
+type LangsmithTargetOutput = {
+	workflow: SimpleWorkflow;
+	prompt: string;
+	feedback: Feedback[];
+};
+
+function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
+	return isRecord(value) && Array.isArray(value.nodes) && isRecord(value.connections);
+}
+
+function isFeedback(value: unknown): value is Feedback {
+	return (
+		isRecord(value) &&
+		typeof value.evaluator === 'string' &&
+		typeof value.metric === 'string' &&
+		typeof value.score === 'number'
+	);
+}
+
+function isLangsmithTargetOutput(value: unknown): value is LangsmithTargetOutput {
+	return (
+		isRecord(value) &&
+		isSimpleWorkflow(value.workflow) &&
+		typeof value.prompt === 'string' &&
+		Array.isArray(value.feedback) &&
+		value.feedback.every(isFeedback)
+	);
+}
+
+async function callLangsmithTarget(target: unknown, inputs: unknown): Promise<unknown> {
+	if (isCallable(target)) return await target(inputs);
+	if (isRecord(target) && isCallable(target.invoke)) return await target.invoke(inputs);
+	throw new Error('Expected LangSmith target to be callable');
+}
+
+function createMockTraceFilters(): TraceFilters {
+	return {
+		filterInputs: (inputs) => inputs,
+		filterOutputs: (outputs) => outputs,
+		resetStats: jest.fn(),
+		logStats: jest.fn(),
+	};
+}
+
+function createMockLangsmithClient() {
+	const lsClient = mock<Client>();
+	lsClient.readDataset.mockResolvedValue(mock<Dataset>({ id: 'test-dataset-id' }));
+	lsClient.listExamples.mockReturnValue((async function* () {})());
+	lsClient.awaitPendingTraceBatches.mockResolvedValue(undefined);
+	return lsClient;
+}
+
+function createMockEnvironment(overrides: Partial<TestEnvironment> = {}): TestEnvironment {
+	const parsedNodeTypes: INodeTypeDescription[] = [];
+	const llm = mock<BaseChatModel>();
+	const lsClient = createMockLangsmithClient();
+	const traceFilters = createMockTraceFilters();
+
+	return {
+		parsedNodeTypes,
+		llm,
+		lsClient,
+		traceFilters,
+		...overrides,
+	};
+}
+
 describe('Runner - LangSmith Mode', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.mocked(setupTestEnvironment).mockResolvedValue(createMockEnvironment());
 	});
 
 	describe('runEvaluation() with LangSmith', () => {
 		it('should call langsmith evaluate() with correct options', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-			mockEvaluate.mockResolvedValue(undefined);
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -80,8 +150,9 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			expect(mockEvaluate).toHaveBeenCalledWith(
-				expect.any(Function), // target function
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [_target, options] = mockEvaluate.mock.calls[0];
+			expect(options).toEqual(
 				expect.objectContaining({
 					data: 'my-dataset',
 					experimentPrefix: 'test-experiment',
@@ -92,14 +163,7 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should create target function that generates workflow and runs evaluators', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation(async (target, _options) => {
-				capturedTarget = target;
-				return undefined;
-			});
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const workflow = createMockWorkflow('Generated');
 			const generateWorkflow = jest.fn().mockResolvedValue(workflow);
@@ -122,16 +186,18 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			// Execute the captured target function
-			const result = await capturedTarget!({ prompt: 'Create a workflow' });
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [target] = mockEvaluate.mock.calls[0];
 
-			// Should have generated workflow
+			const result = await callLangsmithTarget(target, { prompt: 'Create a workflow' });
+			expect(isLangsmithTargetOutput(result)).toBe(true);
+			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
+
 			expect(generateWorkflow).toHaveBeenCalledWith('Create a workflow');
-
-			// Should have run evaluator (context may be empty object when no context provided)
-			expect(evaluator.evaluate).toHaveBeenCalledWith(workflow, expect.anything());
-
-			// Should return workflow and pre-computed feedback
+			expect(evaluator.evaluate).toHaveBeenCalledWith(
+				workflow,
+				expect.objectContaining({ prompt: 'Create a workflow' }),
+			);
 			expect(result).toEqual({
 				workflow,
 				prompt: 'Create a workflow',
@@ -140,14 +206,7 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should aggregate feedback from multiple evaluators in target', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation(async (target, _options) => {
-				capturedTarget = target;
-				return undefined;
-			});
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const evaluator1 = createMockEvaluator('e1', [
 				{ evaluator: 'e1', metric: 'score', score: 0.8 },
@@ -172,11 +231,12 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			const result = (await capturedTarget!({ prompt: 'Test' })) as {
-				feedback: Feedback[];
-			};
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [target] = mockEvaluate.mock.calls[0];
+			const result = await callLangsmithTarget(target, { prompt: 'Test' });
+			expect(isLangsmithTargetOutput(result)).toBe(true);
+			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
-			// Should have all feedback aggregated
 			expect(result.feedback).toHaveLength(3);
 			expect(result.feedback).toContainEqual({ evaluator: 'e1', metric: 'score', score: 0.8 });
 			expect(result.feedback).toContainEqual({ evaluator: 'e2', metric: 'a', score: 0.9 });
@@ -184,14 +244,7 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should handle evaluator errors gracefully in target', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedTarget: (inputs: { prompt: string }) => Promise<unknown>;
-			mockEvaluate.mockImplementation(async (target, _options) => {
-				capturedTarget = target;
-				return undefined;
-			});
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const goodEvaluator = createMockEvaluator('good', [
 				{ evaluator: 'good', metric: 'score', score: 1 },
@@ -216,10 +269,12 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			// Target should not throw, should return error as feedback
-			const result = (await capturedTarget!({ prompt: 'Test' })) as {
-				feedback: Feedback[];
-			};
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [target] = mockEvaluate.mock.calls[0];
+
+			const result = await callLangsmithTarget(target, { prompt: 'Test' });
+			expect(isLangsmithTargetOutput(result)).toBe(true);
+			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
 			expect(result.feedback).toContainEqual({ evaluator: 'good', metric: 'score', score: 1 });
 			expect(result.feedback).toContainEqual({
@@ -232,19 +287,7 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should create evaluator that extracts pre-computed feedback', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
-			mockEvaluate.mockImplementation(
-				async (
-					_target: unknown,
-					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
-				) => {
-					capturedEvaluators = options.evaluators;
-					return undefined;
-				},
-			);
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -261,40 +304,35 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			// Should have single evaluator that extracts feedback
-			expect(capturedEvaluators!).toHaveLength(1);
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [_target, options] = mockEvaluate.mock.calls[0];
 
-			const lsEvaluator = capturedEvaluators![0];
-			const mockRun = {
+			expect(Array.isArray(options.evaluators)).toBe(true);
+			if (!Array.isArray(options.evaluators))
+				throw new Error('Expected LangSmith evaluators array');
+			expect(options.evaluators).toHaveLength(1);
+
+			const evaluatorFn = options.evaluators[0];
+			expect(isCallable(evaluatorFn)).toBe(true);
+			if (!isCallable(evaluatorFn)) throw new Error('Expected evaluator function');
+
+			const extracted = await evaluatorFn({
 				outputs: {
 					feedback: [
 						{ evaluator: 'test', metric: 'score', score: 0.9 },
-						{ evaluator: 'other', metric: 'score', score: 0.8 },
+						{ evaluator: 'other', metric: 'trigger', score: 0.8 },
 					],
 				},
-			};
+			});
 
-			const extracted = await lsEvaluator(mockRun);
 			expect(extracted).toEqual([
-				{ key: 'test.score', score: 0.9 },
-				{ key: 'other.score', score: 0.8 },
+				{ key: 'score', score: 0.9 },
+				{ key: 'trigger', score: 0.8 },
 			]);
 		});
 
-		it('should strip configured evaluator prefix from metric keys when extracting feedback', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
-			mockEvaluate.mockImplementation(
-				async (
-					_target: unknown,
-					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
-				) => {
-					capturedEvaluators = options.evaluators;
-					return undefined;
-				},
-			);
+		it('should not prefix evaluator name in metric keys sent to LangSmith', async () => {
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -305,44 +343,39 @@ describe('Runner - LangSmith Mode', () => {
 					experimentName: 'test',
 					repetitions: 1,
 					concurrency: 1,
-					stripEvaluatorPrefix: 'llm-judge',
 				},
 			};
 
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			const lsEvaluator = capturedEvaluators![0];
-			const mockRun = {
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [_target, options] = mockEvaluate.mock.calls[0];
+			expect(Array.isArray(options.evaluators)).toBe(true);
+			if (!Array.isArray(options.evaluators))
+				throw new Error('Expected LangSmith evaluators array');
+
+			const evaluatorFn = options.evaluators[0];
+			expect(isCallable(evaluatorFn)).toBe(true);
+			if (!isCallable(evaluatorFn)) throw new Error('Expected evaluator function');
+
+			const extracted = await evaluatorFn({
 				outputs: {
 					feedback: [
 						{ evaluator: 'llm-judge', metric: 'functionality', score: 0.9 },
 						{ evaluator: 'programmatic', metric: 'trigger', score: 0.8 },
 					],
 				},
-			};
+			});
 
-			const extracted = await lsEvaluator(mockRun);
 			expect(extracted).toEqual([
 				{ key: 'functionality', score: 0.9 },
-				{ key: 'programmatic.trigger', score: 0.8 },
+				{ key: 'trigger', score: 0.8 },
 			]);
 		});
 
 		it('should handle missing feedback in outputs', async () => {
-			const { evaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = evaluate as jest.Mock;
-
-			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
-			mockEvaluate.mockImplementation(
-				async (
-					_target: unknown,
-					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
-				) => {
-					capturedEvaluators = options.evaluators;
-					return undefined;
-				},
-			);
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -359,12 +392,17 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			const lsEvaluator = capturedEvaluators![0];
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [_target, options] = mockEvaluate.mock.calls[0];
 
-			// No feedback in outputs
-			const mockRun = { outputs: {} };
-			const extracted = await lsEvaluator(mockRun);
+			expect(Array.isArray(options.evaluators)).toBe(true);
+			if (!Array.isArray(options.evaluators))
+				throw new Error('Expected LangSmith evaluators array');
+			const evaluatorFn = options.evaluators[0];
+			expect(isCallable(evaluatorFn)).toBe(true);
+			if (!isCallable(evaluatorFn)) throw new Error('Expected evaluator function');
 
+			const extracted = await evaluatorFn({ outputs: {} });
 			expect(extracted).toEqual([
 				{
 					key: 'evaluationError',
@@ -375,18 +413,11 @@ describe('Runner - LangSmith Mode', () => {
 		});
 
 		it('should pass dataset-level context to evaluators', async () => {
-			const { evaluate: langsmithEvaluate } = await import('langsmith/evaluation');
-			const mockEvaluate = langsmithEvaluate as jest.Mock;
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
-			let capturedTarget: (inputs: { prompt: string; evals?: unknown }) => Promise<unknown>;
-			mockEvaluate.mockImplementation(async (target, _options) => {
-				capturedTarget = target;
-				return undefined;
-			});
-
-			const evaluateContextual: Evaluator['evaluate'] = async (_workflow, ctx) => {
-				return [{ evaluator: 'contextual', metric: 'score', score: ctx.dos ? 1 : 0 }];
-			};
+			const evaluateContextual: Evaluator['evaluate'] = async (_workflow, ctx) => [
+				{ evaluator: 'contextual', metric: 'score', score: ctx.dos ? 1 : 0 },
+			];
 
 			const evaluator: Evaluator = {
 				name: 'contextual',
@@ -408,13 +439,16 @@ describe('Runner - LangSmith Mode', () => {
 			const { runEvaluation } = await import('../runner');
 			await runEvaluation(config);
 
-			// Simulate LangSmith passing dataset row with evals
-			const result = (await capturedTarget!({
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [target] = mockEvaluate.mock.calls[0];
+
+			const result = await callLangsmithTarget(target, {
 				prompt: 'Test',
 				evals: { dos: 'Use Slack', donts: 'No HTTP' },
-			})) as { feedback: Feedback[] };
+			});
+			expect(isLangsmithTargetOutput(result)).toBe(true);
+			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
-			// Evaluator should have received context from dataset
 			expect(evaluator.evaluate).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ dos: 'Use Slack', donts: 'No HTTP' }),
@@ -424,6 +458,91 @@ describe('Runner - LangSmith Mode', () => {
 				metric: 'score',
 				score: 1,
 			});
+		});
+
+		it('should pre-load and filter examples when filters are provided', async () => {
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
+			const mockSetup = jest.mocked(setupTestEnvironment);
+
+			const examples: Example[] = [
+				mock<Example>({
+					id: 'e1',
+					inputs: { prompt: 'One', evals: { dos: 'Use Slack', donts: 'No HTTP' } },
+					metadata: { notion_id: 'n1', categories: ['data_transformation'] },
+				}),
+				mock<Example>({
+					id: 'e2',
+					inputs: { prompt: 'Two', evals: { dos: 'Use Gmail', donts: 'No Slack' } },
+					metadata: { notion_id: 'n2', categories: ['other'] },
+				}),
+			];
+
+			const lsClient = createMockLangsmithClient();
+			lsClient.listExamples.mockReturnValue(
+				(async function* () {
+					for (const ex of examples) yield ex;
+				})(),
+			);
+			mockSetup.mockResolvedValueOnce(createMockEnvironment({ lsClient }));
+
+			const config: RunConfig = {
+				mode: 'langsmith',
+				dataset: 'test-dataset',
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [createMockEvaluator('test')],
+				langsmithOptions: {
+					experimentName: 'test',
+					repetitions: 1,
+					concurrency: 1,
+					filters: { notionId: 'n1', technique: 'data_transformation', doSearch: 'slack' },
+				},
+			};
+
+			const { runEvaluation } = await import('../runner');
+			await runEvaluation(config);
+
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [_target, options] = mockEvaluate.mock.calls[0];
+			const data: unknown = options.data;
+			expect(Array.isArray(data)).toBe(true);
+			if (!Array.isArray(data)) throw new Error('Expected `evaluate()` to receive example array');
+
+			const ids = data
+				.filter((e): e is { id: string } => isRecord(e) && typeof e.id === 'string')
+				.map((e) => e.id);
+			expect(ids).toEqual(['e1']);
+		});
+
+		it('should throw when filters match no examples', async () => {
+			const mockSetup = jest.mocked(setupTestEnvironment);
+
+			const lsClient = createMockLangsmithClient();
+			lsClient.listExamples.mockReturnValue(
+				(async function* () {
+					yield mock<Example>({
+						id: 'e1',
+						inputs: { prompt: 'One', evals: { dos: 'Use Slack', donts: 'No HTTP' } },
+						metadata: { notion_id: 'n1', categories: ['data_transformation'] },
+					});
+				})(),
+			);
+			mockSetup.mockResolvedValueOnce(createMockEnvironment({ lsClient }));
+
+			const config: RunConfig = {
+				mode: 'langsmith',
+				dataset: 'test-dataset',
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [createMockEvaluator('test')],
+				langsmithOptions: {
+					experimentName: 'test',
+					repetitions: 1,
+					concurrency: 1,
+					filters: { notionId: 'does-not-exist' },
+				},
+			};
+
+			const { runEvaluation } = await import('../runner');
+			await expect(runEvaluation(config)).rejects.toThrow('No examples matched filters');
 		});
 	});
 });
