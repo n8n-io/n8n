@@ -5,9 +5,11 @@ import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
-	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
+
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -18,8 +20,6 @@ import type {
 } from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
-
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -50,13 +50,13 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-		additionalData?: IWorkflowExecuteAdditionalData,
+		executionContext?: IExecutionContext,
+		workflowSettings?: IWorkflowSettings,
 		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		const resolverId =
-			credentialsResolveMetadata.resolverId ??
-			additionalData?.workflowSettings?.credentialResolverId;
+			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable || !resolverId) {
@@ -80,7 +80,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		// Build credential context from execution context
-		const credentialContext = this.buildCredentialContext(additionalData?.executionContext);
+		const credentialContext = this.buildCredentialContext(executionContext);
 
 		if (!credentialContext) {
 			return this.handleMissingContext(credentialsResolveMetadata, staticData);

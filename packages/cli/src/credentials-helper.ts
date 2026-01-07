@@ -377,7 +377,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 					resolvableAllowFallback: credentialsEntity.resolvableAllowFallback,
 				},
 				decryptedDataOriginal,
-				additionalData,
+				additionalData.executionContext,
+				additionalData.workflowSettings,
 				canUseExternalSecrets,
 			);
 		}

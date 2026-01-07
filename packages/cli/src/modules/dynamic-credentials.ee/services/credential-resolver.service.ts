@@ -1,10 +1,12 @@
 import { Logger } from '@n8n/backend-common';
+import { User } from '@n8n/db';
 import {
 	CredentialResolverConfiguration,
 	CredentialResolverValidationError,
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -18,12 +20,14 @@ export interface CreateResolverParams {
 	name: string;
 	type: string;
 	config: CredentialResolverConfiguration;
+	user: User;
 }
 
 export interface UpdateResolverParams {
 	name?: string;
 	type?: string;
 	config?: CredentialResolverConfiguration;
+	user: User;
 }
 
 /**
@@ -50,7 +54,9 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the resolver type is unknown or config is invalid
 	 */
 	async create(params: CreateResolverParams): Promise<DynamicCredentialResolver> {
-		await this.validateConfig(params.type, params.config);
+		const canUseExternalSecrets = hasGlobalScope(params.user, 'externalSecret:list');
+
+		await this.validateConfig(params.type, params.config, canUseExternalSecrets);
 
 		const encryptedConfig = this.encryptConfig(params.config);
 
@@ -106,17 +112,19 @@ export class DynamicCredentialResolverService {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
 
+		const canUseExternalSecrets = hasGlobalScope(params.user, 'externalSecret:list');
+
 		if (params.type !== undefined) {
 			existing.type = params.type;
 			// Re-validate existing config against new type if config wasn't provided
 			if (params.config === undefined) {
 				const existingConfig = this.decryptConfig(existing.config);
-				await this.validateConfig(existing.type, existingConfig);
+				await this.validateConfig(existing.type, existingConfig, canUseExternalSecrets);
 			}
 		}
 
 		if (params.config !== undefined) {
-			await this.validateConfig(existing.type, params.config);
+			await this.validateConfig(existing.type, params.config, canUseExternalSecrets);
 			existing.config = this.encryptConfig(params.config);
 		}
 
@@ -152,7 +160,7 @@ export class DynamicCredentialResolverService {
 	private async validateConfig(
 		type: string,
 		config: CredentialResolverConfiguration,
-		canUseExternalSecrets?: boolean,
+		canUseExternalSecrets: boolean = false,
 	): Promise<void> {
 		const resolverImplementation = this.registry.getResolverByTypename(type);
 		if (!resolverImplementation) {

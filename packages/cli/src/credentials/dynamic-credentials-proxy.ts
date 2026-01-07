@@ -6,10 +6,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecutionContext,
-	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-
 import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
 
 import type {
@@ -41,7 +39,8 @@ export class DynamicCredentialsProxy
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-		additionalData?: IWorkflowExecuteAdditionalData,
+		executionContext?: IExecutionContext,
+		workflowSettings?: IWorkflowSettings,
 		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (!this.resolvingProvider) {
@@ -56,7 +55,8 @@ export class DynamicCredentialsProxy
 		return await this.resolvingProvider.resolveIfNeeded(
 			credentialsResolveMetadata,
 			staticData,
-			additionalData,
+			executionContext,
+			workflowSettings,
 			canUseExternalSecrets,
 		);
 	}

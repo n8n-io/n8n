@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
-	IWorkflowExecuteAdditionalData,
+	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
@@ -83,12 +83,18 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
 		it('should pass through all parameters to provider', async () => {
-			const additionalData: Partial<IWorkflowExecuteAdditionalData> = {
-				executionId: 'exec-123',
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+			const workflowSettings: IWorkflowSettings = {
+				executionTimeout: 300,
 			};
 			const canUseExternalSecrets = true;
 
@@ -98,14 +104,16 @@ describe('DynamicCredentialsProxy', () => {
 			await proxy.resolveIfNeeded(
 				credentialMetadata,
 				staticData,
-				additionalData as IWorkflowExecuteAdditionalData,
+				executionContext,
+				workflowSettings,
 				canUseExternalSecrets,
 			);
 
 			expect(mockResolverProvider.resolveIfNeeded).toHaveBeenCalledWith(
 				credentialMetadata,
 				staticData,
-				additionalData,
+				executionContext,
+				workflowSettings,
 				canUseExternalSecrets,
 			);
 		});

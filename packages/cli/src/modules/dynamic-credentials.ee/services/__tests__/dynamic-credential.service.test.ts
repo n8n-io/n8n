@@ -5,7 +5,6 @@ import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
-	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
 import type { CredentialResolveMetadata } from '@/credentials/credential-resolution-provider.interface';
@@ -87,7 +86,7 @@ describe('DynamicCredentialService', () => {
 		executionId: string = 'exec-123',
 		secrets: Record<string, string> = {},
 		executionContext?: IExecutionContext,
-	): Partial<IWorkflowExecuteAdditionalData> => ({
+	) => ({
 		executionId,
 		restartExecutionId: undefined,
 		restApiUrl: '',
@@ -301,7 +300,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -330,7 +330,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -363,7 +364,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -388,7 +390,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -470,7 +473,8 @@ describe('DynamicCredentialService', () => {
 					service.resolveIfNeeded(
 						credentialsEntity,
 						staticData,
-						additionalData as IWorkflowExecuteAdditionalData,
+						additionalData.executionContext,
+						undefined,
 					),
 				).rejects.toThrow(CredentialResolutionError);
 
@@ -478,7 +482,8 @@ describe('DynamicCredentialService', () => {
 					service.resolveIfNeeded(
 						credentialsEntity,
 						staticData,
-						additionalData as IWorkflowExecuteAdditionalData,
+						additionalData.executionContext,
+						undefined,
 					),
 				).rejects.toThrow('Failed to resolve dynamic credentials for "Test Credential"');
 
@@ -523,7 +528,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticOAuthData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				// Verify merge: static fields preserved, dynamic fields added/overridden
@@ -575,7 +581,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
@@ -609,7 +616,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith(
@@ -642,7 +650,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -665,7 +674,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -691,7 +701,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
@@ -729,7 +740,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					additionalData.workflowSettings,
 				);
 
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
@@ -771,7 +783,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
@@ -805,7 +818,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					additionalData.workflowSettings,
 				);
 
 				expect(result).toBe(staticData);
@@ -852,7 +866,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 					false,
 				);
 
@@ -899,7 +914,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 					true, // canUseExternalSecrets = true (enables $secrets support)
 				);
 
@@ -941,7 +957,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 					false, // canUseExternalSecrets = false (disables $secrets support)
 				);
 
@@ -988,7 +1005,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 					false,
 				);
 
@@ -1032,7 +1050,8 @@ describe('DynamicCredentialService', () => {
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					additionalData as IWorkflowExecuteAdditionalData,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				// Verify config passed as-is (expression not resolved)

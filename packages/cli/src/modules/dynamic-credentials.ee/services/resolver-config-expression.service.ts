@@ -13,14 +13,7 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 @Service()
 export class ResolverConfigExpressionService {
-	private readonly mockNode: INode;
-
-	constructor(private readonly nodeTypes: NodeTypes) {
-		this.mockNode = {
-			id: '1',
-			name: 'Mock Node',
-		} as INode;
-	}
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	/**
 	 * Resolves expressions in config using global data only (secrets, variables).
@@ -31,6 +24,11 @@ export class ResolverConfigExpressionService {
 		config: CredentialResolverConfiguration,
 		canUseExternalSecrets = false,
 	): Promise<CredentialResolverConfiguration> {
+		// If config is not INodeParameters, return as is
+		if (!isNodeParameters(config)) {
+			return config;
+		}
+
 		// Create a minimal workflow with the mock node to leverage the expression resolver
 		const workflow = new Workflow({
 			nodes: [],
@@ -44,13 +42,12 @@ export class ResolverConfigExpressionService {
 			secretsEnabled: canUseExternalSecrets,
 		});
 
-		// If config is not INodeParameters, return as is
-		if (!isNodeParameters(config)) {
-			return config;
-		}
-
 		return workflow.expression.getComplexParameterValue(
-			this.mockNode,
+			// Use a mock node (mandatory) to resolve expressions in the config
+			{
+				id: '1',
+				name: 'Mock Node',
+			} as INode,
 			config,
 			'manual',
 			additionalKeys,
