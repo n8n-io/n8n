@@ -2,7 +2,8 @@
 
 ## Commands
 
-- Use `pnpm --filter=n8n-playwright test:local <test-file>` to execute tests.
+- Use `pnpm --filter=n8n-playwright test:local <file-path>` to execute tests.
+  For example: `pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts`
 
 ## Code Styles
 
