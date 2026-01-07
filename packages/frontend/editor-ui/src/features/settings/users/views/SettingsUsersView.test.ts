@@ -679,7 +679,13 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should hide generate invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockReturnValue(false);
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					!(
+						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+						variant === TAMPER_PROOF_INVITE_LINKS.variant
+					),
+			);
 
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
@@ -699,7 +705,13 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should show copy invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockReturnValue(false);
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					!(
+						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+						variant === TAMPER_PROOF_INVITE_LINKS.variant
+					),
+			);
 
 			renderComponent();
 
