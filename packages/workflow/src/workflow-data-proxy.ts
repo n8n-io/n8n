@@ -1055,6 +1055,19 @@ export class WorkflowDataProxy {
 				defaultValue
 			);
 		};
+		const handleTool = () => {
+			const fallbackValue = that.additionalKeys?.['$tool'];
+			try {
+				return handleFromAi('tool', '', 'string');
+			} catch (error) {
+				const isNoExecutionDataError =
+					error instanceof ExpressionError && error.context.type === 'no_execution_data';
+				if (isNoExecutionDataError && fallbackValue) {
+					return fallbackValue;
+				}
+				throw error;
+			}
+		};
 
 		const base = {
 			$: (nodeName: string) => {
@@ -1447,6 +1460,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
+			$tool: '', // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
@@ -1493,6 +1507,9 @@ export class WorkflowDataProxy {
 				if (name === '$binary') {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
 						?.binary;
+				}
+				if (name === '$tool') {
+					return handleTool();
 				}
 
 				return Reflect.get(target, name, receiver);

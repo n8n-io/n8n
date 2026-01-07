@@ -247,7 +247,7 @@ describe('hitl-tools', () => {
 			);
 			expect(messageProp).toBeDefined();
 			expect(messageProp?.type).toBe('string');
-			expect(messageProp?.default).toBe('=The agent wants to call {{ $fromAI("toolName") }}');
+			expect(messageProp?.default).toBe('=The agent wants to call {{ $tool }}');
 		});
 
 		it('should replace original message property with HITL message', () => {
@@ -269,7 +269,7 @@ describe('hitl-tools', () => {
 			);
 			// Should only have one message property (our HITL one, not the original)
 			expect(messageProps).toHaveLength(1);
-			expect(messageProps[0].default).toBe('=The agent wants to call {{ $fromAI("toolName") }}');
+			expect(messageProps[0].default).toBe('=The agent wants to call {{ $tool }}');
 		});
 
 		it('should set codex categories correctly for HITL', () => {
