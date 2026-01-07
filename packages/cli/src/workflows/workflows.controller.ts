@@ -104,21 +104,6 @@ export class WorkflowsController {
 				throw new BadRequestError(`Workflow with id ${body.id} exists already.`);
 			}
 		}
-		// We shouldn't accept this because it can
-		// mess with relations of other workflows
-		delete body.shared;
-
-		// Warn if user attempts to create an active workflow
-		if (body.activeVersionId || body.active) {
-			this.logger.warn(
-				'Creating a workflow as active is not supported. The workflow will be created as inactive.',
-				{ userId: req.user.id },
-			);
-
-			// Discard active fields
-			delete body.activeVersionId;
-			delete body.activeVersion;
-		}
 
 		const { autosaved = false } = body;
 

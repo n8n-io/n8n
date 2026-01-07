@@ -16,16 +16,4 @@ export class CreateWorkflowDto extends Z.class({
 
 	// Project assignment (only on creation)
 	projectId: z.string().optional(),
-
-	// SECURITY: These fields are included to accept them from the request body but are
-	// always overridden in the controller to enforce security policies:
-	// - active is always set to false (workflows must be activated via separate endpoint)
-	// - activeVersionId is always set to null (managed by the system)
-	active: z.boolean().optional(),
-	activeVersionId: z.string().nullable().optional(),
-	activeVersion: z.unknown().optional(),
-
-	// Shared property for backward compatibility in case UI sends it
-	// but it is discarded creation
-	shared: z.unknown().optional(),
 }) {}
