@@ -6,14 +6,15 @@
  * Run with: pnpm test:container:multi-main --grep "queue metrics"
  */
 
-import { ObservabilityHelper } from 'n8n-containers';
+import type { MetricResult } from 'n8n-containers';
 
 import { test, expect } from '../../../fixtures/base';
 
 test.use({
 	capability: {
-		observability: true,
-		queueMode: { mains: 1, workers: 1 },
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
+		mains: 1,
+		workers: 1,
 	},
 });
 
@@ -23,13 +24,7 @@ test.describe('Queue Metrics Monitoring @capability:observability @capability:qu
 		n8nContainer,
 		request,
 	}) => {
-		// eslint-disable-next-line playwright/no-conditional-in-test
-		if (!n8nContainer.observability) {
-			test.skip();
-			return;
-		}
-
-		const obs = new ObservabilityHelper(n8nContainer.observability);
+		const obs = n8nContainer.services.observability;
 		const baseUrl = n8nContainer.baseUrl;
 
 		const { webhookPath } = await api.workflows.importWorkflowFromFile('simple-webhook-test.json');
@@ -59,7 +54,7 @@ test.describe('Queue Metrics Monitoring @capability:observability @capability:qu
 		const vmCompleted = await obs.metrics.waitForMetric('n8n_scaling_mode_queue_jobs_completed', {
 			timeoutMs: 15000,
 			intervalMs: 2000,
-			predicate: (values) => values.length > 0 && values[0].value > 0,
+			predicate: (values: MetricResult[]) => values.length > 0 && values[0].value > 0,
 		});
 
 		// eslint-disable-next-line playwright/no-conditional-in-test

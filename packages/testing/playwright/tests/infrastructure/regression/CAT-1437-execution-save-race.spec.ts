@@ -10,9 +10,7 @@
 import { test, expect } from '../../../fixtures/base';
 
 test.use({
-	capability: {
-		queueMode: { mains: 1, workers: 3 },
-	},
+	capability: { mains: 1, workers: 3 },
 });
 
 test.describe('CAT-1437: Execution Save Race Condition @capability:queue', () => {

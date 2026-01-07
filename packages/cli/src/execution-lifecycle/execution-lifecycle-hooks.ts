@@ -46,10 +46,6 @@ type SaveDecisionContext = {
 	workflowData: IWorkflowBase;
 };
 
-/**
- * Determines if an execution should be saved and handles deletion if not.
- * Used by both main and worker processes. Fixes CAT-1437.
- */
 export async function handleExecutionSaveDecision(
 	fullRunData: IRun,
 	saveSettings: ExecutionSaveSettings,

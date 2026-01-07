@@ -76,14 +76,8 @@ export async function pollContainerHttpEndpoint(
 	);
 }
 
-// --- Resource Quota Utilities ---
-
 type ResourceQuota = { memory?: number; cpu?: number };
 
-/**
- * Parse a resource quota from specific environment variables.
- * @internal
- */
 function parseResourceQuota(
 	memoryEnvVar: string | undefined,
 	cpuEnvVar: string | undefined,
@@ -97,7 +91,6 @@ function parseResourceQuota(
 	if (memoryEnvVar) {
 		const parsed = parseFloat(memoryEnvVar);
 		if (!Number.isNaN(parsed) && parsed > 0) {
-			// Round to avoid Docker API issues with non-integer byte values
 			quota.memory = Math.round(parsed * 100) / 100;
 		}
 	}
@@ -112,50 +105,17 @@ function parseResourceQuota(
 	return Object.keys(quota).length > 0 ? quota : undefined;
 }
 
-/**
- * Parse resource quota from environment variables.
- * Returns undefined if no limits are set.
- *
- * Environment variables:
- * - N8N_MEMORY_LIMIT: Memory limit in GB (e.g., "0.5" for 512MB)
- * - N8N_CPU_LIMIT: CPU limit in cores (e.g., "0.5" for half a core)
- *
- * @example
- * // Run tests with constrained resources to trigger race conditions:
- * // N8N_MEMORY_LIMIT=0.5 N8N_CPU_LIMIT=0.5 pnpm test:container:queue
- */
+/** Parse N8N_MEMORY_LIMIT (GB) and N8N_CPU_LIMIT (cores) from env. */
 export function getResourceQuotaFromEnv(): ResourceQuota | undefined {
 	return parseResourceQuota(process.env.N8N_MEMORY_LIMIT, process.env.N8N_CPU_LIMIT);
 }
 
-/**
- * Parse main instance resource quota from environment variables.
- * Returns undefined if no limits are set.
- *
- * Environment variables:
- * - N8N_MAIN_MEMORY_LIMIT: Memory limit in GB for main instances
- * - N8N_MAIN_CPU_LIMIT: CPU limit in cores for main instances
- *
- * @example
- * // Constrain only main to reproduce CAT-1437 race condition:
- * // N8N_MAIN_MEMORY_LIMIT=0.5 N8N_MAIN_CPU_LIMIT=0.5 pnpm test:container:queue
- */
+/** Parse N8N_MAIN_MEMORY_LIMIT and N8N_MAIN_CPU_LIMIT from env. */
 export function getMainResourceQuotaFromEnv(): ResourceQuota | undefined {
 	return parseResourceQuota(process.env.N8N_MAIN_MEMORY_LIMIT, process.env.N8N_MAIN_CPU_LIMIT);
 }
 
-/**
- * Parse worker instance resource quota from environment variables.
- * Returns undefined if no limits are set.
- *
- * Environment variables:
- * - N8N_WORKER_MEMORY_LIMIT: Memory limit in GB for worker instances
- * - N8N_WORKER_CPU_LIMIT: CPU limit in cores for worker instances
- *
- * @example
- * // Constrain only workers:
- * // N8N_WORKER_MEMORY_LIMIT=0.5 N8N_WORKER_CPU_LIMIT=0.5 pnpm test:container:queue
- */
+/** Parse N8N_WORKER_MEMORY_LIMIT and N8N_WORKER_CPU_LIMIT from env. */
 export function getWorkerResourceQuotaFromEnv(): ResourceQuota | undefined {
 	return parseResourceQuota(process.env.N8N_WORKER_MEMORY_LIMIT, process.env.N8N_WORKER_CPU_LIMIT);
 }
