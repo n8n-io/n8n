@@ -1,18 +1,18 @@
 import { mock } from 'jest-mock-extended';
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions } from 'n8n-workflow';
 import { BoxTrigger } from '../BoxTrigger.node';
 
 describe('Box Trigger Webhook Lifecycle', () => {
 	const mockHookFunctions = mock<IHookFunctions>();
-	const mockWebhookFunctions = mock<IWebhookFunctions>();
-	const mockStaticData: Record<string, any> = {};
+	const mockStaticData: Record<string, string> = {};
+	const mockRequestOAuth2 = jest.fn();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		Object.keys(mockStaticData).forEach((key) => delete mockStaticData[key]);
 		mockHookFunctions.getWorkflowStaticData.mockReturnValue(mockStaticData);
 		mockHookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.io/webhook/box-test');
-		
+
 		// Mock getNodeParameter to return different values based on parameter name
 		mockHookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 			switch (parameterName) {
@@ -26,15 +26,18 @@ describe('Box Trigger Webhook Lifecycle', () => {
 					return undefined;
 			}
 		});
-		
+
 		// Mock the OAuth2 request helper
-		mockHookFunctions.helpers.requestOAuth2 = jest.fn();
+		mockHookFunctions.helpers = {
+			...mockHookFunctions.helpers,
+			requestOAuth2: mockRequestOAuth2,
+		};
 	});
 
 	describe('checkExists', () => {
 		it('should not store webhook ID when no matching webhook exists', async () => {
 			// Mock API response with no matching webhooks
-			mockHookFunctions.helpers.requestOAuth2
+			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
 						{
@@ -67,7 +70,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 		it('should store the correct webhook ID when a matching webhook exists', async () => {
 			// Mock API response with a matching webhook
 			// boxApiRequestAllItems expects a response with 'entries' property
-			mockHookFunctions.helpers.requestOAuth2
+			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
 						{
@@ -99,7 +102,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 		it('should return false when webhook exists but triggers are missing', async () => {
 			// Mock API response with matching webhook but missing triggers
-			mockHookFunctions.helpers.requestOAuth2
+			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
 						{
@@ -125,7 +128,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 		it('should return false when webhook exists but target type is different', async () => {
 			// Mock API response with matching webhook but different target type
-			mockHookFunctions.helpers.requestOAuth2
+			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
 						{
@@ -152,7 +155,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 	describe('create', () => {
 		it('should create a new webhook when none exists', async () => {
-			mockHookFunctions.helpers.requestOAuth2.mockResolvedValue({
+			mockRequestOAuth2.mockResolvedValue({
 				id: 'webhook_new_789',
 			});
 
@@ -175,12 +178,12 @@ describe('Box Trigger Webhook Lifecycle', () => {
 						},
 					},
 				}),
-				expect.anything()
+				expect.anything(),
 			);
 		});
 
 		it('should return false when webhook creation fails', async () => {
-			mockHookFunctions.helpers.requestOAuth2.mockResolvedValue({
+			mockRequestOAuth2.mockResolvedValue({
 				// No id in response
 			});
 
@@ -195,7 +198,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 	describe('delete', () => {
 		it('should delete the correct webhook upon deactivation', async () => {
 			mockStaticData.webhookId = 'webhook_456';
-			mockHookFunctions.helpers.requestOAuth2.mockResolvedValue({});
+			mockRequestOAuth2.mockResolvedValue({});
 
 			const boxTrigger = new BoxTrigger();
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
@@ -207,14 +210,14 @@ describe('Box Trigger Webhook Lifecycle', () => {
 					method: 'DELETE',
 					uri: 'https://api.box.com/2.0/webhooks/webhook_456',
 				}),
-				expect.anything()
+				expect.anything(),
 			);
 			expect(mockStaticData.webhookId).toBeUndefined();
 		});
 
 		it('should handle deletion when no webhook ID is stored', async () => {
 			// No webhookId in static data
-			mockHookFunctions.helpers.requestOAuth2.mockResolvedValue({});
+			mockRequestOAuth2.mockResolvedValue({});
 
 			const boxTrigger = new BoxTrigger();
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
@@ -225,7 +228,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 		it('should handle delete API errors gracefully', async () => {
 			mockStaticData.webhookId = 'webhook_456';
-			mockHookFunctions.helpers.requestOAuth2.mockRejectedValue(new Error('API Error'));
+			mockRequestOAuth2.mockRejectedValue(new Error('API Error'));
 
 			const boxTrigger = new BoxTrigger();
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
