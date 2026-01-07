@@ -281,7 +281,7 @@ AssistantThinkingChat.args = {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
-	loadingMessage: 'Thinking...',
+	loadingMessage: 'Thinking',
 };
 
 export const WithCodeSnippet = Template.bind({});
@@ -804,7 +804,7 @@ ToolCallsWithThinking.args = {
 			read: true,
 		},
 	]),
-	loadingMessage: 'Thinking...',
+	loadingMessage: 'Thinking',
 	streaming: true,
 };
 
