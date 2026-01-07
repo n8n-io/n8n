@@ -67,10 +67,13 @@ const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
  * Save immediately if autosave idle or cancelled
  */
 const saveBeforePublish = async () => {
+	let saved = true;
 	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
 		autoSaveForPublish.value = true;
 		try {
 			await autosaveStore.pendingAutoSave;
+		} catch {
+			saved = false;
 		} finally {
 			autoSaveForPublish.value = false;
 		}
@@ -80,26 +83,19 @@ const saveBeforePublish = async () => {
 
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
 		autoSaveForPublish.value = true;
-		try {
-			const saved = await saveCurrentWorkflow({}, true);
-			if (!saved) {
-				throw new Error('Failed to save workflow before publish');
-			}
-		} finally {
-			autoSaveForPublish.value = false;
-		}
-	} else {
+		saved = await saveCurrentWorkflow({}, true);
+		autoSaveForPublish.value = false;
 	}
+
+	return saved;
 };
 
 const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		try {
-			await saveBeforePublish();
-		} catch (error) {
-			return;
-		}
+	// Save the workflow first
+	const saved = await saveBeforePublish();
+	if (!saved) {
+		// If save failed, don't open the modal
+		return;
 	}
 
 	uiStore.openModalWithData({
