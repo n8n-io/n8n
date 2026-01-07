@@ -705,13 +705,8 @@ describe('SettingsUsersView', () => {
 		});
 
 		it('should show copy invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					!(
-						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-						variant === TAMPER_PROOF_INVITE_LINKS.variant
-					),
-			);
+			// Ensure feature flag is disabled (default from afterEach, but be explicit)
+			mockIsVariantEnabled.mockReturnValue(false);
 
 			renderComponent();
 
