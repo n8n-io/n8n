@@ -1271,8 +1271,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findSubExecutions(
 		parentExecutionId: string,
 		workflowId: string,
-		startedAt: Date,
-		stoppedAt: Date,
 	): Promise<IExecutionFlattedDb[]> {
 		return await this.findMultipleExecutions(
 			{
@@ -1280,12 +1278,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					parentExecutionId,
 					workflowId,
 					mode: 'integrated',
-					// Keep time range filters as additional safety check
-					startedAt: MoreThanOrEqual(startedAt),
-					stoppedAt: LessThanOrEqual(stoppedAt),
 				},
-				order: { startedAt: 'DESC' },
-				take: 100,
 			},
 			{ includeData: true },
 		);

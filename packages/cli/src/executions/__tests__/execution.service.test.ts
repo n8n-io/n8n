@@ -202,8 +202,6 @@ describe('ExecutionService', () => {
 			expect(executionRepository.findSubExecutions).toHaveBeenCalledWith(
 				'parent-123',
 				'workflow-456',
-				parentExecution.startedAt,
-				parentExecution.stoppedAt,
 			);
 
 			// Verify the merged data contains both parent and sub-execution runData

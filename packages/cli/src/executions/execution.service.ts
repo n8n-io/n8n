@@ -156,11 +156,10 @@ export class ExecutionService {
 	 */
 	private async mergeSubExecutions(parentExecution: IExecutionFlattedResponse): Promise<void> {
 		try {
+			// Find sub-executions in case the sub-execution and the parent execution are the same workflow
 			const subExecutions = await this.executionRepository.findSubExecutions(
 				parentExecution.id,
 				parentExecution.workflowId,
-				parentExecution.startedAt,
-				parentExecution.stoppedAt!,
 			);
 
 			if (subExecutions.length === 0) {
