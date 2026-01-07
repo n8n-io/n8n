@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { close, constants } from 'node:fs';
+import { constants } from 'node:fs';
 import {
 	access as fsAccess,
 	realpath as fsRealpath,
@@ -374,6 +374,7 @@ describe('getFileSystemHelperFunctions', () => {
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
 			).rejects.toThrow('The file has changed and cannot be accessed.');
+			expect(mockFileHandle.close).toHaveBeenCalled();
 		});
 	});
 
@@ -409,7 +410,7 @@ describe('getFileSystemHelperFunctions', () => {
 			).rejects.toThrow('Symlinks are not allowed.');
 		});
 
-		it('should reject when file identity changes (TOCTOU prevention)', async () => {
+		it('should reject when file identity changes', async () => {
 			const filePath = '/allowed/path/file';
 			const differentStats = { dev: 999, ino: 888, isFile: () => true };
 			const mockFileHandle = {
