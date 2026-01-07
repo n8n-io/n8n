@@ -71,7 +71,7 @@
     "picocolors": "catalog:",
     "pretty-bytes": "5.6.0",
     "proxy-from-env": "^1.1.0",
-    "qs": "6.11.0",
+    "qs": "6.14.1",
     "ssh2": "1.15.0",
     "uuid": "catalog:",
     "winston": "3.14.2",
