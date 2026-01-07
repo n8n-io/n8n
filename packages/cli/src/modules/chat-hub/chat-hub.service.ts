@@ -1572,11 +1572,9 @@ export class ChatHubService {
 				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 					workflowId,
 				]);
-				if (execution) {
+				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
 					errorText = this.getErrorMessage(execution);
-					if (errorText) {
-						break;
-					}
+					break;
 				}
 			} catch (error) {
 				this.logger.debug(

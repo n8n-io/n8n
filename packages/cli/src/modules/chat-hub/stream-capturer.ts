@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
 type Write = ServerResponse['write'];
+type End = ServerResponse['end'];
 
 export type ChunkTransformer = (chunk: string) => Promise<string>;
 
@@ -15,7 +16,7 @@ export function interceptResponseWrites<T extends Response>(
 	transform: ChunkTransformer,
 ): T {
 	const originalWrite = res.write.bind(res) as Write;
-	const originalEnd = res.end.bind(res);
+	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
 
 	let writeChain = Promise.resolve();
