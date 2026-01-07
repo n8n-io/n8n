@@ -1,7 +1,7 @@
 @use './fonts.scss';
-@use '../src/css/base.scss';
-@use '../src/css/reset.scss';
-@use '../src/css/index.scss';
+@use '../../design-system/src/css/base.scss';
+@use '../../design-system/src/css/reset.scss';
+@use '../../design-system/src/css/index.scss';
 
 .multi-container > * {
 	margin-bottom: 10px;

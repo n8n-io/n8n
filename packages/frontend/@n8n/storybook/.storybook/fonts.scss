@@ -1,7 +1,9 @@
-@use '../src/css/_tokens.scss';
-@use '../src/css/common/var';
+@use '../../design-system/src/css/_tokens.scss';
+@use '../../design-system/src/css/common/var' with (
+	$font-path: '../../design-system/src/assets/fonts'
+);
 
-/* Storybook-specific font paths */
+/* Storybook-specific font paths - override font-path variable for static assets */
 @font-face {
 	font-family: InterVariable;
 	font-style: normal;

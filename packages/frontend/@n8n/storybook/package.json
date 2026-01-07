@@ -1,19 +1,41 @@
 {
-  "name": "@n8n/storybook",
+  "name": "storybook",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "storybook dev -p 6006",
+    "build": "storybook build"
+  },
+  "dependencies": {
+    "@n8n/chat": "workspace:*",
+    "@n8n/design-system": "workspace:*",
+    "vue": "^3.5.24"
+  },
   "devDependencies": {
-    "@chromatic-com/storybook": "^3.2.5",
-    "@storybook/addon-a11y": "9.1.7",
-    "@storybook/addon-actions": "9.0.8",
-    "@storybook/addon-docs": "9.1.7",
-    "@storybook/addon-links": "9.1.7",
-    "@storybook/addon-themes": "9.1.7",
-    "@storybook/vue3": "9.1.7",
-    "@storybook/vue3-vite": "9.1.7",
-    "chromatic": "^11.27.0",
-    "eslint-plugin-storybook": "9.1.7",
-    "storybook": "9.1.7",
-    "storybook-dark-mode": "^4.0.2"
+    "@chromatic-com/storybook": "^4.1.3",
+    "@storybook/addon-a11y": "^10.1.11",
+    "@storybook/addon-docs": "^10.1.11",
+    "@storybook/addon-themes": "^10.1.11",
+    "@storybook/addon-vitest": "^10.1.11",
+    "@storybook/vue3-vite": "^10.1.11",
+    "@types/node": "^24.10.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/browser-playwright": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint-plugin-storybook": "^10.1.11",
+    "playwright": "^1.57.0",
+    "storybook": "^10.1.11",
+    "typescript": "~5.9.3",
+    "unplugin-icons": "^22.5.0",
+    "vite": "npm:rolldown-vite@7.2.5",
+    "vitest": "^4.0.16",
+    "vue-tsc": "^3.1.4"
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:storybook/recommended"
+    ]
   }
 }
