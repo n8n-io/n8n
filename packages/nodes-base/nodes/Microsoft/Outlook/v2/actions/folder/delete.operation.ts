@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { folderRLC } from '../../descriptions';
-import { decodeOutlookId, executePermanentDelete } from '../../helpers/utils';
+import { decodeOutlookId, executeDeletion } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	folderRLC,
@@ -42,7 +42,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await executePermanentDelete.call(this, index, `/mailFolders/${folderId}`);
+	await executeDeletion.call(this, index, `/mailFolders/${folderId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

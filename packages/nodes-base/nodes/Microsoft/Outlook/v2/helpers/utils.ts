@@ -7,7 +7,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, NodeApiError } from 'n8n-workflow';
-import { microsoftApiRequest } from '../transport';
 
 export const messageFields = [
 	'bccRecipients',
@@ -304,20 +303,3 @@ export const encodeOutlookId = (id: string) => {
 export const decodeOutlookId = (id: string) => {
 	return id.replace(/%2F/g, '-').replace(/%3D/g, '=').replace(/%2B/g, '+');
 };
-
-export async function executePermanentDelete(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	itemIndex: number,
-	resource: string,
-) {
-	const options = this.getNodeParameter('options', itemIndex, {}) as {
-		permanentDelete: boolean;
-	};
-	const isPermanentDelete = options?.permanentDelete || false;
-
-	return await microsoftApiRequest.call(
-		this,
-		isPermanentDelete ? 'POST' : 'DELETE',
-		`${resource}${isPermanentDelete ? '/permanentDelete' : ''}`,
-	);
-}

@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { calendarRLC, eventRLC } from '../../descriptions';
-import { decodeOutlookId, executePermanentDelete } from '../../helpers/utils';
+import { decodeOutlookId, executeDeletion } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	calendarRLC,
@@ -43,7 +43,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await executePermanentDelete.call(this, index, `/calendar/events/${eventId}`);
+	await executeDeletion.call(this, index, `/calendar/events/${eventId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

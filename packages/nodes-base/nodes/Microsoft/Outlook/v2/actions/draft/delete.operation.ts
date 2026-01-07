@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { draftRLC } from '../../descriptions';
-import { executePermanentDelete } from '../../helpers/utils';
+import { executeDeletion } from '../../helpers/delete';
 
 export const properties: INodeProperties[] = [
 	draftRLC,
@@ -40,7 +40,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		extractValue: true,
 	}) as string;
 
-	await executePermanentDelete.call(this, index, `/messages/${draftId}`);
+	await executeDeletion.call(this, index, `/messages/${draftId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
