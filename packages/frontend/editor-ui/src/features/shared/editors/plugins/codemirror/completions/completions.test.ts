@@ -109,7 +109,7 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return dollar completions for: {{ $| }}', () => {
-		expect(completions('{{ $| }}')).toHaveLength(18);
+		expect(completions('{{ $| }}')).toHaveLength(19);
 	});
 
 	test('should return node selector completions for: {{ $(| }}', () => {
