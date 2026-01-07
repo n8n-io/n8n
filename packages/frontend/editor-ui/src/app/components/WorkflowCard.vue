@@ -606,7 +606,7 @@ const tags = computed(
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
 				<div
-					v-else
+					v-else-if="isWorkflowPublished"
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
