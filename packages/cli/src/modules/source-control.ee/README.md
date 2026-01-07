@@ -1,4 +1,4 @@
-# Environments
+# Source Control - Environments
 
 Environments enable enterprise users of n8n to effectively manage multiple deployments of n8n by synchronizing them using a shared git repostiory.
 
