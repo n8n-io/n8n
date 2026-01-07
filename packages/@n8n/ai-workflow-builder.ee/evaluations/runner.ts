@@ -538,6 +538,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// and applies critical options (on_end callback, reference_example_id, client).
 	// Only wrap inner operations with traceable() for child traces.
 	let targetCallCount = 0;
+	let totalExamples = 0;
 	const target = async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
 		targetCallCount++;
 		const index = targetCallCount;
@@ -545,7 +546,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const prompt = extractPrompt(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
-		lifecycle?.onExampleStart?.(index, 0, prompt);
+		lifecycle?.onExampleStart?.(index, totalExamples, prompt);
 		const startTime = Date.now();
 		const genStart = Date.now();
 
@@ -624,6 +625,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	}
 
 	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	totalExamples = Array.isArray(data) ? data.length : 0;
 
 	logger.verbose(
 		Array.isArray(data)

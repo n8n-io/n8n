@@ -22,6 +22,10 @@ function truncateForSingleLine(str: string, maxLen: number): string {
 	return truncate(str.replace(/\n/g, ' '), maxLen);
 }
 
+function exampleLabel(mode: RunConfig['mode'] | undefined): 'call' | 'ex' {
+	return mode === 'langsmith' ? 'call' : 'ex';
+}
+
 /**
  * Format a score as percentage.
  */
@@ -101,6 +105,122 @@ function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback
 	return withComments;
 }
 
+function formatExampleHeaderLines(args: {
+	mode: RunConfig['mode'] | undefined;
+	index: number;
+	status: string;
+	score: number;
+	prompt: string;
+	durationMs: number;
+	generationDurationMs?: number;
+	evaluationDurationMs?: number;
+	nodeCount: number;
+}): string[] {
+	const {
+		mode,
+		index,
+		status,
+		score,
+		prompt,
+		durationMs,
+		generationDurationMs,
+		evaluationDurationMs,
+		nodeCount,
+	} = args;
+
+	const promptSnippet = truncateForSingleLine(prompt, 80);
+	const genStr =
+		typeof generationDurationMs === 'number' ? formatDuration(generationDurationMs) : '?';
+	const evalStr =
+		typeof evaluationDurationMs === 'number' ? formatDuration(evaluationDurationMs) : '?';
+
+	return [
+		`${pc.dim(`[${exampleLabel(mode)} ${index}]`)} ${status} ${formatScore(score)} ${pc.dim(
+			`prompt="${promptSnippet}"`,
+		)}`,
+		pc.dim(
+			`  gen=${genStr} eval=${evalStr} total=${formatDuration(durationMs)} nodes=${nodeCount}`,
+		),
+	];
+}
+
+function splitEvaluatorFeedback(feedback: Feedback[]): {
+	errors: Feedback[];
+	nonErrorFeedback: Feedback[];
+} {
+	return {
+		errors: feedback.filter((f) => f.metric === 'error'),
+		nonErrorFeedback: feedback.filter((f) => f.metric !== 'error'),
+	};
+}
+
+function formatEvaluatorLines(args: {
+	evaluatorName: string;
+	feedback: Feedback[];
+}): string[] {
+	const { evaluatorName, feedback } = args;
+
+	const { errors, nonErrorFeedback } = splitEvaluatorFeedback(feedback);
+
+	const scoringItems = selectScoringItems(feedback);
+	const avgScore =
+		scoringItems.length > 0
+			? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
+			: 0;
+
+	const colorFn = scoreColor(avgScore);
+
+	const lines: string[] = [];
+	lines.push(
+		pc.dim(`  ${evaluatorName}: `) +
+			colorFn(formatScore(avgScore)) +
+			pc.dim(
+				errors.length > 0
+					? ` (metrics=${nonErrorFeedback.length}, errors=${errors.length})`
+					: ` (metrics=${feedback.length})`,
+			),
+	);
+
+	const displayMetrics = DISPLAY_METRICS_BY_EVALUATOR[evaluatorName] ?? CRITICAL_METRICS;
+	const picked = nonErrorFeedback.filter((f) => displayMetrics.includes(f.metric));
+	if (picked.length > 0) {
+		const metricsLine = picked
+			.map((f) => {
+				const color = scoreColor(f.score);
+				return `${f.metric}: ${color(formatMetricValue(evaluatorName, f.metric, f.score))}`;
+			})
+			.join(pc.dim(' | '));
+		lines.push(pc.dim('    ') + metricsLine);
+	}
+
+	if (errors.length > 0) {
+		const topErrors = errors.slice(0, 2);
+		lines.push(pc.dim(`    errors(top=${topErrors.length}):`));
+		for (const errorItem of topErrors) {
+			const comment = truncateForSingleLine(errorItem.comment ?? '', 240);
+			lines.push(pc.dim('      - ') + pc.red(comment));
+		}
+		if (errors.length > topErrors.length) {
+			lines.push(pc.dim(`      ... and ${errors.length - topErrors.length} more`));
+		}
+	}
+
+	const issues = extractIssuesForLogs(evaluatorName, feedback);
+	if (issues.length > 0) {
+		const top = issues.slice(0, 3);
+		lines.push(pc.dim(`    issues(top=${top.length}):`));
+		for (const issue of top) {
+			const comment = truncateForSingleLine(issue.comment ?? '', 320);
+			lines.push(pc.dim(`      - [${issue.metric}] `) + pc.red(comment));
+		}
+		if (issues.length > top.length) {
+			lines.push(pc.dim(`      ... and ${issues.length - top.length} more`));
+		}
+	}
+
+	return lines;
+}
+
 /**
  * Get color based on score.
  */
@@ -149,7 +269,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			if (!verbose) return;
 
 			const totalStr = total > 0 ? String(total) : '?';
-			const prefix = pc.dim(`[ex ${index}/${totalStr}]`);
+			const prefix = pc.dim(`[${exampleLabel(runMode)} ${index}/${totalStr}]`);
 			const status = pc.yellow('START');
 			const promptStr = pc.dim(`prompt="${truncateForSingleLine(prompt, 80)}"`);
 			console.log(`${prefix} ${status} ${promptStr}`);
@@ -166,6 +286,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		},
 
 		onEvaluatorError(name: string, error: Error): void {
+			if (verbose) return;
 			console.error(pc.red(`    ERROR in ${name}: ${error.message}`));
 		},
 
@@ -179,25 +300,18 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 						? pc.yellow('FAIL')
 						: pc.red('ERROR');
 
-			const promptSnippet = truncateForSingleLine(result.prompt, 80);
 			const nodeCount = result.workflow?.nodes?.length ?? 0;
-
-			const gen = result.generationDurationMs;
-			const evalMs = result.evaluationDurationMs;
-			const genStr = typeof gen === 'number' ? formatDuration(gen) : '?';
-			const evalStr = typeof evalMs === 'number' ? formatDuration(evalMs) : '?';
-
-			const lines: string[] = [];
-			lines.push(
-				`${pc.dim(`[ex ${index}]`)} ${status} ${formatScore(result.score)} ${pc.dim(
-					`prompt="${promptSnippet}"`,
-				)}`,
-			);
-			lines.push(
-				pc.dim(
-					`  gen=${genStr} eval=${evalStr} total=${formatDuration(result.durationMs)} nodes=${nodeCount}`,
-				),
-			);
+			const lines: string[] = formatExampleHeaderLines({
+				mode: runMode,
+				index,
+				status,
+				score: result.score,
+				prompt: result.prompt,
+				durationMs: result.durationMs,
+				generationDurationMs: result.generationDurationMs,
+				evaluationDurationMs: result.evaluationDurationMs,
+				nodeCount,
+			});
 
 			if (result.error) {
 				lines.push(pc.red(`  error: ${result.error}`));
@@ -213,43 +327,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 
 			for (const evaluatorName of orderedEvaluators) {
 				const feedback = grouped[evaluatorName] ?? [];
-				const scoringItems = selectScoringItems(feedback);
-				const avgScore =
-					scoringItems.length > 0
-						? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
-						: 0;
-
-				const colorFn = scoreColor(avgScore);
-				lines.push(
-					pc.dim(`  ${evaluatorName}: `) +
-						colorFn(formatScore(avgScore)) +
-						pc.dim(` (metrics=${feedback.length})`),
-				);
-
-				const displayMetrics = DISPLAY_METRICS_BY_EVALUATOR[evaluatorName] ?? CRITICAL_METRICS;
-				const picked = feedback.filter((f) => displayMetrics.includes(f.metric));
-				if (picked.length > 0) {
-					const metricsLine = picked
-						.map((f) => {
-							const color = scoreColor(f.score);
-							return `${f.metric}: ${color(formatMetricValue(evaluatorName, f.metric, f.score))}`;
-						})
-						.join(pc.dim(' | '));
-					lines.push(pc.dim('    ') + metricsLine);
-				}
-
-				const issues = extractIssuesForLogs(evaluatorName, feedback);
-				if (issues.length > 0) {
-					const top = issues.slice(0, 3);
-					lines.push(pc.dim(`    issues(top=${top.length}):`));
-					for (const issue of top) {
-						const comment = truncateForSingleLine(issue.comment ?? '', 320);
-						lines.push(pc.dim(`      - [${issue.metric}] `) + pc.red(comment));
-					}
-					if (issues.length > top.length) {
-						lines.push(pc.dim(`      ... and ${issues.length - top.length} more`));
-					}
-				}
+				lines.push(...formatEvaluatorLines({ evaluatorName, feedback }));
 			}
 
 			console.log(lines.join('\n'));
