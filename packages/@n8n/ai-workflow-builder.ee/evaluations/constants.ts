@@ -29,6 +29,8 @@ export const DEFAULTS = {
 	LLM_JUDGE_EXPERIMENT_NAME: 'workflow-builder-evaluation',
 	CONCURRENCY: 5,
 	REPETITIONS: 1,
+	/** Per-operation timeout (generation / evaluator) */
+	TIMEOUT_MS: 20 * 60 * 1000,
 	DATASET_NAME: 'notion-pairwise-workflows',
 	FEATURE_FLAGS: {
 		multiAgent: true,

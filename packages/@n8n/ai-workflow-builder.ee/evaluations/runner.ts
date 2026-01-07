@@ -23,7 +23,7 @@ import type {
 import { createArtifactSaver, type ArtifactSaver } from './output';
 import { calculateWeightedScore } from './score-calculator';
 import { extractMessageContent } from './types/langsmith';
-import { runWithOptionalLimiter } from './utils/evaluation-helpers';
+import { runWithOptionalLimiter, withTimeout } from './utils/evaluation-helpers';
 import type { EvalLogger } from './utils/logger';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
@@ -37,12 +37,17 @@ async function evaluateWithPlugins(
 	workflow: SimpleWorkflow,
 	evaluators: Array<Evaluator<EvaluationContext>>,
 	context: EvaluationContext,
+	timeoutMs: number | undefined,
 	lifecycle?: Partial<EvaluationLifecycle>,
 ): Promise<Feedback[]> {
 	const results = await Promise.all(
 		evaluators.map(async (evaluator): Promise<Feedback[]> => {
 			try {
-				const feedback = await evaluator.evaluate(workflow, context);
+				const feedback = await withTimeout({
+					promise: evaluator.evaluate(workflow, context),
+					timeoutMs,
+					label: `evaluator:${evaluator.name}`,
+				});
 				lifecycle?.onEvaluatorComplete?.(evaluator.name, feedback);
 				return feedback;
 			} catch (error) {
@@ -298,6 +303,7 @@ async function runLocalExample(args: {
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
+	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver?: ArtifactSaver | null;
 }): Promise<ExampleResult> {
@@ -309,6 +315,7 @@ async function runLocalExample(args: {
 		evaluators,
 		globalContext,
 		passThreshold,
+		timeoutMs,
 		lifecycle,
 		artifactSaver,
 	} = args;
@@ -319,10 +326,16 @@ async function runLocalExample(args: {
 	try {
 		// Generate workflow
 		const genStartTime = Date.now();
-		const workflow = await runWithOptionalLimiter(
-			globalContext?.llmCallLimiter,
-			async () => await generateWorkflow(testCase.prompt),
-		);
+		const workflow = await withTimeout({
+			promise: runWithOptionalLimiter(
+				globalContext?.llmCallLimiter,
+				async () =>
+					// `return-await` is required here due to error handling via Promise.race timeouts.
+					await generateWorkflow(testCase.prompt),
+			),
+			timeoutMs,
+			label: 'workflow_generation',
+		});
 		const genDurationMs = Date.now() - genStartTime;
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -335,7 +348,7 @@ async function runLocalExample(args: {
 
 		// Run evaluators in parallel
 		const evalStartTime = Date.now();
-		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+		const feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
 		const evalDurationMs = Date.now() - evalStartTime;
 
 		// Calculate result
@@ -403,6 +416,7 @@ async function runLocalDataset(params: {
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
+	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
 }): Promise<ExampleResult[]> {
@@ -412,6 +426,7 @@ async function runLocalDataset(params: {
 		evaluators,
 		globalContext,
 		passThreshold,
+		timeoutMs,
 		lifecycle,
 		artifactSaver,
 	} = params;
@@ -428,6 +443,7 @@ async function runLocalDataset(params: {
 			evaluators,
 			globalContext,
 			passThreshold,
+			timeoutMs,
 			lifecycle,
 			artifactSaver,
 		});
@@ -462,12 +478,16 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		evaluators,
 		context: globalContext,
 		passThreshold = DEFAULT_PASS_THRESHOLD,
+		timeoutMs,
 		lifecycle,
 		outputDir,
 		logger,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
+	if (testCases.length === 0) {
+		logger.warn('No test cases provided');
+	}
 
 	const effectiveGlobalContext: GlobalRunContext = {
 		...(globalContext ?? {}),
@@ -485,6 +505,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		evaluators,
 		globalContext: effectiveGlobalContext,
 		passThreshold,
+		timeoutMs,
 		lifecycle,
 		artifactSaver,
 	});
@@ -547,6 +568,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		evaluators,
 		context: globalContext,
 		passThreshold = DEFAULT_PASS_THRESHOLD,
+		timeoutMs,
 		langsmithOptions,
 		lifecycle,
 		logger,
@@ -577,6 +599,14 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Only wrap inner operations with traceable() for child traces.
 	let targetCallCount = 0;
 	let totalExamples = 0;
+	const stats = {
+		total: 0,
+		passed: 0,
+		failed: 0,
+		errors: 0,
+		scoreSum: 0,
+		durationSumMs: 0,
+	};
 	const target = async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
 		targetCallCount++;
 		const index = targetCallCount;
@@ -600,7 +630,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 					run_type: 'chain',
 				},
 			);
-			const workflow = await traceableGenerate();
+			const workflow = await withTimeout({
+				promise: traceableGenerate(),
+				timeoutMs,
+				label: 'workflow_generation',
+			});
 			const genDurationMs = Date.now() - genStart;
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -616,7 +650,13 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 			// Run all evaluators in parallel
 			const evalStart = Date.now();
-			const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+			const feedback = await evaluateWithPlugins(
+				workflow,
+				evaluators,
+				context,
+				timeoutMs,
+				lifecycle,
+			);
 			const evalDurationMs = Date.now() - evalStart;
 
 			const totalDurationMs = Date.now() - startTime;
@@ -624,6 +664,12 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			const status = hasErrorFeedback(feedback)
 				? 'error'
 				: determineStatus({ score, passThreshold });
+			stats.total++;
+			stats.scoreSum += score;
+			stats.durationSumMs += totalDurationMs;
+			if (status === 'pass') stats.passed++;
+			else if (status === 'fail') stats.failed++;
+			else stats.errors++;
 			lifecycle?.onExampleComplete?.(index, {
 				index,
 				prompt,
@@ -656,6 +702,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 			const totalDurationMs = Date.now() - startTime;
 			const genDurationMs = Date.now() - genStart;
+			stats.total++;
+			stats.errors++;
+			stats.durationSumMs += totalDurationMs;
 			lifecycle?.onExampleComplete?.(index, {
 				index,
 				prompt,
@@ -743,12 +792,12 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	// Return placeholder summary - LangSmith handles actual results
 	const summary: RunSummary = {
-		totalExamples: 0,
-		passed: 0,
-		failed: 0,
-		errors: 0,
-		averageScore: 0,
-		totalDurationMs: 0,
+		totalExamples: stats.total,
+		passed: stats.passed,
+		failed: stats.failed,
+		errors: stats.errors,
+		averageScore: stats.total > 0 ? stats.scoreSum / stats.total : 0,
+		totalDurationMs: stats.durationSumMs,
 	};
 
 	lifecycle?.onEnd?.(summary);

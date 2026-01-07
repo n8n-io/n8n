@@ -54,7 +54,7 @@ describe('Similarity Evaluator', () => {
 			expect(evaluator.name).toBe('similarity');
 		});
 
-		it('should return neutral feedback when no reference workflow provided', async () => {
+		it('should return error feedback when no reference workflow provided', async () => {
 			const { createSimilarityEvaluator } = await import('../../evaluators/similarity');
 			const evaluator = createSimilarityEvaluator();
 
@@ -66,8 +66,8 @@ describe('Similarity Evaluator', () => {
 
 			expect(feedback).toContainEqual({
 				evaluator: 'similarity',
-				metric: 'score',
-				score: 1,
+				metric: 'error',
+				score: 0,
 				kind: 'score',
 				comment: 'No reference workflow provided for comparison',
 			});

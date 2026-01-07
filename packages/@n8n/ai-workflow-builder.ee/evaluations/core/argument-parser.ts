@@ -14,6 +14,7 @@ export interface EvaluationArgs {
 	verbose: boolean;
 	repetitions: number;
 	concurrency: number;
+	timeoutMs: number;
 	experimentName?: string;
 	outputDir?: string;
 	datasetName?: string;
@@ -43,6 +44,7 @@ const cliSchema = z
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
 		concurrency: z.coerce.number().int().positive().default(DEFAULTS.CONCURRENCY),
+		timeoutMs: z.coerce.number().int().positive().default(DEFAULTS.TIMEOUT_MS),
 		experimentName: z.string().min(1).optional(),
 		outputDir: z.string().min(1).optional(),
 		datasetName: z.string().min(1).optional(),
@@ -81,6 +83,7 @@ const FLAG_TO_KEY: Record<string, FlagDef> = {
 	'-v': { key: 'verbose', kind: 'boolean' },
 	'--repetitions': { key: 'repetitions', kind: 'string' },
 	'--concurrency': { key: 'concurrency', kind: 'string' },
+	'--timeout-ms': { key: 'timeoutMs', kind: 'string' },
 	'--name': { key: 'experimentName', kind: 'string' },
 	'--output-dir': { key: 'outputDir', kind: 'string' },
 	'--dataset': { key: 'datasetName', kind: 'string' },
@@ -198,7 +201,11 @@ function parseFilters(args: {
 			throw new Error('Invalid `--filter` format. Expected: --filter "key:value"');
 		}
 
-		const [, key, value] = match;
+		const [, key, valueRaw] = match;
+		const value = valueRaw.trim();
+		if (value.length === 0) {
+			throw new Error(`Invalid \`--filter\` value for "${key}": value cannot be empty`);
+		}
 		switch (key) {
 			case 'do':
 				filters.doSearch = value;
@@ -260,6 +267,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,
+		timeoutMs: parsed.timeoutMs,
 		experimentName: parsed.experimentName,
 		outputDir: parsed.outputDir,
 		datasetName: parsed.datasetName,

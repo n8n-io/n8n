@@ -50,6 +50,9 @@ export interface MultiGenerationResult {
  * getMajorityThreshold(5) // returns 3
  */
 export function getMajorityThreshold(numJudges: number): number {
+	if (!Number.isFinite(numJudges) || numJudges < 1) {
+		throw new Error(`numJudges must be >= 1 (received ${String(numJudges)})`);
+	}
 	return Math.ceil(numJudges / 2);
 }
 

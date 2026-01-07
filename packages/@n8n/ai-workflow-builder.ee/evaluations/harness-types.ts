@@ -95,6 +95,8 @@ export interface RunConfigBase {
 	outputDir?: string;
 	/** Threshold for pass/fail classification of an example score (0-1). */
 	passThreshold?: number;
+	/** Timeout for generation/evaluator operations (ms). */
+	timeoutMs?: number;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
 	/** Logger for all output (pass `createLogger(false)` for silent) */

@@ -85,6 +85,12 @@ describe('parseEvaluationArgs', () => {
 		).toThrow('Invalid `--filter` format');
 	});
 
+	it('throws on empty --filter values', () => {
+		expect(() =>
+			parseEvaluationArgs(['--suite', 'pairwise', '--backend', 'langsmith', '--filter', 'do:   ']),
+		).toThrow('Invalid `--filter` value for "do"');
+	});
+
 	it('rejects do/dont filters for non-pairwise suites', () => {
 		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--filter', 'do:Slack'])).toThrow(
 			'only supported for `--suite pairwise`',

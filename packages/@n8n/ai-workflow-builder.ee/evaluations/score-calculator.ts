@@ -107,8 +107,10 @@ export function groupByEvaluator(feedback: Feedback[]): Record<string, Feedback[
  */
 function calculateAverage(items: Feedback[]): number {
 	if (items.length === 0) return 0;
-	const total = items.reduce((sum, f) => sum + f.score, 0);
-	return total / items.length;
+	const finiteScores = items.map((f) => f.score).filter((s) => Number.isFinite(s));
+	if (finiteScores.length === 0) return 0;
+	const total = finiteScores.reduce((sum, s) => sum + s, 0);
+	return total / finiteScores.length;
 }
 
 /**

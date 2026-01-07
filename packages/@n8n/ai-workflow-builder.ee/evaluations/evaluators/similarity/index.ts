@@ -65,12 +65,12 @@ export function createSimilarityEvaluator(
 			const referenceWorkflows = ctx.referenceWorkflows;
 			const referenceWorkflow = ctx.referenceWorkflow;
 
-			// No reference workflows provided - return neutral feedback
+			// No reference workflows provided - treat as configuration error
 			if (!referenceWorkflows?.length && !referenceWorkflow) {
 				feedback.push({
 					evaluator: 'similarity',
-					metric: 'score',
-					score: 1,
+					metric: 'error',
+					score: 0,
 					kind: 'score',
 					comment: 'No reference workflow provided for comparison',
 				});

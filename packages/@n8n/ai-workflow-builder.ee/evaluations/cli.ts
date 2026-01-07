@@ -191,6 +191,7 @@ export async function runV2Evaluation(): Promise<void> {
 		lifecycle,
 		logger,
 		outputDir: args.outputDir,
+		timeoutMs: args.timeoutMs,
 		context: isMultiGen ? { generateWorkflow, llmCallLimiter } : { llmCallLimiter },
 	};
 
@@ -218,13 +219,7 @@ export async function runV2Evaluation(): Promise<void> {
 	const summary = await runEvaluation(config);
 
 	// Exit with appropriate code
-	// In LangSmith mode, summary is a placeholder (results are in LangSmith dashboard)
-	// so we exit successfully if no errors occurred
-	if (config.mode === 'langsmith') {
-		process.exit(0);
-	}
-
-	// In local mode, check pass rate
+	// Check pass rate
 	const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
 	process.exit(passRate >= 0.7 ? 0 : 1);
 }

@@ -28,6 +28,10 @@ function createGenerationDetail(overrides: Partial<GenerationDetail> = {}): Gene
 
 describe('Multi-Generation Utilities', () => {
 	describe('getMajorityThreshold()', () => {
+		it('should throw for 0 judges', () => {
+			expect(() => getMajorityThreshold(0)).toThrow('numJudges must be >= 1');
+		});
+
 		it('should return 1 for 1 judge', () => {
 			expect(getMajorityThreshold(1)).toBe(1);
 		});
