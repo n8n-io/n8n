@@ -2443,7 +2443,7 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		workflowsStore.addWorkflowTagIds(tagIds);
+		workflowState.addWorkflowTagIds(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
@@ -2617,7 +2617,7 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowsStore.setWorkflowPinData({});
+			workflowState.setWorkflowPinData({});
 		}
 
 		if (nodeId) {
@@ -2675,7 +2675,7 @@ export function useCanvasOperations() {
 		}
 		await addNodes(convertedNodes ?? []);
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {

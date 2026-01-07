@@ -19,7 +19,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import type {
-	IPinData,
 	IConnection,
 	IConnections,
 	INodeExecutionData,
@@ -1280,29 +1279,6 @@ describe('useWorkflowsStore', () => {
 				node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				node_graph_string:
 					'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
-			});
-		});
-
-		it('sets workflow pin data', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data: IPinData = {
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
-			};
-			workflowsStore.setWorkflowPinData(data);
-			expect(workflowsStore.workflow.pinData).toEqual(data);
-		});
-
-		it('sets workflow pin data, adding json keys', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data = {
-				TestNode: [{ test: true }],
-				TestNode1: [{ test: false }],
-			};
-			workflowsStore.setWorkflowPinData(data as unknown as IPinData);
-			expect(workflowsStore.workflow.pinData).toEqual({
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
 			});
 		});
 
