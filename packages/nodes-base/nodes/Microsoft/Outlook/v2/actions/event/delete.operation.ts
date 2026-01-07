@@ -3,10 +3,29 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { calendarRLC, eventRLC } from '../../descriptions';
-import { decodeOutlookId } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { decodeOutlookId, executePermanentDelete } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [calendarRLC, eventRLC];
+export const properties: INodeProperties[] = [
+	calendarRLC,
+	eventRLC,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Permanent Delete',
+				name: 'permanentDelete',
+				type: 'boolean',
+				default: false,
+				description:
+					"Permanently delete an event and place it in the purges folder at the user's mailbox.",
+			},
+		],
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -24,7 +43,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/calendar/events/${eventId}`);
+	await executePermanentDelete.call(this, index, `/calendar/events/${eventId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
