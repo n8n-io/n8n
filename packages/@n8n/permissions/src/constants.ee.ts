@@ -17,6 +17,7 @@ export const RESOURCES = {
 	project: [...DEFAULT_OPERATIONS] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
+	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: ['resetPassword', 'changeRole', 'enforceMfa', ...DEFAULT_OPERATIONS] as const,
