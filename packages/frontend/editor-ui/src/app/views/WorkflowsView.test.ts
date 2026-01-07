@@ -482,7 +482,7 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
-	it('should show "Create folder" button', async () => {
+	it('should show "Create folder" button when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
@@ -495,7 +495,20 @@ describe('Folders', () => {
 		expect(getByTestId('add-folder-button')).toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in overview or shared subpage', async () => {
+	it('should NOT show "Create folder" button when in overview subpage', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		const { queryByTestId } = renderComponent({
+			pinia,
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+	});
+
+	it('should NOT show "Create folder" button when in shared subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 
