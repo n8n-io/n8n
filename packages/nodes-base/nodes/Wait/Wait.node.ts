@@ -497,10 +497,11 @@ export class Wait extends Webhook {
 		if (['webhook', 'form'].includes(resume)) {
 			let hasFormTrigger = false;
 
+			context.setSignatureValidationRequired();
+
 			if (resume === 'form') {
 				const parentNodes = context.getParentNodes(context.getNode().name);
 				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
-				context.setSignatureValidationRequired();
 			}
 
 			const returnData = await this.configureAndPutToWait(context);
