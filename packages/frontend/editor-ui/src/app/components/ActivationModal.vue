@@ -19,7 +19,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
+
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
@@ -29,12 +29,7 @@ const uiStore = useUIStore();
 const router = useRouter();
 const i18n = useI18n();
 
-const modalTitle = computed(() => {
-	if (IS_DRAFT_PUBLISH_ENABLED) {
-		return i18n.baseText('activationModal.workflowPublished');
-	}
-	return i18n.baseText('activationModal.workflowActivated');
-});
+const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
 
 const triggerContent = computed(() => {
 	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);

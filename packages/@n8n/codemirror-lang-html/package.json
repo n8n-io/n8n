@@ -1,0 +1,54 @@
+{
+  "name": "@n8n/codemirror-lang-html",
+  "version": "1.0.0",
+  "description": "HTML + n8n expression language support for CodeMirror 6",
+  "scripts": {
+    "test": "cm-runtests",
+    "build": "cm-buildhelper src/html.ts",
+    "grammar:build": "lezer-generator src/grammar/html.grammar -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
+    "grammar:build-debug": "lezer-generator src/grammar/html.grammar --names -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
+    "grammar:test": "mocha src/grammar/test/test-*.js"
+  },
+  "keywords": [
+    "editor",
+    "code"
+  ],
+  "author": {
+    "name": "Iván Ovejero",
+    "email": "ivov.src@gmail.com",
+    "url": "https://ivov.dev"
+  },
+  "type": "module",
+  "main": "dist/index.cjs",
+  "exports": {
+    "import": "./dist/index.js",
+    "require": "./dist/index.cjs"
+  },
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/lang-css": "catalog:",
+    "@codemirror/lang-javascript": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@lezer/common": "catalog:"
+  },
+  "devDependencies": {
+    "@codemirror/buildhelper": "^0.1.5",
+    "@lezer/generator": "catalog:",
+    "@n8n/typescript-config": "workspace:*",
+    "@rollup/plugin-node-resolve": "^9.0.0",
+    "ist": "^1.1.7",
+    "mocha": "^9.0.1",
+    "rollup": "^2.52.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n",
+    "directory": "packages/@n8n/codemirror-lang-html"
+  }
+}
