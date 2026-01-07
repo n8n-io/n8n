@@ -3431,7 +3431,7 @@
 	"workflows.publishModal.versionNameLabel": "Version name",
 	"workflows.publishModal.descriptionPlaceholder": "Describe changes (optional)",
 	"workflows.publishModal.noChanges": "No changes to publish",
-	"workflows.publishModal.changes": "Changes to publish",
+	"workflows.publishModal.changes": "New changes to publish",
 	"workflows.publishModal.lastPublished": "Last published by {author}, {date} at {time}",
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",
