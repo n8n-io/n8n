@@ -48,9 +48,32 @@ type Codex = {
 	alias: string[];
 };
 
+export type NodeManifest = {
+	name: string;
+	displayName: string;
+	icon?: string;
+	iconColor?: string;
+	iconUrl?: string | { light: string; dark: string };
+	badgeIconUrl?: string | { light: string; dark: string };
+	group: string[];
+	description: string;
+	version: number | number[];
+	defaultVersion: number;
+	inputs: Array<string | object>;
+	outputs: Array<string | object>;
+	codex?: {
+		categories?: string[];
+		subcategories?: Record<string, string[]>;
+		alias?: string[];
+	};
+	hidden?: boolean;
+	usableAsTool?: boolean;
+};
+
 export type Types = {
 	nodes: INodeTypeDescription[];
 	credentials: ICredentialType[];
+	manifests?: NodeManifest[];
 };
 
 /**

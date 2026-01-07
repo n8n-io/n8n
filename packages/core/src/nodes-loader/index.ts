@@ -1,4 +1,4 @@
-export { DirectoryLoader, type Types } from './directory-loader';
+export { DirectoryLoader, type Types, type NodeManifest } from './directory-loader';
 export { CustomDirectoryLoader } from './custom-directory-loader';
 export { PackageDirectoryLoader } from './package-directory-loader';
 export { LazyPackageDirectoryLoader } from './lazy-package-directory-loader';

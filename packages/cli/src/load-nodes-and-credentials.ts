@@ -4,7 +4,7 @@ import { Container, Service } from '@n8n/di';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, DirectoryLoader, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, Types, NodeManifest } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	ErrorReporter,
@@ -33,6 +33,40 @@ import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
+// TODO: Read dynamically from the node popularity JSON file
+const MOST_POPULAR_NODES = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.code',
+	'@n8n/n8n-nodes-langchain.memoryBufferWindow',
+	'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+	'n8n-nodes-base.scheduleTrigger',
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.set',
+	'n8n-nodes-base.if',
+	'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	'@n8n/n8n-nodes-langchain.openAi',
+	'n8n-nodes-base.gmail',
+	'n8n-nodes-base.noOp',
+	'n8n-nodes-base.formTrigger',
+	'n8n-nodes-base.merge',
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.splitInBatches',
+	'n8n-nodes-base.switch',
+	'n8n-nodes-base.telegram',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'n8n-nodes-base.wait',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+	'n8n-nodes-base.splitOut',
+	'n8n-nodes-base.googleDrive',
+	'n8n-nodes-base.respondToWebhook',
+	'n8n-nodes-base.filter',
+	'n8n-nodes-base.extractFromFile',
+	'n8n-nodes-base.googleSheetsTool',
+	'@n8n/n8n-nodes-langchain.outputParserStructured',
+	'n8n-nodes-base.httpRequestTool',
+	'n8n-nodes-base.aggregate',
+];
+
 @Service()
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -45,6 +79,10 @@ export class LoadNodesAndCredentials {
 	types: Types = { nodes: [], credentials: [] };
 
 	loaders: Record<string, DirectoryLoader> = {};
+
+	manifests: NodeManifest[] = [];
+
+	definitionsForPreloadedNodeTypes: Record<string, INodeTypeDescription> = {};
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -470,10 +508,21 @@ export class LoadNodesAndCredentials {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
+		this.manifests = [];
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
 			const { known, types, directory, packageName } = loader;
+
+			if (types.manifests?.length) {
+				this.manifests = this.manifests.concat(
+					types.manifests.map((manifest) => ({
+						...manifest,
+						name: `${packageName}.${manifest.name}`,
+					})),
+				);
+			}
+
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
@@ -553,6 +602,75 @@ export class LoadNodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
+	}
+
+	async preloadSet(): Promise<void> {
+		this.logger.debug('preloadSet() called', { loaderKeys: Object.keys(this.loaders) });
+
+		const { WorkflowDependencyRepository } = await import('@n8n/db');
+		const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+		const mostUsedNodes = await workflowDependencyRepository.getUsedNodeTypes();
+
+		this.logger.debug('Most used nodes from DB', { mostUsedNodes });
+
+		const preloadSet = new Set([...MOST_POPULAR_NODES, ...mostUsedNodes]);
+
+		this.logger.debug('Preload set', {
+			count: preloadSet.size,
+			first5: [...preloadSet].slice(0, 5),
+		});
+
+		for (const fullNodeType of preloadSet) {
+			const definition = await this.getFullDefinition(fullNodeType);
+			if (definition) {
+				this.definitionsForPreloadedNodeTypes[fullNodeType] = definition;
+			} else {
+				this.logger.debug(`Failed to get definition for ${fullNodeType}`);
+			}
+		}
+
+		this.logger.info('Preload set loaded for tiered node loading', {
+			preloadedCount: Object.keys(this.definitionsForPreloadedNodeTypes).length,
+			manifestCount: this.manifests.length,
+		});
+	}
+
+	async getFullDefinition(fullNodeType: string): Promise<INodeTypeDescription | undefined> {
+		if (fullNodeType in this.definitionsForPreloadedNodeTypes) {
+			return this.definitionsForPreloadedNodeTypes[fullNodeType];
+		}
+
+		const existingDef = this.types.nodes.find((n) => n.name === fullNodeType);
+		if (existingDef) {
+			return existingDef;
+		}
+
+		const [packageName, nodeType] = fullNodeType.split('.');
+		this.logger.debug(`getFullDefinition: split ${fullNodeType}`, { packageName, nodeType });
+
+		const loader = this.loaders[packageName];
+		if (!loader) {
+			this.logger.debug(`getFullDefinition: no loader for package ${packageName}`);
+			return undefined;
+		}
+
+		if ('getFullDefinition' in loader && typeof loader.getFullDefinition === 'function') {
+			const definition = await (loader as LazyPackageDirectoryLoader).getFullDefinition(nodeType);
+			this.logger.debug(`getFullDefinition: got definition for ${nodeType}`, {
+				found: !!definition,
+				defName: definition?.name,
+			});
+			if (definition) {
+				const prefixedDefinition = {
+					...definition,
+					name: fullNodeType,
+				};
+				this.definitionsForPreloadedNodeTypes[fullNodeType] = prefixedDefinition;
+				return prefixedDefinition;
+			}
+		}
+
+		return undefined;
 	}
 
 	recognizesNode(fullNodeType: string): boolean {

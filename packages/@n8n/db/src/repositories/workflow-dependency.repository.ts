@@ -146,4 +146,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		const { tablePrefix } = this.databaseConfig;
 		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
+
+	async getUsedNodeTypes(): Promise<string[]> {
+		const results = await this.createQueryBuilder('dep')
+			.select('DISTINCT dep.dependencyKey', 'nodeType')
+			.where('dep.dependencyType = :type', { type: 'nodeType' })
+			.andWhere('dep.dependencyKey IS NOT NULL')
+			.getRawMany<{ nodeType: string }>();
+
+		return results.map((r) => r.nodeType);
+	}
 }

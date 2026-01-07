@@ -6,6 +6,7 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
+import type { NodeManifest } from '@n8n/rest-api-client/api/nodeTypes';
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
@@ -39,6 +40,10 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+
+	const manifests = ref<NodeManifest[]>([]);
+
+	const pendingFetches = ref<Map<string, Promise<INodeTypeDescription | undefined>>>(new Map());
 
 	const vettedCommunityNodeTypes = ref<Map<string, CommunityNodeType>>(new Map());
 
@@ -342,16 +347,132 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		const nodeTypesData = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 
-		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes);
+		if (nodeTypesData.length) {
+			setNodeTypes(nodeTypesData);
 		}
+	};
+
+	const initNodeTypes = async () => {
+		try {
+			const { manifests: loadedManifests, preloadedDefinitions } =
+				await nodeTypesApi.getNodeTypesInit(rootStore.restApiContext);
+
+			manifests.value = loadedManifests;
+
+			const manifestsAsDescriptions = loadedManifests.map((manifest) => ({
+				name: manifest.name,
+				displayName: manifest.displayName,
+				icon: manifest.icon,
+				iconColor: manifest.iconColor,
+				iconUrl: manifest.iconUrl,
+				badgeIconUrl: manifest.badgeIconUrl,
+				group: manifest.group,
+				description: manifest.description,
+				version: manifest.version,
+				defaults: { name: manifest.displayName },
+				inputs: manifest.inputs as INodeTypeDescription['inputs'],
+				outputs: manifest.outputs as INodeTypeDescription['outputs'],
+				codex: manifest.codex,
+				hidden: manifest.hidden,
+				usableAsTool: manifest.usableAsTool,
+				properties: [],
+			})) as INodeTypeDescription[];
+
+			setNodeTypes(manifestsAsDescriptions);
+
+			const definitions = Object.values(preloadedDefinitions);
+			if (definitions.length) {
+				setNodeTypes(definitions);
+			}
+		} catch {
+			await getNodeTypes();
+		}
+	};
+
+	const fetchNodeDefinition = async (
+		nodeTypeName: string,
+	): Promise<INodeTypeDescription | undefined> => {
+		console.log(
+			'[fetchNodeDefinition]',
+			nodeTypeName,
+			'hasFullDefinition:',
+			hasFullDefinition(nodeTypeName),
+		);
+		if (hasFullDefinition(nodeTypeName)) {
+			const existing = nodeTypes.value[nodeTypeName];
+			const versionNumbers = Object.keys(existing).map(Number);
+			return existing[Math.max(...versionNumbers)];
+		}
+
+		console.log('[fetchNodeDefinition] fetching from API...');
+		const pending = pendingFetches.value.get(nodeTypeName);
+		if (pending) {
+			// eslint-disable-next-line @typescript-eslint/return-await
+			return pending;
+		}
+
+		const fetchPromise = (async () => {
+			try {
+				const definition = await nodeTypesApi.getNodeDefinition(
+					rootStore.restApiContext,
+					nodeTypeName,
+				);
+				console.log('[fetchNodeDefinition] API response:', definition);
+				console.log('[fetchNodeDefinition] has error?', 'error' in (definition || {}));
+				console.log('[fetchNodeDefinition] properties count:', definition?.properties?.length);
+				if (definition && !('error' in definition)) {
+					console.log('[fetchNodeDefinition] calling setNodeTypes...');
+					setNodeTypes([definition]);
+					console.log(
+						'[fetchNodeDefinition] setNodeTypes done, hasFullDefinition now:',
+						hasFullDefinition(nodeTypeName),
+					);
+					return definition;
+				}
+				return undefined;
+			} catch (err) {
+				console.error('[fetchNodeDefinition] error:', err);
+				return undefined;
+			} finally {
+				pendingFetches.value.delete(nodeTypeName);
+			}
+		})();
+
+		pendingFetches.value.set(nodeTypeName, fetchPromise);
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return fetchPromise;
+	};
+
+	const fetchNodeDefinitions = async (nodeTypeNames: string[]): Promise<void> => {
+		const toFetch = nodeTypeNames.filter((name) => !nodeTypes.value[name]);
+		if (toFetch.length === 0) return;
+
+		try {
+			const definitions = await nodeTypesApi.getNodeDefinitions(rootStore.restApiContext, toFetch);
+			const definitionsList = Object.values(definitions);
+			if (definitionsList.length) {
+				setNodeTypes(definitionsList);
+			}
+		} catch {}
+	};
+
+	const hasFullDefinition = (nodeTypeName: string): boolean => {
+		const nodeVersions = nodeTypes.value[nodeTypeName];
+		if (!nodeVersions) return false;
+		const versionNumbers = Object.keys(nodeVersions).map(Number);
+		const latestVersion = nodeVersions[Math.max(...versionNumbers)];
+		return latestVersion?.properties?.length > 0;
+	};
+
+	const getManifest = (nodeTypeName: string): NodeManifest | undefined => {
+		return manifests.value.find((m) => m.name === nodeTypeName);
 	};
 
 	const loadNodeTypesIfNotLoaded = async () => {
 		if (Object.keys(nodeTypes.value).length === 0) {
-			await getNodeTypes();
+			await initNodeTypes();
 		}
 	};
 
@@ -435,6 +556,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	return {
 		nodeTypes,
+		manifests,
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,
@@ -460,11 +582,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodesInformation,
 		getFullNodesProperties,
 		getNodeTypes,
+		initNodeTypes,
 		loadNodeTypesIfNotLoaded,
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
 		getCommunityNodeAttributes,
 		getIsNodeInstalled,
+		fetchNodeDefinition,
+		fetchNodeDefinitions,
+		hasFullDefinition,
+		getManifest,
 	};
 });

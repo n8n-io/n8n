@@ -20,6 +20,33 @@ import { sleep } from 'n8n-workflow';
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
+export type NodeManifest = {
+	name: string;
+	displayName: string;
+	icon?: string;
+	iconColor?: string;
+	iconUrl?: string | { light: string; dark: string };
+	badgeIconUrl?: string | { light: string; dark: string };
+	group: string[];
+	description: string;
+	version: number | number[];
+	defaultVersion: number;
+	inputs: Array<string | object>;
+	outputs: Array<string | object>;
+	codex?: {
+		categories?: string[];
+		subcategories?: Record<string, string[]>;
+		alias?: string[];
+	};
+	hidden?: boolean;
+	usableAsTool?: boolean;
+};
+
+export type NodeTypesInitResponse = {
+	manifests: NodeManifest[];
+	preloadedDefinitions: Record<string, INodeTypeDescription>;
+};
+
 async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {
 		const response = await axios.get(url, { withCredentials: true });
@@ -121,4 +148,38 @@ export async function getNodeParameterActionResult(
 		'/dynamic-node-parameters/action-result',
 		sendData,
 	);
+}
+
+/**
+ * Get initial node data for tiered loading.
+ * Returns lightweight manifests for all nodes + full definitions for preload set.
+ */
+export async function getNodeTypesInit(context: IRestApiContext): Promise<NodeTypesInitResponse> {
+	return await makeRestApiRequest(context, 'GET', '/node-types/init');
+}
+
+/**
+ * Get full definition for a single node type on-demand.
+ * Used when opening NDV for a node not in the preload set.
+ */
+export async function getNodeDefinition(
+	context: IRestApiContext,
+	nodeType: string,
+): Promise<INodeTypeDescription> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/node-types/${encodeURIComponent(nodeType)}/definition`,
+	);
+}
+
+/**
+ * Get full definitions for multiple node types in batch.
+ * Used for efficient batch fetching when loading a workflow.
+ */
+export async function getNodeDefinitions(
+	context: IRestApiContext,
+	nodeTypes: string[],
+): Promise<Record<string, INodeTypeDescription>> {
+	return await makeRestApiRequest(context, 'POST', '/node-types/definitions', { nodeTypes });
 }

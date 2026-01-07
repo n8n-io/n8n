@@ -93,6 +93,7 @@ const avgOutputRowHeight = ref(0);
 const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
+const isLoadingNodeDefinition = ref(false);
 const dialogRef = ref<HTMLDialogElement>();
 const containerRef = useTemplateRef('containerRef');
 const mainPanelRef = useTemplateRef('mainPanelRef');
@@ -583,7 +584,16 @@ const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode)
 //watchers
 watch(
 	activeNode,
-	(node, oldNode) => {
+	async (node, oldNode) => {
+		if (node && !nodeTypesStore.hasFullDefinition(node.type)) {
+			isLoadingNodeDefinition.value = true;
+			try {
+				await nodeTypesStore.fetchNodeDefinition(node.type);
+			} finally {
+				isLoadingNodeDefinition.value = false;
+			}
+		}
+
 		if (node && !oldNode) {
 			registerKeyboardListener();
 			dialogRef.value?.show();

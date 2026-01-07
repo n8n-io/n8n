@@ -60,6 +60,33 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 			}),
 		);
 
+	// TODO: Add `actions` to manifests for node picker filtering -> useActionsGeneration.ts
+	const manifests = nodeTypes.map((desc) => ({
+		name: desc.name,
+		displayName: desc.displayName,
+		icon: desc.icon,
+		iconColor: desc.iconColor,
+		iconUrl: desc.iconUrl,
+		badgeIconUrl: desc.badgeIconUrl,
+		group: desc.group,
+		description: desc.description,
+		version: desc.version,
+		defaultVersion: Array.isArray(desc.version)
+			? desc.version[desc.version.length - 1]
+			: desc.version,
+		inputs: typeof desc.inputs === 'string' ? ['main'] : desc.inputs,
+		outputs: typeof desc.outputs === 'string' ? ['main'] : desc.outputs,
+		codex: desc.codex
+			? {
+					categories: desc.codex.categories,
+					subcategories: desc.codex.subcategories,
+					alias: desc.codex.alias,
+				}
+			: undefined,
+		hidden: desc.hidden,
+		usableAsTool: !!desc.usableAsTool,
+	}));
+
 	const knownCredentials = loader.known.credentials;
 	const credentialTypes = Object.values(loader.credentialTypes).map(({ type }) => type);
 	const referencedMethods = findReferencedMethods(nodeTypes);
@@ -69,6 +96,7 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 		writeJSON('known/credentials.json', loader.known.credentials),
 		writeJSON('types/credentials.json', credentialTypes),
 		writeJSON('types/nodes.json', nodeTypes),
+		writeJSON('types/manifests.json', manifests),
 		writeJSON('methods/defined.json', definedMethods),
 		writeJSON('methods/referenced.json', referencedMethods),
 	]);
