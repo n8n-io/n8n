@@ -11,6 +11,7 @@
     "@n8n/chat": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "vue": "^3.5.24"
+
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
