@@ -305,6 +305,56 @@ function displayLocalResults(
 	}
 }
 
+/** Verify LangSmith environment is properly configured */
+function verifyLangsmithEnvironment(log: EvalLogger): void {
+	if (!process.env.LANGSMITH_API_KEY) {
+		throw new Error('LANGSMITH_API_KEY environment variable not set');
+	}
+
+	if (!process.env.LANGSMITH_TRACING) {
+		process.env.LANGSMITH_TRACING = 'true';
+		log.verbose('➔ Enabled LANGSMITH_TRACING=true');
+	}
+}
+
+/** Fetch and filter pairwise examples from LangSmith dataset */
+async function fetchPairwiseExamples(
+	lsClient: NonNullable<Awaited<ReturnType<typeof setupTestEnvironment>>['lsClient']>,
+	datasetId: string,
+	splits: string[] | undefined,
+	log: EvalLogger,
+): Promise<PairwiseExample[]> {
+	const allExamples: PairwiseExample[] = [];
+	log.verbose('➔ Fetching examples from dataset...');
+	if (splits?.length) {
+		log.info(`➔ Filtering by splits: ${splits.join(', ')}`);
+	}
+	for await (const example of lsClient.listExamples({ datasetId, splits })) {
+		if (isPairwiseExample(example)) {
+			allExamples.push(example);
+		} else {
+			log.verbose(`⚠️ Skipping invalid example: ${example.id}`);
+		}
+	}
+	log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
+	return allExamples;
+}
+
+/** Get dataset ID, verifying it exists */
+async function getDatasetId(
+	lsClient: NonNullable<Awaited<ReturnType<typeof setupTestEnvironment>>['lsClient']>,
+	datasetName: string,
+	log: EvalLogger,
+): Promise<string> {
+	log.info(`➔ Dataset: ${datasetName}`);
+	try {
+		const dataset = await lsClient.readDataset({ datasetName });
+		return dataset.id;
+	} catch {
+		throw new Error(`Dataset "${datasetName}" not found`);
+	}
+}
+
 // ============================================================================
 // Public API - LangSmith Evaluation
 // ============================================================================
@@ -358,54 +408,20 @@ export async function runPairwiseLangsmithEvaluation(
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
 	}
-
 	logFeatureFlags(log, featureFlags);
 
 	try {
 		validatePairwiseInputs(numJudges, numGenerations);
-
-		if (!process.env.LANGSMITH_API_KEY) {
-			throw new Error('LANGSMITH_API_KEY environment variable not set');
-		}
-
-		// Ensure LANGSMITH_TRACING is enabled
-		if (!process.env.LANGSMITH_TRACING) {
-			process.env.LANGSMITH_TRACING = 'true';
-			log.verbose('➔ Enabled LANGSMITH_TRACING=true');
-		}
+		verifyLangsmithEnvironment(log);
 
 		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
-
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
 		}
 
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? DEFAULTS.DATASET_NAME;
-		log.info(`➔ Dataset: ${datasetName}`);
-
-		// Verify dataset exists
-		let datasetId: string;
-		try {
-			const dataset = await lsClient.readDataset({ datasetName });
-			datasetId = dataset.id;
-		} catch {
-			throw new Error(`Dataset "${datasetName}" not found`);
-		}
-
-		// Fetch and filter examples
-		const allExamples: PairwiseExample[] = [];
-		log.verbose('➔ Fetching examples from dataset...');
-		if (splits?.length) {
-			log.info(`➔ Filtering by splits: ${splits.join(', ')}`);
-		}
-		for await (const example of lsClient.listExamples({ datasetId, splits })) {
-			if (isPairwiseExample(example)) {
-				allExamples.push(example);
-			} else {
-				log.verbose(`⚠️ Skipping invalid example: ${example.id}`);
-			}
-		}
-		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
+		const datasetId = await getDatasetId(lsClient, datasetName, log);
+		const allExamples = await fetchPairwiseExamples(lsClient, datasetId, splits, log);
 
 		const filteredExamples = filterExamples(
 			allExamples,
@@ -418,19 +434,12 @@ export async function runPairwiseLangsmithEvaluation(
 		);
 		log.info(`➔ Running ${filteredExamples.length} example(s) × ${repetitions} rep(s)`);
 
-		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
-
-		// Inject example IDs into inputs for artifact saving
 		const data = filteredExamples.map((example) => ({
 			...example,
-			inputs: {
-				...example.inputs,
-				exampleId: example.id,
-			},
+			inputs: { ...example.inputs, exampleId: example.id },
 		}));
 
-		// Create target (does all work) and evaluator (extracts pre-computed metrics)
 		const target = createPairwiseTarget({
 			parsedNodeTypes,
 			llm,
@@ -440,11 +449,8 @@ export async function runPairwiseLangsmithEvaluation(
 			experimentName,
 			artifactSaver,
 		});
-		const evaluator = pairwiseLangsmithEvaluator;
 
 		const evalStartTime = Date.now();
-
-		// Determine run type for metadata
 		const { runType, filterValue } = determineRunType({
 			notionId,
 			technique,
@@ -452,10 +458,9 @@ export async function runPairwiseLangsmithEvaluation(
 			dontSearch,
 		});
 
-		// Run evaluation using LangSmith's built-in features
 		await evaluate(target, {
 			data,
-			evaluators: [evaluator],
+			evaluators: [pairwiseLangsmithEvaluator],
 			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
 			numRepetitions: repetitions,
@@ -470,10 +475,8 @@ export async function runPairwiseLangsmithEvaluation(
 			},
 		});
 
-		const totalEvalTime = Date.now() - evalStartTime;
-
 		log.success('\n✓ Pairwise evaluation completed');
-		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);
+		log.dim(`   Total time: ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s`);
 		log.dim('   View results in LangSmith dashboard');
 	} catch (error) {
 		log.error(
