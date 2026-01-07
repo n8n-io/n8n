@@ -55,10 +55,6 @@ const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 
 const autoSaveForPublish = ref(false);
 
-const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive.workflowSaving && !autoSaveForPublish.value;
-});
-
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
 const foundTriggers = computed(() =>
