@@ -164,6 +164,9 @@ export function useWorkflowSaving({
 			}
 			uiStore.addActiveAction('workflowSaving');
 
+			// Capture dirty state count before save to detect changes made during save
+			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
+
 			const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
 			// This can happen if the user has another workflow in the browser history and navigates
 			// via the browser back button, encountering our warning dialog with the new route already set
@@ -206,7 +209,10 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowTagIds(tagIds);
 			}
 
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
@@ -293,6 +299,9 @@ export function useWorkflowSaving({
 	): Promise<IWorkflowDb['id'] | null> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
+
+			// Capture dirty state count before save to detect changes made during save
+			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
@@ -383,7 +392,10 @@ export function useWorkflowSaving({
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
 					key: 'webhookId',
@@ -416,7 +428,10 @@ export function useWorkflowSaving({
 			}
 
 			uiStore.removeActiveAction('workflowSaving');
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			onSaved?.(true); // First save of new workflow
