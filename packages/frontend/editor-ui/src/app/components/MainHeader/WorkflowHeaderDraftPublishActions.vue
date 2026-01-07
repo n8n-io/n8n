@@ -289,7 +289,7 @@ defineExpose({
 				</template>
 				<N8nButton
 					:loading="autoSaveForPublish"
-					:disabled="!publishButtonConfig.enabled || isWorkflowSaving || readOnlyForPublish"
+					:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
 					type="secondary"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
