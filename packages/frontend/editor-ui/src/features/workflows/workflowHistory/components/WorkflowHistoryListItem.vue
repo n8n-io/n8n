@@ -10,7 +10,6 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nActionToggle, N8nTooltip, N8nText } from '@n8n/design-system';
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -158,6 +157,14 @@ const mainTooltipUser = computed(() => {
 	return null;
 });
 
+const mainTooltipFormattedDate = computed(() => {
+	if (!mainTooltipDate.value) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(mainTooltipDate.value);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+});
+
 const onAction = (value: string) => {
 	const action = value as WorkflowHistoryActionTypes[number];
 	emit('action', {
@@ -194,12 +201,12 @@ onMounted(() => {
 			<div v-if="props.index === 0 && !props.isVersionActive">
 				{{ mainTooltipContent }}
 			</div>
-			<div v-else :class="$style.tooltipContent">
+			<div v-else>
 				{{ mainTooltipContent }}
 				<template v-if="mainTooltipUser">
 					{{ mainTooltipUser }}
 				</template>
-				<TimeAgo v-if="mainTooltipDate" :date="mainTooltipDate" />
+				<span v-if="mainTooltipFormattedDate">{{ ', ' + mainTooltipFormattedDate }}</span>
 			</div>
 		</template>
 		<li
@@ -439,13 +446,5 @@ $hoverBackground: var(--color--background--light-1);
 .publishedBadge {
 	background-color: var(--color--success);
 	color: var(--color--foreground--tint-2);
-}
-
-.tooltipContent {
-	// Set min width to keep the date on the same line
-	min-width: 200px;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 </style>
