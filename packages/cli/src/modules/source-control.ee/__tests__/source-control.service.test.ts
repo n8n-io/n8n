@@ -10,7 +10,6 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -889,60 +888,8 @@ describe('SourceControlService', () => {
 			expect(gitService.resetService).toHaveBeenCalledTimes(1);
 		});
 
-		it('should broadcast reload event to other instances in multi-main mode', async () => {
-			// ARRANGE
-			const mockPreferences = {
-				connected: true,
-				branchName: 'main',
-				repositoryUrl: 'https://github.com/test/repo.git',
-				connectionType: 'https' as const,
-			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
-
-			const mockInstanceSettings = mock<InstanceSettings>({ isMultiMain: true });
-			const mockPublisher = mock<Publisher>();
-			mockPublisher.publishCommand.mockResolvedValue(undefined);
-
-			jest.spyOn(Container, 'get').mockImplementation((token) => {
-				if (token === InstanceSettings) return mockInstanceSettings;
-				if (token.name === 'Publisher') return mockPublisher;
-				throw new Error(`Unexpected token: ${String(token)}`);
-			});
-
-			// ACT
-			await sourceControlService.disconnect();
-
-			// ASSERT
-			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
-				command: 'reload-source-control-config',
-			});
-		});
-
-		it('should not broadcast reload event when not in multi-main mode', async () => {
-			// ARRANGE
-			const mockPreferences = {
-				connected: true,
-				branchName: 'main',
-				repositoryUrl: 'https://github.com/test/repo.git',
-				connectionType: 'https' as const,
-			};
-			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
-
-			const mockInstanceSettings = mock<InstanceSettings>({ isMultiMain: false });
-			const mockPublisher = mock<Publisher>();
-
-			jest.spyOn(Container, 'get').mockImplementation((token) => {
-				if (token === InstanceSettings) return mockInstanceSettings;
-				if (token.name === 'Publisher') return mockPublisher;
-				throw new Error(`Unexpected token: ${String(token)}`);
-			});
-
-			// ACT
-			await sourceControlService.disconnect();
-
-			// ASSERT
-			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
-		});
+		// Note: Broadcast tests have been moved to source-control-preferences.service.ee.test.ts
+		// since the broadcast now happens inside setPreferences() in the preferences service
 	});
 
 	describe('reloadConfiguration', () => {
@@ -1014,6 +961,56 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should skip reload if another reload is already in progress', async () => {
+			// ARRANGE
+			let resolveFirstReload: () => void;
+			const firstReloadPromise = new Promise<void>((resolve) => {
+				resolveFirstReload = resolve;
+			});
+
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockImplementationOnce(async () => {
+					await firstReloadPromise;
+				})
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Start first reload (will block)
+			const firstReload = sourceControlService.reloadConfiguration();
+
+			// Start second reload while first is in progress
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Second reload should have been skipped (only one call to loadFromDb)
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				1,
+			);
+
+			// Clean up - resolve first reload
+			resolveFirstReload!();
+			await firstReload;
+		});
+
+		it('should allow reload after previous reload completes', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Run two reloads sequentially
+			await sourceControlService.reloadConfiguration();
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Both reloads should have completed
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				2,
+			);
 		});
 	});
 
