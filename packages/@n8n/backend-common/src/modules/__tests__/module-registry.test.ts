@@ -27,6 +27,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
 		]);
@@ -42,6 +43,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
 		]);

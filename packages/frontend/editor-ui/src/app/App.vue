@@ -45,7 +45,6 @@ const { APP_Z_INDEXES } = useStyles();
 
 const {
 	initialize: initializeCommandBar,
-	isEnabled: isCommandBarEnabled,
 	items,
 	placeholder,
 	context,
@@ -71,9 +70,7 @@ const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
-const showCommandBar = computed(
-	() => isCommandBarEnabled.value && hasPermission(['authenticated']) && !isDemoMode.value,
-);
+const showCommandBar = computed(() => hasPermission(['authenticated']) && !isDemoMode.value);
 
 const chatPanelWidth = computed(() => chatPanelStore.width);
 

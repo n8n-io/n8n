@@ -8,14 +8,7 @@ function createExperiment(name: string, variants?: Record<string, string>) {
 }
 
 export const CANVAS_ZOOMED_VIEW_EXPERIMENT = createExperiment('canvas_zoomed_view');
-export const COMMAND_BAR_EXPERIMENT = createExperiment('command_bar');
 export const NDV_IN_FOCUS_PANEL_EXPERIMENT = createExperiment('ndv_in_focus_panel');
-
-export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = createExperiment('043_workflow_builder_release');
-
-export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = createExperiment(
-	'036_workflow_builder_agent',
-);
 
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = createExperiment('034_extra_template_links');
 
@@ -65,8 +58,6 @@ export const READY_TO_RUN_V2_P3_EXPERIMENT = {
 
 export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3');
 
-export const PROJECT_VARIABLES_EXPERIMENT = createExperiment('046_project_variables');
-
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
 export const TEMPLATE_SETUP_EXPERIENCE = {
@@ -87,6 +78,12 @@ export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const TAMPER_PROOF_INVITE_LINKS = {
+	name: '061_tamper_proof_invite_links',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -99,4 +96,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	TAMPER_PROOF_INVITE_LINKS.name,
 ];
