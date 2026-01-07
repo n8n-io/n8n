@@ -1211,8 +1211,6 @@
 	"folders.add": "Add folder",
 	"folders.add.here.message": "Create a new folder here",
 	"folders.add.to.parent.message": "Create folder in '{parent}'",
-	"folders.add.overview.community.message": "Folders available in your personal space",
-	"folders.add.overview.withProjects.message": "Folders available in projects or your personal space",
 	"folders.add.success.title": "Folder created",
 	"folders.add.success.message": "Created new folder '{folderName}'<br><a href=\"{link}\">Open folder</a>",
 	"folders.invalidName.empty.message": "Folder name cannot be empty",
