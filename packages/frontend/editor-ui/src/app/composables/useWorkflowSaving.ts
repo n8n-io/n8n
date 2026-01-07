@@ -460,6 +460,11 @@ export function useWorkflowSaving({
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
 						autosaveStore.reset();
 					}
+					// If changes were made during save, reschedule autosave
+					if (uiStore.stateIsDirty) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+						void autoSaveWorkflowDebounced();
+					}
 				}
 			})();
 
@@ -470,6 +475,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if a save is already in progress - the finally block
+		// will reschedule if there are pending changes
+		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+			return;
+		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};
