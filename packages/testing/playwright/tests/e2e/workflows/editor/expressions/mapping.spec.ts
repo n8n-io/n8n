@@ -333,10 +333,10 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
 		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
-		await expect(includeOtherFieldsInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		await expect(includeOtherFieldsInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
 
 		const valueInput = n8n.ndv.getParameterTextInput('value');
-		await expect(valueInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		await expect(valueInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
 
 		await n8n.page.mouse.up();
 	});
