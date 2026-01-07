@@ -702,6 +702,119 @@ describe('POST /workflows', () => {
 		});
 		expect(response.body.data.shared).toBeUndefined();
 	});
+
+	describe('Security: Mass Assignment Protection', () => {
+		test.each([
+			{
+				field: 'triggerCount' as const,
+				maliciousValue: 999,
+				expectedValue: 0,
+				description: 'billing bypass protection',
+			},
+			{
+				field: 'versionCounter' as const,
+				maliciousValue: 999,
+				expectedValue: 1,
+				description: 'versioning manipulation',
+			},
+			{
+				field: 'isArchived' as const,
+				maliciousValue: true,
+				expectedValue: false,
+				description: 'archived workflow creation',
+			},
+		])(
+			'should ignore $field field sent via API ($description)',
+			async ({ field, maliciousValue, expectedValue }) => {
+				const payload = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					[field]: maliciousValue,
+				};
+
+				const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+				const createdWorkflow = await workflowRepository.findOneBy({
+					id: response.body.data.id,
+				});
+
+				expect(createdWorkflow?.[field]).toBe(expectedValue);
+			},
+		);
+
+		test('should prevent setting activeVersionId via API', async () => {
+			const maliciousVersionId = uuid();
+			const payload = {
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				activeVersionId: maliciousVersionId,
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const createdWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(createdWorkflow?.activeVersionId).toBeNull();
+		});
+
+		test('should always create workflow as inactive regardless of active flag', async () => {
+			const payload = {
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: true, // Attempt to create active workflow
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const createdWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			// Workflow should always be created as inactive
+			expect(createdWorkflow?.active).toBe(false);
+			expect(response.body.data.active).toBe(false);
+		});
+
+		test('should allow setting legitimate fields like name, nodes, connections, settings', async () => {
+			const payload = {
+				name: 'Legitimate Workflow',
+				description: 'A legitimate workflow',
+				nodes: [
+					{
+						id: 'test-node',
+						name: 'Test Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveExecutionProgress: true,
+				},
+				meta: { testMeta: 'value' },
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const createdWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			// Legitimate fields should be set correctly
+			expect(createdWorkflow?.name).toBe('Legitimate Workflow');
+			expect(createdWorkflow?.description).toBe('A legitimate workflow');
+			expect(createdWorkflow?.nodes).toHaveLength(1);
+			expect(createdWorkflow?.settings).toMatchObject({ saveExecutionProgress: true });
+			expect(createdWorkflow?.meta).toMatchObject({ testMeta: 'value' });
+		});
+	});
 });
 
 describe('GET /workflows/:workflowId', () => {
@@ -3169,6 +3282,103 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(activeWorkflowManagerLike.remove).not.toHaveBeenCalled();
 		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+	});
+
+	describe('Security: Mass Assignment Protection on Update', () => {
+		test.each([
+			{
+				field: 'triggerCount' as const,
+				initialValue: 0,
+				maliciousValue: 999,
+				description: 'billing bypass',
+				assertionType: 'exact' as const,
+			},
+			{
+				field: 'versionCounter' as const,
+				initialValue: 1,
+				maliciousValue: 999,
+				description: 'versioning manipulation',
+				assertionType: 'notEqual' as const,
+			},
+			{
+				field: 'isArchived' as const,
+				initialValue: false,
+				maliciousValue: true,
+				description: 'archiving via update',
+				assertionType: 'exact' as const,
+			},
+		])(
+			'should prevent modifying $field via API ($description)',
+			async ({ field, initialValue, maliciousValue, assertionType }) => {
+				const workflow = await createWorkflow({}, owner);
+
+				expect(workflow[field]).toBe(initialValue);
+
+				const payload = {
+					versionId: workflow.versionId,
+					name: 'Updated Name',
+					[field]: maliciousValue,
+				};
+
+				const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+				expect(response.statusCode).toBe(200);
+
+				const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+				if (assertionType === 'exact') {
+					expect(updatedWorkflow?.[field]).toBe(initialValue);
+				} else {
+					expect(updatedWorkflow?.[field]).not.toBe(maliciousValue);
+				}
+				expect(updatedWorkflow?.name).toBe('Updated Name');
+			},
+		);
+
+		test('should allow updating legitimate fields while blocking internal fields', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const payload = {
+				versionId: workflow.versionId,
+				name: 'New Name',
+				description: 'New Description',
+				nodes: [
+					{
+						id: 'test-node',
+						name: 'Test Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveExecutionProgress: true,
+				},
+				meta: { updated: true },
+				// Attempt to set internal fields
+				triggerCount: 999,
+				versionCounter: 999,
+				isArchived: true,
+			};
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+			expect(response.statusCode).toBe(200);
+
+			const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+			// Legitimate fields should be updated
+			expect(updatedWorkflow?.name).toBe('New Name');
+			expect(updatedWorkflow?.description).toBe('New Description');
+			expect(updatedWorkflow?.nodes).toHaveLength(1);
+			expect(updatedWorkflow?.settings).toMatchObject({ saveExecutionProgress: true });
+			expect(updatedWorkflow?.meta).toMatchObject({ updated: true });
+
+			// Internal fields should NOT be modified
+			expect(updatedWorkflow?.triggerCount).not.toBe(999);
+			expect(updatedWorkflow?.versionCounter).not.toBe(999);
+			expect(updatedWorkflow?.isArchived).toBe(false);
+		});
 	});
 });
 
