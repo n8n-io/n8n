@@ -29,6 +29,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
+			'workflow-executed': (event) => this.workflowExecuted(event),
 			'node-pre-execute': (event) => this.nodePreExecute(event),
 			'node-post-execute': (event) => this.nodePostExecute(event),
 			'user-deleted': (event) => this.userDeleted(event),
@@ -59,6 +60,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
+			'execution-deleted': (event) => this.executionDeleted(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -243,6 +245,26 @@ export class LogStreamingEventRelay extends EventRelay {
 				},
 			});
 		}
+	}
+
+	@Redactable()
+	private workflowExecuted({
+		user,
+		workflowId,
+		workflowName,
+		executionId,
+		source,
+	}: RelayEventMap['workflow-executed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.executed',
+			payload: {
+				...(user && { ...user }),
+				workflowId,
+				workflowName,
+				executionId,
+				source,
+			},
+		});
 	}
 
 	// #endregion
@@ -561,6 +583,22 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				reason,
+			},
+		});
+	}
+
+	@Redactable()
+	private executionDeleted({
+		user,
+		executionIds,
+		deleteBefore,
+	}: RelayEventMap['execution-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.execution.deleted',
+			payload: {
+				...user,
+				executionIds,
+				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
 			},
 		});
 	}

@@ -10,7 +10,7 @@ export { TriggerContext } from './trigger-context';
 export { WebhookContext } from './webhook-context';
 
 export { constructExecutionMetaData } from './utils/construct-execution-metadata';
-export { getAdditionalKeys } from './utils/get-additional-keys';
+export { getAdditionalKeys, getNonWorkflowAdditionalKeys } from './utils/get-additional-keys';
 export { normalizeItems } from './utils/normalize-items';
 export { parseIncomingMessage } from './utils/parse-incoming-message';
 export { parseRequestObject } from './utils/request-helper-functions';
