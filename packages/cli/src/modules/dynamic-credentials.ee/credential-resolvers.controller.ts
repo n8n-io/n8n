@@ -21,12 +21,12 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
-import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
 @RestController('/credential-resolvers')
 export class CredentialResolversController {
@@ -62,7 +62,7 @@ export class CredentialResolversController {
 	@Post('/')
 	@GlobalScope('credentialResolver:create')
 	async createResolver(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
 	): Promise<CredentialResolver> {
@@ -71,6 +71,7 @@ export class CredentialResolversController {
 				name: dto.name,
 				type: dto.type,
 				config: dto.config,
+				user: req.user,
 			});
 			return credentialResolverSchema.parse(createdResolver);
 		} catch (e: unknown) {
@@ -107,7 +108,7 @@ export class CredentialResolversController {
 	@Patch('/:id')
 	@GlobalScope('credentialResolver:update')
 	async updateResolver(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
@@ -118,6 +119,7 @@ export class CredentialResolversController {
 					type: dto.type,
 					name: dto.name,
 					config: dto.config,
+					user: req.user,
 				}),
 			);
 		} catch (e: unknown) {
