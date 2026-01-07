@@ -59,7 +59,7 @@ echo "test message" | nc -v localhost 514
 Head to n8n log streaming settings and enter the following:
 ```
 Host: localhost
-Port: 6514
+Port: 514
 Protocol: TCP
 Facility: Local0
 App Name: n8n
