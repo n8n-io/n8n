@@ -195,6 +195,7 @@ export const useAIAssistantHelpers = () => {
 			const schema = getSchemaForExecutionData(
 				executionDataToJson(getInputDataWithPinned(node)),
 				excludeValues,
+				true, // collapseArrays: true for AI assistant to avoid verbose array expansion
 			);
 			schemas.push({
 				nodeName: node.name,

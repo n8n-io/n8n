@@ -19,20 +19,12 @@ jest.mock('../../saml-helpers', () => ({
 }));
 
 import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../../saml-helpers';
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 
 const authService = mock<AuthService>();
 const samlService = mock<SamlService>();
 const urlService = mock<UrlService>();
 const eventService = mock<EventService>();
-const provisioningService = mock<ProvisioningService>();
-const controller = new SamlController(
-	authService,
-	samlService,
-	urlService,
-	eventService,
-	provisioningService,
-);
+const controller = new SamlController(authService, samlService, urlService, eventService);
 
 const user = mock<User>({
 	id: '123',
@@ -46,7 +38,6 @@ const attributes: SamlUserAttributes = {
 	firstName: 'Test',
 	lastName: 'User',
 	userPrincipalName: 'upn:test@example.com',
-	n8nInstanceRole: 'n8n_instance_role',
 };
 
 describe('Test views', () => {

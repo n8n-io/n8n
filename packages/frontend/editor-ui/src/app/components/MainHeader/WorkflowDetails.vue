@@ -1,60 +1,29 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
-import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
-import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
-import SaveButton from '@/app/components/SaveButton.vue';
-import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import {
-	DUPLICATE_MODAL_KEY,
-	EnterpriseEditionFeature,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	VIEWS,
-	WORKFLOW_MENU_ACTIONS,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/app/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/app/event-bus';
-import type { ActionDropdownItem, IWorkflowDb, IWorkflowToShare } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { sanitizeFilename } from '@/app/utils/fileUtils';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { saveAs } from 'file-saver';
 import {
 	computed,
 	onBeforeUnmount,
@@ -64,16 +33,13 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nBadge,
-	N8nButton,
-	N8nInlineTextEdit,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getWorkflowId } from '@/app/components/MainHeader/utils';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -92,20 +58,13 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
-}>();
-
-const emit = defineEmits<{
-	'workflow:deactivated': [];
+	description?: IWorkflowDb['description'];
 }>();
 
 const $style = useCssModule();
 
-const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const sourceControlStore = useSourceControlStore();
-const tagsStore = useTagsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
@@ -121,16 +80,13 @@ const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
-const workflowHelpers = useWorkflowHelpers();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
-const importFileRef = ref<HTMLInputElement | undefined>();
-
+const workflowHeaderActionsRef =
+	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
-const changeOwnerEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -142,125 +98,14 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
 const isWorkflowSaving = computed(() => {
 	return uiStore.isActionActive.workflowSaving;
 });
 
-const onWorkflowPage = computed(() => {
-	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
-});
-
-const onExecutionsTab = computed(() => {
-	return [
-		VIEWS.EXECUTION_HOME.toString(),
-		VIEWS.WORKFLOW_EXECUTIONS.toString(),
-		VIEWS.EXECUTION_PREVIEW,
-	].includes((route.name as string) || '');
-});
-
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
-
-const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
-	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
-		{
-			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
-			label: locale.baseText('menuActions.download'),
-			disabled: !onWorkflowPage.value,
-		},
-	];
-
-	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
-			label: locale.baseText('workflows.item.changeOwner'),
-			disabled: isNewWorkflow.value,
-		});
-	}
-
-	if (!props.readOnly && !props.isArchived) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.RENAME,
-			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
-		});
-	}
-
-	if (
-		(workflowPermissions.value.update === true && !props.readOnly && !props.isArchived) ||
-		isNewWorkflow.value
-	) {
-		actions.unshift({
-			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
-			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.id,
-		});
-
-		actions.push(
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-				label: locale.baseText('menuActions.importFromUrl'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
-			},
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-				label: locale.baseText('menuActions.importFromFile'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
-			},
-		);
-	}
-
-	if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.PUSH,
-			label: locale.baseText('menuActions.push'),
-			disabled:
-				!sourceControlStore.isEnterpriseSourceControlEnabled ||
-				!onWorkflowPage.value ||
-				onExecutionsTab.value ||
-				sourceControlStore.preferences.branchReadOnly,
-		});
-	}
-
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-		label: locale.baseText('generic.settings'),
-		disabled: !onWorkflowPage.value || isNewWorkflow.value,
-	});
-
-	if ((workflowPermissions.value.delete === true && !props.readOnly) || isNewWorkflow.value) {
-		if (props.isArchived) {
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
-				label: locale.baseText('menuActions.unarchive'),
-				disabled: !onWorkflowPage.value || isNewWorkflow.value,
-			});
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.DELETE,
-				label: locale.baseText('menuActions.delete'),
-				disabled: !onWorkflowPage.value || isNewWorkflow.value,
-				customClass: $style.deleteItem,
-				divided: true,
-			});
-		} else {
-			actions.push({
-				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
-				label: locale.baseText('menuActions.archive'),
-				disabled: !onWorkflowPage.value || isNewWorkflow.value,
-				customClass: $style.deleteItem,
-				divided: true,
-			});
-		}
-	}
-
-	return actions;
-});
-
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
@@ -293,27 +138,19 @@ watch(
 	},
 );
 
-function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
-	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
-	}
-
-	return id;
-}
-
 async function onSaveButtonClick() {
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
 		return;
 	}
 
-	const id = getWorkflowId();
+	const id = getWorkflowId(props.id, route.params.name);
 
 	const name = props.name;
 	const tags = props.tags as string[];
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
 
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
@@ -322,7 +159,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -333,19 +170,6 @@ async function onSaveButtonClick() {
 			});
 		}
 	}
-}
-
-function onShareButtonClick() {
-	uiStore.openModalWithData({
-		name: WORKFLOW_SHARE_MODAL_KEY,
-		data: { id: props.id },
-	});
-
-	telemetry.track('User opened sharing modal', {
-		workflow_id: props.id,
-		user_id_sharer: usersStore.currentUser?.id,
-		sub_view: route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
-	});
 }
 
 function onTagsEditEnable() {
@@ -414,40 +238,18 @@ async function onNameSubmit(name: string) {
 	}
 
 	uiStore.addActiveAction('workflowSaving');
-	const id = getWorkflowId();
+	const id = getWorkflowId(props.id, route.params.name);
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
+
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	renameInput.value?.forceCancel();
-}
-
-async function handleFileImport(): Promise<void> {
-	const inputRef = importFileRef.value;
-	if (inputRef?.files && inputRef.files.length !== 0) {
-		const reader = new FileReader();
-		reader.onload = () => {
-			let workflowData: WorkflowDataUpdate;
-			try {
-				workflowData = JSON.parse(reader.result as string);
-			} catch (error) {
-				toast.showMessage({
-					title: locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-					message: locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-					type: 'error',
-				});
-				return;
-			} finally {
-				reader.onload = null;
-				inputRef.value = '';
-			}
-
-			nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
-		};
-		reader.readAsText(inputRef.files[0]);
-	}
 }
 
 async function handleArchiveWorkflow() {
@@ -488,7 +290,16 @@ async function handleArchiveWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
+	// Navigate to the appropriate project's workflow list
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	if (workflow?.homeProject?.type === ProjectTypes.Team) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
+	}
 }
 
 async function handleUnarchiveWorkflow() {
@@ -522,6 +333,10 @@ async function handleDeleteWorkflow() {
 		return;
 	}
 
+	// Get workflow before deletion to know which project to navigate to
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
+
 	try {
 		await workflowsStore.deleteWorkflow(props.id);
 	} catch (error) {
@@ -538,138 +353,15 @@ async function handleDeleteWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
-}
-
-async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
-	switch (action) {
-		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-			uiStore.openModalWithData({
-				name: DUPLICATE_MODAL_KEY,
-				data: {
-					id: props.id,
-					name: props.name,
-					tags: props.tags,
-					parentFolderId: props.currentFolder?.id,
-				},
-			});
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.RENAME: {
-			onNameToggle();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-			const workflowData = await workflowHelpers.getWorkflowDataToSave();
-			const { tags, ...data } = workflowData;
-			const exportData: IWorkflowToShare = {
-				...data,
-				meta: {
-					...props.meta,
-					instanceId: rootStore.instanceId,
-				},
-				tags: (tags ?? []).map((tagId) => {
-					const { usageCount, ...tag } = tagsStore.tagsById[tagId];
-
-					return tag;
-				}),
-			};
-
-			const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-				type: 'application/json;charset=utf-8',
-			});
-
-			let name = props.name || 'unsaved_workflow';
-			name = sanitizeFilename(name);
-
-			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-			saveAs(blob, name + '.json');
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
-			handleImportWorkflowFromFile();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.PUSH: {
-			try {
-				await onSaveButtonClick();
-
-				// Navigate to route with sourceControl param - modal will handle data loading and loading states
-				void router.push({
-					query: {
-						...route.query,
-						sourceControl: 'push',
-					},
-				});
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				switch (error.message) {
-					case 'source_control_not_connected':
-						toast.showError(
-							{ ...error, message: '' },
-							locale.baseText('settings.sourceControl.error.not.connected.title'),
-							locale.baseText('settings.sourceControl.error.not.connected.message'),
-						);
-						break;
-					default:
-						toast.showError(error, locale.baseText('error'));
-				}
-			}
-
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.SETTINGS: {
-			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			await handleArchiveWorkflow();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
-			await handleUnarchiveWorkflow();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.DELETE: {
-			await handleDeleteWorkflow();
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId();
-			if (!workflowId) {
-				return;
-			}
-			changeOwnerEventBus.once(
-				'resource-moved',
-				async () => await router.push({ name: VIEWS.WORKFLOWS }),
-			);
-
-			uiStore.openModalWithData({
-				name: PROJECT_MOVE_RESOURCE_MODAL,
-				data: {
-					resource: workflowsStore.workflowsById[workflowId],
-					resourceType: ResourceType.Workflow,
-					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
-					eventBus: changeOwnerEventBus,
-				},
-			});
-			break;
-		}
-		default:
-			break;
+	// Navigate to the appropriate project's workflow list
+	if (isTeamProject && workflow?.homeProject) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
 	}
-}
-
-function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
-}
-
-function goToWorkflowHistoryUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function getPersonalProjectToastContent() {
@@ -715,8 +407,11 @@ function getToastContent() {
 	return { title, toastMessage };
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
+	if (!id) return;
+
+	// Only show toast if this is a newly created workflow
+	const shouldShowToast = wasNewWorkflow ?? false;
 
 	if (!shouldShowToast) return;
 
@@ -738,7 +433,9 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 };
 
 const handleImportWorkflowFromFile = () => {
-	importFileRef.value?.click();
+	if (workflowHeaderActionsRef.value?.importFileRef) {
+		workflowHeaderActionsRef.value.importFileRef.click();
+	}
 };
 
 onMounted(() => {
@@ -758,12 +455,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 	nodeViewEventBus.off('addTag', onTagsEditEnable);
 });
-
-const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
-	if (!value.active) {
-		emit('workflow:deactivated');
-	}
-};
 </script>
 
 <template>
@@ -843,7 +534,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				/>
 			</template>
 
-			<span class="archived">
+			<span :class="$style['header-controls']">
 				<N8nBadge
 					v-if="isArchived"
 					class="ml-3xs"
@@ -858,98 +549,23 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
-			<span :class="`activator ${$style.group}`">
-				<WorkflowActivator
-					:is-archived="isArchived"
-					:workflow-active="active"
-					:workflow-id="id"
-					:workflow-permissions="workflowPermissions"
-					@update:workflow-active="onWorkflowActiveToggle"
-				/>
-			</span>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
-				<div :class="$style.group">
-					<CollaborationPane v-if="!isNewWorkflow" />
-					<N8nButton
-						type="secondary"
-						data-test-id="workflow-share-button"
-						@click="onShareButtonClick"
-					>
-						{{ i18n.baseText('workflowDetails.share') }}
-					</N8nButton>
-				</div>
-				<template #fallback>
-					<N8nTooltip>
-						<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-							{{ i18n.baseText('workflowDetails.share') }}
-						</N8nButton>
-						<template #content>
-							<I18nT
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
-								"
-								tag="span"
-								scope="global"
-							>
-								<template #action>
-									<a @click="goToUpgrade">
-										{{
-											i18n.baseText(
-												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-													.button as BaseTextKey,
-											)
-										}}
-									</a>
-								</template>
-							</I18nT>
-						</template>
-					</N8nTooltip>
-				</template>
-			</EnterpriseEdition>
-			<div :class="$style.group">
-				<SaveButton
-					type="primary"
-					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-					:disabled="
-						isWorkflowSaving ||
-						readOnly ||
-						isArchived ||
-						(!isNewWorkflow && !workflowPermissions.update)
-					"
-					:is-saving="isWorkflowSaving"
-					:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-					data-test-id="workflow-save-button"
-					@click="onSaveButtonClick"
-				/>
-				<WorkflowHistoryButton
-					:workflow-id="props.id"
-					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-					:is-new-workflow="isNewWorkflow"
-					@upgrade="goToWorkflowHistoryUpgrade"
-				/>
-			</div>
-			<div :class="[$style.workflowMenuContainer, $style.group]">
-				<input
-					ref="importFileRef"
-					:class="$style.hiddenInput"
-					type="file"
-					data-test-id="workflow-import-input"
-					@change="handleFileImport()"
-				/>
-				<N8nActionDropdown
-					:items="workflowMenuItems"
-					data-test-id="workflow-menu"
-					@select="onWorkflowMenuSelect"
-				/>
-			</div>
+			<WorkflowHeaderDraftPublishActions
+				:id="id"
+				ref="workflowHeaderActions"
+				:tags="tags"
+				:name="name"
+				:meta="meta"
+				:read-only="readOnly"
+				:is-archived="isArchived"
+				:is-new-workflow="isNewWorkflow"
+				:workflow-permissions="workflowPermissions"
+				@workflow:saved="onSaveButtonClick"
+			/>
 		</PushConnectionTracker>
 	</div>
 </template>
 
 <style scoped lang="scss">
-$--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
@@ -964,18 +580,6 @@ $--header-spacing: 20px;
 	color: $custom-font-dark;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
-}
-
-.activator {
-	color: $custom-font-dark;
-	font-weight: var(--font-weight--regular);
-	font-size: 13px;
-	line-height: $--text-line-height;
-	align-items: center;
-
-	> span {
-		margin-right: 5px;
-	}
 }
 
 .add-tag {
@@ -1002,14 +606,6 @@ $--header-spacing: 20px;
 	min-width: 100px;
 	width: 100%;
 	max-width: 460px;
-}
-
-.archived {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	flex: 1;
-	margin-right: $--header-spacing;
 }
 
 .actions {
@@ -1064,27 +660,19 @@ $--header-spacing: 20px;
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
-.group {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.hiddenInput {
-	display: none;
-}
-
-.deleteItem {
-	color: var(--color--danger);
-}
-
-.disabledShareButton {
-	cursor: not-allowed;
-}
-
 .closeNodeViewDiscovery {
 	position: absolute;
 	right: var(--spacing--xs);
 	top: var(--spacing--xs);
 	cursor: pointer;
+}
+
+.header-controls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--md);
+	width: 100%;
+	flex: 1;
+	margin: 0 var(--spacing--md);
 }
 </style>

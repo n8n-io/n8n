@@ -362,4 +362,36 @@ describe('ExecutionService', () => {
 			});
 		});
 	});
+	describe('stopMany', () => {
+		it('should call stop function for the given filters', async () => {
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn();
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				startedAfter: new Date().toISOString(),
+				startedBefore: new Date().toISOString(),
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			const shared = ['A'];
+
+			/**
+			 * Act
+			 */
+			await executionService.stopMany(filters, shared);
+
+			/**
+			 * Assert
+			 */
+			expect(stopFn).toBeCalledTimes(3);
+			expect(stopFn).toBeCalledWith('1', shared);
+			expect(stopFn).toBeCalledWith('2', shared);
+			expect(stopFn).toBeCalledWith('3', shared);
+			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
+		});
+	});
 });

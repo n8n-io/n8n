@@ -19,7 +19,6 @@ import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -31,6 +30,8 @@ import {
 	UserError,
 	Workflow,
 	WorkflowOperationError,
+	createErrorExecutionData,
+	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -183,6 +184,7 @@ export class ExecutionService {
 		const executionMode = 'retry';
 
 		execution.workflowData.active = false;
+		execution.workflowData.activeVersionId = null;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -320,51 +322,7 @@ export class ExecutionService {
 
 		if (saveDataErrorExecutionDisabled) return;
 
-		const executionData: IRunExecutionData = {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {
-							main: [
-								[
-									{
-										json: {},
-										pairedItem: {
-											item: 0,
-										},
-									},
-								],
-							],
-						},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-			resultData: {
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionIndex: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				error,
-				lastNodeExecuted: node.name,
-			},
-		};
+		const executionData = createErrorExecutionData(node, error);
 
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
@@ -508,9 +466,12 @@ export class ExecutionService {
 		);
 
 		if (!execution) {
-			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
-				executionId,
-			});
+			this.logger.info(
+				`Unable to stop execution "${executionId}" as it was not found or not accessible`,
+				{
+					executionId,
+				},
+			);
 
 			throw new MissingExecutionStopError(executionId);
 		}
@@ -529,6 +490,27 @@ export class ExecutionService {
 			finished,
 			status,
 		};
+	}
+
+	async stopMany(query: ExecutionSummaries.StopExecutionFilterQuery, sharedWorkflowIds: string[]) {
+		const executions = await this.executionRepository.findByStopExecutionsFilter(query);
+		let stopped = 0;
+		for (const { id } of executions) {
+			try {
+				await this.stop(id, sharedWorkflowIds);
+				this.logger.debug(`Stopped execution ${id}`);
+				stopped++;
+			} catch (e) {
+				// the throwing code already logs the failure otherwise
+				if (!(e instanceof MissingExecutionStopError)) {
+					this.logger.warn(
+						`Unexpected error while attempting to stop execution ${id}: ${ensureError(e).message}`,
+					);
+				}
+			}
+		}
+
+		return stopped;
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {

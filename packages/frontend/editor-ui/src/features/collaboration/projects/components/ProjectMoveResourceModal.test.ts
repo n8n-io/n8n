@@ -242,4 +242,51 @@ describe('ProjectMoveResourceModal', () => {
 			['1', '2'],
 		);
 	});
+
+	it('should prevent duplicate submissions when button clicked multiple times', async () => {
+		const destinationProject = createProjectListItem();
+		projectsStore.availableProjects = [destinationProject];
+		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+
+		// Make moveResourceToProject take time to simulate slow operation
+		let resolveMove: () => void;
+		const movePromise = new Promise<void>((resolve) => {
+			resolveMove = resolve;
+		});
+		projectsStore.moveResourceToProject.mockReturnValue(movePromise);
+
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType: ResourceType.Workflow,
+				resourceTypeLabel: 'workflow',
+				resource: createTestWorkflow({
+					id: '1',
+					name: 'My Workflow',
+				}),
+			},
+		};
+
+		const { getByTestId } = renderComponent({ props });
+
+		// Select a project
+		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		await userEvent.click(projectSelectDropdownItems[0]);
+
+		const moveButton = getByTestId('project-move-resource-modal-button');
+		expect(moveButton).toBeEnabled();
+
+		// Click the button multiple times rapidly
+		await userEvent.click(moveButton);
+		await userEvent.click(moveButton);
+		await userEvent.click(moveButton);
+
+		// Should only be called once due to loading state guard
+		expect(projectsStore.moveResourceToProject).toHaveBeenCalledTimes(1);
+
+		// Resolve the operation
+		resolveMove!();
+		await movePromise;
+	});
 });

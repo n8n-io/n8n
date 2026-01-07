@@ -15,23 +15,27 @@ import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { EventService } from '@/events/event.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
 import { InstanceSettings } from 'n8n-core';
+import { UserService } from '@/services/user.service';
 
 @Service()
 export class ProvisioningService {
 	private provisioningConfig: ProvisioningConfigDto;
 
 	constructor(
+		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
+		private readonly userService: UserService,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -50,6 +54,10 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return;
+		}
+
 		const globalOwnerRoleSlug = 'global:owner';
 
 		if (typeof roleSlug !== 'string') {
@@ -103,7 +111,12 @@ export class ProvisioningService {
 
 		// No need to update record if the role hasn't changed
 		if (user.role.slug !== dbRole.slug) {
-			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
+			await this.userService.changeUserRole(user, { newRoleName: dbRole.slug });
+
+			this.eventService.emit('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: dbRole.slug,
+			});
 		}
 	}
 
@@ -116,6 +129,10 @@ export class ProvisioningService {
 	 * ]
 	 */
 	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return;
+		}
+
 		if (!Array.isArray(projectIdToRoles)) {
 			this.logger.warn(
 				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
@@ -234,6 +251,12 @@ export class ProvisioningService {
 				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
 			}
 		});
+
+		this.eventService.emit('sso-user-project-access-updated', {
+			projectsAdded: validProjectIds.size,
+			projectsRemoved: projectsToRemoveAccessFrom.length,
+			userId,
+		});
 	}
 
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
@@ -254,7 +277,6 @@ export class ProvisioningService {
 		const supportedPatchFields = [
 			'scopesProvisionInstanceRole',
 			'scopesProvisionProjectRoles',
-			'scopesProvisioningFrequency',
 			'scopesName',
 			'scopesInstanceRoleClaimName',
 			'scopesProjectsRolesClaimName',
@@ -330,6 +352,22 @@ export class ProvisioningService {
 		return envProvidedConfig;
 	}
 
+	async getInstanceRoleClaimName(): Promise<string | null> {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesInstanceRoleClaimName;
+	}
+
+	async getProjectsRolesClaimName(): Promise<string | null> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProjectsRolesClaimName;
+	}
+
 	async isProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return (
@@ -338,12 +376,12 @@ export class ProvisioningService {
 		);
 	}
 
-	async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
+	private async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesProvisionInstanceRole;
 	}
 
-	async isProjectRolesProvisioningEnabled(): Promise<boolean> {
+	private async isProjectRolesProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesProvisionProjectRoles;
 	}

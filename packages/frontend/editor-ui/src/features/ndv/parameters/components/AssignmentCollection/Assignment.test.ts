@@ -1,13 +1,16 @@
-import { computed, nextTick, ref } from 'vue';
+import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
+import * as useResolvedExpression from '@/app/composables/useResolvedExpression';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import Assignment from './Assignment.vue';
-import { defaultSettings } from '@/__tests__/defaults';
-import { STORES } from '@n8n/stores';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
 import merge from 'lodash/merge';
-import * as useResolvedExpression from '@/app/composables/useResolvedExpression';
+import { computed, nextTick, ref } from 'vue';
+import Assignment from './Assignment.vue';
+
+vi.mock('vue-router');
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({
@@ -28,6 +31,8 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
+	beforeEach(cleanup);
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -115,5 +120,61 @@ describe('Assignment.vue', () => {
 				'Specify the property name of the binary data in the input item',
 			);
 		});
+	});
+
+	it('should not auto-change type when disableType is true', async () => {
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: true,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).not.toContainEqual(expect.objectContaining({ type: 'number' }));
+
+		spy.mockRestore();
+	});
+
+	it('should auto-change type when dropping a value', async () => {
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: false,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
+
+		spy.mockRestore();
 	});
 });

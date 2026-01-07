@@ -49,11 +49,6 @@ PIPE_MSG_MAX_SIZE = (
     2 ** (PIPE_MSG_PREFIX_LENGTH * 8) - 1
 )  # bytes (~4 GiB with 4-byte prefix)
 
-# Pipe reader join timeout
-TYPICAL_PAYLOAD_RATIO = 0.1  # assume typical size is 10% of max payload
-PARSE_THROUGHPUT_BYTES_PER_SEC = 100_000_000  # 100 MB/s
-PIPE_READER_JOIN_TIMEOUT_SAFETY_BUFFER = 2.0  # seconds
-
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
 TASK_BROKER_WS_PATH = "/runners/_ws"
@@ -106,11 +101,6 @@ LOG_TASK_CANCEL_UNKNOWN = (
 )
 LOG_TASK_CANCEL_WAITING = "Cancelled task {task_id} (waiting for settings)"
 LOG_SENTRY_MISSING = "Sentry is enabled but sentry-sdk is not installed. Install with: uv sync --all-extras"
-LOG_PIPE_READER_TIMEOUT_TRIGGERED = (
-    "Pipe reader thread did not finish reading within {timeout}s. "
-    "Closing pipe to unblock. Task may fail if data was not fully read. "
-    "For large payloads, increase N8N_RUNNERS_MAX_PAYLOAD to scale timeout."
-)
 
 # RPC
 RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"
@@ -122,7 +112,7 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
 
 # Security
-BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals"
+BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals,license,help,credits,copyright"
 BLOCKED_NAMES = {
     "__loader__",
     "__builtins__",
@@ -183,6 +173,7 @@ ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disal
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
 ERROR_DANGEROUS_NAME = "Access to name '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _ClassName__attr) is disallowed for security reasons."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )

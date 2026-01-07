@@ -1,4 +1,3 @@
-import { N8N_VERSION } from '@/constants';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -15,6 +14,13 @@ import type { PushConfig } from '@/push/push.config';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
+import type { OwnershipService } from '../ownership.service';
+
+// Mock the workflow history helper functions to avoid DI container issues in tests
+jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
+	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
+	getWorkflowHistoryPruneTime: jest.fn(() => 24),
+}));
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -45,7 +51,7 @@ describe('FrontendService', () => {
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
-		workflowHistory: { enabled: false },
+		workflowHistory: { pruneTime: 24 },
 		path: '',
 		sso: {
 			ldap: { loginEnabled: false },
@@ -99,7 +105,6 @@ describe('FrontendService', () => {
 		isExternalSecretsEnabled: jest.fn().mockReturnValue(false),
 		isLicensed: jest.fn().mockReturnValue(false),
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
-		isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
 		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
@@ -144,6 +149,10 @@ describe('FrontendService', () => {
 		isMFAEnforced: jest.fn().mockReturnValue(false),
 	});
 
+	const ownershipService = mock<OwnershipService>({
+		hasInstanceOwner: jest.fn().mockReturnValue(false),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -169,6 +178,7 @@ describe('FrontendService', () => {
 				licenseState,
 				moduleRegistry,
 				mfaService,
+				ownershipService,
 			),
 			license,
 		};
@@ -184,9 +194,9 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
-		it('should return frontend settings', () => {
+		it('should return frontend settings', async () => {
 			const { service } = createMockService();
-			const settings = service.getSettings();
+			const settings = await service.getSettings();
 
 			expect(settings).toEqual(
 				expect.objectContaining({
@@ -197,49 +207,62 @@ describe('FrontendService', () => {
 	});
 
 	describe('getPublicSettings', () => {
-		it('should return public settings', () => {
+		it('should return public settings', async () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
-				instanceId: instanceSettings.instanceId,
-				defaultLocale: globalConfig.defaultLocale,
-				versionCli: N8N_VERSION,
-				releaseChannel: globalConfig.generic.releaseChannel,
-				versionNotifications: {
-					enabled: globalConfig.versionNotifications.enabled,
-					endpoint: globalConfig.versionNotifications.endpoint,
-					whatsNewEnabled: globalConfig.versionNotifications.whatsNewEnabled,
-					whatsNewEndpoint: globalConfig.versionNotifications.whatsNewEndpoint,
-					infoUrl: globalConfig.versionNotifications.infoUrl,
-				},
+				defaultLocale: 'en',
 				userManagement: {
-					quota: 100,
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
 				},
 				sso: {
-					saml: { loginEnabled: false, loginLabel: '' },
+					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
 					oidc: {
 						loginEnabled: false,
 						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
-						callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
 					},
 				},
-				mfa: { enabled: false, enforced: false },
 				authCookie: { secure: false },
-				oauthCallbackUrls: {
-					oauth1: 'http://localhost:5678/rest/oauth1-credential/callback',
-					oauth2: 'http://localhost:5678/rest/oauth2-credential/callback',
-				},
-				banners: { dismissed: [] },
 				previewMode: false,
-				telemetry: { enabled: false },
-				enterprise: { saml: false, ldap: false, oidc: false, showNonProdBanner: false },
+				enterprise: { saml: false, ldap: false, oidc: false },
 			};
 
 			const { service } = createMockService();
-			const settings = service.getPublicSettings();
+			const settings = await service.getPublicSettings(false);
+
+			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should return public settings with mfa', async () => {
+			const expectedPublicSettings = {
+				settingsMode: 'public',
+				defaultLocale: 'en',
+				userManagement: {
+					smtpSetup: false,
+					showSetupOnFirstLoad: true,
+					authenticationMethod: 'email',
+				},
+				sso: {
+					saml: { loginEnabled: false },
+					ldap: { loginEnabled: false, loginLabel: '' },
+					oidc: {
+						loginEnabled: false,
+						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+					},
+				},
+				authCookie: { secure: false },
+				previewMode: false,
+				enterprise: { saml: false, ldap: false, oidc: false },
+				mfa: {
+					enabled: false,
+					enforced: false,
+				},
+			};
+
+			const { service } = createMockService();
+			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
 		});
@@ -298,29 +321,31 @@ describe('FrontendService', () => {
 		});
 
 		describe('settings integration', () => {
-			it('should include envFeatureFlags in initial settings', () => {
+			it('should include envFeatureFlags in initial settings', async () => {
 				process.env = {
 					N8N_ENV_FEAT_INIT_FLAG: 'true',
 					N8N_ENV_FEAT_ANOTHER_FLAG: 'false',
 				};
 
 				const { service } = createMockService();
+				const settings = await service.getSettings();
 
-				expect(service.settings.envFeatureFlags).toEqual({
+				expect(settings.envFeatureFlags).toEqual({
 					N8N_ENV_FEAT_INIT_FLAG: 'true',
 					N8N_ENV_FEAT_ANOTHER_FLAG: 'false',
 				});
 			});
 
-			it('should refresh envFeatureFlags when getSettings is called', () => {
+			it('should refresh envFeatureFlags when getSettings is called', async () => {
 				process.env = {
 					N8N_ENV_FEAT_INITIAL_FLAG: 'true',
 				};
 
 				const { service } = createMockService();
+				const initialSettings = await service.getSettings();
 
 				// Verify initial state
-				expect(service.settings.envFeatureFlags).toEqual({
+				expect(initialSettings.envFeatureFlags).toEqual({
 					N8N_ENV_FEAT_INITIAL_FLAG: 'true',
 				});
 
@@ -331,7 +356,7 @@ describe('FrontendService', () => {
 				};
 
 				// getSettings should refresh the flags
-				const settings = service.getSettings();
+				const settings = await service.getSettings();
 
 				expect(settings.envFeatureFlags).toEqual({
 					N8N_ENV_FEAT_INITIAL_FLAG: 'false',
@@ -342,33 +367,33 @@ describe('FrontendService', () => {
 	});
 
 	describe('aiBuilder setting', () => {
-		it('should initialize aiBuilder setting as disabled by default', () => {
+		it('should initialize aiBuilder setting as disabled by default', async () => {
 			const { service } = createMockService();
-
-			expect(service.settings.aiBuilder).toEqual({
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.aiBuilder).toEqual({
 				enabled: false,
 				setup: false,
 			});
 		});
 
-		it('should set aiBuilder.enabled to true when license has feat:aiBuilder', () => {
+		it('should set aiBuilder.enabled to true when license has feat:aiBuilder', async () => {
 			const { service, license } = createMockService();
 
 			license.isLicensed.mockImplementation((feature) => {
 				return feature === 'feat:aiBuilder';
 			});
 
-			const settings = service.getSettings();
+			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(true);
 		});
 
-		it('should keep aiBuilder.enabled as false when license does not have feat:aiBuilder', () => {
+		it('should keep aiBuilder.enabled as false when license does not have feat:aiBuilder', async () => {
 			const { service, license } = createMockService();
 
 			license.isLicensed.mockReturnValue(false);
 
-			const settings = service.getSettings();
+			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
 		});

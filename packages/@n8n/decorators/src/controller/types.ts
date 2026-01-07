@@ -1,9 +1,9 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { RequestHandler } from 'express';
+import type { RequestHandler, Router } from 'express';
 
-export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
@@ -40,7 +40,28 @@ export interface RouteMetadata {
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
 	args: Arg[];
+	router?: Router;
 }
+
+/**
+ * Metadata for static routers mounted on a controller.
+ * Picks relevant fields from RouteMetadata and makes router required.
+ */
+export type StaticRouterMetadata = {
+	path: string;
+	router: Router;
+} & Partial<
+	Pick<
+		RouteMetadata,
+		| 'skipAuth'
+		| 'allowSkipPreviewAuth'
+		| 'allowSkipMFA'
+		| 'middlewares'
+		| 'rateLimit'
+		| 'licenseFeature'
+		| 'accessScope'
+	>
+>;
 
 export interface ControllerMetadata {
 	basePath: `/${string}`;

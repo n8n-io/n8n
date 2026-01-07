@@ -79,21 +79,30 @@ export function useCredentialNavigationCommands(options: {
 		return credential.homeProject?.name ?? '';
 	};
 
-	const createCredentialCommand = (credential: ICredentialsResponse): CommandBarItem => {
+	const createCredentialCommand = (
+		credential: ICredentialsResponse,
+		isRoot: boolean,
+	): CommandBarItem => {
 		// Add credential name to keywords since we're using a custom component for the title
 		const keywords = [credential.name];
+
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: credential.name } })
+			: credential.name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.credentials')
+			: i18n.baseText('commandBar.credentials.open');
 
 		return {
 			id: credential.id,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: credential.name,
+					title,
 					suffix: getCredentialProjectSuffix(credential),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.credentials'),
+			section,
 			keywords,
 			icon: {
 				component: CredentialIcon,
@@ -108,14 +117,14 @@ export function useCredentialNavigationCommands(options: {
 	};
 
 	const openCredentialCommands = computed<CommandBarItem[]>(() => {
-		return credentialResults.value.map((credential) => createCredentialCommand(credential));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential, false));
 	});
 
 	const rootCredentialItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return credentialResults.value.map((credential) => createCredentialCommand(credential));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential, true));
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {

@@ -31,10 +31,13 @@ jest.mock('@/tools/update-node-parameters.tool', () => ({
 jest.mock('@/tools/get-node-parameter.tool', () => ({
 	createGetNodeParameterTool: jest.fn().mockReturnValue({ tool: { name: 'get_node_parameter' } }),
 }));
-jest.mock('@/tools/prompts/main-agent.prompt', () => ({
+jest.mock('@/prompts/legacy-agent.prompt', () => ({
 	mainAgentPrompt: {
 		invoke: jest.fn().mockResolvedValue('mocked prompt'),
 	},
+	createMainAgentPrompt: jest.fn().mockReturnValue({
+		invoke: jest.fn().mockResolvedValue('mocked prompt'),
+	}),
 }));
 jest.mock('@/utils/operations-processor', () => ({
 	processOperations: jest.fn(),
@@ -64,6 +67,7 @@ Object.defineProperty(global, 'crypto', {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
+import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
@@ -142,6 +146,7 @@ describe('WorkflowBuilderAgent', () => {
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
@@ -152,6 +157,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should throw ValidationError when message exceeds maximum length', async () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
+				id: '12345',
 				message: longMessage,
 			};
 
@@ -169,6 +175,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should handle valid message length', async () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
+				id: '12345',
 				message: validMessage,
 			};
 
@@ -286,7 +293,11 @@ describe('WorkflowBuilderAgent', () => {
 					},
 				},
 				workflowValidation: null,
+				validationHistory: [],
+				techniqueCategories: [],
 				previousSummary: 'EMPTY',
+				templateIds: [],
+				cachedTemplates: [],
 			};
 		};
 
@@ -354,6 +365,183 @@ describe('WorkflowBuilderAgent', () => {
 				const state = createMockState('Short message', 'Custom Name', 1);
 				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
 			});
+
+			it('should return "auto_compact_messages" when messages with workflow context exceed threshold', () => {
+				// Use a smaller threshold for this test to make it easier to exceed
+				const smallThreshold = 5000; // tokens
+
+				// Create a long message that when combined with workflow context will exceed threshold
+				// With AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5, we need ~17500 characters to exceed 5000 tokens
+				const longMessage = 'x'.repeat(10000);
+				const state = createMockState(longMessage, 'Custom Name', 1, 10);
+
+				// Add substantial workflow data that will be included in context
+				state.workflowJSON = {
+					nodes: Array.from({ length: 50 }, (_, i) => ({
+						id: `node-${i}`,
+						name: `Node ${i}`,
+						type: 'n8n-nodes-base.testNode',
+						typeVersion: 1,
+						position: [i * 100, i * 100] as [number, number],
+						parameters: { data: 'x'.repeat(200) },
+					})),
+					connections: {},
+					name: 'Test Workflow',
+				};
+
+				expect(shouldModifyState(state, smallThreshold)).toBe('auto_compact_messages');
+			});
+
+			it('should return "agent" when messages with workflow context stay below threshold', () => {
+				const shortMessage = 'Create a simple workflow';
+				const state = createMockState(shortMessage, 'Custom Name', 1, 2);
+
+				// Small workflow that won't push us over threshold
+				state.workflowJSON = {
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0] as [number, number],
+							parameters: {},
+						},
+					],
+					connections: {},
+					name: 'Simple Workflow',
+				};
+
+				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
+			});
+
+			it('should consider execution data and schema in token estimation', () => {
+				// Use a smaller threshold for this test
+				const smallThreshold = 3000; // tokens
+
+				const message = 'x'.repeat(3000);
+				const state = createMockState(message, 'Custom Name', 1, 5);
+
+				// Add execution data and schema that contribute to token count
+				state.workflowContext = {
+					...state.workflowContext,
+					executionData: {
+						runData: {
+							'node-1': [
+								{
+									data: {
+										main: [[{ json: { data: 'x'.repeat(2000) } }]],
+									},
+									executionTime: 100,
+									startTime: Date.now(),
+									executionIndex: 0,
+									source: [],
+								},
+							],
+						},
+					},
+					executionSchema: [
+						{
+							nodeName: 'node-1',
+							schema: {
+								type: 'object',
+								value: [
+									{ key: 'field1', type: 'string', value: 'x'.repeat(1000), path: '.field1' },
+									{ key: 'field2', type: 'string', value: 'x'.repeat(1000), path: '.field2' },
+								],
+								path: '',
+							},
+						},
+					],
+				};
+
+				state.workflowJSON = {
+					nodes: Array.from({ length: 20 }, (_, i) => ({
+						id: `node-${i}`,
+						name: `Node ${i}`,
+						type: 'n8n-nodes-base.testNode',
+						typeVersion: 1,
+						position: [i * 100, i * 100] as [number, number],
+						parameters: { data: 'x'.repeat(100) },
+					})),
+					connections: {},
+					name: 'Complex Workflow',
+				};
+
+				expect(shouldModifyState(state, smallThreshold)).toBe('auto_compact_messages');
+			});
+		});
+	});
+
+	describe('feature flags', () => {
+		const mockCreateMainAgentPrompt = createMainAgentPrompt as jest.MockedFunction<
+			typeof createMainAgentPrompt
+		>;
+
+		beforeEach(() => {
+			mockCreateMainAgentPrompt.mockClear();
+		});
+
+		it('should pass includeExamplesPhase: true when templateExamples flag is enabled', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({
+				id: '12345',
+				message: 'Create a workflow',
+				featureFlags: { templateExamples: true },
+			});
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: true });
+		});
+
+		it('should pass includeExamplesPhase: false when templateExamples flag is disabled', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({
+				id: '12345',
+				message: 'Create a workflow',
+				featureFlags: { templateExamples: false },
+			});
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+		});
+
+		it('should pass includeExamplesPhase: false when featureFlags is not provided', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({
+				id: '12345',
+				message: 'Create a workflow',
+			});
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
 		});
 	});
 });

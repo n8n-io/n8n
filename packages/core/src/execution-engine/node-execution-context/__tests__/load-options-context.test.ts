@@ -99,4 +99,10 @@ describe('LoadOptionsContext', () => {
 			expect(parameter).toBe('fallback');
 		});
 	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(loadOptionsContext.getExecutionContext()).toBeUndefined();
+		});
+	});
 });

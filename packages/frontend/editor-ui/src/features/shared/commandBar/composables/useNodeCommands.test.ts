@@ -111,6 +111,16 @@ describe('useNodeCommands', () => {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
 
 		mockEditableWorkflow.value.nodes = [];
@@ -177,8 +187,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({
@@ -228,7 +239,7 @@ describe('useNodeCommands', () => {
 
 		it('should populate open node children with workflow nodes', () => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 				{
 					id: 'node-2',
 					name: 'HTTP Request',
@@ -244,6 +255,7 @@ describe('useNodeCommands', () => {
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-node');
 			expect(openCommand?.children).toHaveLength(2);
+			expect(openCommand?.children?.[0].title).toEqual('Start');
 		});
 	});
 
@@ -297,21 +309,12 @@ describe('useNodeCommands', () => {
 				expect(commands.value.length).toBeLessThanOrEqual(3);
 			}
 		});
-
-		it('should show root add node items when query is longer than 2 characters', () => {
-			const { commands } = useNodeCommands({
-				lastQuery: ref('htt'),
-				activeNodeId: ref(null),
-			});
-
-			expect(commands.value).toBeDefined();
-		});
 	});
 
 	describe('root open node items', () => {
 		beforeEach(() => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 			];
 		});
 
@@ -333,6 +336,7 @@ describe('useNodeCommands', () => {
 
 			const rootOpenNodes = commands.value.filter((cmd) => cmd.id === 'node-1');
 			expect(rootOpenNodes).toHaveLength(1);
+			expect(rootOpenNodes[0].title).toEqual('generic.openResource');
 		});
 	});
 });

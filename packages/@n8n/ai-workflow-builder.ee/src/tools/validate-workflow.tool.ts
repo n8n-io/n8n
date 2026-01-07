@@ -5,7 +5,12 @@ import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { programmaticValidation } from '@/validation/programmatic';
-import type { ProgrammaticViolation } from '@/validation/types';
+import type {
+	ProgrammaticViolation,
+	ProgrammaticChecksResult,
+	TelemetryValidationStatus,
+} from '@/validation/types';
+import { PROGRAMMATIC_VIOLATION_NAMES } from '@/validation/types';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
@@ -19,6 +24,26 @@ export const VALIDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'validate_workflow',
 	displayTitle: 'Validating workflow',
 };
+
+/**
+ * Creates a compacted validation result for use in telemetry
+ * @returns `{ X: 'pass' | 'fail', Y: 'pass' | 'fail', ... }`
+ */
+function collectValidationResultForTelemetry(
+	results: ProgrammaticChecksResult,
+): TelemetryValidationStatus {
+	const status = Object.fromEntries(
+		PROGRAMMATIC_VIOLATION_NAMES.map((name) => [name, 'pass' as const]),
+	) as TelemetryValidationStatus;
+
+	Object.values(results).forEach((violations: ProgrammaticViolation[]) => {
+		violations?.forEach((violation) => {
+			status[violation.name] = 'fail';
+		});
+	});
+
+	return status;
+}
 
 export function createValidateWorkflowTool(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -46,28 +71,7 @@ export function createValidateWorkflowTool(
 					parsedNodeTypes,
 				);
 
-				const blockingViolations: ProgrammaticViolation[] = [
-					...violations.connections,
-					...violations.trigger,
-					...violations.agentPrompt,
-					...violations.tools,
-					...violations.fromAi,
-				].filter((violation) => violation.type === 'critical' || violation.type === 'major');
-
-				if (blockingViolations.length > 0) {
-					const summary = formatWorkflowValidation(violations);
-					const validationError = new ValidationError(
-						`Workflow validation failed due to critical or major violations.\n${summary}`,
-						{ extra: { violations: blockingViolations } },
-					);
-
-					reporter.error(validationError);
-					logger?.warn('validate_workflow tool detected blocking violations', {
-						violations: blockingViolations,
-					});
-
-					return createErrorResponse(config, validationError);
-				}
+				const validationResultForTelemetry = collectValidationResultForTelemetry(violations);
 
 				const message = formatWorkflowValidation(violations);
 
@@ -75,6 +79,7 @@ export function createValidateWorkflowTool(
 
 				return createSuccessResponse(config, message, {
 					workflowValidation: violations,
+					validationHistory: [validationResultForTelemetry],
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {

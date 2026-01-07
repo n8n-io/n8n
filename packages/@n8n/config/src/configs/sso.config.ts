@@ -1,7 +1,5 @@
 import { Config, Env, Nested } from '../decorators';
 
-type ScopesProvisioningFrequency = 'never' | 'first_login' | 'every_login';
-
 @Config
 class SamlConfig {
 	/** Whether to enable SAML SSO. */
@@ -38,10 +36,6 @@ class ProvisioningConfig {
 	/** Whether to provision the project <> role mappings from an SSO auth claim */
 	@Env('N8N_SSO_SCOPES_PROVISION_PROJECT_ROLES')
 	scopesProvisionProjectRoles: boolean = false;
-
-	/** How often to trigger provisioning, never, fist login, or every login */
-	@Env('N8N_SSO_SCOPES_PROVISIONING_FREQUENCY')
-	scopesProvisioningFrequency: ScopesProvisioningFrequency = 'never';
 
 	/** The name of scope to request on oauth flows */
 	@Env('N8N_SSO_SCOPES_NAME')

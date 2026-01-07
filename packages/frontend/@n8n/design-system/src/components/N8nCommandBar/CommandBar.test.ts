@@ -139,5 +139,171 @@ describe('components', () => {
 				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
 			);
 		});
+
+		describe('matchAnySearchTerm', () => {
+			it('should match entire query string when matchAnySearchTerm is false', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Customer Data Sync',
+						matchAnySearchTerm: false,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Email Marketing Campaign',
+						matchAnySearchTerm: false,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'customer data');
+				await nextTick();
+
+				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
+				expect(screen.queryByText('Email Marketing Campaign')).not.toBeInTheDocument();
+			});
+
+			it('should match any word when matchAnySearchTerm is true', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Customer Data Sync',
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Email Marketing Campaign',
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-3',
+						title: 'Sales Report Generator',
+						matchAnySearchTerm: true,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'customer email');
+				await nextTick();
+
+				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
+				expect(screen.getByText('Email Marketing Campaign')).toBeInTheDocument();
+				expect(screen.queryByText('Sales Report Generator')).not.toBeInTheDocument();
+			});
+
+			it('should match keywords with matchAnySearchTerm', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Data Processor',
+						keywords: ['excel', 'spreadsheet', 'csv'],
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Email Handler',
+						keywords: ['gmail', 'outlook', 'mail'],
+						matchAnySearchTerm: true,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'excel gmail');
+				await nextTick();
+
+				expect(screen.getByText('Data Processor')).toBeInTheDocument();
+				expect(screen.getByText('Email Handler')).toBeInTheDocument();
+			});
+
+			it('should handle multiple spaces in search query', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Customer Sync',
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Email Campaign',
+						matchAnySearchTerm: true,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'customer  email   ');
+				await nextTick();
+
+				expect(screen.getByText('Customer Sync')).toBeInTheDocument();
+				expect(screen.getByText('Email Campaign')).toBeInTheDocument();
+			});
+
+			it('should match single word with matchAnySearchTerm', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Customer Data Sync',
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Email Marketing',
+						matchAnySearchTerm: true,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'customer');
+				await nextTick();
+
+				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
+				expect(screen.queryByText('Email Marketing')).not.toBeInTheDocument();
+			});
+
+			it('should work with mixed matchAnySearchTerm settings', async () => {
+				const items = [
+					{
+						id: 'workflow-1',
+						title: 'Customer Data Sync',
+						matchAnySearchTerm: true,
+					},
+					{
+						id: 'workflow-2',
+						title: 'Customer Email Setup',
+						matchAnySearchTerm: false,
+					},
+				];
+
+				render(N8nCommandBar, { props: { items } });
+				await openCommandBar();
+
+				const input = screen.getByPlaceholderText('Type a command...');
+
+				await fireEvent.update(input, 'data email');
+				await nextTick();
+
+				expect(screen.getByText('Customer Data Sync')).toBeInTheDocument();
+				expect(screen.queryByText('Customer Email Setup')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

@@ -65,6 +65,7 @@ const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
 	hover: [hovered: boolean];
+	drop: [value: string];
 }>();
 
 const i18n = useI18n();
@@ -231,6 +232,7 @@ function onDrop(newParamValue: string) {
 			}
 
 			valueChanged(parameterData);
+			emit('drop', updatedValue);
 			eventBus.value.emit('drop', updatedValue);
 
 			if (!ndvStore.isMappingOnboarded) {

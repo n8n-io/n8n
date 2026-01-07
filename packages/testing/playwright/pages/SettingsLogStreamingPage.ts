@@ -103,6 +103,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		await this.clickByTestId('subtitle-showing-type');
 	}
 
+	async writeUrlToDestinationUrlInput(url: string): Promise<void> {
+		await this.page.getByTestId('parameter-input-field').fill(url);
+	}
+
 	async clickInlineEditPreview(): Promise<void> {
 		// First click on the destination name input to activate it
 		await this.getDestinationNameInput().click();
@@ -153,7 +157,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	/**
-	 * Creates a new log streaming destination with the specified name.
+	 * Creates a new webhook log streaming destination with the specified name.
 	 * Handles the full flow: modal opening, type selection, naming, and saving.
 	 * @param destinationName - The name to give the new destination
 	 */
@@ -161,12 +165,62 @@ export class SettingsLogStreamingPage extends BasePage {
 		await this.clickAddFirstDestination();
 		await this.getDestinationModal().waitFor({ state: 'visible' });
 		await this.clickSelectDestinationType();
-		await this.selectDestinationType(0);
+		await this.selectDestinationType(0); // Webhook
 		await this.clickSelectDestinationButton();
 		await this.clickDestinationNameInput();
 		await this.clickInlineEditPreview();
 		await this.typeDestinationName(destinationName);
+		await this.writeUrlToDestinationUrlInput('https://www.example.com');
 		await this.saveDestination();
 		await this.closeModalByClickingOverlay();
+	}
+
+	/**
+	 * Creates a new syslog log streaming destination.
+	 * @param config - Syslog configuration
+	 */
+	async createSyslogDestination(config: {
+		name: string;
+		host: string;
+		port: number;
+	}): Promise<void> {
+		await this.clickAddFirstDestination();
+		await this.getDestinationModal().waitFor({ state: 'visible' });
+		await this.clickSelectDestinationType();
+		await this.selectDestinationType(2); // Syslog (0=Webhook, 1=Sentry, 2=Syslog)
+		await this.clickSelectDestinationButton();
+
+		// Set destination name
+		await this.clickDestinationNameInput();
+		await this.clickInlineEditPreview();
+		await this.typeDestinationName(config.name);
+
+		// Fill syslog config - host and port fields
+		const hostInput = this.page.getByTestId('parameter-input-host').locator('input');
+		const portInput = this.page.getByTestId('parameter-input-port').locator('input');
+
+		await hostInput.clear();
+		await hostInput.fill(config.host);
+		await this.page.waitForTimeout(200);
+		await portInput.clear();
+		await portInput.fill(config.port.toString());
+
+		await this.page.waitForTimeout(150);
+		await this.saveDestination();
+	}
+
+	/**
+	 * Gets the send test event button
+	 */
+	getSendTestEventButton(): Locator {
+		return this.page.getByTestId('destination-test-button');
+	}
+
+	/**
+	 * Sends a test event to the destination.
+	 * Must be called while the destination modal is open and the destination has been saved.
+	 */
+	async sendTestEvent(): Promise<void> {
+		await this.getSendTestEventButton().click();
 	}
 }

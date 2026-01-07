@@ -15,15 +15,16 @@ describe('Workflow history store', () => {
 		[false, 2, 1],
 		[false, -1, 2],
 		[false, 2, -1],
+		[false, -1, -1],
 	])(
-		'should set `shouldUpgrade` to %s when pruneTime is %s and licensePruneTime is %s',
-		(shouldUpgrade, pruneTime, licensePruneTime) => {
+		'should set `shouldUpgrade` to %s when evaluatedPruneTime is %s and licensePruneTime is %s',
+		(shouldUpgrade, evaluatedPruneTime, licensePruneTime) => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			const settingsStore = useSettingsStore();
 
 			settingsStore.settings = {
 				workflowHistory: {
-					pruneTime,
+					pruneTime: evaluatedPruneTime,
 					licensePruneTime,
 				},
 			} as FrontendSettings;

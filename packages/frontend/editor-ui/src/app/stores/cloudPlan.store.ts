@@ -10,10 +10,11 @@ import {
 	getCurrentUsage,
 } from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/app/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, UPGRADE_PLAN_CTA_EXPERIMENT } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
+import { usePostHog } from './posthog.store';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -22,12 +23,18 @@ const DEFAULT_STATE: CloudPlanState = {
 	loadingPlan: false,
 };
 
+const DYNAMIC_TRIAL_BANNER_DISMISSED_KEY = 'n8n-dynamic-trial-banner-dismissed';
+
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const posthogStore = usePostHog();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
+	const isDynamicTrialBannerDismissed = ref<boolean>(
+		localStorage.getItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY) === 'true',
+	);
 
 	const reset = () => {
 		currentUserCloudInfo.value = null;
@@ -61,6 +68,23 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return information.which_of_these_do_you_feel_comfortable_doing.length;
 	});
 
+	const dynamicTrialBannerText = computed(() => {
+		return currentUserCloudInfo.value?.trialBannerData?.bannerText;
+	});
+
+	const shouldShowDynamicTrialBanner = computed(() => {
+		return (
+			dynamicTrialBannerText.value !== undefined &&
+			dynamicTrialBannerText.value !== '' &&
+			!isDynamicTrialBannerDismissed.value
+		);
+	});
+
+	const dismissDynamicTrialBanner = () => {
+		isDynamicTrialBannerDismissed.value = true;
+		localStorage.setItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY, 'true');
+	};
+
 	const trialExpired = computed(
 		() =>
 			state.data?.metadata?.group === 'trial' &&
@@ -91,6 +115,13 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const getAutoLoginCode = async (): Promise<{ code: string }> => {
 		return await getAdminPanelLoginCode(rootStore.restApiContext);
 	};
+
+	const isTrialUpgradeOnSidebar = computed(() => {
+		return (
+			posthogStore.getVariant(UPGRADE_PLAN_CTA_EXPERIMENT.name) ===
+			UPGRADE_PLAN_CTA_EXPERIMENT.variant
+		);
+	});
 
 	const getOwnerCurrentPlan = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
@@ -217,5 +248,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		getAutoLoginCode,
 		selectedApps,
 		codingSkill,
+		dynamicTrialBannerText,
+		shouldShowDynamicTrialBanner,
+		dismissDynamicTrialBanner,
+		isTrialUpgradeOnSidebar,
 	};
 });

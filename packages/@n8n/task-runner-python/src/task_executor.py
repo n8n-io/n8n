@@ -6,12 +6,9 @@ import io
 import os
 import sys
 import logging
-import threading
 from typing import cast
 
 from src.errors import (
-    InvalidPipeMsgContentError,
-    InvalidPipeMsgLengthError,
     TaskCancelledError,
     TaskKilledError,
     TaskResultMissingError,
@@ -24,14 +21,14 @@ from src.errors import (
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
-from src.message_types.broker import NodeMode, Items
+from src.message_types.broker import NodeMode, Items, Query
 from src.message_types.pipe import (
-    PipeMessage,
     PipeResultMessage,
     PipeErrorMessage,
     TaskErrorInfo,
     PrintArgs,
 )
+from src.pipe_reader import PipeReader
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
@@ -40,7 +37,6 @@ from src.constants import (
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
-    LOG_PIPE_READER_TIMEOUT_TRIGGERED,
 )
 
 from multiprocessing.context import ForkServerProcess
@@ -63,6 +59,7 @@ class TaskExecutor:
         node_mode: NodeMode,
         items: Items,
         security_config: SecurityConfig,
+        query: Query = None,
     ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
         """Create a subprocess for executing a Python code task and a pipe for communication."""
 
@@ -82,6 +79,7 @@ class TaskExecutor:
                 items,
                 write_conn,
                 security_config,
+                query,
             ),
         )
 
@@ -93,14 +91,13 @@ class TaskExecutor:
         read_conn: PipeConnection,
         write_conn: PipeConnection,
         task_timeout: int,
-        pipe_reader_timeout: float,
         continue_on_fail: bool,
     ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
 
-        pipe_reader = PipeReaderThread(read_conn.fileno(), read_conn)
+        pipe_reader = PipeReader(read_conn.fileno(), read_conn)
         pipe_reader.start()
 
         try:
@@ -127,18 +124,16 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            pipe_reader.join(timeout=pipe_reader_timeout)
+            pipe_reader.join(timeout=task_timeout)
 
             if pipe_reader.is_alive():
-                logger.warning(
-                    LOG_PIPE_READER_TIMEOUT_TRIGGERED.format(
-                        timeout=pipe_reader_timeout
-                    )
-                )
                 try:
                     read_conn.close()
                 except Exception:
                     pass
+                raise TaskResultReadError(
+                    TimeoutError(f"Pipe reader timed out after {task_timeout}s")
+                )
 
             if pipe_reader.error:
                 raise TaskResultReadError(pipe_reader.error)
@@ -149,13 +144,15 @@ class TaskExecutor:
             returned = pipe_reader.pipe_message
 
             if "error" in returned:
-                raise TaskRuntimeError(returned["error"])
+                error_msg = cast(PipeErrorMessage, returned)
+                raise TaskRuntimeError(error_msg["error"])
 
             if "result" not in returned:
                 raise TaskResultMissingError()
 
-            result = returned["result"]
-            print_args = returned.get("print_args", [])
+            result_msg = cast(PipeResultMessage, returned)
+            result = result_msg["result"]
+            print_args = result_msg.get("print_args", [])
             assert pipe_reader.message_size is not None
             result_size_bytes = pipe_reader.message_size
 
@@ -190,6 +187,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        query: Query = None,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -208,12 +206,13 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
+                "_query": query,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
 
             exec(compiled_code, globals)
 
-            result = globals[EXECUTOR_USER_OUTPUT_KEY]
+            result = cast(Items, globals[EXECUTOR_USER_OUTPUT_KEY])
             TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:
@@ -227,6 +226,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        _query: Query = None,  # unused, only to keep signatures consistent across modes
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -496,23 +496,6 @@ class TaskExecutor:
     # ========== pipe I/O ==========
 
     @staticmethod
-    def _read_exact_bytes(fd: int, n: int) -> bytes:
-        """Read exactly n bytes from file descriptor.
-
-        Uses os.read() instead of Connection.recv() because recv() pickles.
-        Preallocates bytearray to avoid repeated reallocation.
-        """
-        result = bytearray(n)
-        offset = 0
-        while offset < n:
-            chunk = os.read(fd, n - offset)
-            if not chunk:
-                raise EOFError("Pipe closed before reading all data")
-            result[offset : offset + len(chunk)] = chunk
-            offset += len(chunk)
-        return bytes(result)
-
-    @staticmethod
     def _write_bytes(fd: int, data: bytes):
         total_written = 0
         while total_written < len(data):
@@ -520,59 +503,3 @@ class TaskExecutor:
             if written == 0:
                 raise OSError("Write failed")
             total_written += written
-
-
-class PipeReaderThread(threading.Thread):
-    """Background thread that reads result from pipe."""
-
-    def __init__(self, read_fd: int, read_conn: PipeConnection):
-        super().__init__()
-        self.read_fd = read_fd
-        self.read_conn = read_conn
-        self.pipe_message: PipeMessage | None = None
-        self.message_size: int | None = None  # bytes
-        self.error: Exception | None = None
-
-    def run(self):
-        try:
-            length_bytes = TaskExecutor._read_exact_bytes(
-                self.read_fd, PIPE_MSG_PREFIX_LENGTH
-            )
-            length_int = int.from_bytes(length_bytes, "big")
-            if length_int <= 0:
-                raise InvalidPipeMsgLengthError(length_int)
-            self.message_size = length_int
-            data = TaskExecutor._read_exact_bytes(self.read_fd, length_int)
-            parsed_msg = json.loads(data.decode("utf-8"))
-            self.pipe_message = self._validate_pipe_message(parsed_msg)
-        except Exception as e:
-            self.error = e
-        finally:
-            self.read_conn.close()
-
-    def _validate_pipe_message(self, msg) -> PipeMessage:
-        if not isinstance(msg, dict):
-            raise InvalidPipeMsgContentError(f"Expected dict, got {type(msg).__name__}")
-
-        if "print_args" not in msg:
-            raise InvalidPipeMsgContentError("Message missing 'print_args' key")
-
-        if not isinstance(msg["print_args"], list):
-            raise InvalidPipeMsgContentError("'print_args' must be a list")
-
-        has_result = "result" in msg
-        has_error = "error" in msg
-
-        if not has_result and not has_error:
-            raise InvalidPipeMsgContentError("Msg is missing 'result' or 'error' key")
-
-        if has_result and has_error:
-            raise InvalidPipeMsgContentError("Msg has both 'result' and 'error' keys")
-
-        if has_result and not isinstance(msg["result"], list):
-            raise InvalidPipeMsgContentError("'result' must be a list")
-
-        if has_error and not isinstance(msg["error"], dict):
-            raise InvalidPipeMsgContentError("'error' must be a dict")
-
-        return cast(PipeMessage, msg)

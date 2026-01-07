@@ -1,5 +1,5 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeSeverity, BreakingChangeCategory, IssueLevel } from '../../../types';
+import { BreakingChangeCategory } from '../../../types';
 import { ProcessEnvAccessRule } from '../process-env-access.rule';
 
 describe('ProcessEnvAccessRule', () => {
@@ -14,12 +14,12 @@ describe('ProcessEnvAccessRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',
 				category: BreakingChangeCategory.workflow,
-				severity: BreakingChangeSeverity.high,
+				severity: 'low',
 			});
 		});
 	});
@@ -45,6 +45,32 @@ describe('ProcessEnvAccessRule', () => {
 	});
 
 	describe('detectWorkflow()', () => {
+		it('should return no issues when N8N_BLOCK_ENV_ACCESS_IN_NODE is set to false', async () => {
+			const originalValue = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+			try {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
+				const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+					createNode('Code', 'n8n-nodes-base.code', {
+						code: 'const apiKey = process.env.API_KEY;\nreturn { apiKey };',
+					}),
+				]);
+
+				const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+				expect(result).toEqual({
+					isAffected: false,
+					issues: [],
+				});
+			} finally {
+				if (originalValue === undefined) {
+					delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+				} else {
+					process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = originalValue;
+				}
+			}
+		});
+
 		it('should return no issues when no process.env usage is found', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Clean Workflow', [
 				createNode('Code', 'n8n-nodes-base.code', {
@@ -77,8 +103,8 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.issues[0]).toMatchObject({
 				title: 'process.env access detected',
 				description:
-					"The following nodes contain process.env access: 'Code'. This will be blocked by default in v2.0.0.",
-				level: IssueLevel.error,
+					"Node with name 'Code' accesses process.env which is blocked by default for security reasons.",
+				level: 'error',
 			});
 		});
 
@@ -95,7 +121,7 @@ describe('ProcessEnvAccessRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0]).toMatchObject({
 				title: 'process.env access detected',
-				level: IssueLevel.error,
+				level: 'error',
 			});
 			expect(result.issues[0].description).toContain('HTTP');
 		});
@@ -116,8 +142,8 @@ describe('ProcessEnvAccessRule', () => {
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.issues[0].description).toContain('Code');
-			expect(result.issues[0].description).toContain('HTTP');
-			expect(result.issues[0].description).not.toContain('Set');
+			expect(result.issues[1].description).toContain('HTTP');
+			expect(result.issues).toHaveLength(2);
 		});
 
 		it('should not detect false positives', async () => {

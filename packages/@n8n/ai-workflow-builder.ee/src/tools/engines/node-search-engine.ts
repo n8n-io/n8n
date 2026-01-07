@@ -1,4 +1,4 @@
-import { sublimeSearch } from '@n8n/utils/dist/search/sublimeSearch';
+import { sublimeSearch } from '@n8n/utils';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -23,15 +23,43 @@ export const SCORE_WEIGHTS = {
 	CONNECTION_IN_EXPRESSION: 50,
 } as const;
 
+function getLatestVersion(version: number | number[]): number {
+	return Array.isArray(version) ? Math.max(...version) : version;
+}
+
+function dedupeNodes(nodes: INodeTypeDescription[]): INodeTypeDescription[] {
+	const dedupeCache: Record<string, INodeTypeDescription> = {};
+	nodes.forEach((node) => {
+		const cachedNodeType = dedupeCache[node.name];
+		if (!cachedNodeType) {
+			dedupeCache[node.name] = node;
+			return;
+		}
+
+		const cachedVersion = getLatestVersion(cachedNodeType.version);
+		const nextVersion = getLatestVersion(node.version);
+
+		if (nextVersion > cachedVersion) {
+			dedupeCache[node.name] = node;
+		}
+	});
+
+	return Object.values(dedupeCache);
+}
+
 /**
  * Pure business logic for searching nodes
  * Separated from tool infrastructure for better testability
  */
 export class NodeSearchEngine {
-	constructor(private readonly nodeTypes: INodeTypeDescription[]) {}
+	private readonly nodeTypes: INodeTypeDescription[];
+	constructor(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = dedupeNodes(nodeTypes);
+	}
 
 	/**
 	 * Search nodes by name, display name, or description
+	 * Always return the latest version of a node
 	 * @param query - The search query string
 	 * @param limit - Maximum number of results to return
 	 * @returns Array of matching nodes sorted by relevance
@@ -45,20 +73,22 @@ export class NodeSearchEngine {
 		);
 
 		// Map results to NodeSearchResult format and apply limit
-		return searchResults
-			.slice(0, limit)
-			.map(({ item, score }: { item: INodeTypeDescription; score: number }) => ({
+		return searchResults.slice(0, limit).map(
+			({ item, score }: { item: INodeTypeDescription; score: number }): NodeSearchResult => ({
 				name: item.name,
 				displayName: item.displayName,
 				description: item.description ?? 'No description available',
+				version: getLatestVersion(item.version),
 				inputs: item.inputs,
 				outputs: item.outputs,
 				score,
-			}));
+			}),
+		);
 	}
 
 	/**
 	 * Search for sub-nodes that output a specific connection type
+	 * Always return the latest version of a node
 	 * @param connectionType - The connection type to search for
 	 * @param limit - Maximum number of results
 	 * @param nameFilter - Optional name filter
@@ -87,6 +117,7 @@ export class NodeSearchEngine {
 				.map(({ nodeType, connectionScore }) => ({
 					name: nodeType.name,
 					displayName: nodeType.displayName,
+					version: getLatestVersion(nodeType.version),
 					description: nodeType.description ?? 'No description available',
 					inputs: nodeType.inputs,
 					outputs: nodeType.outputs,
@@ -109,6 +140,7 @@ export class NodeSearchEngine {
 
 				return {
 					name: item.name,
+					version: getLatestVersion(item.version),
 					displayName: item.displayName,
 					description: item.description ?? 'No description available',
 					inputs: item.inputs,
@@ -127,6 +159,7 @@ export class NodeSearchEngine {
 		return `
 		<node>
 			<node_name>${result.name}</node_name>
+			<node_version>${result.version}</node_version>
 			<node_description>${result.description}</node_description>
 			<node_inputs>${typeof result.inputs === 'object' ? JSON.stringify(result.inputs) : result.inputs}</node_inputs>
 			<node_outputs>${typeof result.outputs === 'object' ? JSON.stringify(result.outputs) : result.outputs}</node_outputs>

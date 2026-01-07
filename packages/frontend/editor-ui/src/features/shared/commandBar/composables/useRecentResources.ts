@@ -4,7 +4,7 @@ import type { CommandBarItem } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { N8nIcon } from '@n8n/design-system';
@@ -41,12 +41,9 @@ export function useRecentResources() {
 	function trackResourceOpened(to: RouteLocationNormalized): void {
 		if (to.name === VIEWS.WORKFLOW && typeof to.params.name === 'string') {
 			const workflowId = to.params.name;
-			if (
-				workflowId &&
-				workflowId !== 'new' &&
-				workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				workflowId !== NEW_WORKFLOW_ID
-			) {
+			const isNewWorkflow = to.query.new === 'true';
+			// Check if it's a valid workflow ID (not empty and exists)
+			if (workflowId && !isNewWorkflow) {
 				registerWorkflowOpen(workflowId);
 
 				if (typeof to.params.nodeId === 'string' && to.params.nodeId) {
@@ -109,7 +106,9 @@ export function useRecentResources() {
 
 				items.push({
 					id: `recent-node-${currentWorkflowId}-${recentNode.nodeId}`,
-					title: node.name,
+					title: i18n.baseText('generic.openResource', {
+						interpolate: { resource: node.name },
+					}),
 					section: i18n.baseText('commandBar.sections.recent'),
 					icon: {
 						component: NodeIcon as Component,
@@ -145,7 +144,11 @@ export function useRecentResources() {
 
 				items.push({
 					id: `recent-workflow-${recentWorkflow.id}`,
-					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+					title: i18n.baseText('generic.openResource', {
+						interpolate: {
+							resource: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+						},
+					}),
 					section: i18n.baseText('commandBar.sections.recent'),
 					icon: {
 						component: N8nIcon,

@@ -10,12 +10,12 @@ import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
 // import '@n8n/design-system/css/tailwind/index.css';
 
-import './n8n-theme.scss';
+import '@/main.scss';
 // Ensure i18n HMR owner is evaluated as early as possible in dev
-import '@/dev/i18nHmr';
+import '@/app/dev/i18nHmr';
 
-import App from '@/App.vue';
-import router from './router';
+import App from '@/app/App.vue';
+import router from '@/app/router';
 
 import { i18nInstance } from '@n8n/i18n';
 

@@ -35,12 +35,14 @@ defineSlots<{
 .title {
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--bold);
+	line-height: 145%;
 	color: var(--color--text);
 	margin: 0;
 }
 
 .description {
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	margin: 0;
 	text-align: center;
 	max-width: 240px;

@@ -149,8 +149,11 @@ export function calculateProgrammaticAverages(results: TestResult[]): Record<str
 		agentPrompt: 0,
 		tools: 0,
 		fromAi: 0,
+		similarity: 0,
 		overall: 0,
 	};
+
+	let similarityCount = 0;
 
 	successfulTests.forEach((r) => {
 		programmaticAverages.connections += r.programmaticEvaluationResult.connections.score;
@@ -159,10 +162,26 @@ export function calculateProgrammaticAverages(results: TestResult[]): Record<str
 		programmaticAverages.tools += r.programmaticEvaluationResult.tools.score;
 		programmaticAverages.fromAi += r.programmaticEvaluationResult.fromAi.score;
 		programmaticAverages.overall += r.programmaticEvaluationResult.overallScore;
+
+		// Include similarity if available
+		if (r.programmaticEvaluationResult.similarity) {
+			programmaticAverages.similarity += r.programmaticEvaluationResult.similarity.score;
+			similarityCount++;
+		}
 	});
 
 	Object.keys(programmaticAverages).forEach((key) => {
-		programmaticAverages[key] /= successfulTests.length || 1;
+		if (key === 'similarity') {
+			// Use -1 as sentinel value when no tests had similarity data
+			// This distinguishes "no reference workflows" from "0% similarity"
+			if (similarityCount === 0) {
+				programmaticAverages[key] = -1;
+			} else {
+				programmaticAverages[key] /= similarityCount;
+			}
+		} else {
+			programmaticAverages[key] /= successfulTests.length || 1;
+		}
 	});
 
 	return programmaticAverages;
@@ -191,6 +210,12 @@ export function countProgrammaticViolationsByType(results: TestResult[]): {
 				...r.programmaticEvaluationResult.tools.violations,
 				...r.programmaticEvaluationResult.fromAi.violations,
 			];
+
+			// Include similarity violations if available
+			if (r.programmaticEvaluationResult.similarity) {
+				allViolations.push(...r.programmaticEvaluationResult.similarity.violations);
+			}
+
 			criticalCount += allViolations.filter((v) => v.type === 'critical').length;
 			majorCount += allViolations.filter((v) => v.type === 'major').length;
 			minorCount += allViolations.filter((v) => v.type === 'minor').length;

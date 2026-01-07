@@ -4,6 +4,8 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
 
@@ -20,10 +22,27 @@ export class WorkflowIndexService {
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly batchSize = 100,
 	) {}
+
+	init() {
+		this.eventService.on('server-started', async (): Promise<void> => {
+			this.logger.info('Building workflow dependency index...');
+			await this.buildIndex().catch((e) => this.errorReporter.error(e));
+		});
+		this.eventService.on('workflow-created', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-saved', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
+			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+		});
+	}
 
 	async buildIndex() {
 		const batchSize = this.batchSize;
@@ -101,11 +120,13 @@ export class WorkflowIndexService {
 	}
 
 	private addNodeTypeDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		dependencyUpdates.add({
-			dependencyType: 'nodeType',
-			dependencyKey: node.type,
-			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
-		});
+		if (node.type) {
+			dependencyUpdates.add({
+				dependencyType: 'nodeType',
+				dependencyKey: node.type,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
 	}
 
 	private addCredentialDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
@@ -114,6 +135,9 @@ export class WorkflowIndexService {
 		}
 		for (const credentialDetails of Object.values(node.credentials)) {
 			const { id } = credentialDetails;
+			if (!id) {
+				continue;
+			}
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
@@ -142,11 +166,13 @@ export class WorkflowIndexService {
 			return;
 		}
 		const webhookPath = node.parameters.path as string;
-		dependencyUpdates.add({
-			dependencyType: 'webhookPath',
-			dependencyKey: webhookPath,
-			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
-		});
+		if (webhookPath) {
+			dependencyUpdates.add({
+				dependencyType: 'webhookPath',
+				dependencyKey: webhookPath,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
 	}
 
 	private getCalledWorkflowIdFrom(node: INode): string | undefined {
