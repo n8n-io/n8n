@@ -23,13 +23,17 @@ export function useDocumentTitle(windowRef?: Ref<Window | undefined>) {
 	};
 
 	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
+		let prefix = '⚠️';
 		if (status === 'EXECUTING') {
-			icon = '🔄';
+			prefix = '🔄';
 		} else if (status === 'IDLE') {
-			icon = '▶️';
+			prefix = '▶️';
+		} else if (status === 'AI_BUILDING') {
+			prefix = '[Building]';
+		} else if (status === 'AI_DONE') {
+			prefix = '[Done]';
 		}
-		set(`${icon} ${workflowName}`);
+		set(`${prefix} ${workflowName}`);
 	};
 
 	return { set, reset, setDocumentTitle };

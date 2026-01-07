@@ -28,4 +28,46 @@ describe('useDocumentTitle', () => {
 		set('Test Title');
 		expect(document.title).toBe('Test Title - n8n[BETA]');
 	});
+
+	describe('setDocumentTitle', () => {
+		beforeEach(() => {
+			settings.releaseChannel = 'stable';
+		});
+
+		it('should set document title with IDLE status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'IDLE');
+			expect(document.title).toBe('▶️ My Workflow - n8n');
+		});
+
+		it('should set document title with EXECUTING status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'EXECUTING');
+			expect(document.title).toBe('🔄 My Workflow - n8n');
+		});
+
+		it('should set document title with ERROR status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'ERROR');
+			expect(document.title).toBe('⚠️ My Workflow - n8n');
+		});
+
+		it('should set document title with DEBUG status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'DEBUG');
+			expect(document.title).toBe('⚠️ My Workflow - n8n');
+		});
+
+		it('should set document title with AI_BUILDING status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'AI_BUILDING');
+			expect(document.title).toBe('[Building] My Workflow - n8n');
+		});
+
+		it('should set document title with AI_DONE status', () => {
+			const { setDocumentTitle } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'AI_DONE');
+			expect(document.title).toBe('[Done] My Workflow - n8n');
+		});
+	});
 });

@@ -82,6 +82,16 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	}),
 }));
 
+// Mock useDocumentTitle
+const setDocumentTitleMock = vi.fn();
+vi.mock('@/app/composables/useDocumentTitle', () => ({
+	useDocumentTitle: () => ({
+		set: vi.fn(),
+		reset: vi.fn(),
+		setDocumentTitle: setDocumentTitleMock,
+	}),
+}));
+
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -2740,6 +2750,79 @@ describe('AI Builder store', () => {
 				expect(builderStore.sendChatMessage).toBeDefined();
 				expect(typeof builderStore.sendChatMessage).toBe('function');
 			});
+		});
+	});
+
+	describe('Page title status', () => {
+		it('should set title to AI_BUILDING when streaming starts', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Mock the API to prevent actual calls
+			apiSpy.mockImplementation(() => {});
+
+			await builderStore.sendChatMessage({ text: 'Build something' });
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'AI_BUILDING');
+		});
+
+		it('should set title to AI_DONE when streaming stops and tab is hidden', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Start streaming first
+			builderStore.streaming = true;
+
+			// Trigger abortStreaming which calls stopStreaming internally
+			builderStore.abortStreaming();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'AI_DONE');
+		});
+
+		it('should set title to IDLE when streaming stops and tab is visible', () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Start streaming first
+			builderStore.streaming = true;
+
+			// Trigger abortStreaming which calls stopStreaming internally
+			builderStore.abortStreaming();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'IDLE');
+		});
+
+		it('should reset title to IDLE when clearDoneIndicatorTitle is called and indicator is showing', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			builderStore.streaming = true;
+			builderStore.abortStreaming();
+
+			setDocumentTitleMock.mockClear();
+
+			builderStore.clearDoneIndicatorTitle();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'IDLE');
+		});
+
+		it('should not change title when clearDoneIndicatorTitle is called and indicator is not showing', () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			setDocumentTitleMock.mockClear();
+
+			builderStore.clearDoneIndicatorTitle();
+
+			expect(setDocumentTitleMock).not.toHaveBeenCalled();
 		});
 	});
 });
