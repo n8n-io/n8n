@@ -234,7 +234,7 @@ const publishButtonConfig = computed(() => {
 		'published-invalid-trigger': {
 			text: i18n.baseText('generic.published'),
 			enabled: false,
-			showIndicator: false,
+			showIndicator: true,
 			indicatorClass: '',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: false,
