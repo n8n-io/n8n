@@ -321,7 +321,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			typeof options.filter?.parentFolderId === 'string' &&
 			options.filter.parentFolderId !== PROJECT_ROOT &&
 			typeof options.filter?.projectId === 'string' &&
-			options.filter.query
+			(options.filter.query ||
+				(Array.isArray(options.filter.tags) && options.filter.tags.length > 0))
 		) {
 			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 				options.filter.parentFolderId,
@@ -627,8 +628,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
+		// When filtering by tags or query from PROJECT_ROOT, don't restrict to root-level workflows
+		// This allows all matching workflows to appear regardless of folder location
+		const hasSearchFilter =
+			filter?.query || (Array.isArray(filter?.tags) && filter.tags.length > 0);
+
 		if (filter?.parentFolderId === PROJECT_ROOT) {
-			qb.andWhere('workflow.parentFolderId IS NULL');
+			if (!hasSearchFilter) {
+				qb.andWhere('workflow.parentFolderId IS NULL');
+			}
 		} else if (filter?.parentFolderId) {
 			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
 				parentFolderId: filter.parentFolderId,
