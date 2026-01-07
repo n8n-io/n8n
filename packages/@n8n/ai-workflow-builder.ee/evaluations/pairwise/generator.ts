@@ -1,5 +1,4 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import * as crypto from 'crypto';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
