@@ -449,7 +449,8 @@ export class Ssh implements INodeType {
 							try {
 								await writeFile(binaryFile.path, uploadData);
 
-								const rawFileName = fileName ?? binaryData.fileName ?? '';
+								// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+								const rawFileName = fileName || binaryData.fileName || 'file';
 								const sanitizedFileName = sanitizeFilename(rawFileName);
 
 								await ssh.putFile(
