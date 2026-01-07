@@ -11,7 +11,6 @@ import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
-import type { ArtifactSaver } from '../utils/artifact-saver';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 // ============================================================================
@@ -25,7 +24,6 @@ export interface CreatePairwiseTargetOptions {
 	numGenerations: number;
 	featureFlags?: BuilderFeatureFlags;
 	experimentName?: string;
-	artifactSaver?: ArtifactSaver | null;
 }
 
 /**
@@ -38,24 +36,11 @@ export interface CreatePairwiseTargetOptions {
  * This avoids 403 errors from nested traceable in evaluator context.
  */
 export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
-	const {
-		parsedNodeTypes,
-		llm,
-		numJudges,
-		numGenerations,
-		featureFlags,
-		experimentName,
-		artifactSaver,
-	} = options;
+	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName } = options;
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
-			const { prompt, evals: evalCriteria, exampleId } = inputs;
-
-			const promptId = `${exampleId}-${Date.now()}`;
-
-			// Save prompt artifacts if output directory is configured
-			artifactSaver?.savePrompt(promptId, prompt, evalCriteria);
+			const { prompt, evals: evalCriteria } = inputs;
 
 			// Generate ALL workflows and run judges in parallel
 			const generationResults: GenerationResult[] = await Promise.all(
@@ -80,13 +65,6 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					return { workflow, ...panelResult };
 				}),
 			);
-
-			// Save generation artifacts if output directory is configured
-			if (artifactSaver) {
-				for (let i = 0; i < generationResults.length; i++) {
-					artifactSaver.saveGeneration(promptId, i, generationResults[i]);
-				}
-			}
 
 			if (numGenerations === 1) {
 				const singleGenFeedback = buildSingleGenerationResults(generationResults[0], numJudges);

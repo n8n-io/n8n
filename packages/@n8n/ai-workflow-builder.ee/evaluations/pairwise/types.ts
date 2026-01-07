@@ -10,8 +10,6 @@ import type { EvalCriteria } from './judge-panel';
 export interface PairwiseDatasetInput {
 	evals: EvalCriteria;
 	prompt: string;
-	/** LangSmith example ID - injected at runtime for artifact saving */
-	exampleId: string;
 }
 
 /** LangSmith Example with typed inputs for pairwise evaluation */
