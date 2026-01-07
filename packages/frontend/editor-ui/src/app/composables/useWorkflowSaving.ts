@@ -154,9 +154,6 @@ export function useWorkflowSaving({
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
 			);
-			if (workflowId) {
-				onSaved?.(true); // First save of new workflow
-			}
 			return !!workflowId;
 		}
 
@@ -360,6 +357,7 @@ export function useWorkflowSaving({
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
+				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
 
@@ -421,6 +419,7 @@ export function useWorkflowSaving({
 			uiStore.markStateClean();
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
+			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
