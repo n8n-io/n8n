@@ -84,3 +84,17 @@ export function getAdditionalKeys(
 		$resumeWebhookUrl: resumeUrl,
 	};
 }
+
+/**
+ * Returns the global additional keys for Expressions
+ * without workflow execution context
+ * */
+export function getNonWorkflowAdditionalKeys(
+	additionalData: IWorkflowExecuteAdditionalData,
+	options?: { secretsEnabled?: boolean },
+): IWorkflowDataProxyAdditionalKeys {
+	return {
+		$vars: additionalData.variables,
+		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
+	};
+}

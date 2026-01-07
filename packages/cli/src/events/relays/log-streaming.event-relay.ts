@@ -24,15 +24,20 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
+			'workflow-executed': (event) => this.workflowExecuted(event),
 			'node-pre-execute': (event) => this.nodePreExecute(event),
 			'node-post-execute': (event) => this.nodePostExecute(event),
 			'user-deleted': (event) => this.userDeleted(event),
 			'user-invited': (event) => this.userInvited(event),
 			'user-reinvited': (event) => this.userReinvited(event),
 			'user-updated': (event) => this.userUpdated(event),
+			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
+			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
@@ -46,12 +51,16 @@ export class LogStreamingEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
+			'variable-created': (event) => this.variableCreated(event),
+			'variable-updated': (event) => this.variableUpdated(event),
+			'variable-deleted': (event) => this.variableDeleted(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
+			'execution-deleted': (event) => this.executionDeleted(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -113,13 +122,44 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow }: RelayEventMap['workflow-saved']) {
+	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.activated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowDeactivated({
+		user,
+		workflowId,
+		workflow,
+	}: RelayEventMap['workflow-deactivated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowSaved({ user, workflow, settingsChanged }: RelayEventMap['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				...(settingsChanged && { settingsChanged }),
 			},
 		});
 	}
@@ -207,6 +247,26 @@ export class LogStreamingEventRelay extends EventRelay {
 		}
 	}
 
+	@Redactable()
+	private workflowExecuted({
+		user,
+		workflowId,
+		workflowName,
+		executionId,
+		source,
+	}: RelayEventMap['workflow-executed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.executed',
+			payload: {
+				...(user && { ...user }),
+				workflowId,
+				workflowName,
+				executionId,
+				source,
+			},
+		});
+	}
+
 	// #endregion
 
 	// #region Node
@@ -284,6 +344,22 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.updated',
 			payload: { ...user, fieldsChanged },
+		});
+	}
+
+	@Redactable()
+	private userMfaEnabled({ user }: RelayEventMap['user-mfa-enabled']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.mfa.enabled',
+			payload: user,
+		});
+	}
+
+	@Redactable()
+	private userMfaDisabled({ user, disableMethod }: RelayEventMap['user-mfa-disabled']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.mfa.disabled',
+			payload: { ...user, disableMethod },
 		});
 	}
 
@@ -417,6 +493,34 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #endregion
 
+	// #region Variable
+
+	@Redactable()
+	private variableCreated({ user, ...rest }: RelayEventMap['variable-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.created',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private variableUpdated({ user, ...rest }: RelayEventMap['variable-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.updated',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private variableDeleted({ user, ...rest }: RelayEventMap['variable-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.deleted',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	// #endregion
+
 	// #region Community package
 
 	@Redactable()
@@ -479,6 +583,22 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				reason,
+			},
+		});
+	}
+
+	@Redactable()
+	private executionDeleted({
+		user,
+		executionIds,
+		deleteBefore,
+	}: RelayEventMap['execution-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.execution.deleted',
+			payload: {
+				...user,
+				executionIds,
+				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
 			},
 		});
 	}

@@ -88,19 +88,36 @@ const STRUCTURED_OUTPUT_PARSER = `WHEN TO SET hasOutputParser: true on AI Agent:
 - AI output will be stored in database/data tables with specific fields
 - AI is classifying, scoring, or extracting specific data fields`;
 
-/** AI sub-nodes are SOURCES (they "provide" capabilities), so arrows point FROM sub-node TO parent */
 const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 
-Regular data flow: Source node output → Target node input
-Example: HTTP Request → Set (HTTP Request is source, Set is target)
+Regular "main" connections flow: Source → Target (data flows forward)
+Example: HTTP Request → Set (HTTP outputs data, Set receives it)
 
-AI sub-nodes PROVIDE capabilities, making them the SOURCE:
+AI CAPABILITY CONNECTIONS are REVERSED in direction:
+Sub-nodes (tools, memory, models) connect TO the AI Agent, NOT from it.
+The sub-node is the SOURCE, the AI Agent is the TARGET.
+
+⚠️ WRONG: AI Agent → Calculator Tool (NEVER do this)
+✅ CORRECT: Calculator Tool → AI Agent (tool provides capability to agent)
+
+When calling connect_nodes for AI sub-nodes:
+- sourceNodeName: The sub-node (tool, memory, model, parser)
+- targetNodeName: The AI Agent (or Vector Store, Document Loader)
+- connectionType: The appropriate ai_* type
+
+AI Connection Examples (SOURCE → TARGET [connectionType]):
 - OpenAI Chat Model → AI Agent [ai_languageModel]
 - Calculator Tool → AI Agent [ai_tool]
+- HTTP Request Tool → AI Agent [ai_tool]
 - Window Buffer Memory → AI Agent [ai_memory]
+- Structured Output Parser → AI Agent [ai_outputParser]
 - Token Splitter → Default Data Loader [ai_textSplitter]
 - Default Data Loader → Vector Store [ai_document]
-- Embeddings OpenAI → Vector Store [ai_embedding]`;
+- Embeddings OpenAI → Vector Store [ai_embedding]
+- Vector Store (retrieve-as-tool mode) → AI Agent [ai_tool]
+
+The AI Agent only has ONE "main" output for regular data flow.
+All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.`;
 
 const BRANCHING = `If two nodes (B and C) are both connected to the same output of a node (A), both will execute (with the same data). Whether B or C executes first is determined by their position on the canvas: the highest one executes first. Execution happens depth-first, i.e. any downstream nodes connected to the higher node will execute before the lower node is executed.
 Nodes that route the flow (e.g. if, switch) apply their conditions independently to each input item. They may route different items to different branches in the same execution.`;
@@ -203,30 +220,84 @@ Example connectionParameters for 3-way routing:
   }}
 }}`;
 
-const CONNECTION_TYPES = `**Main Connections** (regular data flow):
+const NODE_CONNECTION_EXAMPLES = `<node_connection_examples>
+When connecting nodes with non-standard output patterns, use get_node_connection_examples:
+
+Call get_node_connection_examples when:
+- Connecting Loop Over Items (splitInBatches) - has TWO outputs with specific meanings
+- Connecting Switch nodes with multiple outputs
+- Connecting IF nodes with true/false branches
+- Any node where you're unsure about connection patterns
+
+Usage:
+- nodeType: "n8n-nodes-base.splitInBatches" (exact node type)
+- Returns mermaid diagrams showing how the node is typically connected
+
+CRITICAL for Loop Over Items (splitInBatches):
+This node has TWO outputs that work differently from most nodes:
+- Output 0 (first array element) = "Done" branch - connects to nodes that run AFTER all looping completes
+- Output 1 (second array element) = "Loop" branch - connects to nodes that process each batch during the loop
+This is COUNTERINTUITIVE - the loop processing is on output 1, NOT output 0.
+
+When connecting splitInBatches, use sourceOutputIndex to specify which output:
+- sourceOutputIndex: 0 → "Done" branch (post-loop processing, aggregation)
+- sourceOutputIndex: 1 → "Loop" branch (batch processing during loop)
+
+Example: Looping over items, processing each batch, then aggregating results:
+- connect_nodes(source: "Loop Over Items", target: "Process Each Batch", sourceOutputIndex: 1)  // Loop branch
+- connect_nodes(source: "Loop Over Items", target: "Aggregate Results", sourceOutputIndex: 0)  // Done branch
+- connect_nodes(source: "Process Each Batch", target: "Loop Over Items")  // Loop back for next batch
+</node_connection_examples>`;
+
+const CONNECTION_TYPES = `<connection_type_reference>
+CONNECTION TYPES AND DIRECTIONS:
+
+**Main Connections** (main) - Regular data flow, source outputs TO target:
 - Trigger → HTTP Request → Set → Email
+- AI Agent → Email (AI Agent's main output goes to next node)
 
-**AI Language Model Connections** (ai_languageModel):
+**AI Capability Connections** - Sub-nodes connect TO their parent node:
+Remember: Sub-node is SOURCE, Parent is TARGET
+
+ai_languageModel - Language model provides LLM capability:
 - OpenAI Chat Model → AI Agent
+- Anthropic Chat Model → AI Agent
 
-**AI Tool Connections** (ai_tool):
+ai_tool - Tool provides action capability:
 - Calculator Tool → AI Agent
-- AI Agent Tool → AI Agent (for multi-agent systems)
+- HTTP Request Tool → AI Agent
+- Code Tool → AI Agent
+- AI Agent Tool → AI Agent (multi-agent systems)
 
-**AI Document Connections** (ai_document):
-- Document Loader → Vector Store
-
-**AI Embedding Connections** (ai_embedding):
-- OpenAI Embeddings → Vector Store
-
-**AI Text Splitter Connections** (ai_textSplitter):
-- Token Text Splitter → Document Loader
-
-**AI Memory Connections** (ai_memory):
+ai_memory - Memory provides conversation history:
 - Window Buffer Memory → AI Agent
+- Postgres Chat Memory → AI Agent
 
-**AI Vector Store in retrieve-as-tool mode** (ai_tool):
-- Vector Store → AI Agent`;
+ai_outputParser - Parser provides structured output capability:
+- Structured Output Parser → AI Agent
+
+ai_document - Document loader provides documents:
+- Default Data Loader → Vector Store
+
+ai_embedding - Embeddings provides vector generation:
+- OpenAI Embeddings → Vector Store
+- Cohere Embeddings → Vector Store
+
+ai_textSplitter - Splitter provides chunking capability:
+- Token Text Splitter → Document Loader
+- Recursive Character Text Splitter → Document Loader
+
+ai_vectorStore - Vector store provides retrieval (when used as tool):
+- Vector Store (mode: retrieve-as-tool) → AI Agent [ai_tool]
+
+COMMON MISTAKES TO AVOID:
+❌ AI Agent → OpenAI Chat Model (WRONG - model provides TO agent)
+❌ AI Agent → Calculator Tool (WRONG - tool provides TO agent)
+❌ AI Agent → Window Buffer Memory (WRONG - memory provides TO agent)
+✅ OpenAI Chat Model → AI Agent (CORRECT)
+✅ Calculator Tool → AI Agent (CORRECT)
+✅ Window Buffer Memory → AI Agent (CORRECT)
+</connection_type_reference>`;
 
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
@@ -258,6 +329,7 @@ export function buildBuilderPrompt(): string {
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
+		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)
 		.section('do_not', RESTRICTIONS)
 		.section('response_format', RESPONSE_FORMAT)

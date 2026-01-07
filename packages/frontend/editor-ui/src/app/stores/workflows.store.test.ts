@@ -5,7 +5,6 @@ import {
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,7 +19,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import type {
-	IPinData,
 	IConnection,
 	IConnections,
 	INodeExecutionData,
@@ -115,7 +113,7 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.name).toBe('');
-		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		expect(workflowsStore.workflow.id).toBe('');
 	});
 
 	describe('isWaitingExecution', () => {
@@ -199,7 +197,7 @@ describe('useWorkflowsStore', () => {
 				{
 					id: 'start',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					parameters: {},
 					position: [0, 0],
@@ -287,14 +285,23 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('isNewWorkflow', () => {
-		it('should return true for a new workflow', () => {
-			expect(workflowsStore.isNewWorkflow).toBe(true);
+	describe('isWorkflowSaved', () => {
+		it('should return undefined for a new workflow', () => {
+			expect(workflowsStore.isWorkflowSaved[workflowsStore.workflowId]).toBeUndefined();
 		});
 
-		it('should return false for an existing workflow', () => {
+		it('should return true for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
-			expect(workflowsStore.isNewWorkflow).toBe(false);
+			// Add the workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(
+				createTestWorkflow({
+					id: '123',
+					name: 'Test Workflow',
+					active: false,
+					versionId: '1',
+				}),
+			);
+			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
 		});
 	});
 
@@ -1275,29 +1282,6 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('sets workflow pin data', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data: IPinData = {
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
-			};
-			workflowsStore.setWorkflowPinData(data);
-			expect(workflowsStore.workflow.pinData).toEqual(data);
-		});
-
-		it('sets workflow pin data, adding json keys', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data = {
-				TestNode: [{ test: true }],
-				TestNode1: [{ test: false }],
-			};
-			workflowsStore.setWorkflowPinData(data as unknown as IPinData);
-			expect(workflowsStore.workflow.pinData).toEqual({
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
-			});
-		});
-
 		it('should replace placeholder task data in waiting nodes correctly', () => {
 			const runWithExistingRunData = deepCopy(executionResponse);
 			runWithExistingRunData.data = createRunExecutionData({
@@ -2240,10 +2224,14 @@ describe('useWorkflowsStore', () => {
 				status: 'success',
 			});
 
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
@@ -2265,10 +2253,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should handle null response from API', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
@@ -2285,10 +2277,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not throw error when API call fails', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
@@ -2307,7 +2303,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should not fetch when workflow is placeholder empty workflow', async () => {
 			workflowsStore.workflow = createTestWorkflow({
-				id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+				id: '',
 				scopes: ['workflow:update'],
 			});
 

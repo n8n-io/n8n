@@ -30,7 +30,6 @@ export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
-export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
@@ -56,7 +55,6 @@ export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
-	START_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 ];

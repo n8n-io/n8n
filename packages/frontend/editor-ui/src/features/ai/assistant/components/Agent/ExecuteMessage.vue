@@ -187,6 +187,13 @@ function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 
 onMounted(scrollIntoView);
 
+// Track when all todos are resolved while the component is visible
+watch(hasValidationIssues, (hasIssues, hadIssues) => {
+	if (hadIssues && !hasIssues) {
+		builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
+	}
+});
+
 onBeforeUnmount(() => {
 	stopExecutionWatcher();
 });

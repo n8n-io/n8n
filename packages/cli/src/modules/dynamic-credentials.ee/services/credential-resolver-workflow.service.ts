@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 
 type CredentialStatus = {
 	credentialId: string;
+	credentialName: string;
 	resolverId: string;
 	credentialType: string;
 	status: 'missing' | 'configured';
@@ -141,42 +142,45 @@ export class CredentialResolverWorkflowService {
 		let resolverInstance: ICredentialResolver | null = options.workflowResolverInstance;
 		let resolverConfig: Record<string, unknown> | null = options.workflowResolverConfig;
 		const credentialResolverId = credential.resolverId ?? options.resolverId;
-		if (credentialResolverId) {
-			if (credentialResolverId !== options.resolverId) {
-				const {
-					resolverInstance: credentialResolverInstance,
-					resolverConfig: credentialResolverConfig,
-				} = await this.getResolver(credentialResolverId);
-				resolverInstance = credentialResolverInstance;
-				resolverConfig = credentialResolverConfig;
-			}
+		if (!credentialResolverId) {
+			return null;
+		}
+		if (credentialResolverId !== options.resolverId) {
+			const {
+				resolverInstance: credentialResolverInstance,
+				resolverConfig: credentialResolverConfig,
+			} = await this.getResolver(credentialResolverId);
+			resolverInstance = credentialResolverInstance;
+			resolverConfig = credentialResolverConfig;
+		}
 
-			if (resolverConfig && resolverInstance) {
-				try {
-					await resolverInstance.getSecret(
-						credential.id,
-						{ identity: options.identityToken, version: 1 },
-						{
-							configuration: resolverConfig,
-							resolverName: resolverInstance.metadata.name,
-							resolverId: credentialResolverId,
-						},
-					);
-					return {
-						credentialId: credential.id,
+		if (resolverConfig && resolverInstance) {
+			try {
+				await resolverInstance.getSecret(
+					credential.id,
+					{ identity: options.identityToken, version: 1 },
+					{
+						configuration: resolverConfig,
+						resolverName: resolverInstance.metadata.name,
 						resolverId: credentialResolverId,
-						status: 'configured',
-						credentialType: credential.type,
-					};
-				} catch (error) {
-					// Handle error (e.g., log it, collect status, etc.
-					return {
-						credentialId: credential.id,
-						resolverId: credentialResolverId,
-						status: 'missing',
-						credentialType: credential.type,
-					};
-				}
+					},
+				);
+				return {
+					credentialId: credential.id,
+					resolverId: credentialResolverId,
+					credentialName: credential.name,
+					status: 'configured',
+					credentialType: credential.type,
+				};
+			} catch (error) {
+				// Handle error (e.g., log it, collect status, etc.
+				return {
+					credentialId: credential.id,
+					resolverId: credentialResolverId,
+					credentialName: credential.name,
+					status: 'missing',
+					credentialType: credential.type,
+				};
 			}
 		}
 		return null;

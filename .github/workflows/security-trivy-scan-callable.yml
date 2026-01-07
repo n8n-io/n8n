@@ -22,7 +22,8 @@ permissions:
 
 env:
   QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
-  SLACK_CHANNEL_ID: C042WDXPTEZ #mission-security
+  SLACK_CHANNEL_ID: C0A6Y62BH9T #notify-security-scan-outputs
+  SLACK_CHANNEL_CRITICAL: C042WDXPTEZ #mission-security
 
 jobs:
   security_scan:
@@ -242,3 +243,92 @@ jobs:
             channel: ${{ env.SLACK_CHANNEL_ID }}
             text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"
             blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}
+
+      - name: Generate Critical Vulnerability Blocks for Mission Security
+        if: steps.process_results.outputs.vulnerabilities_found == 'true' && steps.process_results.outputs.critical_count != '0'
+        id: generate_critical_blocks
+        run: |
+          CRITICAL_BLOCKS_JSON=$(jq -c --arg image_ref "${{ inputs.image_ref }}" \
+          --arg repo_url "${{ github.server_url }}/${{ github.repository }}" \
+          --arg repo_name "${{ github.repository }}" \
+          --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          --arg critical_count "${{ steps.process_results.outputs.critical_count }}" \
+          --arg unique_cves "${{ steps.process_results.outputs.unique_cves }}" \
+          '
+          # Function to create a detailed critical vulnerability block
+          def critical_vuln_block:
+            # Build references section if available
+            (if (.References | length) > 0 then
+              "\n*References:* " + ([.References[0:2][] | "<\(.)|\(. | split("/")[-1])>"] | join(", ")) + (if (.References | length) > 2 then " and \((.References | length) - 2) more" else "" end)
+            else "" end) as $refs |
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": ":red_circle: *<https://nvd.nist.gov/vuln/detail/\(.VulnerabilityID)|\(.VulnerabilityID)>*\n*Severity:* CRITICAL | *CVSS Score:* `\(.CVSS.nvd.V3Score // "N/A")` | *Vector:* `\(.CVSS.nvd.V3Vector // "N/A")`\n*Package:* `\(.PkgName)@\(.InstalledVersion)` → `\(.FixedVersion // "No fix available")`\n*Published:* \(.PublishedDate // "Unknown" | split("T")[0])\n*Description:* \(.Description // "No description available" | split("\n")[0] | .[0:200])\($refs)"
+              }
+            };
+
+          # Main structure for critical vulnerabilities
+          [
+            {
+              "type": "header",
+              "text": { "type": "plain_text", "text": ":rotating_light: CRITICAL Vulnerabilities Detected" }
+            },
+            {
+              "type": "section",
+              "fields": [
+                { "type": "mrkdwn", "text": "*Repository:*\n<\($repo_url)|\($repo_name)>" },
+                { "type": "mrkdwn", "text": "*Image:*\n`\($image_ref)`" },
+                { "type": "mrkdwn", "text": "*Critical Vulnerabilities:*\n:red_circle: \($critical_count)" },
+                { "type": "mrkdwn", "text": "*Scan Time:*\n<!date^\(now | floor)^{date_num} {time_secs}|Unknown>" }
+              ]
+            },
+            { "type": "divider" },
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*:warning: Critical CVE Details:*"
+              }
+            }
+          ] +
+          (
+            # Filter only CRITICAL vulnerabilities
+            [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | select(.Severity == "CRITICAL")] |
+            # Group by CVE to avoid duplicates
+            group_by(.VulnerabilityID) |
+            map(.[0]) |
+            # Sort by CVSS score descending
+            sort_by(-((.CVSS.nvd.V3Score // 0) | tonumber? // 0)) |
+            # Include all critical vulnerabilities
+            map(. | critical_vuln_block)
+          ) +
+          [
+            { "type": "divider" },
+            {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": { "type": "plain_text", "text": ":github: View Full Scan Report" },
+                  "style": "danger",
+                  "url": $run_url
+                }
+              ]
+            }
+          ]
+          ' trivy-results.json)
+
+          echo "critical_blocks=$CRITICAL_BLOCKS_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Send Critical Vulnerability Notification to Mission Security
+        if: steps.process_results.outputs.critical_count != '0'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.QBOT_SLACK_TOKEN }}
+          payload: |
+            channel: ${{ env.SLACK_CHANNEL_CRITICAL }}
+            text: "🚨 CRITICAL: ${{ steps.process_results.outputs.critical_count }} critical vulnerabilities found in ${{ inputs.image_ref }}"
+            blocks: ${{ steps.generate_critical_blocks.outputs.critical_blocks }}

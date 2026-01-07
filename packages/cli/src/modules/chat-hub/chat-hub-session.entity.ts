@@ -21,6 +21,22 @@ import type { INode } from 'n8n-workflow';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 
+export interface IChatHubSession {
+	id: string;
+	createdAt: Date;
+	updatedAt: Date;
+	title: string;
+	ownerId: string;
+	lastMessageAt: Date;
+	credentialId: string | null;
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	agentId: string | null;
+	agentName: string | null;
+	tools: INode[];
+}
+
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
 	@PrimaryGeneratedColumn('uuid')
@@ -50,8 +66,8 @@ export class ChatHubSession extends WithTimestamps {
 	 * Timestamp of the last active message in the session.
 	 * Used to sort chat sessions by recent activity.
 	 */
-	@DateTimeColumn({ nullable: true })
-	lastMessageAt: Date | null;
+	@DateTimeColumn()
+	lastMessageAt: Date;
 
 	/*
 	 * ID of the selected credential to use by default with the selected LLM provider (if applicable).

@@ -2,9 +2,11 @@ import type { WorkflowAutoDeactivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated) {
 	const workflowsStore = useWorkflowsStore();
+	const { initializeWorkspace } = useCanvasOperations();
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 
@@ -17,7 +19,7 @@ export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated)
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
-			workflowsStore.setWorkflow(updatedWorkflow);
+			await initializeWorkspace(updatedWorkflow);
 		}
 
 		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');

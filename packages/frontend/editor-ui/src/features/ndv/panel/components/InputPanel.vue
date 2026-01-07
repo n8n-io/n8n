@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	CRON_NODE_TYPE,
-	INTERVAL_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	START_NODE_TYPE,
-} from '@/app/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
@@ -130,7 +125,7 @@ const inputMode = ref<MappingMode>(
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
-	const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
 	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
 		return false;
 	}

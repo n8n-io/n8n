@@ -96,7 +96,7 @@ export class ChatHubController {
 		}
 
 		// Verify user has access to this session
-		await this.chatService.getConversation(req.user.id, sessionId);
+		await this.chatService.ensureConversation(req.user.id, sessionId);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
