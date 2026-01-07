@@ -10,7 +10,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -37,7 +36,6 @@ const workflowsStore = useWorkflowsStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
-const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
 
@@ -241,28 +239,18 @@ watch(
 	{ deep: true },
 );
 
-// If this is the initial generation, streaming has ended, and there were workflow updates,
-// we want to save the workflow
+// Reset initial generation flag when streaming ends
+// Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	async (isStreaming, wasStreaming) => {
+	(isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
 		}
 
-		// Check if the response completed successfully (no error or cancellation)
-		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-		const successful =
-			lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
-
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
-
-			// Only save if generation completed successfully
-			if (successful) {
-				await workflowSaver.saveCurrentWorkflow();
-			}
 		}
 	},
 );
