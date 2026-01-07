@@ -22,7 +22,10 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import {
+	PERSONAL_PROJECT_GOVERNANCE,
+	TEMPLATE_SETUP_EXPERIENCE,
+} from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
@@ -87,6 +90,8 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -547,6 +552,21 @@ export const routes: RouteRecordRaw[] = [
 							};
 						},
 					},
+				},
+			},
+			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const { isFeatureEnabled } = usePostHog();
+							return isFeatureEnabled(PERSONAL_PROJECT_GOVERNANCE.name);
+						},
+					},
+					// TODO: add telemetry
 				},
 			},
 			{

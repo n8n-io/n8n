@@ -14,6 +14,7 @@ export * from './orchestration';
 export * from './provisioning';
 export * from './prompts';
 export * from './roles';
+export * from './security-settings';
 export * from './settings';
 export * from './module-settings';
 export * from './sso';
