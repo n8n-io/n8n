@@ -279,7 +279,7 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, '')).toEqual(menuItems);
+		expect(applySearch(menuItems, '', mockI18n)).toEqual(menuItems);
 	});
 
 	it('should filter items by label', () => {
@@ -290,7 +290,7 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'gpt')).toEqual([
+		expect(applySearch(menuItems, 'gpt', mockI18n)).toEqual([
 			expect.objectContaining({
 				label: 'GPT-4',
 				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
@@ -324,7 +324,7 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'agent')).toEqual([
+		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
 			expect.objectContaining({
 				label: 'Agent 1',
 				data: expect.objectContaining({
@@ -364,14 +364,16 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'agent')).toEqual([
+		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
 			expect.objectContaining({
 				label: 'My Agent',
 				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'My Agent'] }),
 			}),
 			expect.objectContaining({
 				label: 'Another Agent',
-				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Another Agent'] }),
+				data: expect.objectContaining({
+					parts: ['chatHub.agent.workflowAgents', 'Another Agent'],
+				}),
 			}),
 		]);
 	});
@@ -390,7 +392,7 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'agent')).toEqual([
+		expect(applySearch(menuItems, 'agent', mockI18n)).toEqual([
 			expect.objectContaining({
 				label: 'Agent 0',
 				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 0'] }),
@@ -432,7 +434,7 @@ describe(applySearch, () => {
 				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 9'] }),
 			}),
 			expect.objectContaining({
-				label: 'More Workflow agent models...',
+				label: 'chatHub.models.selector.moreModels',
 				children: [
 					expect.objectContaining({ label: 'Agent 10' }),
 					expect.objectContaining({ label: 'Agent 11' }),
@@ -454,10 +456,10 @@ describe(applySearch, () => {
 			isLoading: true,
 		});
 
-		expect(applySearch(menuItems, 'add')).toEqual([]);
-		expect(applySearch(menuItems, 'verify')).toEqual([]);
-		expect(applySearch(menuItems, 'configure')).toEqual([]);
-		expect(applySearch(loadingMenuItems, 'loading')).toEqual([]);
+		expect(applySearch(menuItems, 'add', mockI18n)).toEqual([]);
+		expect(applySearch(menuItems, 'verify', mockI18n)).toEqual([]);
+		expect(applySearch(menuItems, 'configure', mockI18n)).toEqual([]);
+		expect(applySearch(loadingMenuItems, 'loading', mockI18n)).toEqual([]);
 	});
 
 	it('should only include providers with at least one matched models', () => {
@@ -473,7 +475,7 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'gpt')).toEqual([
+		expect(applySearch(menuItems, 'gpt', mockI18n)).toEqual([
 			expect.objectContaining({
 				label: 'GPT-4',
 				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
@@ -496,6 +498,6 @@ describe(applySearch, () => {
 
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
-		expect(applySearch(menuItems, 'anthropic')).toEqual([]);
+		expect(applySearch(menuItems, 'anthropic', mockI18n)).toEqual([]);
 	});
 });

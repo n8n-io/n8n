@@ -100,7 +100,7 @@ const menu = computed(() =>
 	}),
 );
 
-const filteredMenu = computed(() => applySearch(menu.value, searchQuery.value));
+const filteredMenu = computed(() => applySearch(menu.value, searchQuery.value, i18n));
 
 const selectedLabel = computed(
 	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),

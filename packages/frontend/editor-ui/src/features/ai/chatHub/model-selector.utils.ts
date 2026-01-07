@@ -313,7 +313,7 @@ function collectFlattenedSearchResults(item: MenuItem, pathPrefix: string[]): Me
 	return children.flatMap((child) => collectFlattenedSearchResults(child, fullPath));
 }
 
-export function applySearch(menuItems: MenuItem[], query: string): MenuItem[] {
+export function applySearch(menuItems: MenuItem[], query: string, i18n: I18nClass): MenuItem[] {
 	if (!query) {
 		return menuItems;
 	}
@@ -333,7 +333,12 @@ export function applySearch(menuItems: MenuItem[], query: string): MenuItem[] {
 		acc.push(...results.slice(0, flattenCount));
 
 		if (results.length > flattenCount) {
-			const label = flattenCount > 0 ? `More ${providerName} models...` : matched.label;
+			const label =
+				flattenCount > 0
+					? i18n.baseText('chatHub.models.selector.moreModels', {
+							interpolate: { providerName },
+						})
+					: matched.label;
 			const rest = results.slice(flattenCount).map((result) => ({
 				...result,
 				label: truncateBeforeLast(result.data?.fullName ?? '', MAX_AGENT_NAME_CHARS_MENU),
