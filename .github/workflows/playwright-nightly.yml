@@ -21,7 +21,7 @@ jobs:
       matrix:
         config: [standard, postgres]
     name: Test ${{ matrix.config }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-pull
       docker-image: ${{ github.event.inputs.image || 'n8nio/n8n:nightly' }}

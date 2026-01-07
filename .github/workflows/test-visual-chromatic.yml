@@ -1,4 +1,4 @@
-name: Chromatic
+name: 'Test: Visual Chromatic'
 
 on:
   schedule:

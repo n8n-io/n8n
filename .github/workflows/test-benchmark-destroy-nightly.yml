@@ -1,4 +1,4 @@
-name: Destroy Benchmark Env
+name: 'Test: Benchmark Destroy Env'
 
 on:
   schedule:
