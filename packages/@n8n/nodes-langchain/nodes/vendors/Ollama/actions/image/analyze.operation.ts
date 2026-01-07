@@ -99,6 +99,14 @@ const properties: INodeProperties[] = [
 				description: 'Controls randomness in responses. Lower values make output more focused.',
 			},
 			{
+				displayName: 'Thinking',
+				name: 'think',
+				type: 'boolean',
+				default: true,
+				description:
+					"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
+			},
+			{
 				displayName: 'Output Randomness (Top P)',
 				name: 'top_p',
 				default: 0.7,
@@ -336,6 +344,7 @@ const properties: INodeProperties[] = [
 interface MessageOptions {
 	system?: string;
 	temperature?: number;
+	think?: boolean;
 	top_p?: number;
 	top_k?: number;
 	num_predict?: number;
@@ -427,12 +436,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter(Boolean);
 	}
 
-	const body = {
+	const thinkOption = !!processedOptions.think;
+	delete processedOptions.think;
+
+	const body: {
+		model: string;
+		messages: OllamaMessage[];
+		stream: boolean;
+		options: Partial<MessageOptions>;
+		think?: boolean;
+	} = {
 		model,
 		messages,
 		stream: false,
 		options: processedOptions,
 	};
+
+	if (!thinkOption) {
+		body.think = false;
+	}
 
 	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
