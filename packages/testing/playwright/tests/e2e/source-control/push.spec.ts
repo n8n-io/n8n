@@ -1,7 +1,7 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
-import { setupGitRepo } from '../../../utils/source-control-helper';
+import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-helper';
 
 test.use({ capability: 'source-control' });
 
@@ -13,16 +13,18 @@ async function expectPushSuccess(n8n: n8nPage) {
 
 async function expectNoChangesToCommit(n8n: n8nPage) {
 	expect(
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 30000 }),
+		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 }),
 	).toBe(true);
 }
 
 test.describe('Push resources to Git @capability:source-control', () => {
+	let gitRepo: GitRepoHelper;
+
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		await setupGitRepo(n8n, n8nContainer.services.gitea);
+		gitRepo = await setupGitRepo(n8n, n8nContainer.services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {
@@ -46,8 +48,8 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		const workflowCheckbox = n8n.sourceControlPushModal.getFileCheckboxByName('Test Workflow');
 		await expect(workflowCheckbox).toBeChecked();
 
-		// push
-		await n8n.sourceControlPushModal.push('Add test workflow with manual trigger');
+		// push and wait for commit to be indexed
+		await gitRepo.pushAndWait(n8n, 'Add test workflow with manual trigger');
 		await expectPushSuccess(n8n);
 
 		// check no changes to commit
@@ -144,7 +146,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.sourceControlPushModal.selectWorkflowsTab();
 		await n8n.sourceControlPushModal.selectAllFilesInModal();
 
-		await n8n.sourceControlPushModal.push('new resources');
+		await gitRepo.pushAndWait(n8n, 'new resources');
 		await expectPushSuccess(n8n);
 
 		// modify and delete resources
@@ -169,8 +171,8 @@ test.describe('Push resources to Git @capability:source-control', () => {
 			n8n.sourceControlPushModal.getStatusBadge('Credential to Delete', 'Deleted'),
 		).toBeVisible();
 
-		// push
-		await n8n.sourceControlPushModal.push('Modify workflow and delete credential');
+		// push and wait for commit
+		await gitRepo.pushAndWait(n8n, 'Modify workflow and delete credential');
 		await expectPushSuccess(n8n);
 
 		// check no changes to commit
@@ -221,8 +223,8 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).not.toBeChecked();
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeChecked();
 
-		// push
-		await n8n.sourceControlPushModal.push('Push workflows A and C');
+		// push and wait for commit
+		await gitRepo.pushAndWait(n8n, 'Push workflows A and C');
 		await expectPushSuccess(n8n);
 
 		// modify workflow A
@@ -242,8 +244,8 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.sourceControlPushModal.selectFile('Workflow A');
 		await n8n.sourceControlPushModal.selectFile('Workflow B');
 
-		// push
-		await n8n.sourceControlPushModal.push('Push workflow A and B');
+		// push and wait for commit
+		await gitRepo.pushAndWait(n8n, 'Push workflow A and B');
 		await expectPushSuccess(n8n);
 
 		// Verify no more changes
