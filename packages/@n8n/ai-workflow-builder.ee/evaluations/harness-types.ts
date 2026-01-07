@@ -38,6 +38,14 @@ export interface Feedback {
 	key: string;
 	score: number;
 	comment?: string;
+	/**
+	 * Classification of this feedback item.
+	 *
+	 * - `score`: the single score used for overall scoring for this evaluator
+	 * - `metric`: stable category-level metrics (useful for dashboards)
+	 * - `detail`: unstable/verbose metrics that should not affect scoring
+	 */
+	kind?: 'score' | 'metric' | 'detail';
 }
 
 /**

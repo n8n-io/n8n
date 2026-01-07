@@ -71,6 +71,7 @@ export function createSimilarityEvaluator(
 				feedback.push({
 					key: 'similarity.score',
 					score: 1,
+					kind: 'score',
 					comment: 'No reference workflow provided for comparison',
 				});
 				return feedback;
@@ -109,6 +110,7 @@ export function createSimilarityEvaluator(
 				feedback.push({
 					key: 'similarity.score',
 					score: result.score,
+					kind: 'score',
 					comment: formatViolations(result.violations),
 				});
 
@@ -124,6 +126,7 @@ export function createSimilarityEvaluator(
 					feedback.push({
 						key: `similarity.${type}`,
 						score: Math.max(0, 1 - count * 0.1), // Penalty per violation
+						kind: 'detail',
 						comment: `${count} ${type} edit(s)`,
 					});
 				}
@@ -133,6 +136,7 @@ export function createSimilarityEvaluator(
 				feedback.push({
 					key: 'similarity.error',
 					score: 0,
+					kind: 'score',
 					comment: errorMessage,
 				});
 			}

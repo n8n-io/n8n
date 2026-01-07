@@ -37,9 +37,15 @@ export function createLLMJudgeEvaluator(
 	llm: BaseChatModel,
 	_nodeTypes: INodeTypeDescription[],
 ): Evaluator<EvaluationContext> {
-	const fb = (metric: string, score: number, comment?: string): Feedback => ({
+	const fb = (
+		metric: string,
+		score: number,
+		kind: Feedback['kind'],
+		comment?: string,
+	): Feedback => ({
 		key: `${EVALUATOR_NAME}.${metric}`,
 		score,
+		kind,
 		...(comment ? { comment } : {}),
 	});
 
@@ -59,45 +65,64 @@ export function createLLMJudgeEvaluator(
 				fb(
 					'functionality',
 					result.functionality.score,
+					'metric',
 					formatViolations(result.functionality.violations),
 				),
 				fb(
 					'connections',
 					result.connections.score,
+					'metric',
 					formatViolations(result.connections.violations),
 				),
 				fb(
 					'expressions',
 					result.expressions.score,
+					'metric',
 					formatViolations(result.expressions.violations),
 				),
 				fb(
 					'nodeConfiguration',
 					result.nodeConfiguration.score,
+					'metric',
 					formatViolations(result.nodeConfiguration.violations),
 				),
 
 				// Efficiency with sub-metrics
-				fb('efficiency', result.efficiency.score, formatViolations(result.efficiency.violations)),
-				fb('efficiency.redundancyScore', result.efficiency.redundancyScore),
-				fb('efficiency.pathOptimization', result.efficiency.pathOptimization),
-				fb('efficiency.nodeCountEfficiency', result.efficiency.nodeCountEfficiency),
+				fb(
+					'efficiency',
+					result.efficiency.score,
+					'metric',
+					formatViolations(result.efficiency.violations),
+				),
+				fb('efficiency.redundancyScore', result.efficiency.redundancyScore, 'detail'),
+				fb('efficiency.pathOptimization', result.efficiency.pathOptimization, 'detail'),
+				fb('efficiency.nodeCountEfficiency', result.efficiency.nodeCountEfficiency, 'detail'),
 
 				// Data flow
-				fb('dataFlow', result.dataFlow.score, formatViolations(result.dataFlow.violations)),
+				fb(
+					'dataFlow',
+					result.dataFlow.score,
+					'metric',
+					formatViolations(result.dataFlow.violations),
+				),
 
 				// Maintainability with sub-metrics
 				fb(
 					'maintainability',
 					result.maintainability.score,
+					'metric',
 					formatViolations(result.maintainability.violations),
 				),
-				fb('maintainability.nodeNamingQuality', result.maintainability.nodeNamingQuality),
-				fb('maintainability.workflowOrganization', result.maintainability.workflowOrganization),
-				fb('maintainability.modularity', result.maintainability.modularity),
+				fb('maintainability.nodeNamingQuality', result.maintainability.nodeNamingQuality, 'detail'),
+				fb(
+					'maintainability.workflowOrganization',
+					result.maintainability.workflowOrganization,
+					'detail',
+				),
+				fb('maintainability.modularity', result.maintainability.modularity, 'detail'),
 
 				// Overall score
-				fb('overallScore', result.overallScore, result.summary),
+				fb('overallScore', result.overallScore, 'score', result.summary),
 			];
 		},
 	};

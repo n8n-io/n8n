@@ -49,6 +49,7 @@ async function evaluateSingleGeneration(
 	feedback.push({
 		key: 'pairwise.majorityPass',
 		score: result.majorityPass ? 1 : 0,
+		kind: 'score',
 		comment: `${result.primaryPasses}/${numJudges} judges passed`,
 	});
 
@@ -56,6 +57,7 @@ async function evaluateSingleGeneration(
 	feedback.push({
 		key: 'pairwise.diagnosticScore',
 		score: result.avgDiagnosticScore,
+		kind: 'metric',
 	});
 
 	// Individual judge results
@@ -69,6 +71,7 @@ async function evaluateSingleGeneration(
 		feedback.push({
 			key: `pairwise.judge${i + 1}`,
 			score: judge.primaryPass ? 1 : 0,
+			kind: 'detail',
 			comment: violationSummary,
 		});
 	}
@@ -114,11 +117,13 @@ async function evaluateMultiGeneration(
 		{
 			key: 'pairwise.generationCorrectness',
 			score: aggregation.generationCorrectness,
+			kind: 'score',
 			comment: `${aggregation.passingGenerations}/${aggregation.totalGenerations} generations passed`,
 		},
 		{
 			key: 'pairwise.aggregatedDiagnostic',
 			score: aggregation.aggregatedDiagnosticScore,
+			kind: 'metric',
 		},
 	];
 
@@ -127,11 +132,13 @@ async function evaluateMultiGeneration(
 		feedback.push({
 			key: `pairwise.gen${i + 1}.majorityPass`,
 			score: gen.majorityPass ? 1 : 0,
+			kind: 'detail',
 			comment: `${gen.primaryPasses}/${gen.numJudges} judges`,
 		});
 		feedback.push({
 			key: `pairwise.gen${i + 1}.diagnosticScore`,
 			score: gen.diagnosticScore,
+			kind: 'detail',
 		});
 	});
 

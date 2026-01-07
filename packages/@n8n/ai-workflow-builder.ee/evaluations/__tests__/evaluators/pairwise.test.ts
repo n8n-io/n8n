@@ -147,6 +147,7 @@ describe('Pairwise Evaluator', () => {
 			expect(majorityFeedback).toEqual({
 				key: 'pairwise.majorityPass',
 				score: 1,
+				kind: 'score',
 				comment: '2/3 judges passed',
 			});
 		});
@@ -164,6 +165,7 @@ describe('Pairwise Evaluator', () => {
 			expect(diagnosticFeedback).toEqual({
 				key: 'pairwise.diagnosticScore',
 				score: 0.85,
+				kind: 'metric',
 			});
 		});
 

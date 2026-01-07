@@ -25,6 +25,18 @@ function formatViolations(
 export function createProgrammaticEvaluator(
 	nodeTypes: INodeTypeDescription[],
 ): Evaluator<EvaluationContext> {
+	const fb = (
+		metric: string,
+		score: number,
+		kind: Feedback['kind'],
+		comment?: string,
+	): Feedback => ({
+		key: `programmatic.${metric}`,
+		score,
+		kind,
+		...(comment ? { comment } : {}),
+	});
+
 	return {
 		name: 'programmatic',
 
@@ -38,56 +50,37 @@ export function createProgrammaticEvaluator(
 				nodeTypes,
 			);
 
-			const feedback: Feedback[] = [];
-
-			// Overall programmatic score
-			feedback.push({
-				key: 'programmatic.overall',
-				score: result.overallScore,
-			});
-
-			// Connections check
-			feedback.push({
-				key: 'programmatic.connections',
-				score: result.connections.score,
-				comment: formatViolations(result.connections.violations),
-			});
-
-			// Trigger check
-			feedback.push({
-				key: 'programmatic.trigger',
-				score: result.trigger.score,
-				comment: formatViolations(result.trigger.violations),
-			});
-
-			// Agent prompt check
-			feedback.push({
-				key: 'programmatic.agentPrompt',
-				score: result.agentPrompt.score,
-				comment: formatViolations(result.agentPrompt.violations),
-			});
-
-			// Tools check
-			feedback.push({
-				key: 'programmatic.tools',
-				score: result.tools.score,
-				comment: formatViolations(result.tools.violations),
-			});
-
-			// FromAi check
-			feedback.push({
-				key: 'programmatic.fromAi',
-				score: result.fromAi.score,
-				comment: formatViolations(result.fromAi.violations),
-			});
+			const feedback: Feedback[] = [
+				// Overall programmatic score (scoring)
+				fb('overall', result.overallScore, 'score'),
+				// Stable category metrics (dashboard)
+				fb(
+					'connections',
+					result.connections.score,
+					'metric',
+					formatViolations(result.connections.violations),
+				),
+				fb('trigger', result.trigger.score, 'metric', formatViolations(result.trigger.violations)),
+				fb(
+					'agentPrompt',
+					result.agentPrompt.score,
+					'metric',
+					formatViolations(result.agentPrompt.violations),
+				),
+				fb('tools', result.tools.score, 'metric', formatViolations(result.tools.violations)),
+				fb('fromAi', result.fromAi.score, 'metric', formatViolations(result.fromAi.violations)),
+			];
 
 			// Similarity check (if reference workflow provided)
 			if (result.similarity !== null && result.similarity !== undefined) {
-				feedback.push({
-					key: 'programmatic.similarity',
-					score: result.similarity.score,
-					comment: formatViolations(result.similarity.violations),
-				});
+				feedback.push(
+					fb(
+						'similarity',
+						result.similarity.score,
+						'metric',
+						formatViolations(result.similarity.violations),
+					),
+				);
 			}
 
 			return feedback;

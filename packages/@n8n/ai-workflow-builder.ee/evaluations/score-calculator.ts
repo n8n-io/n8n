@@ -111,6 +111,19 @@ function calculateAverage(items: Feedback[]): number {
 	return total / items.length;
 }
 
+function selectScoringItems(items: Feedback[]): Feedback[] {
+	const scoreItems = items.filter((i) => i.kind === 'score');
+	if (scoreItems.length > 0) return scoreItems;
+
+	const metricItems = items.filter((i) => i.kind === 'metric');
+	if (metricItems.length > 0) return metricItems;
+
+	const nonDetailItems = items.filter((i) => i.kind !== 'detail');
+	if (nonDetailItems.length > 0) return nonDetailItems;
+
+	return items;
+}
+
 /**
  * Calculate weighted overall score from feedback.
  *
@@ -133,7 +146,7 @@ export function calculateWeightedScore(
 	let weightedSum = 0;
 
 	for (const [evaluator, items] of Object.entries(byEvaluator)) {
-		const avgScore = calculateAverage(items);
+		const avgScore = calculateAverage(selectScoringItems(items));
 		const weight = weights[evaluator] ?? UNKNOWN_EVALUATOR_WEIGHT;
 		weightedSum += avgScore * weight;
 		totalWeight += weight;

@@ -119,6 +119,7 @@ describe('Programmatic Evaluator', () => {
 			expect(overallFeedback).toEqual({
 				key: 'programmatic.overall',
 				score: 0.92,
+				kind: 'score',
 			});
 		});
 
@@ -209,6 +210,7 @@ describe('Programmatic Evaluator', () => {
 			expect(similarityFeedback).toEqual({
 				key: 'programmatic.similarity',
 				score: 0.75,
+				kind: 'metric',
 				comment: '[node-mismatch] Missing expected node',
 			});
 		});

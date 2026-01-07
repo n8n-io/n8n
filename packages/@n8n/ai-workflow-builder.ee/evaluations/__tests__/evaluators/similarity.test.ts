@@ -64,6 +64,7 @@ describe('Similarity Evaluator', () => {
 			expect(feedback).toContainEqual({
 				key: 'similarity.score',
 				score: 1,
+				kind: 'score',
 				comment: 'No reference workflow provided for comparison',
 			});
 		});
@@ -240,6 +241,7 @@ describe('Similarity Evaluator', () => {
 			expect(errorFeedback).toEqual({
 				key: 'similarity.error',
 				score: 0,
+				kind: 'score',
 				comment: 'uvx command not found',
 			});
 		});

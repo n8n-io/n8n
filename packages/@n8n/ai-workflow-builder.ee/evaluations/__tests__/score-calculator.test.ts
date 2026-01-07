@@ -181,15 +181,36 @@ describe('Score Calculator', () => {
 
 		it('should average multiple items from same evaluator', () => {
 			const feedback: Feedback[] = [
-				createFeedback('llm-judge.a', 1.0),
-				createFeedback('llm-judge.b', 0.5),
-				createFeedback('llm-judge.c', 0.5),
+				{ ...createFeedback('llm-judge.a', 1.0), kind: 'metric' },
+				{ ...createFeedback('llm-judge.b', 0.5), kind: 'metric' },
+				{ ...createFeedback('llm-judge.c', 0.5), kind: 'metric' },
 			];
 
 			const score = calculateWeightedScore(feedback, { 'llm-judge': 1.0 });
 
 			// avg(1.0, 0.5, 0.5) = 0.666...
 			expect(score).toBeCloseTo(0.666, 2);
+		});
+
+		it('should ignore detail items when score items exist', () => {
+			const feedback: Feedback[] = [
+				{ key: 'llm-judge.overallScore', score: 0.8, kind: 'score' },
+				{ key: 'llm-judge.efficiency.nodeCountEfficiency', score: 0.0, kind: 'detail' },
+				{ key: 'llm-judge.efficiency.pathOptimization', score: 0.0, kind: 'detail' },
+			];
+
+			expect(calculateWeightedScore(feedback)).toBeCloseTo(0.8, 5);
+		});
+
+		it('should be invariant to extra detail keys', () => {
+			const base: Feedback[] = [{ key: 'pairwise.majorityPass', score: 1, kind: 'score' }];
+			const withDetails: Feedback[] = [
+				...base,
+				{ key: 'pairwise.judge1', score: 0, kind: 'detail' },
+				{ key: 'pairwise.judge2', score: 0, kind: 'detail' },
+			];
+
+			expect(calculateWeightedScore(base)).toBeCloseTo(calculateWeightedScore(withDetails), 10);
 		});
 
 		it('should normalize weights', () => {
