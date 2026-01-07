@@ -31,7 +31,7 @@ export function extractHitlMetadata(
 	return {
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
-		originalInput: toolInput,
+		originalInput: toolInput.toolParameters as IDataObject,
 	};
 }
 
@@ -108,7 +108,8 @@ export async function createEngineRequests(
 				input = { ...input, tool: toolCall.tool };
 			}
 			if (hitlMetadata) {
-				input = { ...input, toolName: toolCall.tool };
+				// This input will be used as HITL node input
+				input = { ...input, ...(input.hitlParameters as IDataObject) };
 			}
 
 			return {

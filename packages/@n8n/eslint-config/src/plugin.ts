@@ -25,6 +25,7 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 				'n8n-local-rules/no-useless-catch-throw': 'error',
 				'n8n-local-rules/no-internal-package-import': 'error',
+				'n8n-local-rules/no-type-only-import-in-di': 'off',
 			},
 		},
 	},

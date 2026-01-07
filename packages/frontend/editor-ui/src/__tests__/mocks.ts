@@ -106,13 +106,21 @@ export const mockNodeTypeDescription = ({
 		eventTriggerDescription,
 	});
 
-export const mockLoadedNodeType = (name: string) =>
-	mock<LoadedClass<INodeType>>({
+export const mockLoadedNodeType = (name: string) => {
+	const config: Partial<INodeTypeDescription> = { name };
+
+	// Configure special node types with their correct connection types
+	if (name === OPEN_AI_CHAT_MODEL_NODE_TYPE) {
+		config.outputs = [NodeConnectionTypes.AiLanguageModel];
+	}
+
+	return mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
 			// @ts-expect-error
-			description: mockNodeTypeDescription({ name }),
+			description: mockNodeTypeDescription(config),
 		}),
 	});
+};
 
 export const mockNodes = [
 	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),

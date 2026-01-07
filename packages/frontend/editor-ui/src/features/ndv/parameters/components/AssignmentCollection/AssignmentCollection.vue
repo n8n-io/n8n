@@ -2,6 +2,7 @@
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -45,14 +46,18 @@ const i18n = useI18n();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const dropAreaContainer = useTemplateRef('dropArea');
 
-const state = reactive<{ paramValue: AssignmentCollectionValue }>({
-	paramValue: {
+function createParamValue(value: AssignmentCollectionValue): AssignmentCollectionValue {
+	return {
 		assignments:
-			props.value.assignments?.map((assignment) => {
+			value.assignments?.map((assignment) => {
 				if (!assignment.id) assignment.id = crypto.randomUUID();
 				return assignment;
 			}) ?? [],
-	},
+	};
+}
+
+const state = reactive<{ paramValue: AssignmentCollectionValue }>({
+	paramValue: createParamValue(props.value),
 });
 
 const ndvStore = useNDVStore();
@@ -82,14 +87,27 @@ const actions = computed(() => {
 	];
 });
 
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
-		},
-		{ debounceTime: 1000 },
-	);
-});
+watch(
+	() => props.node,
+	() => {
+		const newParamValue = createParamValue(props.value);
+		if (isEqual(state.paramValue, newParamValue)) return;
+		state.paramValue = newParamValue;
+	},
+);
+
+watch(
+	() => state.paramValue,
+	(value) => {
+		void callDebounced(
+			() => {
+				emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
+			},
+			{ debounceTime: 1000 },
+		);
+	},
+	{ deep: true },
+);
 
 function addAssignment(): void {
 	state.paramValue.assignments.push({
