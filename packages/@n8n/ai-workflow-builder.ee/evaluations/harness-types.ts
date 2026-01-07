@@ -143,6 +143,10 @@ export interface ExampleResult {
 	score: number;
 	feedback: Feedback[];
 	durationMs: number;
+	/** Time spent generating the workflow, when known. */
+	generationDurationMs?: number;
+	/** Time spent running evaluators, when known. */
+	evaluationDurationMs?: number;
 	workflow?: SimpleWorkflow;
 	error?: string;
 }

@@ -328,7 +328,9 @@ async function runLocalExample(args: {
 		});
 
 		// Run evaluators in parallel
+		const evalStartTime = Date.now();
 		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+		const evalDurationMs = Date.now() - evalStartTime;
 
 		// Calculate result
 		const score = calculateExampleScore(feedback);
@@ -342,6 +344,8 @@ async function runLocalExample(args: {
 			score,
 			feedback,
 			durationMs,
+			generationDurationMs: genDurationMs,
+			evaluationDurationMs: evalDurationMs,
 			workflow,
 		};
 
@@ -539,11 +543,13 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	let targetCallCount = 0;
 	const target = async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
 		targetCallCount++;
+		const index = targetCallCount;
 		// Extract prompt from inputs (supports both direct prompt and messages array)
 		const prompt = extractPrompt(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
-		logger.verbose(`Starting workflow generation for: "${prompt.slice(0, 50)}..."`);
+		lifecycle?.onExampleStart?.(index, 0, prompt);
+		const startTime = Date.now();
 		const genStart = Date.now();
 
 		// Generate workflow - wrapped in traceable for proper child trace visibility
@@ -552,7 +558,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			run_type: 'chain',
 		});
 		const workflow = await traceableGenerate();
-		logger.verbose(`Workflow generated in ${((Date.now() - genStart) / 1000).toFixed(1)}s`);
+		const genDurationMs = Date.now() - genStart;
+		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
 		const extracted = extractContextFromLangsmithInputs({
 			...asRecord(datasetContext),
@@ -561,12 +568,24 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const context = buildContext({ prompt, globalContext, testCaseContext: extracted });
 
 		// Run all evaluators in parallel
-		logger.verbose(`Running ${evaluators.length} evaluator(s)...`);
 		const evalStart = Date.now();
 		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
-		logger.verbose(
-			`Evaluators completed in ${((Date.now() - evalStart) / 1000).toFixed(1)}s, ${feedback.length} feedback items`,
-		);
+		const evalDurationMs = Date.now() - evalStart;
+
+		const totalDurationMs = Date.now() - startTime;
+		const score = calculateExampleScore(feedback);
+		const status = determineStatus(score);
+		lifecycle?.onExampleComplete?.(index, {
+			index,
+			prompt,
+			status,
+			score,
+			feedback,
+			durationMs: totalDurationMs,
+			generationDurationMs: genDurationMs,
+			evaluationDurationMs: evalDurationMs,
+			workflow,
+		});
 
 		return {
 			workflow,
@@ -609,7 +628,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
 
-	logger.verbose(`Loaded ${Array.isArray(data) ? data.length : 0} examples`);
+	logger.verbose(
+		Array.isArray(data)
+			? `Data source: preloaded examples (${data.length})`
+			: 'Data source: dataset (streaming)',
+	);
 
 	// Run LangSmith evaluation
 	const exampleCount = Array.isArray(data) ? data.length : 'dataset';

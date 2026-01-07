@@ -7,7 +7,7 @@ import type {
 	ExampleResult,
 	RunSummary,
 } from './harness-types.js';
-import { selectScoringItems } from './score-calculator';
+import { groupByEvaluator, selectScoringItems } from './score-calculator';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -16,6 +16,10 @@ import type { SimpleWorkflow } from '../src/types/workflow.js';
 function truncate(str: string, maxLen = 50): string {
 	const cleaned = str.replace(/\s+/g, ' ').trim();
 	return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '...' : cleaned;
+}
+
+function truncateForSingleLine(str: string, maxLen: number): string {
+	return truncate(str.replace(/\n/g, ' '), maxLen);
 }
 
 /**
@@ -45,6 +49,58 @@ const CRITICAL_METRICS = [
 	'trigger',
 ];
 
+const DISPLAY_METRICS_BY_EVALUATOR: Record<string, string[]> = {
+	'llm-judge': ['functionality', 'connections', 'expressions', 'nodeConfiguration', 'overallScore'],
+	programmatic: ['overall', 'connections', 'trigger'],
+	pairwise: [
+		'pairwise_primary',
+		'pairwise_diagnostic',
+		'pairwise_judges_passed',
+		'pairwise_total_passes',
+		'pairwise_total_violations',
+		'pairwise_generation_correctness',
+		'pairwise_aggregated_diagnostic',
+		'pairwise_generations_passed',
+		'pairwise_total_judge_calls',
+	],
+};
+
+const PAIRWISE_COUNT_METRICS = new Set([
+	'pairwise_judges_passed',
+	'pairwise_total_passes',
+	'pairwise_total_violations',
+	'pairwise_generations_passed',
+	'pairwise_total_judge_calls',
+]);
+
+function formatMetricValue(evaluator: string, metric: string, score: number): string {
+	if (evaluator === 'pairwise' && PAIRWISE_COUNT_METRICS.has(metric)) {
+		return Number.isInteger(score) ? String(score) : score.toFixed(0);
+	}
+	return formatScore(score);
+}
+
+function hasSeverityMarker(comment: string): boolean {
+	const lower = comment.toLowerCase();
+	return lower.includes('[critical]') || lower.includes('[major]') || lower.includes('[minor]');
+}
+
+function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback[] {
+	const withComments = feedback.filter(
+		(f) => typeof f.comment === 'string' && f.comment.trim().length > 0 && f.metric !== 'error',
+	);
+
+	if (evaluator === 'llm-judge') {
+		return withComments.filter((f) => (f.comment ? hasSeverityMarker(f.comment) : false));
+	}
+
+	if (evaluator === 'pairwise') {
+		return withComments.filter((f) => /^judge\d+$/u.test(f.metric));
+	}
+
+	return withComments;
+}
+
 /**
  * Get color based on score.
  */
@@ -67,9 +123,14 @@ export interface ConsoleLifecycleOptions {
  */
 export function createConsoleLifecycle(options: ConsoleLifecycleOptions): EvaluationLifecycle {
 	const { verbose } = options;
+	let runMode: RunConfig['mode'] | undefined;
+	let evaluatorOrder: string[] = [];
 
 	return {
 		onStart(config: RunConfig): void {
+			runMode = config.mode;
+			evaluatorOrder = config.evaluators.map((e) => e.name);
+
 			console.log(`\nStarting evaluation in ${pc.cyan(config.mode)} mode`);
 
 			if (typeof config.dataset === 'string') {
@@ -87,61 +148,21 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		onExampleStart(index: number, total: number, prompt: string): void {
 			if (!verbose) return;
 
-			const prefix = pc.dim(`[${index}/${total}]`);
-			const status = pc.yellow('RUNNING');
-			const promptStr = pc.dim(`"${truncate(prompt)}"`);
+			const totalStr = total > 0 ? String(total) : '?';
+			const prefix = pc.dim(`[ex ${index}/${totalStr}]`);
+			const status = pc.yellow('START');
+			const promptStr = pc.dim(`prompt="${truncateForSingleLine(prompt, 80)}"`);
 			console.log(`${prefix} ${status} ${promptStr}`);
 		},
 
 		onWorkflowGenerated(workflow: SimpleWorkflow, durationMs: number): void {
-			if (!verbose) return;
-
-			const nodeCount = workflow.nodes?.length ?? 0;
-			console.log(pc.dim(`    Generated: ${nodeCount} nodes in ${formatDuration(durationMs)}`));
+			void workflow;
+			void durationMs;
 		},
 
 		onEvaluatorComplete(name: string, feedback: Feedback[]): void {
-			if (!verbose) return;
-
-			const scoringItems = selectScoringItems(feedback);
-			const avgScore =
-				scoringItems.length > 0
-					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
-					: 0;
-
-			const colorFn = scoreColor(avgScore);
-			console.log(
-				pc.dim(`    ${name}: `) +
-					colorFn(formatScore(avgScore)) +
-					pc.dim(` (${feedback.length} metrics)`),
-			);
-
-			// Show critical metrics (handle both prefixed and non-prefixed keys)
-			const criticalFeedback = feedback.filter((f) => {
-				return CRITICAL_METRICS.includes(f.metric);
-			});
-			if (criticalFeedback.length > 0) {
-				const metricsLine = criticalFeedback
-					.map((f) => {
-						const color = scoreColor(f.score);
-						return `${f.metric}: ${color(formatScore(f.score))}`;
-					})
-					.join(pc.dim(' | '));
-				console.log(pc.dim('      ') + metricsLine);
-			}
-
-			// Show violations (feedback items with comments that indicate issues)
-			const violations = feedback.filter((f) => f.comment && f.score < 1.0 && f.metric !== 'error');
-			if (violations.length > 0) {
-				console.log(pc.dim('      Violations:'));
-				for (const v of violations.slice(0, 5)) {
-					// Limit to 5 violations
-					console.log(pc.dim(`        - [${v.metric}] `) + pc.red(v.comment ?? ''));
-				}
-				if (violations.length > 5) {
-					console.log(pc.dim(`        ... and ${violations.length - 5} more`));
-				}
-			}
+			void name;
+			void feedback;
 		},
 
 		onEvaluatorError(name: string, error: Error): void {
@@ -151,7 +172,6 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		onExampleComplete(index: number, result: ExampleResult): void {
 			if (!verbose) return;
 
-			const prefix = pc.dim(`[${index}]`);
 			const status =
 				result.status === 'pass'
 					? pc.green('PASS')
@@ -159,12 +179,90 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 						? pc.yellow('FAIL')
 						: pc.red('ERROR');
 
-			console.log(
-				`${prefix} ${status} ${formatScore(result.score)} in ${formatDuration(result.durationMs)}`,
+			const promptSnippet = truncateForSingleLine(result.prompt, 80);
+			const nodeCount = result.workflow?.nodes?.length ?? 0;
+
+			const gen = result.generationDurationMs;
+			const evalMs = result.evaluationDurationMs;
+			const genStr = typeof gen === 'number' ? formatDuration(gen) : '?';
+			const evalStr = typeof evalMs === 'number' ? formatDuration(evalMs) : '?';
+
+			const lines: string[] = [];
+			lines.push(
+				`${pc.dim(`[ex ${index}]`)} ${status} ${formatScore(result.score)} ${pc.dim(
+					`prompt="${promptSnippet}"`,
+				)}`,
 			);
+			lines.push(
+				pc.dim(
+					`  gen=${genStr} eval=${evalStr} total=${formatDuration(result.durationMs)} nodes=${nodeCount}`,
+				),
+			);
+
+			if (result.error) {
+				lines.push(pc.red(`  error: ${result.error}`));
+				console.log(lines.join('\n'));
+				return;
+			}
+
+			const grouped = groupByEvaluator(result.feedback);
+			const orderedEvaluators = [
+				...evaluatorOrder.filter((name) => name in grouped),
+				...Object.keys(grouped).filter((name) => !evaluatorOrder.includes(name)),
+			];
+
+			for (const evaluatorName of orderedEvaluators) {
+				const feedback = grouped[evaluatorName] ?? [];
+				const scoringItems = selectScoringItems(feedback);
+				const avgScore =
+					scoringItems.length > 0
+						? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
+						: 0;
+
+				const colorFn = scoreColor(avgScore);
+				lines.push(
+					pc.dim(`  ${evaluatorName}: `) +
+						colorFn(formatScore(avgScore)) +
+						pc.dim(` (metrics=${feedback.length})`),
+				);
+
+				const displayMetrics = DISPLAY_METRICS_BY_EVALUATOR[evaluatorName] ?? CRITICAL_METRICS;
+				const picked = feedback.filter((f) => displayMetrics.includes(f.metric));
+				if (picked.length > 0) {
+					const metricsLine = picked
+						.map((f) => {
+							const color = scoreColor(f.score);
+							return `${f.metric}: ${color(formatMetricValue(evaluatorName, f.metric, f.score))}`;
+						})
+						.join(pc.dim(' | '));
+					lines.push(pc.dim('    ') + metricsLine);
+				}
+
+				const issues = extractIssuesForLogs(evaluatorName, feedback);
+				if (issues.length > 0) {
+					const top = issues.slice(0, 3);
+					lines.push(pc.dim(`    issues(top=${top.length}):`));
+					for (const issue of top) {
+						const comment = truncateForSingleLine(issue.comment ?? '', 320);
+						lines.push(pc.dim(`      - [${issue.metric}] `) + pc.red(comment));
+					}
+					if (issues.length > top.length) {
+						lines.push(pc.dim(`      ... and ${issues.length - top.length} more`));
+					}
+				}
+			}
+
+			console.log(lines.join('\n'));
 		},
 
 		onEnd(summary: RunSummary): void {
+			if (runMode === 'langsmith') {
+				console.log(pc.bold('\n═══════════════════ SUMMARY ═══════════════════'));
+				console.log(pc.dim('  LangSmith mode: see results in LangSmith UI'));
+				console.log(pc.bold('═══════════════════════════════════════════════\n'));
+				return;
+			}
+
 			console.log('\n' + pc.bold('═══════════════════ SUMMARY ═══════════════════'));
 			console.log(
 				`  Total: ${summary.totalExamples} | ` +

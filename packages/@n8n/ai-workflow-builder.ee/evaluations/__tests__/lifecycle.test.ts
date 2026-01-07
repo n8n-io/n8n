@@ -100,7 +100,7 @@ describe('Console Lifecycle', () => {
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('[1/10]');
+			expect(logOutput).toContain('[ex 1/10]');
 		});
 
 		it('should not log example progress in non-verbose mode', async () => {
@@ -120,9 +120,8 @@ describe('Console Lifecycle', () => {
 			const workflow = createMockWorkflow('My Workflow');
 			lifecycle.onWorkflowGenerated(workflow, 1500);
 
-			expect(mockConsole.log).toHaveBeenCalled();
-			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('1.5');
+			// workflow generation is reported as part of the example completion block
+			expect(mockConsole.log).not.toHaveBeenCalled();
 		});
 
 		it('should log evaluator completion in verbose mode', async () => {
@@ -134,9 +133,8 @@ describe('Console Lifecycle', () => {
 				{ evaluator: 'llm-judge', metric: 'conn', score: 0.9 },
 			]);
 
-			expect(mockConsole.log).toHaveBeenCalled();
-			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('llm-judge');
+			// evaluator completion is reported as part of the example completion block
+			expect(mockConsole.log).not.toHaveBeenCalled();
 		});
 
 		it('should not log evaluator completion in non-verbose mode', async () => {
@@ -154,15 +152,28 @@ describe('Console Lifecycle', () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ evaluator: 'llm-judge', metric: 'functionality', score: 0.95 },
-				{ evaluator: 'llm-judge', metric: 'connections', score: 0.8 },
-				{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.85 },
-				{ evaluator: 'other', metric: 'metric', score: 0.5 },
-			]);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test prompt that is quite long and should be truncated for display in logs',
+				status: 'pass',
+				score: 0.85,
+				feedback: [
+					{ evaluator: 'llm-judge', metric: 'functionality', score: 0.95, kind: 'metric' },
+					{ evaluator: 'llm-judge', metric: 'connections', score: 0.8, kind: 'metric' },
+					{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.85, kind: 'score' },
+					{ evaluator: 'other', metric: 'metric', score: 0.5 },
+				],
+				durationMs: 2000,
+				generationDurationMs: 1500,
+				evaluationDurationMs: 500,
+				workflow: createMockWorkflow(),
+			};
+
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
+			expect(logOutput).toContain('prompt=');
 			expect(logOutput).toContain('functionality');
 			expect(logOutput).toContain('connections');
 			expect(logOutput).toContain('overallScore');
@@ -172,24 +183,33 @@ describe('Console Lifecycle', () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			lifecycle.onEvaluatorComplete('llm-judge', [
-				{
-					evaluator: 'llm-judge',
-					metric: 'functionality',
-					score: 0.5,
-					comment: 'Missing trigger node',
-				},
-				{
-					evaluator: 'llm-judge',
-					metric: 'connections',
-					score: 0.3,
-					comment: 'Disconnected node found',
-				},
-			]);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'fail',
+				score: 0.3,
+				feedback: [
+					{
+						evaluator: 'llm-judge',
+						metric: 'functionality',
+						score: 0.5,
+						comment: '[critical] Missing trigger node',
+					},
+					{
+						evaluator: 'llm-judge',
+						metric: 'connections',
+						score: 0.3,
+						comment: '[major] Disconnected node found',
+					},
+				],
+				durationMs: 1500,
+			};
+
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('Violations');
+			expect(logOutput).toContain('issues');
 			expect(logOutput).toContain('Missing trigger node');
 			expect(logOutput).toContain('Disconnected node found');
 		});
@@ -198,43 +218,65 @@ describe('Console Lifecycle', () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ evaluator: 'llm-judge', metric: 'v1', score: 0.5, comment: 'Violation 1' },
-				{ evaluator: 'llm-judge', metric: 'v2', score: 0.5, comment: 'Violation 2' },
-				{ evaluator: 'llm-judge', metric: 'v3', score: 0.5, comment: 'Violation 3' },
-				{ evaluator: 'llm-judge', metric: 'v4', score: 0.5, comment: 'Violation 4' },
-				{ evaluator: 'llm-judge', metric: 'v5', score: 0.5, comment: 'Violation 5' },
-				{ evaluator: 'llm-judge', metric: 'v6', score: 0.5, comment: 'Violation 6' },
-				{ evaluator: 'llm-judge', metric: 'v7', score: 0.5, comment: 'Violation 7' },
-			]);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'fail',
+				score: 0.5,
+				feedback: [
+					{ evaluator: 'llm-judge', metric: 'v1', score: 0.5, comment: '[minor] Violation 1' },
+					{ evaluator: 'llm-judge', metric: 'v2', score: 0.5, comment: '[minor] Violation 2' },
+					{ evaluator: 'llm-judge', metric: 'v3', score: 0.5, comment: '[minor] Violation 3' },
+					{ evaluator: 'llm-judge', metric: 'v4', score: 0.5, comment: '[minor] Violation 4' },
+				],
+				durationMs: 1000,
+			};
+
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('and 2 more');
+			expect(logOutput).toContain('and 1 more');
 		});
 
 		it('should not display violations for error feedback', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			lifecycle.onEvaluatorComplete('llm-judge', [
-				{ evaluator: 'llm-judge', metric: 'error', score: 0, comment: 'Evaluator crashed' },
-			]);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'error',
+				score: 0,
+				feedback: [{ evaluator: 'llm-judge', metric: 'error', score: 0, comment: 'Crashed' }],
+				durationMs: 500,
+				error: 'Generation failed',
+			};
+
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).not.toContain('Violations');
+			expect(logOutput).not.toContain('issues');
 		});
 
 		it('should handle empty feedback array', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			lifecycle.onEvaluatorComplete('llm-judge', []);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'fail',
+				score: 0,
+				feedback: [],
+				durationMs: 500,
+			};
+
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
-			expect(logOutput).toContain('llm-judge');
 			expect(logOutput).toContain('0%');
 		});
 
@@ -332,16 +374,20 @@ describe('Console Lifecycle', () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
 
-			// High score (>= 0.9) - green
-			lifecycle.onEvaluatorComplete('high', [{ evaluator: 'high', metric: 'test', score: 0.95 }]);
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'pass',
+				score: 0.8,
+				feedback: [
+					{ evaluator: 'high', metric: 'test', score: 0.95, kind: 'score' },
+					{ evaluator: 'medium', metric: 'test', score: 0.75, kind: 'score' },
+					{ evaluator: 'low', metric: 'test', score: 0.5, kind: 'score' },
+				],
+				durationMs: 1000,
+			};
 
-			// Medium score (>= 0.7, < 0.9) - yellow
-			lifecycle.onEvaluatorComplete('medium', [
-				{ evaluator: 'medium', metric: 'test', score: 0.75 },
-			]);
-
-			// Low score (< 0.7) - red
-			lifecycle.onEvaluatorComplete('low', [{ evaluator: 'low', metric: 'test', score: 0.5 }]);
+			lifecycle.onExampleComplete(1, result);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			// The coloring is applied, tests verify that the function runs without error
