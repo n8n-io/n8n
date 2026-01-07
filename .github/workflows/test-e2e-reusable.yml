@@ -1,0 +1,150 @@
+name: 'Test: E2E'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        type: string
+      test-mode:
+        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        required: false
+        default: 'local'
+        type: string
+      test-command:
+        description: 'Test command to run'
+        required: false
+        default: 'pnpm --filter=n8n-playwright test:local'
+        type: string
+      shards:
+        description: 'Number of parallel shards'
+        required: false
+        default: 8
+        type: number
+      docker-image:
+        description: 'Docker image to use (for docker-pull mode). The runners image is derived automatically from the n8n image.'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+      workers:
+        description: 'Number of parallel workers'
+        required: false
+        default: ''
+        type: string
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        default: 'blacksmith-2vcpu-ubuntu-2204'
+        type: string
+      use-custom-orchestration:
+        description: 'Use duration-based custom orchestration instead of Playwright sharding'
+        required: false
+        default: false
+        type: boolean
+      upload-failure-artifacts:
+        description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
+        required: false
+        default: false
+        type: boolean
+
+    secrets:
+      CURRENTS_RECORD_KEY:
+        required: false
+      QA_PERFORMANCE_METRICS_WEBHOOK_URL:
+        required: false
+      QA_PERFORMANCE_METRICS_WEBHOOK_USER:
+        required: false
+      QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
+        required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_ENCRYPTION_KEY:
+        required: false
+
+env:
+  NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
+  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
+  TESTCONTAINERS_RYUK_DISABLED: true
+  PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
+  # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
+  COVERAGE_ENABLED: 'true'
+  # Browser cache location - must match install-browsers script
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+  N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+  N8N_SKIP_LICENSES: 'true'
+
+jobs:
+  matrix:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Generate shard matrix
+        id: generate
+        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix ${{ inputs.shards }} ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }})" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: matrix
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    name: Shard ${{ matrix.shard }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs.branch || github.ref }}
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          # docker-build: build app + docker image locally
+          # docker-pull: no build needed, image is pre-built
+          # local: build app for local server
+          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || (inputs.test-mode == 'local' && 'pnpm build' || '') }}
+          enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
+        env:
+          INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
+
+      - name: Install Browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Pre-pull Test Container Images
+        if: ${{ !contains(inputs.test-command, 'test:local') }}
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Run Tests
+        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+
+      - name: Upload Failure Artifacts
+        if: ${{ failure() && inputs.upload-failure-artifacts }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: |
+            packages/testing/playwright/test-results/
+            packages/testing/playwright/playwright-report/
+          retention-days: 7

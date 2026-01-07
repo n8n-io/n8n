@@ -26,5 +26,6 @@ export { TriggerCloseError } from './trigger-close.error';
 export { NodeError } from './abstract/node.error';
 export { ExecutionBaseError } from './abstract/execution-base.error';
 export { ExpressionExtensionError } from './expression-extension.error';
+export { ExpressionDestructuringError } from './expression-destructuring.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
 export { ensureError } from './ensure-error';

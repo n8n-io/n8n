@@ -125,6 +125,23 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source: 'user-manual' | 'user-retry';
+		// TODO: To be added in future PR
+		// | 'webhook'
+		// | 'trigger'
+		// | 'error'
+		// | 'cli'
+		// | 'integrated'
+		// | 'internal'
+		// | 'evaluation'
+		// | 'chat';
+	};
+
 	// #endregion
 
 	// #region Node
@@ -410,6 +427,12 @@ export type RelayEventMap = {
 		workflowId?: string;
 		workflowName?: string;
 		reason: CancellationReason;
+	};
+
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
 	};
 
 	// #endregion
