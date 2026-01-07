@@ -172,7 +172,7 @@ export class CollaborationService {
 			return;
 		}
 
-		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
+		if (!(await this.accessService.hasWriteAccess(userId, workflowId))) {
 			return;
 		}
 
