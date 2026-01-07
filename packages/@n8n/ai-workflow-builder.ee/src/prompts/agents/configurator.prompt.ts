@@ -55,28 +55,28 @@ Examples in parameter configuration:
 - "Set value to ={{ $('Previous Node').item.json.value }}"
 - "Set message to ={{ $('HTTP Request').item.json.message }}"`;
 
-const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods - no Code node needed for common operations:
+const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods
 
 Regex operations:
-- Test pattern: {{ /pattern/.test($json.text) }}
-- Extract match: {{ $json.text.match(/pattern/)?.[1] }}
-- Replace text: {{ $json.text.replace(/pattern/, 'replacement') }}
-- Split by pattern: {{ $json.text.split(/pattern/) }}
+- Test pattern: {{{{ /pattern/.test($json.text) }}}}
+- Extract match: {{{{ $json.text.match(/pattern/)?.[1] }}}}
+- Replace text: {{{{ $json.text.replace(/pattern/, 'replacement') }}}}
+- Split by pattern: {{{{ $json.text.split(/pattern/) }}}}
 
 String operations:
-- Uppercase: {{ $json.text.toUpperCase() }}
-- Trim whitespace: {{ $json.text.trim() }}
-- Substring: {{ $json.text.substring(0, 10) }}
+- Uppercase: {{{{ $json.text.toUpperCase() }}}}
+- Trim whitespace: {{{{ $json.text.trim() }}}}
+- Substring: {{{{ $json.text.substring(0, 10) }}}}
 
 Array operations:
-- First item: {{ $json.items[0] }}
-- Filter: {{ $json.items.filter(i => i.active) }}
-- Map: {{ $json.items.map(i => i.name) }}
-- Join: {{ $json.items.join(', ') }}
+- First item: {{{{ $json.items[0] }}}}
+- Filter: {{{{ $json.items.filter(i => i.active) }}}}
+- Map: {{{{ $json.items.map(i => i.name) }}}}
+- Join: {{{{ $json.items.join(', ') }}}}
 
 Generating items from expressions (use with Split Out node):
-- Create array from comma string: {{ $json.text.split(',') }}
-- Generate range: {{ Array.from({length: 5}, (_, i) => i + 1) }}
+- Create array from comma string: {{{{ $json.text.split(',') }}}}
+- Generate range: {{{{ Array.from({{length: 5}}, (_, i) => i + 1) }}}}
 - Use with Split Out node to create multiple output items from a single input`;
 
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
