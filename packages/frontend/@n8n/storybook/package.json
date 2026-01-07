@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "exports": {
-    "./main":"./main.ts"
+    "./main": "./main.ts"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.5",
