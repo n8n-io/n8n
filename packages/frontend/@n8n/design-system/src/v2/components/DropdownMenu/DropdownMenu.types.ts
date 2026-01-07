@@ -2,7 +2,7 @@ import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
-export type Placement =
+export type DropdownMenuPlacement =
 	| 'top'
 	| 'top-start'
 	| 'top-end'
@@ -16,8 +16,8 @@ export type Placement =
 	| 'right-start'
 	| 'right-end';
 
-export type Side = 'top' | 'bottom' | 'left' | 'right';
-export type Align = 'start' | 'end' | 'center';
+export type DropdownMenuSide = 'top' | 'bottom' | 'left' | 'right';
+export type DropdownMenuAlign = 'start' | 'end' | 'center';
 
 export type DropdownMenuTrigger = 'click' | 'hover';
 
@@ -64,7 +64,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	/** The open state of the dropdown when initially rendered */
 	defaultOpen?: boolean;
 	/** Dropdown placement relative to trigger */
-	placement?: Placement;
+	placement?: DropdownMenuPlacement;
 	/** How the dropdown is triggered */
 	trigger?: DropdownMenuTrigger;
 	/** Icon or emoji for the default trigger button */
