@@ -281,6 +281,7 @@ $hoverBackground: var(--color--background--light-1);
 	display: flex;
 	flex: 1;
 	align-items: center;
+	min-width: 0;
 }
 
 .timelineColumn {
