@@ -1563,12 +1563,11 @@ export class ChatHubService {
 		executionId: string,
 		workflowId: string,
 	): Promise<string | undefined> {
-		const maxWaitMs = 5000;
-		let waitMs = 100; // Start with 100ms
-		const startTime = Date.now();
+		const maxRetries = 5;
+		let retries = 0;
 		let errorText: string | undefined;
 
-		while (!errorText && Date.now() - startTime < maxWaitMs) {
+		while (!errorText) {
 			try {
 				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 					workflowId,
@@ -1585,9 +1584,16 @@ export class ChatHubService {
 				);
 			}
 
-			// Wait with exponential backoff
-			await new Promise((resolve) => setTimeout(resolve, waitMs));
-			waitMs = Math.min(waitMs * 2, 1000); // Double wait time, cap at 1 second
+			retries++;
+
+			if (maxRetries <= retries) {
+				break;
+			}
+
+			// Wait with exponential backoff (double wait time, cap at 2 second)
+			await new Promise((resolve) =>
+				setTimeout(resolve, Math.min(500 * Math.pow(2, retries), 2000)),
+			);
 		}
 
 		return errorText;
