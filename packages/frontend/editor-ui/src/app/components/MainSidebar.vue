@@ -266,7 +266,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-
 	// Clean up resize observer
 	if (resizeObserver) {
 		resizeObserver.disconnect();
