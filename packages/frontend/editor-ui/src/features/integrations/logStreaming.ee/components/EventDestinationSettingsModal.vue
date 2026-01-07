@@ -12,6 +12,7 @@ import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -21,6 +22,7 @@ import {
 	MessageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
+	NodeHelpers,
 } from 'n8n-workflow';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -165,6 +167,26 @@ const sidebarItems = computed(() => {
 const canManageLogStreaming = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
 );
+
+const isFormValid = computed(() => {
+	if (isTypeAbstract.value) return false;
+
+	let parameterDescription: INodeProperties[];
+	if (isTypeWebhook.value) {
+		parameterDescription = webhookDescription.value;
+	} else if (isTypeSentry.value) {
+		parameterDescription = sentryDescription.value;
+	} else if (isTypeSyslog.value) {
+		parameterDescription = syslogDescription.value;
+	} else {
+		return false;
+	}
+
+	const issues = NodeHelpers.getNodeParametersIssues(parameterDescription, node.value, null);
+
+	//	No issues - then we are valid!
+	return issues === null;
+});
 
 function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
 	const updateInformation = event[1];
@@ -318,7 +340,7 @@ function onModalClose() {
 }
 
 async function saveDestination() {
-	if (unchanged.value || !destination.id) {
+	if (unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
 	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
@@ -439,7 +461,7 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="isTypeAbstract || unchanged"
+								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"
