@@ -64,10 +64,7 @@ export interface TestCase {
 /**
  * Configuration for an evaluation run.
  */
-export interface RunConfig {
-	mode: 'local' | 'langsmith';
-	/** Dataset name (for LangSmith) or test cases array (for local) */
-	dataset: string | TestCase[];
+export interface RunConfigBase {
 	/** Function to generate workflow from prompt */
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
 	/** Evaluators to run on each generated workflow */
@@ -76,13 +73,27 @@ export interface RunConfig {
 	context?: GlobalRunContext;
 	/** Directory for JSON output files */
 	outputDir?: string;
-	/** LangSmith-specific options */
-	langsmithOptions?: LangsmithOptions;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
 	/** Logger for verbose output (optional - defaults to silent) */
 	logger?: EvalLogger;
 }
+
+export interface LocalRunConfig extends RunConfigBase {
+	mode: 'local';
+	/** Local mode requires an in-memory dataset */
+	dataset: TestCase[];
+	langsmithOptions?: never;
+}
+
+export interface LangsmithRunConfig extends RunConfigBase {
+	mode: 'langsmith';
+	/** LangSmith mode uses a remote dataset name */
+	dataset: string;
+	langsmithOptions: LangsmithOptions;
+}
+
+export type RunConfig = LocalRunConfig | LangsmithRunConfig;
 
 /**
  * LangSmith-specific configuration.

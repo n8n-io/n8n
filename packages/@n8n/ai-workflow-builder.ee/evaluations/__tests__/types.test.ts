@@ -159,7 +159,7 @@ describe('Core Types', () => {
 				},
 			};
 			expect(config.mode).toBe('langsmith');
-			expect(config.langsmithOptions?.experimentName).toBe('test-experiment');
+			expect(config.langsmithOptions.experimentName).toBe('test-experiment');
 		});
 
 		it('should accept optional outputDir', () => {

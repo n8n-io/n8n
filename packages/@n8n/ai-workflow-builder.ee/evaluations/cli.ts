@@ -12,7 +12,11 @@ import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { EVAL_TYPES, EVAL_USERS } from './constants';
-import { parseEvaluationArgs } from './core/argument-parser';
+import {
+	getDefaultDatasetName,
+	getDefaultExperimentName,
+	parseEvaluationArgs,
+} from './core/argument-parser';
 import { setupTestEnvironment, createAgent } from './core/environment';
 import {
 	runEvaluation,
@@ -20,6 +24,8 @@ import {
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
+	createSimilarityEvaluator,
+	basicTestCases,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -77,15 +83,38 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 	// From CSV file
 	if (args.promptsCsv) {
 		const csvCases = loadTestCasesFromCsv(args.promptsCsv);
-		return csvCases.map((tc) => ({
+		const testCases = csvCases.map((tc) => ({
 			prompt: tc.prompt,
 			id: tc.id,
 		}));
+		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
+	}
+
+	// Predefined test case by id
+	if (args.testCase) {
+		const match = basicTestCases.find((tc) => tc.id === args.testCase);
+		if (!match) {
+			const options = basicTestCases
+				.map((tc) => tc.id)
+				.filter((id): id is string => id !== undefined)
+				.join(', ');
+			throw new Error(`Unknown --test-case "${args.testCase}". Available: ${options}`);
+		}
+
+		const testCases: TestCase[] = [
+			{
+				prompt: match.prompt,
+				id: match.id,
+				context: { dos: args.dos, donts: args.donts },
+			},
+		];
+
+		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
 	}
 
 	// Single prompt from CLI
 	if (args.prompt) {
-		return [
+		const testCases: TestCase[] = [
 			{
 				prompt: args.prompt,
 				context: {
@@ -94,14 +123,16 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 				},
 			},
 		];
+		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
 	}
 
 	// Default test case
-	return [
+	const defaults: TestCase[] = [
 		{
 			prompt: 'Create a workflow that sends a daily email summary',
 		},
 	];
+	return args.maxExamples ? defaults.slice(0, args.maxExamples) : defaults;
 }
 
 /**
@@ -109,6 +140,12 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
  */
 export async function runV2Evaluation(): Promise<void> {
 	const args = parseEvaluationArgs();
+
+	if (args.backend === 'langsmith' && (args.prompt || args.promptsCsv || args.testCase)) {
+		throw new Error(
+			'LangSmith mode requires `--dataset` and does not support `--prompt`, `--prompts-csv`, or `--test-case`',
+		);
+	}
 
 	// Setup environment
 	const logger = createLogger(args.verbose);
@@ -121,46 +158,58 @@ export async function runV2Evaluation(): Promise<void> {
 	// Create evaluators based on mode
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
-	if (args.mode === 'llm-judge-langsmith' || args.mode === 'llm-judge-local') {
-		evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes));
-		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-	} else if (args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') {
-		evaluators.push(
-			createPairwiseEvaluator(env.llm, {
-				numJudges: args.numJudges,
-				numGenerations: args.numGenerations,
-			}),
-		);
-		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+	switch (args.suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'pairwise':
+			evaluators.push(
+				createPairwiseEvaluator(env.llm, {
+					numJudges: args.numJudges,
+					numGenerations: args.numGenerations,
+				}),
+			);
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
 	}
 
 	// Build context - include generateWorkflow for multi-gen pairwise
-	const isMultiGen =
-		(args.mode === 'pairwise-local' || args.mode === 'pairwise-langsmith') &&
-		args.numGenerations > 1;
+	const isMultiGen = args.suite === 'pairwise' && args.numGenerations > 1;
 
-	// Build config
-	const config: RunConfig = {
-		mode: args.mode.includes('langsmith') ? 'langsmith' : 'local',
-		dataset: args.mode.includes('langsmith')
-			? (args.datasetName ?? 'workflow-builder-canvas-prompts')
-			: loadTestCases(args),
+	const baseConfig = {
 		generateWorkflow,
 		evaluators,
 		lifecycle,
 		logger,
 		outputDir: args.outputDir,
-		// For multi-gen, pass generateWorkflow in context so evaluator can create multiple workflows
 		context: isMultiGen ? { generateWorkflow } : undefined,
-		langsmithOptions: args.mode.includes('langsmith')
+	} as const;
+
+	const config: RunConfig =
+		args.backend === 'langsmith'
 			? {
-					experimentName: args.experimentName ?? 'v2-evaluation',
-					repetitions: args.repetitions,
-					concurrency: args.concurrency,
-					maxExamples: args.maxExamples,
+					...baseConfig,
+					mode: 'langsmith',
+					dataset: args.datasetName ?? getDefaultDatasetName(args.suite),
+					langsmithOptions: {
+						experimentName: args.experimentName ?? getDefaultExperimentName(args.suite),
+						repetitions: args.repetitions,
+						concurrency: args.concurrency,
+						maxExamples: args.maxExamples,
+					},
 				}
-			: undefined,
-	};
+			: {
+					...baseConfig,
+					mode: 'local',
+					dataset: loadTestCases(args),
+				};
 
 	// Run evaluation
 	const summary = await runEvaluation(config);

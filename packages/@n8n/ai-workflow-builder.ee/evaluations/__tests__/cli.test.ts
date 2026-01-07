@@ -29,6 +29,10 @@ const mockCreatePairwiseEvaluator = jest.fn();
 // Mock all external modules
 jest.mock('../core/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
+	getDefaultDatasetName: (suite: unknown): unknown =>
+		suite === 'pairwise' ? 'notion-pairwise-workflows' : 'workflow-builder-canvas-prompts',
+	getDefaultExperimentName: (suite: unknown): unknown =>
+		suite === 'pairwise' ? 'pairwise-evals' : 'workflow-builder-evaluation',
 }));
 
 jest.mock('../core/environment', () => ({
@@ -67,13 +71,18 @@ function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 /** Helper to create default args */
 function createMockArgs(overrides: Record<string, unknown> = {}) {
 	return {
-		mode: 'llm-judge-local',
+		suite: 'llm-judge',
+		backend: 'local',
 		verbose: false,
+		datasetName: undefined,
 		prompt: undefined,
+		testCase: undefined,
 		promptsCsv: undefined,
+		maxExamples: undefined,
 		dos: undefined,
 		donts: undefined,
 		numJudges: 3,
+		numGenerations: 1,
 		experimentName: undefined,
 		repetitions: 1,
 		concurrency: 4,
@@ -217,33 +226,37 @@ describe('CLI', () => {
 		});
 
 		describe('mode selection', () => {
-			it('should create LLM-judge + programmatic evaluators for llm-judge-local mode', async () => {
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'llm-judge-local' }));
-
-				const { runV2Evaluation } = await import('../cli');
-
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
-
-				expect(mockCreateLLMJudgeEvaluator).toHaveBeenCalled();
-				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
-				expect(mockCreatePairwiseEvaluator).not.toHaveBeenCalled();
-			});
-
-			it('should create LLM-judge + programmatic evaluators for llm-judge-langsmith mode', async () => {
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'llm-judge-langsmith' }));
-
-				const { runV2Evaluation } = await import('../cli');
-
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
-
-				expect(mockCreateLLMJudgeEvaluator).toHaveBeenCalled();
-				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
-				expect(mockCreatePairwiseEvaluator).not.toHaveBeenCalled();
-			});
-
-			it('should create pairwise + programmatic evaluators for pairwise-local mode', async () => {
+			it('should create LLM-judge + programmatic evaluators for llm-judge suite (local)', async () => {
 				mockParseEvaluationArgs.mockReturnValue(
-					createMockArgs({ mode: 'pairwise-local', numJudges: 5 }),
+					createMockArgs({ suite: 'llm-judge', backend: 'local' }),
+				);
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
+
+				expect(mockCreateLLMJudgeEvaluator).toHaveBeenCalled();
+				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
+				expect(mockCreatePairwiseEvaluator).not.toHaveBeenCalled();
+			});
+
+			it('should create LLM-judge + programmatic evaluators for llm-judge suite (langsmith)', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ suite: 'llm-judge', backend: 'langsmith' }),
+				);
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
+
+				expect(mockCreateLLMJudgeEvaluator).toHaveBeenCalled();
+				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
+				expect(mockCreatePairwiseEvaluator).not.toHaveBeenCalled();
+			});
+
+			it('should create pairwise + programmatic evaluators for pairwise suite (local)', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ suite: 'pairwise', backend: 'local', numJudges: 5 }),
 				);
 
 				const { runV2Evaluation } = await import('../cli');
@@ -254,15 +267,17 @@ describe('CLI', () => {
 				// Verify numJudges was passed correctly
 				const callArgs = mockCreatePairwiseEvaluator.mock.calls[0] as [
 					unknown,
-					{ numJudges: number },
+					{ numJudges: number; numGenerations: number },
 				];
-				expect(callArgs[1]).toEqual({ numJudges: 5 });
+				expect(callArgs[1]).toEqual({ numJudges: 5, numGenerations: 1 });
 				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
 				expect(mockCreateLLMJudgeEvaluator).not.toHaveBeenCalled();
 			});
 
-			it('should create pairwise + programmatic evaluators for pairwise-langsmith mode', async () => {
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'pairwise-langsmith' }));
+			it('should create pairwise + programmatic evaluators for pairwise suite (langsmith)', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ suite: 'pairwise', backend: 'langsmith' }),
+				);
 
 				const { runV2Evaluation } = await import('../cli');
 
@@ -275,8 +290,8 @@ describe('CLI', () => {
 		});
 
 		describe('config building', () => {
-			it('should use local mode for -local suffixed modes', async () => {
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'llm-judge-local' }));
+			it('should use local mode for backend=local', async () => {
+				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'local' }));
 
 				const { runV2Evaluation } = await import('../cli');
 
@@ -285,13 +300,12 @@ describe('CLI', () => {
 				expect(mockRunEvaluation).toHaveBeenCalledWith(
 					expect.objectContaining({
 						mode: 'local',
-						langsmithOptions: undefined,
 					}),
 				);
 			});
 
-			it('should use langsmith mode for -langsmith suffixed modes', async () => {
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'llm-judge-langsmith' }));
+			it('should use langsmith mode for backend=langsmith', async () => {
+				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
 				const { runV2Evaluation } = await import('../cli');
 
@@ -301,7 +315,7 @@ describe('CLI', () => {
 					expect.objectContaining({
 						mode: 'langsmith',
 						langsmithOptions: expect.objectContaining({
-							experimentName: 'v2-evaluation',
+							experimentName: 'workflow-builder-evaluation',
 						}),
 					}),
 				);
@@ -309,7 +323,7 @@ describe('CLI', () => {
 
 			it('should use datasetName from args for langsmith mode', async () => {
 				mockParseEvaluationArgs.mockReturnValue(
-					createMockArgs({ mode: 'llm-judge-langsmith', datasetName: 'custom-dataset' }),
+					createMockArgs({ backend: 'langsmith', datasetName: 'custom-dataset' }),
 				);
 
 				const { runV2Evaluation } = await import('../cli');
@@ -325,7 +339,7 @@ describe('CLI', () => {
 
 			it('should fall back to default dataset name when env var not set', async () => {
 				delete process.env.LANGSMITH_DATASET_NAME;
-				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ mode: 'llm-judge-langsmith' }));
+				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
 				const { runV2Evaluation } = await import('../cli');
 
@@ -341,7 +355,7 @@ describe('CLI', () => {
 			it('should include langsmithOptions with custom experiment name', async () => {
 				mockParseEvaluationArgs.mockReturnValue(
 					createMockArgs({
-						mode: 'llm-judge-langsmith',
+						backend: 'langsmith',
 						experimentName: 'my-experiment',
 						repetitions: 3,
 						concurrency: 8,
@@ -354,11 +368,11 @@ describe('CLI', () => {
 
 				expect(mockRunEvaluation).toHaveBeenCalledWith(
 					expect.objectContaining({
-						langsmithOptions: {
+						langsmithOptions: expect.objectContaining({
 							experimentName: 'my-experiment',
 							repetitions: 3,
 							concurrency: 8,
-						},
+						}),
 					}),
 				);
 			});

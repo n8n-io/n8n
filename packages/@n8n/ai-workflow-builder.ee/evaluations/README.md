@@ -296,12 +296,16 @@ pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
 ### Common Flags
 
 ```bash
+--suite <llm-judge|pairwise|programmatic|similarity>
+--backend <local|langsmith>   # Or `--langsmith` as a shortcut
 --verbose, -v       # Enable verbose output
 --name <name>       # Experiment name (LangSmith mode)
 --dataset <name>    # LangSmith dataset name
 --max-examples <n>  # Limit number of examples to evaluate
 --concurrency <n>   # Max concurrent evaluations (default: 5)
 --repetitions <n>   # Number of repetitions per example
+--test-case <id>    # Run a predefined test case (local)
+--prompts-csv <path># Load prompts from CSV (local)
 --prompt <text>     # Single prompt for local testing
 --dos <text>        # Pairwise: things the workflow should do
 --donts <text>      # Pairwise: things the workflow should not do
@@ -316,10 +320,10 @@ pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
 tsx evaluations/cli.ts --prompt "Create a workflow..." --verbose
 
 # LangSmith mode
-USE_LANGSMITH_EVAL=true tsx evaluations/cli.ts --name "my-experiment" --verbose
+tsx evaluations/cli.ts --backend langsmith --name "my-experiment" --verbose
 
 # Pairwise mode
-USE_PAIRWISE_EVAL=true tsx evaluations/cli.ts --prompt "..." --dos "Must use Slack"
+tsx evaluations/cli.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 ```
 
 ## Adding a New Evaluator
@@ -356,11 +360,12 @@ evaluations/
 ├── chains/                  # LLM evaluation chains
 ├── core/                    # Core utilities (environment, args, trace filters)
 ├── evaluators/              # Evaluator factories
-│   ├── llm-judge.ts
-│   ├── pairwise.ts
-│   ├── programmatic.ts
-│   └── similarity.ts
-├── pairwise/                # Pairwise evaluation logic
+│   ├── llm-judge/
+│   ├── pairwise/
+│   ├── programmatic/
+│   └── similarity/
+├── fixtures/                # Local fixtures (tracked)
+│   └── reference-workflows/
 ├── programmatic/            # Programmatic evaluation logic
 ├── types/                   # Shared types
 ├── utils/                   # Shared utilities

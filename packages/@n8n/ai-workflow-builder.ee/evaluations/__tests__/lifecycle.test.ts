@@ -77,6 +77,11 @@ describe('Console Lifecycle', () => {
 				dataset: 'my-dataset-name',
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				langsmithOptions: {
+					experimentName: 'test-experiment',
+					repetitions: 1,
+					concurrency: 1,
+				},
 			};
 
 			lifecycle.onStart(config);

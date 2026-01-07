@@ -1,277 +1,202 @@
+import { z } from 'zod';
+
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
-import { DEFAULTS } from '../constants.js';
+import { DEFAULTS } from '../constants';
 
-/**
- * All valid CLI flags for evaluation commands.
- */
-const VALID_FLAGS = [
-	// Common flags
-	'--verbose',
-	'-v',
-	'--repetitions',
-	'--concurrency',
-	'--name',
-	'--output-dir',
-	'--dataset',
+export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationBackend = 'local' | 'langsmith';
 
-	// Test case selection
-	'--test-case',
-	'--prompts-csv',
-	'--max-examples',
-
-	// Pairwise-specific
-	'--notion-id',
-	'--technique',
-	'--judges',
-	'--generations',
-	'--prompt',
-	'--dos',
-	'--donts',
-
-	// Feature flags
-	'--template-examples',
-	'--multi-agent',
-] as const;
-
-/**
- * Evaluation mode determined by environment variables.
- */
-export type EvaluationMode =
-	| 'llm-judge-langsmith'
-	| 'llm-judge-local'
-	| 'pairwise-langsmith'
-	| 'pairwise-local';
-
-/**
- * Parsed CLI arguments for all evaluation types.
- */
 export interface EvaluationArgs {
-	// Common
+	suite: EvaluationSuite;
+	backend: EvaluationBackend;
+
 	verbose: boolean;
 	repetitions: number;
 	concurrency: number;
 	experimentName?: string;
 	outputDir?: string;
 	datasetName?: string;
-	featureFlags?: BuilderFeatureFlags;
-
-	// Test case selection
-	testCase?: string;
-	promptsCsv?: string;
 	maxExamples?: number;
 
-	// Pairwise-specific
-	notionId?: string;
-	technique?: string;
-	numJudges: number;
-	numGenerations: number;
+	testCase?: string;
+	promptsCsv?: string;
+
 	prompt?: string;
 	dos?: string;
 	donts?: string;
 
-	// Computed
-	mode: EvaluationMode;
+	numJudges: number;
+	numGenerations: number;
+
+	featureFlags?: BuilderFeatureFlags;
 }
 
-/**
- * Validate that all provided CLI flags are recognized.
- * @throws Error if an unknown flag is found
- */
-function validateCliArgs(argv: string[]): void {
-	for (const arg of argv) {
-		// Skip values (non-flag arguments)
-		if (!arg.startsWith('-')) continue;
+type CliValueKind = 'boolean' | 'string';
 
-		// Handle --flag=value format
-		const flagName = arg.includes('=') ? arg.split('=')[0] : arg;
+const FLAG_TO_KEY = {
+	'--suite': { key: 'suite', kind: 'string' },
+	'--mode': { key: 'suite', kind: 'string' }, // alias
+	'--backend': { key: 'backend', kind: 'string' },
+	'--langsmith': { key: 'langsmith', kind: 'boolean' }, // alias for --backend langsmith
 
-		if (!VALID_FLAGS.includes(flagName as (typeof VALID_FLAGS)[number])) {
-			const validFlagsList = VALID_FLAGS.filter((f) => f.startsWith('--')).join('\n  ');
-			throw new Error(`Unknown flag: ${flagName}\n\nValid flags:\n  ${validFlagsList}`);
+	'--verbose': { key: 'verbose', kind: 'boolean' },
+	'-v': { key: 'verbose', kind: 'boolean' },
+	'--repetitions': { key: 'repetitions', kind: 'string' },
+	'--concurrency': { key: 'concurrency', kind: 'string' },
+	'--name': { key: 'experimentName', kind: 'string' },
+	'--output-dir': { key: 'outputDir', kind: 'string' },
+	'--dataset': { key: 'datasetName', kind: 'string' },
+	'--max-examples': { key: 'maxExamples', kind: 'string' },
+
+	'--test-case': { key: 'testCase', kind: 'string' },
+	'--prompts-csv': { key: 'promptsCsv', kind: 'string' },
+
+	'--prompt': { key: 'prompt', kind: 'string' },
+	'--dos': { key: 'dos', kind: 'string' },
+	'--donts': { key: 'donts', kind: 'string' },
+
+	'--judges': { key: 'numJudges', kind: 'string' },
+	'--generations': { key: 'numGenerations', kind: 'string' },
+
+	'--template-examples': { key: 'templateExamples', kind: 'boolean' },
+	'--multi-agent': { key: 'multiAgent', kind: 'boolean' },
+} as const satisfies Record<string, { key: string; kind: CliValueKind }>;
+
+type CliKey = (typeof FLAG_TO_KEY)[keyof typeof FLAG_TO_KEY]['key'];
+
+const cliSchema = z
+	.object({
+		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		backend: z.enum(['local', 'langsmith']).default('local'),
+
+		verbose: z.boolean().default(false),
+		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
+		concurrency: z.coerce.number().int().positive().default(DEFAULTS.CONCURRENCY),
+		experimentName: z.string().min(1).optional(),
+		outputDir: z.string().min(1).optional(),
+		datasetName: z.string().min(1).optional(),
+		maxExamples: z.coerce.number().int().positive().optional(),
+
+		testCase: z.string().min(1).optional(),
+		promptsCsv: z.string().min(1).optional(),
+
+		prompt: z.string().min(1).optional(),
+		dos: z.string().min(1).optional(),
+		donts: z.string().min(1).optional(),
+
+		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
+		numGenerations: z.coerce.number().int().positive().max(10).default(DEFAULTS.NUM_GENERATIONS),
+
+		langsmith: z.boolean().optional(),
+		templateExamples: z.boolean().default(false),
+		multiAgent: z.boolean().default(false),
+	})
+	.strict();
+
+function formatValidFlags(): string {
+	return Object.keys(FLAG_TO_KEY)
+		.filter((f) => f.startsWith('--'))
+		.sort()
+		.join('\n  ');
+}
+
+function ensureValue(argv: string[], i: number, flag: string): string {
+	const value = argv[i + 1];
+	if (value === undefined) throw new Error(`Flag ${flag} requires a value`);
+	return value;
+}
+
+function parseCli(argv: string[]): { values: Record<CliKey, unknown>; seenKeys: Set<CliKey> } {
+	const values: Record<string, unknown> = {};
+	const seenKeys = new Set<CliKey>();
+
+	for (let i = 0; i < argv.length; i++) {
+		const token = argv[i];
+		if (!token.startsWith('-')) continue;
+
+		const [flag, inlineValue] = token.startsWith('--') ? token.split(/=(.*)/s) : [token, undefined];
+		const def = FLAG_TO_KEY[flag as keyof typeof FLAG_TO_KEY];
+
+		if (!def) {
+			throw new Error(`Unknown flag: ${flag}\n\nValid flags:\n  ${formatValidFlags()}`);
 		}
-	}
-}
 
-/**
- * Get the value of a flag from argv.
- * Supports both --flag value and --flag=value formats.
- */
-function getFlagValue(argv: string[], flag: string): string | undefined {
-	const exactMatchIndex = argv.findIndex((arg) => arg === flag);
-	if (exactMatchIndex !== -1) {
-		const value = argv[exactMatchIndex + 1];
-		if (!value || value.startsWith('--')) {
-			throw new Error(`Flag ${flag} requires a value`);
+		const key = def.key;
+		seenKeys.add(key);
+
+		if (def.kind === 'boolean') {
+			values[key] = true;
+			continue;
 		}
-		return value;
+
+		const value = inlineValue ?? ensureValue(argv, i, flag);
+		if (inlineValue === undefined) i++;
+		values[key] = value;
 	}
 
-	const withValue = argv.find((arg) => arg.startsWith(`${flag}=`));
-	if (withValue) {
-		const value = withValue.slice(flag.length + 1);
-		if (!value) {
-			throw new Error(`Flag ${flag} requires a value`);
-		}
-		return value;
-	}
-
-	return undefined;
+	return { values: values as Record<CliKey, unknown>, seenKeys };
 }
 
-/**
- * Parse an integer flag with default value and optional maximum.
- */
-function getIntFlag(argv: string[], flag: string, defaultValue: number, max?: number): number {
-	const arg = getFlagValue(argv, flag);
-	if (!arg) return defaultValue;
-	const parsed = parseInt(arg, 10);
-	if (Number.isNaN(parsed) || parsed < 1) return defaultValue;
-	return max ? Math.min(parsed, max) : parsed;
-}
-
-/**
- * Check if a boolean flag is present.
- */
-function hasFlag(argv: string[], ...flags: string[]): boolean {
-	return flags.some((flag) => argv.includes(flag));
-}
-
-/**
- * Parse feature flags from environment variables and CLI arguments.
- */
-function parseFeatureFlags(argv: string[]): BuilderFeatureFlags | undefined {
+function parseFeatureFlags(args: { templateExamples: boolean; multiAgent: boolean }):
+	| BuilderFeatureFlags
+	| undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
 	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
 
-	const templateExamplesFromCli = hasFlag(argv, '--template-examples');
-	const multiAgentFromCli = hasFlag(argv, '--multi-agent');
+	const templateExamples = templateExamplesFromEnv || args.templateExamples;
+	const multiAgent = multiAgentFromEnv || args.multiAgent;
 
-	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
-	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
-
-	// Only return feature flags object if at least one flag is set
-	if (templateExamples || multiAgent) {
-		return {
-			templateExamples: templateExamples || undefined,
-			multiAgent: multiAgent || undefined,
-		};
-	}
-
-	return undefined;
-}
-
-/**
- * Determine the evaluation mode based on environment variables and args.
- */
-function determineEvaluationMode(args: {
-	useLangsmith: boolean;
-	usePairwiseEval: boolean;
-	prompt?: string;
-}): EvaluationMode {
-	const { useLangsmith, usePairwiseEval, prompt } = args;
-
-	if (usePairwiseEval) {
-		// Pairwise mode - local if prompt provided, otherwise LangSmith
-		return prompt ? 'pairwise-local' : 'pairwise-langsmith';
-	}
-
-	if (useLangsmith) {
-		return 'llm-judge-langsmith';
-	}
-
-	return 'llm-judge-local';
-}
-
-/**
- * Parse all CLI arguments into a unified structure.
- * @param argv - Command line arguments (default: process.argv.slice(2))
- */
-export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
-	validateCliArgs(argv);
-
-	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
-	const usePairwiseEval = process.env.USE_PAIRWISE_EVAL === 'true';
-
-	// Parse common args
-	const verbose = hasFlag(argv, '--verbose', '-v');
-	const repetitions = getIntFlag(argv, '--repetitions', DEFAULTS.REPETITIONS);
-	const concurrency = getIntFlag(argv, '--concurrency', DEFAULTS.CONCURRENCY);
-	const experimentName = getFlagValue(argv, '--name');
-	const outputDir = getFlagValue(argv, '--output-dir');
-	const datasetName = getFlagValue(argv, '--dataset') ?? process.env.LANGSMITH_DATASET_NAME;
-
-	// Parse test case selection
-	const testCase = getFlagValue(argv, '--test-case');
-	const promptsCsv = getFlagValue(argv, '--prompts-csv') ?? process.env.PROMPTS_CSV_FILE;
-	const maxExamplesRaw = getIntFlag(argv, '--max-examples', 0);
-	const maxExamples = maxExamplesRaw || undefined; // Convert 0 to undefined
-
-	// Parse pairwise-specific args
-	const notionId = getFlagValue(argv, '--notion-id');
-	const technique = getFlagValue(argv, '--technique');
-	const numJudges = getIntFlag(argv, '--judges', DEFAULTS.NUM_JUDGES);
-	const numGenerations = getIntFlag(argv, '--generations', DEFAULTS.NUM_GENERATIONS, 10);
-	const prompt = getFlagValue(argv, '--prompt');
-	const dos = getFlagValue(argv, '--dos');
-	const donts = getFlagValue(argv, '--donts');
-
-	// Parse feature flags
-	const featureFlags = parseFeatureFlags(argv);
-
-	// Determine mode
-	const mode = determineEvaluationMode({ useLangsmith, usePairwiseEval, prompt });
-
-	// Warn about incompatible combinations
-	if (promptsCsv && (useLangsmith || usePairwiseEval)) {
-		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
-	}
+	if (!templateExamples && !multiAgent) return undefined;
 
 	return {
-		verbose,
-		repetitions,
-		concurrency,
-		experimentName,
-		outputDir,
-		datasetName,
-		testCase,
-		promptsCsv: mode === 'llm-judge-local' ? promptsCsv : undefined,
-		maxExamples,
-		notionId,
-		technique,
-		numJudges,
-		numGenerations,
-		prompt,
-		dos,
-		donts,
-		featureFlags,
-		mode,
+		templateExamples: templateExamples || undefined,
+		multiAgent: multiAgent || undefined,
 	};
 }
 
-/**
- * Get the default experiment name for a mode.
- */
-export function getDefaultExperimentName(mode: EvaluationMode): string {
-	switch (mode) {
-		case 'pairwise-langsmith':
-		case 'pairwise-local':
-			return DEFAULTS.EXPERIMENT_NAME;
-		case 'llm-judge-langsmith':
-		case 'llm-judge-local':
-			return DEFAULTS.LLM_JUDGE_EXPERIMENT_NAME;
+export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
+	const { values, seenKeys } = parseCli(argv);
+
+	if (values.langsmith === true) {
+		const backendWasExplicit = seenKeys.has('backend');
+		if (backendWasExplicit && values.backend !== 'langsmith') {
+			throw new Error('Cannot combine `--langsmith` with `--backend local`');
+		}
+		values.backend = 'langsmith';
 	}
+
+	const parsed = cliSchema.parse(values);
+	const featureFlags = parseFeatureFlags({
+		templateExamples: parsed.templateExamples,
+		multiAgent: parsed.multiAgent,
+	});
+
+	return {
+		suite: parsed.suite,
+		backend: parsed.backend,
+		verbose: parsed.verbose,
+		repetitions: parsed.repetitions,
+		concurrency: parsed.concurrency,
+		experimentName: parsed.experimentName,
+		outputDir: parsed.outputDir,
+		datasetName: parsed.datasetName,
+		maxExamples: parsed.maxExamples,
+		testCase: parsed.testCase,
+		promptsCsv: parsed.promptsCsv,
+		prompt: parsed.prompt,
+		dos: parsed.dos,
+		donts: parsed.donts,
+		numJudges: parsed.numJudges,
+		numGenerations: parsed.numGenerations,
+		featureFlags,
+	};
 }
 
-/**
- * Get the default dataset name for a mode.
- */
-export function getDefaultDatasetName(mode: EvaluationMode): string {
-	switch (mode) {
-		case 'pairwise-langsmith':
-		case 'pairwise-local':
-			return DEFAULTS.DATASET_NAME;
-		case 'llm-judge-langsmith':
-		case 'llm-judge-local':
-			return process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
-	}
+export function getDefaultExperimentName(suite: EvaluationSuite): string {
+	return suite === 'pairwise' ? DEFAULTS.EXPERIMENT_NAME : DEFAULTS.LLM_JUDGE_EXPERIMENT_NAME;
+}
+
+export function getDefaultDatasetName(suite: EvaluationSuite): string {
+	if (suite === 'pairwise') return DEFAULTS.DATASET_NAME;
+	return process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-canvas-prompts';
 }

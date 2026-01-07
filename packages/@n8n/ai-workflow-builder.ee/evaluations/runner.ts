@@ -12,6 +12,8 @@ import type {
 	TestCaseContext,
 	Feedback,
 	RunConfig,
+	LocalRunConfig,
+	LangsmithRunConfig,
 	ExampleResult,
 	RunSummary,
 	EvaluationLifecycle,
@@ -213,7 +215,7 @@ async function runLocalExample(args: {
 /**
  * Run evaluation in local mode.
  */
-async function runLocal(config: RunConfig): Promise<RunSummary> {
+async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	const {
 		dataset,
 		generateWorkflow,
@@ -222,10 +224,6 @@ async function runLocal(config: RunConfig): Promise<RunSummary> {
 		lifecycle,
 		outputDir,
 	} = config;
-
-	if (typeof dataset === 'string') {
-		throw new Error('Local mode requires dataset to be an array of test cases');
-	}
 
 	const testCases: TestCase[] = dataset;
 	const results: ExampleResult[] = [];
@@ -320,7 +318,7 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
  * Run evaluation in LangSmith mode.
  * This wraps generation + evaluation in a traceable function.
  */
-async function runLangsmith(config: RunConfig): Promise<RunSummary> {
+async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const {
 		dataset,
 		generateWorkflow,
@@ -333,10 +331,6 @@ async function runLangsmith(config: RunConfig): Promise<RunSummary> {
 
 	// Create logger (defaults to silent if not provided)
 	const logger: EvalLogger = configLogger ?? createLogger(false);
-
-	if (!langsmithOptions) {
-		throw new Error('langsmithOptions required for LangSmith mode');
-	}
 
 	// Enable tracing (required in langsmith 0.4.x)
 	process.env.LANGSMITH_TRACING = 'true';
