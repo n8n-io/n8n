@@ -331,7 +331,7 @@ describe('Runner - LangSmith Mode', () => {
 			]);
 		});
 
-		it('should keep programmatic prefixes but not llm-judge root metric prefixes', async () => {
+		it('should keep programmatic prefixes but not llm-judge metric prefixes', async () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
@@ -372,7 +372,7 @@ describe('Runner - LangSmith Mode', () => {
 			expect(extracted).toEqual([
 				{ key: 'functionality', score: 0.9 },
 				{ key: 'programmatic.trigger', score: 0.8 },
-				{ key: 'llm-judge.maintainability.nodeNamingQuality', score: 0.7 },
+				{ key: 'maintainability.nodeNamingQuality', score: 0.7 },
 			]);
 		});
 

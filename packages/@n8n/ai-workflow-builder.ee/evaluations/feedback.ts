@@ -14,17 +14,12 @@ function isPairwiseV1Metric(metric: string): boolean {
 	return metric.startsWith('pairwise_');
 }
 
-function isSubMetric(metric: string): boolean {
-	return metric.includes('.');
-}
-
 /**
  * Metric key mapping for LangSmith.
  *
  * Goal: keep keys comparable with historical runs.
  * - Programmatic: keep evaluator prefix (e.g. `programmatic.trigger`)
- * - LLM-judge: keep root metrics unprefixed (e.g. `overallScore`, `connections`), but prefix sub-metrics
- *   to avoid collisions and keep grouping (e.g. `llm-judge.maintainability.nodeNamingQuality`)
+ * - LLM-judge: keep metrics unprefixed (e.g. `overallScore`, `connections`, `maintainability.nodeNamingQuality`)
  * - Pairwise: keep v1 metrics unprefixed (e.g. `pairwise_primary`), but namespace non-v1 details.
  */
 export function langsmithMetricKey(feedback: Feedback): string {
@@ -37,9 +32,10 @@ export function langsmithMetricKey(feedback: Feedback): string {
 	}
 
 	if (feedback.evaluator === 'llm-judge') {
-		return isSubMetric(feedback.metric) ? feedbackKey(feedback) : feedback.metric;
+		return feedback.metric;
 	}
 
+	// Keep other evaluators unprefixed unless we discover collisions.
 	return feedback.metric;
 }
 
