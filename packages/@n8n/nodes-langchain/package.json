@@ -210,7 +210,7 @@
     "@microsoft/agents-a365-observability": "0.1.0-preview.30",
     "@microsoft/agents-a365-tooling": "0.1.0-preview.30",
     "@microsoft/agents-a365-tooling-extensions-langchain": "0.1.0-preview.30",
-    "@microsoft/agents-activity": "1.1.1",
+    "@microsoft/agents-activity": "1.1.0-alpha.85",
     "@microsoft/agents-hosting": "1.1.0-alpha.85",
     "@modelcontextprotocol/sdk": "1.24.0",
     "@mozilla/readability": "0.6.0",
