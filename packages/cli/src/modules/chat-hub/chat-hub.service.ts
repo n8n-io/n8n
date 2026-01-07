@@ -823,84 +823,108 @@ export class ChatHubService {
 			retryOfMessageId,
 		);
 
-		await this.waitForExecutionCompletion(executionId);
-		let execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-		if (!execution) {
-			throw new OperationalError(
-				'Chat execution not found after completion - make sure your instance is saving executions.',
-			);
-		}
-
-		const message = this.getMessage(execution, responseMode);
-		const status = 'success';
-
-		await this.endResponse(
-			res,
-			message ?? '',
-			status,
-			executionId,
-			messageId,
-			previousMessageId,
-			retryOfMessageId,
-		);
-
-		while (execution && execution.status === 'waiting') {
-			const lastNode = getLastNodeExecuted(execution);
-
-			if (lastNode && shouldResumeImmediately(lastNode)) {
-				this.logger.debug(
-					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+		try {
+			await this.waitForExecutionCompletion(executionId);
+			let execution = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+			if (!execution) {
+				throw new OperationalError(
+					'Chat execution not found after completion - make sure your instance is saving executions.',
 				);
-				await this.resumeExecution(sessionId, execution, '');
-
-				previousMessageId = messageId;
-				retryOfMessageId = null;
-				messageId = uuidv4();
-
-				await this.beginResponse(
-					res,
-					executionId,
-					messageId,
-					sessionId,
-					model,
-					previousMessageId,
-					retryOfMessageId,
-				);
-
-				await this.waitForExecutionCompletion(executionId);
-
-				execution = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
-
-				if (!execution) {
-					throw new OperationalError(
-						'Chat execution not found after completion - make sure your instance is saving executions.',
-					);
-				}
-
-				const message = this.getMessage(execution, responseMode);
-				const status = 'success';
-
-				await this.endResponse(
-					res,
-					message ?? '',
-					status,
-					executionId,
-					messageId,
-					previousMessageId,
-					retryOfMessageId,
-				);
-			} else {
-				this.logger.debug(
-					`Execution ${execution.id} is waiting for user input at node ${lastNode?.name}`,
-				);
-				// session.nodeWaitingForChatResponse = lastNode?.name;
 			}
+
+			const message = this.getMessage(execution, responseMode);
+			const status = 'success';
+
+			await this.endResponse(
+				res,
+				message ?? '',
+				status,
+				executionId,
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+			);
+
+			while (execution && execution.status === 'waiting') {
+				const lastNode = getLastNodeExecuted(execution);
+
+				if (lastNode && shouldResumeImmediately(lastNode)) {
+					this.logger.debug(
+						`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+					);
+					await this.resumeExecution(sessionId, execution, '');
+
+					previousMessageId = messageId;
+					retryOfMessageId = null;
+					messageId = uuidv4();
+
+					await this.beginResponse(
+						res,
+						executionId,
+						messageId,
+						sessionId,
+						model,
+						previousMessageId,
+						retryOfMessageId,
+					);
+
+					await this.waitForExecutionCompletion(executionId);
+
+					execution = await this.executionRepository.findSingleExecution(executionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+
+					if (!execution) {
+						throw new OperationalError(
+							'Chat execution not found after completion - make sure your instance is saving executions.',
+						);
+					}
+
+					if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
+						const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+						throw new OperationalError(message);
+					}
+
+					const message = this.getMessage(execution, responseMode);
+
+					await this.endResponse(
+						res,
+						message ?? '',
+						'success',
+						executionId,
+						messageId,
+						previousMessageId,
+						retryOfMessageId,
+					);
+				} else {
+					this.logger.debug(
+						`Execution ${execution.id} is waiting for user input at node ${lastNode?.name}`,
+					);
+					// session.nodeWaitingForChatResponse = lastNode?.name;
+				}
+			}
+		} catch (e: unknown) {
+			if (e instanceof ManualExecutionCancelledError) {
+				// When messages are cancelled they're already marked cancelled on `stopGeneration`
+				return;
+			}
+
+			const message =
+				e instanceof Error ? e.message : 'Unknown error occurred during chat execution';
+
+			await this.endResponse(
+				res,
+				message ?? '',
+				'error',
+				executionId,
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+			);
 		}
 
 		res.end();
@@ -1009,7 +1033,7 @@ export class ChatHubService {
 		retryOfMessageId: string | null,
 	) {
 		const contentChunk: MessageChunk = {
-			type: 'item',
+			type: status === 'error' ? 'error' : 'item',
 			content,
 			metadata: {
 				timestamp: Date.now(),
@@ -1023,19 +1047,21 @@ export class ChatHubService {
 		res.write(jsonStringify(contentChunk) + '\n');
 		res.flush();
 
-		const endChunk: MessageChunk = {
-			type: 'end',
-			metadata: {
-				timestamp: Date.now(),
-				messageId,
-				previousMessageId,
-				retryOfMessageId,
-				executionId: executionId ? parseInt(executionId, 10) : null,
-			},
-		};
+		if (status !== 'error') {
+			const endChunk: MessageChunk = {
+				type: 'end',
+				metadata: {
+					timestamp: Date.now(),
+					messageId,
+					previousMessageId,
+					retryOfMessageId,
+					executionId: executionId ? parseInt(executionId, 10) : null,
+				},
+			};
 
-		res.write(jsonStringify(endChunk) + '\n');
-		res.flush();
+			res.write(jsonStringify(endChunk) + '\n');
+			res.flush();
+		}
 
 		await this.messageRepository.updateChatMessage(messageId, {
 			content,
@@ -1227,7 +1253,12 @@ export class ChatHubService {
 							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
 						);
 						clearInterval(poller);
-						resolve();
+
+						if (execution?.status === 'canceled') {
+							reject(new ManualExecutionCancelledError(executionId));
+						} else {
+							resolve();
+						}
 					}
 				} catch (error) {
 					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
@@ -1260,7 +1291,7 @@ export class ChatHubService {
 			}
 		} catch (error: unknown) {
 			if (error instanceof ManualExecutionCancelledError) {
-				return;
+				throw error;
 			}
 
 			if (error instanceof Error) {
