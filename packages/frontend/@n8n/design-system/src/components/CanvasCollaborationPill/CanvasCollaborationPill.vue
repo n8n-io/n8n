@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import N8nAvatar from '../N8nAvatar';
 import N8nCanvasPill from '../CanvasPill';
+import N8nAvatar from '../N8nAvatar';
 
 defineOptions({
 	name: 'N8nCanvasCollaborationPill',
