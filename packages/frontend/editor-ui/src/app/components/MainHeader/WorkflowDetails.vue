@@ -5,12 +5,7 @@ import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import {
-	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CONFIRM,
-	VIEWS,
-	IS_DRAFT_PUBLISH_ENABLED,
-} from '@/app/constants';
+import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -25,7 +20,6 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import WorkflowHeaderActions from '@/app/components/MainHeader/WorkflowHeaderActions.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -67,10 +61,6 @@ const props = defineProps<{
 	description?: IWorkflowDb['description'];
 }>();
 
-const emit = defineEmits<{
-	'workflow:deactivated': [];
-}>();
-
 const $style = useCssModule();
 
 const settingsStore = useSettingsStore();
@@ -94,10 +84,8 @@ const workflowSaving = useWorkflowSaving({ router });
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
-const workflowHeaderActionsRef = useTemplateRef<
-	| InstanceType<typeof WorkflowHeaderActions>
-	| InstanceType<typeof WorkflowHeaderDraftPublishActions>
->('workflowHeaderActions');
+const workflowHeaderActionsRef =
+	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -562,7 +550,6 @@ onBeforeUnmount(() => {
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
-				v-if="IS_DRAFT_PUBLISH_ENABLED"
 				:id="id"
 				ref="workflowHeaderActions"
 				:tags="tags"
@@ -573,22 +560,6 @@ onBeforeUnmount(() => {
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
 				@workflow:saved="onSaveButtonClick"
-			/>
-			<WorkflowHeaderActions
-				v-else
-				:id="id"
-				ref="workflowHeaderActions"
-				:name="name"
-				:tags="tags"
-				:current-folder="currentFolder"
-				:meta="meta"
-				:read-only="readOnly"
-				:is-archived="isArchived"
-				:active="active"
-				:is-new-workflow="isNewWorkflow"
-				:workflow-permissions="workflowPermissions"
-				@workflow:saved="onSaveButtonClick"
-				@workflow:deactivated="emit('workflow:deactivated')"
 			/>
 		</PushConnectionTracker>
 	</div>
