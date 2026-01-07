@@ -112,7 +112,7 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (props.isVersionActive) {
-		return i18n.baseText('workflowHistory.item.active');
+		return i18n.baseText('workflowHistory.item.publishedBy');
 	}
 
 	if (props.index === 0 && !props.isVersionActive) {
@@ -120,7 +120,7 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (versionPublishInfo.value) {
-		return `${i18n.baseText('workflowHistory.item.publishedAtLabel')}`;
+		return `${i18n.baseText('workflowHistory.item.publishedBy')}`;
 	}
 
 	return formattedCreatedAt.value;
@@ -196,10 +196,10 @@ onMounted(() => {
 			</div>
 			<div v-else :class="$style.tooltipContent">
 				{{ mainTooltipContent }}
-				<TimeAgo v-if="mainTooltipDate" :date="mainTooltipDate" />
-				<div v-if="mainTooltipUser">
+				<template v-if="mainTooltipUser">
 					{{ mainTooltipUser }}
-				</div>
+				</template>
+				<TimeAgo v-if="mainTooltipDate" :date="mainTooltipDate" />
 			</div>
 		</template>
 		<li
