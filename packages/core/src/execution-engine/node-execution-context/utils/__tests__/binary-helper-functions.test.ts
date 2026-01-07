@@ -628,7 +628,7 @@ describe('copyBinaryFile', () => {
 		);
 	});
 
-	it('should sanitize filenames to prevent path traversal', async () => {
+	it('should sanitize filenames', async () => {
 		await copyBinaryFile(workflowId, executionId, filePath, '../../../etc/passwd');
 
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(

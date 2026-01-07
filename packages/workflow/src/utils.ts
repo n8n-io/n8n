@@ -496,5 +496,6 @@ export function sanitizeFilename(fileName: string): string {
 	if (!sanitized || /^\.+$/.test(sanitized)) {
 		sanitized = 'file';
 	}
+
 	return sanitized;
 }
