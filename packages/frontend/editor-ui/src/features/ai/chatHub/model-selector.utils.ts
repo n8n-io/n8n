@@ -21,7 +21,7 @@ import { MAX_AGENT_NAME_CHARS_MENU, NEW_AGENT_MENU_ID, providerDisplayNames } fr
 
 type MenuItem = DropdownMenuItemProps<
 	string,
-	{ provider: ChatHubProvider; isFlattened?: boolean; fullName?: string; description?: string }
+	{ provider: ChatHubProvider; parts?: string[]; fullName?: string; description?: string }
 >;
 
 export interface BuildMenuItemsOptions {
@@ -305,8 +305,7 @@ function collectFlattenedSearchResults(item: MenuItem, pathPrefix: string[]): Me
 			{
 				...item,
 				divided: false,
-				label: fullPath.join(' > '),
-				data: item.data ? { ...item.data, isFlattened: true } : undefined,
+				data: item.data ? { ...item.data, parts: fullPath } : undefined,
 			},
 		];
 	}
@@ -338,6 +337,7 @@ export function applySearch(menuItems: MenuItem[], query: string): MenuItem[] {
 			const rest = results.slice(flattenCount).map((result) => ({
 				...result,
 				label: truncateBeforeLast(result.data?.fullName ?? '', MAX_AGENT_NAME_CHARS_MENU),
+				data: result.data ? { ...result.data, parts: undefined } : undefined,
 			}));
 
 			acc.push({ ...matched, divided: false, label, children: rest });

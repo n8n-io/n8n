@@ -113,6 +113,8 @@ export interface DropdownMenuSlots<T = string, D = never> {
 	item?: (props: { item: DropdownMenuItemProps<T, D> }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
 	'item-leading'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
+	/** Pass-through to N8nDropdownMenuItem - replaces the label text */
+	'item-label'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
 	'item-trailing'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Custom loading state */
@@ -124,6 +126,8 @@ export interface DropdownMenuSlots<T = string, D = never> {
 export interface DropdownMenuItemSlots<T = string, D = never> {
 	/** Content before the label (default: icon if provided) */
 	'item-leading'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
+	/** Content that replaces the label text (default: label string) */
+	'item-label'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Content after the label (badges, shortcuts, etc.) */
 	'item-trailing'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 }

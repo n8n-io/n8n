@@ -283,6 +283,9 @@ defineExpose({ open, close });
 										<template v-if="slots['item-leading']" #item-leading="slotProps">
 											<slot name="item-leading" v-bind="slotProps" />
 										</template>
+										<template v-if="slots['item-label']" #item-label="slotProps">
+											<slot name="item-label" v-bind="slotProps" />
+										</template>
 										<template v-if="slots['item-trailing']" #item-trailing="slotProps">
 											<slot name="item-trailing" v-bind="slotProps" />
 										</template>

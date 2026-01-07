@@ -235,6 +235,27 @@ defineExpose({
 			/>
 		</template>
 
+		<template #item-label="{ item, ui }">
+			<template v-if="item.data?.parts">
+				<div :class="[$style.flattenedLabel, ui.class]">
+					<template v-for="(part, index) in item.data.parts" :key="index">
+						<N8nText v-if="index > 0" color="text-light" :class="$style.separator">
+							<N8nIcon icon="chevron-right" size="small" />
+						</N8nText>
+						<N8nText
+							size="medium"
+							:color="index === item.data.parts.length - 1 ? 'text-dark' : 'text-base'"
+						>
+							{{ part }}
+						</N8nText>
+					</template>
+				</div>
+			</template>
+			<N8nText v-else :class="ui.class" size="medium" color="text-dark">
+				{{ item.label }}
+			</N8nText>
+		</template>
+
 		<template #item-trailing="{ item, ui }">
 			<N8nTooltip
 				v-if="item.data?.description"
@@ -242,7 +263,7 @@ defineExpose({
 				:class="ui.class"
 				:popper-class="$style.tooltip"
 			>
-				<N8nIcon icon="info" size="small" color="text-light" :class="$style.infoIcon" />
+				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
 		</template>
 	</N8nDropdownMenu>
@@ -251,10 +272,7 @@ defineExpose({
 <style lang="scss" module>
 .component {
 	z-index: var(--floating-ui--z);
-
-	&.searching {
-		width: auto !important;
-	}
+	width: auto !important;
 }
 
 .dropdownButton {
@@ -300,5 +318,20 @@ defineExpose({
 .tooltip {
 	/* higher than dropdown submenu */
 	z-index: calc(999999 + 1000) !important;
+}
+
+.flattenedLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	overflow: hidden;
+	flex-grow: 1;
+	white-space: nowrap;
+}
+
+.separator {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
 }
 </style>
