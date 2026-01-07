@@ -7,7 +7,7 @@ export default {
 	component: N8nSelectableList,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

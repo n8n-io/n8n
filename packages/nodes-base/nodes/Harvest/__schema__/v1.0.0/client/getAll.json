@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_active": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "statement_key": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

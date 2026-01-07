@@ -5,8 +5,14 @@ import { Service } from '@n8n/di';
 import axios from 'axios';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
-import { exec } from 'node:child_process';
+import {
+	ensureError,
+	jsonParse,
+	UnexpectedError,
+	UserError,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
+import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -26,9 +32,11 @@ import { toError } from '@/utils';
 
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
+import { getCommunityNodeTypes } from './community-node-types-utils';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { isVersionExists, verifyIntegrity } from './npm-utils';
+import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
+import { valid } from 'semver';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -55,7 +63,7 @@ const {
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR,
 } = NPM_COMMAND_TOKENS;
 
-const asyncExec = promisify(exec);
+const asyncExecFile = promisify(execFile);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
@@ -145,13 +153,17 @@ export class CommunityPackagesService {
 			? packageNameWithoutScope.split('@')[1]
 			: undefined;
 
+		if (version && !valid(version)) {
+			throw new UnexpectedError(`Invalid version: ${version}`);
+		}
+
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
 
 		return { packageName, scope, version, rawString };
 	}
 
 	/** @deprecated */
-	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
+	async executeNpmCommand(args: string[], options?: { doNotHandleError?: boolean }) {
 		const execOptions = {
 			cwd: this.downloadFolder,
 			env: {
@@ -163,8 +175,7 @@ export class CommunityPackagesService {
 		};
 
 		try {
-			const commandResult = await asyncExec(command, execOptions);
-
+			const commandResult = await asyncExecFile('npm', args, execOptions);
 			return commandResult.stdout;
 		} catch (error) {
 			if (options?.doNotHandleError) throw error;
@@ -312,19 +323,37 @@ export class CommunityPackagesService {
 
 		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
-			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
-			try {
-				// Optimistic approach - stop if any installation fails
-				for (const missingPackage of missingPackages) {
-					await this.installPackage(missingPackage.packageName, missingPackage.version);
+			this.logger.info('Attempting to reinstall missing packages', {
+				missingPackages: [...missingPackages],
+			});
+			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
+			const vettedPackages = await getCommunityNodeTypes(environment);
 
-					missingPackages.delete(missingPackage);
-				}
-				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
-				await this.loadNodesAndCredentials.postProcessLoaders();
-			} catch (error) {
-				this.logger.error('n8n was unable to install the missing packages.');
+			const checksums = new Map<string, Map<string, string>>();
+			for (const p of vettedPackages) {
+				const versionMap = new Map<string, string>();
+				versionMap.set(p.npmVersion, p.checksum);
+				for (const v of p.nodeVersions ?? []) versionMap.set(v.npmVersion, v.checksum);
+				checksums.set(p.packageName, versionMap);
 			}
+
+			for (const missingPackage of missingPackages) {
+				try {
+					const checksum = checksums.get(missingPackage.packageName)?.get(missingPackage.version);
+					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
+					missingPackages.delete(missingPackage);
+				} catch (error) {
+					this.logger.error(
+						`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
+					);
+				}
+			}
+
+			if (missingPackages.size === 0) {
+				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+			}
+
+			await this.loadNodesAndCredentials.postProcessLoaders();
 		} else {
 			this.logger.warn(
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
@@ -371,9 +400,7 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmInstallArgs() {
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`].join(
-			' ',
-		);
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`];
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
@@ -398,7 +425,7 @@ export class CommunityPackagesService {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
-		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);
@@ -492,18 +519,20 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-
-		const { stdout: tarOutput } = await asyncExec(
-			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
+		const { stdout: tarOutput } = await asyncExecFile(
+			'npm',
+			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
 			{ cwd: this.downloadFolder },
 		);
 
 		const tarballName = tarOutput?.trim();
 
 		try {
-			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
-				cwd: this.downloadFolder,
-			});
+			await asyncExecFile(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				{ cwd: this.downloadFolder },
+			);
 
 			// Strip dev, optional, and peer dependencies before running `npm install`
 			const packageJsonPath = `${packageDirectory}/package.json`;
@@ -522,7 +551,9 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await asyncExecFile('npm', ['install', ...this.getNpmInstallArgs()], {
+				cwd: packageDirectory,
+			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));

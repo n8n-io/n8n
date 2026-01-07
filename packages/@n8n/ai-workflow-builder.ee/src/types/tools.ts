@@ -1,7 +1,9 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
+import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
+import type { SimpleWorkflow } from './workflow';
 
 /**
  * Types of progress updates
@@ -131,4 +133,69 @@ export interface NodeSearchOutput {
  */
 export interface GetNodeParameterOutput {
 	message: string; // This is only to report success or error, without actual value (we don't need to send it to the frontend)
+}
+
+/**
+ * Output type for remove connection tool
+ */
+export interface RemoveConnectionOutput {
+	sourceNode: string;
+	targetNode: string;
+	connectionType: string;
+	sourceOutputIndex: number;
+	targetInputIndex: number;
+	message: string;
+}
+
+/**
+ * Output type for categorize prompt tool
+ */
+export interface CategorizePromptOutput {
+	categorization: PromptCategorization;
+}
+
+/**
+ * Description of a workflow example we have found
+ */
+export interface WorkflowMetadata {
+	templateId: number;
+	name: string;
+	description?: string;
+	workflow: SimpleWorkflow;
+}
+
+/**
+ * A node configuration entry with version information
+ */
+export interface NodeConfigurationEntry {
+	version: number;
+	parameters: INodeParameters;
+}
+
+/**
+ * Map of node type to array of parameter configurations with version info
+ * Key: node type (e.g., 'n8n-nodes-base.telegram')
+ * Value: array of configuration entries with version and parameters
+ */
+export type NodeConfigurationsMap = Record<string, NodeConfigurationEntry[]>;
+
+/**
+ * Output type for get workflow examples tool
+ */
+export interface GetWorkflowExamplesOutput {
+	examples: Array<{
+		name: string;
+		description?: string;
+		workflow: string;
+	}>;
+	totalResults: number;
+}
+
+/**
+ * Output type for get node configuration examples tool
+ */
+export interface GetNodeConfigurationExamplesOutput {
+	nodeType: string;
+	totalFound: number;
+	message: string;
 }

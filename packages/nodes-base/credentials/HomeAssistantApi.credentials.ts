@@ -5,7 +5,7 @@ export class HomeAssistantApi implements ICredentialType {
 
 	displayName = 'Home Assistant API';
 
-	documentationUrl = 'homeAssistant';
+	documentationUrl = 'homeassistant';
 
 	properties: INodeProperties[] = [
 		{

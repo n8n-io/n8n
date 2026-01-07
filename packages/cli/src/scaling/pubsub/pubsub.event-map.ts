@@ -12,10 +12,17 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region Credentials
+	'reload-overwrite-credentials': never;
+	// #endregion
+
 	// # region SSO
 
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
+
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
 
 	// #endregion
 
@@ -49,6 +56,7 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -57,6 +65,7 @@ export type PubSubCommandMap = {
 
 	'display-workflow-activation': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'display-workflow-deactivation': {

@@ -1,0 +1,68 @@
+{
+	"name": "Google Contacts Get All Limit Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"fields": ["names"],
+				"useQuery": false,
+				"rawData": false
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-getall-limit",
+			"name": "Get All Contacts Limit",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get All Contacts Limit": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"contactId": "c123456789"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get All Contacts Limit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

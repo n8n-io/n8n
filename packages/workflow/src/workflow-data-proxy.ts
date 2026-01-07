@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -29,6 +28,7 @@ import type {
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -794,19 +794,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
@@ -962,7 +949,7 @@ export class WorkflowDataProxy {
 			// Done: reached the destination node in the ancestry chain
 			if (sourceData.previousNode === destinationNodeName) {
 				if (pairedItem.item >= outputData.length) {
-					throw createInvalidPairedItemError({ nodeName: sourceData.previousNode });
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
 				return item;
@@ -1040,10 +1027,19 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData?.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
@@ -1136,9 +1132,22 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+								// Check if the node has any children and check parents for them instead of the activeNodeName
+								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
+								if (children.length === 0) {
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
+								} else {
+									// Node has children, check parent of children
+									const parents = children.flatMap((child) =>
+										that.workflow.getParentNodes(child, 'ALL'),
+									);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
 								}
 
 								ensureNodeExecutionData();

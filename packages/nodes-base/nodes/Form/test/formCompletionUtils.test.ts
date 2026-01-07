@@ -303,6 +303,26 @@ describe('formCompletionUtils', () => {
 			);
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
+
+		it('should NOT set Content-Security-Policy header when respondWith is redirect', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+					respondWith: 'redirect',
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.any(String),
+			);
+			expect(mockResponse.render).toHaveBeenCalled();
+		});
 	});
 
 	describe('binaryResponse', () => {

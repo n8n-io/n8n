@@ -5,7 +5,7 @@ export class UptimeRobotApi implements ICredentialType {
 
 	displayName = 'Uptime Robot API';
 
-	documentationUrl = 'uptimeRobot';
+	documentationUrl = 'uptimerobot';
 
 	properties: INodeProperties[] = [
 		{

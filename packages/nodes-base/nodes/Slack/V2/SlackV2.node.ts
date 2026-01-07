@@ -30,6 +30,7 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 	processThreadOptions,
+	slackApiRequestAllItemsWithRateLimit,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -44,7 +45,11 @@ import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -52,7 +57,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'Slack',
 			},
@@ -79,6 +84,7 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
+			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
@@ -178,16 +184,22 @@ export class SlackV2 implements INodeType {
 			async getChannels(
 				this: ILoadOptionsFunctions,
 				filter?: string,
+				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
-				const qs = { types: 'public_channel,private_channel', limit: 1000 };
-				const channels = (await slackApiRequestAllItems.call(
-					this,
-					'channels',
-					'GET',
-					'/conversations.list',
-					{},
-					qs,
-				)) as Array<{ id: string; name: string }>;
+				const qs = {
+					types: 'public_channel,private_channel',
+					limit: 1000,
+					cursor: paginationToken,
+				};
+				// in case of too many rate limit errors, return cursor and allow user to lazy load by scrolling
+				const { data: channels, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'channels', 'GET', '/conversations.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = channels
 					.map((c) => ({
 						name: c.name,
@@ -204,7 +216,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results };
+				return { results, paginationToken: cursor };
 			},
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const users = (await slackApiRequestAllItems.call(
@@ -560,6 +572,12 @@ export class SlackV2 implements INodeType {
 								qs,
 							);
 							responseData = responseData.messages;
+						}
+
+						// Slack API "feature" - messages sorting breaks in-between pages when oldest is provided
+						// Always sort manually in descending order to ensure consistent sorting
+						if (nodeVersion >= 2.4) {
+							responseData.sort((a: IDataObject, b: IDataObject) => +(b.ts ?? 0) - +(a.ts ?? 0));
 						}
 					}
 					//https://api.slack.com/methods/conversations.invite
@@ -1319,7 +1337,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('Options', i);
 
 						const body: IDataObject = {
 							name,
@@ -1335,7 +1353,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'enable') {
 						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
-						const options = this.getNodeParameter('options', i);
+						const options = this.getNodeParameter('option', i);
 
 						const body: IDataObject = {
 							usergroup: userGroupId,

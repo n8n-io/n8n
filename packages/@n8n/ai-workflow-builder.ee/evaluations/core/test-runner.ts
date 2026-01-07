@@ -1,11 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
+import type { BuilderFeatureFlags, WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import type { EvaluationInput, EvaluationResult, TestCase } from '../types/evaluation';
-import { isWorkflowStateValues } from '../types/langsmith';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
+import type { EvaluationInput, TestCase } from '../types/evaluation';
+import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
+import { calculateCacheStats } from '../utils/cache-analyzer';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
@@ -26,12 +28,55 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 			connections: { score: 0, violations: [] },
 			expressions: { score: 0, violations: [] },
 			nodeConfiguration: { score: 0, violations: [] },
+			efficiency: {
+				score: 0,
+				violations: [],
+				redundancyScore: 0,
+				pathOptimization: 0,
+				nodeCountEfficiency: 0,
+			},
+			dataFlow: {
+				score: 0,
+				violations: [],
+			},
+			maintainability: {
+				score: 0,
+				violations: [],
+				nodeNamingQuality: 0,
+				workflowOrganization: 0,
+				modularity: 0,
+			},
+			bestPractices: {
+				score: 0,
+				violations: [],
+				techniques: [],
+			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
+		},
+		programmaticEvaluationResult: {
+			overallScore: 0,
+			connections: { violations: [], score: 0 },
+			nodes: { violations: [], score: 0 },
+			trigger: { violations: [], score: 0 },
+			agentPrompt: { violations: [], score: 0 },
+			tools: { violations: [], score: 0 },
+			fromAi: { violations: [], score: 0 },
+			credentials: { violations: [], score: 0 },
+			similarity: null,
 		},
 		generationTime: 0,
 		error: errorMessage,
 	};
+}
+
+export interface RunSingleTestOptions {
+	agent: WorkflowBuilderAgent;
+	llm: BaseChatModel;
+	testCase: TestCase;
+	nodeTypes: INodeTypeDescription[];
+	userId?: string;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 /**
@@ -39,19 +84,32 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
  * @param agent - The workflow builder agent to use
  * @param llm - Language model for evaluation
  * @param testCase - Test case to execute
- * @param userId - User ID for the session
+ * @param nodeTypes - Array of node type descriptions
+ * @params opts - userId, User ID for the session and featureFlags, Optional feature flags to pass to the agent
  * @returns Test result with generated workflow and evaluation
  */
 export async function runSingleTest(
 	agent: WorkflowBuilderAgent,
 	llm: BaseChatModel,
 	testCase: TestCase,
-	userId: string = 'test-user',
+	nodeTypes: INodeTypeDescription[],
+	opts?: { userId?: string; featureFlags?: BuilderFeatureFlags },
 ): Promise<TestResult> {
+	const userId = opts?.userId ?? 'test-user';
 	try {
 		// Generate workflow
 		const startTime = Date.now();
-		await consumeGenerator(agent.chat(getChatPayload(testCase.prompt, testCase.id), userId));
+		await consumeGenerator(
+			agent.chat(
+				getChatPayload({
+					evalType: 'single-eval',
+					message: testCase.prompt,
+					workflowId: testCase.id,
+					featureFlags: opts?.featureFlags,
+				}),
+				userId,
+			),
+		);
 		const generationTime = Date.now() - startTime;
 
 		// Get generated workflow with validation
@@ -64,20 +122,28 @@ export async function runSingleTest(
 
 		const generatedWorkflow = state.values.workflowJSON;
 
+		// Extract cache statistics from messages
+		const usage = safeExtractUsage(state.values.messages);
+		const cacheStats = calculateCacheStats(usage);
+
 		// Evaluate
 		const evaluationInput: EvaluationInput = {
 			userPrompt: testCase.prompt,
 			generatedWorkflow,
 			referenceWorkflow: testCase.referenceWorkflow,
+			referenceWorkflows: testCase.referenceWorkflows,
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
+		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,
 			generatedWorkflow,
 			evaluationResult,
+			programmaticEvaluationResult,
 			generationTime,
+			cacheStats,
 		};
 	} catch (error) {
 		return createErrorResult(testCase, error);
@@ -97,26 +163,4 @@ export function initializeTestTracking(
 		tracking[testCase.id] = 'pending';
 	}
 	return tracking;
-}
-
-/**
- * Create a test result from a workflow state
- * @param testCase - The test case
- * @param workflow - Generated workflow
- * @param evaluationResult - Evaluation result
- * @param generationTime - Time taken to generate workflow
- * @returns TestResult
- */
-export function createTestResult(
-	testCase: TestCase,
-	workflow: SimpleWorkflow,
-	evaluationResult: EvaluationResult,
-	generationTime: number,
-): TestResult {
-	return {
-		testCase,
-		generatedWorkflow: workflow,
-		evaluationResult,
-		generationTime,
-	};
 }

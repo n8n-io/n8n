@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AiAssistantConfig } from './configs/ai-assistant.config';
+import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
@@ -9,6 +10,7 @@ import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
+import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
@@ -32,11 +34,13 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export type { TaskRunnerMode } from './configs/runners.config';
@@ -53,6 +57,7 @@ export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
+export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -74,6 +79,9 @@ export class GlobalConfig {
 
 	@Nested
 	versionNotifications: VersionNotificationsConfig;
+
+	@Nested
+	dynamicBanners: DynamicBannersConfig;
 
 	@Nested
 	publicApi: PublicApiConfig;
@@ -153,6 +161,9 @@ export class GlobalConfig {
 	aiAssistant: AiAssistantConfig;
 
 	@Nested
+	aiBuilder: AiBuilderConfig;
+
+	@Nested
 	tags: TagsConfig;
 
 	@Nested
@@ -209,4 +220,7 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;
 }

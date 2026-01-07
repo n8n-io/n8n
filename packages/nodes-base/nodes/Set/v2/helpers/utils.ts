@@ -10,7 +10,9 @@ import {
 	validateFieldType,
 } from 'n8n-workflow';
 import type {
+	AssignmentCollectionValue,
 	FieldType,
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -135,23 +137,11 @@ export const parseJsonParameter = (
 
 	if (typeof jsonData === 'string') {
 		try {
-			returnData = jsonParse<IDataObject>(jsonData);
+			returnData = jsonParse<IDataObject>(jsonData, { repairJSON: true });
 		} catch (error) {
-			let recoveredData = '';
-			try {
-				recoveredData = jsonData
-					.replace(/'/g, '"') // Replace single quotes with double quotes
-					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
-					.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
-					.replace(/,+$/, ''); // Remove trailing comma
-				returnData = jsonParse<IDataObject>(recoveredData);
-			} catch (err) {
-				const description =
-					recoveredData === jsonData ? jsonData : `${recoveredData};\n Original input: ${jsonData}`;
-				throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
-					description,
-				});
-			}
+			throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
+				description: jsonData,
+			});
 		}
 	} else {
 		returnData = jsonData;
@@ -241,4 +231,75 @@ export function resolveRawData(
 		}
 	}
 	return returnData;
+}
+
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+}
+
+export function prepareReturnItem(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	value: AssignmentCollectionValue,
+	itemIndex: number,
+	item: INodeExecutionData,
+	node: INode,
+	options: SetNodeOptions,
+) {
+	const jsonValues: AssignmentCollectionValue['assignments'] = [];
+	const binaryValues: AssignmentCollectionValue['assignments'] = [];
+
+	for (const assignment of value?.assignments ?? []) {
+		if (assignment.type === 'binary') {
+			binaryValues.push(assignment);
+		} else {
+			jsonValues.push(assignment);
+		}
+	}
+
+	const newData = Object.fromEntries(
+		jsonValues.map((assignment) => {
+			const { name, value } = validateEntry(
+				assignment.name,
+				assignment.type as FieldType,
+				assignment.value,
+				node,
+				itemIndex,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
+
+			return [name, value];
+		}),
+	);
+
+	const returnItem = composeReturnItem.call(
+		context,
+		itemIndex,
+		item,
+		newData,
+		options,
+		node.typeVersion,
+	);
+
+	if (binaryValues.length) {
+		if (!returnItem.binary) {
+			returnItem.binary = {};
+		}
+
+		for (const assignment of binaryValues) {
+			const name = assignment.name;
+			const value = assignment.value as string;
+			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
+			if (!isBinaryData(binaryData)) {
+				throw new NodeOperationError(
+					node,
+					`Could not find binary data specified in field ${name}`,
+					{ itemIndex },
+				);
+			}
+			returnItem.binary[name] = binaryData;
+		}
+	}
+
+	return returnItem;
 }

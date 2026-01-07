@@ -1,14 +1,7 @@
-import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 
 import { detectPackageManager, detectPackageManagerFromUserAgent } from './package-manager';
-
-// Mock dependencies
-vi.mock('node:child_process');
-vi.mock('node:fs/promises');
-vi.mock('@clack/prompts');
+import { tmpdirTest } from '../test-utils/temp-fs';
 
 describe('package manager utils', () => {
 	const originalEnv = process.env;
@@ -95,98 +88,73 @@ describe('package manager utils', () => {
 			const result = await detectPackageManager();
 
 			expect(result).toBe('pnpm');
-			expect(vi.mocked(fs).stat).not.toHaveBeenCalled();
 		});
 
-		it('detects npm from package-lock.json when user agent is not available', async () => {
+		tmpdirTest(
+			'detects npm from package-lock.json when user agent is not available',
+			async ({ tmpdir }) => {
+				delete process.env.npm_config_user_agent;
+
+				await fs.writeFile(`${tmpdir}/package-lock.json`, '{}');
+
+				const result = await detectPackageManager();
+
+				expect(result).toBe('npm');
+			},
+		);
+
+		tmpdirTest(
+			'detects yarn from yarn.lock when user agent is not available',
+			async ({ tmpdir }) => {
+				delete process.env.npm_config_user_agent;
+
+				await fs.writeFile(`${tmpdir}/yarn.lock`, '');
+
+				const result = await detectPackageManager();
+
+				expect(result).toBe('yarn');
+			},
+		);
+
+		tmpdirTest(
+			'detects pnpm from pnpm-lock.yaml when user agent is not available',
+			async ({ tmpdir }) => {
+				delete process.env.npm_config_user_agent;
+
+				await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '');
+
+				const result = await detectPackageManager();
+
+				expect(result).toBe('pnpm');
+			},
+		);
+
+		tmpdirTest('prioritizes npm lock file when multiple lock files exist', async ({ tmpdir }) => {
 			delete process.env.npm_config_user_agent;
 
-			vi.mocked(fs).stat.mockImplementation(async (path) => {
-				if (path === 'package-lock.json') {
-					const stats = mock<Stats>();
-					stats.isFile.mockReturnValue(true);
-					return await Promise.resolve(stats);
-				}
-				throw new Error('File not found');
-			});
-
-			const result = await detectPackageManager();
-
-			expect(result).toBe('npm');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('package-lock.json');
-		});
-
-		it('detects yarn from yarn.lock when user agent is not available', async () => {
-			delete process.env.npm_config_user_agent;
-
-			vi.mocked(fs).stat.mockImplementation(async (path) => {
-				if (path === 'yarn.lock') {
-					const stats = mock<Stats>();
-					stats.isFile.mockReturnValue(true);
-					return await Promise.resolve(stats);
-				}
-				throw new Error('File not found');
-			});
-
-			const result = await detectPackageManager();
-
-			expect(result).toBe('yarn');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('package-lock.json');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('yarn.lock');
-		});
-
-		it('detects pnpm from pnpm-lock.yaml when user agent is not available', async () => {
-			delete process.env.npm_config_user_agent;
-
-			vi.mocked(fs).stat.mockImplementation(async (path) => {
-				if (path === 'pnpm-lock.yaml') {
-					const stats = mock<Stats>();
-					stats.isFile.mockReturnValue(true);
-					return await Promise.resolve(stats);
-				}
-				throw new Error('File not found');
-			});
-
-			const result = await detectPackageManager();
-
-			expect(result).toBe('pnpm');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('package-lock.json');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('yarn.lock');
-			expect(vi.mocked(fs).stat).toHaveBeenCalledWith('pnpm-lock.yaml');
-		});
-
-		it('prioritizes npm lock file when multiple lock files exist', async () => {
-			delete process.env.npm_config_user_agent;
-
-			const stats = mock<Stats>();
-			stats.isFile.mockReturnValue(true);
-			vi.mocked(fs).stat.mockResolvedValue(stats);
+			await fs.writeFile(`${tmpdir}/package-lock.json`, '{}');
+			await fs.writeFile(`${tmpdir}/yarn.lock`, '');
+			await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '');
 
 			const result = await detectPackageManager();
 
 			expect(result).toBe('npm');
 		});
 
-		it('returns null when no user agent and no lock files exist', async () => {
+		tmpdirTest('returns null when no user agent and no lock files exist', async () => {
 			delete process.env.npm_config_user_agent;
-			vi.mocked(fs).stat.mockRejectedValue(new Error('File not found'));
 
 			const result = await detectPackageManager();
 
 			expect(result).toBe(null);
 		});
 
-		it('ignores directories that match lock file names', async () => {
+		tmpdirTest('ignores directories that match lock file names', async ({ tmpdir }) => {
 			delete process.env.npm_config_user_agent;
 
-			vi.mocked(fs).stat.mockImplementation(async (path) => {
-				if (path === 'package-lock.json') {
-					const stats = mock<Stats>();
-					stats.isFile.mockReturnValue(false);
-					return await Promise.resolve(stats);
-				}
-				throw new Error('File not found');
-			});
+			await fs.mkdir(`${tmpdir}/package-lock.json`);
+			await fs.mkdir(`${tmpdir}/yarn.lock`);
+			await fs.mkdir(`${tmpdir}/pnpm-lock.yaml`);
 
 			const result = await detectPackageManager();
 

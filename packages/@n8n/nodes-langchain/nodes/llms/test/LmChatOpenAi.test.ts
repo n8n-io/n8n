@@ -1,16 +1,20 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
+import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 jest.mock('@langchain/openai');
 jest.mock('../N8nLlmTracing');
 jest.mock('../n8nLlmFailedAttemptHandler');
+jest.mock('../LMChatOpenAi/common');
 jest.mock('@utils/httpProxyAgent', () => ({
 	getProxyAgent: jest.fn().mockReturnValue({}),
 }));
@@ -18,6 +22,8 @@ jest.mock('@utils/httpProxyAgent', () => ({
 const MockedChatOpenAI = jest.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedCommon = jest.mocked(common);
+const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
@@ -68,7 +74,7 @@ describe('LmChatOpenAi', () => {
 				displayName: 'OpenAI Chat Model',
 				name: 'lmChatOpenAi',
 				group: ['transform'],
-				version: [1, 1.1, 1.2],
+				version: [1, 1.1, 1.2, 1.3],
 				description: 'For advanced usage with an AI chain',
 			});
 		});
@@ -110,7 +116,9 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -142,7 +150,9 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -179,6 +189,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -215,6 +226,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -249,6 +261,7 @@ describe('LmChatOpenAi', () => {
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders: {
+							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
 						},
 					},
@@ -259,8 +272,8 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
-		it('should handle all available options', async () => {
-			const mockContext = setupMockContext();
+		it('should handle all available options v1.2', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
 			const options = {
 				frequencyPenalty: 0.5,
 				maxTokens: 1000,
@@ -292,9 +305,9 @@ describe('LmChatOpenAi', () => {
 					topP: 0.9,
 					timeout: 45000,
 					maxRetries: 3,
-					responseFormat: 'json_object',
-					reasoningEffort: 'high',
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {
 						response_format: { type: 'json_object' },
@@ -321,15 +334,8 @@ describe('LmChatOpenAi', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					reasoningEffort: 'invalid',
-					timeout: 60000,
-					maxRetries: 2,
-					configuration: {},
-					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {}, // Should not include invalid reasoning_effort
-					onFailedAttempt: expect.any(Function),
 				}),
 			);
 		});
@@ -412,13 +418,14 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 				}),
 			);
 		});
 
-		it('should handle text response format correctly', async () => {
-			const mockContext = setupMockContext();
+		it('should handle text response format correctly v1.2', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
 			const options = {
 				responseFormat: 'text' as const,
 			};
@@ -433,7 +440,6 @@ describe('LmChatOpenAi', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					responseFormat: 'text',
 					modelKwargs: {
 						response_format: { type: 'text' },
 					},
@@ -460,7 +466,6 @@ describe('LmChatOpenAi', () => {
 
 				expect(MockedChatOpenAI).toHaveBeenCalledWith(
 					expect.objectContaining({
-						reasoningEffort: effort,
 						modelKwargs: {
 							reasoning_effort: effort,
 						},
@@ -483,6 +488,88 @@ describe('LmChatOpenAi', () => {
 					searchModels: expect.any(Function),
 				},
 			});
+		});
+
+		it('should force Responses API and include additional params for v1.3', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			const options: IDataObject = {
+				conversationId: 'conv_123',
+				promptCacheKey: 'cache_key_1',
+				safetyIdentifier: 'user-42',
+				serviceTier: 'priority' as const,
+				topLogprobs: 10,
+				metadata: '{"team":"ai"}',
+				textFormat: {
+					textOptions: [{ type: 'json_object', verbosity: 'high' }],
+				},
+				promptConfig: {
+					promptOptions: [{ promptId: 'p_1', version: '1', variables: '{"name":"n8n"}' }],
+				},
+			};
+
+			const mockResponsesParams = {
+				custom: true,
+			};
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+
+			mockedCommon.prepareAdditionalResponsesParams = jest
+				.fn()
+				.mockReturnValue(mockResponsesParams);
+
+			mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue([]);
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedCommon.prepareAdditionalResponsesParams).toHaveBeenCalledWith(options);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					useResponsesApi: true,
+					modelKwargs: mockResponsesParams,
+				}),
+			);
+		});
+
+		it('should attach built-in tools to model metadata (v1.3)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			const builtInTools: IDataObject = {
+				webSearch: { searchContextSize: 'high', allowedDomains: 'google.com, wikipedia.org' },
+				fileSearch: { vectorStoreIds: '["vs_1"]', filters: '{}', maxResults: 2 },
+				codeInterpreter: true,
+			};
+
+			const mockTools = [
+				{
+					customTools: true,
+				},
+			];
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				if (paramName === 'builtInTools') return builtInTools;
+				return undefined;
+			});
+
+			mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue(mockTools);
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedCommon.formatBuiltInTools).toHaveBeenCalledWith(builtInTools);
+
+			const instance: unknown = MockedChatOpenAI.mock.instances[0];
+			expect(instance).toBeDefined();
+			expect((instance as { metadata?: { tools?: unknown } }).metadata).toBeDefined();
+			expect((instance as { metadata?: { tools?: unknown } }).metadata?.tools).toEqual(mockTools);
 		});
 	});
 });

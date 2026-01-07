@@ -4,7 +4,13 @@ export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.
 export { UserError, type UserErrorOptions } from './base/user.error';
 export { ApplicationError } from '@n8n/errors';
 export { ExpressionError } from './expression.error';
-export { ExecutionCancelledError } from './execution-cancelled.error';
+export {
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	SystemShutdownExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	type CancellationReason,
+} from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
 export { WorkflowConfigurationError } from './workflow-configuration.error';
@@ -20,5 +26,6 @@ export { TriggerCloseError } from './trigger-close.error';
 export { NodeError } from './abstract/node.error';
 export { ExecutionBaseError } from './abstract/execution-base.error';
 export { ExpressionExtensionError } from './expression-extension.error';
+export { ExpressionDestructuringError } from './expression-destructuring.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
 export { ensureError } from './ensure-error';

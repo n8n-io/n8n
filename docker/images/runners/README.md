@@ -11,6 +11,8 @@ in the [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes
 
 For official documentation, please see [here](https://docs.n8n.io/hosting/configuration/task-runners/).
 
+For a distroless variant of this image, see [here](./Dockerfile.distroless).
+
 For development purposes only, see below.
 
 ## Testing locally
@@ -36,7 +38,6 @@ docker buildx build \
 N8N_RUNNERS_ENABLED=true \
 N8N_RUNNERS_MODE=external \
 N8N_RUNNERS_AUTH_TOKEN=test \
-N8N_NATIVE_PYTHON_RUNNER=true \
 N8N_LOG_LEVEL=debug \
 pnpm start
 ```

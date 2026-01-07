@@ -1,3 +1,12 @@
+from src.errors import (
+    ConfigurationError,
+    TaskCancelledError,
+    TaskRuntimeError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+)
+
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
 BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
@@ -34,6 +43,11 @@ EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
 SIGTERM_EXIT_CODE = -15
+SIGKILL_EXIT_CODE = -9
+PIPE_MSG_PREFIX_LENGTH = 4  # bytes
+PIPE_MSG_MAX_SIZE = (
+    2 ** (PIPE_MSG_PREFIX_LENGTH * 8) - 1
+)  # bytes (~4 GiB with 4-byte prefix)
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -57,6 +71,8 @@ ENV_BUILTINS_DENY = "N8N_RUNNERS_BUILTINS_DENY"
 ENV_HEALTH_CHECK_SERVER_ENABLED = "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED"
 ENV_HEALTH_CHECK_SERVER_HOST = "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST"
 ENV_HEALTH_CHECK_SERVER_PORT = "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT"
+ENV_LAUNCHER_LOG_LEVEL = "N8N_RUNNERS_LAUNCHER_LOG_LEVEL"
+ENV_BLOCK_RUNNER_ENV_ACCESS = "N8N_BLOCK_RUNNER_ENV_ACCESS"
 ENV_SENTRY_DSN = "N8N_SENTRY_DSN"
 ENV_N8N_VERSION = "N8N_VERSION"
 ENV_ENVIRONMENT = "ENVIRONMENT"
@@ -65,11 +81,20 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
+IGNORED_ERROR_TYPES = (
+    ConfigurationError,
+    TaskRuntimeError,
+    TaskCancelledError,
+    TaskTimeoutError,
+    SecurityViolationError,
+    WebsocketConnectionError,
+    SyntaxError,
+)
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
+LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} ({result_size}) for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL = 'Cancelled task {task_id} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL_UNKNOWN = (
     "Received cancel for unknown task: {task_id}. Discarding message."
@@ -87,8 +112,16 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
 
 # Security
-BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__"
-ALWAYS_BLOCKED_ATTRIBUTES = {
+BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals,license,help,credits,copyright"
+BLOCKED_NAMES = {
+    "__loader__",
+    "__builtins__",
+    "__globals__",
+    "__spec__",
+    "__name__",
+}
+BLOCKED_ATTRIBUTES = {
+    # runtime attributes
     "__subclasses__",
     "__globals__",
     "__builtins__",
@@ -112,11 +145,8 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "ag_code",
     "__thisclass__",
     "__self_class__",
-}
-# Attributes blocked only in certain contexts:
-# - In attribute chains (e.g., x.__class__.__bases__)
-# - On literals (e.g., "".__class__)
-CONDITIONALLY_BLOCKED_ATTRIBUTES = {
+    # introspection attributes
+    "__base__",
     "__class__",
     "__bases__",
     "__code__",
@@ -134,14 +164,16 @@ CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__func__",
     "__wrapped__",
     "__annotations__",
+    "__spec__",
 }
-UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 # errors
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
+ERROR_DANGEROUS_NAME = "Access to name '{name}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
+ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _ClassName__attr) is disallowed for security reasons."
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )

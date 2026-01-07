@@ -20,6 +20,7 @@ export function createSuccessResponse<TState = typeof WorkflowState.State>(
 		new ToolMessage({
 			content: message,
 			tool_call_id: toolCallId,
+			name: config.toolCall?.name,
 		}),
 	];
 
@@ -42,6 +43,7 @@ export function createErrorResponse(config: ToolRunnableConfig, error: ToolError
 		new ToolMessage({
 			content: `Error: ${error.message}`,
 			tool_call_id: toolCallId,
+			name: config.toolCall?.name,
 		}),
 	];
 

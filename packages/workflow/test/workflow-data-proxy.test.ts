@@ -13,6 +13,10 @@ import {
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
 } from '../src/interfaces';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+} from '../src/run-execution-data-factory';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -346,8 +350,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Can't get data for expression");
-				expect(exprError.context.type).toEqual('paired_item_invalid_info');
+				expect(exprError.message).toContain('Paired item data for item from node');
+				expect(exprError.message).toContain('Edit Fields');
+				expect(exprError.context.type).toEqual('paired_item_no_info');
 			}
 		});
 	});
@@ -418,7 +423,7 @@ describe('WorkflowDataProxy', () => {
 
 		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
 			'$methodName should throw when it cannot find a paired item',
-			async ({ methodName }) => {
+			({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
 					throw new Error('should throw');
@@ -444,7 +449,7 @@ describe('WorkflowDataProxy', () => {
 			},
 		);
 
-		test('item should throw when it cannot find a paired item', async () => {
+		test('item should throw when it cannot find a paired item', () => {
 			try {
 				proxy.$('DebugHelper').item;
 				throw new Error('should throw');
@@ -542,6 +547,183 @@ describe('WorkflowDataProxy', () => {
 			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
 		});
+
+		test('Falls back to connectionInputData when no resultData exists', () => {
+			// Create a workflow with connectionInputData but no resultData
+			const workflowWithoutResultData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// Create connection input data with AI query data
+			const connectionInputData = [
+				{
+					json: {
+						full_name: 'Test User',
+						email: 'test@example.com',
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithoutResultData.nodes,
+					connections: workflowWithoutResultData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				connectionInputData,
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			expect(proxy.$fromAI('full_name')).toEqual('Test User');
+			expect(proxy.$fromAI('email')).toEqual('test@example.com');
+			expect(proxy.$fromAI('non_existent_key', 'description', 'string', 'default_value')).toEqual(
+				'default_value',
+			);
+		});
+
+		test('Returns default value when connection input data lacks expected keys', () => {
+			// Create a workflow with connection input data that doesn't have the expected AI keys
+			const workflowWithLimitedData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// Connection input data without the expected AI keys
+			const connectionInputData = [
+				{
+					json: {
+						some_other_field: 'other data',
+						regular_field: 'regular_value',
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithLimitedData.nodes,
+					connections: workflowWithLimitedData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				connectionInputData,
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			// Should return undefined for missing keys and default value when provided
+			expect(proxy.$fromAI('missing_key')).toBeUndefined();
+			expect(proxy.$fromAI('missing_key', 'description', 'string', 'default_value')).toEqual(
+				'default_value',
+			);
+
+			// Should return existing values for keys that are present
+			expect(proxy.$fromAI('regular_field')).toEqual('regular_value');
+		});
+
+		test('Throws ExpressionError when there is no execution data', () => {
+			// Create a workflow with no data at all
+			const workflowWithNoData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithNoData.nodes,
+					connections: workflowWithNoData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers the bug
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			expect(() => proxy.$fromAI('some_key')).toThrow(ExpressionError);
+		});
 	});
 
 	describe('$rawParameter', () => {
@@ -566,7 +748,7 @@ describe('WorkflowDataProxy', () => {
 			const noRunDataProxy = getProxyFromFixture(
 				fixture.workflow,
 				{
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
@@ -827,6 +1009,22 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('memory node with disconnected tool', () => {
+		const fixture = loadFixture('memory_with_disconnected_tool');
+
+		test('should resolve expressions referencing nodes connected via non-main connections', () => {
+			// This tests the fix for AI-1396: Memory node connected to both a parent agent
+			// (via AiMemory) and an agent tool (via AiTool) where the tool is NOT connected
+			// to the parent agent. The memory node should still be able to resolve expressions
+			// that reference the Chat Trigger node.
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Simple Memory');
+
+			// This should not throw "No path back to node" error
+			expect(() => proxy.$('Edit Fields1').first().json.sessionId).not.toThrow();
+			expect(proxy.$('Edit Fields1').first().json.sessionId).toEqual('test-session-123');
+		});
+	});
+
 	describe('multiple inputs', () => {
 		const fixture = loadFixture('multiple_inputs');
 
@@ -870,6 +1068,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -877,11 +1076,7 @@ describe('WorkflowDataProxy', () => {
 
 			// Create run data without execution data for Telegram Trigger
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -936,17 +1131,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -997,17 +1189,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1071,13 +1260,14 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							'Real Node': [
@@ -1093,7 +1283,7 @@ describe('WorkflowDataProxy', () => {
 							],
 						},
 					},
-				},
+				}),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,

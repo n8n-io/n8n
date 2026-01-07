@@ -1,3 +1,4 @@
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,8 +10,6 @@ import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -36,6 +35,23 @@ interface IssuedJWT extends AuthJwtPayload {
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
+}
+
+interface CreateAuthMiddlewareOptions {
+	/**
+	 * If true, MFA is not enforced
+	 */
+	allowSkipMFA: boolean;
+	/**
+	 * If true, authentication becomes optional in preview mode
+	 */
+	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, the middleware will not throw an error if authentication fails
+	 * and will instead call next() regardless of authentication status.
+	 * Use this for endpoints that should return different data for authenticated vs unauthenticated users.
+	 */
+	allowUnauthenticated?: boolean;
 }
 
 @Service()
@@ -69,16 +85,26 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/mcp-oauth/authorize/',
+
+			// Skip browser ID check for chat hub attachments
+			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean) {
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		allowUnauthenticated,
+	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			const token = req.cookies[AUTH_COOKIE_NAME];
+
 			if (token) {
 				try {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
+
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
 
@@ -88,6 +114,19 @@ export class AuthService {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							// User doesn't have MFA enabled, but MFA is enforced
+							// They need to set up MFA before accessing most endpoints
+							if (allowUnauthenticated) {
+								// Don't set req.user to avoid giving full access to semi-authenticated users
+								// Instead, set a flag in authInfo to indicate MFA enrollment is required
+								// This allows endpoints to handle this state appropriately (e.g., return public settings)
+								req.authInfo = {
+									usedMfa,
+									mfaEnrollmentRequired: true,
+								};
+								return next();
+							}
+
 							// In this case we don't want to clear the cookie, to allow for MFA setup
 							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
 							return;
@@ -107,7 +146,11 @@ export class AuthService {
 				}
 			}
 
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
+
 			if (req.user) next();
+			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
 	}
@@ -136,11 +179,7 @@ export class AuthService {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (
-			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
-			!isWithinUsersLimit
-		) {
+		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 

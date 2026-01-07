@@ -1,10 +1,10 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
-import { Project, ProjectRelation, User } from '../entities';
+import { ApiKey, Project, ProjectRelation, User } from '../entities';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -12,10 +12,28 @@ export class UserRepository extends Repository<User> {
 		super(User, dataSource.manager);
 	}
 
-	async findManyByIds(userIds: string[]) {
+	async findManyByIds(
+		userIds: string[],
+		options?: {
+			includeRole: boolean;
+		},
+	) {
 		return await this.find({
 			where: { id: In(userIds) },
+			relations: options?.includeRole ? ['role'] : undefined,
 		});
+	}
+
+	async findByApiKey(apiKey: string) {
+		const keyOwner = await this.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.leftJoinAndSelect('user.role', 'role')
+			.leftJoinAndSelect('role.scopes', 'scopes')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select(['user', 'role', 'scopes'])
+			.getOne();
+
+		return keyOwner;
 	}
 
 	/**
@@ -26,6 +44,9 @@ export class UserRepository extends Repository<User> {
 	 * With `update` it would only receive the updated fields, e.g. the `id`
 	 * would be missing. test('does not use `Repository.update`, but
 	 * `Repository.save` instead'.
+	 *
+	 * Also don't use this method to change a user's role.
+	 * Use `UserService.changeUserRole` instead.
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
@@ -102,15 +123,23 @@ export class UserRepository extends Repository<User> {
 				entityManager.create(Project, {
 					type: 'personal',
 					name: userWithRole.createPersonalProjectName(),
+					creatorId: savedUser.id,
 				}),
 			);
+
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
 					userId: savedUser.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: {
+						slug:
+							userWithRole.role.slug !== 'global:chatUser'
+								? PROJECT_OWNER_ROLE_SLUG
+								: PROJECT_VIEWER_ROLE_SLUG,
+					},
 				}),
 			);
+
 			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {
@@ -130,8 +159,12 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
+					project: {
+						type: 'personal',
+						creatorId: Not(IsNull()),
+						sharedWorkflows: { workflowId, role: 'workflow:owner' },
+					},
 				},
 			},
 			relations: ['role'],
@@ -147,8 +180,9 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
 					projectId,
+					project: { type: 'personal', creatorId: Not(IsNull()) },
 				},
 			},
 			relations: ['role'],

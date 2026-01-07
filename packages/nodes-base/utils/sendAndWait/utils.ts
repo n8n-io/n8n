@@ -1,4 +1,5 @@
 import isbot from 'isbot';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -26,6 +27,7 @@ import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	prepareFormData,
+	prepareFormFields,
 	prepareFormReturnItem,
 	resolveRawData,
 } from '../../nodes/Form/utils/utils';
@@ -390,6 +392,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -430,6 +433,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
 
+			fields = prepareFormFields(this, fields);
+
 			const data = prepareFormData({
 				formTitle,
 				formDescription,
@@ -443,6 +448,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -579,3 +585,12 @@ export function createEmail(context: IExecuteFunctions) {
 
 	return email;
 }
+
+const sendAndWaitWaitingTooltip = (parameters: { operation: string }) => {
+	if (parameters?.operation === 'sendAndWait') {
+		return "Execution will continue after the user's response";
+	}
+	return '';
+};
+
+export const SEND_AND_WAIT_WAITING_TOOLTIP = `={{ (${sendAndWaitWaitingTooltip})($parameter) }}`;

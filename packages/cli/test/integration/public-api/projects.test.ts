@@ -143,6 +143,7 @@ describe('Projects in Public API', () => {
 				name: 'some-project',
 				icon: null,
 				type: 'team',
+				creatorId: owner.id,
 				description: null,
 				id: expect.any(String),
 				createdAt: expect.any(String),
@@ -675,6 +676,9 @@ describe('Projects in Public API', () => {
 			beforeEach(() => {
 				testServer.license.setQuota('quota:maxTeamProjects', -1);
 				testServer.license.enable('feat:projectRole:admin');
+				// Enable role licenses required for role change operations
+				testServer.license.enable('feat:projectRole:viewer');
+				testServer.license.enable('feat:projectRole:editor');
 			});
 
 			it('should reject with 400 if the role do not exist', async () => {

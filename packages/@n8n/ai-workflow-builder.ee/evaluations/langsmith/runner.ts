@@ -1,11 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { evaluate } from 'langsmith/evaluation';
+import { getLangchainCallbacks } from 'langsmith/langchain';
+import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
+import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
 	generateRunId,
@@ -17,77 +20,116 @@ import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluat
 
 /**
  * Creates a workflow generation function for Langsmith evaluation
+ * Uses traceable wrapper for proper LangSmith context propagation
  * @param parsedNodeTypes - Node types
  * @param llm - Language model
- * @param tracer - Optional tracer
+ * @param featureFlags - Optional feature flags to pass to the agent
  * @returns Function that generates workflows from inputs
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
-	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 ) {
-	return async (inputs: typeof WorkflowState.State) => {
-		// Generate a unique ID for this evaluation run
-		const runId = generateRunId();
+	// Wrap the inner function with traceable for proper LangSmith context propagation
+	const generateWorkflow = traceable(
+		async (inputs: typeof WorkflowState.State) => {
+			// Generate a unique ID for this evaluation run
+			const runId = generateRunId();
 
-		// Validate inputs
-		if (!inputs.messages || !Array.isArray(inputs.messages) || inputs.messages.length === 0) {
-			throw new Error('No messages provided in inputs');
-		}
+			// Validate inputs
+			if (!inputs.messages || !Array.isArray(inputs.messages) || inputs.messages.length === 0) {
+				throw new Error('No messages provided in inputs');
+			}
 
-		// Extract first message content safely
-		const firstMessage = inputs.messages[0];
-		const messageContent = extractMessageContent(firstMessage);
+			// Extract first message content safely
+			const firstMessage = inputs.messages[0];
+			const messageContent = extractMessageContent(firstMessage);
 
-		// Create agent for this run
-		const agent = createAgent(parsedNodeTypes, llm, tracer);
-		await consumeGenerator(
-			agent.chat(getChatPayload(messageContent, runId), 'langsmith-eval-user'),
-		);
+			// Get LangChain callbacks linked to current traceable context.
+			// This is the official bridge between LangSmith's traceable and LangChain callbacks.
+			const callbacks = await getLangchainCallbacks();
 
-		// Get generated workflow with validation
-		const state = await agent.getState(runId, 'langsmith-eval-user');
+			// Create agent for this run (no tracer - callbacks passed at invocation)
+			const agent = createAgent({ parsedNodeTypes, llm, featureFlags });
+			await consumeGenerator(
+				agent.chat(
+					getChatPayload({
+						evalType: EVAL_TYPES.LANGSMITH,
+						message: messageContent,
+						workflowId: runId,
+						featureFlags,
+					}),
+					EVAL_USERS.LANGSMITH,
+					undefined, // abortSignal
+					callbacks, // externalCallbacks for LangSmith tracing
+				),
+			);
 
-		// Validate state
-		if (!state.values) {
-			throw new Error('No values in agent state');
-		}
+			// Get generated workflow with validation
+			const state = await agent.getState(runId, EVAL_USERS.LANGSMITH);
 
-		if (!isWorkflowStateValues(state.values)) {
-			throw new Error('Invalid workflow state: workflow or messages missing');
-		}
+			// Validate state
+			if (!state.values) {
+				throw new Error('No values in agent state');
+			}
 
-		const generatedWorkflow = state.values.workflowJSON;
-		const messages = state.values.messages;
+			if (!isWorkflowStateValues(state.values)) {
+				throw new Error('Invalid workflow state: workflow or messages missing');
+			}
 
-		// Extract usage metadata safely
-		const usage = safeExtractUsage(messages);
+			const generatedWorkflow = state.values.workflowJSON;
+			const messages = state.values.messages;
 
-		return {
-			workflow: generatedWorkflow,
-			prompt: messageContent,
-			usage,
-		};
-	};
+			// Extract usage metadata safely
+			const usage = safeExtractUsage(messages);
+
+			return {
+				workflow: generatedWorkflow,
+				prompt: messageContent,
+				usage,
+			};
+		},
+		{ name: TRACEABLE_NAMES.WORKFLOW_GENERATION, run_type: 'chain' },
+	);
+
+	return generateWorkflow;
 }
 
 /**
  * Runs evaluation using Langsmith
+ * @param repetitions - Number of times to run each example (default: 1)
+ * @param featureFlags - Optional feature flags to pass to the agent
  */
-export async function runLangsmithEvaluation(): Promise<void> {
+export async function runLangsmithEvaluation(
+	repetitions: number = 1,
+	featureFlags?: BuilderFeatureFlags,
+): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
+	if (repetitions > 1) {
+		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
+	}
+	if (featureFlags) {
+		const enabledFlags = Object.entries(featureFlags)
+			.filter(([, v]) => v === true)
+			.map(([k]) => k);
+		if (enabledFlags.length > 0) {
+			console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+		}
+	}
 	console.log();
 
-	// Check for Langsmith API key
-	if (!process.env.LANGSMITH_API_KEY) {
-		console.error(pc.red('✗ LANGSMITH_API_KEY environment variable not set'));
-		process.exit(1);
-	}
-
 	try {
+		// Check for Langsmith API key
+		if (!process.env.LANGSMITH_API_KEY) {
+			throw new Error('LANGSMITH_API_KEY environment variable not set');
+		}
+
 		// Setup test environment
-		const { parsedNodeTypes, llm, tracer, lsClient } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		// Note: Don't use the tracer from setupTestEnvironment() here.
+		// LangSmith's evaluate() manages its own tracing context - passing a separate
+		// tracer would create disconnected runs in a different project.
 
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
@@ -100,29 +142,28 @@ export async function runLangsmithEvaluation(): Promise<void> {
 		// Verify dataset exists
 		try {
 			await lsClient.readDataset({ datasetName });
-		} catch (error) {
-			console.error(pc.red(`✗ Dataset "${datasetName}" not found`));
-			console.log('\nAvailable datasets:');
-
-			// List available datasets
+		} catch {
+			// List available datasets for helpful error message
+			const availableDatasets: string[] = [];
 			for await (const dataset of lsClient.listDatasets()) {
-				console.log(pc.dim(`  - ${dataset.name} (${dataset.id})`));
+				availableDatasets.push(`${dataset.name} (${dataset.id})`);
 			}
 
-			console.log(
-				'\nTo use a different dataset, set the LANGSMITH_DATASET_NAME environment variable',
+			throw new Error(
+				`Dataset "${datasetName}" not found. Available datasets: ${availableDatasets.join(', ') || 'none'}. ` +
+					'Set LANGSMITH_DATASET_NAME environment variable to use a different dataset.',
 			);
-			process.exit(1);
 		}
 
 		console.log();
 		const startTime = Date.now();
 
 		// Create workflow generation function
-		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer);
+		// Uses traceable wrapper internally for proper LangSmith context propagation
+		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, featureFlags);
 
-		// Create LLM-based evaluator
-		const evaluator = createLangsmithEvaluator(llm);
+		// Create evaluator with both LLM-based and programmatic evaluation
+		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {
@@ -130,6 +171,7 @@ export async function runLangsmithEvaluation(): Promise<void> {
 			evaluators: [evaluator],
 			maxConcurrency: 7,
 			experimentPrefix: 'workflow-builder-evaluation',
+			numRepetitions: repetitions,
 			metadata: {
 				evaluationType: 'llm-based',
 				modelName: process.env.LLM_MODEL ?? 'default',

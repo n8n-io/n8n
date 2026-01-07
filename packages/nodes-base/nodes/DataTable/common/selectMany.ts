@@ -1,16 +1,45 @@
-import { DATA_TABLE_SYSTEM_COLUMNS, NodeOperationError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, NodeOperationError } from 'n8n-workflow';
 import type {
 	DataTableFilter,
-	DataStoreRowReturn,
-	IDataStoreProjectService,
+	DataTableRowReturn,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeProperties,
+	DataTableColumnType,
 } from 'n8n-workflow';
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
+
+/**
+ * Recursively converts Date objects to ISO strings in an object
+ * This ensures that all output data is JSON-compatible
+ */
+function convertDatesToIsoStrings<T>(obj: T): T {
+	if (obj === null || obj === undefined) {
+		return obj;
+	}
+
+	if (obj instanceof Date) {
+		return obj.toISOString() as T;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map(convertDatesToIsoStrings) as T;
+	}
+
+	if (typeof obj === 'object') {
+		const converted: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(obj)) {
+			converted[key] = convertDatesToIsoStrings(value);
+		}
+		return converted as T;
+	}
+
+	return obj;
+}
 
 export function getSelectFields(
 	displayOptions: IDisplayOptions,
@@ -117,15 +146,19 @@ export async function getSelectFilter(
 	}
 
 	// Validate filter conditions against current table schema
-	if (fields.length > 0) {
-		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
-		const availableColumns = await dataStoreProxy.getColumns();
-		const allColumns = new Set([
-			...DATA_TABLE_SYSTEM_COLUMNS,
-			...availableColumns.map((col) => col.name),
-		]);
+	let allColumnsWithTypes: Record<string, DataTableColumnType> = DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP;
 
-		const invalidConditions = fields.filter((field) => !allColumns.has(field.keyName));
+	if (fields.length > 0) {
+		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataTableProxy.getColumns();
+
+		// Add system columns with their types
+		allColumnsWithTypes = {
+			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
+		};
+
+		const invalidConditions = fields.filter((field) => !allColumnsWithTypes[field.keyName]);
 
 		if (invalidConditions.length > 0) {
 			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
@@ -138,16 +171,16 @@ export async function getSelectFilter(
 		}
 	}
 
-	return buildGetManyFilter(fields, matchType);
+	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
-	dataStoreProxy: IDataStoreProjectService,
+	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
 	limit?: number,
-): Promise<Array<{ json: DataStoreRowReturn }>> {
+): Promise<Array<{ json: DataTableRowReturn }>> {
 	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
@@ -155,22 +188,27 @@ export async function executeSelectMany(
 	}
 
 	const PAGE_SIZE = 1000;
-	const result: Array<{ json: DataStoreRowReturn }> = [];
+	const result: Array<{ json: DataTableRowReturn }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
 	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
+
+	const nodeVersion = ctx.getNode().typeVersion;
+	const shouldConvertDates = nodeVersion >= 1.1;
 
 	let expectedTotal: number | undefined;
 	let skip = 0;
 	let take = PAGE_SIZE;
 
 	while (true) {
-		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
 		});
-		const wrapped = data.map((json) => ({ json }));
+		const wrapped = data.map((json) => ({
+			json: shouldConvertDates ? convertDatesToIsoStrings(json) : json,
+		}));
 
 		// Fast path: everything fits in a single page
 		if (skip === 0 && count === data.length) {
