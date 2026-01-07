@@ -50,8 +50,7 @@ docker run -d \
 docker logs -f syslog-ng-tcp
 
 # In another window
-echo 'TEST MESSAGE' | \
-    openssl s_client -connect localhost:6514 -CAfile ca-cert.pem -ign_eof 2>&1
+echo "test message" | nc -v localhost 514
 
 # You should see the message in the window tailing the logs
 ```
