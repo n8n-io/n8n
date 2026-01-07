@@ -18,14 +18,14 @@ export const workflowNodesSchema = z.custom<INode[]>((val) => Array.isArray(val)
 });
 
 export const workflowConnectionsSchema = z.custom<IConnections>(
-	(val) => typeof val === 'object' && val !== null,
+	(val) => typeof val === 'object' && val !== null && !Array.isArray(val),
 	{
 		message: 'Connections must be an object',
 	},
 );
 
 export const workflowSettingsSchema = z.custom<IWorkflowSettings>(
-	(val) => val === null || (typeof val === 'object' && val !== null),
+	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
 	{
 		message: 'Settings must be an object or null',
 	},
@@ -43,14 +43,17 @@ export const workflowStaticDataSchema = z.preprocess(
 		}
 		return val;
 	},
-	z.custom<IDataObject | null>((val) => val === null || (typeof val === 'object' && val !== null), {
-		message: 'Static data must be an object or null',
-	}),
+	z.custom<IDataObject | null>(
+		(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
+		{
+			message: 'Static data must be an object or null',
+		},
+	),
 );
 
 // Pin data is a record of node names to their pinned execution data
 export const workflowPinDataSchema = z.custom<IPinData | null>(
-	(val) => val === null || (typeof val === 'object' && val !== null),
+	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
 	{
 		message: 'Pin data must be an object or null',
 	},
