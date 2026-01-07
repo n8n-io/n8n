@@ -436,7 +436,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter(Boolean);
 	}
 
-	const thinkOption = !!processedOptions.think;
+	const thinkOption = processedOptions.think;
 	delete processedOptions.think;
 
 	const body: {
@@ -452,7 +452,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options: processedOptions,
 	};
 
-	if (!thinkOption) {
+	if (thinkOption !== undefined && !thinkOption) {
 		body.think = false;
 	}
 
