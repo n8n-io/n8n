@@ -286,7 +286,8 @@ defineExpose({
 							{{ publishButtonConfig.tooltip }} <br />
 						</template>
 						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
-							<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span><br />{{ i18n.baseText('workflowHistory.item.active') }}
+							<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span
+							><br />{{ i18n.baseText('workflowHistory.item.active') }}
 							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 						</template>
 					</div>
