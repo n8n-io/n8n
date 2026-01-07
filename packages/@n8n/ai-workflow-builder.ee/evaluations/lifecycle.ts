@@ -257,9 +257,6 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 
 		onEnd(summary: RunSummary): void {
 			if (runMode === 'langsmith') {
-				console.log(pc.bold('\n═══════════════════ SUMMARY ═══════════════════'));
-				console.log(pc.dim('  LangSmith mode: see results in LangSmith UI'));
-				console.log(pc.bold('═══════════════════════════════════════════════\n'));
 				return;
 			}
 

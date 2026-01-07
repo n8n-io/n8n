@@ -92,6 +92,37 @@ describe('Console Lifecycle', () => {
 			expect(logOutput).toContain('my-dataset-name');
 		});
 
+		it('should not log summary in langsmith mode', async () => {
+			const { createConsoleLifecycle } = await import('../lifecycle');
+			const lifecycle = createConsoleLifecycle({ verbose: false });
+
+			const config: RunConfig = {
+				mode: 'langsmith',
+				dataset: 'my-dataset-name',
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				langsmithOptions: {
+					experimentName: 'test-experiment',
+					repetitions: 1,
+					concurrency: 1,
+				},
+			};
+
+			lifecycle.onStart(config);
+			mockConsole.log.mockClear();
+
+			lifecycle.onEnd({
+				totalExamples: 0,
+				passed: 0,
+				failed: 0,
+				errors: 0,
+				averageScore: 0,
+				totalDurationMs: 0,
+			});
+
+			expect(mockConsole.log).not.toHaveBeenCalled();
+		});
+
 		it('should log example progress in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true });
