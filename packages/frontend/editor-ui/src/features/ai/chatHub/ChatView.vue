@@ -47,6 +47,7 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
+	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -204,7 +205,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {
@@ -250,31 +251,41 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
-	if (!chatStore.agentsReady) {
-		return null;
+const messagingState = computed<MessagingState>(() => {
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
 	}
 
-	if (!selectedModel.value) {
+	if (chatStore.agentsReady && !selectedModel.value) {
 		return 'missingAgent';
 	}
 
-	if (isMissingSelectedCredential.value) {
+	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
 		return 'missingCredentials';
 	}
 
-	return null;
+	return 'idle';
 });
 
 const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
+const canAcceptFiles = computed(() => {
+	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value,
-);
+		!isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -431,7 +442,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		attachments,
 	);
 
-	inputRef.value?.setText('');
+	inputRef.value?.reset();
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -451,29 +462,34 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
+		!editingMessageId.value ||
 		isResponding.value ||
-		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
+		editingMessageId.value,
+		content,
 		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
 		isResponding.value ||
 		message.type !== 'ai' ||
@@ -485,7 +501,9 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	const messageToRetry = message.id;
 
-	chatStore.regenerateMessage(
+	editingMessageId.value = undefined;
+
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,
@@ -574,7 +592,13 @@ function handleOpenWorkflow(workflowId: string) {
 }
 
 function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
@@ -629,10 +653,12 @@ function onFilesDropped(files: File[]) {
 					<ChatMessage
 						v-for="(message, index) in chatMessages"
 						:key="message.id"
+						ref="messages"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="message.status === 'running'"
+						:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
+						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
 						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
@@ -667,11 +693,9 @@ function onFilesDropped(files: File[]) {
 						:class="$style.prompt"
 						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
-						:is-responding="isResponding"
+						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
-						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
-						:issue="issue"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"

@@ -2,6 +2,13 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../../fixtures/base';
 
+// Tags tests must run serially since they share global tag state
+test.describe.configure({ mode: 'serial' });
+
+test.beforeEach(async ({ api }) => {
+	await api.tags.deleteAll();
+});
+
 test.describe('Workflow tags - Tag creation', () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
@@ -26,13 +33,17 @@ test.describe('Workflow tags - Tag creation', () => {
 
 		await n8n.canvas.clickOutsideModal();
 
-		await expect(n8n.canvas.getTagPills()).toHaveCount(3);
+		// Wait for save to complete first - closing the dropdown triggers a save
+		// which re-renders the tags container
+		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+
+		// After dropdown closes, tags are displayed via WorkflowTagsContainer (workflow-tags)
+		// not the dropdown container, so use getSavedWorkflowTagPills()
+		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(3);
 
 		// Pills should be rendered individually, not collapsed as "+3"
-		const tagsContainer = n8n.page.getByTestId('workflow-tags-container');
+		const tagsContainer = n8n.page.getByTestId('workflow-tags');
 		await expect(tagsContainer).not.toHaveText(/\+\d+/);
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 	});
 
 	test('should create tags via modal without attaching them', async ({ n8n }) => {
@@ -43,12 +54,12 @@ test.describe('Workflow tags - Tag creation', () => {
 
 		await n8n.canvas.openTagManagerModal();
 
-		await n8n.canvas.tagsManagerModal.clickAddNewButton();
+		await n8n.canvas.tagsManagerModal.addTag();
 		await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag1);
 		await n8n.canvas.pressEnterToCreateTag();
 		await n8n.canvas.tagsManagerModal.getTable().getByText(tag1).waitFor();
 
-		await n8n.canvas.tagsManagerModal.clickAddNewButton();
+		await n8n.canvas.tagsManagerModal.addTag();
 		await n8n.canvas.tagsManagerModal.getTagInputInModal().fill(tag2);
 		await n8n.canvas.pressEnterToCreateTag();
 		await n8n.canvas.tagsManagerModal.getTable().getByText(tag2).waitFor();

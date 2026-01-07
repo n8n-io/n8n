@@ -321,7 +321,6 @@ const nodeSettingsProps = computed(() => ({
 	eventBus: settingsEventBus,
 	dragging: isDragging.value,
 	pushRef: pushRef.value,
-	nodeType: activeNodeType.value,
 	foreignCredentials: foreignCredentials.value,
 	readOnly: props.readOnly,
 	blockUI: blockUi.value && showTriggerPanel.value,

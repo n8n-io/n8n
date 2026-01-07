@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -249,10 +251,12 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 		const configuration: ClientOptions = {
 			fetchOptions: {
 				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1'),
 			},
+			defaultHeaders,
 		};
 
 		if (options.baseURL) {

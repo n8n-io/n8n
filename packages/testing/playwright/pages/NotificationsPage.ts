@@ -176,9 +176,11 @@ export class NotificationsPage {
 		options: { timeout?: number } = {},
 	): Promise<boolean> {
 		const { timeout = 3000 } = options;
-		await this.waitForNotification(text, { timeout });
-		await this.closeNotificationByText(text, { timeout });
-		return true;
+		const isVisible = await this.waitForNotification(text, { timeout });
+		if (!isVisible) {
+			return false;
+		}
+		return await this.closeNotificationByText(text, { timeout });
 	}
 
 	/**
