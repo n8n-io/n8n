@@ -15,6 +15,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
+const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
+const LOCK_STATE_POLL_INTERVAL = 20 * TIME.SECOND;
 
 /**
  * Store for tracking active users for workflows. I.e. to show
@@ -44,6 +46,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const collaborators = ref<Collaborator[]>([]);
 
 	const heartbeatTimer = ref<number | null>(null);
+	const writeLockHeartbeatTimer = ref<number | null>(null);
+	const lockStatePollTimer = ref<number | null>(null);
 
 	// Write-lock state for single-write mode
 	const currentWriterId = ref<string | null>(null);
@@ -60,6 +64,66 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			clearInterval(heartbeatTimer.value);
 			heartbeatTimer.value = null;
 		}
+	};
+
+	const sendWriteLockHeartbeat = () => {
+		if (!isCurrentUserWriter.value) {
+			stopWriteLockHeartbeat();
+			return;
+		}
+
+		pushStore.send({
+			type: 'writeAccessHeartbeat',
+			workflowId: workflowsStore.workflowId,
+			userId: usersStore.currentUserId,
+		});
+	};
+
+	const stopWriteLockHeartbeat = () => {
+		if (writeLockHeartbeatTimer.value !== null) {
+			clearInterval(writeLockHeartbeatTimer.value);
+			writeLockHeartbeatTimer.value = null;
+		}
+	};
+
+	const startWriteLockHeartbeat = () => {
+		stopWriteLockHeartbeat();
+		writeLockHeartbeatTimer.value = window.setInterval(
+			sendWriteLockHeartbeat,
+			WRITE_LOCK_HEARTBEAT_INTERVAL,
+		);
+	};
+
+	/**
+	 * Poll lock state from backend to detect if lock has expired.
+	 * Only runs when in read-only mode (someone else has the lock).
+	 */
+	const pollLockState = async () => {
+		if (!shouldBeReadOnly.value) {
+			stopLockStatePolling();
+			return;
+		}
+
+		const writeLockUserId = await fetchWriteLockState();
+
+		// If lock is gone on backend but still exists in frontend, clear it
+		if (!writeLockUserId && currentWriterId.value) {
+			console.log('[Collaboration] 🔓 Lock expired on backend - clearing local state');
+			currentWriterId.value = null;
+			stopLockStatePolling();
+		}
+	};
+
+	const stopLockStatePolling = () => {
+		if (lockStatePollTimer.value !== null) {
+			clearInterval(lockStatePollTimer.value);
+			lockStatePollTimer.value = null;
+		}
+	};
+
+	const startLockStatePolling = () => {
+		stopLockStatePolling();
+		lockStatePollTimer.value = window.setInterval(pollLockState, LOCK_STATE_POLL_INTERVAL);
 	};
 
 	// Computed properties for write-lock state
@@ -125,6 +189,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 
 		currentWriterId.value = null;
+		stopWriteLockHeartbeat();
 
 		try {
 			pushStore.send({
@@ -253,6 +318,14 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		const writeLockUserId = await fetchWriteLockState();
 		if (writeLockUserId) {
 			currentWriterId.value = writeLockUserId;
+
+			// If current user holds the lock, restart the heartbeat
+			if (isCurrentUserWriter.value) {
+				startWriteLockHeartbeat();
+			} else {
+				// If someone else has the lock, start polling
+				startLockStatePolling();
+			}
 		}
 
 		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
@@ -276,6 +349,15 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 					writer?.user.email || event.data.userId,
 				);
 				recordActivity();
+
+				// Start heartbeat if current user acquired the lock
+				if (isCurrentUserWriter.value) {
+					startWriteLockHeartbeat();
+					stopLockStatePolling();
+				} else {
+					// Start polling if someone else has the lock
+					startLockStatePolling();
+				}
 				return;
 			}
 
@@ -285,6 +367,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			) {
 				const wasReadOnly = shouldBeReadOnly.value;
 				currentWriterId.value = null;
+				stopWriteLockHeartbeat();
+				stopLockStatePolling();
 				console.log('[Collaboration] 🔒 Write access released', {
 					currentWriterId: currentWriterId.value,
 					wasReadOnly,
@@ -312,6 +396,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 		notifyWorkflowClosed();
 		stopHeartbeat();
+		stopWriteLockHeartbeat();
+		stopLockStatePolling();
 		stopInactivityCheck();
 		if (isCurrentUserWriter.value) {
 			releaseWriteAccess();
