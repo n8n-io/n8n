@@ -116,10 +116,19 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 	it('forwards valueChanged event from child component', async () => {
 		mockedGetVariant.mockReturnValue(COLLECTION_OVERHAUL_EXPERIMENT.variant);
 
-		const { emitted } = renderComponent();
+		const { emitted, getByTestId } = renderComponent();
 
-		// The wrapper should forward the valueChanged event from the child
-		// We verify this by checking that the event is properly set up
-		expect(emitted()).toBeDefined();
+		// Click the add button to trigger a valueChanged event
+		const addButton = getByTestId('fixed-collection-add-header');
+		await addButton.click();
+
+		// Verify that the valueChanged event was emitted with the correct payload
+		expect(emitted().valueChanged).toBeTruthy();
+		expect(emitted().valueChanged).toHaveLength(1);
+		expect(emitted().valueChanged[0]).toEqual([
+			expect.objectContaining({
+				name: expect.stringContaining('parameters.rules.values'),
+			}),
+		]);
 	});
 });
