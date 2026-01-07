@@ -331,7 +331,7 @@ describe('Runner - LangSmith Mode', () => {
 			]);
 		});
 
-		it('should not prefix evaluator name in metric keys sent to LangSmith', async () => {
+		it('should keep programmatic prefixes but not llm-judge root metric prefixes', async () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const config: RunConfig = {
@@ -364,13 +364,15 @@ describe('Runner - LangSmith Mode', () => {
 					feedback: [
 						{ evaluator: 'llm-judge', metric: 'functionality', score: 0.9 },
 						{ evaluator: 'programmatic', metric: 'trigger', score: 0.8 },
+						{ evaluator: 'llm-judge', metric: 'maintainability.nodeNamingQuality', score: 0.7 },
 					],
 				},
 			});
 
 			expect(extracted).toEqual([
 				{ key: 'functionality', score: 0.9 },
-				{ key: 'trigger', score: 0.8 },
+				{ key: 'programmatic.trigger', score: 0.8 },
+				{ key: 'llm-judge.maintainability.nodeNamingQuality', score: 0.7 },
 			]);
 		});
 
