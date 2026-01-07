@@ -463,8 +463,7 @@ export function useWorkflowSaving({
 					await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
-						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
-						autosaveStore.setPendingAutoSave(null);
+						autosaveStore.reset();
 					}
 				}
 			})();
