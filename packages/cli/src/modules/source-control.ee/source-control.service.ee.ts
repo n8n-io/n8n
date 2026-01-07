@@ -90,7 +90,7 @@ export class SourceControlService {
 		this.logger.debug('Source control configuration changed, reloading from database');
 
 		const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
-		await this.init();
+		await this.start();
 		const isNowConnected = this.sourceControlPreferencesService.isSourceControlConnected();
 
 		if (wasConnected && !isNowConnected) {
@@ -269,7 +269,7 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		let filesToPush = options.fileNames.map((file) => {
+		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -570,6 +570,8 @@ export class SourceControlService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		const instanceSettings = Container.get(InstanceSettings);
+
+		console.log('instanceSettings', instanceSettings);
 
 		if (instanceSettings.isMultiMain) {
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
