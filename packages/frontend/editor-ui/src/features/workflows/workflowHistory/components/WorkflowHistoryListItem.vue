@@ -247,7 +247,11 @@ onMounted(() => {
 							</N8nText>
 						</div>
 						<div :class="$style.metaRow">
-							<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated" :show-after="300">
+							<N8nTooltip
+								placement="right-end"
+								:disabled="!isAuthorElementTruncated"
+								:show-after="300"
+							>
 								<template #content>{{ props.item.authors }}</template>
 								<N8nText
 									ref="authorElement"
