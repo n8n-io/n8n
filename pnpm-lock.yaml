@@ -287,6 +287,9 @@ patchedDependencies:
   '@types/ws@8.18.1':
     hash: 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
     path: patches/@types__ws@8.18.1.patch
+  assert@2.1.0:
+    hash: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
+    path: patches/assert@2.1.0.patch
   bull@4.16.4:
     hash: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
     path: patches/bull@4.16.4.patch
@@ -22263,7 +22266,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.33.5':
     dependencies:
-      '@emnapi/runtime': 1.5.0
+      '@emnapi/runtime': 1.8.1
     optional: true
 
   '@img/sharp-win32-ia32@0.33.5':
@@ -27245,7 +27248,7 @@ snapshots:
 
   assert-plus@1.0.0: {}
 
-  assert@2.1.0:
+  assert@2.1.0(patch_hash=a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2):
     dependencies:
       call-bind: 1.0.7
       is-nan: 1.3.2
@@ -27324,6 +27327,14 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.12.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30082,6 +30093,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -30784,7 +30799,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.1)
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30794,7 +30809,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -33692,7 +33707,7 @@ snapshots:
 
   node-stdlib-browser@1.3.1:
     dependencies:
-      assert: 2.1.0
+      assert: 2.1.0(patch_hash=a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2)
       browser-resolve: 2.0.0
       browserify-zlib: 0.2.0
       buffer: 5.7.1
@@ -35024,7 +35039,7 @@ snapshots:
 
   recast@0.22.0:
     dependencies:
-      assert: 2.1.0
+      assert: 2.1.0(patch_hash=a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2)
       ast-types: 0.16.1
       esprima: 4.0.1
       source-map: 0.6.1
@@ -35253,7 +35268,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 

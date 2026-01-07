@@ -53,12 +53,12 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
-    "@babel/preset-env": "^7.26.0",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "cross-env": "^7.0.3",
     "eslint": "catalog:",
@@ -143,7 +143,8 @@
       "minifaker": "patches/minifaker.patch",
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
-      "v-code-diff": "patches/v-code-diff.patch"
+      "v-code-diff": "patches/v-code-diff.patch",
+      "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }
 }
