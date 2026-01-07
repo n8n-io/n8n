@@ -1,12 +1,13 @@
 import { SettingsRepository, RoleRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PERSONAL_SPACE_PUBLISHING_SETTING_KEY } from '@n8n/permissions';
 import { OperationalError } from 'n8n-workflow';
 
 import { RoleService } from '@/services/role.service';
 
 @Service()
 export class SecuritySettingsService {
-	private readonly SETTING_KEY = 'security.personalSpacePublishing';
+	private readonly SETTING_KEY = PERSONAL_SPACE_PUBLISHING_SETTING_KEY;
 
 	private readonly PERSONAL_OWNER_ROLE_SLUG = 'project:personalOwner';
 
