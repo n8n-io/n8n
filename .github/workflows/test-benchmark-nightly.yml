@@ -1,4 +1,4 @@
-name: Run Nightly Benchmark
+name: 'Test: Benchmark Nightly'
 run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
 
 on:

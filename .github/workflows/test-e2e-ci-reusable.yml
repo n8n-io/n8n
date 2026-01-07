@@ -1,4 +1,4 @@
-name: E2E Tests for CI
+name: 'Test: E2E CI'
 
 on:
   workflow_call:
@@ -16,12 +16,12 @@ jobs:
   multi-main-e2e:
     name: 'Multi-Main: E2E'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
-      shards: 13
+      shards: 14
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       use-custom-orchestration: true
@@ -30,7 +30,7 @@ jobs:
   multi-main-isolated:
     name: 'Multi-Main: Isolated'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
@@ -45,23 +45,25 @@ jobs:
   community-e2e:
     name: 'Community: E2E'
     if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local
-      shards: 5
+      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
+      shards: 6
       runner: ubuntu-latest
-      workers: '2'
+      workers: '1'
+      upload-failure-artifacts: true
 
   community-isolated:
     name: 'Community: Isolated'
     if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local:isolated
-      shards: 1
+      shards: 2
       runner: ubuntu-latest
       workers: '1'
+      upload-failure-artifacts: true

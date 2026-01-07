@@ -1,4 +1,4 @@
-name: Test Postgres and MySQL schemas
+name: 'Test: DB Postgres MySQL'
 
 on:
   schedule:
@@ -14,7 +14,7 @@ on:
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
       - packages/cli/**/__tests__/**
-      - .github/workflows/ci-postgres-mysql.yml
+      - .github/workflows/test-db-postgres-mysql.yml
       - .github/docker-compose.yml
 
 concurrency:

@@ -1,4 +1,4 @@
-name: Benchmark Docker Image CI
+name: 'Build: Benchmark Image'
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
       - 'packages/@n8n/benchmark/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/docker-images-benchmark.yml'
+      - '.github/workflows/build-benchmark-image.yml'
 
 jobs:
   build:
