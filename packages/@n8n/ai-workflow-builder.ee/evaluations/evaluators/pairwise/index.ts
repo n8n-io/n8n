@@ -121,7 +121,7 @@ async function evaluateMultiGeneration(
 	};
 
 	// Generate all workflows and evaluate in parallel
-	const generationDetails: GenerationDetail[] = await Promise.all(
+	const generationRuns = await Promise.all(
 		Array.from({ length: numGenerations }, async (_, i) => {
 			const workflow = await runWithOptionalLimiter(ctx.llmCallLimiter, async () => {
 				return await ctx.generateWorkflow(ctx.prompt);
@@ -130,15 +130,17 @@ async function evaluateMultiGeneration(
 				generationIndex: i + 1,
 				llmCallLimiter: ctx.llmCallLimiter,
 			});
-			return {
-				workflow,
-				majorityPass: result.majorityPass,
-				diagnosticScore: result.avgDiagnosticScore,
-				primaryPasses: result.primaryPasses,
-				numJudges,
-			};
+			return { workflow, result };
 		}),
 	);
+
+	const generationDetails: GenerationDetail[] = generationRuns.map(({ workflow, result }) => ({
+		workflow,
+		majorityPass: result.majorityPass,
+		diagnosticScore: result.avgDiagnosticScore,
+		primaryPasses: result.primaryPasses,
+		numJudges,
+	}));
 
 	// Aggregate results
 	const aggregation = aggregateGenerations(generationDetails);
@@ -171,6 +173,25 @@ async function evaluateMultiGeneration(
 			kind: 'detail',
 		},
 	];
+
+	// Per-judge details (one set per generation)
+	generationRuns.forEach(({ result }, genIndex) => {
+		for (let i = 0; i < result.judgeResults.length; i++) {
+			const judge = result.judgeResults[i];
+			const violationSummary =
+				judge.violations.length > 0
+					? judge.violations.map((v) => `[${v.rule}] ${v.justification}`).join('; ')
+					: undefined;
+
+			feedback.push({
+				evaluator: 'pairwise',
+				metric: `gen${genIndex + 1}.judge${i + 1}`,
+				score: judge.primaryPass ? 1 : 0,
+				kind: 'detail',
+				comment: violationSummary,
+			});
+		}
+	});
 
 	// Per-generation details
 	aggregation.generationDetails.forEach((gen, i) => {

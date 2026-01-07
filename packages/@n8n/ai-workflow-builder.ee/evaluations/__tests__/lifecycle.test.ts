@@ -249,6 +249,43 @@ describe('Console Lifecycle', () => {
 			expect(logOutput).toContain('Disconnected node found');
 		});
 
+		it('should display pairwise judge violations in verbose mode', async () => {
+			const { createConsoleLifecycle } = await import('../lifecycle');
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
+
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'fail',
+				score: 0.5,
+				feedback: [
+					{
+						evaluator: 'pairwise',
+						metric: 'pairwise_generation_correctness',
+						score: 0.5,
+						comment: '1/2 generations passed',
+						kind: 'score',
+					},
+					{
+						evaluator: 'pairwise',
+						metric: 'gen2.judge2',
+						score: 0,
+						comment: '[No HTTP] Contains HTTP Request node',
+						kind: 'detail',
+					},
+				],
+				durationMs: 1500,
+			};
+
+			lifecycle.onExampleComplete(1, result);
+
+			expect(mockConsole.log).toHaveBeenCalled();
+			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
+			expect(logOutput).toContain('issues');
+			expect(logOutput).toContain('gen2.judge2');
+			expect(logOutput).toContain('Contains HTTP Request node');
+		});
+
 		it('should limit violations display to 5 and show count', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });

@@ -354,10 +354,58 @@ describe('Pairwise Evaluator', () => {
 		it('should return per-generation feedback', async () => {
 			mockRunJudgePanel
 				.mockResolvedValueOnce(
-					createMockPanelResult({ majorityPass: true, avgDiagnosticScore: 0.9, primaryPasses: 3 }),
+					createMockPanelResult({
+						majorityPass: true,
+						avgDiagnosticScore: 0.9,
+						primaryPasses: 3,
+						judgeResults: [
+							{
+								primaryPass: true,
+								diagnosticScore: 0.9,
+								violations: [],
+								passes: [{ rule: 'Has trigger', justification: 'OK' }],
+							},
+							{
+								primaryPass: true,
+								diagnosticScore: 0.9,
+								violations: [],
+								passes: [{ rule: 'Has trigger', justification: 'OK' }],
+							},
+							{
+								primaryPass: true,
+								diagnosticScore: 0.9,
+								violations: [],
+								passes: [{ rule: 'Has trigger', justification: 'OK' }],
+							},
+						],
+					}),
 				)
 				.mockResolvedValueOnce(
-					createMockPanelResult({ majorityPass: false, avgDiagnosticScore: 0.4, primaryPasses: 1 }),
+					createMockPanelResult({
+						majorityPass: false,
+						avgDiagnosticScore: 0.4,
+						primaryPasses: 1,
+						judgeResults: [
+							{
+								primaryPass: true,
+								diagnosticScore: 0.5,
+								violations: [],
+								passes: [{ rule: 'Has trigger', justification: 'OK' }],
+							},
+							{
+								primaryPass: false,
+								diagnosticScore: 0.3,
+								violations: [{ rule: 'Missing Notion', justification: 'No Notion node found' }],
+								passes: [],
+							},
+							{
+								primaryPass: false,
+								diagnosticScore: 0.4,
+								violations: [{ rule: 'No HTTP', justification: 'Contains HTTP Request node' }],
+								passes: [],
+							},
+						],
+					}),
 				);
 
 			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
@@ -386,6 +434,14 @@ describe('Pairwise Evaluator', () => {
 
 			const gen2Diag = findFeedback(feedback, 'gen2.diagnosticScore');
 			expect(gen2Diag?.score).toBe(0.4);
+
+			const gen2Judge2 = findFeedback(feedback, 'gen2.judge2');
+			expect(gen2Judge2?.score).toBe(0);
+			expect(gen2Judge2?.comment).toContain('[Missing Notion] No Notion node found');
+
+			const gen2Judge3 = findFeedback(feedback, 'gen2.judge3');
+			expect(gen2Judge3?.score).toBe(0);
+			expect(gen2Judge3?.comment).toContain('[No HTTP] Contains HTTP Request node');
 		});
 
 		it('should throw if generateWorkflow missing in context for multi-gen', async () => {

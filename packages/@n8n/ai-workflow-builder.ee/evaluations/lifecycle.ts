@@ -100,7 +100,18 @@ function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback
 	}
 
 	if (evaluator === 'pairwise') {
-		return withComments.filter((f) => /^judge\d+$/u.test(f.metric));
+		const isJudgeMetric = (metric: string) =>
+			/^judge\d+$/u.test(metric) || /^gen\d+\.judge\d+$/u.test(metric);
+
+		return withComments.filter((f) => {
+			if (isJudgeMetric(f.metric)) return true;
+
+			// Only show high-level status summaries when not fully passing.
+			if (f.metric === 'pairwise_primary' && f.score < 1) return true;
+			if (f.metric === 'pairwise_generation_correctness' && f.score < 1) return true;
+
+			return false;
+		});
 	}
 
 	return withComments;
