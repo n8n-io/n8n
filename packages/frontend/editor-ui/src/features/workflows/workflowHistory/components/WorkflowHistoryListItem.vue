@@ -98,21 +98,40 @@ const versionPublishInfo = computed(() => {
 	return publishInfo;
 });
 
-const publishedAt = computed(() => {
-	if (!lastPublishInfo.value) {
+const mainTooltipContent = computed(() => {
+	if (props.isGrouped) {
 		return null;
 	}
-	const { date, time } = formatTimestamp(lastPublishInfo.value.createdAt);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+
+	if (props.isVersionActive) {
+		return i18n.baseText('workflowHistory.item.active');
+	}
+
+	if (props.index === 0 && !props.isVersionActive) {
+		return i18n.baseText('workflowHistory.item.currentChanges');
+	}
+
+	if (versionPublishInfo.value) {
+		return `${i18n.baseText('workflowHistory.item.publishedAtLabel')}`;
+	}
+
+	return formattedCreatedAt.value;
 });
 
-const publishedByUserName = computed(() => {
-	const userId = lastPublishInfo.value?.userId;
-	if (!userId) {
+const mainTooltipDate = computed(() => {
+	if (props.isGrouped) {
 		return null;
 	}
-	const user = usersStore.usersById[userId];
-	return user?.fullName ?? user?.email ?? null;
+
+	if (props.isVersionActive && lastPublishInfo.value) {
+		return lastPublishInfo.value.createdAt;
+	}
+
+	if (versionPublishInfo.value) {
+		return versionPublishInfo.value.createdAt;
+	}
+
+	return null;
 });
 
 const onAction = (value: string) => {
@@ -146,99 +165,96 @@ onMounted(() => {
 });
 </script>
 <template>
-	<li
-		ref="itemElement"
-		data-test-id="workflow-history-list-item"
-		role="button"
-		:class="{
-			[$style.item]: true,
-			[$style.selected]: props.isSelected,
-			[$style.actionsVisible]: actionsVisible,
-			[$style.grouped]: props.isGrouped,
-		}"
-		@click="onItemClick"
-	>
-		<!-- Timeline column -->
-		<span :class="$style.timelineColumn">
-			<template v-if="!props.isGrouped">
-				<N8nTooltip v-if="props.isVersionActive" placement="left">
-					<template #content>
-						<div>
-							{{ `${i18n.baseText('workflowHistory.item.active')}:` }}
-							<TimeAgo v-if="lastPublishInfo" :date="lastPublishInfo.createdAt" />
-						</div>
-					</template>
-					<span :class="[$style.timelineDot, $style.timelineDotPublished]" />
-				</N8nTooltip>
-				<N8nTooltip v-else-if="props.index === 0 && !props.isVersionActive" placement="left">
-					<template #content>{{ i18n.baseText('workflowHistory.item.currentChanges') }}</template>
-					<span :class="[$style.timelineDot, $style.timelineDotLatest]" />
-				</N8nTooltip>
-				<N8nTooltip v-else placement="left">
-					<template #content>
-						<div v-if="versionPublishInfo">
-							{{ `${i18n.baseText('workflowHistory.item.publishedAtLabel')}:` }}
-							<TimeAgo :date="versionPublishInfo.createdAt" />
-						</div>
-						<div v-else>
-							{{ formattedCreatedAt }}
-						</div>
-					</template>
-					<span :class="[$style.timelineDot, $style.timelineDotDefault]" />
-				</N8nTooltip>
-			</template>
-			<span v-else :class="$style.timelineLine" />
-		</span>
+	<N8nTooltip placement="left" :disabled="!mainTooltipContent">
+		<template #content>
+			<div>
+				{{ mainTooltipContent }}
+				<TimeAgo v-if="mainTooltipDate" :date="mainTooltipDate" />
+			</div>
+		</template>
+		<li
+			ref="itemElement"
+			data-test-id="workflow-history-list-item"
+			role="button"
+			:class="{
+				[$style.item]: true,
+				[$style.selected]: props.isSelected,
+				[$style.actionsVisible]: actionsVisible,
+				[$style.grouped]: props.isGrouped,
+			}"
+			@click="onItemClick"
+		>
+			<!-- Timeline column -->
+			<span :class="$style.timelineColumn">
+				<template v-if="!props.isGrouped">
+					<span
+						v-if="props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotPublished]"
+					/>
+					<span
+						v-else-if="props.index === 0 && !props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotLatest]"
+					/>
+					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
+				</template>
+				<span v-else :class="$style.timelineLine" />
+			</span>
 
-		<div :class="$style.wrapper">
-			<div :class="$style.content">
-				<!-- Named version: show name + badge on first row, author + time on second -->
-				<template v-if="versionName">
-					<div :class="$style.mainRow">
-						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
-							{{ versionName }}
-						</N8nText>
-					</div>
-					<div :class="$style.metaRow">
+			<div :class="$style.wrapper">
+				<div :class="$style.content">
+					<!-- Named version: show name + badge on first row, author + time on second -->
+					<template v-if="versionName">
+						<div :class="$style.mainRow">
+							<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
+								{{ versionName }}
+							</N8nText>
+						</div>
+						<div :class="$style.metaRow">
+							<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
+								<template #content>{{ props.item.authors }}</template>
+								<N8nText
+									ref="authorElement"
+									size="small"
+									color="text-base"
+									:class="$style.metaItem"
+								>
+									{{ authors.label }},
+								</N8nText>
+							</N8nTooltip>
+							<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+								{{ formattedCreatedAt }}
+							</N8nText>
+						</div>
+					</template>
+					<!-- Unnamed version: show author and time on single row -->
+					<div v-else :class="$style.unnamedRow">
 						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
 							<template #content>{{ props.item.authors }}</template>
-							<N8nText ref="authorElement" size="small" color="text-base" :class="$style.metaItem">
+							<N8nText
+								ref="authorElement"
+								size="small"
+								color="text-base"
+								:class="$style.unnamedAuthor"
+							>
 								{{ authors.label }},
 							</N8nText>
 						</N8nTooltip>
-						<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+						<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
 							{{ formattedCreatedAt }}
 						</N8nText>
 					</div>
-				</template>
-				<!-- Unnamed version: show author and time on single row -->
-				<div v-else :class="$style.unnamedRow">
-					<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-						<template #content>{{ props.item.authors }}</template>
-						<N8nText
-							ref="authorElement"
-							size="small"
-							color="text-base"
-							:class="$style.unnamedAuthor"
-						>
-							{{ authors.label }},
-						</N8nText>
-					</N8nTooltip>
-					<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
-						{{ formattedCreatedAt }}
-					</N8nText>
 				</div>
+				<N8nActionToggle
+					:class="$style.actions"
+					:actions="props.actions"
+					placement="bottom-end"
+					@action="onAction"
+					@click.stop
+					@visible-change="onVisibleChange"
+				/>
 			</div>
-			<N8nActionToggle
-				:class="$style.actions"
-				:actions="props.actions"
-				placement="bottom-end"
-				@action="onAction"
-				@click.stop
-				@visible-change="onVisibleChange"
-			/>
-		</div>
-	</li>
+		</li>
+	</N8nTooltip>
 </template>
 <style module lang="scss">
 @use './timeline' as *;
