@@ -244,35 +244,28 @@ watch(isCollapsed, () => {
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 
-	// Check for overflow after component is mounted
 	void nextTick(() => {
 		checkOverflow();
 
-		// Set up resize observer to watch for height changes
 		if (scrollAreaRef.value?.$el) {
 			const element = scrollAreaRef.value.$el as HTMLElement;
 			resizeObserver = new ResizeObserver(() => {
 				checkOverflow();
 			});
 			resizeObserver.observe(element);
-
-			// Initial check after mount
 			checkOverflow();
 		}
 	});
 
-	// Also listen for window resize events
 	window.addEventListener('resize', checkOverflow);
 });
 
 onBeforeUnmount(() => {
-	// Clean up resize observer
 	if (resizeObserver) {
 		resizeObserver.disconnect();
 		resizeObserver = null;
 	}
 
-	// Remove window resize listener
 	window.removeEventListener('resize', checkOverflow);
 });
 
