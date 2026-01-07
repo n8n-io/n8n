@@ -1,5 +1,5 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -26,11 +26,22 @@ export class LicenseState {
 	// --------------------
 	//     core queries
 	// --------------------
-
-	isLicensed(feature: BooleanLicenseFeature) {
+	/*
+	 * If the feature is a string. checks if the feature is licensed
+	 * If the feature is an array of strings, it checks if any of the features are licensed
+	 */
+	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
 		this.assertProvider();
 
-		return this.licenseProvider.isLicensed(feature);
+		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
+
+		for (const featureName of feature) {
+			if (this.licenseProvider.isLicensed(featureName)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
@@ -42,6 +53,14 @@ export class LicenseState {
 	// --------------------
 	//      booleans
 	// --------------------
+
+	isCustomRolesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
+	}
+
+	isDynamicCredentialsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
 
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
@@ -115,10 +134,6 @@ export class LicenseState {
 		return this.isLicensed('feat:externalSecrets');
 	}
 
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed('feat:workflowHistory');
-	}
-
 	isAPIDisabled() {
 		return this.isLicensed('feat:apiDisabled');
 	}
@@ -161,6 +176,10 @@ export class LicenseState {
 
 	isWorkflowDiffsLicensed() {
 		return this.isLicensed('feat:workflowDiffs');
+	}
+
+	isProvisioningLicensed() {
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

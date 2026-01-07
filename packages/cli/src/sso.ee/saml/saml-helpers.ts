@@ -79,7 +79,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
 				lastName: attributes.lastName,
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				// generates a password that is not used or known to the user
 				password: await Container.get(PasswordUtility).hash(randomPassword),
 			},
@@ -118,8 +118,14 @@ export async function updateUserFromSamlAttributes(
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
 	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not create User');
-	return resultUser;
+	if (!resultUser) throw new AuthError('Could not update User');
+	const userWithRole = await Container.get(UserRepository).findOne({
+		where: { id: resultUser.id },
+		relations: ['role'],
+		transaction: false,
+	});
+	if (!userWithRole) throw new AuthError('Failed to fetch user!');
+	return userWithRole;
 }
 
 type GetMappedSamlReturn = {
@@ -130,6 +136,10 @@ type GetMappedSamlReturn = {
 export function getMappedSamlAttributesFromFlowResult(
 	flowResult: FlowResult,
 	attributeMapping: SamlAttributeMapping,
+	jitClaimNames: {
+		instanceRole: string | null;
+		projectRoles: string | null;
+	},
 ): GetMappedSamlReturn {
 	const result: GetMappedSamlReturn = {
 		attributes: undefined,
@@ -138,12 +148,12 @@ export function getMappedSamlAttributesFromFlowResult(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (flowResult?.extract?.attributes) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const attributes = flowResult.extract.attributes as { [key: string]: string };
+		const attributes = flowResult.extract.attributes as { [key: string]: string | string[] };
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
-		const email = attributes[attributeMapping.email];
-		const firstName = attributes[attributeMapping.firstName];
-		const lastName = attributes[attributeMapping.lastName];
-		const userPrincipalName = attributes[attributeMapping.userPrincipalName];
+		const email = attributes[attributeMapping.email] as string;
+		const firstName = attributes[attributeMapping.firstName] as string;
+		const lastName = attributes[attributeMapping.lastName] as string;
+		const userPrincipalName = attributes[attributeMapping.userPrincipalName] as string;
 
 		result.attributes = {
 			email,
@@ -151,6 +161,15 @@ export function getMappedSamlAttributesFromFlowResult(
 			lastName,
 			userPrincipalName,
 		};
+		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
+			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
+		}
+		if (jitClaimNames.projectRoles && attributes[jitClaimNames.projectRoles]) {
+			const projectRolesFromFlowResult = attributes[jitClaimNames.projectRoles];
+			result.attributes.n8nProjectRoles = Array.isArray(projectRolesFromFlowResult)
+				? projectRolesFromFlowResult
+				: [projectRolesFromFlowResult];
+		}
 		if (!email) result.missingAttributes.push(attributeMapping.email);
 		if (!userPrincipalName) result.missingAttributes.push(attributeMapping.userPrincipalName);
 		if (!firstName) result.missingAttributes.push(attributeMapping.firstName);

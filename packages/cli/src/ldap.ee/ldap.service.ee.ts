@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { SettingsRepository } from '@n8n/db';
+import { isValidEmail, SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -37,6 +37,7 @@ import {
 	resolveEntryBinaryAttributes,
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
+	getUserByLdapId,
 } from '@/ldap.ee/helpers.ee';
 import {
 	getCurrentAuthenticationMethod,
@@ -84,6 +85,12 @@ export class LdapService {
 			key: LDAP_FEATURE_NAME,
 		});
 		const ldapConfig = jsonParse<LdapConfig>(value);
+
+		// Apply secure default for new security field on existing instances
+		if (ldapConfig.enforceEmailUniqueness === undefined) {
+			ldapConfig.enforceEmailUniqueness = true;
+		}
+
 		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
@@ -228,6 +235,33 @@ export class LdapService {
 	}
 
 	/**
+	 * Check if multiple LDAP accounts exist with the same email address.
+	 * Returns true if duplicates found, false otherwise.
+	 * This prevents privilege escalation attacks via email-based account linking.
+	 */
+	private async hasEmailDuplicatesInLdap(email: string): Promise<boolean> {
+		try {
+			const searchResults = await this.searchWithAdminBinding(
+				createFilter(
+					`(${this.config.emailAttribute}=${escapeFilter(email)})`,
+					this.config.userFilter,
+				),
+			);
+
+			// If more than one LDAP entry has this email, it's a duplicate
+			return searchResults.length > 1;
+		} catch (error) {
+			// Log error but don't block login if search fails
+			this.logger.error('LDAP - Error checking for duplicate emails', {
+				email,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			// Fail closed: treat search errors as potential duplicates for security
+			return true;
+		}
+	}
+
+	/**
 	 * Attempt binding with the user's credentials
 	 */
 	async validUser(dn: string, password: string): Promise<void> {
@@ -349,9 +383,25 @@ export class LdapService {
 			localAdUsers,
 		);
 
+		const filteredUsersToCreate = usersToCreate.filter(([id, user]) => {
+			if (!isValidEmail(user.email)) {
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
+				return false;
+			}
+			return true;
+		});
+
+		const filteredUsersToUpdate = usersToUpdate.filter(([id, user]) => {
+			if (!isValidEmail(user.email)) {
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
+				return false;
+			}
+			return true;
+		});
+
 		this.logger.debug('LDAP - Users to process', {
-			created: usersToCreate.length,
-			updated: usersToUpdate.length,
+			created: filteredUsersToCreate.length,
+			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 		});
 
@@ -361,7 +411,7 @@ export class LdapService {
 
 		try {
 			if (mode === 'live') {
-				await processUsers(usersToCreate, usersToUpdate, usersToDisable);
+				await processUsers(filteredUsersToCreate, filteredUsersToUpdate, usersToDisable);
 			}
 		} catch (error) {
 			if (error instanceof QueryFailedError) {
@@ -373,8 +423,8 @@ export class LdapService {
 		await saveLdapSynchronization({
 			startedAt,
 			endedAt,
-			created: usersToCreate.length,
-			updated: usersToUpdate.length,
+			created: filteredUsersToCreate.length,
+			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 			scanned: adUsers.length,
 			runMode: mode,
@@ -385,7 +435,8 @@ export class LdapService {
 		this.eventService.emit('ldap-general-sync-finished', {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
 			succeeded: true,
-			usersSynced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,
+			usersSynced:
+				filteredUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 
@@ -464,6 +515,19 @@ export class LdapService {
 
 		const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
 		if (!ldapAuthIdentity) {
+			if (this.config.enforceEmailUniqueness) {
+				const hasDuplicates = await this.hasEmailDuplicatesInLdap(emailAttributeValue);
+
+				if (hasDuplicates) {
+					this.logger.warn('LDAP login blocked: Multiple LDAP accounts share the same email', {
+						email: emailAttributeValue,
+						ldapId,
+					});
+
+					return undefined;
+				}
+			}
+
 			const emailUser = await getUserByEmail(emailAttributeValue);
 
 			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
@@ -487,6 +551,6 @@ export class LdapService {
 		}
 
 		// Retrieve the user again as user's data might have been updated
-		return (await getAuthIdentityByLdapId(ldapId))?.user;
+		return (await getUserByLdapId(ldapId)) ?? undefined;
 	}
 }

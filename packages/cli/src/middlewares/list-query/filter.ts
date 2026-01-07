@@ -19,7 +19,7 @@ export const filterListQueryMiddleware = async (
 
 	let Filter;
 
-	if (req.baseUrl.endsWith('workflows')) {
+	if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
 		Filter = WorkflowFilter;
 	} else if (req.baseUrl.endsWith('credentials')) {
 		Filter = CredentialsFilter;

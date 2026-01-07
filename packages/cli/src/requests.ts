@@ -8,7 +8,13 @@ import type {
 	ListQueryDb,
 	WorkflowHistory,
 } from '@n8n/db';
-import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
+import type {
+	AssignableGlobalRole,
+	AssignableProjectRole,
+	GlobalRole,
+	ProjectRole,
+	Scope,
+} from '@n8n/permissions';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -66,6 +72,8 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
@@ -219,7 +227,7 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace LicenseRequest {
-	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
 }
 
 // ----------------------------------
@@ -229,7 +237,19 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest;
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+			projectId?: string;
+			state?: 'empty';
+		}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
@@ -269,7 +289,7 @@ export declare namespace ActiveWorkflowRequest {
 
 export declare namespace ProjectRequest {
 	type GetMyProjectsResponse = Array<
-		Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
+		Project & { role: ProjectRole | AssignableProjectRole | GlobalRole; scopes?: Scope[] }
 	>;
 
 	type ProjectRelationResponse = {
@@ -277,7 +297,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
-		role: ProjectRole;
+		role: ProjectRole | AssignableProjectRole;
 	};
 	type ProjectWithRelations = {
 		id: string;

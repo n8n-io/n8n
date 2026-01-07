@@ -1,7 +1,7 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository, AuthenticatedRequest } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
@@ -22,7 +22,9 @@ import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
+	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
 @RestController()
@@ -55,12 +57,12 @@ export class AuthController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		if (isSamlCurrentAuthenticationMethod()) {
+		if (isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.role === 'global:owner' ||
+				preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;
@@ -70,7 +72,7 @@ export class AuthController {
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
-			if (preliminaryUser?.role === 'global:owner') {
+			if (preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
@@ -138,6 +140,15 @@ export class AuthController {
 		_res: Response,
 		@Query payload: ResolveSignupTokenQueryDto,
 	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
 		const { inviterId, inviteeId } = payload;
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
@@ -149,7 +160,9 @@ export class AuthController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId], {
+			includeRole: true,
+		});
 
 		if (users.length !== 2) {
 			this.logger.debug(

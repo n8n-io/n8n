@@ -63,6 +63,13 @@ export interface MessageEventBusDestinationOptions {
 	subscribedEvents?: string[];
 	credentials?: INodeCredentials;
 	anonymizeAuditMessages?: boolean;
+	circuitBreaker?: {
+		maxFailures?: number;
+		maxDuration?: number;
+		halfOpenRequests?: number;
+		failureWindow?: number;
+		maxConcurrentHalfOpenRequests?: number;
+	};
 }
 
 export interface MessageEventBusDestinationWebhookParameterItem {
@@ -97,6 +104,11 @@ export interface MessageEventBusDestinationWebhookParameterOptions {
 		port: number;
 	};
 	timeout?: number;
+	socket?: {
+		keepAlive?: boolean;
+		maxSockets?: number;
+		maxFreeSockets?: number;
+	};
 }
 
 export interface MessageEventBusDestinationWebhookOptions
@@ -124,10 +136,11 @@ export interface MessageEventBusDestinationSyslogOptions extends MessageEventBus
 	expectedStatusCode?: number;
 	host: string;
 	port?: number;
-	protocol?: 'udp' | 'tcp';
+	protocol?: 'udp' | 'tcp' | 'tls';
 	facility?: number;
 	app_name?: string;
 	eol?: string;
+	tlsCa?: string;
 }
 
 export interface MessageEventBusDestinationSentryOptions extends MessageEventBusDestinationOptions {

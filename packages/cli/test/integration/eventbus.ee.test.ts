@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
@@ -12,8 +12,9 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
+
+import { mock } from 'jest-mock-extended';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
@@ -31,9 +32,10 @@ import * as utils from './shared/utils';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');
+
+const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-jest.mock('syslog-client');
-const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
+mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
 mockInstance(Publisher);
 
@@ -89,10 +91,8 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
-
-	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
@@ -184,7 +184,7 @@ test('should anonymize audit message to syslog ', async () => {
 	syslogDestination.enable();
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((m, _options, _cb) => {
+	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
 		expect(o.payload).toHaveProperty('_secret');
@@ -193,7 +193,6 @@ test('should anonymize audit message to syslog ', async () => {
 			: expect(o.payload._secret).toBe('secret');
 		expect(o.payload).toHaveProperty('public');
 		expect(o.payload.public).toBe('public');
-		return syslogDestination.client;
 	});
 
 	syslogDestination.anonymizeAuditMessages = true;
@@ -244,8 +243,8 @@ test('should send message to webhook ', async () => {
 
 	webhookDestination.enable();
 
-	mockedAxios.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
-	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -256,7 +255,7 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(mockedAxios.request).toHaveBeenCalled();
+					expect(mockAxiosInstance.request).toHaveBeenCalled();
 					webhookDestination.disable();
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);

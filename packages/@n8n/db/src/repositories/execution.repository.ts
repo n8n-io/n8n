@@ -17,38 +17,44 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Raw,
 	Repository,
+	And,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
-import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
+	IRunExecutionDataAll,
+} from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	ManualExecutionCancelledError,
+	migrateRunExecutionData,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
+	AnnotationTagEntity,
+	AnnotationTagMapping,
+	ExecutionAnnotation,
+	ExecutionData,
 	ExecutionEntity,
 	ExecutionMetadata,
-	ExecutionData,
-	ExecutionAnnotation,
-	AnnotationTagMapping,
-	WorkflowEntity,
 	SharedWorkflow,
-	AnnotationTagEntity,
+	WorkflowEntity,
 } from '../entities';
 import type {
 	CreateExecutionPayload,
-	IExecutionFlattedDb,
-	IExecutionBase,
-	IExecutionResponse,
 	ExecutionSummaries,
+	IExecutionBase,
+	IExecutionFlattedDb,
+	IExecutionResponse,
 } from '../entities/types-db';
 import { separate } from '../utils/separate';
 
@@ -124,6 +130,10 @@ const moreThanOrEqual = (date: string): unknown => {
 	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
 };
 
+// This is the max number of elements in an IN-clause.
+// It's a conservative value, as some databases indicate limits around 1000.
+const MAX_UPDATE_BATCH_SIZE = 900;
+
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
@@ -188,9 +198,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		},
 	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
 		if (options?.includeData) {
-			if (!queryParams.relations) {
-				queryParams.relations = [];
-			}
+			queryParams.relations ??= [];
 
 			if (Array.isArray(queryParams.relations)) {
 				queryParams.relations.push('executionData', 'metadata');
@@ -202,35 +210,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executions = await this.find(queryParams);
 
-		if (options?.includeData && options?.unflattenData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
-					workflowData: executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionResponse;
-			});
-		} else if (options?.includeData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: execution.executionData.data,
-					workflowData: execution.executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionFlattedDb;
-			});
+		const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+		this.reportInvalidExecutions(invalid);
+
+		if (!options?.includeData) {
+			// No data to include, so we exclude it and return early.
+			return executions.map((execution) => {
+				const { executionData, ...rest } = execution;
+				return rest;
+			}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 		}
 
-		return executions.map((execution) => {
-			const { executionData, ...rest } = execution;
-			return rest;
+		return valid.map((execution) => {
+			const { executionData, metadata, ...rest } = execution;
+			const data = this.handleExecutionRunData(executionData.data, options);
+			return {
+				...rest,
+				data,
+				workflowData: executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			};
 		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
@@ -331,15 +330,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
+		if (!options?.includeData) {
+			// Not including run data, so return early.
+			const { executionData, ...rest } = execution;
+			return {
+				...rest,
+				...(options?.includeAnnotation &&
+					serializedAnnotation && { annotation: serializedAnnotation }),
+			} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
+		}
+
+		// Include the run data.
+		const data = this.handleExecutionRunData(executionData.data, options);
 		return {
 			...rest,
-			...(options?.includeData && {
-				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
-					: executionData.data,
-				workflowData: executionData?.workflowData,
-				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-			}),
+			data,
+			workflowData: executionData.workflowData,
+			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
@@ -360,7 +367,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
 			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
 			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.insert({ executionId, workflowData, data });
+			await this.executionDataRepository.insert({
+				executionId,
+				workflowData,
+				data,
+				workflowVersionId: currentWorkflow.versionId,
+			});
 			return String(executionId);
 		} else {
 			// All other database drivers should create executions and execution-data atomically
@@ -371,7 +383,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				});
 				const { id: executionId } = inserted[0] as { id: string };
 				await this.executionDataRepository.createExecutionDataForExecution(
-					{ executionId, workflowData, data },
+					{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
 					transactionManager,
 				);
 				return String(executionId);
@@ -382,15 +394,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async markAsCrashed(executionIds: string | string[]) {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
-		await this.update(
-			{ id: In(executionIds) },
-			{
-				status: 'crashed',
-				stoppedAt: new Date(),
-			},
-		);
-
-		this.logger.info('Marked executions as `crashed`', { executionIds });
+		let processed: number = 0;
+		while (processed < executionIds.length) {
+			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
+			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
+			await this.update(
+				{ id: In(batch) },
+				{
+					status: 'crashed',
+					stoppedAt: new Date(),
+				},
+			);
+			this.logger.info('Marked executions as `crashed`', { executionIds });
+			processed += batch.length;
+		}
 	}
 
 	/**
@@ -399,7 +416,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
 		return await Promise.all([
 			this.delete(ids.executionId),
-			this.binaryDataService.deleteMany([ids]),
+			this.binaryDataService.deleteMany([{ type: 'execution', ...ids }]),
 		]);
 	}
 
@@ -411,7 +428,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return startedAt;
 	}
 
-	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
+	/**
+	 * Update an existing execution in the database.
+	 *
+	 * @param executionId - The ID of the execution to update
+	 * @param execution - Partial execution data to update
+	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
+	 * @returns true if update succeeded, false if no execution was found or requireStatus condition was not met
+	 */
+	async updateExistingExecution(
+		executionId: string,
+		execution: Partial<IExecutionResponse>,
+		requireStatus?: ExecutionStatus,
+	): Promise<boolean> {
 		const {
 			id,
 			data,
@@ -434,29 +463,52 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
 
+			let executionTableAffectedRows = 0;
+
 			if (Object.keys(executionInformation).length > 0) {
-				await this.update({ id: executionId }, executionInformation);
+				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
+				if (requireStatus) whereCondition.status = requireStatus;
+
+				const result = await this.update(whereCondition, executionInformation);
+				executionTableAffectedRows = result.affected ?? 0;
+
+				// If requireStatus was set and the update failed, don't update executionData
+				if (requireStatus && executionTableAffectedRows === 0) {
+					return false;
+				}
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await this.executionDataRepository.update({ executionId }, executionData);
 			}
 
-			return;
+			return true;
 		}
 
 		// All other database drivers should update executions and execution-data atomically
 
-		await this.manager.transaction(async (tx) => {
+		let executionTableAffectedRows = 0;
+		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
-				await tx.update(ExecutionEntity, { id: executionId }, executionInformation);
+				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
+				if (requireStatus) whereCondition.status = requireStatus;
+
+				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
+				executionTableAffectedRows = result.affected ?? 0;
+
+				// If requireStatus was set and the update failed, abort the
+				// transaction early and return false.
+				if (executionTableAffectedRows === 0) {
+					return false;
+				}
 			}
 
 			if (Object.keys(executionData).length > 0) {
-				// @ts-expect-error Fix typing
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
+
+			// Updates succeeded
+			return true;
 		});
 	}
 
@@ -502,6 +554,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const ids = executions.map(({ id, workflowId }) => ({
+			type: 'execution' as const,
 			executionId: id,
 			workflowId,
 		}));
@@ -598,7 +651,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				 */
 				withDeleted: true,
 			})
-		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
+		).map(({ id: executionId, workflowId }) => ({
+			type: 'execution' as const,
+			workflowId,
+			executionId,
+		}));
 
 		return workflowIdsAndExecutionIds;
 	}
@@ -631,27 +688,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async getExecutionsCountForPublicApi(data: {
+	async getExecutionsCountForPublicApi(params: {
 		limit: number;
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
-		excludedWorkflowIds?: string[];
+		excludedExecutionsIds?: string[];
 	}): Promise<number> {
-		const executions = await this.count({
-			where: {
-				...(data.lastId && { id: LessThan(data.lastId) }),
-				...(data.status && { ...this.getStatusCondition(data.status) }),
-				...(data.workflowIds && { workflowId: In(data.workflowIds) }),
-				...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
-			},
-			take: data.limit,
+		const executionsCount = await this.count({
+			where: this.getFindExecutionsForPublicApiCondition(params),
+			take: params.limit,
 		});
 
-		return executions;
+		return executionsCount;
 	}
 
-	private getStatusCondition(status: ExecutionStatus) {
+	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
 		if (status === 'success') {
@@ -660,9 +712,45 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.status = 'waiting';
 		} else if (status === 'error') {
 			condition.status = In(['error', 'crashed']);
+		} else if (status === 'canceled') {
+			condition.status = 'canceled';
+		} else if (status === 'running') {
+			condition.status = 'running';
 		}
 
 		return condition;
+	}
+
+	private getIdCondition(params: { lastId?: string; excludedExecutionsIds?: string[] }) {
+		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'id'> = {};
+
+		if (params.lastId && params.excludedExecutionsIds?.length) {
+			condition.id = And(LessThan(params.lastId), Not(In(params.excludedExecutionsIds)));
+		} else if (params.lastId) {
+			condition.id = LessThan(params.lastId);
+		} else if (params.excludedExecutionsIds?.length) {
+			condition.id = Not(In(params.excludedExecutionsIds));
+		}
+
+		return condition;
+	}
+
+	private getFindExecutionsForPublicApiCondition(params: {
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedExecutionsIds?: string[];
+	}) {
+		const where: FindOptionsWhere<IExecutionFlattedDb> = {
+			...this.getIdCondition({
+				lastId: params.lastId,
+				excludedExecutionsIds: params.excludedExecutionsIds,
+			}),
+			...this.getStatusCondition(params.status),
+			...(params.workflowIds && { workflowId: In(params.workflowIds) }),
+		};
+
+		return where;
 	}
 
 	async getExecutionsForPublicApi(params: {
@@ -673,26 +761,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		status?: ExecutionStatus;
 		excludedExecutionsIds?: string[];
 	}): Promise<IExecutionBase[]> {
-		let where: FindOptionsWhere<IExecutionFlattedDb> = {};
-
-		if (params.lastId && params.excludedExecutionsIds?.length) {
-			where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
-				lastId: params.lastId,
-				excludedExecutionsIds: params.excludedExecutionsIds,
-			});
-		} else if (params.lastId) {
-			where.id = LessThan(params.lastId);
-		} else if (params.excludedExecutionsIds?.length) {
-			where.id = Not(In(params.excludedExecutionsIds));
-		}
-
-		if (params.status) {
-			where = { ...where, ...this.getStatusCondition(params.status) };
-		}
-
-		if (params.workflowIds) {
-			where = { ...where, workflowId: In(params.workflowIds) };
-		}
+		const where = this.getFindExecutionsForPublicApiCondition(params);
 
 		return await this.findMultipleExecutions(
 			{
@@ -706,11 +775,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					'workflowId',
 					'waitTill',
 					'finished',
+					'status',
 				],
 				where,
 				order: { id: 'DESC' },
 				take: params.limit,
-				relations: ['executionData'],
 			},
 			{
 				includeData: params.includeData,
@@ -774,9 +843,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ExecutionCancelledError(execution.id);
+		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data = execution.data || createEmptyRunExecutionData();
+
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,
@@ -1123,5 +1193,66 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 
 		return executions.map(({ id }) => id);
+	}
+
+	/**
+	 * The number of executions that are running and count towards the concurrent executions limit.
+	 * Concurrency control only applies to executions started from a webhook or trigger node.
+	 */
+	async getConcurrentExecutionsCount() {
+		const concurrentExecutionsCount = await this.count({
+			where: { status: 'running', mode: In(['webhook', 'trigger']) },
+		});
+
+		return concurrentExecutionsCount;
+	}
+
+	private handleExecutionRunData(
+		data: string,
+		options: { unflattenData?: boolean } = {},
+	): IRunExecutionData | string | undefined {
+		if (options.unflattenData) {
+			// Parse the serialized data.
+			const deserializedData: unknown = parse(data);
+			// If it parses to an object, migrate and return it.
+			if (deserializedData) {
+				return migrateRunExecutionData(deserializedData as IRunExecutionDataAll);
+			}
+			return undefined;
+		}
+		// Just return the string data as-is.
+		return data;
+	}
+
+	async findByStopExecutionsFilter(
+		query: ExecutionSummaries.StopExecutionFilterQuery,
+	): Promise<Array<{ id: string }>> {
+		if (!query.status || query.status.length === 0) return [];
+
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: In(query.status),
+		};
+
+		if (query.workflowId !== 'all') {
+			where.workflowId = query.workflowId;
+		}
+
+		const startedAtConditions = [];
+
+		if (query.startedAfter)
+			startedAtConditions.push(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
+			);
+
+		if (query.startedBefore)
+			startedAtConditions.push(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
+			);
+
+		if (startedAtConditions.length > 0) {
+			where.startedAt = And(...startedAtConditions);
+		}
+
+		return await this.find({ select: ['id'], where });
 	}
 }

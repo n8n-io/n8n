@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.105.0",
+  "version": "2.3.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -20,6 +20,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "files": [
@@ -27,12 +28,12 @@
     "bin"
   ],
   "devDependencies": {
-    "@n8n/errors": "workspace:^",
+    "@n8n/errors": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
-    "@types/mime-types": "^2.1.0",
+    "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:"
@@ -40,7 +41,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
     "@langchain/core": "catalog:",
-    "@n8n/backend-common": "workspace:^",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
@@ -55,14 +56,14 @@
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",
+    "htmlparser2": "^10.0.0",
     "http-proxy-agent": "catalog:",
     "https-proxy-agent": "catalog:",
     "iconv-lite": "catalog:",
-    "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
-    "mime-types": "2.1.35",
+    "mime-types": "catalog:",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
@@ -70,7 +71,7 @@
     "picocolors": "catalog:",
     "pretty-bytes": "5.6.0",
     "proxy-from-env": "^1.1.0",
-    "qs": "6.11.0",
+    "qs": "6.14.1",
     "ssh2": "1.15.0",
     "uuid": "catalog:",
     "winston": "3.14.2",

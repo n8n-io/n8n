@@ -1,8 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
+import crypto from 'crypto';
 import type express from 'express';
+import {
+	InstanceSettings,
+	WAITING_TOKEN_QUERY_PARAM,
+	prepareUrlForSigning,
+	generateUrlSignature,
+} from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -12,12 +19,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -25,13 +26,14 @@ import type {
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
-import {
-	InstanceSettings,
-	WAITING_TOKEN_QUERY_PARAM,
-	prepareUrlForSigning,
-	generateUrlSignature,
-} from 'n8n-core';
-import crypto from 'crypto';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { NodeTypes } from '@/node-types';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -47,6 +49,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -69,13 +72,14 @@ export class WaitingWebhooks implements IWebhookManager {
 		);
 	}
 
-	private createWorkflow(workflowData: IWorkflowBase) {
+	// TODO: fix the type here - it should be execution workflowData
+	protected createWorkflow(workflowData: IWorkflowBase) {
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -89,22 +93,23 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	private getHmacSecret() {
-		return Container.get(InstanceSettings).hmacSignatureSecret;
-	}
-
-	private validateSignatureInRequest(req: express.Request, secret: string) {
+	validateSignatureInRequest(req: express.Request) {
 		try {
 			const actualToken = req.query[WAITING_TOKEN_QUERY_PARAM];
 
 			if (typeof actualToken !== 'string') return false;
 
-			const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+			// req.host is set correctly even when n8n is behind a reverse proxy
+			// as long as N8N_PROXY_HOPS is set correctly
+			const parsedUrl = new URL(req.url, `http://${req.host}`);
 			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
 
 			const urlForSigning = prepareUrlForSigning(parsedUrl);
 
-			const expectedToken = generateUrlSignature(urlForSigning, secret);
+			const expectedToken = generateUrlSignature(
+				urlForSigning,
+				this.instanceSettings.hmacSignatureSecret,
+			);
 
 			const valid = crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
 			return valid;
@@ -128,12 +133,12 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution && execution.data.validateSignature) {
+		if (execution?.data.validateSignature) {
 			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
 			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
 
-			if (shouldValidate && !this.validateSignatureInRequest(req, this.getHmacSecret())) {
+			if (shouldValidate && !this.validateSignatureInRequest(req)) {
 				res.status(401).json({ error: 'Invalid token' });
 				return { noWebhookResponse: true };
 			}
@@ -165,6 +170,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,
@@ -209,7 +216,9 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+		});
 		const webhookData = this.webhookService
 			.getNodeWebhooks(workflow, workflowStartNode, additionalData)
 			.find(
