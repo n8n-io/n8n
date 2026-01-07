@@ -1,3 +1,16 @@
+## [2.3.1](https://github.com/n8n-io/n8n/compare/n8n@2.3.0...n8n@2.3.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* Bump versions for qs/langchain ([#23939](https://github.com/n8n-io/n8n/issues/23939)) ([84d86b1](https://github.com/n8n-io/n8n/commit/84d86b1d51e680259f3667dc9f322be0461767b2))
+* **core:** Avoid copying execution data table on AddWorkflowVersionIdToExecutionData migration ([#23901](https://github.com/n8n-io/n8n/issues/23901)) ([26aef2a](https://github.com/n8n-io/n8n/commit/26aef2ae6b7975767e118153048d4e4c7ed34bb9))
+* **core:** Fix redirection of user missing MFA to personal settings ([#23881](https://github.com/n8n-io/n8n/issues/23881)) ([b630551](https://github.com/n8n-io/n8n/commit/b630551cb079a5522bf861cd447d52490e19a96f))
+* **Data Table Node:** Fix issue with insert and update operation ([#23936](https://github.com/n8n-io/n8n/issues/23936)) ([23908a7](https://github.com/n8n-io/n8n/commit/23908a7a33ac73e6327c3a84ff8c1a7558690328))
+* **McpClientTool Node:** Sanitize MCP tool arguments based on schema ([#23167](https://github.com/n8n-io/n8n/issues/23167)) ([33ee325](https://github.com/n8n-io/n8n/commit/33ee3252b90e58c3b5ade696133dca1c7cba5967))
+
+
+
 # [2.3.0](https://github.com/n8n-io/n8n/compare/n8n@2.2.0...n8n@2.3.0) (2026-01-05)
 
 
