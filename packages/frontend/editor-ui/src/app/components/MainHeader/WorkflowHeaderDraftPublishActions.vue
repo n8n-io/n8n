@@ -279,7 +279,7 @@ defineExpose({
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
-			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'">
+			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'" :show-after="300">
 				<template #content>
 					<div>
 						<template v-if="publishButtonConfig.tooltip">

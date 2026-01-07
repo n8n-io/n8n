@@ -196,7 +196,7 @@ onMounted(() => {
 });
 </script>
 <template>
-	<N8nTooltip placement="left" :disabled="!mainTooltipContent">
+	<N8nTooltip placement="left" :disabled="!mainTooltipContent" :show-after="300">
 		<template #content>
 			<div v-if="props.index === 0 && !props.isVersionActive">
 				{{ mainTooltipContent }}
@@ -247,7 +247,7 @@ onMounted(() => {
 							</N8nText>
 						</div>
 						<div :class="$style.metaRow">
-							<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
+							<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated" :show-after="300">
 								<template #content>{{ props.item.authors }}</template>
 								<N8nText
 									ref="authorElement"
