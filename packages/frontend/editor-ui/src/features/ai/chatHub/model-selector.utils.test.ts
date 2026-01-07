@@ -291,7 +291,10 @@ describe(applySearch, () => {
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
 		expect(applySearch(menuItems, 'gpt')).toEqual([
-			expect.objectContaining({ label: 'OpenAI > GPT-4' }),
+			expect.objectContaining({
+				label: 'GPT-4',
+				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
+			}),
 		]);
 	});
 
@@ -322,9 +325,24 @@ describe(applySearch, () => {
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
 		expect(applySearch(menuItems, 'agent')).toEqual([
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > ProjectA > Agent 1' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > ProjectB > Agent 2' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > ProjectB > Agent 3' }),
+			expect.objectContaining({
+				label: 'Agent 1',
+				data: expect.objectContaining({
+					parts: ['chatHub.agent.workflowAgents', 'ProjectA', 'Agent 1'],
+				}),
+			}),
+			expect.objectContaining({
+				label: 'Agent 2',
+				data: expect.objectContaining({
+					parts: ['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 2'],
+				}),
+			}),
+			expect.objectContaining({
+				label: 'Agent 3',
+				data: expect.objectContaining({
+					parts: ['chatHub.agent.workflowAgents', 'ProjectB', 'Agent 3'],
+				}),
+			}),
 		]);
 	});
 
@@ -347,8 +365,14 @@ describe(applySearch, () => {
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
 		expect(applySearch(menuItems, 'agent')).toEqual([
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > My Agent' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Another Agent' }),
+			expect.objectContaining({
+				label: 'My Agent',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'My Agent'] }),
+			}),
+			expect.objectContaining({
+				label: 'Another Agent',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Another Agent'] }),
+			}),
 		]);
 	});
 
@@ -367,16 +391,46 @@ describe(applySearch, () => {
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
 		expect(applySearch(menuItems, 'agent')).toEqual([
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 0' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 1' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 2' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 3' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 4' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 5' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 6' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 7' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 8' }),
-			expect.objectContaining({ label: 'chatHub.agent.workflowAgents > Agent 9' }),
+			expect.objectContaining({
+				label: 'Agent 0',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 0'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 1',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 1'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 2',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 2'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 3',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 3'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 4',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 4'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 5',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 5'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 6',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 6'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 7',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 7'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 8',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 8'] }),
+			}),
+			expect.objectContaining({
+				label: 'Agent 9',
+				data: expect.objectContaining({ parts: ['chatHub.agent.workflowAgents', 'Agent 9'] }),
+			}),
 			expect.objectContaining({
 				label: 'More Workflow agent models...',
 				children: [
@@ -420,8 +474,14 @@ describe(applySearch, () => {
 		const menuItems = buildModelSelectorMenuItems(agents, buildMenuOptions);
 
 		expect(applySearch(menuItems, 'gpt')).toEqual([
-			expect.objectContaining({ label: 'OpenAI > GPT-4' }),
-			expect.objectContaining({ label: 'OpenAI > GPT-3.5 Turbo' }),
+			expect.objectContaining({
+				label: 'GPT-4',
+				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-4'] }),
+			}),
+			expect.objectContaining({
+				label: 'GPT-3.5 Turbo',
+				data: expect.objectContaining({ parts: ['OpenAI', 'GPT-3.5 Turbo'] }),
+			}),
 		]);
 	});
 
