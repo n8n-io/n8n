@@ -75,6 +75,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.mfa.enabled',
 	'n8n.audit.user.mfa.disabled',
+	'n8n.audit.user.execution.deleted',
+	'n8n.audit.workflow.executed',
 	'n8n.audit.package.installed',
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',

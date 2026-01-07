@@ -46,9 +46,9 @@ const getDataTableSize = computed(() => {
 					<N8nIcon
 						data-test-id="data-table-card-icon"
 						:class="$style['card-icon']"
-						icon="database"
+						icon="table"
 						size="xlarge"
-						:stroke-width="1"
+						:stroke-width="1.5"
 					/>
 				</template>
 				<template #header>
