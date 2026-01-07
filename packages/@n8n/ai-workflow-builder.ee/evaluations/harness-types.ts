@@ -104,6 +104,13 @@ export interface LangsmithOptions {
 	concurrency: number;
 	/** Maximum number of examples to evaluate from the dataset */
 	maxExamples?: number;
+	/**
+	 * Strip a leading `<prefix>.` from metric keys before sending results to LangSmith.
+	 *
+	 * This helps keep metric names stable across refactors (e.g. `llm-judge.functionality` -> `functionality`).
+	 * Leave unset to preserve keys as-is.
+	 */
+	stripEvaluatorPrefix?: string;
 	/** Enable trace filtering to reduce payload sizes (default: true) */
 	enableTraceFiltering?: boolean;
 }

@@ -273,6 +273,54 @@ describe('Runner - LangSmith Mode', () => {
 			]);
 		});
 
+		it('should strip configured evaluator prefix from metric keys when extracting feedback', async () => {
+			const { evaluate } = await import('langsmith/evaluation');
+			const mockEvaluate = evaluate as jest.Mock;
+
+			let capturedEvaluators: Array<(run: { outputs: unknown }) => unknown>;
+			mockEvaluate.mockImplementation(
+				async (
+					_target: unknown,
+					options: { evaluators: Array<(run: { outputs: unknown }) => unknown> },
+				) => {
+					capturedEvaluators = options.evaluators;
+					return undefined;
+				},
+			);
+
+			const config: RunConfig = {
+				mode: 'langsmith',
+				dataset: 'test-dataset',
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [createMockEvaluator('test')],
+				langsmithOptions: {
+					experimentName: 'test',
+					repetitions: 1,
+					concurrency: 1,
+					stripEvaluatorPrefix: 'llm-judge',
+				},
+			};
+
+			const { runEvaluation } = await import('../runner');
+			await runEvaluation(config);
+
+			const lsEvaluator = capturedEvaluators![0];
+			const mockRun = {
+				outputs: {
+					feedback: [
+						{ key: 'llm-judge.functionality', score: 0.9 },
+						{ key: 'programmatic.trigger', score: 0.8 },
+					],
+				},
+			};
+
+			const extracted = await lsEvaluator(mockRun);
+			expect(extracted).toEqual([
+				{ key: 'functionality', score: 0.9 },
+				{ key: 'programmatic.trigger', score: 0.8 },
+			]);
+		});
+
 		it('should handle missing feedback in outputs', async () => {
 			const { evaluate } = await import('langsmith/evaluation');
 			const mockEvaluate = evaluate as jest.Mock;

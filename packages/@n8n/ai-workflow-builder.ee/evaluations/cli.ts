@@ -203,6 +203,7 @@ export async function runV2Evaluation(): Promise<void> {
 						repetitions: args.repetitions,
 						concurrency: args.concurrency,
 						maxExamples: args.maxExamples,
+						stripEvaluatorPrefix: args.suite,
 					},
 				}
 			: {

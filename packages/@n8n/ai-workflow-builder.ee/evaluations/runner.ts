@@ -394,6 +394,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	// Create LangSmith evaluator that extracts pre-computed feedback
 	// This does NOT do any LLM calls - just returns outputs.feedback
+	const stripEvaluatorPrefix = langsmithOptions.stripEvaluatorPrefix;
 	const feedbackExtractor = async (
 		rootRun: Run,
 		_example?: Example,
@@ -411,7 +412,13 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		}
 
 		// Convert our Feedback to LangSmith format (they're compatible)
-		return outputs.feedback;
+		if (!stripEvaluatorPrefix) return outputs.feedback;
+
+		const prefix = `${stripEvaluatorPrefix}.`;
+		return outputs.feedback.map((item) => ({
+			...item,
+			key: item.key.startsWith(prefix) ? item.key.slice(prefix.length) : item.key,
+		}));
 	};
 
 	// Load examples if maxExamples is set
