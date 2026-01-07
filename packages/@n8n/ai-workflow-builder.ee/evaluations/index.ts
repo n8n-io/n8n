@@ -12,7 +12,7 @@
  */
 
 // Core runner
-export { runEvaluation, getLastResults } from './runner';
+export { runEvaluation } from './runner';
 
 // Types
 export type {
@@ -106,4 +106,3 @@ export {
 	type GeneratedTestCase,
 	type TestCaseGenerator,
 } from './test-case-generator';
-

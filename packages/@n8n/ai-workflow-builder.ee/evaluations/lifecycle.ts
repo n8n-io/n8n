@@ -299,15 +299,9 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			logger.info(`${prefix} ${status} ${promptStr}`);
 		},
 
-		onWorkflowGenerated(workflow: SimpleWorkflow, durationMs: number): void {
-			void workflow;
-			void durationMs;
-		},
+		onWorkflowGenerated: () => {},
 
-		onEvaluatorComplete(name: string, feedback: Feedback[]): void {
-			void name;
-			void feedback;
-		},
+		onEvaluatorComplete: () => {},
 
 		onEvaluatorError(name: string, error: Error): void {
 			if (verbose) return;

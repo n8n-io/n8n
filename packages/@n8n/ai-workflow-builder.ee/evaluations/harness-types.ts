@@ -57,7 +57,7 @@ export interface Feedback {
 	 * - `metric`: stable category-level metrics (useful for dashboards)
 	 * - `detail`: unstable/verbose metrics that should not affect scoring
 	 */
-	kind?: 'score' | 'metric' | 'detail';
+	kind: 'score' | 'metric' | 'detail';
 }
 
 /**
@@ -93,6 +93,8 @@ export interface RunConfigBase {
 	context?: GlobalRunContext;
 	/** Directory for JSON output files */
 	outputDir?: string;
+	/** Threshold for pass/fail classification of an example score (0-1). */
+	passThreshold?: number;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
 	/** Logger for all output (pass `createLogger(false)` for silent) */

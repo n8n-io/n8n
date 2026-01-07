@@ -20,9 +20,10 @@ function createFeedback(
 	evaluator: string,
 	metric: string,
 	score: number,
+	kind: Feedback['kind'] = 'metric',
 	comment?: string,
 ): Feedback {
-	return { evaluator, metric, score, ...(comment ? { comment } : {}) };
+	return { evaluator, metric, score, kind, ...(comment ? { comment } : {}) };
 }
 
 describe('Score Calculator', () => {
@@ -124,7 +125,9 @@ describe('Score Calculator', () => {
 		});
 
 		it('should preserve feedback properties', () => {
-			const feedback: Feedback[] = [createFeedback('llm-judge', 'test', 0.75, 'Test comment')];
+			const feedback: Feedback[] = [
+				createFeedback('llm-judge', 'test', 0.75, 'metric', 'Test comment'),
+			];
 
 			const grouped = groupByEvaluator(feedback);
 
@@ -132,6 +135,7 @@ describe('Score Calculator', () => {
 				evaluator: 'llm-judge',
 				metric: 'test',
 				score: 0.75,
+				kind: 'metric',
 				comment: 'Test comment',
 			});
 		});

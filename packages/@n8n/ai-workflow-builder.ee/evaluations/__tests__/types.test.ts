@@ -32,6 +32,7 @@ describe('Core Types', () => {
 				evaluator: 'llm-judge',
 				metric: 'functionality',
 				score: 0.85,
+				kind: 'metric',
 			};
 			expect(feedback.evaluator).toBe('llm-judge');
 			expect(feedback.metric).toBe('functionality');
@@ -44,15 +45,16 @@ describe('Core Types', () => {
 				evaluator: 'llm-judge',
 				metric: 'connections',
 				score: 1.0,
+				kind: 'metric',
 				comment: 'All connections are valid',
 			};
 			expect(feedback.comment).toBe('All connections are valid');
 		});
 
 		it('should accept scores between 0 and 1', () => {
-			const zeroScore: Feedback = { evaluator: 'test', metric: 'score', score: 0 };
-			const oneScore: Feedback = { evaluator: 'test', metric: 'score', score: 1 };
-			const midScore: Feedback = { evaluator: 'test', metric: 'score', score: 0.5 };
+			const zeroScore: Feedback = { evaluator: 'test', metric: 'score', score: 0, kind: 'score' };
+			const oneScore: Feedback = { evaluator: 'test', metric: 'score', score: 1, kind: 'score' };
+			const midScore: Feedback = { evaluator: 'test', metric: 'score', score: 0.5, kind: 'score' };
 
 			expect(zeroScore.score).toBe(0);
 			expect(oneScore.score).toBe(1);
@@ -65,7 +67,7 @@ describe('Core Types', () => {
 			const evaluator: Evaluator = {
 				name: 'test-evaluator',
 				evaluate: async (_workflow: SimpleWorkflow) => [
-					{ evaluator: 'test-evaluator', metric: 'test', score: 1 },
+					{ evaluator: 'test-evaluator', metric: 'test', score: 1, kind: 'score' },
 				],
 			};
 
@@ -82,7 +84,12 @@ describe('Core Types', () => {
 			const evaluator: Evaluator<PairwiseContext> = {
 				name: 'pairwise',
 				evaluate: async (_workflow: SimpleWorkflow, ctx: PairwiseContext) => [
-					{ evaluator: 'pairwise', metric: 'pairwise_primary', score: ctx.dos ? 1 : 0 },
+					{
+						evaluator: 'pairwise',
+						metric: 'pairwise_primary',
+						score: ctx.dos ? 1 : 0,
+						kind: 'score',
+					},
 				],
 			};
 
@@ -93,8 +100,14 @@ describe('Core Types', () => {
 			const evaluator: Evaluator = {
 				name: 'multi-feedback',
 				evaluate: async () => [
-					{ evaluator: 'multi-feedback', metric: 'score1', score: 0.8 },
-					{ evaluator: 'multi-feedback', metric: 'score2', score: 0.9, comment: 'Good' },
+					{ evaluator: 'multi-feedback', metric: 'score1', score: 0.8, kind: 'score' },
+					{
+						evaluator: 'multi-feedback',
+						metric: 'score2',
+						score: 0.9,
+						kind: 'score',
+						comment: 'Good',
+					},
 				],
 			};
 
@@ -216,7 +229,7 @@ describe('Core Types', () => {
 				prompt: 'Test prompt',
 				status: 'pass',
 				score: 0.9,
-				feedback: [{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.9 }],
+				feedback: [{ evaluator: 'llm-judge', metric: 'overallScore', score: 0.9, kind: 'score' }],
 				durationMs: 1500,
 			};
 

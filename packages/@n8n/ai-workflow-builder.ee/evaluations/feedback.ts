@@ -35,11 +35,8 @@ export function langsmithMetricKey(feedback: Feedback): string {
 		return feedback.metric;
 	}
 
-	// Contract note:
-	// This harness currently only uses `llm-judge`, `programmatic`, and `pairwise`.
-	// If a new evaluator is introduced, prefer prefixing it (or explicitly deciding otherwise)
-	// and add/adjust tests to avoid key collisions with the unprefixed `llm-judge` metrics.
-	return feedback.metric;
+	// Default: prefix unknown evaluators to avoid collisions with unprefixed `llm-judge` metrics.
+	return feedbackKey(feedback);
 }
 
 export function toLangsmithEvaluationResult(feedback: Feedback): LangsmithEvaluationResultLike {

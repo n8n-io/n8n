@@ -45,7 +45,7 @@ function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 
 function createMockEvaluator(
 	name: string,
-	feedback: Feedback[] = [{ evaluator: name, metric: 'score', score: 1 }],
+	feedback: Feedback[] = [{ evaluator: name, metric: 'score', score: 1, kind: 'score' }],
 ): Evaluator {
 	return {
 		name,
@@ -76,7 +76,8 @@ function isFeedback(value: unknown): value is Feedback {
 		isRecord(value) &&
 		typeof value.evaluator === 'string' &&
 		typeof value.metric === 'string' &&
-		typeof value.score === 'number'
+		typeof value.score === 'number' &&
+		(value.kind === 'score' || value.kind === 'metric' || value.kind === 'detail')
 	);
 }
 
@@ -170,7 +171,7 @@ describe('Runner - LangSmith Mode', () => {
 			const workflow = createMockWorkflow('Generated');
 			const generateWorkflow = jest.fn().mockResolvedValue(workflow);
 			const evaluator = createMockEvaluator('test', [
-				{ evaluator: 'test', metric: 'score', score: 0.9 },
+				{ evaluator: 'test', metric: 'score', score: 0.9, kind: 'score' },
 			]);
 
 			const config: RunConfig = {
@@ -204,7 +205,7 @@ describe('Runner - LangSmith Mode', () => {
 			expect(result).toEqual({
 				workflow,
 				prompt: 'Create a workflow',
-				feedback: [{ evaluator: 'test', metric: 'score', score: 0.9 }],
+				feedback: [{ evaluator: 'test', metric: 'score', score: 0.9, kind: 'score' }],
 			});
 		});
 
@@ -212,11 +213,11 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const evaluator1 = createMockEvaluator('e1', [
-				{ evaluator: 'e1', metric: 'score', score: 0.8 },
+				{ evaluator: 'e1', metric: 'score', score: 0.8, kind: 'score' },
 			]);
 			const evaluator2 = createMockEvaluator('e2', [
-				{ evaluator: 'e2', metric: 'a', score: 0.9 },
-				{ evaluator: 'e2', metric: 'b', score: 1.0 },
+				{ evaluator: 'e2', metric: 'a', score: 0.9, kind: 'metric' },
+				{ evaluator: 'e2', metric: 'b', score: 1.0, kind: 'metric' },
 			]);
 
 			const config: RunConfig = {
@@ -242,16 +243,31 @@ describe('Runner - LangSmith Mode', () => {
 			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
 			expect(result.feedback).toHaveLength(3);
-			expect(result.feedback).toContainEqual({ evaluator: 'e1', metric: 'score', score: 0.8 });
-			expect(result.feedback).toContainEqual({ evaluator: 'e2', metric: 'a', score: 0.9 });
-			expect(result.feedback).toContainEqual({ evaluator: 'e2', metric: 'b', score: 1.0 });
+			expect(result.feedback).toContainEqual({
+				evaluator: 'e1',
+				metric: 'score',
+				score: 0.8,
+				kind: 'score',
+			});
+			expect(result.feedback).toContainEqual({
+				evaluator: 'e2',
+				metric: 'a',
+				score: 0.9,
+				kind: 'metric',
+			});
+			expect(result.feedback).toContainEqual({
+				evaluator: 'e2',
+				metric: 'b',
+				score: 1.0,
+				kind: 'metric',
+			});
 		});
 
 		it('should handle evaluator errors gracefully in target', async () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const goodEvaluator = createMockEvaluator('good', [
-				{ evaluator: 'good', metric: 'score', score: 1 },
+				{ evaluator: 'good', metric: 'score', score: 1, kind: 'score' },
 			]);
 			const badEvaluator: Evaluator = {
 				name: 'bad',
@@ -281,7 +297,12 @@ describe('Runner - LangSmith Mode', () => {
 			expect(isLangsmithTargetOutput(result)).toBe(true);
 			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
-			expect(result.feedback).toContainEqual({ evaluator: 'good', metric: 'score', score: 1 });
+			expect(result.feedback).toContainEqual({
+				evaluator: 'good',
+				metric: 'score',
+				score: 1,
+				kind: 'score',
+			});
 			expect(result.feedback).toContainEqual({
 				evaluator: 'bad',
 				metric: 'error',
@@ -325,15 +346,15 @@ describe('Runner - LangSmith Mode', () => {
 			const extracted = await evaluatorFn({
 				outputs: {
 					feedback: [
-						{ evaluator: 'test', metric: 'score', score: 0.9 },
-						{ evaluator: 'other', metric: 'trigger', score: 0.8 },
+						{ evaluator: 'test', metric: 'score', score: 0.9, kind: 'score' },
+						{ evaluator: 'other', metric: 'trigger', score: 0.8, kind: 'metric' },
 					],
 				},
 			});
 
 			expect(extracted).toEqual([
-				{ key: 'score', score: 0.9 },
-				{ key: 'trigger', score: 0.8 },
+				{ key: 'test.score', score: 0.9 },
+				{ key: 'other.trigger', score: 0.8 },
 			]);
 		});
 
@@ -369,9 +390,14 @@ describe('Runner - LangSmith Mode', () => {
 			const extracted = await evaluatorFn({
 				outputs: {
 					feedback: [
-						{ evaluator: 'llm-judge', metric: 'functionality', score: 0.9 },
-						{ evaluator: 'programmatic', metric: 'trigger', score: 0.8 },
-						{ evaluator: 'llm-judge', metric: 'maintainability.nodeNamingQuality', score: 0.7 },
+						{ evaluator: 'llm-judge', metric: 'functionality', score: 0.9, kind: 'metric' },
+						{ evaluator: 'programmatic', metric: 'trigger', score: 0.8, kind: 'metric' },
+						{
+							evaluator: 'llm-judge',
+							metric: 'maintainability.nodeNamingQuality',
+							score: 0.7,
+							kind: 'detail',
+						},
 					],
 				},
 			});
@@ -426,7 +452,7 @@ describe('Runner - LangSmith Mode', () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 
 			const evaluateContextual: Evaluator['evaluate'] = async (_workflow, ctx) => [
-				{ evaluator: 'contextual', metric: 'score', score: ctx.dos ? 1 : 0 },
+				{ evaluator: 'contextual', metric: 'score', score: ctx.dos ? 1 : 0, kind: 'score' },
 			];
 
 			const evaluator: Evaluator = {
@@ -468,6 +494,7 @@ describe('Runner - LangSmith Mode', () => {
 				evaluator: 'contextual',
 				metric: 'score',
 				score: 1,
+				kind: 'score',
 			});
 		});
 

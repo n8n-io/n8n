@@ -27,19 +27,7 @@ import { runWithOptionalLimiter } from './utils/evaluation-helpers';
 import type { EvalLogger } from './utils/logger';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
-/** Pass/fail threshold for overall score */
-const PASS_THRESHOLD = 0.7;
-
-/** Store last results for testing */
-let lastResults: ExampleResult[] = [];
-
-/**
- * Get the results from the last evaluation run.
- * Useful for testing and inspection.
- */
-export function getLastResults(): ExampleResult[] {
-	return lastResults;
-}
+const DEFAULT_PASS_THRESHOLD = 0.7;
 
 /**
  * Run evaluators in parallel for a single workflow.
@@ -85,8 +73,13 @@ function calculateExampleScore(feedback: Feedback[]): number {
 /**
  * Determine pass/fail status based on average score.
  */
-function determineStatus(score: number): 'pass' | 'fail' {
-	return score >= PASS_THRESHOLD ? 'pass' : 'fail';
+function determineStatus(args: { score: number; passThreshold: number }): 'pass' | 'fail' {
+	const { score, passThreshold } = args;
+	return score >= passThreshold ? 'pass' : 'fail';
+}
+
+function hasErrorFeedback(feedback: Feedback[]): boolean {
+	return feedback.some((f) => f.metric === 'error');
 }
 
 /**
@@ -121,7 +114,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
-	return !!value && typeof value === 'object' && 'nodes' in value && 'connections' in value;
+	if (!isUnknownRecord(value)) return false;
+	if (!Array.isArray(value.nodes)) return false;
+	if (!isUnknownRecord(value.connections)) return false;
+	return value.nodes.every(isUnknownRecord);
 }
 
 function getNotionIdFromMetadata(metadata: unknown): string | undefined {
@@ -147,11 +143,14 @@ function getEvalsFromExampleInputs(exampleInputs: unknown): { dos?: string; dont
 }
 
 function isFeedback(value: unknown): value is Feedback {
+	const kinds = new Set(['score', 'metric', 'detail'] as const);
 	return (
 		isUnknownRecord(value) &&
 		typeof value.evaluator === 'string' &&
 		typeof value.metric === 'string' &&
-		typeof value.score === 'number'
+		typeof value.score === 'number' &&
+		typeof value.kind === 'string' &&
+		kinds.has(value.kind as 'score' | 'metric' | 'detail')
 	);
 }
 
@@ -298,6 +297,7 @@ async function runLocalExample(args: {
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
+	passThreshold: number;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver?: ArtifactSaver | null;
 }): Promise<ExampleResult> {
@@ -308,6 +308,7 @@ async function runLocalExample(args: {
 		generateWorkflow,
 		evaluators,
 		globalContext,
+		passThreshold,
 		lifecycle,
 		artifactSaver,
 	} = args;
@@ -339,7 +340,7 @@ async function runLocalExample(args: {
 
 		// Calculate result
 		const score = calculateExampleScore(feedback);
-		const status = determineStatus(score);
+		const status = hasErrorFeedback(feedback) ? 'error' : determineStatus({ score, passThreshold });
 		const durationMs = Date.now() - startTime;
 
 		const result: ExampleResult = {
@@ -359,14 +360,23 @@ async function runLocalExample(args: {
 		return result;
 	} catch (error) {
 		const durationMs = Date.now() - startTime;
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		const result: ExampleResult = {
 			index,
 			prompt: testCase.prompt,
 			status: 'error',
 			score: 0,
-			feedback: [],
+			feedback: [
+				{
+					evaluator: 'runner',
+					metric: 'error',
+					score: 0,
+					kind: 'score',
+					comment: errorMessage,
+				},
+			],
 			durationMs,
-			error: error instanceof Error ? error.message : String(error),
+			error: errorMessage,
 		};
 
 		artifactSaver?.saveExample(result);
@@ -392,11 +402,19 @@ async function runLocalDataset(params: {
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
+	passThreshold: number;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
 }): Promise<ExampleResult[]> {
-	const { testCases, generateWorkflow, evaluators, globalContext, lifecycle, artifactSaver } =
-		params;
+	const {
+		testCases,
+		generateWorkflow,
+		evaluators,
+		globalContext,
+		passThreshold,
+		lifecycle,
+		artifactSaver,
+	} = params;
 
 	const results: ExampleResult[] = [];
 	for (let i = 0; i < testCases.length; i++) {
@@ -409,6 +427,7 @@ async function runLocalDataset(params: {
 			generateWorkflow,
 			evaluators,
 			globalContext,
+			passThreshold,
 			lifecycle,
 			artifactSaver,
 		});
@@ -442,6 +461,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		generateWorkflow,
 		evaluators,
 		context: globalContext,
+		passThreshold = DEFAULT_PASS_THRESHOLD,
 		lifecycle,
 		outputDir,
 		logger,
@@ -464,6 +484,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		generateWorkflow,
 		evaluators,
 		globalContext: effectiveGlobalContext,
+		passThreshold,
 		lifecycle,
 		artifactSaver,
 	});
@@ -473,7 +494,6 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	artifactSaver?.saveSummary(summary, results);
 
 	lifecycle?.onEnd?.(summary);
-	lastResults = results;
 
 	return summary;
 }
@@ -526,6 +546,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		generateWorkflow,
 		evaluators,
 		context: globalContext,
+		passThreshold = DEFAULT_PASS_THRESHOLD,
 		langsmithOptions,
 		lifecycle,
 		logger,
@@ -567,55 +588,88 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const startTime = Date.now();
 		const genStart = Date.now();
 
-		const limiter = effectiveGlobalContext.llmCallLimiter;
+		try {
+			const limiter = effectiveGlobalContext.llmCallLimiter;
 
-		// Generate workflow - wrapped in traceable for proper child trace visibility
-		const traceableGenerate = traceable(
-			async () => await runWithOptionalLimiter(limiter, async () => await generateWorkflow(prompt)),
-			{
-				name: 'workflow_generation',
-				run_type: 'chain',
-			},
-		);
-		const workflow = await traceableGenerate();
-		const genDurationMs = Date.now() - genStart;
-		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+			// Generate workflow - wrapped in traceable for proper child trace visibility
+			const traceableGenerate = traceable(
+				async () =>
+					await runWithOptionalLimiter(limiter, async () => await generateWorkflow(prompt)),
+				{
+					name: 'workflow_generation',
+					run_type: 'chain',
+				},
+			);
+			const workflow = await traceableGenerate();
+			const genDurationMs = Date.now() - genStart;
+			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
-		const extracted = extractContextFromLangsmithInputs({
-			...asRecord(datasetContext),
-			...asRecord(rest),
-		});
-		const context = buildContext({
-			prompt,
-			globalContext: effectiveGlobalContext,
-			testCaseContext: extracted,
-		});
+			const extracted = extractContextFromLangsmithInputs({
+				...asRecord(datasetContext),
+				...asRecord(rest),
+			});
+			const context = buildContext({
+				prompt,
+				globalContext: effectiveGlobalContext,
+				testCaseContext: extracted,
+			});
 
-		// Run all evaluators in parallel
-		const evalStart = Date.now();
-		const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
-		const evalDurationMs = Date.now() - evalStart;
+			// Run all evaluators in parallel
+			const evalStart = Date.now();
+			const feedback = await evaluateWithPlugins(workflow, evaluators, context, lifecycle);
+			const evalDurationMs = Date.now() - evalStart;
 
-		const totalDurationMs = Date.now() - startTime;
-		const score = calculateExampleScore(feedback);
-		const status = determineStatus(score);
-		lifecycle?.onExampleComplete?.(index, {
-			index,
-			prompt,
-			status,
-			score,
-			feedback,
-			durationMs: totalDurationMs,
-			generationDurationMs: genDurationMs,
-			evaluationDurationMs: evalDurationMs,
-			workflow,
-		});
+			const totalDurationMs = Date.now() - startTime;
+			const score = calculateExampleScore(feedback);
+			const status = hasErrorFeedback(feedback)
+				? 'error'
+				: determineStatus({ score, passThreshold });
+			lifecycle?.onExampleComplete?.(index, {
+				index,
+				prompt,
+				status,
+				score,
+				feedback,
+				durationMs: totalDurationMs,
+				generationDurationMs: genDurationMs,
+				evaluationDurationMs: evalDurationMs,
+				workflow,
+			});
 
-		return {
-			workflow,
-			prompt,
-			feedback,
-		};
+			return {
+				workflow,
+				prompt,
+				feedback,
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const workflow: SimpleWorkflow = { name: 'Evaluation Error', nodes: [], connections: {} };
+			const feedback: Feedback[] = [
+				{
+					evaluator: 'runner',
+					metric: 'error',
+					score: 0,
+					kind: 'score',
+					comment: errorMessage,
+				},
+			];
+
+			const totalDurationMs = Date.now() - startTime;
+			const genDurationMs = Date.now() - genStart;
+			lifecycle?.onExampleComplete?.(index, {
+				index,
+				prompt,
+				status: 'error',
+				score: 0,
+				feedback,
+				durationMs: totalDurationMs,
+				generationDurationMs: genDurationMs,
+				workflow,
+				error: errorMessage,
+			});
+
+			return { workflow, prompt, feedback };
+		}
 	};
 
 	// Create LangSmith evaluator that extracts pre-computed feedback

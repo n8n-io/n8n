@@ -17,9 +17,10 @@ function createFeedback(
 	evaluator: string,
 	metric: string,
 	score: number,
+	kind: Feedback['kind'] = 'metric',
 	comment?: string,
 ): Feedback {
-	return { evaluator, metric, score, ...(comment ? { comment } : {}) };
+	return { evaluator, metric, score, kind, ...(comment ? { comment } : {}) };
 }
 
 /** Helper to create an example result */
@@ -98,10 +99,10 @@ describe('Report Generator', () => {
 			const results: ExampleResult[] = [
 				createExampleResult({
 					feedback: [
-						createFeedback('a', 'b', 0, '[CRITICAL] Missing node'),
-						createFeedback('a', 'c', 0, '[MAJOR] Bad config'),
-						createFeedback('a', 'd', 0, '[MINOR] Style issue'),
-						createFeedback('a', 'e', 0, '[CRITICAL] Another critical'),
+						createFeedback('a', 'b', 0, 'detail', '[CRITICAL] Missing node'),
+						createFeedback('a', 'c', 0, 'detail', '[MAJOR] Bad config'),
+						createFeedback('a', 'd', 0, 'detail', '[MINOR] Style issue'),
+						createFeedback('a', 'e', 0, 'detail', '[CRITICAL] Another critical'),
 					],
 				}),
 			];
@@ -198,8 +199,8 @@ describe('Report Generator', () => {
 			const results: ExampleResult[] = [
 				createExampleResult({
 					feedback: [
-						createFeedback('a', 'b', 0, '[CRITICAL] Issue 1'),
-						createFeedback('a', 'c', 0, '[MAJOR] Issue 2'),
+						createFeedback('a', 'b', 0, 'detail', '[CRITICAL] Issue 1'),
+						createFeedback('a', 'c', 0, 'detail', '[MAJOR] Issue 2'),
 					],
 				}),
 			];
@@ -219,7 +220,7 @@ describe('Report Generator', () => {
 					prompt: 'Create a workflow that sends emails',
 					status: 'pass',
 					durationMs: 1500,
-					feedback: [createFeedback('llm-judge', 'a', 0.9, 'Good job')],
+					feedback: [createFeedback('llm-judge', 'a', 0.9, 'metric', 'Good job')],
 				}),
 			];
 			const summary = createRunSummary();
@@ -267,7 +268,7 @@ describe('Report Generator', () => {
 			const results: ExampleResult[] = [
 				createExampleResult({
 					feedback: [
-						createFeedback('llm-judge', 'functionality', 0.9, 'Great functionality'),
+						createFeedback('llm-judge', 'functionality', 0.9, 'metric', 'Great functionality'),
 						createFeedback('programmatic', 'trigger', 1.0),
 					],
 				}),
