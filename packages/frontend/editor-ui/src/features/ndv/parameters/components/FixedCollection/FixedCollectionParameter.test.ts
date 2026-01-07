@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/app/constants';
 import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
+import userEvent from '@testing-library/user-event';
 
 const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -120,7 +121,7 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 
 		// Click the add button to trigger a valueChanged event
 		const addButton = getByTestId('fixed-collection-add-header');
-		await addButton.click();
+		await userEvent.click(addButton);
 
 		// Verify that the valueChanged event was emitted with the correct payload
 		expect(emitted().valueChanged).toBeTruthy();
