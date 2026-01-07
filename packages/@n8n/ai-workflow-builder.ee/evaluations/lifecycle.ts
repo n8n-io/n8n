@@ -8,6 +8,7 @@ import type {
 	RunSummary,
 } from './harness-types.js';
 import { groupByEvaluator, selectScoringItems } from './score-calculator';
+import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -230,11 +231,23 @@ function scoreColor(score: number): (s: string) => string {
 	return pc.red;
 }
 
+function formatExampleStatus(status: ExampleResult['status']): string {
+	switch (status) {
+		case 'pass':
+			return pc.green('PASS');
+		case 'fail':
+			return pc.yellow('FAIL');
+		case 'error':
+			return pc.red('ERROR');
+	}
+}
+
 /**
  * Options for creating a console lifecycle.
  */
 export interface ConsoleLifecycleOptions {
 	verbose: boolean;
+	logger: EvalLogger;
 }
 
 /**
@@ -242,7 +255,7 @@ export interface ConsoleLifecycleOptions {
  * Verbose mode shows detailed progress, non-verbose shows summary only.
  */
 export function createConsoleLifecycle(options: ConsoleLifecycleOptions): EvaluationLifecycle {
-	const { verbose } = options;
+	const { verbose, logger } = options;
 	let runMode: RunConfig['mode'] | undefined;
 	let evaluatorOrder: string[] = [];
 
@@ -251,18 +264,18 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			runMode = config.mode;
 			evaluatorOrder = config.evaluators.map((e) => e.name);
 
-			console.log(`\nStarting evaluation in ${pc.cyan(config.mode)} mode`);
+			logger.info(`\nStarting evaluation in ${pc.cyan(config.mode)} mode`);
 
 			if (typeof config.dataset === 'string') {
-				console.log(`Dataset: ${pc.dim(config.dataset)}`);
+				logger.info(`Dataset: ${pc.dim(config.dataset)}`);
 			} else {
-				console.log(`Test cases: ${pc.dim(String(config.dataset.length))}`);
+				logger.info(`Test cases: ${pc.dim(String(config.dataset.length))}`);
 			}
 
-			console.log(
+			logger.info(
 				`Evaluators: ${pc.dim(config.evaluators.map((e) => e.name).join(', ') || 'none')}`,
 			);
-			console.log('');
+			logger.info('');
 		},
 
 		onExampleStart(index: number, total: number, prompt: string): void {
@@ -272,7 +285,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			const prefix = pc.dim(`[${exampleLabel(runMode)} ${index}/${totalStr}]`);
 			const status = pc.yellow('START');
 			const promptStr = pc.dim(`prompt="${truncateForSingleLine(prompt, 80)}"`);
-			console.log(`${prefix} ${status} ${promptStr}`);
+			logger.info(`${prefix} ${status} ${promptStr}`);
 		},
 
 		onWorkflowGenerated(workflow: SimpleWorkflow, durationMs: number): void {
@@ -287,18 +300,13 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 
 		onEvaluatorError(name: string, error: Error): void {
 			if (verbose) return;
-			console.error(pc.red(`    ERROR in ${name}: ${error.message}`));
+			logger.error(`    ERROR in ${name}: ${error.message}`);
 		},
 
 		onExampleComplete(index: number, result: ExampleResult): void {
 			if (!verbose) return;
 
-			const status =
-				result.status === 'pass'
-					? pc.green('PASS')
-					: result.status === 'fail'
-						? pc.yellow('FAIL')
-						: pc.red('ERROR');
+			const status = formatExampleStatus(result.status);
 
 			const nodeCount = result.workflow?.nodes?.length ?? 0;
 			const lines: string[] = formatExampleHeaderLines({
@@ -315,7 +323,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 
 			if (result.error) {
 				lines.push(pc.red(`  error: ${result.error}`));
-				console.log(lines.join('\n'));
+				logger.info(lines.join('\n'));
 				return;
 			}
 
@@ -330,7 +338,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 				lines.push(...formatEvaluatorLines({ evaluatorName, feedback }));
 			}
 
-			console.log(lines.join('\n'));
+			logger.info(lines.join('\n'));
 		},
 
 		onEnd(summary: RunSummary): void {
@@ -338,18 +346,18 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 				return;
 			}
 
-			console.log('\n' + pc.bold('═══════════════════ SUMMARY ═══════════════════'));
-			console.log(
+			logger.info('\n' + pc.bold('═══════════════════ SUMMARY ═══════════════════'));
+			logger.info(
 				`  Total: ${summary.totalExamples} | ` +
 					`Pass: ${pc.green(String(summary.passed))} | ` +
 					`Fail: ${pc.yellow(String(summary.failed))} | ` +
 					`Error: ${pc.red(String(summary.errors))}`,
 			);
 			const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
-			console.log(`  Pass rate: ${formatScore(passRate)}`);
-			console.log(`  Average score: ${formatScore(summary.averageScore)}`);
-			console.log(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
-			console.log(pc.bold('═══════════════════════════════════════════════\n'));
+			logger.info(`  Pass rate: ${formatScore(passRate)}`);
+			logger.info(`  Average score: ${formatScore(summary.averageScore)}`);
+			logger.info(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
+			logger.info(pc.bold('═══════════════════════════════════════════════\n'));
 		},
 	};
 }

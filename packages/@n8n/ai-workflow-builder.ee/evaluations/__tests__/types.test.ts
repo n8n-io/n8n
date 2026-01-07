@@ -9,6 +9,7 @@ import type {
 	RunSummary,
 	EvaluationLifecycle,
 } from '../harness-types';
+import { createLogger } from '../utils/logger';
 
 /** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(overrides?: Partial<SimpleWorkflow>): SimpleWorkflow {
@@ -147,6 +148,7 @@ describe('Core Types', () => {
 				dataset: [{ prompt: 'Test prompt' }],
 				generateWorkflow: async () => createMockWorkflow(),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 			expect(config.mode).toBe('local');
 		});
@@ -162,6 +164,7 @@ describe('Core Types', () => {
 					repetitions: 1,
 					concurrency: 4,
 				},
+				logger: createLogger(false),
 			};
 			expect(config.mode).toBe('langsmith');
 			expect(config.langsmithOptions.experimentName).toBe('test-experiment');
@@ -174,6 +177,7 @@ describe('Core Types', () => {
 				generateWorkflow: async () => createMockWorkflow(),
 				evaluators: [],
 				outputDir: '/path/to/output',
+				logger: createLogger(false),
 			};
 			expect(config.outputDir).toBe('/path/to/output');
 		});
@@ -185,6 +189,7 @@ describe('Core Types', () => {
 				generateWorkflow: async () => createMockWorkflow(),
 				evaluators: [],
 				context: { dos: 'Global do' },
+				logger: createLogger(false),
 			};
 			expect(config.context).toBeDefined();
 		});
@@ -198,6 +203,7 @@ describe('Core Types', () => {
 				lifecycle: {
 					onStart: () => {},
 				},
+				logger: createLogger(false),
 			};
 			expect(config.lifecycle?.onStart).toBeDefined();
 		});

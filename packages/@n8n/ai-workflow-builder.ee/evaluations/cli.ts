@@ -150,7 +150,7 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose });
+	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const env = await setupTestEnvironment(logger);
 
 	// Create workflow generator (tracing handled via traceable() in runner)
@@ -232,7 +232,9 @@ export async function runV2Evaluation(): Promise<void> {
 // Run if called directly
 if (require.main === module) {
 	runV2Evaluation().catch((error) => {
-		console.error('Evaluation failed:', error);
+		const logger = createLogger(true);
+		const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+		logger.error(`Evaluation failed: ${message}`);
 		process.exit(1);
 	});
 }

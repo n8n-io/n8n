@@ -113,6 +113,10 @@ Final context passed to evaluators
 ### Local Mode
 
 ```typescript
+import { createLogger } from './utils/logger';
+
+const logger = createLogger(true);
+
 const config: RunConfig = {
   mode: 'local',
   dataset: [
@@ -120,7 +124,8 @@ const config: RunConfig = {
   ],
   generateWorkflow,
   evaluators: [llmJudge, programmatic],
-  lifecycle: createConsoleLifecycle({ verbose: true }),
+  lifecycle: createConsoleLifecycle({ verbose: true, logger }),
+  logger,
 };
 
 await runEvaluation(config);
@@ -133,11 +138,16 @@ await runEvaluation(config);
 ### LangSmith Mode
 
 ```typescript
+import { createLogger } from './utils/logger';
+
+const logger = createLogger(false);
+
 const config: RunConfig = {
   mode: 'langsmith',
   dataset: 'my-dataset-name',  // LangSmith dataset
   generateWorkflow,
   evaluators: [llmJudge, programmatic],
+  logger,
 		  langsmithOptions: {
 		    experimentName: 'experiment-1',
 		    repetitions: 1,

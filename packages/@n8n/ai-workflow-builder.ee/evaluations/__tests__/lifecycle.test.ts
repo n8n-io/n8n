@@ -5,6 +5,7 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import type { EvaluationLifecycle, RunConfig, ExampleResult, RunSummary } from '../harness-types';
+import { createLogger } from '../utils/logger';
 
 // Mock console methods
 const mockConsole = {
@@ -38,7 +39,7 @@ describe('Console Lifecycle', () => {
 	describe('createConsoleLifecycle()', () => {
 		it('should create a lifecycle with all hooks', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			expect(lifecycle.onStart).toBeDefined();
 			expect(lifecycle.onExampleStart).toBeDefined();
@@ -51,13 +52,14 @@ describe('Console Lifecycle', () => {
 
 		it('should log experiment info on start with test cases array', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 
 			lifecycle.onStart(config);
@@ -70,7 +72,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log dataset name for langsmith mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -82,6 +84,7 @@ describe('Console Lifecycle', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: createLogger(false),
 			};
 
 			lifecycle.onStart(config);
@@ -94,7 +97,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not log summary in langsmith mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
 				mode: 'langsmith',
@@ -106,6 +109,7 @@ describe('Console Lifecycle', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: createLogger(false),
 			};
 
 			lifecycle.onStart(config);
@@ -125,7 +129,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log example progress in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			lifecycle.onExampleStart(1, 10, 'Test prompt that is quite long and should be truncated');
 
@@ -136,7 +140,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not log example progress in non-verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onExampleStart(1, 10, 'Test prompt');
 
@@ -146,7 +150,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log workflow generation in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const workflow = createMockWorkflow('My Workflow');
 			lifecycle.onWorkflowGenerated(workflow, 1500);
@@ -157,7 +161,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log evaluator completion in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
 				{ evaluator: 'llm-judge', metric: 'func', score: 0.8 },
@@ -170,7 +174,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not log evaluator completion in non-verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
 				{ evaluator: 'llm-judge', metric: 'func', score: 0.8 },
@@ -181,7 +185,7 @@ describe('Console Lifecycle', () => {
 
 		it('should display critical metrics in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -212,7 +216,7 @@ describe('Console Lifecycle', () => {
 
 		it('should display violations in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -247,7 +251,7 @@ describe('Console Lifecycle', () => {
 
 		it('should limit violations display to 5 and show count', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -272,7 +276,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not display violations for error feedback', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -293,7 +297,7 @@ describe('Console Lifecycle', () => {
 
 		it('should handle empty feedback array', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -313,7 +317,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log evaluator errors', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onEvaluatorError('test-evaluator', new Error('Something went wrong'));
 
@@ -325,7 +329,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log example completion with pass/fail status', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const passResult: ExampleResult = {
 				index: 1,
@@ -355,7 +359,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log example completion with error status', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const errorResult: ExampleResult = {
 				index: 1,
@@ -375,7 +379,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not log example completion in non-verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -393,7 +397,7 @@ describe('Console Lifecycle', () => {
 
 		it('should not log workflow generation in non-verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const workflow = createMockWorkflow('My Workflow');
 			lifecycle.onWorkflowGenerated(workflow, 1500);
@@ -403,7 +407,7 @@ describe('Console Lifecycle', () => {
 
 		it('should use different colors for different score ranges', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: true });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
 				index: 1,
@@ -430,7 +434,7 @@ describe('Console Lifecycle', () => {
 
 		it('should log summary with statistics on end', async () => {
 			const { createConsoleLifecycle } = await import('../lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false });
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const summary: RunSummary = {
 				totalExamples: 10,
@@ -466,6 +470,7 @@ describe('Console Lifecycle', () => {
 				dataset: [],
 				generateWorkflow: jest.fn(),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 
 			lifecycle.onStart(config);
@@ -506,6 +511,7 @@ describe('Console Lifecycle', () => {
 				dataset: [],
 				generateWorkflow: jest.fn(),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 
 			merged.onStart(config);
@@ -534,6 +540,7 @@ describe('Console Lifecycle', () => {
 				dataset: [],
 				generateWorkflow: jest.fn(),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 
 			merged.onStart(config);
@@ -557,6 +564,7 @@ describe('Console Lifecycle', () => {
 				dataset: [],
 				generateWorkflow: jest.fn(),
 				evaluators: [],
+				logger: createLogger(false),
 			};
 
 			merged.onStart(config);

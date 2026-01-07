@@ -95,8 +95,8 @@ export interface RunConfigBase {
 	outputDir?: string;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
-	/** Logger for verbose output (optional - defaults to silent) */
-	logger?: EvalLogger;
+	/** Logger for all output (pass `createLogger(false)` for silent) */
+	logger: EvalLogger;
 }
 
 export interface LocalRunConfig extends RunConfigBase {

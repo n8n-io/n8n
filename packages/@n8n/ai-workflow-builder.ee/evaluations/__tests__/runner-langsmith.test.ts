@@ -20,6 +20,9 @@ import type { SimpleWorkflow } from '@/types/workflow';
 import { setupTestEnvironment, type TestEnvironment } from '../core/environment';
 import type { TraceFilters } from '../core/trace-filters';
 import type { Evaluator, Feedback, RunConfig } from '../harness-types';
+import { createLogger } from '../utils/logger';
+
+const silentLogger = createLogger(false);
 
 jest.mock('langsmith/evaluation', () => ({
 	evaluate: jest.fn(),
@@ -143,6 +146,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 2,
 					concurrency: 4,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -179,6 +183,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -224,6 +229,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -262,6 +268,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -297,6 +304,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -342,6 +350,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -387,6 +396,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -434,6 +444,7 @@ describe('Runner - LangSmith Mode', () => {
 					repetitions: 1,
 					concurrency: 1,
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -496,6 +507,7 @@ describe('Runner - LangSmith Mode', () => {
 					concurrency: 1,
 					filters: { notionId: 'n1', technique: 'data_transformation', doSearch: 'slack' },
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -539,6 +551,7 @@ describe('Runner - LangSmith Mode', () => {
 					concurrency: 1,
 					filters: { notionId: 'does-not-exist' },
 				},
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');

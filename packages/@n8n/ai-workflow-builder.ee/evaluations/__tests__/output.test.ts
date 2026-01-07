@@ -11,6 +11,9 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 import type { ExampleResult, RunSummary } from '../harness-types';
 import { createArtifactSaver } from '../output';
+import { createLogger } from '../utils/logger';
+
+const silentLogger = createLogger(false);
 
 /** Type for parsed workflow JSON */
 interface ParsedWorkflow {
@@ -109,13 +112,13 @@ describe('Artifact Saver', () => {
 	describe('createArtifactSaver()', () => {
 		it('should create output directory if it does not exist', () => {
 			const outputDir = path.join(tempDir, 'nested', 'output');
-			createArtifactSaver({ outputDir });
+			createArtifactSaver({ outputDir, logger: silentLogger });
 
 			expect(fs.existsSync(outputDir)).toBe(true);
 		});
 
 		it('should return an artifact saver with saveExample and saveSummary methods', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 
 			expect(saver.saveExample).toBeDefined();
 			expect(saver.saveSummary).toBeDefined();
@@ -124,7 +127,7 @@ describe('Artifact Saver', () => {
 
 	describe('saveExample()', () => {
 		it('should save prompt to prompt.txt', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult({ index: 1 });
 
 			saver.saveExample(result);
@@ -135,7 +138,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should save workflow to workflow.json in n8n-importable format', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult();
 
 			saver.saveExample(result);
@@ -150,7 +153,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should save feedback to feedback.json', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult();
 
 			saver.saveExample(result);
@@ -165,7 +168,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should group feedback by evaluator', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult();
 
 			saver.saveExample(result);
@@ -181,7 +184,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should save error to error.txt when present', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult({
 				status: 'error',
 				score: 0,
@@ -196,7 +199,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should not save workflow.json when workflow is undefined', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const result = createMockResult({ workflow: undefined });
 
 			saver.saveExample(result);
@@ -206,7 +209,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should pad example index in directory name', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 
 			saver.saveExample(createMockResult({ index: 1 }));
 			saver.saveExample(createMockResult({ index: 10 }));
@@ -220,7 +223,7 @@ describe('Artifact Saver', () => {
 
 	describe('saveSummary()', () => {
 		it('should save summary.json with correct structure', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const summary = createMockSummary();
 			const results = [
 				createMockResult({ index: 1, status: 'pass' }),
@@ -241,7 +244,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should include timestamp', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			saver.saveSummary(createMockSummary(), [createMockResult()]);
 
 			const summaryPath = path.join(tempDir, 'summary.json');
@@ -252,7 +255,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should calculate per-evaluator averages', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const results = [createMockResult(), createMockResult()];
 
 			saver.saveSummary(createMockSummary(), results);
@@ -266,7 +269,7 @@ describe('Artifact Saver', () => {
 		});
 
 		it('should include truncated prompts in results', () => {
-			const saver = createArtifactSaver({ outputDir: tempDir });
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 			const longPrompt = 'A'.repeat(200);
 			const results = [createMockResult({ prompt: longPrompt })];
 

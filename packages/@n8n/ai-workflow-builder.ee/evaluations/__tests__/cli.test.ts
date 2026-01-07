@@ -447,7 +447,9 @@ describe('CLI', () => {
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
-				expect(mockCreateConsoleLifecycle).toHaveBeenCalledWith({ verbose: true });
+				expect(mockCreateConsoleLifecycle).toHaveBeenCalledWith(
+					expect.objectContaining({ verbose: true }),
+				);
 			});
 		});
 	});

@@ -24,7 +24,7 @@ import { createArtifactSaver, type ArtifactSaver } from './output';
 import { calculateWeightedScore } from './score-calculator';
 import { extractMessageContent } from './types/langsmith';
 import { runWithOptionalLimiter } from './utils/evaluation-helpers';
-import { createLogger, type EvalLogger } from './utils/logger';
+import type { EvalLogger } from './utils/logger';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /** Pass/fail threshold for overall score */
@@ -378,9 +378,13 @@ async function runLocalExample(args: {
 /**
  * Run evaluation in local mode.
  */
-function createArtifactSaverIfRequested(outputDir?: string): ArtifactSaver | null {
+function createArtifactSaverIfRequested(args: {
+	outputDir?: string;
+	logger: EvalLogger;
+}): ArtifactSaver | null {
+	const { outputDir, logger } = args;
 	if (!outputDir) return null;
-	return createArtifactSaver({ outputDir, verbose: true });
+	return createArtifactSaver({ outputDir, logger });
 }
 
 async function runLocalDataset(params: {
@@ -440,6 +444,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		context: globalContext,
 		lifecycle,
 		outputDir,
+		logger,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -450,7 +455,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	};
 
 	// Create artifact saver if outputDir is provided
-	const artifactSaver = createArtifactSaverIfRequested(outputDir);
+	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 
 	lifecycle?.onStart?.(config);
 
@@ -523,11 +528,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		context: globalContext,
 		langsmithOptions,
 		lifecycle,
-		logger: configLogger,
+		logger,
 	} = config;
-
-	// Create logger (defaults to silent if not provided)
-	const logger: EvalLogger = configLogger ?? createLogger(false);
 
 	// Enable tracing (required in langsmith 0.4.x)
 	process.env.LANGSMITH_TRACING = 'true';

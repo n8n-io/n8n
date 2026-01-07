@@ -7,6 +7,9 @@ import type {
 	RunConfig,
 	EvaluationLifecycle,
 } from '../harness-types';
+import { createLogger } from '../utils/logger';
+
+const silentLogger = createLogger(false);
 
 /** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
@@ -49,6 +52,7 @@ describe('Runner - Local Mode', () => {
 				dataset: testCases,
 				generateWorkflow,
 				evaluators: [evaluator],
+				logger: silentLogger,
 			};
 
 			// Import dynamically to avoid circular deps in test setup
@@ -76,6 +80,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2, evaluator3],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -101,6 +106,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [goodEvaluator, badEvaluator],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -126,6 +132,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test 1' }, { prompt: 'Test 2' }, { prompt: 'Test 3' }],
 				generateWorkflow,
 				evaluators: [evaluator],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -158,6 +165,7 @@ describe('Runner - Local Mode', () => {
 				],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -184,6 +192,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
 				context: { dos: 'Use Slack' },
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -206,6 +215,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [highScoreEvaluator],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -218,6 +228,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [lowScoreEvaluator],
+				logger: silentLogger,
 			};
 
 			const summary2 = await runEvaluation(config2);
@@ -238,6 +249,7 @@ describe('Runner - Local Mode', () => {
 				dataset: [{ prompt: 'Test' }],
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2],
+				logger: silentLogger,
 			};
 
 			const { runEvaluation, getLastResults } = await import('../runner');
@@ -261,6 +273,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -280,6 +293,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -302,6 +316,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(workflow),
 				evaluators: [],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -330,6 +345,7 @@ describe('Runner - Local Mode', () => {
 					createMockEvaluator('eval2', feedback2),
 				],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -352,6 +368,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createFailingEvaluator('failing', error)],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -371,6 +388,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');
@@ -397,6 +415,7 @@ describe('Runner - Local Mode', () => {
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
+				logger: silentLogger,
 			};
 
 			const { runEvaluation } = await import('../runner');

@@ -10,6 +10,7 @@ import * as path from 'path';
 import { feedbackKey } from './feedback';
 import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
 import { selectScoringItems } from './score-calculator';
+import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 /**
@@ -28,8 +29,8 @@ export interface ArtifactSaver {
 export interface ArtifactSaverOptions {
 	/** Directory to save artifacts to */
 	outputDir: string;
-	/** Whether to log save operations */
-	verbose?: boolean;
+	/** Logger for optional save logs */
+	logger: EvalLogger;
 }
 
 /**
@@ -51,16 +52,10 @@ export interface ArtifactSaverOptions {
  * @returns ArtifactSaver instance or null if outputDir is not provided
  */
 export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSaver {
-	const { outputDir, verbose = false } = options;
+	const { outputDir, logger } = options;
 
 	// Create output directory if it doesn't exist
 	fs.mkdirSync(outputDir, { recursive: true });
-
-	const log = (message: string) => {
-		if (verbose) {
-			console.log(message);
-		}
-	};
 
 	return {
 		saveExample(result: ExampleResult): void {
@@ -93,7 +88,7 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 				fs.writeFileSync(path.join(exampleDir, 'error.txt'), result.error, 'utf-8');
 			}
 
-			log(`  📁 Saved example ${result.index} to ${exampleDir}`);
+			logger.verbose(`Saved example ${result.index} to ${exampleDir}`);
 		},
 
 		saveSummary(summary: RunSummary, results: ExampleResult[]): void {
@@ -104,7 +99,7 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 				'utf-8',
 			);
 
-			log(`📁 Saved summary to ${path.join(outputDir, 'summary.json')}`);
+			logger.verbose(`Saved summary to ${path.join(outputDir, 'summary.json')}`);
 		},
 	};
 }

@@ -29,13 +29,14 @@ export interface EvalLogger {
 export function createLogger(verbose: boolean = false): EvalLogger {
 	return {
 		isVerbose: verbose,
-		info: (message: string) => console.log(pc.blue(message)),
+		// Keep info plain so lifecycle can apply its own formatting without double-coloring.
+		info: (message: string) => console.log(message),
 		verbose: (message: string) => {
 			if (verbose) console.log(pc.dim(message));
 		},
 		success: (message: string) => console.log(pc.green(message)),
-		warn: (message: string) => console.log(pc.yellow(message)),
-		error: (message: string) => console.log(pc.red(message)),
+		warn: (message: string) => console.warn(pc.yellow(message)),
+		error: (message: string) => console.error(pc.red(message)),
 		dim: (message: string) => console.log(pc.dim(message)),
 	};
 }
