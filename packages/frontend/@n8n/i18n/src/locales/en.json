@@ -258,6 +258,8 @@
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
 	"aiAssistant.builder.restoreError.title": "Failed to restore version",
+	"aiAssistant.builder.disabledTooltip.autosaving": "Saving workflow...",
+	"aiAssistant.builder.disabledTooltip.readOnly": "Another user is currently editing this workflow",
 	"aiAssistant.assistant": "n8n AI",
 	"aiAssistant.newSessionModal.title.part1": "Start new",
 	"aiAssistant.newSessionModal.title.part2": "session",

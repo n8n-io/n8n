@@ -101,6 +101,22 @@ const isInputDisabled = computed(() => {
 	return collaborationStore.shouldBeReadOnly || isAutosaving;
 });
 
+const disabledTooltip = computed(() => {
+	if (!isInputDisabled.value) {
+		return undefined;
+	}
+	const isAutosaving =
+		workflowAutosaveStore.autoSaveState === AutoSaveState.Scheduled ||
+		workflowAutosaveStore.autoSaveState === AutoSaveState.InProgress;
+	if (isAutosaving) {
+		return i18n.baseText('aiAssistant.builder.disabledTooltip.autosaving');
+	}
+	if (collaborationStore.shouldBeReadOnly) {
+		return i18n.baseText('aiAssistant.builder.disabledTooltip.readOnly');
+	}
+	return undefined;
+});
+
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
 	collaborationStore.requestWriteAccess();
@@ -324,6 +340,7 @@ defineExpose({
 			:workflow-id="workflowsStore.workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isInputDisabled"
+			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

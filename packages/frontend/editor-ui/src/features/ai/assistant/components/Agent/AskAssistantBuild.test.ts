@@ -9,6 +9,7 @@ interface VueComponentInstance {
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
 			isInputDisabled?: boolean;
+			disabledTooltip?: string;
 		};
 	};
 }
@@ -326,6 +327,69 @@ describe('AskAssistantBuild', () => {
 			const isInputDisabled = vm?.setupState?.isInputDisabled;
 
 			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should show autosaving tooltip when autosave is scheduled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show autosaving tooltip when autosave is in progress', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.readOnly');
+		});
+
+		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			// Autosaving tooltip takes priority over read-only tooltip
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should not show any tooltip when input is not disabled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBeUndefined();
 		});
 	});
 
