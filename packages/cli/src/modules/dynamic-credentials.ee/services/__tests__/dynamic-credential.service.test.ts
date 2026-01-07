@@ -784,7 +784,7 @@ describe('DynamicCredentialService', () => {
 					credentialsEntity,
 					staticData,
 					additionalData.executionContext,
-					undefined,
+					additionalData.workflowSettings,
 				);
 
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
