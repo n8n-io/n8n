@@ -120,8 +120,8 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		try {
 			fileHandle = await fsOpen(resolvedFilePath, constants.O_RDONLY | constants.O_NOFOLLOW);
 		} catch (error) {
-			if (error instanceof Error && 'code' in error && error.code === 'ELOOP') {
-				throw new NodeOperationError(node, error, {
+			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
+				throw new NodeOperationError(node, error instanceof Error ? error : '', {
 					message: 'Symlinks are not allowed.',
 					level: 'warning',
 				});
@@ -159,7 +159,9 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		try {
 			pathIdentity = await fsStat(resolvedFilePath);
 		} catch (error) {
-			if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+			// NOTE: for some reason instanceof Error does not work here in tests,
+			// so we just look for the code to catch ENOENT.
+			if ('code' in error && (error as unknown as { code: string }).code === 'ENOENT') {
 				// It's possible the file does not exist yet. In this case we'll create it later.
 				fileExists = false;
 			} else {
@@ -192,8 +194,8 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		try {
 			fileHandle = await fsOpen(resolvedFilePath, openFlags);
 		} catch (error) {
-			if (error instanceof Error && 'code' in error && error.code === 'ELOOP') {
-				throw new NodeOperationError(node, error, {
+			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
+				throw new NodeOperationError(node, error instanceof Error ? error : '', {
 					message: 'Symlinks are not allowed.',
 					level: 'warning',
 				});
