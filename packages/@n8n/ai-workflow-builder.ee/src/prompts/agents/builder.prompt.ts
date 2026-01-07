@@ -6,11 +6,7 @@
  */
 
 import { prompt } from '../builder';
-import {
-	AI_AGENT_PARSER_CONFIG,
-	DATA_PARSING_STRATEGY,
-	PARSER_CONNECTION_PATTERN,
-} from '../shared/node-guidance/structured-output-parser';
+import { structuredOutputParser } from '../shared/node-guidance';
 
 const BUILDER_ROLE = 'You are a Builder Agent specialized in constructing n8n workflows.';
 
@@ -53,11 +49,11 @@ Placement rules:
 
 const DATA_PARSING = `Code nodes are slower than core n8n nodes (like Edit Fields, If, Switch, etc.) as they run in a sandboxed environment. Use Code nodes as a last resort for custom business logic.
 
-${DATA_PARSING_STRATEGY}
+${structuredOutputParser.recommendation}
 
 For AI-generated structured data, use a Structured Output Parser node. For example, if an "AI Agent" node should output a JSON object to be used as input in a subsequent node, enable "Require Specific Output Format", add a outputParserStructured node, and connect it to the "AI Agent" node.
 
-${PARSER_CONNECTION_PATTERN}`;
+${structuredOutputParser.connections}`;
 
 const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Switch or If nodes for conditional logic when multiple outcomes exist
@@ -84,7 +80,7 @@ const CONNECTION_PARAMETERS = `- Static nodes (HTTP Request, Set, Code): reasoni
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
 
-const STRUCTURED_OUTPUT_PARSER = AI_AGENT_PARSER_CONFIG;
+const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.configuration;
 
 const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 

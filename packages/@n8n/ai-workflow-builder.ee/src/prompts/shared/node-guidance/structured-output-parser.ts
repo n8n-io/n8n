@@ -1,4 +1,9 @@
-export const WHEN_TO_USE_STRUCTURED_OUTPUT = `Search for "Structured Output Parser" (@n8n/n8n-nodes-langchain.outputParserStructured) when:
+import type { NodeGuidance } from '@/types';
+
+export const structuredOutputParser: NodeGuidance = {
+	nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+
+	usage: `Search for "Structured Output Parser" (@n8n/n8n-nodes-langchain.outputParserStructured) when:
 - AI output will be used programmatically (conditions, formatting, database storage, API calls)
 - AI needs to extract specific fields (e.g., score, category, priority, action items)
 - AI needs to classify/categorize data into defined categories
@@ -6,21 +11,21 @@ export const WHEN_TO_USE_STRUCTURED_OUTPUT = `Search for "Structured Output Pars
 - Output will be displayed in a formatted way (e.g., HTML email with specific sections)
 - Data needs validation against a schema before processing
 
-- Always use search_nodes to find the exact node names and versions - NEVER guess versions`;
+- Always use search_nodes to find the exact node names and versions - NEVER guess versions`,
 
-export const AI_AGENT_PARSER_CONFIG = `WHEN TO SET hasOutputParser: true on AI Agent:
+	connections: `When Discovery results include AI Agent or Structured Output Parser:
+1. Create the Structured Output Parser node
+2. Set AI Agent's hasOutputParser: true in connectionParameters
+3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)`,
+
+	configuration: `WHEN TO SET hasOutputParser: true on AI Agent:
 - Discovery found Structured Output Parser node → MUST set hasOutputParser: true
 - AI output will be used in conditions (IF/Switch nodes checking $json.field)
 - AI output will be formatted/displayed (HTML emails, reports with specific sections)
 - AI output will be stored in database/data tables with specific fields
-- AI is classifying, scoring, or extracting specific data fields`;
+- AI is classifying, scoring, or extracting specific data fields`,
 
-export const PARSER_CONNECTION_PATTERN = `When Discovery results include AI Agent or Structured Output Parser:
-1. Create the Structured Output Parser node
-2. Set AI Agent's hasOutputParser: true in connectionParameters
-3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)`;
-
-export const DATA_PARSING_STRATEGY = `For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
+	recommendation: `For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
 Why: Purpose-built parsers are more reliable and handle edge cases better than custom code.
 
 For binary file data, use Extract From File node to extract content from files before processing.
@@ -28,4 +33,5 @@ For binary file data, use Extract From File node to extract content from files b
 Use Code nodes only for:
 - Simple string manipulations
 - Already structured data (JSON, CSV)
-- Custom business logic beyond parsing`;
+- Custom business logic beyond parsing`,
+};

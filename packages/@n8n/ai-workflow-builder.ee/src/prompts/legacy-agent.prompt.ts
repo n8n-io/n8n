@@ -1,7 +1,7 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 import { instanceUrlPrompt } from './chains/parameter-updater/instance-url';
-import { DATA_PARSING_STRATEGY } from './shared/node-guidance/structured-output-parser';
+import { structuredOutputParser } from './shared/node-guidance';
 
 /**
  * Phase configuration for the workflow creation sequence
@@ -438,7 +438,7 @@ update_node_parameters({{
 </configuration_requirements>
 
 <data_parsing_strategy>
-${DATA_PARSING_STRATEGY}
+${structuredOutputParser.recommendation}
 </data_parsing_strategy>
 
 <fromAI_expressions>

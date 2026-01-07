@@ -12,7 +12,7 @@ import {
 } from '@/types/categorization';
 
 import { prompt } from '../builder';
-import { WHEN_TO_USE_STRUCTURED_OUTPUT } from '../shared/node-guidance/structured-output-parser';
+import { structuredOutputParser } from '../shared/node-guidance';
 
 /** Few-shot examples for technique classification */
 export const exampleCategorizations: Array<{
@@ -216,7 +216,7 @@ const SUB_NODES_SEARCHES = `When searching for AI nodes, ALSO search for their r
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"`;
 
-const STRUCTURED_OUTPUT_PARSER = WHEN_TO_USE_STRUCTURED_OUTPUT;
+const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.usage;
 
 const CRITICAL_RULES = `- NEVER ask clarifying questions
 - ALWAYS call get_best_practices first
