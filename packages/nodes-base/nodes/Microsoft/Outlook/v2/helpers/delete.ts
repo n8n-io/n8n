@@ -17,7 +17,7 @@ export async function executeDeletion(
 	resource: string,
 ) {
 	const options = this.getNodeParameter('options', itemIndex, {}) as {
-		permanentDelete: boolean;
+		permanentDelete?: boolean;
 	};
 	const isPermanentDelete = options?.permanentDelete || false;
 
