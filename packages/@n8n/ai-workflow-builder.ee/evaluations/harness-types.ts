@@ -1,3 +1,4 @@
+import type { Client as LangsmithClient } from 'langsmith/client';
 import type pLimit from 'p-limit';
 
 import type { EvalLogger } from './utils/logger.js';
@@ -115,6 +116,8 @@ export interface LangsmithRunConfig extends RunConfigBase {
 	/** LangSmith mode uses a remote dataset name */
 	dataset: string;
 	langsmithOptions: LangsmithOptions;
+	/** LangSmith client used by both evaluate() and traceable() */
+	langsmithClient: LangsmithClient;
 }
 
 export type RunConfig = LocalRunConfig | LangsmithRunConfig;

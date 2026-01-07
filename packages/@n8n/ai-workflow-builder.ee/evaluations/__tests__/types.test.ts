@@ -1,3 +1,6 @@
+import { mock } from 'jest-mock-extended';
+import type { Client } from 'langsmith/client';
+
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import type {
@@ -10,6 +13,8 @@ import type {
 	EvaluationLifecycle,
 } from '../harness-types';
 import { createLogger } from '../utils/logger';
+
+const mockLangsmithClient = () => mock<Client>();
 
 /** Helper to create a minimal valid workflow for tests */
 function createMockWorkflow(overrides?: Partial<SimpleWorkflow>): SimpleWorkflow {
@@ -172,6 +177,7 @@ describe('Core Types', () => {
 				dataset: 'my-dataset',
 				generateWorkflow: async () => createMockWorkflow(),
 				evaluators: [],
+				langsmithClient: mockLangsmithClient(),
 				langsmithOptions: {
 					experimentName: 'test-experiment',
 					repetitions: 1,

@@ -7,6 +7,7 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
+import type { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -74,6 +75,7 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 		suite: 'llm-judge',
 		backend: 'local',
 		verbose: false,
+		timeoutMs: 60_000,
 		datasetName: undefined,
 		prompt: undefined,
 		testCase: undefined,
@@ -96,6 +98,7 @@ function createMockEnvironment() {
 	return {
 		parsedNodeTypes: [] as INodeTypeDescription[],
 		llm: mock<BaseChatModel>(),
+		lsClient: mock<Client>(),
 	};
 }
 

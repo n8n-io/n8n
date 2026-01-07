@@ -201,6 +201,12 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'langsmith',
 					dataset: args.datasetName ?? getDefaultDatasetName(args.suite),
+					langsmithClient: (() => {
+						if (!env.lsClient) {
+							throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
+						}
+						return env.lsClient;
+					})(),
 					langsmithOptions: {
 						experimentName: args.experimentName ?? getDefaultExperimentName(args.suite),
 						repetitions: args.repetitions,

@@ -2,6 +2,9 @@
  * Tests for default console lifecycle implementation.
  */
 
+import { mock } from 'jest-mock-extended';
+import type { Client } from 'langsmith/client';
+
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import type {
@@ -12,6 +15,8 @@ import type {
 	Feedback,
 } from '../harness-types';
 import { createLogger } from '../utils/logger';
+
+const mockLangsmithClient = () => mock<Client>();
 
 // Mock console methods
 const mockConsole = {
@@ -85,6 +90,7 @@ describe('Console Lifecycle', () => {
 				dataset: 'my-dataset-name',
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				langsmithClient: mockLangsmithClient(),
 				langsmithOptions: {
 					experimentName: 'test-experiment',
 					repetitions: 1,
@@ -110,6 +116,7 @@ describe('Console Lifecycle', () => {
 				dataset: 'my-dataset-name',
 				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				langsmithClient: mockLangsmithClient(),
 				langsmithOptions: {
 					experimentName: 'test-experiment',
 					repetitions: 1,

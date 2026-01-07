@@ -570,6 +570,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		passThreshold = DEFAULT_PASS_THRESHOLD,
 		timeoutMs,
 		langsmithOptions,
+		langsmithClient: lsClient,
 		lifecycle,
 		logger,
 	} = config;
@@ -578,15 +579,6 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	process.env.LANGSMITH_TRACING = 'true';
 
 	lifecycle?.onStart?.(config);
-
-	// Get properly configured client from setupTestEnvironment
-	// This ensures traceable() and evaluate() use the same client configuration
-	const { setupTestEnvironment } = await import('./core/environment');
-	const { lsClient } = await setupTestEnvironment();
-
-	if (!lsClient) {
-		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
-	}
 
 	const effectiveGlobalContext: GlobalRunContext = {
 		...(globalContext ?? {}),
@@ -628,6 +620,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				{
 					name: 'workflow_generation',
 					run_type: 'chain',
+					client: lsClient,
 				},
 			);
 			const workflow = await withTimeout({
