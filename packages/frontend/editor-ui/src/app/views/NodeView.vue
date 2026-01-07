@@ -142,7 +142,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
-import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -2161,24 +2161,16 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<N8nCallout
+			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
-				theme="info"
-				icon="user"
-				:class="$style.readOnlyEnvironmentNotification"
-			>
-				{{
-					i18n.baseText('readOnlyEnv.writeAccessLocked', {
-						interpolate: {
-							user: `${collaborationStore.currentWriter.user.firstName} ${collaborationStore.currentWriter.user.lastName}`,
-						},
-					})
-				}}
-			</N8nCallout>
+				:first-name="collaborationStore.currentWriter.user.firstName"
+				:last-name="collaborationStore.currentWriter.user.lastName"
+				:class="$style.canvasCenterPill"
+			/>
 
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
-				:class="$style.thinkingPill"
+				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
 			/>
@@ -2292,7 +2284,7 @@ onBeforeUnmount(() => {
 	transform: translateX(-50%);
 }
 
-.thinkingPill {
+.canvasCenterPill {
 	position: absolute;
 	left: 50%;
 	top: 50%;
