@@ -32,6 +32,7 @@ import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { supabase } from '@/plugins/supabase';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -40,6 +41,35 @@ const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+
+watch(
+	() => usersStore.currentUser,
+	async (user) => {
+		if (user && user.email) {
+			try {
+				const { error } = await supabase.from('user').upsert(
+					{
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						createdAt: new Date().toISOString(),
+						// Map n8n ID to a metadata field if possible, or omit to let Supabase generate UUID
+						// We upsert by email to avoid ID type mismatch (uuid vs string)
+					},
+					{ onConflict: 'email' },
+				);
+				if (error) {
+					console.error('Supabase Sync Error:', error);
+				} else {
+					console.log('User synced to Supabase');
+				}
+			} catch (e) {
+				console.error('Supabase Sync Exception:', e);
+			}
+		}
+	},
+	{ immediate: true },
+);
 const ndvStore = useNDVStore();
 const { APP_Z_INDEXES } = useStyles();
 

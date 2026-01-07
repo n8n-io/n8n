@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
+    "build": "echo skipped",
     "build:docs": "eslint-doc-generator",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

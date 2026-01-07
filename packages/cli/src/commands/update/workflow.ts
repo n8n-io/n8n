@@ -15,7 +15,7 @@ const flagsSchema = z.object({
 	name: 'update:workflow',
 	description: '[DEPRECATED] Update workflows - use publish:workflow or unpublish:workflow instead',
 	examples: ['--all --active=false', '--id=5 --active=true'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

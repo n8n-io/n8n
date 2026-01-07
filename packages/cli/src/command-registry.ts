@@ -60,7 +60,7 @@ export class CommandRegistry {
 		try {
 			({ flags } = this.cliParser.parse({
 				argv: process.argv,
-				flagsSchema: commandEntry.flagsSchema,
+				flagsSchema: commandEntry.flagsSchema as any,
 			}));
 		} catch (error) {
 			if (error instanceof ZodError) {
@@ -129,7 +129,7 @@ export class CommandRegistry {
 					.object({
 						help: z.boolean().alias('h').describe('Show CLI help'),
 					})
-					.merge(flagsSchema).shape,
+					.merge(flagsSchema as any).shape,
 			);
 			for (const [flagName, flagSchema] of flagEntries) {
 				let schemaDef = flagSchema._def as z.ZodTypeDef & {

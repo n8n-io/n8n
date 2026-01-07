@@ -19,6 +19,7 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import BetaTag from '@n8n/design-system/components/BetaTag/BetaTag.vue';
+import OneOriginLogo from '@/assets/oneorigin-logo-dark.svg?url';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -69,35 +70,14 @@ const {
 		}"
 	>
 		<RouterLink v-if="!isCollapsed" :to="{ name: VIEWS.HOMEPAGE }" :class="$style.logo">
-			<N8nLogo
-				size="small"
-				:collapsed="isCollapsed"
-				:release-channel="settingsStore.settings.releaseChannel"
-			>
-				<BetaTag v-if="isBeta" :class="$style.beta" data-test-id="beta-icon" />
-				<N8nTooltip
-					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
-					placement="bottom"
-				>
-					<template #content>
-						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
-							<template #link>
-								<N8nLink
-									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
-									size="small"
-								>
-									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
-								</N8nLink>
-							</template>
-						</I18nT>
-					</template>
-					<N8nIcon
-						data-test-id="read-only-env-icon"
-						icon="lock"
-						:class="$style.readOnlyEnvironmentIcon"
-					/>
-				</N8nTooltip>
-			</N8nLogo>
+			<div :class="$style.logoWrapper">
+				<img
+					:src="OneOriginLogo"
+					alt="OneOrigin"
+					class="oneo-logo"
+					:class="{ collapsed: isCollapsed }"
+				/>
+			</div>
 		</RouterLink>
 		<N8nNavigationDropdown
 			v-if="!hideCreate"

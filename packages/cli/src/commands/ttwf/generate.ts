@@ -67,7 +67,7 @@ const flagsSchema = z.object({
 		'$ n8n ttwf:generate --prompt "Create a telegram chatbot that can tell current weather in Berlin" --output result.json',
 		'$ n8n ttwf:generate --input dataset.jsonl --output results.jsonl',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	/**

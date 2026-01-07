@@ -19,7 +19,7 @@ const flagsSchema = z.object({
 	description:
 		'Publish a specific version of a workflow. If no version is specified, publishes the current version.',
 	examples: ['--id=5 --versionId=abc123', '--id=5'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

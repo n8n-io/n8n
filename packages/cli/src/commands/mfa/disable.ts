@@ -13,7 +13,7 @@ const flagsSchema = z.object({
 	name: 'mfa:disable',
 	description: 'Disable MFA authentication for a user',
 	examples: ['--email=johndoe@example.com'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class DisableMFACommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {

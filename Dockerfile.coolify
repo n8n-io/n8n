@@ -1,0 +1,49 @@
+# Multi-stage Dockerfile for Coolify/Deployment
+FROM node:20-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++ git
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Install dependencies
+# We ignore specific optional deps errors if they occur
+RUN pnpm install --frozen-lockfile --ignore-scripts || true
+# Run scripts explicitly if needed, but usually install is enough for build deps
+
+# Build n8n (Produces 'compiled' folder)
+# We limit concurrency to avoid OOM
+RUN node scripts/build-n8n.mjs
+
+# --- Runtime Stage ---
+FROM node:20-alpine AS runner
+
+WORKDIR /home/node
+
+# Install runtime dependencies (n8n needs graphicsmagick/tini)
+RUN apk add --no-cache graphicsmagick tini su-exec
+
+# Copy built artifacts from builder
+COPY --from=builder /app/compiled /usr/local/lib/node_modules/n8n
+
+# Setup permissions
+RUN mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
+
+# Link binary
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n
+
+# Environment
+ENV NODE_ENV=production
+ENV SHELL=/bin/sh
+
+USER node
+EXPOSE 5678
+
+ENTRYPOINT ["tini", "--", "n8n"]

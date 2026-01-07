@@ -14,7 +14,7 @@ const flagsSchema = z.object({
 	name: 'unpublish:workflow',
 	description: 'Unpublish workflow(s)',
 	examples: ['--all', '--id=5'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

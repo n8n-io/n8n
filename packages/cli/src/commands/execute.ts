@@ -23,7 +23,7 @@ const flagsSchema = z.object({
 	name: 'execute',
 	description: 'Executes a given workflow',
 	examples: ['--id=5'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsCommunityPackages = true;

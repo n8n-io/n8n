@@ -36,7 +36,7 @@ const flagsSchema = z.object({
 		'--uninstall --package n8n-nodes-evolution-api',
 		'--uninstall --credential evolutionApi --userId 1234',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

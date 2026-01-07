@@ -56,7 +56,7 @@ const flagsSchema = z.object({
 		'--projectId=Ox8O54VQrmBrb4qL',
 		'--deleteWorkflowsAndCredentials',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {

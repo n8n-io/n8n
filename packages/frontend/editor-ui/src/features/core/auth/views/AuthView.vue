@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { N8nLogo } from '@n8n/design-system';
 import SSOLogin from '@/features/settings/sso/components/SSOLogin.vue';
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
-import { useSettingsStore } from '@/app/stores/settings.store';
+
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
 
 import { N8nFormBox, N8nText } from '@n8n/design-system';
+import OneOriginLogo from '@/assets/oneorigin-logo-dark.svg?url';
 withDefaults(
 	defineProps<{
 		form: IFormBoxConfig;
@@ -36,15 +36,16 @@ const onSubmit = (data: unknown) => {
 const onSecondaryClick = () => {
 	emit('secondaryClick');
 };
-
-const {
-	settings: { releaseChannel },
-} = useSettingsStore();
 </script>
 
 <template>
 	<div :class="$style.container">
-		<N8nLogo size="large" :release-channel="releaseChannel" />
+		<img
+			:src="OneOriginLogo"
+			alt="OneOrigin"
+			width="110"
+			style="margin-bottom: var(--spacing--2xl)"
+		/>
 		<div v-if="subtitle" :class="$style.textContainer">
 			<N8nText size="large">{{ subtitle }}</N8nText>
 		</div>
@@ -65,25 +66,42 @@ const {
 
 <style lang="scss" module>
 body {
-	background-color: var(--color--background--light-2);
+	background-color: var(--color--background--light-1);
 }
 
 .container {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
-	padding-top: var(--spacing--2xl);
+	justify-content: center;
+	height: 100%;
+	width: 100%;
+
+	background: radial-gradient(
+		circle at 50% 30%,
+		rgba(59, 157, 255, 0.08) 0%,
+		rgba(59, 157, 255, 0.01) 50%,
+		transparent 80%
+	);
 
 	> * {
 		width: 352px;
+		position: relative;
+		z-index: 1;
 	}
+}
+
+.container img {
+	filter: drop-shadow(0 0 15px rgba(59, 157, 255, 0.25));
 }
 
 .textContainer {
 	text-align: center;
+	margin-bottom: var(--spacing--m);
 }
 
 .formContainer {
 	padding-bottom: var(--spacing--xl);
+	filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.15));
 }
 </style>

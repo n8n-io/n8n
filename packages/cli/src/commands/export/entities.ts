@@ -34,7 +34,7 @@ const flagsSchema = z.object({
 		'--keyFile=/path/to/key.txt',
 		'--outputDir=./exports --keyFile=/path/to/key.txt',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

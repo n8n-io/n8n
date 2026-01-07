@@ -21,6 +21,9 @@ import {
 } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
+import WorkflowShareModalOo from '@/features/collaboration/share/WorkflowShareModal.oo.vue';
+
+const SHARE_MODAL_KEY = 'oo-share-modal';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -41,6 +44,13 @@ defineEmits<{
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const locale = useI18n();
 const uiStore = useUIStore();
+// ... imports
+
+// ... code
+
+const openShareModal = () => {
+	uiStore.openModal(SHARE_MODAL_KEY);
+};
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
@@ -192,6 +202,15 @@ defineExpose({
 				</N8nButton>
 			</N8nTooltip>
 		</div>
+		<N8nButton
+			:disabled="isNewWorkflow"
+			type="secondary"
+			class="mr-2xs"
+			icon="share"
+			@click="openShareModal"
+		>
+			Share
+		</N8nButton>
 		<SaveButton
 			type="primary"
 			:saved="isWorkflowSaved"
@@ -221,6 +240,7 @@ defineExpose({
 			:meta="meta"
 			@workflow:saved="$emit('workflow:saved')"
 		/>
+		<WorkflowShareModalOo :name="SHARE_MODAL_KEY" />
 	</div>
 </template>
 

@@ -262,8 +262,8 @@
 	--node--icon--color--blue: #3a42e9;
 	--node--icon--color--light-blue: #5fabf7;
 	--node--icon--color--dark-blue: #353f6e;
-	--node--icon--color--orange: #ff965a;
-	--node--icon--color--orange-red: #ff6d5a;
+	--node--icon--color--orange: var(--color--orange-300);
+	--node--icon--color--orange-red: var(--color--orange-300);
 	--node--icon--color--pink-red: #ea4b71;
 	--node--icon--color--red: var(--color--red-600);
 	--node--icon--color--light-green: #31c4ab;

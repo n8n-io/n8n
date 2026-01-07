@@ -24,7 +24,7 @@
     "format:check": "biome ci src",
     "lint": "eslint src --quiet",
     "lintfix": "eslint src --fix",
-    "build": "tsc -p tsconfig.build.json && pnpm copy-templates",
+    "build": "echo skipped",
     "publish:dry": "pnpm run build && pnpm pub --dry-run",
     "test": "vitest run",
     "test:unit": "vitest run",

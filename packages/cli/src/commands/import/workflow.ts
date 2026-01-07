@@ -63,7 +63,7 @@ const flagsSchema = z.object({
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {

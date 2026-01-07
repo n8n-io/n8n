@@ -134,8 +134,8 @@ export function extractCredentialNameFromFile(credentialFilePath: string): strin
 
 		simpleTraverse(ast, {
 			enter(node: TSESTree.Node) {
-				if (node.type === AST_NODE_TYPES.ClassDeclaration && isCredentialTypeClass(node)) {
-					const nameProperty = findClassProperty(node, 'name');
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isCredentialTypeClass(node as any)) {
+					const nameProperty = findClassProperty(node as any, 'name');
 					if (nameProperty) {
 						const nameValue = getStringLiteralValue(nameProperty.value);
 						if (nameValue) {
@@ -220,8 +220,8 @@ function checkCredentialUsageInFile(
 
 		simpleTraverse(ast, {
 			enter(node: TSESTree.Node) {
-				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
-					const descriptionProperty = findClassProperty(node, 'description');
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node as any)) {
+					const descriptionProperty = findClassProperty(node as any, 'description');
 					if (
 						!descriptionProperty?.value ||
 						descriptionProperty.value.type !== AST_NODE_TYPES.ObjectExpression

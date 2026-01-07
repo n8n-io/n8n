@@ -27,7 +27,7 @@ const flagsSchema = z.object({
 	name: 'worker',
 	description: 'Starts a n8n worker',
 	examples: ['--concurrency=5'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	/**

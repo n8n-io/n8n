@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:local
+    container_name: n8n-oneorigin-test
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Phoenix
+      # Database - using SQLite for testing
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      # Basic settings
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HIRING_BANNER_ENABLED=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+    volumes:
+      - n8n_test_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  n8n_test_data:
+    name: n8n_oneorigin_test_data

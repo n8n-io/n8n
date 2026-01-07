@@ -7,10 +7,9 @@ const DEFAULT_LOCALE = 'en';
 
 if (hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
-	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true }) as Record<
-		string,
-		{ default?: LocaleMessages }
-	>;
+	const localeModules = import.meta.glob('../../../../@n8n/i18n/locales/*.json', {
+		eager: true,
+	}) as Record<string, { default?: LocaleMessages }>;
 	const localePaths = Object.keys(localeModules);
 
 	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? DEFAULT_LOCALE;

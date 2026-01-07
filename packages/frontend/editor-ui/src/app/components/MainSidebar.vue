@@ -35,6 +35,7 @@ import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
+import MyOOShareNavigation from '@/features/collaboration/share/MyOOShareNavigation.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
@@ -344,6 +345,7 @@ useKeybindings({
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
+				<MyOOShareNavigation :collapsed="isCollapsed" />
 				<BottomMenu
 					:items="visibleMenuItems"
 					:is-collapsed="isCollapsed"

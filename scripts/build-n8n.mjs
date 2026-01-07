@@ -101,7 +101,7 @@ try {
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
-	const buildProcess = $`cd ${config.rootDir} && pnpm build`;
+	const buildProcess = $`cd ${config.rootDir} && pnpm exec turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/node-cli`;
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 

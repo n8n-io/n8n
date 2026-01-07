@@ -1,0 +1,55 @@
+:root,
+html,
+body,
+.n8n-root,
+#app {
+	--color--primary: #3b9dff !important;
+	--color--primary--tint-1: #62b1ff !important;
+	--color--primary--tint-2: #89c5ff !important;
+	--color--primary--shade-1: #2f7dcc !important;
+	--color--primary--shade-2: #245e99 !important;
+
+	--color-primary: #3b9dff !important;
+	--n8n-color-primary: #3b9dff !important;
+	--color-text-primary-link: #3b9dff !important;
+	--color-link-font: #3b9dff !important;
+	--button-primary-background: #3b9dff !important;
+	--button-primary-border: #3b9dff !important;
+
+	/* Modern Design System (Double-Dash) Overrides */
+	--button--color--background--primary: #3b9dff !important;
+	--button--border-color--primary: #3b9dff !important;
+	--button--color--background--primary--hover-active-focus: #2f7dcc !important;
+	--button--border-color--primary--hover-active-focus: #2f7dcc !important;
+}
+
+// Aggressive Button Overrides
+.n8n-button--primary,
+.el-button--primary,
+button.primary,
+button.n8n-button.n8n-button--primary {
+	background-color: #3b9dff !important;
+	border-color: #3b9dff !important;
+	color: #ffffff !important;
+
+	&:hover,
+	&:focus,
+	&:active {
+		background-color: #62b1ff !important;
+		border-color: #62b1ff !important;
+	}
+}
+
+/* Dark Theme Specific Overrides (Nuclear Option) */
+body[data-theme='dark'],
+[data-theme='dark'] {
+	--color--orange-50: #e6f2ff !important;
+	--color--orange-100: #b3d9ff !important;
+	--color--orange-200: #80bfff !important;
+	--color--orange-300: #3b9dff !important; /* Main Blue */
+	--color--orange-400: #0056d2 !important;
+	--color--primary: #3b9dff !important;
+	--node--icon--color--orange: #3b9dff !important;
+	--node--icon--color--orange-red: #3b9dff !important;
+	--button--color--background--primary: #3b9dff !important;
+}

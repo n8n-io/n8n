@@ -49,7 +49,7 @@ const flagsSchema = z.object({
 	name: 'start',
 	description: 'Starts n8n. Makes Web-UI available and starts active workflows',
 	examples: ['', '-o'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	protected activeWorkflowManager: ActiveWorkflowManager;

@@ -21,7 +21,7 @@ const flagsSchema = z.object({
 	name: 'export:nodes',
 	description: 'Export all node types to a JSON file',
 	examples: ['', '--output=/tmp/nodes.json'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class ExportNodes extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {

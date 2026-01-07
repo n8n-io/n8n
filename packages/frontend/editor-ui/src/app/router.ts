@@ -120,6 +120,17 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/my-oo-share',
+		name: 'MyOOShare',
+		components: {
+			default: () => import('@/features/collaboration/share/SharedWorkflowsView.vue'),
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
 		components: {

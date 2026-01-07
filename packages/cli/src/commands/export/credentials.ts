@@ -51,7 +51,7 @@ const flagsSchema = z.object({
 		'--backup --output=backups/latest/',
 		'--all --decrypted --output=backups/decrypted.json',
 	],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// eslint-disable-next-line complexity

@@ -25,7 +25,7 @@ const flagsSchema = z.object({
 	name: 'audit',
 	description: 'Generate a security audit report for this n8n instance',
 	examples: ['', '--categories=database,credentials', '--days-abandoned-workflow=10'],
-	flagsSchema,
+	flagsSchema: flagsSchema as any,
 })
 export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
