@@ -932,11 +932,7 @@ function valueChanged(untypedValue: unknown) {
 
 	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
 
-	if (
-		!oldValue &&
-		oldValue !== undefined &&
-		shouldConvertToExpression(value, isSpecializedEditor)
-	) {
+	if (!oldValue && shouldConvertToExpression(value, isSpecializedEditor)) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}

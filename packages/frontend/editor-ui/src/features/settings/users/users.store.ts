@@ -353,6 +353,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await usersApi.getPasswordResetLink(rootStore.restApiContext, params);
 	};
 
+	const generateInviteLink = async (params: { id: string }) => {
+		return await usersApi.generateInviteLink(rootStore.restApiContext, params);
+	};
+
 	const submitPersonalizationSurvey = async (results: IPersonalizationLatestVersion) => {
 		await usersApi.submitPersonalizationSurvey(rootStore.restApiContext, results);
 		setPersonalizationAnswers(results);
@@ -487,6 +491,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		inviteUsers,
 		reinviteUser,
 		getUserPasswordResetLink,
+		generateInviteLink,
 		submitPersonalizationSurvey,
 		showPersonalizationSurvey,
 		fetchMfaQR,
