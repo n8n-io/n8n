@@ -203,11 +203,23 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					await transactionManager.update(
-						User,
-						{ id: authIdentity.userId },
-						{ email: user.email, firstName: user.firstName, lastName: user.lastName },
-					);
+					const existingUser = await transactionManager.findOneBy(User, {
+						id: authIdentity.userId,
+					});
+					if (existingUser) {
+						// Only update if data has actually changed
+						const hasChanges =
+							existingUser.email !== user.email ||
+							existingUser.firstName !== user.firstName ||
+							existingUser.lastName !== user.lastName;
+
+						if (hasChanges) {
+							existingUser.email = user.email;
+							existingUser.firstName = user.firstName;
+							existingUser.lastName = user.lastName;
+							await transactionManager.save(User, existingUser);
+						}
+					}
 				}
 			}),
 			...toDisableUsers.map(async (ldapId) => {

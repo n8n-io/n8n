@@ -187,6 +187,7 @@ describe('compacting cycle', () => {
 				...Container.get(GlobalConfig).workflowHistoryCompaction,
 				batchDelayMs: 10_000,
 				batchSize: 5,
+				compactingMinimumAgeHours: 24,
 			},
 			mockLogger(),
 			instanceSettings,

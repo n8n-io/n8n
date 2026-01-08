@@ -230,7 +230,39 @@ describe('FrontendService', () => {
 			};
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings();
+			const settings = await service.getPublicSettings(false);
+
+			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should return public settings with mfa', async () => {
+			const expectedPublicSettings = {
+				settingsMode: 'public',
+				defaultLocale: 'en',
+				userManagement: {
+					smtpSetup: false,
+					showSetupOnFirstLoad: true,
+					authenticationMethod: 'email',
+				},
+				sso: {
+					saml: { loginEnabled: false },
+					ldap: { loginEnabled: false, loginLabel: '' },
+					oidc: {
+						loginEnabled: false,
+						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+					},
+				},
+				authCookie: { secure: false },
+				previewMode: false,
+				enterprise: { saml: false, ldap: false, oidc: false },
+				mfa: {
+					enabled: false,
+					enforced: false,
+				},
+			};
+
+			const { service } = createMockService();
+			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
 		});

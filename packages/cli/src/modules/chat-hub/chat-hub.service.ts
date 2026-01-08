@@ -802,7 +802,7 @@ export class ChatHubService {
 			},
 		});
 
-		const transform = (text: string) => {
+		const transform = async (text: string) => {
 			const trimmed = text.trim();
 			if (!trimmed) return text;
 
@@ -811,6 +811,12 @@ export class ChatHubService {
 				chunk = jsonParse<StructuredChunk>(trimmed);
 			} catch {
 				return text;
+			}
+
+			if (chunk.type === 'error' && !chunk.content) {
+				chunk.content = executionId
+					? await this.waitForErrorDetails(executionId, workflowData.id)
+					: 'Request was not processed';
 			}
 
 			const message = aggregator.ingest(chunk);
@@ -1545,5 +1551,49 @@ export class ChatHubService {
 			updatedAt: session.updatedAt.toISOString(),
 			tools: session.tools,
 		};
+	}
+
+	/**
+	 * Wait for error details to be available in execution DB using exponential backoff
+	 * @param executionId - The execution ID to fetch error details from
+	 * @param workflowId - The workflow ID for the execution
+	 * @returns The error message if found, undefined otherwise
+	 */
+	private async waitForErrorDetails(
+		executionId: string,
+		workflowId: string,
+	): Promise<string | undefined> {
+		const maxRetries = 5;
+		let retries = 0;
+		let errorText: string | undefined;
+
+		while (!errorText) {
+			try {
+				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+					errorText = this.getErrorMessage(execution);
+					break;
+				}
+			} catch (error) {
+				this.logger.debug(
+					`Failed to fetch execution ${executionId} for error extraction: ${String(error)}`,
+				);
+			}
+
+			retries++;
+
+			if (maxRetries <= retries) {
+				break;
+			}
+
+			// Wait with exponential backoff (double wait time, cap at 2 second)
+			await new Promise((resolve) =>
+				setTimeout(resolve, Math.min(500 * Math.pow(2, retries), 2000)),
+			);
+		}
+
+		return errorText;
 	}
 }

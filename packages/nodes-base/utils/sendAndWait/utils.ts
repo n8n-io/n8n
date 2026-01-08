@@ -27,6 +27,7 @@ import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	prepareFormData,
+	prepareFormFields,
 	prepareFormReturnItem,
 	resolveRawData,
 } from '../../nodes/Form/utils/utils';
@@ -415,6 +416,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		if (method === 'GET') {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
+
+			fields = prepareFormFields(this, fields);
 
 			const data = prepareFormData({
 				formTitle,
