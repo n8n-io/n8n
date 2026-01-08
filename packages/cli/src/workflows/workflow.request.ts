@@ -102,5 +102,11 @@ export declare namespace WorkflowRequest {
 		{ versionId: string; name?: string; description?: string; expectedChecksum?: string }
 	>;
 
+	type SaveVersion = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ name: string; description?: string; versionId?: string }
+	>;
+
 	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;
 }

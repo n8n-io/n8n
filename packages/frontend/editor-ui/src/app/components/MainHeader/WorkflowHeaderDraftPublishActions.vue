@@ -5,14 +5,21 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import {
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	AutoSaveState,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+} from '@/app/constants';
+import { N8nButton, N8nTooltip, N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import {
 	getLastPublishedVersion,
@@ -21,6 +28,10 @@ import {
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import TimeAgo from '../TimeAgo.vue';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useToast } from '@/app/composables/useToast';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { getWorkflowId } from '@/app/components/MainHeader/utils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -41,22 +52,28 @@ const readOnlyForPublish = computed(() => {
 	return (
 		props.readOnly ||
 		props.isArchived ||
-		!props.workflowPermissions.update ||
-		!props.workflowPermissions.publish
+		(!props.workflowPermissions.update && !props.workflowPermissions.publish)
 	);
 });
 
 const shouldHidePublishButton = computed(() => {
-	return props.readOnly || props.isArchived || !props.workflowPermissions.update;
+	return (
+		props.readOnly ||
+		props.isArchived ||
+		(!props.workflowPermissions.publish && !props.workflowPermissions.update)
+	);
 });
 
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
+const toast = useToast();
 
 const autosaveStore = useWorkflowAutosaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
+const workflowActivate = useWorkflowActivate();
 
 const autoSaveForPublish = ref(false);
 
@@ -107,14 +124,10 @@ const workflowPublishState = computed((): WorkflowPublishState => {
  * Save immediately if autosave idle or cancelled
  */
 const saveBeforePublish = async () => {
-	let saved = false;
 	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
 		autoSaveForPublish.value = true;
 		try {
 			await autosaveStore.pendingAutoSave;
-			saved = true;
-		} catch {
-			// Autosave failed, will attempt manual save below
 		} finally {
 			autoSaveForPublish.value = false;
 		}
@@ -122,21 +135,25 @@ const saveBeforePublish = async () => {
 		cancelAutoSave();
 	}
 
-	if (!saved || uiStore.stateIsDirty || props.isNewWorkflow) {
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
 		autoSaveForPublish.value = true;
-		saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
+		try {
+			const saved = await saveCurrentWorkflow({}, true);
+			if (!saved) {
+				throw new Error('Failed to save workflow before publish');
+			}
+		} finally {
+			autoSaveForPublish.value = false;
+		}
 	}
-
-	return saved;
 };
 
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			// If save failed, don't open the modal
+		try {
+			await saveBeforePublish();
+		} catch {
 			return;
 		}
 	}
@@ -150,7 +167,7 @@ const onPublishButtonClick = async () => {
 const publishButtonConfig = computed(() => {
 	// Handle permission-denied state first
 	if (!props.workflowPermissions.publish) {
-		const defaultConfigForNoPermission = {
+		return {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: false,
@@ -158,17 +175,6 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
-		if (isWorkflowPublished) {
-			return {
-				...defaultConfigForNoPermission,
-				showIndicator: true,
-				showVersionInfo: true,
-				indicatorClass: 'published',
-			};
-		} else {
-			return defaultConfigForNoPermission;
-		}
 	}
 
 	// Handle new workflow state
@@ -247,7 +253,7 @@ const publishButtonConfig = computed(() => {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: true,
-			indicatorClass: 'changes',
+			indicatorClass: 'error',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: true,
 		},
@@ -270,12 +276,174 @@ const latestPublishDate = computed(() => {
 	return latestPublish?.createdAt;
 });
 
+// Dropdown menu items
+const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const items: Array<DropdownMenuItemProps<string>> = [
+		{
+			id: 'publish',
+			label: i18n.baseText('workflows.publish'),
+			disabled: !publishButtonConfig.value.enabled || readOnlyForPublish.value,
+		},
+		{
+			id: 'save-draft',
+			label: i18n.baseText('workflows.saveDraft'),
+			disabled:
+				readOnlyForPublish.value ||
+				props.isNewWorkflow ||
+				(!uiStore.stateIsDirty &&
+					workflowsStore.workflow.versionId === workflowsStore.workflow.activeVersion?.versionId),
+		},
+	];
+
+	// Only show unpublish if there's an active version and user has permission
+	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
+		items.push({
+			id: 'unpublish',
+			label: i18n.baseText('menuActions.unpublish'),
+			disabled: false,
+			divided: true,
+		});
+	}
+
+	return items;
+});
+
+const onDropdownMenuSelect = async (action: string) => {
+	switch (action) {
+		case 'publish':
+			await onPublishButtonClick();
+			break;
+		case 'save-draft':
+			await onSaveDraftClick();
+			break;
+		case 'unpublish':
+			await onUnpublishWorkflow();
+			break;
+		default:
+			break;
+	}
+};
+
+const onSaveDraftClick = async () => {
+	// Save any pending changes first
+	if (uiStore.stateIsDirty) {
+		try {
+			await saveBeforePublish();
+		} catch {
+			return;
+		}
+	}
+
+	// Open save draft modal
+	uiStore.openModalWithData({
+		name: WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+		data: {
+			workflowId: props.id,
+			versionId: workflowsStore.workflow.versionId,
+		},
+	});
+};
+
+const onUnpublishWorkflow = async () => {
+	const workflowId = getWorkflowId(props.id, route.params.name);
+
+	if (!workflowId || !activeVersion.value) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			toast.showMessage({
+				title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: activeVersion.value.name,
+			eventBus: unpublishEventBus,
+		},
+	});
+};
+
+// Track dropdown open state
+const dropdownOpen = ref(false);
+
+// Get shortcut label for dropdown item
+const getShortcutForItem = (itemId: string): string => {
+	const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+	const cmdKey = isMac ? '⌘' : 'Ctrl';
+
+	switch (itemId) {
+		case 'publish':
+			return 'P';
+		case 'save-draft':
+			return `${cmdKey} S`;
+		case 'unpublish':
+			return `${cmdKey} U`;
+		default:
+			return '';
+	}
+};
+
+// Keyboard shortcuts
+const handleKeyboardShortcut = (event: KeyboardEvent) => {
+	// Don't handle shortcuts if user is typing in an input/textarea
+	const target = event.target as HTMLElement;
+	if (
+		target.tagName === 'INPUT' ||
+		target.tagName === 'TEXTAREA' ||
+		target.contentEditable === 'true'
+	) {
+		return;
+	}
+
+	// Prevent default for our shortcuts
+	if (event.key === 'p' && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+		event.preventDefault();
+		if (
+			!publishButtonConfig.value.enabled ||
+			readOnlyForPublish.value ||
+			shouldHidePublishButton.value
+		) {
+			return;
+		}
+		void onPublishButtonClick();
+	} else if (event.key === 's' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+		event.preventDefault();
+		const saveDraftItem = dropdownMenuItems.value.find((item) => item.id === 'save-draft');
+		if (saveDraftItem && !saveDraftItem.disabled && !shouldHidePublishButton.value) {
+			void onDropdownMenuSelect('save-draft');
+		}
+	} else if (event.key === 'u' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+		event.preventDefault();
+		const unpublishItem = dropdownMenuItems.value.find((item) => item.id === 'unpublish');
+		if (unpublishItem && !unpublishItem.disabled && !shouldHidePublishButton.value) {
+			void onDropdownMenuSelect('unpublish');
+		}
+	}
+};
+
 onMounted(() => {
 	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
+	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
+	document.addEventListener('keydown', handleKeyboardShortcut);
 });
 
 onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
+	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
+	document.removeEventListener('keydown', handleKeyboardShortcut);
 });
 
 defineExpose({
@@ -287,52 +455,77 @@ defineExpose({
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
-			<N8nTooltip
-				:disabled="
-					workflowPublishState === 'not-published-eligible' && props.workflowPermissions.publish
-				"
-				:show-after="300"
-			>
-				<template #content>
-					<div>
-						<template v-if="publishButtonConfig.tooltip">
-							{{ publishButtonConfig.tooltip }} <br />
-						</template>
-						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
-							<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
-							><br />{{ i18n.baseText('workflowHistory.item.active') }}
-							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
-						</template>
-					</div>
-				</template>
-				<N8nButton
+			<div :class="$style.splitButton">
+				<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'" :show-after="500">
+					<template #content>
+						<div>
+							<template v-if="publishButtonConfig.tooltip">
+								{{ publishButtonConfig.tooltip }} <br />
+							</template>
+							<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
+								<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span
+								><br />{{ i18n.baseText('workflowHistory.item.active') }}
+								<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
+							</template>
+						</div>
+					</template>
+					<N8nButton
+						:loading="autoSaveForPublish"
+						:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
+						:class="$style.publish"
+						type="secondary"
+						size="medium"
+						data-test-id="workflow-publish-button"
+						@click="onPublishButtonClick"
+					>
+						<div :class="[$style.flex]">
+							<span
+								v-if="publishButtonConfig.showIndicator"
+								:class="[
+									$style.indicatorDot,
+									publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
+									publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
+									publishButtonConfig.indicatorClass === 'error' && $style.indicatorIssues,
+								]"
+							/>
+							<span
+								:class="[
+									workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
+								]"
+							>
+								{{ publishButtonConfig.text }}
+							</span>
+						</div>
+					</N8nButton>
+				</N8nTooltip>
+				<N8nDropdownMenu
+					v-model="dropdownOpen"
+					:items="dropdownMenuItems"
 					:loading="autoSaveForPublish"
-					:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
-					type="secondary"
-					data-test-id="workflow-open-publish-modal-button"
-					@click="onPublishButtonClick"
+					placement="bottom"
+					:teleported="true"
+					:extra-popper-class="$style.publishDropdown"
+					data-test-id="workflow-publish-dropdown"
+					@select="onDropdownMenuSelect"
 				>
-					<div :class="[$style.flex]">
-						<span
-							v-if="publishButtonConfig.showIndicator"
-							data-test-id="workflow-active-version-indicator"
-							:class="{
-								[$style.indicatorDot]: true,
-								[$style.indicatorPublished]: publishButtonConfig.indicatorClass === 'published',
-								[$style.indicatorChanges]: publishButtonConfig.indicatorClass === 'changes',
-								[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
-							}"
+					<template #trigger>
+						<N8nIconButton
+							icon="chevron-down"
+							:disabled="readOnlyForPublish"
+							:class="$style.dropdownButton"
+							type="secondary"
+							icon-size="large"
+							aria-label="Open publish actions menu"
+							data-test-id="workflow-publish-dropdown-button"
 						/>
-						<span
-							:class="[
-								workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
-							]"
-						>
-							{{ publishButtonConfig.text }}
+					</template>
+					<template #item-trailing="{ item }">
+						<span v-if="getShortcutForItem(item.id)" :class="$style.shortcut">
+							{{ getShortcutForItem(item.id) }}
 						</span>
-					</div>
-				</N8nButton>
-			</N8nTooltip>
+					</template>
+				</N8nDropdownMenu>
+			</div>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu
@@ -352,7 +545,9 @@ defineExpose({
 
 <style lang="scss" module>
 .container {
-	display: contents;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .activeVersionIndicator {
@@ -396,5 +591,30 @@ defineExpose({
 .flex {
 	display: flex;
 	align-items: center;
+}
+
+.publishDropdown {
+	z-index: 9999 !important;
+}
+
+.shortcut {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin-left: var(--spacing--xs);
+}
+
+.publish {
+	border-bottom-right-radius: 0px;
+	border-top-right-radius: 0px;
+}
+
+.dropdownButton {
+	border-top-left-radius: 0px;
+	border-bottom-left-radius: 0px;
+	margin-left: -1px;
+}
+
+.splitButton {
+	display: inline-flex;
 }
 </style>
