@@ -13,6 +13,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
@@ -28,6 +29,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
+	const builderStore = useBuilderStore();
 
 	const route = useRoute();
 	const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings, addBeforeUnloadHandler } =
@@ -206,6 +208,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	function checkInactivity() {
 		if (!isCurrentUserWriter.value) return;
+
+		// Don't release write lock while AI Builder is streaming
+		if (builderStore.streaming) {
+			console.log('[Collaboration] ⏱️ Skipping inactivity check - AI Builder is streaming');
+			return;
+		}
 
 		const timeSinceActivity = Date.now() - lastActivityTime.value;
 		const timeoutThreshold = 20 * TIME.SECOND;

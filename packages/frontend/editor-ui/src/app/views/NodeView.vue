@@ -1888,7 +1888,22 @@ watch(
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
-			if (!collaborationStore.shouldBeReadOnly) {
+			// Skip auto-save when AI Builder is streaming to keep version history clean
+			if (!collaborationStore.shouldBeReadOnly && !builderStore.streaming) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
+// Trigger auto-save when AI Builder streaming ends with unsaved changes
+watch(
+	() => builderStore.streaming,
+	(isStreaming, wasStreaming) => {
+		// Only trigger when streaming just ended (was streaming, now not)
+		if (wasStreaming && !isStreaming) {
+			// Trigger auto-save if there are unsaved changes
+			if (uiStore.stateIsDirty && !collaborationStore.shouldBeReadOnly) {
 				void workflowSaving.autoSaveWorkflow();
 			}
 		}
