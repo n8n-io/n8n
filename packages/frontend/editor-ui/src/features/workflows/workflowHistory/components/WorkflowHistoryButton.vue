@@ -44,7 +44,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 </script>
 
 <template>
-	<N8nTooltip v-if="workflowId" placement="bottom">
+	<N8nTooltip v-if="workflowId" placement="bottom" :show-after="300">
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
 				:disabled="isNewWorkflow"
