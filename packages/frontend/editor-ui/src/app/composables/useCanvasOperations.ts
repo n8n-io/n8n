@@ -477,7 +477,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 	}
 
 	function trackDeleteNode(id: string) {
@@ -773,7 +773,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		return addedNodes;
@@ -838,7 +838,7 @@ export function useCanvasOperations() {
 
 		void nextTick(() => {
 			if (!options.keepPristine) {
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
@@ -1666,7 +1666,7 @@ export function useCanvasOperations() {
 		});
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1987,7 +1987,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -2016,7 +2016,7 @@ export function useCanvasOperations() {
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		// Reset executions
 		executionsStore.activeExecution = null;
@@ -2239,20 +2239,25 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = setStateDirty;
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		} else {
+			uiStore.markStateClean();
+		}
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -2627,7 +2632,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		return data;
 	}
@@ -2704,7 +2709,7 @@ export function useCanvasOperations() {
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2837,7 +2842,7 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
@@ -2885,7 +2890,7 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 

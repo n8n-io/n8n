@@ -15,7 +15,6 @@ test.skip('Workflow Run', () => {
 	}) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.clickNodePlusEndpoint('Edit Fields');
 		await expect(n8n.canvas.nodeCreatorSearchBar()).toBeVisible();
@@ -32,7 +31,6 @@ test.skip('Workflow Run', () => {
 
 	test('should run workflow on button click', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(
@@ -42,7 +40,6 @@ test.skip('Workflow Run', () => {
 
 	test('should run workflow using keyboard shortcut', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.hitExecuteWorkflow();
 		await expect(

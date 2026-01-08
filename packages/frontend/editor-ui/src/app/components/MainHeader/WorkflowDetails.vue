@@ -13,12 +13,14 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
@@ -77,6 +79,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const collaborationStore = useCollaborationStore();
 const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
@@ -118,6 +121,12 @@ const isWorkflowSaving = computed(() => {
 });
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
+
+// For workflow name and tags editing: needs update permission and not archived
+const readOnlyActions = computed(() => {
+	if (isNewWorkflow.value) return props.readOnly;
+	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+});
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
@@ -185,6 +194,10 @@ async function onSaveButtonClick() {
 }
 
 function onTagsEditEnable() {
+	if (readOnlyActions.value) {
+		return;
+	}
+
 	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
 
@@ -206,6 +219,14 @@ async function onTagsBlur() {
 	if (tagsSaving.value) {
 		return;
 	}
+
+	if (readOnlyActions.value) {
+		isTagsEditEnabled.value = false;
+		return;
+	}
+
+	collaborationStore.requestWriteAccess();
+
 	tagsSaving.value = true;
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
@@ -294,7 +315,7 @@ async function handleArchiveWorkflow() {
 		return;
 	}
 
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
 			interpolate: { workflowName: props.name },
@@ -355,7 +376,7 @@ async function handleDeleteWorkflow() {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
 	}
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 	// Reset tab title since workflow is deleted.
 	documentTitle.reset();
 	toast.showMessage({
@@ -450,6 +471,12 @@ const handleImportWorkflowFromFile = () => {
 	}
 };
 
+const handleWorkflowSaved = (data: { isFirstSave: boolean }) => {
+	if (data.isFirstSave) {
+		showCreateWorkflowSuccessToast();
+	}
+};
+
 onMounted(() => {
 	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
 	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
@@ -457,6 +484,7 @@ onMounted(() => {
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 	nodeViewEventBus.on('addTag', onTagsEditEnable);
+	canvasEventBus.on('saved:workflow', handleWorkflowSaved);
 });
 
 onBeforeUnmount(() => {
@@ -466,6 +494,7 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 	nodeViewEventBus.off('addTag', onTagsEditEnable);
+	canvasEventBus.off('saved:workflow', handleWorkflowSaved);
 });
 </script>
 
@@ -499,8 +528,8 @@ onBeforeUnmount(() => {
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
-							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
-							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:read-only="readOnlyActions"
+							:disabled="readOnlyActions"
 							@update:model-value="onNameSubmit"
 						/>
 					</template>
@@ -510,11 +539,7 @@ onBeforeUnmount(() => {
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
-					v-if="
-						isTagsEditEnabled &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
+					v-if="isTagsEditEnabled && !readOnlyActions"
 					ref="dropdown"
 					v-model="appliedTagIds"
 					:event-bus="tagsEventBus"
@@ -524,13 +549,7 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div
-					v-else-if="
-						(tags ?? []).length === 0 &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
-				>
+				<div v-else-if="(tags ?? []).length === 0 && !readOnlyActions">
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 						+ {{ i18n.baseText('workflowDetails.addTag') }}
 					</span>
@@ -568,7 +587,7 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="readOnly"
+				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
@@ -582,7 +601,7 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:current-folder="currentFolder"
 				:meta="meta"
-				:read-only="readOnly"
+				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:active="active"
 				:is-new-workflow="isNewWorkflow"
