@@ -1,9 +1,15 @@
 {
     "type": "object",
     "properties": {
+        "Date Modified": {
+            "type": "string"
+        },
         "NSN": {
+            "type": "string"
+        },
+        "Status": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
