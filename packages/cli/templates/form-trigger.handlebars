@@ -898,7 +898,10 @@
 				if (!interval) return;
 
 				try {
-					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
+					const baseUrl = formWaitingUrl ?? window.location.href;
+					const url = new URL(baseUrl);
+					url.pathname = url.pathname + '/n8n-execution-status';
+					const response = await fetch(url.toString());
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {

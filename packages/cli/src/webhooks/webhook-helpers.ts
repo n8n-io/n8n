@@ -643,11 +643,10 @@ export async function executeWebhook(
 		);
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			// Enable signature validation for this execution
 			runExecutionData.validateSignature = true;
 
-			// Sign the form URL (same pattern as getSignedResumeUrl)
-			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			const webhookPath = webhookData.path ? `/${webhookData.path}` : '';
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}${webhookPath}`);
 			const urlForSigning = prepareUrlForSigning(formUrl);
 			const instanceSettings = Container.get(InstanceSettings);
 			const token = generateUrlSignature(urlForSigning, instanceSettings.hmacSignatureSecret);

@@ -124,7 +124,7 @@ export class WaitingForms extends WaitingWebhooks {
 		// Validate signature for forms if required
 		if (execution?.data.validateSignature) {
 			if (!this.validateFormSignatureInRequest(req, suffix)) {
-				res.status(401).json({ error: 'Invalid or missing form token' });
+				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
 			}
 		}

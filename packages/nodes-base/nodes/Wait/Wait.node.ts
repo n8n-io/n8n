@@ -500,6 +500,13 @@ export class Wait extends Webhook {
 			context.setSignatureValidationRequired();
 
 			if (resume === 'form') {
+				// Add signed resumeFormUrl to metadata for frontend to use when opening form popup
+				const resumeFormUrl = context.evaluateExpression(
+					'{{ $execution.resumeFormUrl }}',
+					0,
+				) as string;
+				context.setMetadata({ resumeFormUrl });
+
 				const parentNodes = context.getParentNodes(context.getNode().name);
 				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 			}

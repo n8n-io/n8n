@@ -302,6 +302,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -587,8 +588,8 @@ describe('WaitingForms', () => {
 				host: 'localhost:5678',
 			});
 
-			const mockJson = jest.fn();
-			const mockStatus = jest.fn().mockReturnValue({ json: mockJson });
+			const mockRender = jest.fn();
+			const mockStatus = jest.fn().mockReturnValue({ render: mockRender });
 			const res = mock<express.Response>({
 				status: mockStatus,
 			});
@@ -596,7 +597,7 @@ describe('WaitingForms', () => {
 			const result = await waitingForms.executeWebhook(req, res);
 
 			expect(mockStatus).toHaveBeenCalledWith(401);
-			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid or missing form token' });
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
