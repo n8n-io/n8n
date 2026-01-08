@@ -125,6 +125,23 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source: 'user-manual' | 'user-retry';
+		// TODO: To be added in future PR
+		// | 'webhook'
+		// | 'trigger'
+		// | 'error'
+		// | 'cli'
+		// | 'integrated'
+		// | 'internal'
+		// | 'evaluation'
+		// | 'chat';
+	};
+
 	// #endregion
 
 	// #region Node
@@ -412,6 +429,12 @@ export type RelayEventMap = {
 		reason: CancellationReason;
 	};
 
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -532,6 +555,10 @@ export type RelayEventMap = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
 	};
 
 	// #endregion

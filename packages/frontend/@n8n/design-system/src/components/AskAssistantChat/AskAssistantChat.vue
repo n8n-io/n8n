@@ -7,7 +7,6 @@ import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
 import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
@@ -88,7 +87,11 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 
 function groupToolMessagesIntoThinking(
 	messages: ChatUI.AssistantMessage[],
-	options: { streaming?: boolean; loadingMessage?: string } = {},
+	options: {
+		streaming?: boolean;
+		loadingMessage?: string;
+		t: (key: string) => string;
+	},
 ): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
@@ -145,7 +148,7 @@ function groupToolMessagesIntoThinking(
 		}));
 
 		// If this is the last group, all tools completed, and we're still streaming,
-		// add a "Thinking..." item to show the AI is processing
+		// add a "Thinking" item to show the AI is processing
 		if (isLastToolGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
 			items.push({
 				id: 'thinking-item',
@@ -166,7 +169,7 @@ function groupToolMessagesIntoThinking(
 					.split('_')
 					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 					.join(' ') ||
-				'Processing...';
+				options.t('assistantChat.thinking.processing');
 		} else if (
 			isLastToolGroup &&
 			allToolsCompleted &&
@@ -175,11 +178,12 @@ function groupToolMessagesIntoThinking(
 		) {
 			// Still streaming after tools completed - show thinking message
 			latestStatus = options.loadingMessage;
+		} else if (allToolsCompleted && !options.streaming) {
+			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
 		} else if (allToolsCompleted) {
-			// All tools completed and not streaming - show "Workflow generated"
-			latestStatus = 'Workflow generated';
+			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
 		} else {
-			latestStatus = 'Processing...';
+			latestStatus = options.t('assistantChat.thinking.thinking');
 		}
 
 		// Create a ThinkingGroup message with deduplicated items
@@ -196,27 +200,6 @@ function groupToolMessagesIntoThinking(
 		i = j;
 	}
 
-	// If streaming with a loadingMessage but no thinking-group exists yet (no tool messages received),
-	// create an initial thinking-group with just the "Thinking..." item
-	// Use the same stable ID as tool-based thinking-groups so Vue preserves component state
-	const hasThinkingGroup = result.some((msg) => msg.type === 'thinking-group');
-	if (options.streaming && options.loadingMessage && !hasThinkingGroup) {
-		const initialThinkingGroup: ChatUI.ThinkingGroupMessage = {
-			id: 'thinking-group',
-			role: 'assistant',
-			type: 'thinking-group',
-			items: [
-				{
-					id: 'thinking-item',
-					displayTitle: options.loadingMessage,
-					status: 'running',
-				},
-			],
-			latestStatusText: options.loadingMessage,
-		};
-		result.push(initialThinkingGroup);
-	}
-
 	return result;
 }
 
@@ -226,6 +209,7 @@ const normalizedMessages = computed(() => {
 	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
 		streaming: props.streaming,
 		loadingMessage: props.loadingMessage,
+		t,
 	});
 });
 
@@ -243,7 +227,6 @@ const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
-const messagesRef = ref<HTMLDivElement | null>(null);
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
@@ -262,10 +245,14 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group - hides the generic loading message when tool status is shown
-// The ThinkingMessage component handles displaying the current status with shimmer animation
+// Check if we have any thinking group (tool messages grouped into thinking blocks)
 const hasAnyThinkingGroup = computed(() => {
 	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
+});
+
+// Show placeholder when streaming with loading message but no tool messages have arrived yet
+const showThinkingPlaceholder = computed(() => {
+	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
 });
 
 const showBottomInput = computed(() => {
@@ -418,6 +405,7 @@ defineExpose({
 								<ThinkingMessage
 									v-if="isThinkingGroupMessage(message)"
 									:items="message.items"
+									:default-expanded="true"
 									:latest-status-text="message.latestStatusText"
 									:is-streaming="streaming"
 									:class="getMessageStyles(message, i)"
@@ -476,16 +464,17 @@ defineExpose({
 							</data>
 							<slot name="messagesFooter" />
 						</div>
-						<div
-							v-if="loadingMessage && !hasAnyThinkingGroup"
-							:class="{
-								[$style.message]: true,
-								[$style.loading]: normalizedMessages?.length,
-								[$style.lastToolMessage]: true,
-							}"
-						>
-							<AssistantLoadingMessage :message="loadingMessage" />
-						</div>
+						<!-- Placeholder thinking message when there are no tools yet called -->
+						<ThinkingMessage
+							v-if="showThinkingPlaceholder"
+							:items="[
+								{ id: 'thinking-placeholder', displayTitle: loadingMessage!, status: 'running' },
+							]"
+							:latest-status-text="loadingMessage!"
+							:default-expanded="true"
+							:is-streaming="true"
+							:class="$style.lastToolMessage"
+						/>
 					</div>
 				</N8nScrollArea>
 			</div>
