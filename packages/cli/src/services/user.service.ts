@@ -17,13 +17,17 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
+import { JwtService } from './jwt.service';
+
+const TAMPER_PROOF_INVITE_LINKS_EXPERIMENT = '061_tamper_proof_invite_links';
+const TAMPER_PROOF_INVITE_LINKS_VARIANT = 'variant';
 
 @Service()
 export class UserService {
@@ -37,6 +41,8 @@ export class UserService {
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly jwtService: JwtService,
+		private readonly postHog: PostHogClient,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -153,9 +159,39 @@ export class UserService {
 
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
+		// Check if tamper-proof invite links feature flag is enabled for the owner
+		let useTamperProofLinks = false;
+		try {
+			const featureFlags = await this.postHog.getFeatureFlags({
+				id: owner.id,
+				createdAt: owner.createdAt,
+			});
+			useTamperProofLinks =
+				featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === TAMPER_PROOF_INVITE_LINKS_VARIANT;
+		} catch (error) {
+			// If feature flag check fails, fall back to old mechanism
+			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
+		}
+
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
+				let inviteAcceptUrl: string;
+				if (useTamperProofLinks) {
+					// Use JWT-based tamper-proof invite links when feature flag is enabled
+					const token = this.jwtService.sign(
+						{
+							inviterId: owner.id,
+							inviteeId: id,
+						},
+						{
+							expiresIn: '90d',
+						},
+					);
+					inviteAcceptUrl = `${domain}/signup?token=${token}`;
+				} else {
+					// Use legacy invite links when feature flag is disabled
+					inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
+				}
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,

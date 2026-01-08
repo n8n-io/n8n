@@ -244,10 +244,6 @@ const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;
 });
 
-const teamProjectsEnabled = computed(() => {
-	return projectsStore.isTeamProjectFeatureEnabled;
-});
-
 const mcpEnabled = computed(() => {
 	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
@@ -1842,32 +1838,13 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
+		<template v-if="showFolders || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
-				:disabled="
-					!(
-						projectPages.isOverviewSubPage ||
-						projectPages.isSharedSubPage ||
-						(!readOnlyEnv && hasPermissionToCreateFolders)
-					)
-				"
+				:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 			>
 				<template #content>
-					<span
-						v-if="
-							(projectPages.isOverviewSubPage || projectPages.isSharedSubPage) &&
-							!showRegisteredCommunityCTA
-						"
-					>
-						<span v-if="teamProjectsEnabled">
-							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
-						</span>
-						<span v-else>
-							{{ i18n.baseText('folders.add.overview.community.message') }}
-						</span>
-					</span>
-					<span v-else>
+					<span>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {

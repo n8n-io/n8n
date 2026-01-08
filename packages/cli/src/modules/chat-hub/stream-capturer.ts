@@ -7,15 +7,19 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
 type Write = ServerResponse['write'];
+type End = ServerResponse['end'];
 
-export type ChunkTransformer = (chunk: string) => void;
+export type ChunkTransformer = (chunk: string) => Promise<string>;
 
 export function interceptResponseWrites<T extends Response>(
 	res: T,
 	transform: ChunkTransformer,
 ): T {
 	const originalWrite = res.write.bind(res) as Write;
+	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
+
+	let writeChain = Promise.resolve();
 
 	const toText = (data: string | Buffer, enc?: BufferEncoding) =>
 		Buffer.isBuffer(data) ? data.toString(enc ?? defaultEncoding) : String(data);
@@ -36,18 +40,55 @@ export function interceptResponseWrites<T extends Response>(
 			typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined,
 		);
 
-		const outputText = transform(inputText);
+		writeChain = writeChain
+			.then(async () => await transform(inputText))
+			.then((outputText) => {
+				if (!encodingOrCallback) {
+					originalWrite(outputText);
+				} else if (typeof encodingOrCallback === 'function') {
+					originalWrite(outputText, encodingOrCallback);
+				} else {
+					originalWrite(outputText, encodingOrCallback, callbackFn);
+				}
+			})
+			.catch((error: Error) => {
+				const originalCb =
+					typeof encodingOrCallback === 'function' ? encodingOrCallback : callbackFn;
+				if (originalCb) {
+					originalCb(error);
+				}
+			});
 
-		if (!encodingOrCallback) {
-			return originalWrite(outputText);
-		} else if (typeof encodingOrCallback === 'function') {
-			return originalWrite(outputText, encodingOrCallback);
-		} else {
-			return originalWrite(outputText, encodingOrCallback, callbackFn);
-		}
+		return true;
+	}
+
+	function end(): T;
+	function end(chunk: unknown, callbackFn?: () => void): T;
+	function end(chunk: unknown, encoding: BufferEncoding, callbackFn?: () => void): T;
+	function end(
+		chunkOrCallback?: unknown | (() => void),
+		encodingOrCallback?: BufferEncoding | (() => void),
+		callbackFn?: () => void,
+	): T {
+		void writeChain.then(() => {
+			if (!chunkOrCallback) {
+				originalEnd();
+			} else if (typeof chunkOrCallback === 'function') {
+				originalEnd(chunkOrCallback);
+			} else if (!encodingOrCallback) {
+				originalEnd(chunkOrCallback);
+			} else if (typeof encodingOrCallback === 'function') {
+				originalEnd(chunkOrCallback, encodingOrCallback);
+			} else {
+				originalEnd(chunkOrCallback, encodingOrCallback, callbackFn);
+			}
+		});
+
+		return res;
 	}
 
 	res.write = write;
+	res.end = end;
 
 	return res;
 }
