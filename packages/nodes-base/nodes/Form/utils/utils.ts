@@ -10,14 +10,12 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
-	IFormTriggerContext,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
-	WebhookAuthorizationError,
 	WorkflowConfigurationError,
 	jsonParse,
 	tryToParseUrl,
@@ -26,6 +24,7 @@ import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
+import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
@@ -690,20 +689,4 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
-}
-
-/**
- * Validates authentication for Form nodes using the FormTrigger's auth settings.
- * This ensures subsequent form pages enforce the same authentication as the initial page.
- *
- * Uses the IFormTriggerContext.validateAuth() method which securely handles
- * credential validation without exposing raw credentials.
- *
- * @param formTriggerContext - The FormTrigger context with node and validateAuth method
- * @throws {WebhookAuthorizationError} When authentication fails or is missing
- */
-export async function validateFormTriggerAuthentication(
-	formTriggerContext: IFormTriggerContext,
-): Promise<void> {
-	await formTriggerContext.validateAuth();
 }

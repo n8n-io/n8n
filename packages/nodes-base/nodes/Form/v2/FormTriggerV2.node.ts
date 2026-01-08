@@ -21,7 +21,6 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
@@ -219,16 +218,5 @@ export class FormTriggerV2 implements INodeType {
 
 	async webhook(this: IWebhookFunctions) {
 		return await formWebhook(this);
-	}
-
-	/**
-	 * Validates authentication for this Form Trigger node.
-	 * Called by Form nodes to validate auth on subsequent form pages.
-	 */
-	async validateAuth(context: IWebhookFunctions): Promise<void> {
-		const node = context.getNode();
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, FORM_TRIGGER_AUTHENTICATION_PROPERTY);
-		}
 	}
 }

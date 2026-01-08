@@ -12,7 +12,6 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { WebhookContext } from '../webhook-context';
 
@@ -157,89 +156,6 @@ describe('WebhookContext', () => {
 			const parameter = webhookContext.getNodeParameter('otherParameter', 'fallback');
 
 			expect(parameter).toBe('fallback');
-		});
-	});
-
-	describe('getFormTrigger', () => {
-		it('should return a form trigger context when Form Trigger node exists', () => {
-			const formTriggerNode = mock<INode>({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-				typeVersion: 2,
-				parameters: { authentication: 'none' },
-			});
-
-			workflow.nodes = {
-				'Form Trigger': formTriggerNode,
-			};
-
-			const formTriggerNodeType = mock<INodeType>();
-			nodeTypes.getByNameAndVersion.mockReturnValue(formTriggerNodeType);
-
-			const result = webhookContext.getFormTrigger();
-
-			expect(result).not.toBeNull();
-			expect(result?.node).toEqual(formTriggerNode);
-			expect(typeof result?.validateAuth).toBe('function');
-		});
-
-		it('should return null when no Form Trigger node exists', () => {
-			const someNode = mock<INode>({ name: 'Some Node', type: 'someType' });
-
-			workflow.nodes = {
-				'Some Node': someNode,
-			};
-
-			const result = webhookContext.getFormTrigger();
-
-			expect(result).toBeNull();
-		});
-
-		it('should call nodeType.validateAuth when validateAuth is called', async () => {
-			const formTriggerNode = mock<INode>({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-				typeVersion: 2,
-				parameters: { authentication: 'basicAuth' },
-			});
-
-			workflow.nodes = {
-				'Form Trigger': formTriggerNode,
-			};
-
-			const mockValidateAuth = jest.fn().mockResolvedValue(undefined);
-			const formTriggerNodeType = mock<INodeType>({
-				validateAuth: mockValidateAuth,
-			});
-			nodeTypes.getByNameAndVersion.mockReturnValue(formTriggerNodeType);
-
-			const result = webhookContext.getFormTrigger();
-			await result?.validateAuth();
-
-			expect(mockValidateAuth).toHaveBeenCalled();
-		});
-
-		it('should not throw when validateAuth is not defined on nodeType', async () => {
-			const formTriggerNode = mock<INode>({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-				typeVersion: 2,
-				parameters: { authentication: 'none' },
-			});
-
-			workflow.nodes = {
-				'Form Trigger': formTriggerNode,
-			};
-
-			const formTriggerNodeType = mock<INodeType>();
-			// validateAuth is undefined
-			formTriggerNodeType.validateAuth = undefined;
-			nodeTypes.getByNameAndVersion.mockReturnValue(formTriggerNodeType);
-
-			const result = webhookContext.getFormTrigger();
-
-			// Should not throw
-			await expect(result?.validateAuth()).resolves.toBeUndefined();
 		});
 	});
 });

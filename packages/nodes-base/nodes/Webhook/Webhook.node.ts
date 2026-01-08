@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, WebhookAuthorizationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -28,6 +28,7 @@ import {
 	responseModeProperty,
 	responseModePropertyStreaming,
 } from './description';
+import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,

@@ -15,7 +15,6 @@ export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
 export { WorkflowConfigurationError } from './workflow-configuration.error';
 export { NodeSslError } from './node-ssl.error';
-export { WebhookAuthorizationError } from './webhook-authorization.error';
 export { WebhookPathTakenError } from './webhook-taken.error';
 export { WorkflowActivationError } from './workflow-activation.error';
 export { WorkflowDeactivationError } from './workflow-deactivation.error';

@@ -1,7 +1,7 @@
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WebhookAuthorizationError, WorkflowConfigurationError } from 'n8n-workflow';
+import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { BlockList } from 'node:net';
+
+import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
