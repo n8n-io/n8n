@@ -63,6 +63,7 @@ import {
 	JSONL_STREAM_HEADERS,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
+	STREAM_CLOSE_TIMEOUT,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -866,8 +867,17 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
+		const streamClosePromise = Promise.race([
+			resolveOnStreamClosed,
+			sleep(STREAM_CLOSE_TIMEOUT).then(() => {
+				this.logger.warn(
+					`Stream did not close within timeout (${STREAM_CLOSE_TIMEOUT}ms) for execution ${executionId}`,
+				);
+			}),
+		]);
+
 		await Promise.all([
-			resolveOnStreamClosed, // To prevent premature workflow/execution deletion, wait for stream to close
+			streamClosePromise, // To prevent premature workflow/execution deletion, wait for stream to close
 			this.waitForExecutionCompletion(executionId),
 		]);
 	}
