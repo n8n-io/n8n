@@ -21,6 +21,5 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["**/*.ts", "**/*.vue"],
-	"exclude": ["src/**/*.stories.ts"]
+	"include": ["**/*.ts", "**/*.vue"]
 }

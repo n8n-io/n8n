@@ -232,6 +232,31 @@ catalogs:
     vue-router:
       specifier: ^4.5.0
       version: 4.5.0
+  storybook:
+    '@chromatic-com/storybook':
+      specifier: ^4.1.3
+      version: 4.1.3
+    '@storybook/addon-a11y':
+      specifier: ^10.1.11
+      version: 10.1.11
+    '@storybook/addon-docs':
+      specifier: ^10.1.11
+      version: 10.1.11
+    '@storybook/addon-themes':
+      specifier: ^10.1.11
+      version: 10.1.11
+    '@storybook/addon-vitest':
+      specifier: ^10.1.11
+      version: 10.1.11
+    '@storybook/vue3-vite':
+      specifier: ^10.1.11
+      version: 10.1.11
+    eslint-plugin-storybook:
+      specifier: ^10.1.11
+      version: 10.1.11
+    storybook:
+      specifier: ^10.1.11
+      version: 10.1.11
 
 overrides:
   ast-types: 0.16.1
@@ -2195,6 +2220,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@storybook/vue3-vite':
+        specifier: catalog:storybook
+        version: 10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.4(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.26(typescript@5.9.2))
@@ -2337,6 +2365,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@storybook/vue3-vite':
+        specifier: catalog:storybook
+        version: 10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@5.9.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.6.3
@@ -2582,25 +2613,25 @@ importers:
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
     devDependencies:
       '@chromatic-com/storybook':
-        specifier: ^4.1.3
+        specifier: catalog:storybook
         version: 4.1.3(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
       '@storybook/addon-a11y':
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/addon-docs':
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(@types/react@18.0.27)(esbuild@0.25.10)(rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/addon-themes':
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/addon-vitest':
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(@vitest/browser-playwright@4.0.16(bufferutil@4.0.9)(playwright@1.57.0)(rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10)(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))(@vitest/runner@4.0.16)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       '@storybook/vue3-vite':
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(esbuild@0.25.10)(rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@5.9.2))
       '@types/node':
         specifier: ^20.17.50
@@ -2618,13 +2649,13 @@ importers:
         specifier: ^0.8.1
         version: 0.8.1(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2))
       eslint-plugin-storybook:
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(eslint@9.29.0(jiti@2.6.1))(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(typescript@5.9.2)
       playwright:
         specifier: ^1.57.0
         version: 1.57.0
       storybook:
-        specifier: ^10.1.11
+        specifier: catalog:storybook
         version: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       typescript:
         specifier: 5.9.2
@@ -15912,6 +15943,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -17960,11 +17992,6 @@ packages:
   url@0.11.4:
     resolution: {integrity: sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg==}
     engines: {node: '>= 0.4'}
-
-  use-sync-external-store@1.2.2:
-    resolution: {integrity: sha512-PElTlVMwpblvbNqQ82d2n6RjStvdSoNe9FG28kNfz3WiXilJm4DdNkEzRhCZuIDwY8U08WVihhGR5iRqAwfDiw==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
 
   use-sync-external-store@1.6.0:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
@@ -25282,6 +25309,19 @@ snapshots:
       - rollup
       - webpack
 
+  '@storybook/builder-vite@10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@storybook/csf-plugin': 10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
+      '@vitest/mocker': 3.2.4(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
+      ts-dedent: 2.2.0
+      vite: rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+    transitivePeerDependencies:
+      - esbuild
+      - msw
+      - rollup
+      - webpack
+
   '@storybook/csf-plugin@10.1.11(esbuild@0.25.10)(rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))':
     dependencies:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
@@ -25290,6 +25330,15 @@ snapshots:
       esbuild: 0.25.10
       rollup: 4.52.4
       vite: rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+
+  '@storybook/csf-plugin@10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))':
+    dependencies:
+      storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
+      unplugin: 2.3.11
+    optionalDependencies:
+      esbuild: 0.25.10
+      rollup: 4.52.4
+      vite: rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
   '@storybook/global@5.0.0': {}
 
@@ -25316,6 +25365,23 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       typescript: 5.9.2
       vite: rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vue-component-meta: 2.1.10(typescript@5.9.2)
+      vue-docgen-api: 4.76.0(vue@3.5.26(typescript@5.9.2))
+    transitivePeerDependencies:
+      - esbuild
+      - msw
+      - rollup
+      - vue
+      - webpack
+
+  '@storybook/vue3-vite@10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@5.9.2))':
+    dependencies:
+      '@storybook/builder-vite': 10.1.11(esbuild@0.25.10)(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))
+      '@storybook/vue3': 10.1.11(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@5.9.2))
+      magic-string: 0.30.21
+      storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
+      typescript: 5.9.2
+      vite: rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vue-component-meta: 2.1.10(typescript@5.9.2)
       vue-docgen-api: 4.76.0(vue@3.5.26(typescript@5.9.2))
     transitivePeerDependencies:
@@ -26470,6 +26536,14 @@ snapshots:
     optionalDependencies:
       vite: rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
+  '@vitest/mocker@3.2.4(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))':
+    dependencies:
+      '@vitest/spy': 3.2.4
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+
   '@vitest/mocker@4.0.16(rolldown-vite@7.2.5(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))':
     dependencies:
       '@vitest/spy': 4.0.16
@@ -27242,14 +27316,6 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.12.0(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30008,10 +30074,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3(supports-color@8.1.1)
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -30714,7 +30776,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30724,7 +30786,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -33223,7 +33285,7 @@ snapshots:
     dependencies:
       mobx: 6.12.0
       react: 18.2.0
-      use-sync-external-store: 1.2.2(react@18.2.0)
+      use-sync-external-store: 1.6.0(react@18.2.0)
     optionalDependencies:
       react-dom: 18.2.0(react@18.2.0)
 
@@ -35177,7 +35239,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
@@ -37297,10 +37359,6 @@ snapshots:
     dependencies:
       punycode: 1.4.1
       qs: 6.14.1
-
-  use-sync-external-store@1.2.2(react@18.2.0):
-    dependencies:
-      react: 18.2.0
 
   use-sync-external-store@1.6.0(react@18.2.0):
     dependencies:
