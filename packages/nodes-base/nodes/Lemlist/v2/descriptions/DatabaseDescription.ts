@@ -43,32 +43,55 @@ export const databaseOperations: INodeProperties[] = [
 
 export const databaseFields: INodeProperties[] = [
 	// ----------------------------------
-	//        database: getPeopleSchema
-	// ----------------------------------
-	// No additional fields required
-
-	// ----------------------------------
-	//        database: getCompaniesSchema
-	// ----------------------------------
-	// No additional fields required
-
-	// ----------------------------------
 	//        database: searchPeople
 	// ----------------------------------
 	{
 		displayName: 'Filters',
 		name: 'filters',
-		type: 'json',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		required: true,
-		default: '{}',
+		default: {},
+		placeholder: 'Add Filter',
 		description:
-			'JSON object with search filters for people database. Use getPeopleSchema to see available filters.',
+			'Filters to apply to the people search. Use "Get People Schema" to see available filter IDs.',
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['searchPeople'],
 			},
 		},
+		options: [
+			{
+				name: 'filterValues',
+				displayName: 'Filter',
+				values: [
+					{
+						displayName: 'Filter ID',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The filter identifier (e.g., "job_title", "location", "company_size")',
+					},
+					{
+						displayName: 'Include Values',
+						name: 'in',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of values to include',
+					},
+					{
+						displayName: 'Exclude Values',
+						name: 'out',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of values to exclude',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -84,18 +107,29 @@ export const databaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Max number of results to return',
+				displayName: 'Excludes',
+				name: 'excludes',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of properties to exclude from the results',
 			},
 			{
-				displayName: 'Offset',
-				name: 'offset',
+				displayName: 'Page',
+				name: 'page',
 				type: 'number',
-				default: 0,
-				description: 'Number of results to skip',
+				default: 1,
+				description: 'Page number for pagination',
+			},
+			{
+				displayName: 'Size',
+				name: 'size',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				description: 'Number of results to return (1-100)',
 			},
 		],
 	},
@@ -106,17 +140,50 @@ export const databaseFields: INodeProperties[] = [
 	{
 		displayName: 'Filters',
 		name: 'filters',
-		type: 'json',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		required: true,
-		default: '{}',
+		default: {},
+		placeholder: 'Add Filter',
 		description:
-			'JSON object with search filters for companies database. Use getCompaniesSchema to see available filters.',
+			'Filters to apply to the companies search. Use "Get Companies Schema" to see available filter IDs.',
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['searchCompanies'],
 			},
 		},
+		options: [
+			{
+				name: 'filterValues',
+				displayName: 'Filter',
+				values: [
+					{
+						displayName: 'Filter ID',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The filter identifier (e.g., "industry", "company_size", "location")',
+					},
+					{
+						displayName: 'Include Values',
+						name: 'in',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of values to include',
+					},
+					{
+						displayName: 'Exclude Values',
+						name: 'out',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of values to exclude',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -132,18 +199,29 @@ export const databaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Max number of results to return',
+				displayName: 'Excludes',
+				name: 'excludes',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of properties to exclude from the results',
 			},
 			{
-				displayName: 'Offset',
-				name: 'offset',
+				displayName: 'Page',
+				name: 'page',
 				type: 'number',
-				default: 0,
-				description: 'Number of results to skip',
+				default: 1,
+				description: 'Page number for pagination',
+			},
+			{
+				displayName: 'Size',
+				name: 'size',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				description: 'Number of results to return (1-100)',
 			},
 		],
 	},

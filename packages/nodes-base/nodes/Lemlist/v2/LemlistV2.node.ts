@@ -1197,18 +1197,38 @@ export class LemlistV2 implements INodeType {
 						//        database: searchPeople
 						// ----------------------------------
 
-						const filters = this.getNodeParameter('filters', i);
-						const options = this.getNodeParameter('options', i);
+						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						// Build filters array from fixedCollection
+						const filtersArray: IDataObject[] = [];
+						if (filtersInput.filterValues && Array.isArray(filtersInput.filterValues)) {
+							for (const filter of filtersInput.filterValues as IDataObject[]) {
+								const filterObj: IDataObject = {
+									filterId: filter.filterId,
+								};
+								if (filter.in) {
+									filterObj.in = (filter.in as string).split(',').map((v) => v.trim());
+								}
+								if (filter.out) {
+									filterObj.out = (filter.out as string).split(',').map((v) => v.trim());
+								}
+								filtersArray.push(filterObj);
+							}
+						}
 
 						const body: IDataObject = {
-							filters: typeof filters === 'string' ? JSON.parse(filters) : filters,
+							filters: filtersArray,
 						};
 
-						if (options.limit) {
-							body.limit = options.limit;
+						if (options.page) {
+							body.page = options.page;
 						}
-						if (options.offset) {
-							body.offset = options.offset;
+						if (options.size) {
+							body.size = options.size;
+						}
+						if (options.excludes) {
+							body.excludes = (options.excludes as string).split(',').map((v) => v.trim());
 						}
 
 						responseData = await lemlistApiRequest.call(this, 'POST', '/database/people', body);
@@ -1217,18 +1237,38 @@ export class LemlistV2 implements INodeType {
 						//        database: searchCompanies
 						// ----------------------------------
 
-						const filters = this.getNodeParameter('filters', i);
-						const options = this.getNodeParameter('options', i);
+						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						// Build filters array from fixedCollection
+						const filtersArray: IDataObject[] = [];
+						if (filtersInput.filterValues && Array.isArray(filtersInput.filterValues)) {
+							for (const filter of filtersInput.filterValues as IDataObject[]) {
+								const filterObj: IDataObject = {
+									filterId: filter.filterId,
+								};
+								if (filter.in) {
+									filterObj.in = (filter.in as string).split(',').map((v) => v.trim());
+								}
+								if (filter.out) {
+									filterObj.out = (filter.out as string).split(',').map((v) => v.trim());
+								}
+								filtersArray.push(filterObj);
+							}
+						}
 
 						const body: IDataObject = {
-							filters: typeof filters === 'string' ? JSON.parse(filters) : filters,
+							filters: filtersArray,
 						};
 
-						if (options.limit) {
-							body.limit = options.limit;
+						if (options.page) {
+							body.page = options.page;
 						}
-						if (options.offset) {
-							body.offset = options.offset;
+						if (options.size) {
+							body.size = options.size;
+						}
+						if (options.excludes) {
+							body.excludes = (options.excludes as string).split(',').map((v) => v.trim());
 						}
 
 						responseData = await lemlistApiRequest.call(this, 'POST', '/database/companies', body);
