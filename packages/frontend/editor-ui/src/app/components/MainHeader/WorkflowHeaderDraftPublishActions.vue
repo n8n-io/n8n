@@ -222,10 +222,10 @@ const publishButtonConfig = computed(() => {
 			showVersionInfo: false,
 		},
 		'published-node-issues': {
-			text: i18n.baseText('generic.published'),
+			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: true,
-			indicatorClass: 'published',
+			indicatorClass: 'error',
 			tooltip: i18n.baseText(
 				'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
 				{
@@ -236,10 +236,10 @@ const publishButtonConfig = computed(() => {
 			showVersionInfo: true,
 		},
 		'published-invalid-trigger': {
-			text: i18n.baseText('generic.published'),
+			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: true,
-			indicatorClass: 'published',
+			indicatorClass: 'error',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: true,
 		},
@@ -306,6 +306,7 @@ defineExpose({
 								$style.indicatorDot,
 								publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
 								publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
+								publishButtonConfig.indicatorClass === 'error' && $style.indicatorIssues,
 							]"
 						/>
 						<span
@@ -355,8 +356,8 @@ defineExpose({
 }
 
 .indicatorDot {
-	height: 8px;
-	width: 8px;
+	height: var(--spacing--2xs);
+	width: var(--spacing--2xs);
 	border-radius: 50%;
 	display: inline-block;
 	margin-right: var(--spacing--2xs);
@@ -372,6 +373,10 @@ defineExpose({
 
 .indicatorChanges {
 	background-color: var(--color--yellow-500);
+}
+
+.indicatorIssues {
+	background-color: var(--color--red-600);
 }
 
 .flex {
