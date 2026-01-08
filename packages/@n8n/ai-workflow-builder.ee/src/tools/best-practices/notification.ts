@@ -52,7 +52,7 @@ Format messages appropriately for each channel:
 
 ## Alert Management
 
-Implement cooldown mechanisms to prevent notification floods. Record last alert time and check before sending duplicates. Consider alert aggregation - send one message listing multiple items rather than individual alerts.
+Consider alert aggregation - send one message listing multiple items rather than individual alerts.
 
 Add logging nodes to track sent notifications for audit trails and duplicate prevention. Consider using error handling paths with Continue on Fail settings for redundancy.
 
@@ -121,11 +121,6 @@ Add logging nodes to track sent notifications for audit trails and duplicate pre
 - Purpose: Route notifications based on severity/type
 - Use cases: Different channels for different alert levels
 - Best practice: Always define Default case for unexpected values
-
-**Function** (n8n-nodes-base.function):
-- Purpose: Complex filtering and data transformation
-- Use cases: Array filtering, complex conditions, message formatting
-- Best practice: Keep logic focused and well-documented
 
 **Set** (n8n-nodes-base.set):
 - Purpose: Prepare alert messages and structure data
