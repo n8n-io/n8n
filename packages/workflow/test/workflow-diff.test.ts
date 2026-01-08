@@ -14,7 +14,6 @@ import {
 	type DiffableNode,
 	type DiffableWorkflow,
 	type DiffRule,
-	type GroupedWorkflowHistory,
 } from '../src/workflow-diff';
 
 describe('NodeDiffStatus', () => {
@@ -507,18 +506,8 @@ describe('groupWorkflows', () => {
 				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
 				const result = RULES.mergeAdditiveChanges(
-					{
-						from: baseWorkflow,
-						to: baseWorkflow,
-						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
-					},
-					{
-						from: nextWorkflow,
-						to: nextWorkflow,
-						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
-					},
+					baseWorkflow,
+					nextWorkflow,
 					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
@@ -526,39 +515,17 @@ describe('groupWorkflows', () => {
 			});
 		});
 		describe('skipTimeDifference', () => {
-			const createWorkflowHistory = (
-				createdAt: Date,
-			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
-				from: {
-					nodes: [],
-					connections: {},
-					createdAt,
-				},
-				to: {
-					nodes: [],
-					connections: {},
-					createdAt,
-				},
-				groupedWorkflows: [],
-				workflowChangeSet: new WorkflowChangeSet(
-					{
-						nodes: [],
-						connections: {},
-						createdAt,
-					},
-					{
-						nodes: [],
-						connections: {},
-						createdAt,
-					},
-				),
+			const createWorkflow = (createdAt: Date): DiffableWorkflow<DiffableNode> => ({
+				nodes: [],
+				connections: {},
+				createdAt,
 			});
 
 			const skipTimeDifference = SKIP_RULES.makeSkipTimeDifference(30 * 60 * 1000);
 
 			it('should return false when time difference is within 30 minutes', () => {
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:29:59Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:29:59Z'));
 
 				const result = skipTimeDifference(prev, next);
 
@@ -566,8 +533,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return true when time difference exceeds 30 minutes', () => {
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:30:01Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:01Z'));
 
 				const result = skipTimeDifference(prev, next);
 
@@ -575,8 +542,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return true when time difference is exactly 30 minutes and 1 millisecond', () => {
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00.001Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:00.001Z'));
 
 				const result = skipTimeDifference(prev, next);
 
@@ -584,8 +551,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return false when time difference is exactly 30 minutes', () => {
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:30:00Z'));
 
 				const result = skipTimeDifference(prev, next);
 
@@ -594,8 +561,8 @@ describe('groupWorkflows', () => {
 
 			it('should handle workflows with the same timestamp', () => {
 				const timestamp = new Date('2023-01-01T12:00:00Z');
-				const prev = createWorkflowHistory(timestamp);
-				const next = createWorkflowHistory(timestamp);
+				const prev = createWorkflow(timestamp);
+				const next = createWorkflow(timestamp);
 
 				const result = skipTimeDifference(prev, next);
 
@@ -603,8 +570,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should handle workflows with negative time difference', () => {
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:30:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:00:00Z'));
 
 				const result = skipTimeDifference(prev, next);
 
@@ -614,8 +581,8 @@ describe('groupWorkflows', () => {
 			it('should correctly handle other time skip settings', () => {
 				const skipDifferentUsers10 = SKIP_RULES.makeSkipTimeDifference(10 * 60 * 1000);
 
-				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
-				const next = createWorkflowHistory(new Date('2023-01-01T12:29:59Z'));
+				const prev = createWorkflow(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflow(new Date('2023-01-01T12:29:59Z'));
 
 				const result = skipDifferentUsers10(prev, next);
 
@@ -623,41 +590,16 @@ describe('groupWorkflows', () => {
 			});
 		});
 		describe('skipDifferentUsers', () => {
-			const createWorkflowHistory = (
-				user: unknown,
-			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
-				from: {
-					nodes: [],
-					connections: {},
-					createdAt: new Date(),
-					user,
-				},
-				to: {
-					nodes: [],
-					connections: {},
-					createdAt: new Date(),
-					user,
-				},
-				groupedWorkflows: [],
-				workflowChangeSet: new WorkflowChangeSet(
-					{
-						nodes: [],
-						connections: {},
-						createdAt: new Date(),
-						user,
-					},
-					{
-						nodes: [],
-						connections: {},
-						createdAt: new Date(),
-						user,
-					},
-				),
+			const createWorkflow = (user: unknown): DiffableWorkflow<DiffableNode> => ({
+				nodes: [],
+				connections: {},
+				createdAt: new Date(),
+				user,
 			});
 
 			it('should return true when users are different', () => {
-				const prev = createWorkflowHistory('user1');
-				const next = createWorkflowHistory('user2');
+				const prev = createWorkflow('user1');
+				const next = createWorkflow('user2');
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 
@@ -665,8 +607,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return false when users are the same', () => {
-				const prev = createWorkflowHistory('user1');
-				const next = createWorkflowHistory('user1');
+				const prev = createWorkflow('user1');
+				const next = createWorkflow('user1');
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 
@@ -674,8 +616,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return false when both users are undefined', () => {
-				const prev = createWorkflowHistory(undefined);
-				const next = createWorkflowHistory(undefined);
+				const prev = createWorkflow(undefined);
+				const next = createWorkflow(undefined);
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 
@@ -683,8 +625,8 @@ describe('groupWorkflows', () => {
 			});
 
 			it('should return true when one user is undefined and the other is defined', () => {
-				const prev = createWorkflowHistory(undefined);
-				const next = createWorkflowHistory('user1');
+				const prev = createWorkflow(undefined);
+				const next = createWorkflow('user1');
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 
@@ -695,8 +637,8 @@ describe('groupWorkflows', () => {
 				const user1 = { id: 1, name: 'User One' };
 				const user2 = { id: 2, name: 'User Two' };
 
-				const prev = createWorkflowHistory(user1);
-				const next = createWorkflowHistory(user2);
+				const prev = createWorkflow(user1);
+				const next = createWorkflow(user2);
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 
@@ -706,8 +648,8 @@ describe('groupWorkflows', () => {
 			it('should return false when complex user objects are deeply equal', () => {
 				const user = { id: 1, name: 'User One' };
 
-				const prev = createWorkflowHistory(user);
-				const next = createWorkflowHistory(user);
+				const prev = createWorkflow(user);
+				const next = createWorkflow(user);
 
 				const result = SKIP_RULES.skipDifferentUsers(prev, next);
 

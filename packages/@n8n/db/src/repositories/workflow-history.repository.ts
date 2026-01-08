@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
-import { GroupedWorkflowHistory, groupWorkflows, RULES, SKIP_RULES } from 'n8n-workflow';
+import { DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
@@ -48,13 +48,8 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 	}
 
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: string[]) {
-		return (
-			prev: GroupedWorkflowHistory<WorkflowHistory>,
-			_next: GroupedWorkflowHistory<WorkflowHistory>,
-		): boolean =>
-			prev.to.name !== null ||
-			prev.to.description !== null ||
-			activeVersions.includes(prev.to.versionId);
+		return (prev: WorkflowHistory, _next: WorkflowHistory): boolean =>
+			prev.name !== null || prev.description !== null || activeVersions.includes(prev.versionId);
 	}
 
 	async getWorkflowIdsInRange(startDate: Date, endDate: Date) {
@@ -81,7 +76,8 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		workflowId: string,
 		startDate: Date,
 		endDate: Date,
-		minimumTimeBetweenSessionsMs: number,
+		rules: DiffRule[] = [],
+		skipRules: DiffRule[] = [],
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
@@ -100,14 +96,11 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		const versionsToDelete = [];
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
-		const grouped = groupWorkflows<WorkflowHistory>(
-			workflows,
-			[RULES.mergeAdditiveChanges],
-			[
-				SKIP_RULES.makeSkipTimeDifference(minimumTimeBetweenSessionsMs),
-				this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId)),
-			],
-		);
+		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
+			this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId)),
+			SKIP_RULES.skipDifferentUsers,
+			...skipRules,
+		]);
 		for (const group of grouped) {
 			for (const wf of group.groupedWorkflows) {
 				versionsToDelete.push(wf.versionId);

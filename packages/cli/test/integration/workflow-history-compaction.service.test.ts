@@ -115,7 +115,7 @@ describe('compacting cycle', () => {
 		}
 
 		// ACT
-		await compactionService['compactHistories']();
+		await compactionService['compactRecentHistories']();
 
 		// ASSERT
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
@@ -196,7 +196,7 @@ describe('compacting cycle', () => {
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching
-		void compactionService['compactHistories']();
+		void compactionService['compactRecentHistories']();
 		await sleep(500);
 
 		// ASSERT
