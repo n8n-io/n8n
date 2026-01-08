@@ -16,6 +16,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
+import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
+import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
@@ -75,6 +77,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
 }));
 
+const mockIsVariantEnabled = vi.fn().mockReturnValue(false);
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isVariantEnabled: mockIsVariantEnabled,
+	})),
+}));
+
 const mockUsersList: UsersList = {
 	items: [
 		{
@@ -120,6 +130,10 @@ let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
+		// Reset mock to default state before each test
+		mockIsVariantEnabled.mockReset();
+		mockIsVariantEnabled.mockReturnValue(false);
+
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -147,6 +161,9 @@ describe('SettingsUsersView', () => {
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		usersStore.generateInviteLink = vi
+			.fn()
+			.mockResolvedValue({ link: 'https://example.com/signup?token=generated-token' });
 
 		settingsStore.isSmtpSetup = true;
 		settingsStore.isMFAEnforced = false;
@@ -159,6 +176,9 @@ describe('SettingsUsersView', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		// Reset mock implementation to default (feature flag disabled)
+		mockIsVariantEnabled.mockReset();
+		mockIsVariantEnabled.mockReturnValue(false);
 	});
 
 	it('should turn enforcing mfa on', async () => {
@@ -478,6 +498,87 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
+		it('should show copy invite link action when feature flag is disabled', () => {
+			// Ensure feature flag is disabled - reset mock to ensure clean state
+			// The beforeEach already sets this, but be explicit to avoid test order issues
+			mockIsVariantEnabled.mockReset();
+			mockIsVariantEnabled.mockReturnValue(false);
+
+			renderComponent();
+
+			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
+			// when feature flag is disabled
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
+		});
+
+		it('should handle generate invite link action when feature flag is enabled', async () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
+			await waitFor(() => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(
+					'https://example.com/signup?token=generated-token',
+				);
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+
+			spy.mockRestore();
+		});
+
+		it('should handle generate invite link error when feature flag is enabled', async () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			usersStore.generateInviteLink = vi
+				.fn()
+				.mockRejectedValue(new Error('Failed to generate link'));
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+
+			spy.mockRestore();
+		});
+
 		it('should handle copy password reset link action', async () => {
 			renderComponent();
 
@@ -554,6 +655,74 @@ describe('SettingsUsersView', () => {
 			// Should not call clipboard.copy or show toast
 			expect(mockClipboard.copy).not.toHaveBeenCalled();
 			expect(mockToast.showToast).not.toHaveBeenCalled();
+		});
+
+		it('should hide copy invite link action when feature flag is enabled', () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			renderComponent();
+
+			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink would normally show
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			// Copy invite link should not be in the actions list
+			expect(screen.queryByTestId('action-copyInviteLink-3')).not.toBeInTheDocument();
+		});
+
+		it('should show generate invite link action when feature flag is enabled', () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			// User 3 is not the current user, so generateInviteLink should show
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			expect(screen.getByTestId('action-generateInviteLink-3')).toBeInTheDocument();
+
+			spy.mockRestore();
+		});
+
+		it('should hide generate invite link action when feature flag is disabled', () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					!(
+						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+						variant === TAMPER_PROOF_INVITE_LINKS.variant
+					),
+			);
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			// Generate invite link should not be in the actions list when feature flag is disabled
+			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
+
+			spy.mockRestore();
 		});
 
 		it('should handle copy password reset link error', async () => {
