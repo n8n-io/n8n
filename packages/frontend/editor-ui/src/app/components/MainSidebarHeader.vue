@@ -14,7 +14,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -31,8 +30,6 @@ const emit = defineEmits<{
 	collapse: [];
 	openCommandBar: [event: MouseEvent];
 }>();
-
-const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -166,7 +163,6 @@ const {
 			</template>
 		</N8nNavigationDropdown>
 		<KeyboardShortcutTooltip
-			v-if="isCommandBarEnabled"
 			:placement="isCollapsed ? 'right' : 'bottom'"
 			:show-after="500"
 			:label="i18n.baseText('nodeView.openCommandBar')"

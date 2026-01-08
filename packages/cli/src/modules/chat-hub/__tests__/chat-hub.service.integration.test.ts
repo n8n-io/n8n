@@ -1,6 +1,5 @@
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createAdmin, createMember } from '@test-integration/db/users';
 import { BinaryDataService } from 'n8n-core';
@@ -125,15 +124,7 @@ describe('chatHub', () => {
 		});
 
 		it('should return agentIcon for sessions with n8n workflow agents', async () => {
-			const projectRepository = Container.get(ProjectRepository);
-
-			// Get member's personal project
-			const project = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-
-			// Update the project with an icon
-			await projectRepository.update(project.id, {
-				icon: { type: 'icon', value: 'workflow' },
-			});
+			const agentIcon = { type: 'icon', value: 'workflow' };
 
 			// Create an active workflow with chat trigger
 			const workflow = await createActiveWorkflow(
@@ -148,6 +139,7 @@ describe('chatHub', () => {
 							position: [0, 0],
 							parameters: {
 								availableInChat: true,
+								agentIcon,
 							},
 						},
 					],
@@ -169,7 +161,7 @@ describe('chatHub', () => {
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
 			expect(conversations.data).toHaveLength(1);
-			expect(conversations.data[0].agentIcon).toEqual({ type: 'icon', value: 'workflow' });
+			expect(conversations.data[0].agentIcon).toEqual(agentIcon);
 		});
 
 		describe('pagination', () => {
@@ -395,15 +387,7 @@ describe('chatHub', () => {
 		});
 
 		it('should return agentIcon for conversation with n8n workflow agent', async () => {
-			const projectRepository = Container.get(ProjectRepository);
-
-			// Get member's personal project
-			const project = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-
-			// Update the project with an icon
-			await projectRepository.update(project.id, {
-				icon: { type: 'icon', value: 'workflow' },
-			});
+			const agentIcon = { type: 'icon', value: 'workflow' };
 
 			// Create an active workflow with chat trigger
 			const workflow = await createActiveWorkflow(
@@ -418,6 +402,7 @@ describe('chatHub', () => {
 							position: [0, 0],
 							parameters: {
 								availableInChat: true,
+								agentIcon,
 							},
 						},
 					],
@@ -439,7 +424,7 @@ describe('chatHub', () => {
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
 			expect(conversation).toBeDefined();
-			expect(conversation.session.agentIcon).toEqual({ type: 'icon', value: 'workflow' });
+			expect(conversation.session.agentIcon).toEqual(agentIcon);
 		});
 
 		it('should get conversation with messages in expected order', async () => {
