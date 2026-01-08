@@ -27,6 +27,8 @@ import {
 	PRE_BUILT_AGENTS_COLLECTION,
 	RECOMMENDED_NODES,
 	BETA_NODES,
+	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_VECTOR_STORES,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -46,6 +48,7 @@ import {
 	PrebuiltAgentTemplates,
 	SampleTemplates,
 } from '@/features/workflows/templates/utils/workflowSamples';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -165,6 +168,39 @@ export function isAINode(node: INodeCreateElement) {
 
 	return false;
 }
+
+export function nodeTypesToCreateElements(
+	nodeTypes: string[],
+	createElements: INodeCreateElement[],
+	sortAlphabetically = true,
+) {
+	const map = createElements.reduce((acc: Record<string, INodeCreateElement>, element) => {
+		acc[element.key] = element;
+		return acc;
+	}, {});
+	const foundElements: INodeCreateElement[] = [];
+	for (const nodeType of nodeTypes) {
+		const createElement = map[nodeType];
+		if (createElement) {
+			foundElements.push(createElement);
+		}
+	}
+	return sortAlphabetically ? sortNodeCreateElements(foundElements) : foundElements;
+}
+
+export function mapToolSubcategoryIcon(sectionKey: string): IconName {
+	switch (sectionKey) {
+		case AI_CATEGORY_OTHER_TOOLS:
+			return 'globe';
+		case AI_CATEGORY_VECTOR_STORES:
+			return 'database';
+		case AI_CATEGORY_HUMAN_IN_THE_LOOP:
+			return 'badge-check';
+		default:
+			return 'globe';
+	}
+}
+
 export function groupItemsInSections(
 	items: INodeCreateElement[],
 	sections: string[] | NodeViewItemSection[],

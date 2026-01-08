@@ -696,7 +696,7 @@ describe('useCanvasOperations', () => {
 			// Y position should be halfway between 100 and 400 = 250 + offsets
 			expect(position[1]).toBe(256);
 			// X position should be tool node X minus half of CONFIGURABLE_NODE_SIZE width
-			// CONFIGURABLE_NODE_SIZE = [256, 96], so 100 - 128 = -28
+			// CONFIGURABLE_NODE_SIZE = [256, 96], so 100 - 128 = -28 + offsets
 			expect(position[0]).toBeLessThan(100);
 		});
 

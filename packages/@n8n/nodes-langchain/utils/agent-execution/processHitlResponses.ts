@@ -65,6 +65,10 @@ function getApprovalStatus(
 	return undefined;
 }
 
+function getDenialMessage(toolName: string, toolId: string): string {
+	return `User rejected the tool call for ${toolName} with id ${toolId}. Please stop and ask the user for more information about why it was declined or suggest modifications to the tool call parameters. The tool is still available if needed.`;
+}
+
 /**
  * Process HITL (Human-in-the-Loop) tool responses.
  *
@@ -101,7 +105,8 @@ export function processHitlResponses(
 
 		const { hitl } = actionResponse.action.metadata;
 		const approved = getApprovalStatus(actionResponse);
-
+		const toolName = hitl.gatedToolNodeName;
+		const toolId = actionResponse.action.id;
 		if (approved === true) {
 			hasApprovedHitlTools = true;
 
@@ -110,7 +115,7 @@ export function processHitlResponses(
 				nodeName: hitl.gatedToolNodeName,
 				input: { tool: hitl.toolName, ...hitl.originalInput },
 				type: NodeConnectionTypes.AiTool,
-				id: `hitl_approved_${actionResponse.action.id}`,
+				id: toolId,
 				metadata: {
 					itemIndex,
 					// Set the parent node to the HITL node for proper log tree structure
@@ -127,7 +132,8 @@ export function processHitlResponses(
 							[
 								{
 									json: {
-										response: 'Tool execution was denied by human reviewer.',
+										id: toolId,
+										response: getDenialMessage(toolName, toolId),
 										approved: false,
 									},
 								},

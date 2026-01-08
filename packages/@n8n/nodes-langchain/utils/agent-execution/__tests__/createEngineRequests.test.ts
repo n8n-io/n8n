@@ -74,7 +74,7 @@ describe('createEngineRequests', () => {
 				originalInput: { query: 'test' },
 			});
 			expect(result[0].input).toEqual({
-				toolParameters: { query: 'test' },
+				toolParameters: '{"query":"test"}',
 				hitlParameters: { param: 'test' },
 				param: 'test',
 				tool: 'hitl_tool',
@@ -99,7 +99,7 @@ describe('createEngineRequests', () => {
 
 			const result = await createEngineRequests(toolCalls, 0, tools);
 
-			expect(result[0].input).toEqual({ toolParameters: { query: 'test' }, tool: 'hitl_tool' });
+			expect(result[0].input).toEqual({ toolParameters: '{"query":"test"}', tool: 'hitl_tool' });
 		});
 	});
 

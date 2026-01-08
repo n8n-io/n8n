@@ -105,7 +105,12 @@ export async function createEngineRequests(
 			}
 			if (hitlMetadata) {
 				// This input will be used as HITL node input
-				input = { ...input, ...(input.hitlParameters as IDataObject) };
+				input = {
+					...input,
+					...(input.hitlParameters as IDataObject),
+					// stringify parameters so that they can be accessed with $fromAI method
+					toolParameters: JSON.stringify(input.toolParameters),
+				};
 			}
 
 			return {

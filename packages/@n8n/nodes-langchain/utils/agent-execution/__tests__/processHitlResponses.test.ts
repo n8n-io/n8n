@@ -105,7 +105,7 @@ describe('processHitlResponses', () => {
 			const action = result.pendingGatedToolRequest!.actions[0];
 			expect(action.nodeName).toBe('Gated Tool Node');
 			expect(action.input).toEqual({ query: 'test', tool: 'my_tool' });
-			expect(action.id).toBe('hitl_approved_action-1');
+			expect(action.id).toBe('action-1');
 			expect(action.metadata?.parentNodeName).toBe('HITL Node');
 		});
 
@@ -159,7 +159,7 @@ describe('processHitlResponses', () => {
 			const processedData = result.processedResponse.actionResponses[0].data?.data
 				?.ai_tool?.[0]?.[0]?.json as Record<string, unknown>;
 			expect(processedData.approved).toBe(false);
-			expect(processedData.response).toContain('denied by human reviewer');
+			expect(processedData.response).toMatch(/reject/i);
 		});
 	});
 
