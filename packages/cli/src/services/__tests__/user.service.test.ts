@@ -22,6 +22,8 @@ import type { UserManagementMailer } from '@/user-management/email';
 
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
+import { JwtService } from '../jwt.service';
+import { PostHogClient } from '@/posthog';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -43,6 +45,12 @@ describe('UserService', () => {
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
+	const jwtService = mockInstance(JwtService, {
+		sign: jest.fn().mockReturnValue('mock-jwt-token'),
+	});
+	const postHog = mockInstance(PostHogClient, {
+		getFeatureFlags: jest.fn().mockResolvedValue({}),
+	});
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -53,6 +61,8 @@ describe('UserService', () => {
 		publicApiKeyService,
 		roleService,
 		globalConfig,
+		jwtService,
+		postHog,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -181,10 +191,37 @@ describe('UserService', () => {
 						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
 					});
 					mailer.invite.mockResolvedValue({ emailSent: false });
+					// Feature flag disabled - should use old mechanism
+					postHog.getFeatureFlags.mockResolvedValue({});
 
 					const result = await userService.inviteUsers(owner, invitations);
 
 					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeDefined();
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('inviterId');
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('inviteeId');
+					expect(jwtService.sign).not.toHaveBeenCalled();
+				});
+
+				it('should use JWT token when feature flag is enabled', async () => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+
+					roleService.checkRolesExist.mockResolvedValue();
+					userRepository.findManyByEmail.mockResolvedValue([]);
+					userRepository.createUserWithProject.mockImplementation(async (userData) => {
+						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+					});
+					mailer.invite.mockResolvedValue({ emailSent: false });
+					// Feature flag enabled - should use JWT tokens
+					postHog.getFeatureFlags.mockResolvedValue({
+						'061_tamper_proof_invite_links': 'variant',
+					});
+
+					const result = await userService.inviteUsers(owner, invitations);
+
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeDefined();
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('token=mock-jwt-token');
+					expect(jwtService.sign).toHaveBeenCalled();
 				});
 
 				it('should not include inviteAcceptUrl if email was sent', async () => {
