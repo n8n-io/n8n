@@ -1255,7 +1255,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('external-secrets-provider-settings-saved', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.external-secrets-provider-settings.saved',
+				eventName: 'n8n.audit.external-secrets.provider.settings.saved',
 				payload: {
 					userId: 'user123',
 					vaultType: 'aws',
@@ -1273,7 +1273,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('external-secrets-provider-reloaded', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.external-secrets-provider.reloaded',
+				eventName: 'n8n.audit.external-secrets.provider.reloaded',
 				payload: {
 					vaultType: 'aws',
 				},

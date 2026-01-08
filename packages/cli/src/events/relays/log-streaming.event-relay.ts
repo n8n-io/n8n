@@ -530,7 +530,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		payload: RelayEventMap['external-secrets-provider-settings-saved'],
 	) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.external-secrets-provider-settings.saved',
+			eventName: 'n8n.audit.external-secrets.provider.settings.saved',
 			payload,
 		});
 	}
@@ -539,7 +539,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		payload: RelayEventMap['external-secrets-provider-reloaded'],
 	) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.external-secrets-provider.reloaded',
+			eventName: 'n8n.audit.external-secrets.provider.reloaded',
 			payload,
 		});
 	}
