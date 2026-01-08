@@ -24,7 +24,7 @@ jobs:
       shards: 14
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
-      use-custom-orchestration: true
+      use-custom-orchestration: false
     secrets: inherit
 
   multi-main-isolated:
