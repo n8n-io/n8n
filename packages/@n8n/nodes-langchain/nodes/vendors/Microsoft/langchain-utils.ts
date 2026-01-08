@@ -44,7 +44,7 @@ export async function invokeAgent(
 	const outputParser = await getOptionalOutputParser(nodeContext, 0);
 	let tools = await getTools(nodeContext, outputParser);
 
-	if (microsoftMcpTools.length) {
+	if (microsoftMcpTools?.length) {
 		tools = tools.concat(microsoftMcpTools);
 	}
 

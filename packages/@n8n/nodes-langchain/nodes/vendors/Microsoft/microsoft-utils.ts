@@ -31,6 +31,9 @@ import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a3
 
 import type { ClientConfig, Connection } from '@langchain/mcp-adapters';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { convertJsonSchemaToZod } from '../../../utils/schemaParsing';
+import { z } from 'zod';
 
 export type MicrosoftAgent365Credentials = {
 	clientId: string;
@@ -97,7 +100,39 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 	const mcpClientConfig = { mcpServers } as ClientConfig;
 
 	const client = new MultiServerMCPClient(mcpClientConfig);
-	const tools = await client.getTools();
+	const rawTools = await client.getTools();
+
+	// Convert tools from JSON Schema to Zod schema format
+	// The MultiServerMCPClient returns tools with JSON Schema, but LangChain agents
+	// require DynamicStructuredTool instances with Zod schemas for proper validation
+	const tools = rawTools.map((rawTool: any) => {
+		const inputSchema = rawTool.lc_kwargs?.schema || rawTool.schema;
+
+		if (!inputSchema) {
+			// Tool has no schema, return as-is
+			return rawTool;
+		}
+
+		// Check if already a Zod schema (has _def property)
+		if (inputSchema && typeof inputSchema === 'object' && '_def' in inputSchema) {
+			return rawTool;
+		}
+
+		// Convert JSON Schema to Zod schema
+		const rawSchema = convertJsonSchemaToZod(inputSchema);
+
+		// Ensure we always have an object schema for structured tools
+		const objectSchema =
+			rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
+
+		// Create a new DynamicStructuredTool with the converted Zod schema
+		return new DynamicStructuredTool({
+			name: rawTool.name,
+			description: rawTool.description ?? '',
+			schema: objectSchema,
+			func: rawTool.func || rawTool.lc_kwargs?.func,
+		});
+	});
 
 	return { tools, client };
 }
@@ -119,13 +154,10 @@ const configureActivityCallback = (
 		const conversationId = turnContext.activity.conversation?.id;
 		const inputText = turnContext.activity.text || '';
 
-		const correlationId = uuid();
-		console.log(correlationId);
-
 		const baggageScope = new BaggageBuilder()
 			.tenantId(tenantDetails.tenantId)
 			.agentId(agentId)
-			.correlationId(correlationId)
+			.correlationId(uuid())
 			.agentName(agentName)
 			.conversationId(conversationId)
 			.build();
