@@ -845,7 +845,7 @@ describe('UserService', () => {
 			});
 		});
 
-		it('should reject legacy format when feature flag is enabled for instance owner', async () => {
+		it('should accept legacy format when feature flag is enabled for instance owner', async () => {
 			const inviterId = uuid();
 			const inviteeId = uuid();
 			const instanceOwner = Object.assign(new User(), {
@@ -859,12 +859,10 @@ describe('UserService', () => {
 				'061_tamper_proof_invite_links': true,
 			});
 
-			await expect(
-				userService.getInvitationIdsFromPayload({ inviterId, inviteeId }),
-			).rejects.toThrow(BadRequestError);
-			await expect(
-				userService.getInvitationIdsFromPayload({ inviterId, inviteeId }),
-			).rejects.toThrow('Invalid invite URL');
+			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).not.toHaveBeenCalled();
 		});
 
 		it('should throw error when instance owner is not found', async () => {
@@ -887,9 +885,8 @@ describe('UserService', () => {
 			);
 		});
 
-		it('should throw error when feature flag is enabled but no token provided', async () => {
+		it('should throw error when feature flag is enabled but no token and only one ID provided', async () => {
 			const inviterId = uuid();
-			const inviteeId = uuid();
 			const instanceOwner = Object.assign(new User(), {
 				id: uuid(),
 				createdAt: new Date(),
@@ -901,12 +898,12 @@ describe('UserService', () => {
 				'061_tamper_proof_invite_links': true,
 			});
 
-			await expect(
-				userService.getInvitationIdsFromPayload({ inviterId, inviteeId }),
-			).rejects.toThrow(BadRequestError);
-			await expect(
-				userService.getInvitationIdsFromPayload({ inviterId, inviteeId }),
-			).rejects.toThrow('Invalid invite URL');
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				'Invalid invite URL',
+			);
 		});
 
 		it('should throw error when feature flag is disabled but no inviterId/inviteeId provided', async () => {

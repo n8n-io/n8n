@@ -474,7 +474,7 @@ export class UserService {
 			return await this.processTokenBasedInvite(payload.token);
 		}
 
-		if (!isTamperProofLinksEnabled && payload.inviterId && payload.inviteeId) {
+		if (payload.inviterId && payload.inviteeId) {
 			return await this.processInviteeIdInviterIdBasedInvite(payload.inviterId, payload.inviteeId);
 		}
 
