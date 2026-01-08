@@ -13,9 +13,12 @@
         "publishedAt": {
             "type": "string"
         },
+        "title": {
+            "type": "string"
+        },
         "updatedAt": {
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

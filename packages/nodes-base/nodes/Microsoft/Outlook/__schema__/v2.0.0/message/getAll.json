@@ -24,6 +24,25 @@
                 "type": "string"
             }
         },
+        "ccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "conversationId": {
             "type": "string"
         },
@@ -49,6 +68,15 @@
         "id": {
             "type": "string"
         },
+        "importance": {
+            "type": "string"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "isRead": {
+            "type": "boolean"
+        },
         "receivedDateTime": {
             "type": "string"
         },
@@ -68,9 +96,28 @@
                 }
             }
         },
-        "subject": {
+        "sentDateTime": {
             "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 8
+    "version": 9
 }

@@ -7,13 +7,7 @@
                 "channel": {
                     "type": "object",
                     "properties": {
-                        "country": {
-                            "type": "string"
-                        },
                         "description": {
-                            "type": "string"
-                        },
-                        "keywords": {
                             "type": "string"
                         },
                         "title": {
@@ -167,24 +161,7 @@
                     "type": "string"
                 }
             }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "topicIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -10,9 +10,6 @@
         "referrer": {
             "type": "null"
         },
-        "source": {
-            "type": "string"
-        },
         "state": {
             "type": "string"
         },
@@ -40,5 +37,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

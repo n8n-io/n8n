@@ -1,14 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "email": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
-        },
-        "mcr_id": {
-            "type": "integer"
         },
         "name": {
             "type": "string"
@@ -24,6 +18,9 @@
                 }
             }
         },
+        "stage_name": {
+            "type": "string"
+        },
         "type": {
             "type": "string"
         },
@@ -31,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

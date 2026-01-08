@@ -12,6 +12,9 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
@@ -47,9 +50,6 @@
                 }
             }
         },
-        "id": {
-            "type": "string"
-        },
         "lastModifiedBy": {
             "type": "object",
             "properties": {
@@ -60,6 +60,9 @@
                             "type": "string"
                         },
                         "email": {
+                            "type": "string"
+                        },
+                        "id": {
                             "type": "string"
                         }
                     }
@@ -102,5 +105,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

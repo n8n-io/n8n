@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "properties": {
+        "contacts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "input": {
+                        "type": "string"
+                    },
+                    "wa_id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "message_status": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "messaging_product": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

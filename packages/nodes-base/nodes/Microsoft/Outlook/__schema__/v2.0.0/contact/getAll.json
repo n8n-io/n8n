@@ -10,6 +10,21 @@
                 "type": "string"
             }
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
         "emailAddresses": {
             "type": "array",
             "items": {
@@ -24,9 +39,33 @@
                 }
             }
         },
+        "fileAs": {
+            "type": "string"
+        },
+        "homePhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "id": {
+            "type": "string"
+        },
+        "imAddresses": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "personalNotes": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

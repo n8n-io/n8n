@@ -90,9 +90,6 @@
                 },
                 "Modified": {
                     "type": "string"
-                },
-                "Title": {
-                    "type": "string"
                 }
             }
         },
@@ -153,5 +150,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

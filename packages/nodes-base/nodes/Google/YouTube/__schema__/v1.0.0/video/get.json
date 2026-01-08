@@ -36,7 +36,7 @@
         "localizations": {
             "type": "object",
             "properties": {
-                "es": {
+                "en": {
                     "type": "object",
                     "properties": {
                         "description": {
@@ -94,6 +94,12 @@
                 },
                 "publishedAt": {
                     "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "thumbnails": {
                     "type": "object",
@@ -227,5 +233,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

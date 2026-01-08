@@ -129,12 +129,6 @@
                 "type": "integer"
             }
         },
-        "date_modified": {
-            "type": "string"
-        },
-        "date_modified_gmt": {
-            "type": "string"
-        },
         "date_on_sale_from": {
             "type": "null"
         },
@@ -216,12 +210,6 @@
         "global_unique_id": {
             "type": "string"
         },
-        "grouped_products": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "has_options": {
             "type": "boolean"
         },
@@ -254,7 +242,16 @@
                     "name": {
                         "type": "string"
                     },
+                    "sizes": {
+                        "type": "string"
+                    },
                     "src": {
+                        "type": "string"
+                    },
+                    "srcset": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
                         "type": "string"
                     }
                 }
@@ -337,9 +334,6 @@
         "slug": {
             "type": "string"
         },
-        "sold_individually": {
-            "type": "boolean"
-        },
         "status": {
             "type": "string"
         },
@@ -391,5 +385,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

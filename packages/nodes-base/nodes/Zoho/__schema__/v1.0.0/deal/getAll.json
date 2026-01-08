@@ -1,6 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "Account_Name": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Contact_Name": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "Deal_Name": {
             "type": "string"
         },
@@ -20,7 +42,10 @@
                     "type": "string"
                 }
             }
+        },
+        "Stage": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

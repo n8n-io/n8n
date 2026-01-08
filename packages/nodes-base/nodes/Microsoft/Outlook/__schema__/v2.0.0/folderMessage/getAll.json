@@ -16,37 +16,15 @@
         "conversationId": {
             "type": "string"
         },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "address": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "hasAttachments": {
             "type": "boolean"
         },
         "id": {
             "type": "string"
         },
-        "receivedDateTime": {
-            "type": "string"
-        },
-        "sentDateTime": {
-            "type": "string"
-        },
         "subject": {
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }
