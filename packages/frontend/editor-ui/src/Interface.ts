@@ -51,6 +51,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
@@ -467,6 +468,10 @@ export interface SubcategoryItemProps {
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
 	sections?: string[];
+	items?: INodeCreateElement[];
+	new?: boolean;
+	hideActions?: boolean;
+	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 }
 export interface ViewItemProps {
 	title: string;
@@ -542,6 +547,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	type: 'section';
 	title: string;
 	children: INodeCreateElement[];
+	/**
+	 * Whether to show a separator at the bottom of the expanded section
+	 */
+	showSeparator?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -655,7 +664,8 @@ export type NodeFilterType =
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
 	| typeof AI_UNCATEGORIZED_CATEGORY
-	| typeof AI_EVALUATION;
+	| typeof AI_EVALUATION
+	| typeof HUMAN_IN_THE_LOOP_CATEGORY;
 
 export type NodeCreatorOpenSource =
 	| ''

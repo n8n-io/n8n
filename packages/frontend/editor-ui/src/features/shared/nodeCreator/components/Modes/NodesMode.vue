@@ -61,7 +61,7 @@ const i18n = useI18n();
 const calloutHelpers = useCalloutHelpers();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -76,7 +76,7 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value),
+		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
 	);
 });
 
@@ -140,6 +140,9 @@ function onSelected(item: INodeCreateElement) {
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 			sections: item.properties.sections,
+			items: item.properties.items,
+			hideActions: item.properties.hideActions,
+			actionsFilter: item.properties.actionsFilter,
 		});
 
 		onSubcategorySelected({

@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { processHitlResponses } from '@utils/agent-execution';
 
 import type { RequestResponseMetadata, AgentResult } from '../types';
 import { createAgentSequence } from './createAgentSequence';
@@ -48,6 +49,22 @@ export async function executeBatch(
 	const returnData: INodeExecutionData[] = [];
 	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
 
+	// Process HITL (Human-in-the-Loop) tool responses before running the agent
+	// If there are approved HITL tools, we need to execute the gated tools first
+	const hitlResult = processHitlResponses(response, startIndex);
+
+	if (hitlResult.hasApprovedHitlTools && hitlResult.pendingGatedToolRequest) {
+		// Return the gated tool request immediately
+		// The Agent will resume after the gated tool executes
+		return {
+			returnData: [],
+			request: hitlResult.pendingGatedToolRequest,
+		};
+	}
+
+	// Use the processed response (with HITL denials properly formatted)
+	const processedResponse = hitlResult.processedResponse;
+
 	// Check max iterations if this is a continuation of a previous execution
 	const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10);
 	assertParamIsNumber('options.maxIterations', maxIterations, ctx.getNode());
@@ -57,7 +74,7 @@ export async function executeBatch(
 
 		checkMaxIterations(response, maxIterations, ctx.getNode());
 
-		const itemContext = await prepareItemContext(ctx, itemIndex, response);
+		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
 
 		const { tools, prompt, options, outputParser } = itemContext;
 
@@ -72,8 +89,8 @@ export async function executeBatch(
 			fallbackModel,
 		);
 
-		// Run the agent
-		return await runAgent(ctx, executor, itemContext, model, memory, response);
+		// Run the agent with processed response
+		return await runAgent(ctx, executor, itemContext, model, memory, processedResponse);
 	});
 
 	const batchResults = await Promise.allSettled(batchPromises);

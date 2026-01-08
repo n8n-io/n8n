@@ -476,8 +476,8 @@ export class WorkflowExecute {
 					waitingNodeIndex
 				].main[connectionData.index] = {
 					previousNode: parentNodeName,
-					previousNodeOutput: outputIndex || undefined,
-					previousNodeRun: runIndex || undefined,
+					previousNodeOutput: outputIndex ?? undefined,
+					previousNodeRun: runIndex ?? undefined,
 				};
 			}
 
@@ -712,8 +712,8 @@ export class WorkflowExecute {
 									main: [
 										{
 											previousNode: parentNodeName,
-											previousNodeOutput: outputIndex || undefined,
-											previousNodeRun: runIndex || undefined,
+											previousNodeOutput: outputIndex ?? undefined,
+											previousNodeRun: runIndex ?? undefined,
 										},
 									],
 								},
@@ -783,8 +783,8 @@ export class WorkflowExecute {
 					main: [
 						{
 							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex || undefined,
-							previousNodeRun: runIndex || undefined,
+							previousNodeOutput: outputIndex ?? undefined,
+							previousNodeRun: runIndex ?? undefined,
 						},
 					],
 				},
@@ -1296,9 +1296,12 @@ export class WorkflowExecute {
 				this.additionalData,
 				this.mode,
 			);
-			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
+
+			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
+			executionStackEntry.node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
+
 			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
 	}
@@ -1919,8 +1922,9 @@ export class WorkflowExecute {
 					// Rewire output data log to the given connectionType
 					if (executionNode.rewireOutputLogTo) {
 						// TODO: Remove when AI-723 lands.
+						// Try to get inputOverride from existing run data
 						taskData.inputOverride =
-							this.runExecutionData.resultData.runData[executionNode.name][runIndex]
+							this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]
 								?.inputOverride || {};
 						taskData.data = {
 							[executionNode.rewireOutputLogTo]: nodeSuccessData,

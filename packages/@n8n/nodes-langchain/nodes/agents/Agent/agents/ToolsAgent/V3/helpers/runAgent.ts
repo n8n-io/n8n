@@ -44,6 +44,7 @@ export async function runAgent(
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
 	const invokeParams = {
+		// steps are passed to the ToolCallingAgent in the runnable sequence to keep track of tool calls
 		steps,
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
