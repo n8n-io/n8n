@@ -44,9 +44,10 @@ export interface FeedbackKeyParts {
  * Weights should sum to approximately 1.0.
  */
 export const DEFAULT_EVALUATOR_WEIGHTS: ScoreWeights = {
-	'llm-judge': 0.4,
-	programmatic: 0.3,
-	pairwise: 0.3,
+	'llm-judge': 0.35,
+	programmatic: 0.25,
+	pairwise: 0.25,
+	similarity: 0.15,
 };
 
 /**

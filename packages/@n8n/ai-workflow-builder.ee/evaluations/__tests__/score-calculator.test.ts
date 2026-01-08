@@ -147,15 +147,17 @@ describe('Score Calculator', () => {
 				createFeedback('llm-judge', 'a', 1.0),
 				createFeedback('programmatic', 'b', 0.5),
 				createFeedback('pairwise', 'c', 0.5),
+				createFeedback('similarity', 'd', 0.5),
 			];
 
 			const score = calculateWeightedScore(feedback);
 
-			// llm-judge: 1.0 * 0.4 = 0.4
-			// programmatic: 0.5 * 0.3 = 0.15
-			// pairwise: 0.5 * 0.3 = 0.15
-			// Total: 0.7 / 1.0 = 0.7
-			expect(score).toBeCloseTo(0.7);
+			// llm-judge: 1.0 * 0.35 = 0.35
+			// programmatic: 0.5 * 0.25 = 0.125
+			// pairwise: 0.5 * 0.25 = 0.125
+			// similarity: 0.5 * 0.15 = 0.075
+			// Total: 0.675 / 1.0 = 0.675
+			expect(score).toBeCloseTo(0.675);
 		});
 
 		it('should use custom weights', () => {
