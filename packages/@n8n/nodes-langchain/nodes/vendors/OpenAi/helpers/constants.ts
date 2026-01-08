@@ -5,12 +5,13 @@
  * - GPT-5 (non-pro, non-codex): gpt-5, gpt-5.1 with optional -mini/-nano
  * - GPT-4.1 with optional -mini/-nano
  * - GPT-4o (chat variants only)
- * - GPT-4 legacy variants
- * - GPT-3.5 variants
+ * - GPT-4 legacy variants (including date suffixes like -0314, -0613, and date-preview like -1106-preview)
+ * - GPT-4-vision-preview
+ * - GPT-3.5 variants (including instruct and date suffixes)
  * - GPT-3 / Instruct era models
  */
 export const MODELS_ALLOWING_NON_RESPONSES_API_PATTERN =
-	/^(?:gpt-5(?:\.1)?(?:-mini|-nano)?|gpt-4\.1(?:-mini|-nano)?|gpt-4o(?:-mini)?|gpt-4(?:-turbo)?(?:-preview)?|gpt-4-32k|gpt-3\.5-turbo(?:-16k)?(?:-(?:0613|1106|latest))?|text-davinci-003|text-davinci-002|davinci-002|babbage-002)$/;
+	/^(?:gpt-5(?:\.1)?(?:-(?:mini|nano))?|gpt-4\.1(?:-(?:mini|nano))?|gpt-4o(?:-mini)?|gpt-4-vision-preview|gpt-4-turbo(?:-preview)?|gpt-4-32k(?:-\d{4})?|gpt-4(?:-\d{4})?(?:-preview)?|gpt-3\.5-turbo-instruct(?:-\d{4})?|gpt-3\.5-turbo(?:-16k)?(?:-(?:\d{4}|latest))?|text-davinci-003|text-davinci-002|davinci-002|babbage-002)$/;
 
 export const MODELS_NOT_SUPPORT_FUNCTION_CALLS = [
 	'gpt-3.5-turbo-16k-0613',
