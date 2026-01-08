@@ -32,9 +32,11 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -156,6 +158,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -230,6 +233,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				nodeName: undefined,
 			},
 		},
+		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
 			data: {
@@ -261,8 +268,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', true);
-	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
+	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	const lastSelectedNode = ref<string | null>(null);
@@ -545,6 +551,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 		workflowListEventBus: EventBus,
 	) => {
@@ -568,9 +575,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const toggleSidebarMenuCollapse = () => {
-		const newCollapsedState = !sidebarMenuCollapsed.value;
-		sidebarMenuCollapsedPreference.value = newCollapsedState;
-		sidebarMenuCollapsed.value = newCollapsedState;
+		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
@@ -678,7 +683,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
-		sidebarMenuCollapsedPreference,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,

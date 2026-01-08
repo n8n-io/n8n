@@ -260,11 +260,21 @@ const restoreWorkflowVersion = async (
 			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
 	}
 
+	const versionIdBeforeRestore = workflow.versionId;
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 		workflowId.value,
 		id,
 		deactivateAndRestore,
 	);
+
+	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.restore.alreadyRestored'),
+			type: 'info',
+		});
+		return;
+	}
+
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
@@ -279,13 +289,21 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 	const publishEventBus = createEventBus<WorkflowHistoryPublishModalEventBusEvents>();
 
 	publishEventBus.once('publish', (publishData) => {
-		// Update the history list with the new name and description
+		// Refresh the active workflow to get the updated activeVersion with workflowPublishHistory
+		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+
+		// Update the history list with the new name, description, and workflowPublishHistory
 		const historyItem = workflowHistory.value.find(
 			(item) => item.versionId === publishData.versionId,
 		);
 		if (historyItem) {
 			historyItem.name = publishData.name;
 			historyItem.description = publishData.description;
+			// Update workflowPublishHistory from the store's activeVersion
+			if (activeWorkflow.value?.activeVersion?.workflowPublishHistory) {
+				historyItem.workflowPublishHistory =
+					activeWorkflow.value.activeVersion.workflowPublishHistory;
+			}
 		}
 
 		// Refresh the selected workflow version if it's the one that was published
@@ -294,11 +312,11 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 				...selectedWorkflowVersion.value,
 				name: publishData.name,
 				description: publishData.description,
+				workflowPublishHistory:
+					activeWorkflow.value?.activeVersion?.workflowPublishHistory ??
+					selectedWorkflowVersion.value.workflowPublishHistory,
 			};
 		}
-
-		// Refresh the active workflow to get the updated activeVersion
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
 
 		sendTelemetry('User published version from history');
 	});
@@ -529,16 +547,6 @@ watchEffect(async () => {
 .listComponentWrapper {
 	grid-area: list;
 	position: relative;
-
-	&::before {
-		content: '';
-		display: block;
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: var(--border-width);
-		background-color: var(--color--foreground);
-	}
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 </style>

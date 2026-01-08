@@ -232,7 +232,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(() => {
 			// Enable the feature flag for tests
-			process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+			process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 
 			mockLogger = {
 				debug: jest.fn(),
@@ -252,12 +252,12 @@ describe('LoadNodesAndCredentials', () => {
 
 		afterEach(() => {
 			// Clean up the environment variable after each test
-			delete process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+			delete process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS;
 		});
 
 		it('should not inject hooks when feature flag is disabled', () => {
 			// Disable the feature flag
-			delete process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+			delete process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS;
 
 			const triggerNode: INodeTypeDescription = {
 				name: 'webhookTrigger',
@@ -292,7 +292,7 @@ describe('LoadNodesAndCredentials', () => {
 			);
 
 			// Re-enable for other tests
-			process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+			process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 		});
 
 		it('should not inject hooks if no hooks exist', () => {

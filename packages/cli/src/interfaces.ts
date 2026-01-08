@@ -48,7 +48,10 @@ export interface IWorkflowResponse extends IWorkflowBase {
 }
 
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	extends Omit<
+		IWorkflowBase,
+		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+	> {
 	owner?:
 		| {
 				type: 'personal';

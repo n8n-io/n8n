@@ -91,6 +91,7 @@ const emit = defineEmits<{
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 	];
 }>();
@@ -134,10 +135,6 @@ const projectPermissions = computed(
 const canCreateWorkflow = computed(
 	() => globalPermissions.value.create ?? projectPermissions.value.create,
 );
-
-const showFolders = computed(() => {
-	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
-});
 
 const showCardBreadcrumbs = computed(() => {
 	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
@@ -197,9 +194,9 @@ const actions = computed(() => {
 	// TODO: add test to verify that moving a readonly card is not possible
 	if (
 		!props.readOnly &&
+		props.areFoldersEnabled &&
 		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
-		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
 	) {
 		items.push({
@@ -352,6 +349,7 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
@@ -534,27 +532,20 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<N8nTooltip
-				:content="data.description"
-				:disabled="!data.description"
-				data-test-id="workflow-card-name-tooltip"
-				:popper-class="$style['description-popper']"
+			<N8nText
+				tag="h2"
+				bold
+				:class="{
+					[$style.cardHeading]: true,
+					[$style.cardHeadingArchived]: data.isArchived,
+				}"
+				data-test-id="workflow-card-name"
 			>
-				<N8nText
-					tag="h2"
-					bold
-					:class="{
-						[$style.cardHeading]: true,
-						[$style.cardHeadingArchived]: data.isArchived,
-					}"
-					data-test-id="workflow-card-name"
-				>
-					{{ data.name }}
-					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-						{{ locale.baseText('workflows.item.readonly') }}
-					</N8nBadge>
-				</N8nText>
-			</N8nTooltip>
+				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
@@ -648,15 +639,26 @@ const tags = computed(
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
-					<template v-if="isWorkflowPublished">
-						<N8nIcon icon="circle-check" size="xlarge" :class="$style.publishIndicatorColor" />
-						<N8nText size="small" bold :class="$style.publishIndicatorColor">
-							{{ locale.baseText('workflows.item.published') }}
-						</N8nText>
-					</template>
-					<N8nText v-else size="small" bold :class="$style.notPublishedIndicatorColor">
-						{{ locale.baseText('workflows.item.notPublished') }}
-					</N8nText>
+					<N8nTooltip
+						:content="
+							isWorkflowPublished
+								? locale.baseText('generic.published')
+								: locale.baseText('generic.notPublished')
+						"
+					>
+						<N8nIcon
+							v-if="isWorkflowPublished"
+							icon="circle-check"
+							size="large"
+							:class="$style.publishIndicatorColor"
+						/>
+						<N8nIcon
+							v-else
+							icon="circle-minus"
+							size="large"
+							:class="$style.notPublishedIndicatorColor"
+						/>
+					</N8nTooltip>
 				</div>
 
 				<N8nActionToggle
@@ -758,6 +760,7 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .publishIndicatorColor {

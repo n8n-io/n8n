@@ -75,11 +75,7 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
-test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
-	},
-});
+test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
@@ -240,7 +236,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field');
 
 		// Refresh session
-		await n8n.page.getByTestId('refresh-session-button').click();
-		await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
+		await n8n.canvas.logsPanel.refreshSession();
+		await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
 	});
 });

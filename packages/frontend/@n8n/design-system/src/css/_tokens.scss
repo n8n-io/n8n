@@ -718,3 +718,15 @@
 	color-scheme: light dark;
 	@include theme;
 }
+
+body[data-theme='light'] {
+	color-scheme: light;
+}
+
+body[data-theme='dark'] {
+	color-scheme: dark;
+}
+
+body:not([data-theme]) {
+	color-scheme: light dark;
+}

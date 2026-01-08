@@ -1,14 +1,20 @@
 import { mock } from 'jest-mock-extended';
 import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
-import { convertJsonToSpreadsheetBinary } from '@utils/binary';
+import { convertJsonToSpreadsheetBinary, extractDataFromPDF } from '@utils/binary';
 
 jest.mock('xlsx', () => ({
 	utils: {
 		json_to_sheet: jest.fn(),
 	},
 	write: jest.fn(),
+}));
+
+jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	getDocument: jest.fn(),
+	version: '5.3.31',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -87,6 +93,85 @@ describe('convertJsonToSpreadsheetBinary', () => {
 				FS: ';',
 			});
 			expect(helpers.prepareBinaryData).toHaveBeenCalledWith(mockBuffer, 'spreadsheet.csv');
+		});
+	});
+});
+
+describe('extractDataFromPDF', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+
+	const originalDOMMatrix = globalThis.DOMMatrix;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	afterEach(() => {
+		if (originalDOMMatrix) {
+			globalThis.DOMMatrix = originalDOMMatrix;
+		} else {
+			// @ts-expect-error - Intentionally deleting for test cleanup
+			delete globalThis.DOMMatrix;
+		}
+	});
+
+	describe('DOMMatrix polyfill', () => {
+		it('should polyfill DOMMatrix when it is undefined', async () => {
+			// @ts-expect-error - Intentionally deleting for test
+			delete globalThis.DOMMatrix;
+			expect(globalThis.DOMMatrix).toBeUndefined();
+
+			const mockPage = {
+				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+			};
+			const mockDocument = {
+				numPages: 1,
+				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: jest.fn().mockResolvedValue(mockPage),
+			};
+			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+			(getDocument as jest.Mock).mockReturnValue({
+				promise: Promise.resolve(mockDocument),
+			});
+
+			const mockBinaryData = {
+				data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+				mimeType: 'application/pdf',
+			};
+			helpers.assertBinaryData.mockReturnValue(mockBinaryData);
+
+			await extractDataFromPDF.call(executeFunctions, 'data', undefined, undefined, true, 0);
+
+			expect(globalThis.DOMMatrix).toBeDefined();
+		});
+
+		it('should not re-polyfill DOMMatrix when it is already defined', async () => {
+			const mockDOMMatrix = class MockDOMMatrix {};
+			globalThis.DOMMatrix = mockDOMMatrix as unknown as typeof DOMMatrix;
+
+			const mockPage = {
+				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+			};
+			const mockDocument = {
+				numPages: 1,
+				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: jest.fn().mockResolvedValue(mockPage),
+			};
+			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+			(getDocument as jest.Mock).mockReturnValue({
+				promise: Promise.resolve(mockDocument),
+			});
+
+			const mockBinaryData = {
+				data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+				mimeType: 'application/pdf',
+			};
+			helpers.assertBinaryData.mockReturnValue(mockBinaryData);
+
+			await extractDataFromPDF.call(executeFunctions, 'data', undefined, undefined, true, 0);
+
+			expect(globalThis.DOMMatrix).toBe(mockDOMMatrix);
 		});
 	});
 });

@@ -38,6 +38,7 @@ export const LICENSE_FEATURES = {
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
 	CUSTOM_ROLES: 'feat:customRoles',
 	AI_BUILDER: 'feat:aiBuilder',
+	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
 } as const;
 
 export const LICENSE_QUOTAS = {

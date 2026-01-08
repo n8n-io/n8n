@@ -15,10 +15,7 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'chat-hub' isn't (yet) an eligible module by default
-		const NON_DEFAULT_MODULES = ['chat-hub'];
-		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -31,6 +28,7 @@ describe('eligibleModules', () => {
 			'provisioning',
 			'breaking-changes',
 			'dynamic-credentials',
+			'chat-hub',
 		]);
 	});
 
@@ -45,6 +43,7 @@ describe('eligibleModules', () => {
 			'provisioning',
 			'breaking-changes',
 			'dynamic-credentials',
+			'chat-hub',
 		]);
 	});
 

@@ -9,9 +9,12 @@ import {
 	hasNonPositionalChanges,
 	NodeDiffStatus,
 	RULES,
+	SKIP_RULES,
 	WorkflowChangeSet,
 	type DiffableNode,
+	type DiffableWorkflow,
 	type DiffRule,
+	type GroupedWorkflowHistory,
 } from '../src/workflow-diff';
 
 describe('NodeDiffStatus', () => {
@@ -292,7 +295,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 				{ id: '1', nodes: [node1, node2] },
 			]);
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -309,7 +312,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -326,7 +329,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -345,7 +348,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, modifiedNode2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -365,7 +368,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -382,7 +385,7 @@ describe('groupWorkflows', () => {
 		});
 
 		it('should handle empty workflows array', () => {
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(0);
 		});
@@ -390,12 +393,13 @@ describe('groupWorkflows', () => {
 		it('should handle single workflow', () => {
 			const workflows = mock<IWorkflowBase[]>([{ id: '1', nodes: [node1] }]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toEqual(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toEqual(NodeDiffStatus.Eq);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 	});
@@ -410,7 +414,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => false;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -430,7 +434,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => true;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -444,6 +448,8 @@ describe('groupWorkflows', () => {
 				return {
 					id,
 					nodes,
+					connections: {},
+					createdAt: new Date(),
 				} as IWorkflowBase;
 			};
 
@@ -451,10 +457,16 @@ describe('groupWorkflows', () => {
 				{
 					description: 'should return true when all changes are additive',
 					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: true,
+				},
+				{
+					description: 'should return false if a new parameter is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
 					nextWorkflow: createWorkflow('1', [
 						{ id: '1', parameters: { a: 'value1', b: 'value2' }, name: 'n1' },
 					]),
-					expected: true,
+					expected: false,
 				},
 				{
 					description: 'should return false when a node is deleted',
@@ -499,19 +511,259 @@ describe('groupWorkflows', () => {
 						from: baseWorkflow,
 						to: baseWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
 					},
 					{
 						from: nextWorkflow,
 						to: nextWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
 					},
-					compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
+					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
 				expect(result).toEqual(expected);
 			});
+		});
+		describe('skipTimeDifference', () => {
+			const createWorkflowHistory = (
+				createdAt: Date,
+			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
+				from: {
+					nodes: [],
+					connections: {},
+					createdAt,
+				},
+				to: {
+					nodes: [],
+					connections: {},
+					createdAt,
+				},
+				groupedWorkflows: [],
+				workflowChangeSet: new WorkflowChangeSet(
+					{
+						nodes: [],
+						connections: {},
+						createdAt,
+					},
+					{
+						nodes: [],
+						connections: {},
+						createdAt,
+					},
+				),
+			});
+
+			const skipTimeDifference = SKIP_RULES.makeSkipTimeDifference(30 * 60 * 1000);
+
+			it('should return false when time difference is within 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:29:59Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return true when time difference exceeds 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:01Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return true when time difference is exactly 30 minutes and 1 millisecond', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00.001Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when time difference is exactly 30 minutes', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with the same timestamp', () => {
+				const timestamp = new Date('2023-01-01T12:00:00Z');
+				const prev = createWorkflowHistory(timestamp);
+				const next = createWorkflowHistory(timestamp);
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should handle workflows with negative time difference', () => {
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:30:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+
+				const result = skipTimeDifference(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should correctly handle other time skip settings', () => {
+				const skipDifferentUsers10 = SKIP_RULES.makeSkipTimeDifference(10 * 60 * 1000);
+
+				const prev = createWorkflowHistory(new Date('2023-01-01T12:00:00Z'));
+				const next = createWorkflowHistory(new Date('2023-01-01T12:29:59Z'));
+
+				const result = skipDifferentUsers10(prev, next);
+
+				expect(result).toBe(true);
+			});
+		});
+		describe('skipDifferentUsers', () => {
+			const createWorkflowHistory = (
+				user: unknown,
+			): GroupedWorkflowHistory<DiffableWorkflow<DiffableNode>> => ({
+				from: {
+					nodes: [],
+					connections: {},
+					createdAt: new Date(),
+					user,
+				},
+				to: {
+					nodes: [],
+					connections: {},
+					createdAt: new Date(),
+					user,
+				},
+				groupedWorkflows: [],
+				workflowChangeSet: new WorkflowChangeSet(
+					{
+						nodes: [],
+						connections: {},
+						createdAt: new Date(),
+						user,
+					},
+					{
+						nodes: [],
+						connections: {},
+						createdAt: new Date(),
+						user,
+					},
+				),
+			});
+
+			it('should return true when users are different', () => {
+				const prev = createWorkflowHistory('user1');
+				const next = createWorkflowHistory('user2');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when users are the same', () => {
+				const prev = createWorkflowHistory('user1');
+				const next = createWorkflowHistory('user1');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return false when both users are undefined', () => {
+				const prev = createWorkflowHistory(undefined);
+				const next = createWorkflowHistory(undefined);
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(false);
+			});
+
+			it('should return true when one user is undefined and the other is defined', () => {
+				const prev = createWorkflowHistory(undefined);
+				const next = createWorkflowHistory('user1');
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should handle complex user objects', () => {
+				const user1 = { id: 1, name: 'User One' };
+				const user2 = { id: 2, name: 'User Two' };
+
+				const prev = createWorkflowHistory(user1);
+				const next = createWorkflowHistory(user2);
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(true);
+			});
+
+			it('should return false when complex user objects are deeply equal', () => {
+				const user = { id: 1, name: 'User One' };
+
+				const prev = createWorkflowHistory(user);
+				const next = createWorkflowHistory(user);
+
+				const result = SKIP_RULES.skipDifferentUsers(prev, next);
+
+				expect(result).toBe(false);
+			});
+		});
+	});
+	describe('groupWorkflows - skipRules', () => {
+		const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
+		const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
+
+		let workflows: IWorkflowBase[];
+		beforeEach(() => {
+			workflows = [];
+		});
+
+		it('should skip merging workflows when skipRules apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+			]);
+
+			const trueRule: DiffRule = (_l, _r) => true;
+			const grouped = groupWorkflows(workflows, [trueRule], [trueRule]);
+
+			expect(grouped.length).toBe(3);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
+			expect(grouped[2].from).toEqual(workflows[2]);
+			expect(grouped[2].to).toEqual(workflows[3]);
+			expect(grouped[2].groupedWorkflows).toEqual([]);
+		});
+
+		it('should not skip merging workflows when skipRules do not apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const skipRule: DiffRule = (_l, _r) => false; // Never skip merging
+			const grouped = groupWorkflows(workflows, [], [skipRule]);
+
+			expect(grouped.length).toBe(2);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
 		});
 	});
 });

@@ -3,12 +3,22 @@ import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
-import { buildResponderPrompt } from '@/prompts/agents/responder.prompt';
+import {
+	buildResponderPrompt,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildGeneralErrorGuidance,
+} from '@/prompts/agents/responder.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
-import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
+import {
+	getErrorEntry,
+	getBuilderOutput,
+	getConfiguratorOutput,
+	hasRecursionErrorsCleared,
+} from '../utils/coordination-log';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -76,15 +86,36 @@ export class ResponderAgent {
 			contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
 		}
 
-		// Check for errors - if there's an error, surface it prominently
+		// Check for errors - provide context-aware guidance (AI-1812)
+		// Skip errors that have been cleared (AI-1812)
 		const errorEntry = getErrorEntry(context.coordinationLog);
-		if (errorEntry) {
+		const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
+
+		if (errorEntry && !errorsCleared) {
+			const hasWorkflow = context.workflowJSON.nodes.length > 0;
+			const errorMessage = errorEntry.summary.toLowerCase();
+			const isRecursionError =
+				errorMessage.includes('recursion') ||
+				errorMessage.includes('maximum number of steps') ||
+				errorMessage.includes('iteration limit');
+
 			contextParts.push(
 				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
 			);
-			contextParts.push(
-				'Please apologize to the user and explain that something went wrong while building their workflow.',
-			);
+
+			// AI-1812: Provide better guidance based on workflow state and error type
+			if (isRecursionError && hasWorkflow) {
+				// Recursion error but workflow was created
+				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
+				contextParts.push(...guidance);
+			} else if (isRecursionError && !hasWorkflow) {
+				// Recursion error and no workflow created
+				const guidance = buildRecursionErrorNoWorkflowGuidance();
+				contextParts.push(...guidance);
+			} else {
+				// Other errors (not recursion-related)
+				contextParts.push(buildGeneralErrorGuidance());
+			}
 		}
 
 		// Discovery context

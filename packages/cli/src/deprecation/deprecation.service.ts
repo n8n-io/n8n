@@ -34,23 +34,8 @@ export class DeprecationService {
 		{ envVar: 'N8N_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'N8N_PERSISTED_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'EXECUTIONS_DATA_PRUNE_TIMEOUT', message: SAFE_TO_REMOVE },
-		{
-			envVar: 'N8N_BINARY_DATA_MODE',
-			message: '`default` is deprecated. Please switch to `filesystem` mode.',
-			checkValue: (value: string) => value === 'default',
-		},
+		{ envVar: 'N8N_AVAILABLE_BINARY_DATA_MODES', message: SAFE_TO_REMOVE },
 		{ envVar: 'N8N_CONFIG_FILES', message: 'Please use .env files or *_FILE env vars instead.' },
-		{
-			envVar: 'DB_TYPE',
-			message: 'MySQL and MariaDB are deprecated. Please migrate to PostgreSQL.',
-			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
-		},
-		{
-			envVar: 'DB_SQLITE_POOL_SIZE',
-			message:
-				'Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite',
-			checkValue: (_: string) => this.globalConfig.database.isLegacySqlite,
-		},
 		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
@@ -82,21 +67,6 @@ export class DeprecationService {
 			message:
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
 			checkValue: (value: string) => value === 'own',
-		},
-		{
-			envVar: 'N8N_BLOCK_ENV_ACCESS_IN_NODE',
-			message:
-				'The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
-			checkValue: (value: string | undefined) => value === undefined || value === '',
-		},
-		{
-			envVar: 'N8N_GIT_NODE_DISABLE_BARE_REPOS',
-			message:
-				'Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
-			checkValue: (value: string | undefined) => value === undefined || value === '',
-			disableIf: () =>
-				this.globalConfig.nodes.exclude.includes('n8n-nodes-base.git') ||
-				this.globalConfig.deployment.type === 'cloud',
 		},
 	];
 

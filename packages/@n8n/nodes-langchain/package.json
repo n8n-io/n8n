@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.122.0",
+  "version": "2.3.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -178,7 +178,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
-    "@azure/identity": "4.3.0",
+    "@azure/identity": "catalog:",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",
@@ -214,7 +214,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "^5.0.2",
-    "@qdrant/js-client-rest": "^1.15.0",
+    "@qdrant/js-client-rest": "^1.16.2",
     "@supabase/supabase-js": "2.49.9",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
@@ -248,7 +248,7 @@
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
     "undici": "^6.21.0",
-    "weaviate-client": "3.6.2",
+    "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }

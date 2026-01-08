@@ -16,6 +16,7 @@ const props = defineProps<{
 	data: {
 		workflowId: string;
 		workflowDescription?: string | null;
+		onSave?: (description: string | null) => void;
 	};
 }>();
 
@@ -57,6 +58,9 @@ const saveDescription = async () => {
 			props.data.workflowId,
 			normalizedCurrentValue.value ?? null,
 		);
+
+		props.data.onSave?.(normalizedCurrentValue.value ?? null);
+
 		telemetry.track('User set workflow description', {
 			workflow_id: props.data.workflowId,
 			description: normalizedCurrentValue.value ?? null,

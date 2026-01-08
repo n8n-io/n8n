@@ -224,6 +224,8 @@ export interface ExternalHooks {
 		>;
 		afterUpdate: Array<ExternalHooksMethod<{ workflowData: IWorkflowDb }>>;
 		open: Array<ExternalHooksMethod<{ workflowId: string; workflowName: string }>>;
+		published: Array<ExternalHooksMethod<{ workflowId: string; versionId: string }>>;
+		unpublished: Array<ExternalHooksMethod<{ workflowId: string }>>;
 	};
 	execution: {
 		open: Array<

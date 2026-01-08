@@ -32,6 +32,7 @@ export interface NodePromptConfig {
 		switch: string[];
 		httpRequest: string[];
 		tool: string[];
+		gmail: string[];
 	};
 
 	/** Keywords that trigger inclusion of specific guides */

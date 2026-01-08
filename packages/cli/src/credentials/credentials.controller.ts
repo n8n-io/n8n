@@ -114,7 +114,7 @@ export class CredentialsController {
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
 		const { shared, ...credential } = this.licenseState.isSharingLicensed()
-			? await this.enterpriseCredentialsService.getOne(
+			? await this.enterpriseCredentialsService.getOneForUser(
 					req.user,
 					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -258,6 +258,7 @@ export class CredentialsController {
 			newCredentialData.isGlobal = isGlobal;
 		}
 
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {

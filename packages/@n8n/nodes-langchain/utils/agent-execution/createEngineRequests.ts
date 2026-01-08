@@ -3,7 +3,68 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
 import { isThinkingBlock, isRedactedThinkingBlock, isGeminiThoughtSignatureBlock } from './types';
-import type { RequestResponseMetadata, ToolCallRequest } from './types';
+import type {
+	RequestResponseMetadata,
+	ToolCallRequest,
+	ToolMetadata,
+	ThinkingMetadata,
+	HitlMetadata,
+} from './types';
+
+function hasGatedToolNodeName(
+	metadata: ToolMetadata,
+): metadata is ToolMetadata & { gatedToolNodeName: string } {
+	return typeof metadata.gatedToolNodeName === 'string';
+}
+
+function extractHitlMetadata(
+	metadata: ToolMetadata,
+	toolName: string,
+	toolInput: IDataObject,
+): HitlMetadata | undefined {
+	if (!hasGatedToolNodeName(metadata)) return undefined;
+
+	return {
+		gatedToolNodeName: metadata.gatedToolNodeName,
+		toolName,
+		originalInput: toolInput.toolParameters as IDataObject,
+	};
+}
+
+function extractThinkingMetadata(messageLog: unknown[] | undefined): ThinkingMetadata {
+	const result: ThinkingMetadata = {};
+	if (!messageLog || !Array.isArray(messageLog)) return result;
+
+	for (const message of messageLog) {
+		if (!message || typeof message !== 'object' || !('content' in message)) continue;
+
+		const content = (message as { content: unknown }).content;
+		if (!Array.isArray(content)) continue;
+
+		for (const block of content) {
+			if (isGeminiThoughtSignatureBlock(block)) {
+				result.google = { thoughtSignature: block.thoughtSignature };
+			}
+
+			if (isThinkingBlock(block)) {
+				result.anthropic = {
+					thinkingContent: block.thinking,
+					thinkingType: 'thinking',
+					thinkingSignature: block.signature,
+				};
+			} else if (isRedactedThinkingBlock(block)) {
+				result.anthropic = {
+					thinkingContent: block.data,
+					thinkingType: 'redacted_thinking',
+				};
+			}
+		}
+
+		if (result.google || result.anthropic) break;
+	}
+
+	return result;
+}
 
 /**
  * Creates engine requests from tool calls.
@@ -32,63 +93,24 @@ export async function createEngineRequests(
 
 			const nodeName = foundTool.metadata?.sourceNodeName;
 
-			// Ensure nodeName is defined and is a string
 			if (typeof nodeName !== 'string') return undefined;
 
-			// Check if this is an HITL (Human-in-the-Loop) tool
-			// HITL tools have originalSourceNodeName pointing to the gated tool
-			const originalSourceNodeName =
-				typeof foundTool.metadata?.originalSourceNodeName === 'string'
-					? foundTool.metadata.originalSourceNodeName
-					: undefined;
-			const isHitlTool = originalSourceNodeName !== undefined;
+			const metadata = (foundTool.metadata ?? {}) as ToolMetadata;
+			const toolInput = toolCall.toolInput as IDataObject;
+			const hitlMetadata = extractHitlMetadata(metadata, toolCall.tool, toolInput);
 
-			// For toolkit tools, include the tool name so the node knows which tool to execute
-			// For HITL tools, also include the tool name so it's available in expressions
-			let input: IDataObject = toolCall.toolInput as IDataObject;
-			if (foundTool.metadata?.isFromToolkit) {
+			let input: IDataObject = toolInput;
+			if (metadata.isFromToolkit) {
 				input = { ...input, tool: toolCall.tool };
 			}
-			if (isHitlTool) {
-				input = { ...input, toolName: toolCall.tool };
-			}
-
-			// Extract thought_signature from the AIMessage in messageLog (for Gemini 3)
-			let thoughtSignature: string | undefined;
-			// Extract thinking blocks from the AIMessage in messageLog (for Anthropic)
-			let thinkingContent: string | undefined;
-			let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
-			let thinkingSignature: string | undefined;
-
-			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
-				for (const message of toolCall.messageLog) {
-					// Check if message has content that could contain thought_signature or thinking blocks
-					if (message && typeof message === 'object' && 'content' in message) {
-						const content = message.content;
-						// Content can be string or array of content blocks
-						if (Array.isArray(content)) {
-							// Look for thought_signature in content blocks (Gemini)
-							// and thinking/redacted_thinking blocks (Anthropic)
-							for (const block of content) {
-								// Gemini thought_signature
-								if (isGeminiThoughtSignatureBlock(block)) {
-									thoughtSignature = block.thoughtSignature;
-								}
-
-								// Anthropic thinking blocks
-								if (isThinkingBlock(block)) {
-									thinkingContent = block.thinking;
-									thinkingType = 'thinking';
-									thinkingSignature = block.signature;
-								} else if (isRedactedThinkingBlock(block)) {
-									thinkingContent = block.data;
-									thinkingType = 'redacted_thinking';
-								}
-							}
-						}
-						if (thoughtSignature || thinkingContent) break;
-					}
-				}
+			if (hitlMetadata) {
+				// This input will be used as HITL node input
+				input = {
+					...input,
+					...(input.hitlParameters as IDataObject),
+					// stringify parameters so that they can be accessed with $fromAI method
+					toolParameters: JSON.stringify(input.toolParameters),
+				};
 			}
 
 			return {
@@ -99,27 +121,8 @@ export async function createEngineRequests(
 				id: toolCall.toolCallId,
 				metadata: {
 					itemIndex,
-					// HITL metadata for handling approval flow
-					...(isHitlTool && {
-						hitl: {
-							isHitlTool: true,
-							originalSourceNodeName,
-							toolName: toolCall.tool,
-							originalInput: toolCall.toolInput as IDataObject,
-						},
-					}),
-					...(thoughtSignature && {
-						google: {
-							thoughtSignature,
-						},
-					}),
-					...(thinkingContent && {
-						anthropic: {
-							thinkingContent,
-							thinkingType,
-							thinkingSignature,
-						},
-					}),
+					hitl: hitlMetadata,
+					...extractThinkingMetadata(toolCall.messageLog),
 				},
 			};
 		})

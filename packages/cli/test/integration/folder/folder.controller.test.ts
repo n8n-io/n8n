@@ -54,7 +54,16 @@ const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 beforeEach(async () => {
 	testServer.license.enable('feat:folders');
 
-	await testDb.truncate(['Folder', 'SharedWorkflow', 'TagEntity', 'Project', 'ProjectRelation']);
+	await testDb.truncate([
+		'Folder',
+		'SharedWorkflow',
+		'TagEntity',
+		'Project',
+		'ProjectRelation',
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 
 	projectRepository = Container.get(ProjectRepository);
 	folderRepository = Container.get(FolderRepository);

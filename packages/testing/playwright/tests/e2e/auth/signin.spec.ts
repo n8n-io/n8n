@@ -12,6 +12,6 @@ test.describe('Sign In', () => {
 			INSTANCE_OWNER_CREDENTIALS.password,
 		);
 
-		await expect(n8n.sideBar.getUserMenu()).toBeVisible();
+		await expect(n8n.sideBar.getSettings()).toBeVisible();
 	});
 });

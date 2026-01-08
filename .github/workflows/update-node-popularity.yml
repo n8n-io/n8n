@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js and Dependencies
-        uses: ./.github/actions/setup-nodejs-github
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: '' # Skip build, we only need to fetch data
 

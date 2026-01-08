@@ -20,7 +20,7 @@ test.describe.skip('Execute previous nodes', () => {
 
 		// Verify Code2 (current node) was NOT executed.
 		// The output panel should show the placeholder text, not execution results
-		await expect(n8n.ndv.outputPanel.get()).toContainText('Execute this node to view data');
+		await expect(n8n.ndv.outputPanel.get()).toContainText('Execute step or set mock data');
 
 		// Close the NDV
 		await n8n.ndv.close();

@@ -22,7 +22,7 @@ test.describe('ADO-2230 NDV Pagination Reset', () => {
 
 		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).not.toHaveText(firstPageContent ?? '');
 
-		await n8n.ndv.setParameterInputValue('randomDataCount', '20');
+		await n8n.ndv.setParameterInputValue('randomDataCount', '50');
 
 		await n8n.ndv.execute();
 		await n8n.notifications.quickCloseAll();

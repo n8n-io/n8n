@@ -151,8 +151,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
 		// Common fields for both folders and workflows
 		const commonFields = {
-			createdAt: true,
 			updatedAt: true,
+			createdAt: true,
 			id: true,
 			name: true,
 		} as const;
@@ -444,6 +444,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -483,20 +484,81 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (typeof filter?.availableInMCP === 'boolean') {
 			const dbType = this.globalConfig.database.type;
 
-			if (['postgresdb'].includes(dbType)) {
-				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
-					availableInMCP: filter.availableInMCP.toString(),
-				});
-			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
-				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-					availableInMCP: filter.availableInMCP,
-				});
-			} else if (dbType === 'sqlite') {
-				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
-				});
+			if (filter.availableInMCP) {
+				// When filtering for true, only match explicit true values
+				if (['postgresdb'].includes(dbType)) {
+					qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+						availableInMCP: 'true',
+					});
+				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+						availableInMCP: true,
+					});
+				} else if (dbType === 'sqlite') {
+					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+						availableInMCP: 1, // SQLite stores booleans as 0/1
+					});
+				}
+			} else {
+				// When filtering for false, match explicit false OR null/undefined (field not set)
+				if (['postgresdb'].includes(dbType)) {
+					qb.andWhere(
+						"(workflow.settings ->> 'availableInMCP' = :availableInMCP OR workflow.settings ->> 'availableInMCP' IS NULL)",
+						{ availableInMCP: 'false' },
+					);
+				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+					qb.andWhere(
+						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL)",
+						{ availableInMCP: false },
+					);
+				} else if (dbType === 'sqlite') {
+					qb.andWhere(
+						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL)",
+						{ availableInMCP: 0 }, // SQLite stores booleans as 0/1
+					);
+				}
 			}
 		}
+	}
+
+	private applyTriggerNodeTypesFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		triggerNodeTypes?: string[],
+	): void {
+		if (!triggerNodeTypes || triggerNodeTypes.length === 0) {
+			return;
+		}
+
+		const dbType = this.globalConfig.database.type;
+
+		// Left join the activeVersion relation if not already joined
+		// We must also addSelect to ensure TypeORM includes the join when using raw SQL in andWhere
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
+			qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect('activeVersion.versionId');
+		}
+
+		// Build OR conditions for each trigger node type
+		const conditions: string[] = [];
+		const parameters: Record<string, string> = {};
+
+		triggerNodeTypes.forEach((triggerNodeType, index) => {
+			const paramName = `triggerNodeType${index}`;
+			parameters[paramName] = `%${triggerNodeType}%`;
+
+			// Use COALESCE to check activeVersion.nodes if exists (workflow is active),
+			// otherwise fall back to workflow.nodes (draft workflows)
+			// In PostgreSQL, cast JSON column to text for LIKE operator
+			if (['postgresdb'].includes(dbType)) {
+				conditions.push(
+					`COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :${paramName}`,
+				);
+			} else {
+				// SQLite and MySQL store nodes as text
+				conditions.push(`COALESCE(activeVersion.nodes, workflow.nodes) LIKE :${paramName}`);
+			}
+		});
+
+		qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
 	}
 
 	/**

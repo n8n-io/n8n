@@ -569,8 +569,7 @@ update_node_parameters({{
 `;
 }
 
-const responsePatterns = `
-<response_patterns>
+const RESPONSE_PATTERNS = `<response_patterns>
 IMPORTANT: Only provide ONE response AFTER all tool executions are complete.
 
 EXCEPTION - Error handling:
@@ -607,16 +606,17 @@ ABSOLUTELY FORBIDDEN IN BUILDING MODE:
 - Describing what was built or explaining functionality
 - Workflow narration or step-by-step commentary
 - Status updates while tools are running
-</response_patterns>
-`;
+</response_patterns>`;
 
-const previousConversationSummary = `
-<previous_summary>
+const PREVIOUS_SUMMARY = `<previous_summary>
 {previousSummary}
 </previous_summary>`;
 
 /**
  * Factory function to create the main agent prompt with configurable options
+ *
+ * Note: Uses direct message block construction for LangChain ChatPromptTemplate
+ * compatibility. The PromptBuilder pattern is used elsewhere for simpler prompts.
  */
 export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 	const systemPrompt = generateSystemPrompt(options);
@@ -625,23 +625,10 @@ export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
 		[
 			'system',
 			[
-				{
-					type: 'text',
-					text: systemPrompt,
-				},
-				{
-					type: 'text',
-					text: instanceUrlPrompt,
-				},
-				{
-					type: 'text',
-					text: responsePatterns,
-				},
-				{
-					type: 'text',
-					text: previousConversationSummary,
-					cache_control: { type: 'ephemeral' },
-				},
+				{ type: 'text', text: systemPrompt },
+				{ type: 'text', text: instanceUrlPrompt },
+				{ type: 'text', text: RESPONSE_PATTERNS },
+				{ type: 'text', text: PREVIOUS_SUMMARY, cache_control: { type: 'ephemeral' } },
 			],
 		],
 		['placeholder', '{messages}'],

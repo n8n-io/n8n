@@ -228,6 +228,12 @@ function onActivate(event: MouseEvent) {
 	&.trigger {
 		border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
 			var(--trigger-node--radius);
+
+		&.running::after,
+		&.waiting::after {
+			border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
+				var(--trigger-node--radius);
+		}
 	}
 
 	/**
@@ -239,7 +245,7 @@ function onActivate(event: MouseEvent) {
 
 		&.running::after,
 		&.waiting::after {
-			border-radius: 50%;
+			border-radius: calc(var(--canvas-node--height) / 2);
 		}
 
 		.statusIcons {

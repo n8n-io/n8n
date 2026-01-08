@@ -6,6 +6,7 @@ import type {
 	ChatAttachment,
 } from '@n8n/api-types';
 import type { INode, INodeCredentials } from 'n8n-workflow';
+import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface ModelWithCredentials {
@@ -41,24 +42,41 @@ export interface EditMessagePayload extends BaseMessagePayload {
 	editId: ChatMessageId;
 	messageId: ChatMessageId;
 	message: string;
+	newAttachments: ChatAttachment[];
+	keepAttachmentIndices: number[];
 }
+
+// From @langchain/core
+export type ContentBlock =
+	| { type: 'text'; text: string }
+	| { type: 'image_url'; image_url: string };
 
 // From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
 export type MessageRole = 'ai' | 'system' | 'user';
 export interface MessageRecord {
 	type: MessageRole;
-	message: string;
+	message: string | ContentBlock[];
 	hideFromUI: boolean;
 }
 
-export const validChatTriggerParamsShape = z.object({
-	availableInChat: z.literal(true),
+const ChatTriggerResponseModeSchema = z.enum([
+	'streaming',
+	'lastNode',
+	'responseNode',
+	'responseNodes',
+]);
+export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
+
+export const chatTriggerParamsShape = z.object({
+	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
+	agentIcon: IconOrEmojiSchema.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
 			allowedFilesMimeTypes: z.string().optional(),
+			responseMode: ChatTriggerResponseModeSchema.optional(),
 		})
 		.optional(),
 });

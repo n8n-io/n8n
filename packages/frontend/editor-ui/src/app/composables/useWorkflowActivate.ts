@@ -1,10 +1,6 @@
 import { useStorage } from '@/app/composables/useStorage';
 
-import {
-	LOCAL_STORAGE_ACTIVATION_FLAG,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_ACTIVE_MODAL_KEY,
-} from '@/app/constants';
+import { LOCAL_STORAGE_ACTIVATION_FLAG, WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -45,7 +41,9 @@ export function useWorkflowActivate() {
 		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 
 		let currWorkflowId: string | undefined = workflowId;
-		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Check if workflow needs to be saved (doesn't exist in store yet)
+		const existingWorkflow = currWorkflowId ? workflowsStore.workflowsById[currWorkflowId] : null;
+		if (!currWorkflowId || !existingWorkflow?.id) {
 			const saved = await workflowSaving.saveCurrentWorkflow();
 			if (!saved) {
 				updatingWorkflowActivation.value = false;
@@ -108,9 +106,13 @@ export function useWorkflowActivate() {
 				workflow = await workflowsApi.deactivateWorkflow(rootStore.restApiContext, currWorkflowId);
 			}
 
+			if (!workflow.checksum) {
+				throw new Error('Failed to activate or deactivate workflow');
+			}
+
 			// Update local state
-			if (workflow.activeVersionId !== null) {
-				workflowsStore.setWorkflowActive(currWorkflowId);
+			if (workflow.activeVersion) {
+				workflowsStore.setWorkflowActive(currWorkflowId, workflow.activeVersion, true);
 			} else {
 				workflowsStore.setWorkflowInactive(currWorkflowId);
 			}
@@ -172,22 +174,29 @@ export function useWorkflowActivate() {
 		}
 
 		try {
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
 				name: options?.name,
 				description: options?.description,
+				expectedChecksum,
 			});
 
-			if (!updatedWorkflow.activeVersion) {
+			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
 				throw new Error('Failed to publish workflow');
 			}
 
-			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			}
+
+			void useExternalHooks().run('workflow.published', {
 				workflowId,
 				versionId: updatedWorkflow.activeVersion.versionId,
-				active: true,
 			});
 
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
@@ -201,6 +210,10 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
+			// Only update workflow state to inactive if this is not a validation error
+			if (!error.meta?.validationError) {
+				workflowsStore.setWorkflowInactive(workflowId);
+			}
 			return false;
 		} finally {
 			updatingWorkflowActivation.value = false;
@@ -226,10 +239,8 @@ export function useWorkflowActivate() {
 		try {
 			await workflowsStore.deactivateWorkflow(workflowId);
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,
-				active: false,
-				versionId: null,
 			});
 
 			return true;

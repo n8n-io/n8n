@@ -5,6 +5,7 @@ import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/
 import {
 	AuthRolesService,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	SettingsRepository,
@@ -72,6 +73,7 @@ type ResetRequest = Request<
 		owner: UserSetupPayload;
 		members: UserSetupPayload[];
 		admin: UserSetupPayload;
+		chat: UserSetupPayload;
 	}
 >;
 
@@ -86,6 +88,7 @@ type PushRequest = Request<
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
+		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
 		[LICENSE_FEATURES.SAML]: false,
@@ -193,7 +196,7 @@ export class E2EController {
 		await this.truncateAll();
 		await this.reseedRolesAndScopes();
 		await this.resetCache();
-		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
+		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin, req.body.chat);
 	}
 
 	@Post('/push', { skipAuth: true })
@@ -315,6 +318,7 @@ export class E2EController {
 		owner: UserSetupPayload,
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
+		chat: UserSetupPayload,
 	) {
 		const userCreatePromises = [
 			this.userRepository.createUserWithProject({
@@ -350,6 +354,17 @@ export class E2EController {
 				}),
 			);
 		}
+
+		userCreatePromises.push(
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...chat,
+				password: await this.passwordUtility.hash(chat.password),
+				role: {
+					slug: GLOBAL_CHAT_USER_ROLE.slug,
+				},
+			}),
+		);
 
 		const [newOwner] = await Promise.all(userCreatePromises);
 
