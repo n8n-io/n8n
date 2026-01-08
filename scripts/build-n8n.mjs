@@ -97,9 +97,10 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install`;
-	installProcess.pipe(process.stdout);
-	await installProcess;
+	echo(chalk.yellow('INFO: Skipping redundant pnpm install (handled by Dockerfile)...'));
+	// const installProcess = $`cd ${config.rootDir} && pnpm install`;
+	// installProcess.pipe(process.stdout);
+	// await installProcess;
 
 	const buildProcess = $`cd ${config.rootDir} && pnpm exec turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/node-cli`;
 	buildProcess.pipe(process.stdout);
