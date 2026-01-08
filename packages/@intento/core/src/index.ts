@@ -7,7 +7,7 @@ export * from './supply/supply-request-base';
 export * from './supply/supply-response-base';
 export * from './supply/supply-error-base';
 export * from './supply/supply-factory';
-export * from './supply/supplier-base';
+export * from './supply/retriable-supplier-base';
 
 // intento-core/tracing
 export * from './tracing/tracer';

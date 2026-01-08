@@ -19,7 +19,7 @@ export class DeeplSupplier extends TranslationSupplierBase {
 		};
 	}
 
-	protected async supply(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
+	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
 		signal?.throwIfAborted();
 
 		const body = {

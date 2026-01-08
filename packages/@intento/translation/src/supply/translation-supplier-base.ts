@@ -1,5 +1,4 @@
-import type { IDescriptor, IFunctions } from 'intento-core';
-import { SupplierBase } from 'intento-core';
+import { RetriableSupplierBase, type IDescriptor, type IFunctions } from 'intento-core';
 import type { IntentoConnectionType } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -7,14 +6,7 @@ import { TranslationError } from 'supply/translation-error';
 import type { TranslationRequest } from 'supply/translation-request';
 import type { TranslationResponse } from 'supply/translation-response';
 
-/**
- * Base class for translation service suppliers.
- *
- * Extends generic SupplierBase with translation-specific request/response/error types.
- * All translation suppliers must inherit from this class to ensure consistent API contracts
- * and enable polymorphic handling of different translation providers.
- */
-export abstract class TranslationSupplierBase extends SupplierBase<TranslationRequest, TranslationResponse, TranslationError> {
+export abstract class TranslationSupplierBase extends RetriableSupplierBase<TranslationRequest, TranslationResponse, TranslationError> {
 	constructor(descriptor: IDescriptor, connection: IntentoConnectionType, functions: IFunctions) {
 		super(descriptor, connection, functions);
 	}
