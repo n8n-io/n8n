@@ -83,12 +83,17 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 }));
 
 // Mock useDocumentTitle
-const setDocumentTitleMock = vi.fn();
+let mockDocumentState: string | undefined;
+const setDocumentTitleMock = vi.fn((_workflowName: string, state: string) => {
+	mockDocumentState = state;
+});
+const getDocumentStateMock = vi.fn(() => mockDocumentState);
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 		reset: vi.fn(),
 		setDocumentTitle: setDocumentTitleMock,
+		getDocumentState: getDocumentStateMock,
 	}),
 }));
 
@@ -131,6 +136,7 @@ let workflowState: WorkflowState;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockDocumentState = undefined;
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
