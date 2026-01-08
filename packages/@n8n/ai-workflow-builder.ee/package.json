@@ -75,7 +75,6 @@
     "cli-table3": "^0.6.3",
     "jest-mock-extended": "^3.0.4",
     "madge": "^8.0.0",
-    "p-limit": "^3.1.0",
-    "yargs": "18.0.0"
+    "p-limit": "^3.1.0"
   }
 }

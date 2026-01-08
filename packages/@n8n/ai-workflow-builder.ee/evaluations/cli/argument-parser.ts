@@ -1,4 +1,3 @@
-import yargs from 'yargs/yargs';
 import { z } from 'zod';
 
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
@@ -35,6 +34,8 @@ export interface EvaluationArgs {
 	featureFlags?: BuilderFeatureFlags;
 }
 
+type CliValueKind = 'boolean' | 'string';
+
 const cliSchema = z
 	.object({
 		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
@@ -68,138 +69,106 @@ const cliSchema = z
 	})
 	.strict();
 
-type CliArgs = z.infer<typeof cliSchema>;
+type CliKey = keyof z.infer<typeof cliSchema>;
 
-function isYargsError(value: unknown): value is Error {
-	return value instanceof Error;
+type FlagDef = { key: CliKey; kind: CliValueKind };
+
+const FLAG_TO_KEY: Record<string, FlagDef> = {
+	'--suite': { key: 'suite', kind: 'string' },
+	'--mode': { key: 'suite', kind: 'string' }, // alias
+	'--backend': { key: 'backend', kind: 'string' },
+	'--langsmith': { key: 'langsmith', kind: 'boolean' }, // alias for --backend langsmith
+
+	'--verbose': { key: 'verbose', kind: 'boolean' },
+	'-v': { key: 'verbose', kind: 'boolean' },
+	'--repetitions': { key: 'repetitions', kind: 'string' },
+	'--concurrency': { key: 'concurrency', kind: 'string' },
+	'--timeout-ms': { key: 'timeoutMs', kind: 'string' },
+	'--name': { key: 'experimentName', kind: 'string' },
+	'--output-dir': { key: 'outputDir', kind: 'string' },
+	'--dataset': { key: 'datasetName', kind: 'string' },
+	'--max-examples': { key: 'maxExamples', kind: 'string' },
+
+	'--filter': { key: 'filter', kind: 'string' },
+	'--notion-id': { key: 'notionId', kind: 'string' },
+	'--technique': { key: 'technique', kind: 'string' },
+
+	'--test-case': { key: 'testCase', kind: 'string' },
+	'--prompts-csv': { key: 'promptsCsv', kind: 'string' },
+
+	'--prompt': { key: 'prompt', kind: 'string' },
+	'--dos': { key: 'dos', kind: 'string' },
+	'--donts': { key: 'donts', kind: 'string' },
+
+	'--judges': { key: 'numJudges', kind: 'string' },
+	'--generations': { key: 'numGenerations', kind: 'string' },
+
+	'--template-examples': { key: 'templateExamples', kind: 'boolean' },
+	'--multi-agent': { key: 'multiAgent', kind: 'boolean' },
+};
+
+function formatValidFlags(): string {
+	return Object.keys(FLAG_TO_KEY)
+		.filter((f) => f.startsWith('--'))
+		.sort()
+		.join('\n  ');
 }
 
-function isHelpFlag(argv: string[]): boolean {
-	return argv.includes('--help') || argv.includes('-h');
+function ensureValue(argv: string[], i: number, flag: string): string {
+	const value = argv[i + 1];
+	if (value === undefined) throw new Error(`Flag ${flag} requires a value`);
+	return value;
 }
 
-function wasFlagProvided(argv: string[], flag: `--${string}`): boolean {
-	return argv.some((t) => t === flag || t.startsWith(`${flag}=`));
+function splitFlagToken(token: string): { flag: string; inlineValue?: string } {
+	if (!token.startsWith('--')) return { flag: token };
+	const equalsIndex = token.indexOf('=');
+	if (equalsIndex === -1) return { flag: token };
+	return { flag: token.slice(0, equalsIndex), inlineValue: token.slice(equalsIndex + 1) };
 }
 
-function createCliParser(argv: string[]) {
-	const parser = yargs(argv)
-		.scriptName('eval')
-		.usage('Usage: $0 [options]')
-		.help('help')
-		.alias('help', 'h')
-		.strictOptions()
-		.parserConfiguration({
-			// Remove alias duplicates (e.g. mode -> suite, timeout-ms -> timeoutMs)
-			'strip-aliased': true,
-			'strip-dashed': true,
-		})
-		.fail((msg, error) => {
-			if (isYargsError(error)) throw error;
-			// Keep a stable prefix to make tests and user-facing errors predictable.
-			throw new Error(msg.startsWith('Unknown argument') ? `Unknown flag. ${msg}` : msg);
-		})
-		.exitProcess(false);
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((v): v is string => typeof v === 'string');
+}
 
-	parser.wrap(Math.min(120, parser.terminalWidth()));
+function parseCli(argv: string[]): {
+	values: Partial<Record<CliKey, unknown>>;
+	seenKeys: Set<CliKey>;
+} {
+	const values: Partial<Record<CliKey, unknown>> = {};
+	const seenKeys = new Set<CliKey>();
 
-	parser.option('suite', {
-		alias: 'mode',
-		choices: ['llm-judge', 'pairwise', 'programmatic', 'similarity'] as const,
-		describe: 'Evaluation suite to run',
-		type: 'string',
-	});
+	for (let i = 0; i < argv.length; i++) {
+		const token = argv[i];
+		if (!token.startsWith('-')) continue;
 
-	parser.option('backend', {
-		choices: ['local', 'langsmith'] as const,
-		describe: 'Execution backend',
-		type: 'string',
-	});
+		const { flag, inlineValue } = splitFlagToken(token);
+		const def = FLAG_TO_KEY[flag];
 
-	parser.option('langsmith', {
-		describe: 'Alias for `--backend langsmith`',
-		type: 'boolean',
-	});
+		if (!def) {
+			throw new Error(`Unknown flag: ${flag}\n\nValid flags:\n  ${formatValidFlags()}`);
+		}
 
-	parser.option('verbose', { alias: 'v', describe: 'Enable verbose logging', type: 'boolean' });
-	parser.option('repetitions', { describe: 'LangSmith: repetitions per example', type: 'string' });
-	parser.option('concurrency', { describe: 'Max concurrent LLM calls', type: 'string' });
-	parser.option('timeoutMs', {
-		alias: 'timeout-ms',
-		describe: 'Per-operation timeout in milliseconds',
-		type: 'string',
-	});
+		seenKeys.add(def.key);
 
-	parser.option('experimentName', {
-		alias: 'name',
-		describe: 'LangSmith experiment name prefix',
-		type: 'string',
-	});
-	parser.option('outputDir', {
-		alias: 'output-dir',
-		describe: 'Local: write artifacts',
-		type: 'string',
-	});
-	parser.option('datasetName', {
-		alias: 'dataset',
-		describe: 'LangSmith dataset name',
-		type: 'string',
-	});
-	parser.option('maxExamples', {
-		alias: 'max-examples',
-		describe: 'Limit number of examples',
-		type: 'string',
-	});
+		if (def.kind === 'boolean') {
+			values[def.key] = true;
+			continue;
+		}
 
-	parser.option('filter', {
-		describe: 'LangSmith dataset filter (repeatable)',
-		type: 'string',
-		array: true,
-	});
-	parser.option('notionId', {
-		alias: 'notion-id',
-		describe: 'LangSmith filter: notion id',
-		type: 'string',
-	});
-	parser.option('technique', { describe: 'LangSmith filter: technique', type: 'string' });
+		const value = inlineValue ?? ensureValue(argv, i, flag);
+		if (inlineValue === undefined) i++;
 
-	parser.option('testCase', {
-		alias: 'test-case',
-		describe: 'Local: run a predefined test case id',
-		type: 'string',
-	});
-	parser.option('promptsCsv', {
-		alias: 'prompts-csv',
-		describe: 'Local: load prompts from CSV',
-		type: 'string',
-	});
-	parser.option('prompt', { describe: 'Local: single prompt', type: 'string' });
-	parser.option('dos', { describe: 'Pairwise: required behaviors', type: 'string' });
-	parser.option('donts', { describe: 'Pairwise: forbidden behaviors', type: 'string' });
+		if (def.key === 'filter') {
+			const existing = values.filter;
+			values.filter = isStringArray(existing) ? [...existing, value] : [value];
+			continue;
+		}
 
-	parser.option('numJudges', {
-		alias: 'judges',
-		describe: 'Pairwise: number of judges',
-		type: 'string',
-	});
-	parser.option('numGenerations', {
-		alias: 'generations',
-		describe: 'Pairwise: number of generations',
-		type: 'string',
-	});
+		values[def.key] = value;
+	}
 
-	parser.option('templateExamples', {
-		alias: 'template-examples',
-		describe: 'Enable template examples feature flag',
-		type: 'boolean',
-	});
-	parser.option('multiAgent', {
-		alias: 'multi-agent',
-		describe: 'Enable multi-agent feature flag',
-		type: 'boolean',
-	});
-
-	return parser;
+	return { values, seenKeys };
 }
 
 function parseFeatureFlags(args: { templateExamples: boolean; multiAgent: boolean }):
@@ -263,21 +232,10 @@ function parseFilters(args: {
 }
 
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
-	const calledWithProcessArgv = arguments.length === 0;
-	const parser = createCliParser(argv);
-
-	if (calledWithProcessArgv && isHelpFlag(argv)) {
-		parser.showHelp();
-		process.exit(0);
-	}
-
-	const raw = parser.parseSync();
-	const values = Object.fromEntries(
-		Object.entries(raw).filter(([key, value]) => key in cliSchema.shape && value !== undefined),
-	) as Partial<CliArgs>;
+	const { values, seenKeys } = parseCli(argv);
 
 	if (values.langsmith === true) {
-		const backendWasExplicit = wasFlagProvided(argv, '--backend');
+		const backendWasExplicit = seenKeys.has('backend');
 		if (backendWasExplicit && values.backend !== 'langsmith') {
 			throw new Error('Cannot combine `--langsmith` with `--backend local`');
 		}

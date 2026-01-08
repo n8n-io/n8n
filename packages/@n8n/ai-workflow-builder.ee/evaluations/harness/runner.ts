@@ -876,7 +876,21 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		throw new Error('LangSmith mode requires dataset to be a dataset name string');
 	}
 
-	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
+	// fall back to preloading so we can honor limits instead of streaming everything.
+	if (
+		typeof data === 'string' &&
+		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
+	) {
+		data = await loadExamplesFromDataset({
+			lsClient,
+			datasetName: data,
+			maxExamples: langsmithOptions.maxExamples,
+			filters: langsmithOptions.filters,
+		});
+	}
+
 	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
 
 	totalExamples = Array.isArray(effectiveData) ? effectiveData.length : 0;
