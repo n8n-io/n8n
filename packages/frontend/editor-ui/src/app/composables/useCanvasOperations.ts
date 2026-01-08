@@ -103,6 +103,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 	INodeParameters,
+	INodeFilter,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -1953,7 +1954,7 @@ export function useCanvasOperations() {
 				return connectionType === type;
 			});
 
-		const getInputFilter = (
+		const getConnectionFilter = (
 			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
 		) => {
 			if (connection && typeof connection === 'object' && 'filter' in connection) {
@@ -1992,6 +1993,10 @@ export function useCanvasOperations() {
 
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceOutputsOfType.length;
+		const sourceConnectionDefinition = sourceNodeHasOutputConnectionPortOfType
+			? sourceOutputsOfType[sourceConnection.index]
+			: undefined;
+		const sourceConnectionFilter = getConnectionFilter(sourceConnectionDefinition);
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -2024,14 +2029,18 @@ export function useCanvasOperations() {
 		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
 			? targetInputsOfType[targetConnection.index]
 			: undefined;
-		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
+		const targetConnectionFilter = getConnectionFilter(targetConnectionDefinition);
 
-		if (
-			(targetConnectionFilter?.nodes?.length &&
-				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
-			(targetConnectionFilter?.excludedNodes?.length &&
-				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
-		) {
+		function isConnectionFiltered(filter: INodeFilter | undefined, nodeType: string): boolean {
+			const isNotIncluded = !!filter?.nodes?.length && !filter.nodes.includes(nodeType);
+			const isExcluded = !!filter?.excludedNodes?.length && filter.excludedNodes.includes(nodeType);
+			return isNotIncluded || isExcluded;
+		}
+
+		const isFilteredByTarget = isConnectionFiltered(targetConnectionFilter, sourceNode.type);
+		const isFilteredBySource = isConnectionFiltered(sourceConnectionFilter, targetNode.type);
+
+		if (isFilteredByTarget || isFilteredBySource) {
 			toast.showToast({
 				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
