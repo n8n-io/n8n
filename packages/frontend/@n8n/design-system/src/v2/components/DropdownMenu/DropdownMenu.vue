@@ -17,7 +17,10 @@ import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types'
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ 
+	name: 'N8nDropdownMenu2',
+	inheritAttrs: false 
+});
 
 const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	placement: 'bottom',

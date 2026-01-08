@@ -5,14 +5,21 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import {
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	AutoSaveState,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+} from '@/app/constants';
+import { N8nButton, N8nTooltip, N8nDropdownMenu2 as N8nDropdownMenu } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import {
 	getLastPublishedVersion,
@@ -21,6 +28,10 @@ import {
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import TimeAgo from '../TimeAgo.vue';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useToast } from '@/app/composables/useToast';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { getWorkflowId } from '@/app/components/MainHeader/utils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -57,9 +68,12 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
+const toast = useToast();
 
 const autosaveStore = useWorkflowAutosaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
+const workflowActivate = useWorkflowActivate();
 
 const autoSaveForPublish = ref(false);
 
@@ -262,12 +276,117 @@ const latestPublishDate = computed(() => {
 	return latestPublish?.createdAt;
 });
 
+// Dropdown menu items
+const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const items: Array<DropdownMenuItemProps<string>> = [
+		{
+			id: 'publish',
+			label: i18n.baseText('workflows.publish'),
+			disabled: !publishButtonConfig.value.enabled || readOnlyForPublish.value,
+			icon: { type: 'icon', value: 'play' },
+		},
+		{
+			id: 'save-draft',
+			label: i18n.baseText('workflows.saveDraft'),
+			disabled:
+				readOnlyForPublish.value ||
+				props.isNewWorkflow ||
+				(!uiStore.stateIsDirty &&
+					workflowsStore.workflow.versionId === workflowsStore.workflow.activeVersion?.versionId),
+			icon: { type: 'icon', value: 'pen' },
+		},
+	];
+
+	// Only show unpublish if there's an active version and user has permission
+	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
+		items.push({
+			id: 'unpublish',
+			label: i18n.baseText('menuActions.unpublish'),
+			disabled: false,
+			icon: { type: 'icon', value: 'stop' },
+			divided: true,
+		});
+	}
+
+	return items;
+});
+
+const onDropdownMenuSelect = async (action: string) => {
+	switch (action) {
+		case 'publish':
+			await onPublishButtonClick();
+			break;
+		case 'save-draft':
+			await onSaveDraftClick();
+			break;
+		case 'unpublish':
+			await onUnpublishWorkflow();
+			break;
+		default:
+			break;
+	}
+};
+
+const onSaveDraftClick = async () => {
+	// Save any pending changes first
+	if (uiStore.stateIsDirty) {
+		try {
+			await saveBeforePublish();
+		} catch {
+			return;
+		}
+	}
+
+	// Open save draft modal
+	uiStore.openModalWithData({
+		name: WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+		data: {
+			workflowId: props.id,
+			versionId: workflowsStore.workflow.versionId,
+		},
+	});
+};
+
+const onUnpublishWorkflow = async () => {
+	const workflowId = getWorkflowId(props.id, route.params.name);
+
+	if (!workflowId || !activeVersion.value) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			toast.showMessage({
+				title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: activeVersion.value.name,
+			eventBus: unpublishEventBus,
+		},
+	});
+};
+
 onMounted(() => {
 	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
+	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
 });
 
 onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
+	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
 });
 
 defineExpose({
@@ -279,46 +398,61 @@ defineExpose({
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
-			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'" :show-after="300">
-				<template #content>
-					<div>
-						<template v-if="publishButtonConfig.tooltip">
-							{{ publishButtonConfig.tooltip }} <br />
+			<N8nDropdownMenu
+				:items="dropdownMenuItems"
+				:loading="autoSaveForPublish"
+				placement="bottom-end"
+				data-test-id="workflow-publish-dropdown"
+				@select="onDropdownMenuSelect"
+			>
+				<template #trigger>
+					<N8nTooltip
+						:disabled="workflowPublishState === 'not-published-eligible'"
+						:show-after="300"
+					>
+						<template #content>
+							<div>
+								<template v-if="publishButtonConfig.tooltip">
+									{{ publishButtonConfig.tooltip }} <br />
+								</template>
+								<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
+									<span data-test-id="workflow-active-version-indicator">{{
+										activeVersionName
+									}}</span
+									><br />{{ i18n.baseText('workflowHistory.item.active') }}
+									<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
+								</template>
+							</div>
 						</template>
-						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
-							<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span
-							><br />{{ i18n.baseText('workflowHistory.item.active') }}
-							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
-						</template>
-					</div>
-				</template>
-				<N8nButton
-					:loading="autoSaveForPublish"
-					:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
-					type="secondary"
-					data-test-id="workflow-open-publish-modal-button"
-					@click="onPublishButtonClick"
-				>
-					<div :class="[$style.flex]">
-						<span
-							v-if="publishButtonConfig.showIndicator"
-							:class="[
-								$style.indicatorDot,
-								publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
-								publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
-								publishButtonConfig.indicatorClass === 'error' && $style.indicatorIssues,
-							]"
-						/>
-						<span
-							:class="[
-								workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
-							]"
+						<N8nButton
+							:loading="autoSaveForPublish"
+							:disabled="readOnlyForPublish"
+							type="secondary"
+							data-test-id="workflow-publish-button"
 						>
-							{{ publishButtonConfig.text }}
-						</span>
-					</div>
-				</N8nButton>
-			</N8nTooltip>
+							<div :class="[$style.flex]">
+								<span
+									v-if="publishButtonConfig.showIndicator"
+									:class="[
+										$style.indicatorDot,
+										publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
+										publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
+										publishButtonConfig.indicatorClass === 'error' && $style.indicatorIssues,
+									]"
+								/>
+								<span
+									:class="[
+										workflowPublishState === 'published-no-changes' &&
+											$style.indicatorPublishedText,
+									]"
+								>
+									{{ publishButtonConfig.text }}
+								</span>
+							</div>
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</N8nDropdownMenu>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu

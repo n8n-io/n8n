@@ -1661,6 +1661,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function saveNamedVersion(
+		id: string,
+		data: { versionId: string; name: string; description?: string },
+	): Promise<IWorkflowDb> {
+		// Update the workflow version with name and description without activating
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/version`,
+			data as unknown as IDataObject,
+		);
+
+		// Update local workflow data
+		if (id === workflow.value.id && updatedWorkflow.activeVersion) {
+			setWorkflowActive(id, updatedWorkflow.activeVersion, false);
+		}
+
+		return updatedWorkflow;
+	}
+
 	async function deactivateWorkflow(id: string): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
@@ -2071,6 +2091,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		publishWorkflow,
+		saveNamedVersion,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,

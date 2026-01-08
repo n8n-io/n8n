@@ -37,5 +37,6 @@ export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY = 'templatesDataQuality';
 export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
+export const WORKFLOW_SAVE_DRAFT_MODAL_KEY = 'workflowSaveDraft';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
