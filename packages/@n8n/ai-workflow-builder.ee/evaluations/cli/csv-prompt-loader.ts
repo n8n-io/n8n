@@ -43,57 +43,62 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 		throw new Error(`CSV file not found at ${resolvedPath}`);
 	}
 
-	const fileContents = readFileSync(resolvedPath, 'utf8');
-	const rows = parseCsv(fileContents);
+	const rows = parseCsv(readFileSync(resolvedPath, 'utf8'));
 
 	if (rows.length === 0) {
 		throw new Error('The provided CSV file is empty');
 	}
 
-	let header: ParsedCsvRow | undefined;
-	let dataRows = rows;
-
-	if (isHeaderRow(rows[0])) {
-		header = rows[0]!;
-		dataRows = rows.slice(1);
-	}
+	const hasHeader = isHeaderRow(rows[0]);
+	const header = hasHeader ? rows[0] : undefined;
+	const dataRows = hasHeader ? rows.slice(1) : rows;
 
 	if (dataRows.length === 0) {
 		throw new Error('No prompt rows found in the provided CSV file');
 	}
 
-	const promptIndex = header ? (detectColumnIndex(header, 'prompt') ?? 0) : 0;
-	const idIndex = header ? detectColumnIndex(header, 'id') : undefined;
-	const dosIndex = header
-		? (detectColumnIndex(header, 'dos') ?? detectColumnIndex(header, 'do'))
-		: undefined;
-	const dontsIndex = header
-		? (detectColumnIndex(header, 'donts') ?? detectColumnIndex(header, 'dont'))
-		: undefined;
+	// Find column index by name(s), returns undefined if no header
+	const findColumn = (...names: string[]): number | undefined => {
+		if (!header) return undefined;
+		for (const name of names) {
+			const idx = detectColumnIndex(header, name);
+			if (idx !== undefined) return idx;
+		}
+		return undefined;
+	};
 
-	const testCases = dataRows
-		.map<TestCase | undefined>((row, index) => {
-			const prompt = sanitizeValue(row[promptIndex]);
-			if (!prompt) {
-				return undefined;
-			}
+	const promptIdx = findColumn('prompt') ?? 0;
+	const idIdx = findColumn('id');
+	const dosIdx = findColumn('dos', 'do');
+	const dontsIdx = findColumn('donts', 'dont');
 
-			const idSource = sanitizeValue(idIndex !== undefined ? row[idIndex] : undefined);
-			const dosSource = sanitizeValue(dosIndex !== undefined ? row[dosIndex] : undefined);
-			const dontsSource = sanitizeValue(dontsIndex !== undefined ? row[dontsIndex] : undefined);
+	const getCell = (row: ParsedCsvRow, idx: number | undefined): string =>
+		idx !== undefined ? sanitizeValue(row[idx]) : '';
 
-			return {
-				...(idSource ? { id: idSource } : { id: `csv-case-${index + 1}` }),
-				prompt,
-				...((dosSource || dontsSource) && {
-					context: {
-						...(dosSource ? { dos: dosSource } : {}),
-						...(dontsSource ? { donts: dontsSource } : {}),
-					},
-				}),
-			};
-		})
-		.filter((testCase): testCase is TestCase => testCase !== undefined);
+	const testCases: TestCase[] = [];
+
+	for (let i = 0; i < dataRows.length; i++) {
+		const row = dataRows[i];
+		const prompt = getCell(row, promptIdx);
+
+		if (!prompt) continue;
+
+		const dos = getCell(row, dosIdx);
+		const donts = getCell(row, dontsIdx);
+
+		const testCase: TestCase = {
+			id: getCell(row, idIdx) || `csv-case-${i + 1}`,
+			prompt,
+		};
+
+		if (dos || donts) {
+			testCase.context = {};
+			if (dos) testCase.context.dos = dos;
+			if (donts) testCase.context.donts = donts;
+		}
+
+		testCases.push(testCase);
+	}
 
 	if (testCases.length === 0) {
 		throw new Error('No valid prompts found in the provided CSV file');
