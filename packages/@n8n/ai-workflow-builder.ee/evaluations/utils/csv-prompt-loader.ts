@@ -2,7 +2,7 @@ import { parse } from 'csv-parse/sync';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { TestCase } from '../types/evaluation.js';
+import type { TestCase } from '../harness-types.js';
 
 type ParsedCsvRow = string[];
 
@@ -18,20 +18,6 @@ function detectColumnIndex(header: ParsedCsvRow, name: string) {
 
 function sanitizeValue(value: string | undefined) {
 	return value?.trim() ?? '';
-}
-
-function generateNameFromPrompt(prompt: string, index: number) {
-	const normalized = prompt.replace(/\s+/g, ' ').trim();
-	if (!normalized) {
-		return `CSV Prompt ${index + 1}`;
-	}
-
-	const maxLength = 60;
-	if (normalized.length <= maxLength) {
-		return normalized;
-	}
-
-	return `${normalized.slice(0, maxLength - 3)}...`;
 }
 
 function parseCsv(content: string): ParsedCsvRow[] {
@@ -78,8 +64,11 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 
 	const promptIndex = header ? (detectColumnIndex(header, 'prompt') ?? 0) : 0;
 	const idIndex = header ? detectColumnIndex(header, 'id') : undefined;
-	const nameIndex = header
-		? (detectColumnIndex(header, 'name') ?? detectColumnIndex(header, 'title'))
+	const dosIndex = header
+		? (detectColumnIndex(header, 'dos') ?? detectColumnIndex(header, 'do'))
+		: undefined;
+	const dontsIndex = header
+		? (detectColumnIndex(header, 'donts') ?? detectColumnIndex(header, 'dont'))
 		: undefined;
 
 	const testCases = dataRows
@@ -90,12 +79,18 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 			}
 
 			const idSource = sanitizeValue(idIndex !== undefined ? row[idIndex] : undefined);
-			const nameSource = sanitizeValue(nameIndex !== undefined ? row[nameIndex] : undefined);
+			const dosSource = sanitizeValue(dosIndex !== undefined ? row[dosIndex] : undefined);
+			const dontsSource = sanitizeValue(dontsIndex !== undefined ? row[dontsIndex] : undefined);
 
 			return {
-				id: idSource || `csv-case-${index + 1}`,
-				name: nameSource || generateNameFromPrompt(prompt, index),
+				...(idSource ? { id: idSource } : { id: `csv-case-${index + 1}` }),
 				prompt,
+				...((dosSource || dontsSource) && {
+					context: {
+						...(dosSource ? { dos: dosSource } : {}),
+						...(dontsSource ? { donts: dontsSource } : {}),
+					},
+				}),
 			};
 		})
 		.filter((testCase): testCase is TestCase => testCase !== undefined);

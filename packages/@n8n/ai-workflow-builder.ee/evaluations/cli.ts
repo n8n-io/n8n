@@ -83,11 +83,7 @@ function createWorkflowGenerator(
 function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[] {
 	// From CSV file
 	if (args.promptsCsv) {
-		const csvCases = loadTestCasesFromCsv(args.promptsCsv);
-		const testCases = csvCases.map((tc) => ({
-			prompt: tc.prompt,
-			id: tc.id,
-		}));
+		const testCases = loadTestCasesFromCsv(args.promptsCsv);
 		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
 	}
 
