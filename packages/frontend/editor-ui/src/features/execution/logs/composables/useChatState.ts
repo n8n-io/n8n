@@ -17,7 +17,11 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { constructChatWebsocketUrl, parseBotChatMessageContent } from '@n8n/chat/utils';
+import {
+	constructChatWebsocketUrl,
+	parseBotChatMessageContent,
+	shouldBlockUserInput,
+} from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
@@ -93,6 +97,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			initialMessages: ref([]),
 			currentSessionId: params.currentSessionId,
 			waitingForResponse: params.isLoading,
+			blockUserInput: ref(false),
 		};
 
 		const chatOptions: ChatOptions = {
@@ -200,6 +205,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 						...parseBotChatMessageContent(event.data as string),
 						sessionId: currentSessionId.value,
 					};
+					chatConfig.blockUserInput.value = shouldBlockUserInput(newMessage);
 					logsStore.addChatMessage(newMessage);
 
 					if (logsStore.isOpen) {

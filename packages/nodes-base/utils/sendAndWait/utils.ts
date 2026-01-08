@@ -69,7 +69,7 @@ export function getSendAndWaitProperties(
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
 	},
-) {
+): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',

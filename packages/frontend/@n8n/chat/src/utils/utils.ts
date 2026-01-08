@@ -8,6 +8,7 @@ const CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE = 'with-buttons';
 interface ChatNodeMessageWithButtons {
 	type: typeof CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE;
 	text: string;
+	blockUserInput: boolean;
 	buttons: Array<{
 		text: string;
 		link: string;
@@ -45,6 +46,7 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 				arguments: {
 					text: parsed.text,
 					buttons: parsed.buttons,
+					blockUserInput: parsed.blockUserInput,
 				},
 			};
 		}
@@ -52,4 +54,17 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 		// ignore error as the message might be just a string
 	}
 	return chatMessage;
+}
+
+export function shouldBlockUserInput(message: ChatMessage): boolean {
+	console.log(message);
+	if (
+		message.type === 'component' &&
+		message.key === MessageComponentKey.WITH_BUTTONS &&
+		typeof message.arguments?.blockUserInput === 'boolean'
+	) {
+		return message.arguments?.blockUserInput;
+	}
+
+	return false;
 }

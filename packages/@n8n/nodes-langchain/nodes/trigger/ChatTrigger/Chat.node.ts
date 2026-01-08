@@ -29,6 +29,7 @@ import type {
 	INodePropertyOptions,
 	ChatNodeMessageButtonType,
 	ChatNodeMessage,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
@@ -40,6 +41,20 @@ const freeTextResponseTypeOption: INodePropertyOptions = {
 	description: 'User can respond in the chat',
 };
 
+const blockUserInput: INodeProperties = {
+	displayName: 'Block User Input',
+	name: 'blockUserInput',
+	type: 'boolean',
+	default: false,
+	description: 'Whether to block input from the user while waiting for approval',
+	displayOptions: {
+		show: {
+			responseType: ['approval'],
+		},
+	},
+};
+
+// TODO: extract to utils?
 const getSendAndWaitPropertiesForChatNode = () => {
 	const originalProperties = getSendAndWaitProperties([], null);
 	const filteredProperties = originalProperties.filter(
@@ -61,9 +76,11 @@ const getSendAndWaitPropertiesForChatNode = () => {
 		responseTypeProperty.default = FREE_TEXT_CHAT_RESPONSE_TYPE;
 	}
 
+	filteredProperties.splice(1, 0, blockUserInput);
 	return filteredProperties;
 };
 
+// TODO: extract to utils?
 function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 	const nodeVersion = ctx.getNode().typeVersion;
 	const message = ctx.getNodeParameter('message', 0, '') as string;
@@ -82,10 +99,12 @@ function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 		return message;
 	}
 
+	const blockUserInput = ctx.getNodeParameter('blockUserInput', 0, false) as boolean;
 	const config = getSendAndWaitConfig(ctx);
 	return {
 		type: ChatNodeMessageType.WITH_BUTTONS,
 		text: message,
+		blockUserInput,
 		// the buttons are reversed to show the primary button first
 		buttons: config.options.reverse().map((option) => ({
 			text: option.label,

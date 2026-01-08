@@ -1312,6 +1312,7 @@ export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 export type ChatNodeMessageWithButtons = {
 	type: typeof ChatNodeMessageType.WITH_BUTTONS;
 	text: string;
+	blockUserInput: boolean;
 	buttons: Array<{
 		text: string;
 		link: string;
