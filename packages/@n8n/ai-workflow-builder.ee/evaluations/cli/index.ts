@@ -24,13 +24,16 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
-	basicTestCases,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
 } from '../index';
-import { loadTestCasesFromCsv } from './csv-prompt-loader';
+import {
+	loadTestCasesFromCsv,
+	loadDefaultTestCases,
+	getDefaultTestCaseIds,
+} from './csv-prompt-loader';
 import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
@@ -89,12 +92,10 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 
 	// Predefined test case by id
 	if (args.testCase) {
-		const match = basicTestCases.find((tc) => tc.id === args.testCase);
+		const defaultCases = loadDefaultTestCases();
+		const match = defaultCases.find((tc) => tc.id === args.testCase);
 		if (!match) {
-			const options = basicTestCases
-				.map((tc) => tc.id)
-				.filter((id): id is string => id !== undefined)
-				.join(', ');
+			const options = getDefaultTestCaseIds().join(', ');
 			throw new Error(`Unknown --test-case "${args.testCase}". Available: ${options}`);
 		}
 
@@ -123,7 +124,9 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
 	}
 
-	return args.maxExamples ? basicTestCases.slice(0, args.maxExamples) : basicTestCases;
+	// Default: use bundled test cases
+	const defaultCases = loadDefaultTestCases();
+	return args.maxExamples ? defaultCases.slice(0, args.maxExamples) : defaultCases;
 }
 
 /**

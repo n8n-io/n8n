@@ -96,8 +96,10 @@ export {
 // Test case generation
 export {
 	createTestCaseGenerator,
-	basicTestCases,
 	type TestCaseGeneratorOptions,
 	type GeneratedTestCase,
 	type TestCaseGenerator,
 } from './support/test-case-generator';
+
+// CSV loader utilities
+export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader';

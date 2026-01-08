@@ -1,15 +1,13 @@
 /**
  * Test Case Generator
  *
- * Generates test cases for workflow evaluation using LLM with structured output,
- * or provides hardcoded fallback test cases.
+ * Generates test cases for workflow evaluation using LLM with structured output.
+ * For default test cases, see fixtures/default-prompts.csv.
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { z } from 'zod';
-
-import type { TestCase } from '../harness/harness-types';
 
 /**
  * Options for test case generation.
@@ -179,61 +177,3 @@ export function createTestCaseGenerator(
 		},
 	};
 }
-
-/**
- * Hardcoded basic test cases for fallback.
- *
- * These provide a reliable set of test cases that don't require LLM generation.
- */
-export const basicTestCases: TestCase[] = [
-	{
-		id: 'email-summary',
-		prompt:
-			'Create a workflow that runs every Monday morning to analyze weekend emails and create a summary report.',
-	},
-	{
-		id: 'ai-news-digest',
-		prompt:
-			'Build a nightly workflow that fetches news from NewsAPI, uses OpenAI to summarize articles, and generates images for the top stories.',
-	},
-	{
-		id: 'daily-weather-report',
-		prompt:
-			'Create a workflow that sends a personalized morning weather report email using OpenWeather API data.',
-	},
-	{
-		id: 'invoice-pipeline',
-		prompt:
-			'Build an invoice processing workflow that extracts data from PDF/image invoices, validates the information, and generates weekly reports.',
-	},
-	{
-		id: 'lead-qualification',
-		prompt:
-			'Create a workflow that receives web form submissions, uses AI to qualify leads, and schedules calendar appointments for qualified prospects.',
-	},
-	{
-		id: 'slack-notification',
-		prompt:
-			'Build a workflow that monitors a database for new entries and sends Slack notifications with formatted summaries.',
-	},
-	{
-		id: 'github-issue-triage',
-		prompt:
-			'Create a workflow that automatically labels and assigns GitHub issues based on their content using AI classification.',
-	},
-	{
-		id: 'csv-data-processing',
-		prompt:
-			'Build a workflow that processes large CSV files, transforms the data, and uploads results to Google Sheets with rate limiting.',
-	},
-	{
-		id: 'webhook-order-processing',
-		prompt:
-			'Create a webhook-triggered workflow that processes e-commerce orders, updates inventory, and sends confirmation emails.',
-	},
-	{
-		id: 'content-moderation',
-		prompt:
-			'Build a workflow that reviews user-submitted content for moderation, flags inappropriate items, and notifies moderators.',
-	},
-];

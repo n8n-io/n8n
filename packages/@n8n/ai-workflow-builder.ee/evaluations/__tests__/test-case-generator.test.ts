@@ -2,17 +2,14 @@
  * Tests for test case generation.
  *
  * These utilities generate test cases for workflow evaluation,
- * either via LLM or from hardcoded fallback cases.
+ * either via LLM or from CSV fixtures.
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 
-import {
-	createTestCaseGenerator,
-	basicTestCases,
-	type GeneratedTestCase,
-} from '../support/test-case-generator';
+import { createTestCaseGenerator, type GeneratedTestCase } from '../support/test-case-generator';
+import { loadDefaultTestCases } from '../cli/csv-prompt-loader';
 
 /** Type guard for message objects with content */
 function isMessageWithContent(msg: unknown): msg is { content: unknown } {
@@ -202,13 +199,15 @@ describe('Test Case Generator', () => {
 		});
 	});
 
-	describe('basicTestCases', () => {
+	describe('loadDefaultTestCases', () => {
 		it('should have at least 5 test cases', () => {
-			expect(basicTestCases.length).toBeGreaterThanOrEqual(5);
+			const defaultCases = loadDefaultTestCases();
+			expect(defaultCases.length).toBeGreaterThanOrEqual(5);
 		});
 
 		it('should have required properties on each test case', () => {
-			for (const testCase of basicTestCases) {
+			const defaultCases = loadDefaultTestCases();
+			for (const testCase of defaultCases) {
 				expect(testCase).toHaveProperty('id');
 				expect(testCase).toHaveProperty('prompt');
 				expect(typeof testCase.id).toBe('string');
@@ -219,13 +218,15 @@ describe('Test Case Generator', () => {
 		});
 
 		it('should have unique IDs', () => {
-			const ids = basicTestCases.map((tc) => tc.id);
+			const defaultCases = loadDefaultTestCases();
+			const ids = defaultCases.map((tc) => tc.id);
 			const uniqueIds = new Set(ids);
 			expect(uniqueIds.size).toBe(ids.length);
 		});
 
 		it('should cover different workflow types', () => {
-			const prompts = basicTestCases.map((tc) => tc.prompt.toLowerCase());
+			const defaultCases = loadDefaultTestCases();
+			const prompts = defaultCases.map((tc) => tc.prompt.toLowerCase());
 
 			// Check for variety in test cases
 			const hasEmail = prompts.some((p) => p.includes('email'));
@@ -236,7 +237,8 @@ describe('Test Case Generator', () => {
 		});
 
 		it('should have meaningful prompts', () => {
-			for (const testCase of basicTestCases) {
+			const defaultCases = loadDefaultTestCases();
+			for (const testCase of defaultCases) {
 				// Prompts should be descriptive enough
 				expect(testCase.prompt.length).toBeGreaterThan(20);
 			}

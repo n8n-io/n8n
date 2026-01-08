@@ -1,8 +1,11 @@
 import { parse } from 'csv-parse/sync';
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { join, isAbsolute, resolve } from 'node:path';
 
 import type { TestCase } from '../harness/harness-types.js';
+
+/** Path to the default prompts CSV fixture */
+const DEFAULT_PROMPTS_PATH = join(__dirname, '..', 'fixtures', 'default-prompts.csv');
 
 type ParsedCsvRow = string[];
 
@@ -37,7 +40,7 @@ function parseCsv(content: string): ParsedCsvRow[] {
 }
 
 export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
-	const resolvedPath = path.isAbsolute(csvPath) ? csvPath : path.resolve(process.cwd(), csvPath);
+	const resolvedPath = isAbsolute(csvPath) ? csvPath : resolve(process.cwd(), csvPath);
 
 	if (!existsSync(resolvedPath)) {
 		throw new Error(`CSV file not found at ${resolvedPath}`);
@@ -105,4 +108,27 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 	}
 
 	return testCases;
+}
+
+/** Cached default test cases */
+let cachedDefaultTestCases: TestCase[] | null = null;
+
+/**
+ * Load the default test cases from the bundled CSV fixture.
+ * Results are cached after first load.
+ */
+export function loadDefaultTestCases(): TestCase[] {
+	if (cachedDefaultTestCases === null) {
+		cachedDefaultTestCases = loadTestCasesFromCsv(DEFAULT_PROMPTS_PATH);
+	}
+	return cachedDefaultTestCases;
+}
+
+/**
+ * Get available test case IDs from the default fixture.
+ */
+export function getDefaultTestCaseIds(): string[] {
+	return loadDefaultTestCases()
+		.map((tc) => tc.id)
+		.filter((id): id is string => id !== undefined);
 }

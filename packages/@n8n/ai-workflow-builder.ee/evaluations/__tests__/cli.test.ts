@@ -48,6 +48,10 @@ jest.mock('../langsmith/types', () => ({
 
 jest.mock('../cli/csv-prompt-loader', () => ({
 	loadTestCasesFromCsv: (...args: unknown[]): unknown => mockLoadTestCasesFromCsv(...args),
+	loadDefaultTestCases: () => [
+		{ id: 'test-case-1', prompt: 'Create a workflow that sends a daily email summary' },
+	],
+	getDefaultTestCaseIds: () => ['test-case-1'],
 }));
 
 jest.mock('../harness/evaluation-helpers', () => ({
@@ -62,7 +66,6 @@ jest.mock('../index', () => ({
 	createProgrammaticEvaluator: (...args: unknown[]): unknown =>
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
-	basicTestCases: [{ prompt: 'Create a workflow that sends a daily email summary' }],
 }));
 
 /** Helper to create a minimal valid workflow for tests */
@@ -223,7 +226,9 @@ describe('CLI', () => {
 
 				expect(mockRunEvaluation).toHaveBeenCalledWith(
 					expect.objectContaining({
-						dataset: [{ prompt: 'Create a workflow that sends a daily email summary' }],
+						dataset: [
+							{ id: 'test-case-1', prompt: 'Create a workflow that sends a daily email summary' },
+						],
 					}),
 				);
 			});

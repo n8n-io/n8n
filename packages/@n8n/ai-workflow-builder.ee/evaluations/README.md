@@ -9,8 +9,14 @@ Run from the package directory:
 ```bash
 pushd packages/@n8n/ai-workflow-builder.ee
 
-# Local: LLM-judge + programmatic
+# Local: run against default prompts (fixtures/default-prompts.csv)
+pnpm eval --verbose
+
+# Local: single prompt
 pnpm eval --prompt "Create a workflow that..." --verbose
+
+# Local: custom CSV file
+pnpm eval --prompts-csv path/to/prompts.csv --verbose
 
 # Local: pairwise + programmatic
 pnpm eval:pairwise --prompt "Create a workflow that..." --dos "Must use Slack" --donts "No HTTP Request node" --verbose
