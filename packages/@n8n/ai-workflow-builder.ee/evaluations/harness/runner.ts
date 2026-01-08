@@ -603,6 +603,100 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 	throw new Error('No prompt found in inputs - expected "prompt" string or "messages" array');
 }
 
+function createLangsmithFeedbackExtractor(): (
+	rootRun: Run,
+	_example?: Example,
+) => Promise<Array<{ key: string; score: number; comment?: string }>> {
+	return async (rootRun: Run, _example?: Example) => {
+		const outputs = rootRun.outputs;
+		const feedback =
+			isUnknownRecord(outputs) &&
+			isUnknownArray(outputs.feedback) &&
+			outputs.feedback.every(isFeedback)
+				? outputs.feedback
+				: undefined;
+
+		if (!feedback) {
+			return [
+				{
+					key: 'evaluationError',
+					score: 0,
+					comment: 'No feedback found in target output',
+				},
+			];
+		}
+
+		return feedback.map((fb) => toLangsmithEvaluationResult(fb));
+	};
+}
+
+function applyRepetitions(data: string | Example[], repetitions: number): string | Example[] {
+	if (!Array.isArray(data) || repetitions <= 1) return data;
+	return Array.from({ length: repetitions }, () => data).flat();
+}
+
+function logLangsmithInputsSummary(logger: EvalLogger, effectiveData: string | Example[]): void {
+	if (!Array.isArray(effectiveData)) {
+		logger.verbose('Data source: dataset (streaming)');
+		return;
+	}
+
+	logger.verbose(`Data source: preloaded examples (${effectiveData.length})`);
+	logger.verbose(
+		`Example IDs in data: ${effectiveData
+			.slice(0, 20)
+			.map((e) => e.id)
+			.join(', ')}`,
+	);
+}
+
+async function runLangsmithEvaluateAndFlush(params: {
+	target: (inputs: LangsmithDatasetInput) => Promise<LangsmithTargetOutput>;
+	effectiveData: string | Example[];
+	feedbackExtractor: ReturnType<typeof createLangsmithFeedbackExtractor>;
+	langsmithOptions: LangsmithRunConfig['langsmithOptions'];
+	lsClient: LangsmithRunConfig['langsmithClient'];
+	logger: EvalLogger;
+	targetCallCount: () => number;
+}): Promise<void> {
+	const {
+		target,
+		effectiveData,
+		feedbackExtractor,
+		langsmithOptions,
+		lsClient,
+		logger,
+		targetCallCount,
+	} = params;
+
+	const exampleCount = Array.isArray(effectiveData) ? effectiveData.length : 'dataset';
+
+	logger.info(
+		`Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
+	);
+	const evalStartTime = Date.now();
+	await evaluate(target, {
+		data: effectiveData,
+		evaluators: [feedbackExtractor],
+		experimentPrefix: langsmithOptions.experimentName,
+		// Repetitions are applied explicitly when pre-loading examples to keep behavior consistent.
+		// When streaming from a dataset name, the SDK may support repetitions internally.
+		...(!Array.isArray(effectiveData) &&
+			langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
+		maxConcurrency: langsmithOptions.concurrency,
+		client: lsClient,
+	});
+	logger.info(
+		`Evaluation completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount()} times)`,
+	);
+
+	// Flush pending traces to ensure all data is sent to LangSmith
+	logger.verbose('Flushing pending trace batches...');
+	const flushStartTime = Date.now();
+	await lsClient.awaitPendingTraceBatches();
+	logger.verbose(`Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
+}
+
 /**
  * Run evaluation in LangSmith mode.
  * This wraps generation + evaluation in a traceable function.
@@ -613,6 +707,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		generateWorkflow,
 		evaluators,
 		context: globalContext,
+		outputDir,
 		passThreshold = DEFAULT_PASS_THRESHOLD,
 		timeoutMs,
 		langsmithOptions,
@@ -631,6 +726,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(langsmithOptions.concurrency),
 		timeoutMs,
 	};
+
+	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
+	const capturedResults: ExampleResult[] | null = artifactSaver ? [] : null;
 
 	// Create target function that does ALL work (generation + evaluation)
 	// NOTE: Do NOT wrap target with traceable() - evaluate() handles that automatically
@@ -712,7 +810,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			if (status === 'pass') stats.passed++;
 			else if (status === 'fail') stats.failed++;
 			else stats.errors++;
-			lifecycle?.onExampleComplete?.(index, {
+			const result: ExampleResult = {
 				index,
 				prompt,
 				status,
@@ -722,7 +820,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				generationDurationMs: genDurationMs,
 				evaluationDurationMs: evalDurationMs,
 				workflow,
-			});
+			};
+
+			artifactSaver?.saveExample(result);
+			capturedResults?.push(result);
+			lifecycle?.onExampleComplete?.(index, result);
 
 			return {
 				workflow,
@@ -747,7 +849,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			stats.total++;
 			stats.errors++;
 			stats.durationSumMs += totalDurationMs;
-			lifecycle?.onExampleComplete?.(index, {
+			const result: ExampleResult = {
 				index,
 				prompt,
 				status: 'error',
@@ -757,38 +859,17 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				generationDurationMs: genDurationMs,
 				workflow,
 				error: errorMessage,
-			});
+			};
+
+			artifactSaver?.saveExample(result);
+			capturedResults?.push(result);
+			lifecycle?.onExampleComplete?.(index, result);
 
 			return { workflow, prompt, feedback };
 		}
 	};
 
-	// Create LangSmith evaluator that extracts pre-computed feedback
-	// This does NOT do any LLM calls - just returns outputs.feedback
-	const feedbackExtractor = async (
-		rootRun: Run,
-		_example?: Example,
-	): Promise<Array<{ key: string; score: number; comment?: string }>> => {
-		const outputs = rootRun.outputs;
-		const feedback =
-			isUnknownRecord(outputs) &&
-			isUnknownArray(outputs.feedback) &&
-			outputs.feedback.every(isFeedback)
-				? outputs.feedback
-				: undefined;
-
-		if (!feedback) {
-			return [
-				{
-					key: 'evaluationError',
-					score: 0,
-					comment: 'No feedback found in target output',
-				},
-			];
-		}
-
-		return feedback.map((fb) => toLangsmithEvaluationResult(fb));
-	};
+	const feedbackExtractor = createLangsmithFeedbackExtractor();
 
 	// Load examples if maxExamples is set
 	if (typeof dataset !== 'string') {
@@ -796,53 +877,20 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	}
 
 	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
-	const effectiveData =
-		Array.isArray(data) && langsmithOptions.repetitions > 1
-			? Array.from({ length: langsmithOptions.repetitions }, () => data).flat()
-			: data;
+	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
 
 	totalExamples = Array.isArray(effectiveData) ? effectiveData.length : 0;
 
-	logger.verbose(
-		Array.isArray(effectiveData)
-			? `Data source: preloaded examples (${effectiveData.length})`
-			: 'Data source: dataset (streaming)',
-	);
-
-	// Run LangSmith evaluation
-	const exampleCount = Array.isArray(effectiveData) ? effectiveData.length : 'dataset';
-	if (Array.isArray(effectiveData)) {
-		logger.verbose(
-			`Example IDs in data: ${effectiveData
-				.slice(0, 20)
-				.map((e) => e.id)
-				.join(', ')}`,
-		);
-	}
-	logger.info(
-		`Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
-	);
-	const evalStartTime = Date.now();
-	await evaluate(target, {
-		data: effectiveData,
-		evaluators: [feedbackExtractor],
-		experimentPrefix: langsmithOptions.experimentName,
-		// Repetitions are applied explicitly when pre-loading examples to keep behavior consistent.
-		// When streaming from a dataset name, the SDK may support repetitions internally.
-		...(!Array.isArray(effectiveData) &&
-			langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
-		maxConcurrency: langsmithOptions.concurrency,
-		client: lsClient,
+	logLangsmithInputsSummary(logger, effectiveData);
+	await runLangsmithEvaluateAndFlush({
+		target,
+		effectiveData,
+		feedbackExtractor,
+		langsmithOptions,
+		lsClient,
+		logger,
+		targetCallCount: () => targetCallCount,
 	});
-	logger.info(
-		`Evaluation completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount} times)`,
-	);
-
-	// Flush pending traces to ensure all data is sent to LangSmith
-	logger.verbose('Flushing pending trace batches...');
-	const flushStartTime = Date.now();
-	await lsClient.awaitPendingTraceBatches();
-	logger.verbose(`Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
 
 	// Return placeholder summary - LangSmith handles actual results
 	const summary: RunSummary = {
@@ -853,6 +901,10 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		averageScore: stats.total > 0 ? stats.scoreSum / stats.total : 0,
 		totalDurationMs: stats.durationSumMs,
 	};
+
+	if (artifactSaver && capturedResults) {
+		artifactSaver.saveSummary(summary, capturedResults);
+	}
 
 	lifecycle?.onEnd?.(summary);
 

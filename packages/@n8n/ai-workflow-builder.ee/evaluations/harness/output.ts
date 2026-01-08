@@ -59,7 +59,7 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 
 	return {
 		saveExample(result: ExampleResult): void {
-			const exampleDir = path.join(outputDir, `example-${String(result.index).padStart(3, '0')}`);
+			const exampleDir = path.join(outputDir, getExampleDirName(result));
 			fs.mkdirSync(exampleDir, { recursive: true });
 
 			// Save prompt
@@ -102,6 +102,29 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 			logger.verbose(`Saved summary to ${path.join(outputDir, 'summary.json')}`);
 		},
 	};
+}
+
+function getExampleDirName(result: ExampleResult): string {
+	const index = String(result.index).padStart(3, '0');
+	const id = shortId(`${result.prompt}\n${result.index}`);
+	return `example-${index}-${id}`;
+}
+
+function shortId(input: string): string {
+	// Small deterministic id to avoid collisions when example folders are written concurrently
+	// and to keep folder names stable across reruns with the same prompts.
+	const hash = fnv1a32(input);
+	return hash.toString(36);
+}
+
+function fnv1a32(input: string): number {
+	// 32-bit FNV-1a
+	let hash = 0x811c9dc5;
+	for (let i = 0; i < input.length; i++) {
+		hash ^= input.charCodeAt(i);
+		hash = Math.imul(hash, 0x01000193);
+	}
+	return hash >>> 0;
 }
 
 /**
@@ -153,9 +176,11 @@ function formatFeedbackForExport(result: ExampleResult): object {
  * Format summary for export.
  */
 function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): object {
+	const resultsSorted = [...results].sort((a, b) => a.index - b.index);
+
 	// Calculate per-evaluator statistics
 	const evaluatorStats: Record<string, { scores: number[] }> = {};
-	for (const result of results) {
+	for (const result of resultsSorted) {
 		const byEvaluator: Record<string, Feedback[]> = {};
 		for (const fb of result.feedback) {
 			const evaluator = fb.evaluator;
@@ -187,7 +212,7 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 		averageScore: summary.averageScore,
 		totalDurationMs: summary.totalDurationMs,
 		evaluatorAverages,
-		results: results.map((r) => ({
+		results: resultsSorted.map((r) => ({
 			index: r.index,
 			prompt: r.prompt.slice(0, 100) + (r.prompt.length > 100 ? '...' : ''),
 			status: r.status,

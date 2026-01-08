@@ -12,6 +12,9 @@ import { mock } from 'jest-mock-extended';
 import type { Client } from 'langsmith/client';
 import { evaluate as langsmithEvaluate } from 'langsmith/evaluation';
 import type { Dataset, Example } from 'langsmith/schemas';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -181,6 +184,49 @@ describe('Runner - LangSmith Mode', () => {
 				prompt: 'Create a workflow',
 				feedback: [{ evaluator: 'test', metric: 'score', score: 0.9, kind: 'score' }],
 			});
+		});
+
+		it('should write artifacts when outputDir is provided', async () => {
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
+			const lsClient = createMockLangsmithClient();
+
+			const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'v2-evals-langsmith-out-'));
+			try {
+				const config: RunConfig = {
+					mode: 'langsmith',
+					dataset: 'test-dataset',
+					outputDir: tempDir,
+					generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow('Generated')),
+					evaluators: [createMockEvaluator('test')],
+					langsmithClient: lsClient,
+					langsmithOptions: {
+						experimentName: 'test',
+						repetitions: 1,
+						concurrency: 1,
+					},
+					logger: silentLogger,
+				};
+
+				const { runEvaluation } = await import('../harness/runner');
+				await runEvaluation(config);
+
+				expect(mockEvaluate).toHaveBeenCalledTimes(1);
+				const [target] = mockEvaluate.mock.calls[0];
+
+				await callLangsmithTarget(target, { prompt: 'Create a workflow' });
+
+				const entries = fs.readdirSync(tempDir, { withFileTypes: true });
+				const exampleDir = entries.find(
+					(e) => e.isDirectory() && e.name.startsWith('example-001-'),
+				)?.name;
+				expect(exampleDir).toBeDefined();
+
+				expect(fs.existsSync(path.join(tempDir, exampleDir!, 'prompt.txt'))).toBe(true);
+				expect(fs.existsSync(path.join(tempDir, exampleDir!, 'workflow.json'))).toBe(true);
+				expect(fs.existsSync(path.join(tempDir, exampleDir!, 'feedback.json'))).toBe(true);
+			} finally {
+				fs.rmSync(tempDir, { recursive: true, force: true });
+			}
 		});
 
 		it('should aggregate feedback from multiple evaluators in target', async () => {

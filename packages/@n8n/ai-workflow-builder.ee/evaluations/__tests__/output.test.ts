@@ -15,6 +15,14 @@ import { createArtifactSaver } from '../harness/output';
 
 const silentLogger = createLogger(false);
 
+function findExampleDir(baseDir: string, paddedIndex: string): string {
+	const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+	const prefix = `example-${paddedIndex}-`;
+	const match = entries.find((e) => e.isDirectory() && e.name.startsWith(prefix));
+	if (!match) throw new Error(`Expected example dir starting with "${prefix}" in ${baseDir}`);
+	return path.join(baseDir, match.name);
+}
+
 /** Type for parsed workflow JSON */
 interface ParsedWorkflow {
 	name: string;
@@ -133,7 +141,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const promptPath = path.join(tempDir, 'example-001', 'prompt.txt');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const promptPath = path.join(exampleDir, 'prompt.txt');
 			expect(fs.existsSync(promptPath)).toBe(true);
 			expect(fs.readFileSync(promptPath, 'utf-8')).toBe('Create a test workflow');
 		});
@@ -144,7 +153,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const workflowPath = path.join(tempDir, 'example-001', 'workflow.json');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const workflowPath = path.join(exampleDir, 'workflow.json');
 			expect(fs.existsSync(workflowPath)).toBe(true);
 
 			const workflow = jsonParse<ParsedWorkflow>(fs.readFileSync(workflowPath, 'utf-8'));
@@ -159,7 +169,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const feedbackPath = path.join(exampleDir, 'feedback.json');
 			expect(fs.existsSync(feedbackPath)).toBe(true);
 
 			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
@@ -174,7 +185,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const feedbackPath = path.join(exampleDir, 'feedback.json');
 			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
 
 			const llmJudge = feedback.evaluators.find((e) => e.name === 'llm-judge');
@@ -195,7 +207,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const feedbackPath = path.join(exampleDir, 'feedback.json');
 			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
 
 			const programmatic = feedback.evaluators.find((e) => e.name === 'programmatic');
@@ -213,7 +226,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const errorPath = path.join(tempDir, 'example-001', 'error.txt');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const errorPath = path.join(exampleDir, 'error.txt');
 			expect(fs.existsSync(errorPath)).toBe(true);
 			expect(fs.readFileSync(errorPath, 'utf-8')).toBe('Generation failed: timeout');
 		});
@@ -224,7 +238,8 @@ describe('Artifact Saver', () => {
 
 			saver.saveExample(result);
 
-			const workflowPath = path.join(tempDir, 'example-001', 'workflow.json');
+			const exampleDir = findExampleDir(tempDir, '001');
+			const workflowPath = path.join(exampleDir, 'workflow.json');
 			expect(fs.existsSync(workflowPath)).toBe(false);
 		});
 
@@ -235,9 +250,9 @@ describe('Artifact Saver', () => {
 			saver.saveExample(createMockResult({ index: 10 }));
 			saver.saveExample(createMockResult({ index: 100 }));
 
-			expect(fs.existsSync(path.join(tempDir, 'example-001'))).toBe(true);
-			expect(fs.existsSync(path.join(tempDir, 'example-010'))).toBe(true);
-			expect(fs.existsSync(path.join(tempDir, 'example-100'))).toBe(true);
+			expect(() => findExampleDir(tempDir, '001')).not.toThrow();
+			expect(() => findExampleDir(tempDir, '010')).not.toThrow();
+			expect(() => findExampleDir(tempDir, '100')).not.toThrow();
 		});
 	});
 
