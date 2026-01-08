@@ -49,6 +49,49 @@ export type AgentResult = {
 };
 
 /**
+ * Anthropic thinking content block
+ */
+export type ThinkingContentBlock = {
+	type: 'thinking';
+	thinking: string;
+	signature: string;
+};
+
+/**
+ * Anthropic redacted thinking content block
+ */
+export type RedactedThinkingContentBlock = {
+	type: 'redacted_thinking';
+	data: string;
+};
+
+/**
+ * Anthropic tool use content block
+ */
+export type ToolUseContentBlock = {
+	type: 'tool_use';
+	id: string;
+	name: string;
+	input: Record<string, unknown>;
+};
+
+/**
+ * Gemini thought signature content block
+ */
+export type GeminiThoughtSignatureBlock = {
+	thoughtSignature: string;
+};
+
+/**
+ * Union type for all supported content blocks
+ */
+export type ContentBlock =
+	| ThinkingContentBlock
+	| RedactedThinkingContentBlock
+	| ToolUseContentBlock
+	| GeminiThoughtSignatureBlock;
+
+/**
  * Metadata for engine requests and responses.
  */
 export type RequestResponseMetadata = {
@@ -58,6 +101,62 @@ export type RequestResponseMetadata = {
 	previousRequests?: ToolCallData[];
 	/** Current iteration count (for max iterations enforcement) */
 	iterationCount?: number;
-	/** Thought signature for Gemini 3 tool calls */
-	thoughtSignature?: string;
+	/** Google/Gemini-specific metadata */
+	google?: {
+		/** Thought signature for Gemini extended thinking */
+		thoughtSignature?: string;
+	};
+	/** Anthropic-specific metadata */
+	anthropic?: {
+		/** Thinking content from extended thinking mode */
+		thinkingContent?: string;
+		/** Type of thinking block (thinking or redacted_thinking) */
+		thinkingType?: 'thinking' | 'redacted_thinking';
+		/** Cryptographic signature for thinking blocks */
+		thinkingSignature?: string;
+	};
 };
+
+/**
+ * Type guard to check if a block is a thinking content block
+ */
+export function isThinkingBlock(block: unknown): block is ThinkingContentBlock {
+	return (
+		typeof block === 'object' &&
+		block !== null &&
+		'type' in block &&
+		block.type === 'thinking' &&
+		'thinking' in block &&
+		typeof block.thinking === 'string' &&
+		'signature' in block &&
+		typeof block.signature === 'string'
+	);
+}
+
+/**
+ * Type guard to check if a block is a redacted thinking content block
+ */
+export function isRedactedThinkingBlock(block: unknown): block is RedactedThinkingContentBlock {
+	return (
+		typeof block === 'object' &&
+		block !== null &&
+		'type' in block &&
+		block.type === 'redacted_thinking' &&
+		'data' in block &&
+		typeof block.data === 'string'
+	);
+}
+
+/**
+ * Type guard to check if a block is a Gemini thought signature block
+ */
+export function isGeminiThoughtSignatureBlock(
+	block: unknown,
+): block is GeminiThoughtSignatureBlock {
+	return (
+		typeof block === 'object' &&
+		block !== null &&
+		'thoughtSignature' in block &&
+		typeof block.thoughtSignature === 'string'
+	);
+}

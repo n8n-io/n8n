@@ -5,6 +5,10 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
@@ -92,6 +96,20 @@ export namespace ChatUI {
 		}>;
 	}
 
+	export interface ThinkingItem {
+		id: string;
+		displayTitle: string;
+		status: 'pending' | 'running' | 'completed' | 'error';
+	}
+
+	export interface ThinkingGroupMessage {
+		id?: string;
+		role: 'assistant';
+		type: 'thinking-group';
+		items: ThinkingItem[];
+		latestStatusText: string;
+	}
+
 	export interface CustomMessage {
 		id?: string;
 		role: 'assistant' | 'user';
@@ -121,6 +139,7 @@ export namespace ChatUI {
 		| AgentSuggestionMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
+		| ThinkingGroupMessage
 		| CustomMessage
 	) & {
 		id?: string;
@@ -212,6 +231,12 @@ export function isCustomMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.CustomMessage & { id?: string; read?: boolean } {
 	return msg.type === 'custom';
+}
+
+export function isThinkingGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ThinkingGroupMessage & { id?: string; read?: boolean } {
+	return msg.type === 'thinking-group';
 }
 
 // Helper to ensure message has required id and read properties

@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
@@ -123,15 +123,23 @@ export class UserRepository extends Repository<User> {
 				entityManager.create(Project, {
 					type: 'personal',
 					name: userWithRole.createPersonalProjectName(),
+					creatorId: savedUser.id,
 				}),
 			);
+
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
 					userId: savedUser.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: {
+						slug:
+							userWithRole.role.slug !== 'global:chatUser'
+								? PROJECT_OWNER_ROLE_SLUG
+								: PROJECT_VIEWER_ROLE_SLUG,
+					},
 				}),
 			);
+
 			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {
@@ -151,8 +159,12 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
+					project: {
+						type: 'personal',
+						creatorId: Not(IsNull()),
+						sharedWorkflows: { workflowId, role: 'workflow:owner' },
+					},
 				},
 			},
 			relations: ['role'],
@@ -168,8 +180,9 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
 					projectId,
+					project: { type: 'personal', creatorId: Not(IsNull()) },
 				},
 			},
 			relations: ['role'],

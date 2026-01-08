@@ -7,6 +7,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { ResponderAgent } from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
 import {
+	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
 	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
@@ -20,6 +21,14 @@ import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
 import { getNextPhaseFromLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
+import {
+	determineStateAction,
+	handleClearErrorState,
+	handleCleanupDangling,
+	handleCompactMessages,
+	handleCreateWorkflowName,
+	handleDeleteMessages,
+} from './utils/state-modifier';
 import type { BuilderFeatureFlags } from './workflow-builder-agent';
 
 /**
@@ -43,6 +52,8 @@ export interface MultiAgentSubgraphConfig {
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
+	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
+	autoCompactThresholdTokens?: number;
 	featureFlags?: BuilderFeatureFlags;
 }
 
@@ -107,8 +118,15 @@ function createSubgraphNodeHandler<
  * Parent graph orchestrates between subgraphs with minimal shared state.
  */
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
-	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer, featureFlags } =
-		config;
+	const {
+		parsedNodeTypes,
+		llmComplexTask,
+		logger,
+		instanceUrl,
+		checkpointer,
+		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
+		featureFlags,
+	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
 	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
@@ -125,12 +143,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		logger,
 		featureFlags,
 	});
-	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
+	const compiledBuilder = builderSubgraph.create({
+		parsedNodeTypes,
+		llm: llmComplexTask,
+		logger,
+		featureFlags,
+	});
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
 		llm: llmComplexTask,
 		logger,
 		instanceUrl,
+		featureFlags,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
@@ -142,6 +166,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					messages: state.messages,
 					workflowJSON: state.workflowJSON,
 					coordinationLog: state.coordinationLog,
+					previousSummary: state.previousSummary,
 				});
 
 				return {
@@ -155,6 +180,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					coordinationLog: state.coordinationLog,
 					discoveryContext: state.discoveryContext,
 					workflowJSON: state.workflowJSON,
+					previousSummary: state.previousSummary,
 				});
 
 				return {
@@ -171,6 +197,32 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					workflowOperations: [], // Clear operations after processing
 				};
 			})
+			// State modification nodes (preprocessing)
+			.addNode('check_state', (state) => ({
+				nextPhase: determineStateAction(state, autoCompactThresholdTokens),
+			}))
+			.addNode('cleanup_dangling', (state) => handleCleanupDangling(state.messages, logger))
+			.addNode('compact_messages', async (state) => {
+				const isAutoCompact = state.messages[state.messages.length - 1]?.content !== '/compact';
+				return await handleCompactMessages(
+					state.messages,
+					state.previousSummary ?? '',
+					llmComplexTask,
+					isAutoCompact,
+				);
+			})
+			.addNode('delete_messages', (state) => handleDeleteMessages(state.messages))
+			.addNode('clear_error_state', (state) => handleClearErrorState(state.coordinationLog, logger))
+			.addNode(
+				'create_workflow_name',
+				async (state) =>
+					await handleCreateWorkflowName(
+						state.messages,
+						state.workflowJSON,
+						llmComplexTask,
+						logger,
+					),
+			)
 			// Add Subgraph Nodes (using helper to reduce duplication)
 			.addNode(
 				'discovery_subgraph',
@@ -206,8 +258,33 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addEdge('discovery_subgraph', 'process_operations')
 			.addEdge('builder_subgraph', 'process_operations')
 			.addEdge('configurator_subgraph', 'process_operations')
-			// Start flows to supervisor (initial routing only)
-			.addEdge(START, 'supervisor')
+			// Start flows to check_state (preprocessing)
+			.addEdge(START, 'check_state')
+			// Conditional routing from check_state
+			.addConditionalEdges('check_state', (state) => {
+				const routes: Record<string, string> = {
+					cleanup_dangling: 'cleanup_dangling',
+					compact_messages: 'compact_messages',
+					delete_messages: 'delete_messages',
+					create_workflow_name: 'create_workflow_name',
+					auto_compact_messages: 'compact_messages', // Reuse same node
+					clear_error_state: 'clear_error_state',
+					continue: 'supervisor',
+				};
+				return routes[state.nextPhase] ?? 'supervisor';
+			})
+			// Route after state modification nodes
+			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup
+			.addEdge('delete_messages', 'responder') // Clear → responder for acknowledgment
+			.addEdge('clear_error_state', 'check_state') // Re-check after clearing errors (AI-1812)
+			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
+			// Compact has conditional routing: auto → continue, manual → responder
+			.addConditionalEdges('compact_messages', (state) => {
+				// Auto-compact preserves the last user message, manual /compact clears all
+				// If messages remain after compaction, it's auto-compact → continue processing
+				const hasMessages = state.messages.length > 0;
+				return hasMessages ? 'check_state' : 'responder';
+			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
 			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))
 			// Deterministic routing after subgraphs complete (based on coordination log)

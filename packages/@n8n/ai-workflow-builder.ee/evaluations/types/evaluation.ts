@@ -93,6 +93,7 @@ export const evaluationInputSchema = z.object({
 	generatedWorkflow: z.custom<SimpleWorkflow>(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
 	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
+	preset: z.enum(['strict', 'standard', 'lenient']).optional(),
 });
 
 export type EvaluationInput = z.infer<typeof evaluationInputSchema>;

@@ -42,6 +42,25 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ default: false })
 	isGlobal: boolean;
 
+	/**
+	 * Whether the credential can be dynamically resolved by a resolver.
+	 */
+	@Column({ default: false })
+	isResolvable: boolean;
+
+	/**
+	 * Whether the credential resolver should allow falling back to static credentials
+	 * if dynamic resolution fails.
+	 */
+	@Column({ default: false })
+	resolvableAllowFallback: boolean;
+
+	/**
+	 * ID of the dynamic credential resolver associated with this credential.
+	 */
+	@Column({ type: 'varchar', nullable: true })
+	resolverId: string | null;
+
 	toJSON() {
 		const { shared, ...rest } = this;
 		return rest;

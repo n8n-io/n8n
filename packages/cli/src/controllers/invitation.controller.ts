@@ -6,7 +6,6 @@ import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators'
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,6 +16,7 @@ import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')
@@ -31,6 +31,7 @@ export class InvitationController {
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -64,7 +65,7 @@ export class InvitationController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (!(await this.ownershipService.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);
@@ -95,7 +96,7 @@ export class InvitationController {
 		req: AuthlessRequest,
 		res: Response,
 		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
+		@Param('id') userId: string,
 	) {
 		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
@@ -106,7 +107,24 @@ export class InvitationController {
 			);
 		}
 
-		const { inviterId, firstName, lastName, password } = payload;
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId from either JWT token or legacy inviterId parameter
+		// inviteeId comes from URL parameter
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
+			token: payload.token,
+			inviterId: payload.inviterId,
+			// If inviteeId is not provided, use the URL parameter for backwards compatibility
+			inviteeId: payload.inviteeId ?? userId,
+		});
+
+		if (inviteeId !== userId) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because the invitee ID does not match the URL parameter',
+				{ inviteeId, userId },
+			);
+			throw new BadRequestError('Invalid invite URL');
+		}
 
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],

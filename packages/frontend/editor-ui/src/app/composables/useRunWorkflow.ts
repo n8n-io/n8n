@@ -22,11 +22,7 @@ import { retry } from '@n8n/utils/retry';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	IN_PROGRESS_EXECUTION_ID,
-	SINGLE_WEBHOOK_TRIGGERS,
-} from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE, IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -98,8 +94,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		}
 
-		workflowsStore.subWorkflowExecutionError = null;
-
 		// Set the execution as started, but still waiting for the execution to be retrieved
 		workflowState.setActiveExecutionId(null);
 
@@ -115,11 +109,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
-		}
-
-		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowState.setActiveExecutionId(undefined);
-			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
 		if (response.waitingForWebhook === true) {
@@ -155,7 +144,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (workflowsStore.isNewWorkflow) {
+			if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -287,31 +276,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					return true;
 				});
 
-			const singleWebhookTrigger =
-				options.triggerNode === undefined
-					? // if there is no chosen trigger we check all triggers
-						triggers.find((node) => SINGLE_WEBHOOK_TRIGGERS.includes(node.type))
-					: // if there is a chosen trigger we check this one only
-						workflowData.nodes.find(
-							(node) =>
-								node.name === options.triggerNode && SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
-						);
-
-			if (
-				singleWebhookTrigger &&
-				workflowsStore.isWorkflowActive &&
-				!workflowData.pinData?.[singleWebhookTrigger.name]
-			) {
-				toast.showMessage({
-					title: i18n.baseText('workflowRun.showError.deactivate'),
-					message: i18n.baseText('workflowRun.showError.productionActive', {
-						interpolate: { nodeName: singleWebhookTrigger.name },
-					}),
-					type: 'error',
-				});
-				return undefined;
-			}
-
 			const startRunData: IStartRunData = {
 				workflowData,
 				runData: isPartialExecution
@@ -412,6 +376,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			return runWorkflowApiResponse;
 		} catch (error) {
+			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));

@@ -114,7 +114,7 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const client = new Client({ name, version: version.toString() }, { capabilities: { tools: {} } });
+	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	if (serverTransport === 'httpStreamable') {
 		try {

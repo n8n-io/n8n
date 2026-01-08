@@ -292,7 +292,9 @@ describe('McpClientTool', () => {
 
 		it('should successfully execute a tool', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: 'Sunny' });
+			jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ toolResult: 'Sunny', content: [] });
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
@@ -326,9 +328,11 @@ describe('McpClientTool', () => {
 
 		it('should handle tool errors', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest
-				.spyOn(Client.prototype, 'callTool')
-				.mockResolvedValue({ isError: true, content: [{ text: 'Weather unknown at location' }] });
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				toolResult: 'Weather unknown at location',
+				content: [{ text: 'Weather unknown at location' }],
+			});
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
@@ -424,7 +428,11 @@ describe('McpClientTool', () => {
 					{
 						name: 'get_weather',
 						description: 'Gets the weather',
-						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+						inputSchema: {
+							type: 'object',
+							properties: { location: { type: 'string' } },
+							additionalProperties: false,
+						},
 					},
 				],
 			});
@@ -437,6 +445,7 @@ describe('McpClientTool', () => {
 						json: {
 							tool: 'get_weather',
 							location: 'Berlin',
+							foo: 'bar', // arbitrary field to be filtered out
 						},
 					},
 				]),
@@ -470,6 +479,58 @@ describe('McpClientTool', () => {
 				{
 					name: 'get_weather',
 					arguments: { location: 'Berlin' },
+				},
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should pass all arguments when schema has additionalProperties: true', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Success' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'flexible_tool',
+						description: 'Accepts any arguments',
+						inputSchema: { type: 'object', additionalProperties: true },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: 'flexible_tool',
+							foo: 'bar',
+							extra: 'data',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'flexible_tool',
+					arguments: { foo: 'bar', extra: 'data' },
 				},
 				expect.anything(),
 				expect.anything(),

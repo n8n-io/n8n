@@ -10,6 +10,12 @@ import type {
  */
 export type CredentialResolverConfiguration = Record<string, unknown>;
 
+export type CredentialResolverHandle = {
+	configuration: CredentialResolverConfiguration;
+	resolverName: string;
+	resolverId: string;
+};
+
 /**
  * Metadata describing a credential resolver type for UI integration and discovery.
  */
@@ -43,7 +49,7 @@ export interface ICredentialResolver {
 	getSecret(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	/**
@@ -54,7 +60,7 @@ export interface ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		data: ICredentialDataDecryptedObject,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void>;
 
 	/**
@@ -65,7 +71,7 @@ export interface ICredentialResolver {
 	deleteSecret?(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void>;
 
 	/**
@@ -74,6 +80,14 @@ export interface ICredentialResolver {
 	 * @throws {CredentialResolverValidationError} When configuration is invalid
 	 */
 	validateOptions(options: CredentialResolverConfiguration): Promise<void>;
+
+	/**
+	 * Validates if the userIdentity provided has access to the resolver capable credential
+	 *
+	 * @param identity - The identity of the entity to validate access for
+	 * @throws {CredentialResolverAccessValidationError} When access is invalid
+	 */
+	validateIdentity?(identity: string, handle: CredentialResolverHandle): Promise<void>;
 
 	/**
 	 * Runs initialization logic for the resolver. This might be called multiple times!

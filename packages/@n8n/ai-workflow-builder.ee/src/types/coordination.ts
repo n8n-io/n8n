@@ -5,7 +5,7 @@
  * and enable deterministic routing without polluting the messages array.
  */
 
-export type SubgraphPhase = 'discovery' | 'builder' | 'configurator';
+export type SubgraphPhase = 'discovery' | 'builder' | 'configurator' | 'state_management';
 
 /**
  * Entry in the coordination log tracking subgraph completion.
@@ -34,6 +34,7 @@ export type CoordinationMetadata =
 	| DiscoveryMetadata
 	| BuilderMetadata
 	| ConfiguratorMetadata
+	| StateManagementMetadata
 	| ErrorMetadata;
 
 export interface DiscoveryMetadata {
@@ -70,6 +71,20 @@ export interface ErrorMetadata {
 	failedSubgraph: SubgraphPhase;
 	/** Error message */
 	errorMessage: string;
+	/** Partial builder data when builder hits recursion error (AI-1812) */
+	partialBuilderData?: {
+		nodeCount: number;
+		connectionCount: number;
+		nodeNames: string[];
+	};
+}
+
+export interface StateManagementMetadata {
+	phase: 'state_management';
+	/** Type of state management action */
+	action: 'compact' | 'clear';
+	/** Number of messages removed during compaction */
+	messagesRemoved?: number;
 }
 
 /**
@@ -92,4 +107,10 @@ export function createConfiguratorMetadata(
 
 export function createErrorMetadata(data: Omit<ErrorMetadata, 'phase'>): ErrorMetadata {
 	return { phase: 'error', ...data };
+}
+
+export function createStateManagementMetadata(
+	data: Omit<StateManagementMetadata, 'phase'>,
+): StateManagementMetadata {
+	return { phase: 'state_management', ...data };
 }

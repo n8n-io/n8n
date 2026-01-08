@@ -115,6 +115,8 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: 1 })
 	versionCounter: number;
 
+	// Excludes error and sub-workflow triggers and disabled triggers
+	// Used for billing of plans based on trigger count
 	@Column({ default: 0 })
 	triggerCount: number;
 

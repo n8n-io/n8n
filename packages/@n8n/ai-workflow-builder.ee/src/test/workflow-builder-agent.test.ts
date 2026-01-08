@@ -31,7 +31,7 @@ jest.mock('@/tools/update-node-parameters.tool', () => ({
 jest.mock('@/tools/get-node-parameter.tool', () => ({
 	createGetNodeParameterTool: jest.fn().mockReturnValue({ tool: { name: 'get_node_parameter' } }),
 }));
-jest.mock('@/tools/prompts/main-agent.prompt', () => ({
+jest.mock('@/prompts/legacy-agent.prompt', () => ({
 	mainAgentPrompt: {
 		invoke: jest.fn().mockResolvedValue('mocked prompt'),
 	},
@@ -67,7 +67,7 @@ Object.defineProperty(global, 'crypto', {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
-import { createMainAgentPrompt } from '@/tools/prompts/main-agent.prompt';
+import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
@@ -146,6 +146,7 @@ describe('WorkflowBuilderAgent', () => {
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
@@ -156,6 +157,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should throw ValidationError when message exceeds maximum length', async () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
+				id: '12345',
 				message: longMessage,
 			};
 
@@ -173,6 +175,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should handle valid message length', async () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
+				id: '12345',
 				message: validMessage,
 			};
 
@@ -293,8 +296,8 @@ describe('WorkflowBuilderAgent', () => {
 				validationHistory: [],
 				techniqueCategories: [],
 				previousSummary: 'EMPTY',
-				nodeConfigurations: {},
 				templateIds: [],
+				cachedTemplates: [],
 			};
 		};
 
@@ -399,7 +402,7 @@ describe('WorkflowBuilderAgent', () => {
 						{
 							id: 'node-1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [0, 0] as [number, number],
 							parameters: {},
@@ -491,6 +494,7 @@ describe('WorkflowBuilderAgent', () => {
 			);
 
 			const generator = agent.chat({
+				id: '12345',
 				message: 'Create a workflow',
 				featureFlags: { templateExamples: true },
 			});
@@ -511,6 +515,7 @@ describe('WorkflowBuilderAgent', () => {
 			);
 
 			const generator = agent.chat({
+				id: '12345',
 				message: 'Create a workflow',
 				featureFlags: { templateExamples: false },
 			});
@@ -530,7 +535,10 @@ describe('WorkflowBuilderAgent', () => {
 				mockAsyncGenerator,
 			);
 
-			const generator = agent.chat({ message: 'Create a workflow' });
+			const generator = agent.chat({
+				id: '12345',
+				message: 'Create a workflow',
+			});
 			await generator.next();
 
 			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });

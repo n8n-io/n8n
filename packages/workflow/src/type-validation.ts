@@ -171,6 +171,11 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'fieldValue',
 	'elementName',
 	'html',
+	'fieldName',
+	'limitSelection',
+	'numberOfSelections',
+	'minSelections',
+	'maxSelections',
 ];
 
 const ALLOWED_FIELD_TYPES = [
@@ -264,17 +269,27 @@ export const getValueDescription = <T>(value: T): string => {
 	return `'${String(value)}'`;
 };
 
+const ALLOWED_URL_PROTOCOLS = ['http:', 'https:', 'ftp:', 'file:'];
+
 export const tryToParseUrl = (value: unknown): string => {
 	if (typeof value === 'string' && !value.includes('://')) {
-		value = `http://${value}`;
+		value = `https://${value}`;
 	}
-	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
-	if (!urlPattern.test(String(value))) {
+
+	try {
+		const parsed = new URL(String(value));
+		if (!ALLOWED_URL_PROTOCOLS.includes(parsed.protocol)) {
+			throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+				extra: { value },
+			});
+		}
+		return String(value);
+	} catch (e) {
+		if (e instanceof ApplicationError) throw e;
 		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
 			extra: { value },
 		});
 	}
-	return String(value);
 };
 
 export const tryToParseJwt = (value: unknown): string => {

@@ -155,7 +155,7 @@ export class CanvasPage extends BasePage {
 			await this.nodeCreatorSubItem(options.trigger).click();
 		}
 		if (options?.closeNDV) {
-			await this.page.getByTestId('back-to-canvas').click();
+			await this.page.getByTestId('ndv-close-button').click();
 		}
 	}
 
@@ -800,15 +800,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodesWithSpinner(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=refresh-cw]'),
-		});
+		return this.page.locator(
+			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
+		);
 	}
 
 	getWaitingNodes(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=clock]'),
-		});
+		return this.page.locator('[data-test-id="canvas-node"].waiting');
 	}
 
 	/**
@@ -946,7 +944,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+		return this.page.locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
+		);
 	}
 
 	getSuccessEdges(): Locator {
@@ -965,6 +965,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-handle-plus');
 	}
 
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
+	}
+
 	stopExecutionWaitingForWebhookButton(): Locator {
 		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
 	}
@@ -979,10 +987,16 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

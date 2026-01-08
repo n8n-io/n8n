@@ -221,7 +221,7 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('initState', () => {
-		it('should initialize workflow state with provided data', () => {
+		it('should initialize workflow state with provided data', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -240,16 +240,16 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
-			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
+			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
-			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
-			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
+			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
+			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
 			expect(setActiveSpy).toHaveBeenCalledWith('v1');
@@ -263,7 +263,7 @@ describe('useWorkflowHelpers', () => {
 				timezone: 'DEFAULT',
 			});
 			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('v1');
+			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('v1', 'checksum');
 			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
@@ -275,7 +275,7 @@ describe('useWorkflowHelpers', () => {
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 
-		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
+		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -290,13 +290,13 @@ describe('useWorkflowHelpers', () => {
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
 			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
 		});
 
-		it('should handle missing `tags` gracefully', () => {
+		it('should handle missing `tags` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -310,7 +310,7 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);

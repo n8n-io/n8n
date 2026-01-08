@@ -200,6 +200,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle freeText GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -207,6 +208,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -223,6 +225,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -272,6 +279,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle customForm GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -279,6 +287,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -303,6 +312,11 @@ describe('Send and Wait utils tests', () => {
 				noWebhookResponse: true,
 			});
 
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
 				formTitle: 'Test title',
@@ -325,6 +339,59 @@ describe('Send and Wait utils tests', () => {
 				buttonLabel: 'Test button',
 				dangerousCustomCss: 'body { background-color: red; }',
 			});
+		});
+
+		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {
+			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+				setHeader: mockSetHeader,
+			} as any);
+
+			// Mock evaluateExpression to resolve the expression
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.videoUrl }}') {
+					return 'https://example.com/video.mp4';
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Test message',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'Custom HTML',
+							fieldType: 'html',
+							// Use <source> tag inside <video> since sanitizeHtml allows src on source, not video
+							html: '<video controls><source src="{{ $json.videoUrl }}" type="video/mp4" /></video>',
+						},
+					],
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					formFields: expect.arrayContaining([
+						expect.objectContaining({
+							html: '<video controls><source src="https://example.com/video.mp4" type="video/mp4"></source></video>',
+						}),
+					]),
+				}),
+			);
 		});
 
 		it('should handle customForm POST webhook', async () => {

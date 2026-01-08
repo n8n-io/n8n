@@ -1,7 +1,8 @@
 import type { Response } from 'express';
+import { rm } from 'fs/promises';
 import isbot from 'isbot';
-import * as a from 'node:assert';
 import { DateTime } from 'luxon';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -17,7 +18,9 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 	jsonParse,
+	tryToParseUrl,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
@@ -132,10 +135,39 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	});
 }
 
+/**
+ * Validates that a URL uses a safe scheme.
+ * Returns the normalized URL if valid, or null if invalid.
+ */
+export function validateSafeRedirectUrl(url: string | undefined): string | null {
+	if (!url) return null;
+	const trimmed = url.trim();
+	if (!trimmed) return null;
+
+	try {
+		return tryToParseUrl(trimmed);
+	} catch {
+		return null;
+	}
+}
+
 export function createDescriptionMetadata(description: string) {
 	return description === ''
 		? 'n8n form'
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
+
+/**
+ * Gets the field identifier to use based on node version.
+ * For v2.4+, uses fieldName as the primary identifier.
+ * For earlier versions, falls back to fieldLabel.
+ */
+function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: number): string {
+	if (nodeVersion && nodeVersion >= 2.4 && field.fieldName) {
+		return field.fieldName;
+	}
+
+	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
 export function prepareFormData({
@@ -152,6 +184,7 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
+	nodeVersion,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -166,6 +199,7 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
+	nodeVersion?: number;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -190,21 +224,22 @@ export function prepareFormData({
 	};
 
 	if (redirectUrl) {
-		if (!redirectUrl.includes('://')) {
-			redirectUrl = `http://${redirectUrl}`;
+		const safeUrl = validateSafeRedirectUrl(redirectUrl);
+		if (safeUrl) {
+			formData.redirectUrl = safeUrl;
 		}
-		formData.redirectUrl = redirectUrl;
 	}
 
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
+		const queryParam = getFieldIdentifier(field, nodeVersion);
 
 		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[field.fieldLabel] ?? defaultValue ?? '',
+			defaultValue: query[queryParam] ?? defaultValue ?? '',
 			placeholder,
 		};
 
@@ -302,10 +337,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
+	nodeVersion?: number,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = field.fieldLabel ?? field.fieldName;
+		const name = getFieldIdentifier(field, nodeVersion);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -389,7 +425,8 @@ export async function prepareFormReturnItem(
 		}
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
-		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
+		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
@@ -404,10 +441,13 @@ export async function prepareFormReturnItem(
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -491,8 +531,10 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
+		nodeVersion: context.getNode().typeVersion,
 	});
 
+	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	res.render('form-trigger', data);
 }
 

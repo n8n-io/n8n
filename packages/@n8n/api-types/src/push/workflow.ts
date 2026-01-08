@@ -2,6 +2,7 @@ export type WorkflowActivated = {
 	type: 'workflowActivated';
 	data: {
 		workflowId: string;
+		activeVersionId: string;
 	};
 };
 

@@ -22,10 +22,13 @@ import type {
 } from 'n8n-workflow';
 import {
 	CREDENTIAL_EMPTY_VALUE,
+	IconOrEmojiSchema,
 	isResourceLocatorValue,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
+
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -95,10 +98,20 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+} from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -165,6 +178,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
+const builderStore = useBuilderStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -250,15 +264,6 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language' && node.value?.type === 'n8n-nodes-base.code') {
-		if (settingsStore.isNativePythonRunnerEnabled) {
-			return safeOptions.filter((o) => o.value !== 'python');
-		} else {
-			return safeOptions.filter((o) => o.value !== 'pythonNative');
-		}
-	}
-
 	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
@@ -276,6 +281,22 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
 		: props.modelValue;
+});
+
+const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
+	get() {
+		const result = IconOrEmojiSchema.safeParse(props.modelValue);
+		if (result.success) {
+			return {
+				type: result.data.type,
+				value: result.data.value,
+			} as DesignSystemIconOrEmoji;
+		}
+		return undefined;
+	},
+	set(_value: DesignSystemIconOrEmoji | undefined) {
+		// Handled by valueChanged
+	},
 });
 
 const editorRows = computed(() => getTypeOption('rows'));
@@ -801,6 +822,14 @@ function selectInput() {
 	}
 }
 
+function trackBuilderPlaceholders() {
+	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
+		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
+			node_type: node.value.type,
+		});
+	}
+}
+
 async function setFocus() {
 	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
@@ -830,6 +859,7 @@ async function setFocus() {
 	}
 
 	emit('focus');
+	trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {
@@ -902,11 +932,7 @@ function valueChanged(untypedValue: unknown) {
 
 	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
 
-	if (
-		!oldValue &&
-		oldValue !== undefined &&
-		shouldConvertToExpression(value, isSpecializedEditor)
-	) {
+	if (!oldValue && shouldConvertToExpression(value, isSpecializedEditor)) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
@@ -1311,6 +1337,19 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
+			/>
+			<N8nIconPicker
+				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
+				ref="inputField"
+				v-model="iconPickerValue"
+				:button-tooltip="
+					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
+				"
+				button-size="large"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"
@@ -1867,14 +1906,16 @@ onUpdated(async () => {
 }
 
 .droppable {
-	--input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--input--border-color: transparent;
+	--input--border-right-color: transparent;
 
 	textarea,
 	input,
 	.cm-editor {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -1885,9 +1926,13 @@ onUpdated(async () => {
 	--input--border-style: solid;
 
 	textarea,
-	input {
+	input,
+	.cm-editor {
 		cursor: grabbing !important;
+		border-color: var(--color--success);
 		border-width: 1px;
+		outline: none;
+		transition: none;
 	}
 }
 
