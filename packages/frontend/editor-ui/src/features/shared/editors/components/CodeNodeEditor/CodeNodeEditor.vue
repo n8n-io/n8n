@@ -344,9 +344,9 @@ defineExpose({
 
 .editorInput.droppable {
 	:global(.cm-editor) {
-		border-color: var(--ndv--droppable-parameter--color);
-		border-style: dashed;
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
 	}
 }
 
@@ -356,6 +356,7 @@ defineExpose({
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
+		outline: none;
 	}
 }
 </style>
