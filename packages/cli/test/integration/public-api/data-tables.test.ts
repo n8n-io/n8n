@@ -187,6 +187,73 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe('Invalid sort direction');
 	});
+
+	test('should paginate with skip and take', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'position', type: 'number' },
+			],
+			data: [
+				{ name: 'Alice', position: 1 },
+				{ name: 'Bob', position: 2 },
+				{ name: 'Charlie', position: 3 },
+				{ name: 'David', position: 4 },
+				{ name: 'Eve', position: 5 },
+			],
+		});
+
+		// Test skip
+		const response1 = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ skip: 2, sortBy: 'position:asc' });
+
+		expect(response1.statusCode).toBe(200);
+		expect(response1.body.data).toHaveLength(3);
+		expect(response1.body.data[0].name).toBe('Charlie');
+
+		// Test take
+		const response2 = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ take: 2, sortBy: 'position:asc' });
+
+		expect(response2.statusCode).toBe(200);
+		expect(response2.body.data).toHaveLength(2);
+		expect(response2.body.data[0].name).toBe('Alice');
+		expect(response2.body.data[1].name).toBe('Bob');
+
+		// Test skip + take
+		const response3 = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ skip: 1, take: 2, sortBy: 'position:asc' });
+
+		expect(response3.statusCode).toBe(200);
+		expect(response3.body.data).toHaveLength(2);
+		expect(response3.body.data[0].name).toBe('Bob');
+		expect(response3.body.data[1].name).toBe('Charlie');
+	});
+
+	test('should search across columns', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'email', type: 'string' },
+			],
+			data: [
+				{ name: 'Alice', email: 'alice@example.com' },
+				{ name: 'Bob', email: 'bob@test.com' },
+				{ name: 'Charlie', email: 'charlie@example.com' },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ search: 'example' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(2);
+		expect(response.body.data.map((r: any) => r.name).sort()).toEqual(['Alice', 'Charlie']);
+	});
 });
 
 describe('POST /data-tables/:dataTableId/rows', () => {
@@ -197,7 +264,7 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		testWithAPIKey('post', '/data-tables/123/rows', 'abcXYZ'),
 	);
 
-	test('should insert rows into own data table', async () => {
+	test('should insert rows with returnType count', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
 				{ name: 'name', type: 'string' },
@@ -216,6 +283,52 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ insertedRows: 2, success: true });
 	});
+
+	test('should insert rows with returnType id', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
+			data: [{ name: 'Alice' }, { name: 'Bob' }],
+			returnType: 'id',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(2);
+		// returnType 'id' returns objects with id property
+		expect(response.body[0]).toHaveProperty('id');
+		expect(typeof response.body[0].id).toBe('number');
+		expect(response.body[1]).toHaveProperty('id');
+		expect(typeof response.body[1].id).toBe('number');
+	});
+
+	test('should insert rows with returnType all', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
+			data: [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+			],
+			returnType: 'all',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(2);
+		expect(response.body[0]).toHaveProperty('id');
+		expect(response.body[0]).toHaveProperty('name', 'Alice');
+		expect(response.body[0]).toHaveProperty('age', 30);
+		expect(response.body[1]).toHaveProperty('name', 'Bob');
+		expect(response.body[1]).toHaveProperty('age', 25);
+	});
 });
 
 describe('PATCH /data-tables/:dataTableId/rows/update', () => {
@@ -229,7 +342,7 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 		testWithAPIKey('patch', '/data-tables/123/rows/update', 'abcXYZ'),
 	);
 
-	test('should update rows in own data table', async () => {
+	test('should update rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
 				{ name: 'status', type: 'string' },
@@ -253,6 +366,69 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toBe(true);
 	});
+
+	test('should update rows with returnData true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'status', type: 'string' },
+				{ name: 'value', type: 'number' },
+			],
+			data: [
+				{ status: 'pending', value: 10 },
+				{ status: 'pending', value: 20 },
+				{ status: 'active', value: 30 },
+			],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', condition: 'eq', value: 'pending' }],
+			},
+			data: { status: 'completed' },
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(2);
+		expect(response.body[0]).toHaveProperty('status', 'completed');
+		expect(response.body[1]).toHaveProperty('status', 'completed');
+	});
+
+	test('should preview update with dryRun true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'status', type: 'string' },
+				{ name: 'count', type: 'number' },
+			],
+			data: [
+				{ status: 'pending', count: 1 },
+				{ status: 'pending', count: 2 },
+			],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', condition: 'eq', value: 'pending' }],
+			},
+			data: { status: 'completed' },
+			dryRun: true,
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		// dryRun returns both before and after states for each row
+		expect(response.body).toHaveLength(4);
+		expect(response.body.filter((r: any) => r.dryRunState === 'before')).toHaveLength(2);
+		expect(response.body.filter((r: any) => r.dryRunState === 'after')).toHaveLength(2);
+
+		// Verify data was not actually updated
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.data.every((row: any) => row.status === 'pending')).toBe(true);
+	});
 });
 
 describe('POST /data-tables/:dataTableId/rows/upsert', () => {
@@ -266,7 +442,7 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		testWithAPIKey('post', '/data-tables/123/rows/upsert', 'abcXYZ'),
 	);
 
-	test('should upsert row in own data table', async () => {
+	test('should upsert row with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
 				{ name: 'email', type: 'string' },
@@ -287,6 +463,64 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toBe(true);
 	});
+
+	test('should upsert row with returnData true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'email', type: 'string' },
+				{ name: 'status', type: 'string' },
+			],
+			data: [{ email: 'existing@example.com', status: 'old' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', condition: 'eq', value: 'existing@example.com' }],
+			},
+			data: { email: 'existing@example.com', status: 'updated' },
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0]).toHaveProperty('email', 'existing@example.com');
+		expect(response.body[0]).toHaveProperty('status', 'updated');
+	});
+
+	test('should preview upsert with dryRun true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'email', type: 'string' },
+				{ name: 'count', type: 'number' },
+			],
+			data: [{ email: 'test@example.com', count: 5 }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', condition: 'eq', value: 'test@example.com' }],
+			},
+			data: { email: 'test@example.com', count: 10 },
+			dryRun: true,
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		// dryRun returns both before and after states
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(2);
+		expect(response.body[0]).toHaveProperty('dryRunState', 'before');
+		expect(response.body[0]).toHaveProperty('count', 5);
+		expect(response.body[1]).toHaveProperty('dryRunState', 'after');
+		expect(response.body[1]).toHaveProperty('count', 10);
+
+		// Verify data was not actually updated
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.data[0].count).toBe(5);
+	});
 });
 
 describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
@@ -300,7 +534,7 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		testWithAPIKey('delete', '/data-tables/123/rows/delete', 'abcXYZ'),
 	);
 
-	test('should delete rows from own data table', async () => {
+	test('should delete rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'status', type: 'string' }],
 			data: [{ status: 'old' }, { status: 'active' }],
@@ -317,6 +551,69 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toBe(true);
+	});
+
+	test('should delete rows with returnData true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'status', type: 'string' },
+				{ name: 'value', type: 'number' },
+			],
+			data: [
+				{ status: 'archived', value: 1 },
+				{ status: 'archived', value: 2 },
+				{ status: 'active', value: 3 },
+			],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'eq', value: 'archived' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(2);
+		expect(response.body[0]).toHaveProperty('status', 'archived');
+		expect(response.body[1]).toHaveProperty('status', 'archived');
+	});
+
+	test('should preview delete with dryRun true', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'status', type: 'string' },
+				{ name: 'id_num', type: 'number' },
+			],
+			data: [
+				{ status: 'temp', id_num: 1 },
+				{ status: 'temp', id_num: 2 },
+				{ status: 'permanent', id_num: 3 },
+			],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'eq', value: 'temp' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, dryRun: 'true', returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		// dryRun returns both before and after states for each row
+		expect(response.body).toHaveLength(4);
+		expect(response.body.filter((r: any) => r.dryRunState === 'before')).toHaveLength(2);
+		expect(response.body.filter((r: any) => r.dryRunState === 'after')).toHaveLength(2);
+
+		// Verify data was not actually deleted
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.count).toBe(3);
 	});
 
 	test('should return 400 when filter is missing', async () => {
