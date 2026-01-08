@@ -51,6 +51,9 @@
                         "industry": {
                             "type": "string"
                         },
+                        "languages": {
+                            "type": "string"
+                        },
                         "lastName": {
                             "type": "string"
                         },
@@ -68,6 +71,98 @@
                         },
                         "occupation": {
                             "type": "string"
+                        },
+                        "picture": {
+                            "type": "string"
+                        },
+                        "positionGroups": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "company": {
+                                        "type": "object",
+                                        "properties": {
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "domain": {
+                                                "type": "string"
+                                            },
+                                            "employeesOnLinkedin": {
+                                                "type": "integer"
+                                            },
+                                            "foundedOn": {
+                                                "type": "integer"
+                                            },
+                                            "industry": {
+                                                "type": "string"
+                                            },
+                                            "linkedinUrlSalesNav": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "size": {
+                                                "type": "string"
+                                            },
+                                            "tagline": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "website": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "date": {
+                                        "type": "object",
+                                        "properties": {
+                                            "start": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "month": {
+                                                        "type": "integer"
+                                                    },
+                                                    "year": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "profilePositions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "date": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "start": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "month": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "year": {
+                                                                    "type": "integer"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         },
                         "skills": {
                             "type": "string"
@@ -88,7 +183,19 @@
         "input": {
             "type": "object",
             "properties": {
+                "companyDomain": {
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
                     "type": "string"
                 },
                 "linkedinUrl": {
@@ -97,5 +204,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }
