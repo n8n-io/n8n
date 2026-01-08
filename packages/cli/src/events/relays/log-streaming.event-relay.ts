@@ -54,6 +54,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
+			'external-secrets-provider-settings-saved': (event) =>
+				this.externalSecretsProviderSettingsSaved(event),
+			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -516,6 +519,28 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.variable.deleted',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	// #endregion
+
+	// #region External Secrets Provider
+
+	private externalSecretsProviderSettingsSaved(
+		payload: RelayEventMap['external-secrets-provider-settings-saved'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.provider.settings.saved',
+			payload,
+		});
+	}
+
+	private externalSecretsProviderReloaded(
+		payload: RelayEventMap['external-secrets-provider-reloaded'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.provider.reloaded',
+			payload,
 		});
 	}
 
