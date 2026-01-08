@@ -2,7 +2,7 @@
 FROM node:22-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++ git libc6-compat
+RUN apk add --no-cache python3 make g++ git libc6-compat bash
 
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
