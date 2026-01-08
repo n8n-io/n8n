@@ -358,7 +358,7 @@
 
 	// Button secondary
 	--button--color--text--secondary: var(--color--neutral-700);
-	--button--border-color--secondary: var(--color--neutral-300);
+	--button--border-color--secondary: var(--color--foreground);
 	--button--color--background--secondary: var(--color--neutral-white);
 	--button--color--text--secondary--hover-active-focus: var(--color--orange-400);
 	--button--border-color--secondary--hover-active-focus: var(--color--orange-300);
@@ -366,7 +366,7 @@
 	--button--color--background--secondary--active-focus: var(--color--orange-100);
 	--button--outline-color--secondary--focus: var(--color--neutral-200);
 	--button--color--text--secondary--disabled: var(--color--neutral-250);
-	--button--border-color--secondary--disabled: var(--color--neutral-250);
+	--button--border-color--secondary--disabled: var(--color--foreground);
 
 	// Button highlight
 	--button--color--text--highlight: var(--color--neutral-700);

@@ -6,6 +6,8 @@ import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+	WORKFLOW_VERSION_RENAME_MODAL_KEY,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -32,24 +34,20 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
+import type { WorkflowSaveDraftModalEventBusEvents } from '@/app/components/MainHeader/WorkflowSaveDraftModal.vue';
+import type { WorkflowVersionRenameModalEventBusEvents } from '../components/WorkflowVersionRenameModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
-
-type WorkflowHistoryActionRecord = {
-	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
-};
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
 	'publish',
+	'saveAsNamed',
+	'rename',
 	'unpublish',
 	'clone',
 	'open',
 	'download',
 ];
-const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
-	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
-	{} as WorkflowHistoryActionRecord,
-);
 
 const route = useRoute();
 const router = useRouter();
@@ -92,7 +90,8 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 			disabled:
 				(value === 'clone' && !workflowPermissions.value.create) ||
 				(value === 'restore' && !workflowPermissions.value.update) ||
-				((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update),
+				((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update) ||
+				(value === 'rename' && !workflowPermissions.value.update),
 			value,
 		})),
 );
@@ -290,30 +289,125 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 	});
 };
 
+const renameWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
+	const renameEventBus = createEventBus<WorkflowVersionRenameModalEventBusEvents>();
+
+	renameEventBus.once('renamed', ({ version }) => {
+		// Update the history list with the new name and description
+		const historyItem = workflowHistory.value.find((item) => item.versionId === version.versionId);
+		if (historyItem) {
+			historyItem.name = version.name;
+			historyItem.description = version.description;
+		}
+
+		// Update the selected workflow version if it's the one that was renamed
+		if (selectedWorkflowVersion.value?.versionId === version.versionId) {
+			selectedWorkflowVersion.value = {
+				...selectedWorkflowVersion.value,
+				name: version.name,
+				description: version.description,
+			};
+		}
+
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.rename.success.title'),
+			type: 'success',
+		});
+
+		sendTelemetry('User renamed version from history');
+	});
+
+	// Find the version in the history to get current name and description
+	const version = workflowHistory.value.find((item) => item.versionId === id);
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_VERSION_RENAME_MODAL_KEY,
+		data: {
+			workflowId: workflowId.value,
+			versionId: id,
+			version: version || { versionId: id, name: data.versionName, description: data.description },
+			eventBus: renameEventBus,
+		},
+	});
+};
+
+const saveVersionAsNamed = async (
+	versionId: WorkflowVersionId,
+	_data: WorkflowHistoryAction['data'],
+) => {
+	const saveDraftEventBus = createEventBus<WorkflowSaveDraftModalEventBusEvents>();
+	
+	saveDraftEventBus.once('saved', async (savedData) => {
+		// Update the history item with the new name and description
+		const historyItem = workflowHistory.value.find(
+			(item) => item.versionId === savedData.versionId,
+		);
+		if (historyItem) {
+			historyItem.name = savedData.name;
+			historyItem.description = savedData.description || null;
+		}
+		
+		// Close the modal
+		uiStore.closeModal(WORKFLOW_SAVE_DRAFT_MODAL_KEY);
+		
+		sendTelemetry('User converted autosaved version to named version');
+		
+		// Reload workflow history to ensure we have the latest data
+		// Clear current history and reload
+		workflowHistory.value = [];
+		await loadMore({ take: requestNumberOfItems.value });
+		
+		// Navigate to the newly created named version
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId: workflowId.value,
+				versionId: savedData.versionId,
+			},
+		});
+	});
+	
+	// Open the save draft modal with the version ID and event bus
+	uiStore.openModalWithData({
+		name: WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+		data: {
+			workflowId: workflowId.value,
+			versionId,
+			eventBus: saveDraftEventBus,
+		},
+	});
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
-			case WORKFLOW_HISTORY_ACTIONS.OPEN:
+			case 'open':
 				openInNewTab(id);
 				sendTelemetry('User opened version in new tab');
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
+			case 'download':
 				await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
 				sendTelemetry('User downloaded version');
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.CLONE:
+			case 'clone':
 				await cloneWorkflowVersion(id, data);
 				sendTelemetry('User cloned version');
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
+			case 'restore':
 				await restoreWorkflowVersion(id);
 				sendTelemetry('User restored version');
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
+			case 'publish':
 				publishWorkflowVersion(id, data);
 				break;
-			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
+			case 'unpublish':
 				unpublishWorkflowVersion(id, data);
+				break;
+			case 'saveAsNamed':
+				await saveVersionAsNamed(id, data);
+				break;
+			case 'rename':
+				renameWorkflowVersion(id, data);
 				break;
 		}
 	} catch (error) {

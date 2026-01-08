@@ -30,11 +30,13 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_VERSION_RENAME_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -154,8 +156,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				VARIABLE_MODAL_KEY,
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
+				WORKFLOW_SAVE_DRAFT_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				WORKFLOW_VERSION_RENAME_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
@@ -269,6 +273,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
@@ -610,6 +615,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const markStateDirty = () => {
+		dirtyStateSetCount.value++;
+		stateIsDirty.value = true;
+	};
+
+	const markStateClean = () => {
+		stateIsDirty.value = false;
+	};
+
 	/**
 	 * Register a modal dynamically
 	 */
@@ -668,7 +682,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
-		stateIsDirty,
+		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
+		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -704,6 +719,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		markStateDirty,
+		markStateClean,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

@@ -704,6 +704,97 @@ export class WorkflowService {
 	}
 
 	/**
+	 * Saves a named version of a workflow without activating it.
+	 * This creates a new version with a name and optional description that can be
+	 * used as a checkpoint or draft.
+	 * 
+	 * @param user - The user saving the version
+	 * @param workflowId - The ID of the workflow
+	 * @param options - Version name and optional description
+	 * @returns The workflow with the new version
+	 */
+	async saveNamedVersion(
+		user: User,
+		workflowId: string,
+		options: {
+			name: string;
+			description?: string;
+			versionId?: string;
+		},
+	): Promise<WorkflowEntity> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		// Get the current workflow data
+		const currentWorkflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: ['activeVersion'],
+		});
+
+		if (!currentWorkflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+		}
+
+		// Use the provided versionId or current versionId
+		const versionId = options.versionId || currentWorkflow.versionId;
+
+		// Save a new version with autosaved = false since this is a named version
+		await this.workflowHistoryService.saveVersion(
+			user,
+			{
+				...currentWorkflow,
+				versionId,
+			},
+			workflowId,
+			false
+		);
+
+		// Update the version with name and description
+		const updateFields: WorkflowHistoryUpdate = {
+			name: options.name,
+		};
+		if (options.description !== undefined) {
+			updateFields.description = options.description;
+		}
+
+		await this.workflowHistoryService.updateVersion(versionId, workflowId, updateFields);
+
+		// Update the workflow's current versionId without changing active status
+		await this.workflowRepository.update(workflowId, {
+			versionId,
+			// Keep updatedAt as is since content hasn't changed
+			updatedAt: currentWorkflow.updatedAt,
+		});
+
+		// Return the updated workflow
+		const updatedWorkflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: ['activeVersion'],
+		});
+
+		if (!updatedWorkflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+		}
+
+		this.eventService.emit('workflow-saved', {
+			user,
+			workflow: updatedWorkflow,
+			publicApi: false,
+			previousWorkflow: workflow,
+		});
+
+		return updatedWorkflow;
+	}
+
+	/**
 	 * Deletes a workflow and returns it.
 	 *
 	 * If the workflow is active this will deactivate the workflow.
