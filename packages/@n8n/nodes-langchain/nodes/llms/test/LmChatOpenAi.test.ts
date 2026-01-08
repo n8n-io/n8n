@@ -5,6 +5,7 @@ import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
@@ -474,6 +475,96 @@ describe('LmChatOpenAi', () => {
 
 				jest.clearAllMocks();
 			}
+		});
+
+		describe('Responses API validation', () => {
+			it.each([
+				// gpt-5.2-pro only
+				'gpt-5.2-pro',
+				// gpt-5.3+ all variants
+				'gpt-5.3',
+				'gpt-5.3-mini',
+				'gpt-5.3-pro',
+				'gpt-5.9',
+				'gpt-5.10',
+				'gpt-5.10-pro',
+				'gpt-5.10-mini',
+				// codex-*-max
+				'codex-mini-max',
+				'codex-1-max',
+				// computer-use
+				'computer-use-preview',
+				'computer-use',
+			])('should throw error when using %s without Responses API enabled', async (modelName) => {
+				const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return modelName;
+					if (paramName === 'responsesApiEnabled') return false;
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+					NodeOperationError,
+				);
+				await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+					`Model "${modelName}" requires "Use Responses API" to be enabled`,
+				);
+			});
+
+			it.each([
+				'gpt-5.2-pro',
+				'gpt-5.3',
+				'gpt-5.10-mini',
+				'codex-mini-max',
+				'computer-use-preview',
+			])('should NOT throw error when using %s with Responses API enabled', async (modelName) => {
+				const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return modelName;
+					if (paramName === 'responsesApiEnabled') return true;
+					if (paramName === 'options') return {};
+					if (paramName === 'builtInTools') return {};
+					return undefined;
+				});
+
+				mockedCommon.prepareAdditionalResponsesParams = jest.fn().mockReturnValue({});
+				mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue([]);
+
+				await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+			});
+
+			it.each([
+				'gpt-4o',
+				'gpt-4o-mini',
+				'gpt-4-turbo',
+				'o1',
+				'o1-mini',
+				'o3-mini',
+				'gpt-5',
+				'gpt-5-turbo',
+				// gpt-5.2 without -pro suffix is allowed
+				'gpt-5.2',
+				'gpt-5.2-mini',
+				// codex without -max suffix is allowed
+				'codex-mini',
+			])(
+				'should NOT throw error when using %s without Responses API enabled',
+				async (modelName) => {
+					const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+					mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model.value') return modelName;
+						if (paramName === 'responsesApiEnabled') return false;
+						if (paramName === 'options') return {};
+						return undefined;
+					});
+
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+				},
+			);
 		});
 	});
 

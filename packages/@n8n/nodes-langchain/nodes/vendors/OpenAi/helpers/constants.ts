@@ -1,3 +1,15 @@
+/**
+ * Regex pattern for models that require the Responses API.
+ * These models are not supported in the /v1/chat/completions endpoint.
+ * Matches:
+ * - gpt-5.2-pro (only pro variant of 5.2)
+ * - gpt-5.3+ (all variants of 5.3 and higher)
+ * - codex-*-max models
+ * - computer-use models
+ */
+export const MODELS_REQUIRING_RESPONSES_API_PATTERN =
+	/^(gpt-5\.(2-pro|[3-9]|[1-9]\d)|codex-.+-max|computer-use)/;
+
 export const MODELS_NOT_SUPPORT_FUNCTION_CALLS = [
 	'gpt-3.5-turbo-16k-0613',
 	'dall-e-3',
