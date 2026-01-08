@@ -47,9 +47,9 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.execute();
 	}
 
-	private makeSkipActiveAndNamedVersionsRule(activeVersions: string[]) {
+	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {
 		return (prev: WorkflowHistory, _next: WorkflowHistory): boolean =>
-			prev.name !== null || prev.description !== null || activeVersions.includes(prev.versionId);
+			prev.name !== null || prev.description !== null || activeVersions.has(prev.versionId);
 	}
 
 	async getWorkflowIdsInRange(startDate: Date, endDate: Date) {
@@ -97,7 +97,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
 		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
-			this.makeSkipActiveAndNamedVersionsRule(publishedVersions.map((x) => x.versionId)),
+			this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
 			SKIP_RULES.skipDifferentUsers,
 			...skipRules,
 		]);

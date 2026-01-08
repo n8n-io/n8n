@@ -14,7 +14,7 @@ export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;
 	createdAt: Date;
-	user?: unknown;
+	authors?: string;
 };
 
 export const enum NodeDiffStatus {
@@ -159,7 +159,7 @@ function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 	prev: DiffableWorkflow<N>,
 	next: DiffableWorkflow<N>,
 ) {
-	return next.user !== prev.user;
+	return next.authors !== prev.authors;
 }
 
 export const RULES = {
@@ -231,7 +231,7 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 				const shouldMerge = rule(diffs[i - 1].from, diffs[i].to, wcs);
 				if (shouldMerge) {
 					const right = diffs.splice(i, 1)[0];
-					if (!right) throw new Error('invariant broken - no ');
+					if (!right) throw new Error('invariant broken');
 
 					// merge diffs
 					diffs[i - 1].workflowChangeSet = wcs;
