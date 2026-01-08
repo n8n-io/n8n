@@ -1216,10 +1216,18 @@ export class LemlistV2 implements INodeType {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
 									in:
-										typeof filter.in === 'string' ? filter.in.split(',').map((v) => v.trim()) : [],
+										typeof filter.in === 'string'
+											? filter.in
+													.split(',')
+													.map((v) => v.trim())
+													.filter(Boolean)
+											: [],
 									out:
 										typeof filter.out === 'string'
-											? filter.out.split(',').map((v) => v.trim())
+											? filter.out
+													.split(',')
+													.map((v) => v.trim())
+													.filter(Boolean)
 											: [],
 								};
 								filtersArray.push(filterObj);
@@ -1253,10 +1261,18 @@ export class LemlistV2 implements INodeType {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
 									in:
-										typeof filter.in === 'string' ? filter.in.split(',').map((v) => v.trim()) : [],
+										typeof filter.in === 'string'
+											? filter.in
+													.split(',')
+													.map((v) => v.trim())
+													.filter(Boolean)
+											: [],
 									out:
 										typeof filter.out === 'string'
-											? filter.out.split(',').map((v) => v.trim())
+											? filter.out
+													.split(',')
+													.map((v) => v.trim())
+													.filter(Boolean)
 											: [],
 								};
 								filtersArray.push(filterObj);
