@@ -263,7 +263,7 @@ overrides:
   form-data: 4.0.4
   tmp: 0.2.4
   nodemailer: 7.0.11
-  validator: 13.15.22
+  validator: 13.15.26
   zod: 3.25.67
   js-yaml: 4.1.1
   node-forge: 1.3.2
@@ -1847,8 +1847,8 @@ importers:
         specifier: 'catalog:'
         version: 10.0.0
       validator:
-        specifier: 13.15.22
-        version: 13.15.22
+        specifier: 13.15.26
+        version: 13.15.26
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -17891,8 +17891,8 @@ packages:
   validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
 
-  validator@13.15.22:
-    resolution: {integrity: sha512-uT/YQjiyLJP7HSrv/dPZqK9L28xf8hsNca01HSz1dfmI0DgMfjopp1rO/z13NeGF1tVystF0Ejx3y4rUKPw+bQ==}
+  validator@13.15.26:
+    resolution: {integrity: sha512-spH26xU080ydGggxRyR1Yhcbgx+j3y5jbNXk/8L+iRvdIEQ4uTRH2Sgf2dokud6Q4oAtsbNvJ1Ft+9xmm6IZcA==}
     engines: {node: '>= 0.10'}
 
   vary@1.1.2:
@@ -26944,14 +26944,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.12.0(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   b4a@1.6.7: {}
 
   babel-jest@29.6.2(@babel/core@7.28.4):
@@ -27607,7 +27599,7 @@ snapshots:
     dependencies:
       '@types/validator': 13.7.10
       libphonenumber-js: 1.10.14
-      validator: 13.15.22
+      validator: 13.15.26
 
   classnames@2.5.1: {}
 
@@ -29716,10 +29708,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3(supports-color@8.1.1)
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -30422,7 +30410,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30432,7 +30420,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34867,7 +34855,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
@@ -37036,7 +37024,7 @@ snapshots:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
 
-  validator@13.15.22: {}
+  validator@13.15.26: {}
 
   vary@1.1.2: {}
 
