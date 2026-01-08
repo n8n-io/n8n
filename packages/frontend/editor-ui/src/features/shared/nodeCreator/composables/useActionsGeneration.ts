@@ -5,6 +5,7 @@ import {
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
+	SIMPLE_MEMORY_NODE_TYPE,
 } from '@/app/constants';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
@@ -19,6 +20,7 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 
@@ -367,15 +369,28 @@ export function useActionsGenerator() {
 		httpOnlyCredentials: ICredentialType[],
 	) {
 		const evaluationStore = useEvaluationStore();
+		const settingsStore = useSettingsStore();
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (evaluationStore.isEvaluationEnabled) {
-				return true;
+			// Filter out evaluation nodes if evaluation is not enabled
+			if (!evaluationStore.isEvaluationEnabled) {
+				if (
+					node.name === 'n8n-nodes-base.evaluation' ||
+					node.name === 'n8n-nodes-base.evaluationTrigger'
+				) {
+					return false;
+				}
 			}
-			return (
-				node.name !== 'n8n-nodes-base.evaluation' &&
-				node.name !== 'n8n-nodes-base.evaluationTrigger'
-			);
+
+			// Filter out Simple Memory node in queue mode or multi-main setup
+			// because it stores memory in-process which doesn't work with multiple workers
+			if (settingsStore.isQueueModeEnabled || settingsStore.isMultiMain) {
+				if (node.name === SIMPLE_MEMORY_NODE_TYPE) {
+					return false;
+				}
+			}
+
+			return true;
 		});
 
 		const actions: ActionsRecord<typeof mergedNodes> = {};
