@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { z } from 'zod';
 
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
@@ -35,6 +36,7 @@ export interface EvaluationArgs {
 }
 
 type CliValueKind = 'boolean' | 'string';
+type FlagGroup = 'input' | 'eval' | 'pairwise' | 'langsmith' | 'output' | 'feature' | 'advanced';
 
 const cliSchema = z
 	.object({
@@ -71,40 +73,149 @@ const cliSchema = z
 
 type CliKey = keyof z.infer<typeof cliSchema>;
 
-type FlagDef = { key: CliKey; kind: CliValueKind };
+type FlagDef = { key: CliKey; kind: CliValueKind; desc: string; group: FlagGroup };
 
+const FLAG_DEFS: Record<string, FlagDef> = {
+	// Input sources
+	'--prompt': { key: 'prompt', kind: 'string', group: 'input', desc: 'Single prompt to evaluate' },
+	'--prompts-csv': {
+		key: 'promptsCsv',
+		kind: 'string',
+		group: 'input',
+		desc: 'CSV file with prompts',
+	},
+	'--test-case': {
+		key: 'testCase',
+		kind: 'string',
+		group: 'input',
+		desc: 'Run specific default test case by ID',
+	},
+	'--dataset': {
+		key: 'datasetName',
+		kind: 'string',
+		group: 'input',
+		desc: 'LangSmith dataset name',
+	},
+
+	// Evaluation options
+	'--suite': {
+		key: 'suite',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+	},
+	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--max-examples': {
+		key: 'maxExamples',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Limit number of examples',
+	},
+	'--repetitions': {
+		key: 'repetitions',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Repeat each example N times',
+	},
+	'--concurrency': {
+		key: 'concurrency',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Max parallel evaluations',
+	},
+	'--timeout-ms': {
+		key: 'timeoutMs',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Timeout per evaluation (ms)',
+	},
+
+	// Pairwise options
+	'--dos': {
+		key: 'dos',
+		kind: 'string',
+		group: 'pairwise',
+		desc: 'Requirements the workflow must satisfy',
+	},
+	'--donts': {
+		key: 'donts',
+		kind: 'string',
+		group: 'pairwise',
+		desc: 'Things the workflow must avoid',
+	},
+
+	// LangSmith options
+	'--langsmith': {
+		key: 'langsmith',
+		kind: 'boolean',
+		group: 'langsmith',
+		desc: 'Shorthand for --backend langsmith',
+	},
+	'--name': { key: 'experimentName', kind: 'string', group: 'langsmith', desc: 'Experiment name' },
+	'--filter': {
+		key: 'filter',
+		kind: 'string',
+		group: 'langsmith',
+		desc: 'Filter examples (key:value, repeatable)',
+	},
+	'--notion-id': {
+		key: 'notionId',
+		kind: 'string',
+		group: 'langsmith',
+		desc: 'Filter by Notion ID',
+	},
+	'--technique': {
+		key: 'technique',
+		kind: 'string',
+		group: 'langsmith',
+		desc: 'Filter by technique',
+	},
+
+	// Output
+	'--output-dir': {
+		key: 'outputDir',
+		kind: 'string',
+		group: 'output',
+		desc: 'Directory for artifacts',
+	},
+	'--verbose': { key: 'verbose', kind: 'boolean', group: 'output', desc: 'Verbose logging' },
+
+	// Feature flags
+	'--template-examples': {
+		key: 'templateExamples',
+		kind: 'boolean',
+		group: 'feature',
+		desc: 'Enable template examples phase',
+	},
+	'--multi-agent': {
+		key: 'multiAgent',
+		kind: 'boolean',
+		group: 'feature',
+		desc: 'Enable multi-agent mode',
+	},
+
+	// Advanced
+	'--judges': { key: 'numJudges', kind: 'string', group: 'advanced', desc: 'Number of LLM judges' },
+	'--generations': {
+		key: 'numGenerations',
+		kind: 'string',
+		group: 'advanced',
+		desc: 'Workflow generations per prompt',
+	},
+};
+
+// Aliases (not shown in help)
+const FLAG_ALIASES: Record<string, string> = {
+	'--mode': '--suite',
+	'-v': '--verbose',
+};
+
+// Combined lookup for parsing
 const FLAG_TO_KEY: Record<string, FlagDef> = {
-	'--suite': { key: 'suite', kind: 'string' },
-	'--mode': { key: 'suite', kind: 'string' }, // alias
-	'--backend': { key: 'backend', kind: 'string' },
-	'--langsmith': { key: 'langsmith', kind: 'boolean' }, // alias for --backend langsmith
-
-	'--verbose': { key: 'verbose', kind: 'boolean' },
-	'-v': { key: 'verbose', kind: 'boolean' },
-	'--repetitions': { key: 'repetitions', kind: 'string' },
-	'--concurrency': { key: 'concurrency', kind: 'string' },
-	'--timeout-ms': { key: 'timeoutMs', kind: 'string' },
-	'--name': { key: 'experimentName', kind: 'string' },
-	'--output-dir': { key: 'outputDir', kind: 'string' },
-	'--dataset': { key: 'datasetName', kind: 'string' },
-	'--max-examples': { key: 'maxExamples', kind: 'string' },
-
-	'--filter': { key: 'filter', kind: 'string' },
-	'--notion-id': { key: 'notionId', kind: 'string' },
-	'--technique': { key: 'technique', kind: 'string' },
-
-	'--test-case': { key: 'testCase', kind: 'string' },
-	'--prompts-csv': { key: 'promptsCsv', kind: 'string' },
-
-	'--prompt': { key: 'prompt', kind: 'string' },
-	'--dos': { key: 'dos', kind: 'string' },
-	'--donts': { key: 'donts', kind: 'string' },
-
-	'--judges': { key: 'numJudges', kind: 'string' },
-	'--generations': { key: 'numGenerations', kind: 'string' },
-
-	'--template-examples': { key: 'templateExamples', kind: 'boolean' },
-	'--multi-agent': { key: 'multiAgent', kind: 'boolean' },
+	...FLAG_DEFS,
+	...Object.fromEntries(
+		Object.entries(FLAG_ALIASES).map(([alias, target]) => [alias, FLAG_DEFS[target]]),
+	),
 };
 
 function formatValidFlags(): string {
@@ -112,6 +223,60 @@ function formatValidFlags(): string {
 		.filter((f) => f.startsWith('--'))
 		.sort()
 		.join('\n  ');
+}
+
+const GROUP_TITLES: Record<FlagGroup, string> = {
+	input: 'Input Sources',
+	eval: 'Evaluation Options',
+	pairwise: 'Pairwise Options',
+	langsmith: 'LangSmith Options',
+	output: 'Output',
+	feature: 'Feature Flags',
+	advanced: 'Advanced',
+};
+
+function formatHelp(): string {
+	const lines: string[] = [
+		'Usage: pnpm eval [options]',
+		'',
+		'Evaluation harness for AI Workflow Builder.',
+		'',
+	];
+
+	const groups: FlagGroup[] = [
+		'input',
+		'eval',
+		'pairwise',
+		'langsmith',
+		'output',
+		'feature',
+		'advanced',
+	];
+
+	for (const group of groups) {
+		const flags = Object.entries(FLAG_DEFS).filter(([, def]) => def.group === group);
+		if (flags.length === 0) continue;
+
+		lines.push(`${GROUP_TITLES[group]}:`);
+		for (const [flag, def] of flags) {
+			const valueHint = def.kind === 'string' ? ' <value>' : '';
+			const padded = `  ${flag}${valueHint}`.padEnd(28);
+			lines.push(`${padded}${def.desc}`);
+		}
+		lines.push('');
+	}
+
+	lines.push('Examples:');
+	lines.push('  pnpm eval --verbose');
+	lines.push('  pnpm eval --prompt "Create a Slack notification workflow"');
+	lines.push('  pnpm eval --prompts-csv my-prompts.csv --max-examples 5');
+	lines.push('  pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "test-run"');
+
+	return lines.join('\n');
+}
+
+export function printHelp(): void {
+	console.log(formatHelp());
 }
 
 function ensureValue(argv: string[], i: number, flag: string): string {
@@ -232,6 +397,12 @@ function parseFilters(args: {
 }
 
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
+	// Check for help flag before parsing
+	if (argv.includes('--help') || argv.includes('-h')) {
+		printHelp();
+		process.exit(0);
+	}
+
 	const { values, seenKeys } = parseCli(argv);
 
 	if (values.langsmith === true) {
