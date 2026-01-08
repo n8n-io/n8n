@@ -50,16 +50,6 @@ export {
 // Output
 export { createArtifactSaver, type ArtifactSaver, type ArtifactSaverOptions } from './output';
 
-// Cache analyzer
-export {
-	calculateCacheStats,
-	aggregateCacheStats,
-	formatCacheStats,
-	type CacheStatistics,
-	type UsageMetadata,
-	type FormattedCacheStatistics,
-} from './cache-analyzer';
-
 // Multi-generation utilities
 export {
 	getMajorityThreshold,

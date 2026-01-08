@@ -395,7 +395,6 @@ evaluations/
 ├── programmatic/            # Programmatic evaluation logic
 ├── types/                   # Shared types
 ├── utils/                   # Shared utilities
-├── cache-analyzer.ts        # LLM cache statistics
 ├── cli.ts                   # CLI entry point
 ├── constants.ts             # Shared constants
 ├── harness-types.ts         # Harness-specific types

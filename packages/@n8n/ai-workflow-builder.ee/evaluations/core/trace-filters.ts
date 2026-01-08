@@ -6,7 +6,7 @@ import type { EvalLogger } from '../utils/logger.js';
  * Large state fields that should be filtered from traces.
  * These contribute most to payload bloat.
  */
-const LARGE_STATE_FIELDS = ['cachedTemplates', 'parsedNodeTypes', 'messages'] as const;
+const LARGE_STATE_FIELDS = ['cachedTemplates', 'parsedNodeTypes'] as const;
 
 /**
  * Keys that indicate a LangChain serializable object.
@@ -80,67 +80,6 @@ function summarizeCachedTemplates(templates: unknown[]): Array<Record<string, un
 	});
 }
 
-/** Type guard for objects with a _getType method (LangChain messages) */
-function hasGetTypeMethod(obj: object): obj is { _getType: () => string } {
-	return '_getType' in obj && typeof (obj as { _getType: unknown })._getType === 'function';
-}
-
-/** Type guard for objects with a type string property */
-function hasTypeProperty(obj: object): obj is { type: string } {
-	return 'type' in obj && typeof (obj as { type: unknown }).type === 'string';
-}
-
-/** Get type name from an object safely */
-function getTypeName(obj: object): string {
-	// Try _getType method (LangChain messages)
-	if (hasGetTypeMethod(obj)) {
-		try {
-			const typeName = obj._getType();
-			if (typeof typeName === 'string' && typeName.length < 50) {
-				return typeName;
-			}
-		} catch {
-			// Ignore errors
-		}
-	}
-
-	// Try type property
-	if (hasTypeProperty(obj) && obj.type.length < 50) {
-		return obj.type;
-	}
-
-	// Try constructor name (but validate it's a reasonable string)
-	const constructorName = obj.constructor?.name;
-	if (
-		typeof constructorName === 'string' &&
-		constructorName.length < 50 &&
-		constructorName !== 'Object'
-	) {
-		return constructorName;
-	}
-
-	return 'unknown';
-}
-
-/**
- * Summarize messages array - just count and types, not full content.
- */
-function summarizeMessages(messages: unknown[]): string {
-	if (!messages.length) return '[0 messages]';
-
-	// Count message types
-	const typeCounts: Record<string, number> = {};
-	for (const msg of messages) {
-		if (msg && typeof msg === 'object') {
-			const type = getTypeName(msg);
-			typeCounts[type] = (typeCounts[type] ?? 0) + 1;
-		}
-	}
-
-	const parts = Object.entries(typeCounts).map(([type, count]) => `${type}:${count}`);
-	return `[${messages.length} messages: ${parts.join(', ')}]`;
-}
-
 /**
  * Filter large state fields in-place (mutates the object).
  * Shared logic for both input and output filtering.
@@ -152,8 +91,6 @@ function filterLargeStateFields(obj: KVMap): void {
 				obj[field] = summarizeCachedTemplates(obj[field] as unknown[]);
 			} else if (field === 'parsedNodeTypes' && Array.isArray(obj[field])) {
 				obj[field] = `[${(obj[field] as unknown[]).length} node types]`;
-			} else if (field === 'messages' && Array.isArray(obj[field])) {
-				obj[field] = summarizeMessages(obj[field] as unknown[]);
 			}
 		}
 	}

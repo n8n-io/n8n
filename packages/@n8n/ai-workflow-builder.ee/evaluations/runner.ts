@@ -796,29 +796,41 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	}
 
 	const data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
-	totalExamples = Array.isArray(data) ? data.length : 0;
+	const effectiveData =
+		Array.isArray(data) && langsmithOptions.repetitions > 1
+			? Array.from({ length: langsmithOptions.repetitions }, () => data).flat()
+			: data;
+
+	totalExamples = Array.isArray(effectiveData) ? effectiveData.length : 0;
 
 	logger.verbose(
-		Array.isArray(data)
-			? `Data source: preloaded examples (${data.length})`
+		Array.isArray(effectiveData)
+			? `Data source: preloaded examples (${effectiveData.length})`
 			: 'Data source: dataset (streaming)',
 	);
 
 	// Run LangSmith evaluation
-	const exampleCount = Array.isArray(data) ? data.length : 'dataset';
-	if (Array.isArray(data)) {
-		logger.verbose(`Example IDs in data: ${data.map((e) => e.id).join(', ')}`);
+	const exampleCount = Array.isArray(effectiveData) ? effectiveData.length : 'dataset';
+	if (Array.isArray(effectiveData)) {
+		logger.verbose(
+			`Example IDs in data: ${effectiveData
+				.slice(0, 20)
+				.map((e) => e.id)
+				.join(', ')}`,
+		);
 	}
 	logger.info(
 		`Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
 	);
 	const evalStartTime = Date.now();
 	await evaluate(target, {
-		data,
+		data: effectiveData,
 		evaluators: [feedbackExtractor],
 		experimentPrefix: langsmithOptions.experimentName,
-		// Only pass numRepetitions if > 1 (default is 1, passing 1 explicitly may cause issues)
-		...(langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
+		// Repetitions are applied explicitly when pre-loading examples to keep behavior consistent.
+		// When streaming from a dataset name, the SDK may support repetitions internally.
+		...(!Array.isArray(effectiveData) &&
+			langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
 		maxConcurrency: langsmithOptions.concurrency,
 		client: lsClient,
 	});

@@ -3,10 +3,6 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { cleanContextTags } from '@/utils/stream-processor';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { AIMessageWithUsageMetadata } from '../../src/utils/token-usage';
-
-// Define strict interfaces
-export type UsageMetadata = AIMessageWithUsageMetadata['response_metadata']['usage'];
 
 export interface WorkflowOutput {
 	workflow?: unknown;
@@ -18,37 +14,6 @@ export interface WorkflowStateValues {
 	messages: BaseMessage[];
 	workflowJSON: SimpleWorkflow;
 	[key: string]: unknown;
-}
-
-// Type guards - no coercion, just validation
-export function isMessageWithMetadata(message: BaseMessage): message is AIMessageWithUsageMetadata {
-	return (
-		message.response_metadata !== undefined &&
-		message.response_metadata !== null &&
-		typeof message.response_metadata === 'object'
-	);
-}
-
-export function hasUsageMetadata(metadata: { usage?: unknown }): metadata is {
-	usage: Partial<UsageMetadata>;
-} {
-	if (!metadata.usage || typeof metadata.usage !== 'object') {
-		return false;
-	}
-
-	const usage = metadata.usage as Record<string, unknown>;
-
-	// Validate each field is either undefined or a number
-	const validFields = [
-		'input_tokens',
-		'output_tokens',
-		'cache_read_input_tokens',
-		'cache_creation_input_tokens',
-	];
-
-	return validFields.every(
-		(field) => usage[field] === undefined || typeof usage[field] === 'number',
-	);
 }
 
 export function isValidPrompt(value: unknown): value is string {
@@ -69,32 +34,6 @@ export function isWorkflowStateValues(values: unknown): values is WorkflowStateV
 	if (!('messages' in values) || !('workflowJSON' in values)) return false;
 
 	return Array.isArray(values.messages) && isSimpleWorkflow(values.workflowJSON);
-}
-
-// Safe extraction without coercion
-export function safeExtractUsage(messages: BaseMessage[]): UsageMetadata {
-	const defaultUsage: UsageMetadata = {
-		input_tokens: 0,
-		output_tokens: 0,
-		cache_read_input_tokens: 0,
-		cache_creation_input_tokens: 0,
-	};
-
-	return messages.reduce((acc, message) => {
-		if (!isMessageWithMetadata(message)) return acc;
-		if (!hasUsageMetadata(message.response_metadata)) return acc;
-
-		const usage = message.response_metadata.usage;
-
-		return {
-			input_tokens: acc.input_tokens + (usage.input_tokens ?? 0),
-			output_tokens: acc.output_tokens + (usage.output_tokens ?? 0),
-			cache_read_input_tokens:
-				(acc?.cache_read_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
-			cache_creation_input_tokens:
-				(acc?.cache_creation_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0),
-		};
-	}, defaultUsage);
 }
 
 // Helper to format violations for display

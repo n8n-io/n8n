@@ -19,8 +19,6 @@ export type ViolationSeverity = 'critical' | 'major' | 'minor';
 export interface ReportOptions {
 	/** Include detailed per-test results (default: false) */
 	includeDetails?: boolean;
-	/** Include cache statistics if available (default: true) */
-	includeCacheStats?: boolean;
 	/** Include violation breakdown (default: true) */
 	includeViolations?: boolean;
 }
