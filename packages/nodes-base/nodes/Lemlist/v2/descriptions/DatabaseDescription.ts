@@ -107,19 +107,6 @@ export const databaseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Seed',
-		name: 'seed',
-		type: 'string',
-		default: 'DEFAULT_SEED',
-		description: 'Seed for consistent results across paginated queries',
-		displayOptions: {
-			show: {
-				resource: ['database'],
-				operation: ['searchPeople'],
-			},
-		},
-	},
-	{
 		displayName: 'Page',
 		name: 'page',
 		type: 'number',
@@ -215,19 +202,6 @@ export const databaseFields: INodeProperties[] = [
 				],
 			},
 		],
-	},
-	{
-		displayName: 'Seed',
-		name: 'seed',
-		type: 'string',
-		default: 'DEFAULT_SEED',
-		description: 'Seed for consistent results across paginated queries',
-		displayOptions: {
-			show: {
-				resource: ['database'],
-				operation: ['searchCompanies'],
-			},
-		},
 	},
 	{
 		displayName: 'Page',
