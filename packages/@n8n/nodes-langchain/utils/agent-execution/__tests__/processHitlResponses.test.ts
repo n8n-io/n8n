@@ -159,7 +159,7 @@ describe('processHitlResponses', () => {
 			const processedData = result.processedResponse.actionResponses[0].data?.data
 				?.ai_tool?.[0]?.[0]?.json as Record<string, unknown>;
 			expect(processedData.approved).toBe(false);
-			expect(processedData.response).toContain('denied by human reviewer');
+			expect(processedData.response).toMatch(/reject/i);
 		});
 	});
 

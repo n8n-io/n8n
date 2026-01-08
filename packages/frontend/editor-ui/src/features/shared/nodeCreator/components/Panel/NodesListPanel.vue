@@ -1,39 +1,39 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
-	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_EVALUATION,
 	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_UNCATEGORIZED_CATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
-	AI_UNCATEGORIZED_CATEGORY,
-	AI_EVALUATION,
-	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { useI18n } from '@n8n/i18n';
+import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
+import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
 import {
-	TriggerView,
-	RegularView,
-	AIView,
 	AINodesView,
+	AIView,
 	HitlToolView,
+	RegularView,
+	TriggerView,
 	type NodeView,
 } from '../../views/viewsData';
-import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
-import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
-import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
-import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
-import NodeIcon from '@/app/components/NodeIcon.vue';
+import SearchBar from './SearchBar.vue';
 
 import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
-import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
+import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
