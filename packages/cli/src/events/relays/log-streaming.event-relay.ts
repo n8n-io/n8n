@@ -247,7 +247,6 @@ export class LogStreamingEventRelay extends EventRelay {
 		}
 	}
 
-	@Redactable()
 	private workflowExecuted({
 		user,
 		workflowId,
@@ -258,7 +257,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.executed',
 			payload: {
-				...(user && { ...user }),
+				...(user && {
+					userId: user.id,
+					_email: user.email,
+					_firstName: user.firstName,
+					_lastName: user.lastName,
+					globalRole: user.role?.slug,
+				}),
 				workflowId,
 				workflowName,
 				executionId,
