@@ -416,6 +416,12 @@ export class Pipedrive implements INodeType {
 						action: 'Get many leads',
 					},
 					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search a lead',
+						action: 'Search a lead',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a lead',
@@ -2401,6 +2407,98 @@ export class Pipedrive implements INodeType {
 						type: 'dateTime',
 						default: '',
 						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//               lead:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['search'],
+						resource: ['lead'],
+					},
+				},
+				default: '',
+				description:
+					'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Exact Match',
+				name: 'exactMatch',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['search'],
+						resource: ['lead'],
+					},
+				},
+				default: false,
+				description:
+					'Whether only full exact matches against the given term are returned. It is not case sensitive.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['search'],
+						resource: ['lead'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Include Fields',
+						name: 'includeFields',
+						type: 'string',
+						default: '',
+						description:
+							'Supports including optional fields in the results which are not provided by default. Example: lead.was_seen.',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organizationId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Leads by the provided Organization ID',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'personId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Leads by the provided Person ID',
+					},
+					{
+						displayName: 'Search Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+							{
+								name: 'Title',
+								value: 'title',
+							},
+						],
+						default: ['custom_fields', 'notes', 'title'],
+						description:
+							'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
 					},
 				],
 			},
@@ -4659,6 +4757,39 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PATCH';
 						endpoint = `/leads/${leadId}`;
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         lead:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i);
+						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						if (additionalFields.fields) {
+							qs.fields = (additionalFields.fields as string[]).join(',');
+						}
+
+						if (additionalFields.organizationId) {
+							qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+						}
+
+						if (additionalFields.includeFields) {
+							qs.include_fields = additionalFields.includeFields as string;
+						}
+
+						if (additionalFields.personId) {
+							qs.person_id = parseInt(additionalFields.personId as string, 10);
+						}
+
+						endpoint = '/leads/search';
 					}
 				} else if (resource === 'organization') {
 					if (operation === 'create') {
