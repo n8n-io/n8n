@@ -148,6 +148,19 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
+		// Prevent concurrent saves - if a save is already in progress, skip this one
+		// for autosaves (they will be rescheduled), or wait for non-autosaves
+		if (uiStore.isActionActive.workflowSaving) {
+			if (autosaved) {
+				// Autosave will be rescheduled by the finally block of the in-progress save
+				return true;
+			}
+			// For manual saves, wait for the pending autosave to complete first
+			if (autosaveStore.pendingAutoSave) {
+				await autosaveStore.pendingAutoSave;
+			}
+		}
+
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
 		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
 		if (!currentWorkflow || !existingWorkflow?.id) {

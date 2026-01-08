@@ -737,5 +737,48 @@ describe('useWorkflowSaving', () => {
 			// After save, state should be clean
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
+
+		it('should skip autosave when another save is already in progress', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-concurrent',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowId = workflow.id;
+
+			const uiStore = useUIStore();
+
+			const mockWorkflowState: Partial<WorkflowState> = {
+				setWorkflowTagIds: vi.fn(),
+				setWorkflowName: vi.fn(),
+				setWorkflowProperty: vi.fn(),
+			};
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+				workflowState: mockWorkflowState as WorkflowState,
+			});
+
+			// Simulate a save already in progress by setting the action
+			uiStore.addActiveAction('workflowSaving');
+
+			// Try to run autosave (autosaved=true) while another save is in progress
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			// Should return true (skipped, not failed)
+			expect(result).toBe(true);
+
+			// updateWorkflow should NOT have been called since we skipped
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
 	});
 });
