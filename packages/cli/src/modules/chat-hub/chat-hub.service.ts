@@ -43,11 +43,13 @@ import {
 	sleep,
 	NodeConnectionTypes,
 	INodeExecutionData,
+	UserError,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -84,7 +86,6 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 
 @Service()
 export class ChatHubService {
@@ -288,16 +289,18 @@ export class ChatHubService {
 		// Generate title for the session on receiving the first human message.
 		// This could be moved on a separate API call perhaps, maybe triggered after the first message is sent?
 		if (previousMessageId === null) {
-			await this.generateSessionTitle(
-				user,
-				sessionId,
-				message,
-				processedAttachments,
-				credentials,
-				model,
-			).catch((error) => {
-				this.logger.error(`Title generation failed: ${error}`);
-			});
+			try {
+				await this.generateSessionTitle(
+					user,
+					sessionId,
+					message,
+					processedAttachments,
+					credentials,
+					model,
+				);
+			} catch (error) {
+				this.logger.warn(`Title generation failed: ${error}`);
+			}
 		}
 	}
 
@@ -941,9 +944,6 @@ export class ChatHubService {
 
 		while (execution && execution.status === 'waiting') {
 			await this.resumeExecution(sessionId, execution, message);
-			await this.messageRepository.updateChatMessage(messageId, {
-				status: 'success',
-			});
 			previousMessageId = messageId;
 			messageId = uuidv4();
 
@@ -976,11 +976,12 @@ export class ChatHubService {
 			}
 
 			const reply = this.getMessage(execution, responseMode);
+			const status = execution && execution.status === 'waiting' ? 'waiting' : 'success';
 
 			await this.endResponse(
 				res,
 				reply ?? '',
-				'success',
+				status,
 				execution.id,
 				messageId,
 				previousMessageId,
@@ -988,14 +989,20 @@ export class ChatHubService {
 			);
 
 			const lastNode = getLastNodeExecuted(execution);
-			if (!lastNode || !shouldResumeImmediately(lastNode)) {
+			if (status === 'waiting' && lastNode && shouldResumeImmediately(lastNode)) {
+				// Resuming execution immediately, so mark the last message as successful
+				this.logger.debug(
+					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+				);
+				await this.messageRepository.updateChatMessage(messageId, {
+					status: 'success',
+				});
+
+				// There's no new human input
+				message = '';
+			} else {
 				return;
 			}
-
-			this.logger.debug(
-				`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
-			);
-			message = '';
 		}
 	}
 
@@ -1431,11 +1438,6 @@ export class ChatHubService {
 			if (title) {
 				await this.sessionRepository.updateChatSession(sessionId, { title });
 			}
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				this.logger.error(`Error during session title generation workflow execution: ${error}`);
-			}
-			throw error;
 		} finally {
 			await this.deleteChatWorkflow(workflowData.id);
 		}
@@ -1531,7 +1533,7 @@ export class ChatHubService {
 		);
 
 		if (!workflowEntity?.activeVersion) {
-			throw new BadRequestError('Workflow not found for title generation');
+			throw new UserError('Workflow not found for title generation');
 		}
 
 		const modelNodes = this.findSupportedLLMNodes(workflowEntity.activeVersion.nodes);
@@ -1540,26 +1542,26 @@ export class ChatHubService {
 		);
 
 		if (modelNodes.length === 0) {
-			throw new BadRequestError('No supported Model nodes found in workflow for title generation');
+			throw new UserError('No supported Model nodes found in workflow for title generation');
 		}
 
 		const modelNode = modelNodes[0];
 		const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
 		if (!llmModel) {
-			throw new BadRequestError(
+			throw new UserError(
 				`No model set on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
 
 		if (typeof llmModel !== 'string' || llmModel.length === 0 || llmModel.startsWith('=')) {
-			throw new BadRequestError(
+			throw new UserError(
 				`Invalid model set on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
 
 		const llmCredentials = modelNode.node.credentials;
 		if (!llmCredentials) {
-			throw new BadRequestError(
+			throw new UserError(
 				`No credentials found on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
