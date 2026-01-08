@@ -5,15 +5,12 @@ import {
 	sendAndWaitWebhooksDescription,
 } from 'n8n-nodes-base/dist/utils/sendAndWait/descriptions';
 import {
-	getSendAndWaitConfig,
-	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
-	ChatNodeMessageType,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -26,93 +23,14 @@ import type {
 	INodeType,
 	NodeTypeAndVersion,
 	INode,
-	INodePropertyOptions,
-	ChatNodeMessageButtonType,
-	ChatNodeMessage,
-	INodeProperties,
 } from 'n8n-workflow';
 
-import { configureInputs, configureWaitTillDate } from './util';
-
-const freeTextResponseTypeOption: INodePropertyOptions = {
-	name: 'Free Text',
-	// use a different name to not show options for `freeText` response type
-	value: FREE_TEXT_CHAT_RESPONSE_TYPE,
-	description: 'User can respond in the chat',
-};
-
-const blockUserInput: INodeProperties = {
-	displayName: 'Block User Input',
-	name: 'blockUserInput',
-	type: 'boolean',
-	default: false,
-	description: 'Whether to block input from the user while waiting for approval',
-	displayOptions: {
-		show: {
-			responseType: ['approval'],
-		},
-	},
-};
-
-// TODO: extract to utils?
-const getSendAndWaitPropertiesForChatNode = () => {
-	const originalProperties = getSendAndWaitProperties([], null);
-	const filteredProperties = originalProperties.filter(
-		// `subject` is not needed and we provide our own `message` and `options` properties
-		(p) => p.name !== 'subject' && p.name !== 'message' && p.name !== 'options',
-	);
-	const responseTypeProperty = filteredProperties.find((p) => p.name === 'responseType');
-	if (responseTypeProperty) {
-		const approvalOption = responseTypeProperty.options?.find(
-			(o) => 'value' in o && o.value === 'approval',
-		);
-		responseTypeProperty.options = approvalOption
-			? [
-					// for now we only support `approval` and `freeText` response types
-					approvalOption,
-					freeTextResponseTypeOption,
-				]
-			: [freeTextResponseTypeOption];
-		responseTypeProperty.default = FREE_TEXT_CHAT_RESPONSE_TYPE;
-	}
-
-	filteredProperties.splice(1, 0, blockUserInput);
-	return filteredProperties;
-};
-
-// TODO: extract to utils?
-function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
-	const nodeVersion = ctx.getNode().typeVersion;
-	const message = ctx.getNodeParameter('message', 0, '') as string;
-	if (nodeVersion < 1.1) {
-		return message;
-	}
-
-	const responseType = ctx.getNodeParameter(
-		'responseType',
-		0,
-		FREE_TEXT_CHAT_RESPONSE_TYPE,
-	) as string;
-	if (responseType === FREE_TEXT_CHAT_RESPONSE_TYPE) {
-		// for free text, we just return the message
-		// since the user will respond with the text in the chat
-		return message;
-	}
-
-	const blockUserInput = ctx.getNodeParameter('blockUserInput', 0, false) as boolean;
-	const config = getSendAndWaitConfig(ctx);
-	return {
-		type: ChatNodeMessageType.WITH_BUTTONS,
-		text: message,
-		blockUserInput,
-		// the buttons are reversed to show the primary button first
-		buttons: config.options.reverse().map((option) => ({
-			text: option.label,
-			link: option.url,
-			type: option.style as ChatNodeMessageButtonType,
-		})),
-	};
-}
+import {
+	configureInputs,
+	configureWaitTillDate,
+	getChatMessage,
+	getSendAndWaitPropertiesForChatNode,
+} from './util';
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {

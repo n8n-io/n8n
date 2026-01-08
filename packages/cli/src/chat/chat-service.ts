@@ -347,7 +347,6 @@ export class ChatService {
 		}
 	}
 
-	// TODO: extract to utils?
 	private async shouldResumeOnMessage(executionId: string) {
 		const execution = await this.executionManager.findExecution(executionId);
 		if (!execution) {
