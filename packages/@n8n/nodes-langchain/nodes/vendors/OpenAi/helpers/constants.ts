@@ -1,14 +1,16 @@
 /**
- * Regex pattern for models that require the Responses API.
- * These models are not supported in the /v1/chat/completions endpoint.
+ * Regex pattern for models that can use the non-Responses API (chat/completions).
+ * Models NOT matching this pattern require the Responses API.
  * Matches:
- * - gpt-5.2-pro (only pro variant of 5.2)
- * - gpt-5.3+ (all variants of 5.3 and higher)
- * - codex-*-max models
- * - computer-use models
+ * - GPT-5 (non-pro, non-codex): gpt-5, gpt-5.1 with optional -mini/-nano
+ * - GPT-4.1 with optional -mini/-nano
+ * - GPT-4o (chat variants only)
+ * - GPT-4 legacy variants
+ * - GPT-3.5 variants
+ * - GPT-3 / Instruct era models
  */
-export const MODELS_REQUIRING_RESPONSES_API_PATTERN =
-	/^(gpt-5\.(2-pro|[3-9]|[1-9]\d)|codex-.+-max|computer-use)/;
+export const MODELS_ALLOWING_NON_RESPONSES_API_PATTERN =
+	/^(?:gpt-5(?:\.1)?(?:-mini|-nano)?|gpt-4\.1(?:-mini|-nano)?|gpt-4o(?:-mini)?|gpt-4(?:-turbo)?(?:-preview)?|gpt-4-32k|gpt-3\.5-turbo(?:-16k)?(?:-(?:0613|1106|latest))?|text-davinci-003|text-davinci-002|davinci-002|babbage-002)$/;
 
 export const MODELS_NOT_SUPPORT_FUNCTION_CALLS = [
 	'gpt-3.5-turbo-16k-0613',

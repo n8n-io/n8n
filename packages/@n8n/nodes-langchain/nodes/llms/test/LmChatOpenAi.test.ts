@@ -479,22 +479,25 @@ describe('LmChatOpenAi', () => {
 
 		describe('Responses API validation', () => {
 			it.each([
-				// gpt-5.2-pro only
+				// Models NOT in the allow-list require Responses API
+				// gpt-5.2+ (except gpt-5 and gpt-5.1 base variants)
+				'gpt-5.2',
 				'gpt-5.2-pro',
-				// gpt-5.3+ all variants
 				'gpt-5.3',
 				'gpt-5.3-mini',
-				'gpt-5.3-pro',
-				'gpt-5.9',
 				'gpt-5.10',
-				'gpt-5.10-pro',
-				'gpt-5.10-mini',
-				// codex-*-max
+				// o-series models
+				'o1',
+				'o1-mini',
+				'o3-mini',
+				// codex models
+				'codex-mini',
 				'codex-mini-max',
-				'codex-1-max',
-				// computer-use
+				// computer-use models
 				'computer-use-preview',
 				'computer-use',
+				// Other non-allowed models
+				'gpt-4.1-turbo', // Only -mini/-nano allowed for 4.1
 			])('should throw error when using %s without Responses API enabled', async (modelName) => {
 				const mockContext = setupMockContext({ typeVersion: 1.3 });
 
@@ -513,43 +516,59 @@ describe('LmChatOpenAi', () => {
 				);
 			});
 
-			it.each([
-				'gpt-5.2-pro',
-				'gpt-5.3',
-				'gpt-5.10-mini',
-				'codex-mini-max',
-				'computer-use-preview',
-			])('should NOT throw error when using %s with Responses API enabled', async (modelName) => {
-				const mockContext = setupMockContext({ typeVersion: 1.3 });
+			it.each(['gpt-5.2', 'gpt-5.3', 'o1', 'codex-mini-max', 'computer-use-preview'])(
+				'should NOT throw error when using %s with Responses API enabled',
+				async (modelName) => {
+					const mockContext = setupMockContext({ typeVersion: 1.3 });
 
-				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'model.value') return modelName;
-					if (paramName === 'responsesApiEnabled') return true;
-					if (paramName === 'options') return {};
-					if (paramName === 'builtInTools') return {};
-					return undefined;
-				});
+					mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model.value') return modelName;
+						if (paramName === 'responsesApiEnabled') return true;
+						if (paramName === 'options') return {};
+						if (paramName === 'builtInTools') return {};
+						return undefined;
+					});
 
-				mockedCommon.prepareAdditionalResponsesParams = jest.fn().mockReturnValue({});
-				mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue([]);
+					mockedCommon.prepareAdditionalResponsesParams = jest.fn().mockReturnValue({});
+					mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue([]);
 
-				await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
-			});
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+				},
+			);
 
 			it.each([
+				// Models IN the allow-list can work without Responses API
+				// GPT-5 base and 5.1 variants
+				'gpt-5',
+				'gpt-5-mini',
+				'gpt-5-nano',
+				'gpt-5.1',
+				'gpt-5.1-mini',
+				'gpt-5.1-nano',
+				// GPT-4.1 variants
+				'gpt-4.1',
+				'gpt-4.1-mini',
+				'gpt-4.1-nano',
+				// GPT-4o variants
 				'gpt-4o',
 				'gpt-4o-mini',
+				// GPT-4 legacy
+				'gpt-4',
 				'gpt-4-turbo',
-				'o1',
-				'o1-mini',
-				'o3-mini',
-				'gpt-5',
-				'gpt-5-turbo',
-				// gpt-5.2 without -pro suffix is allowed
-				'gpt-5.2',
-				'gpt-5.2-mini',
-				// codex without -max suffix is allowed
-				'codex-mini',
+				'gpt-4-preview',
+				'gpt-4-turbo-preview',
+				'gpt-4-32k',
+				// GPT-3.5
+				'gpt-3.5-turbo',
+				'gpt-3.5-turbo-16k',
+				'gpt-3.5-turbo-0613',
+				'gpt-3.5-turbo-1106',
+				'gpt-3.5-turbo-latest',
+				// Instruct era
+				'text-davinci-003',
+				'text-davinci-002',
+				'davinci-002',
+				'babbage-002',
 			])(
 				'should NOT throw error when using %s without Responses API enabled',
 				async (modelName) => {
