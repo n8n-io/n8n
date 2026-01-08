@@ -1,4 +1,3 @@
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -310,6 +309,7 @@ export class SourceControlPreferencesService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 			this.logger.debug('Broadcasting source control configuration reload to other main instances');
 		}
