@@ -129,6 +129,14 @@ export function createLLMJudgeEvaluator(
 				),
 				fb('maintainability.modularity', result.maintainability.modularity, 'detail'),
 
+				// Best practices adherence
+				fb(
+					'bestPractices',
+					result.bestPractices.score,
+					'metric',
+					formatViolations(result.bestPractices.violations),
+				),
+
 				// Overall score
 				fb('overallScore', result.overallScore, 'score', result.summary),
 			];

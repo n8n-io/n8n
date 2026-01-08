@@ -62,6 +62,7 @@ jest.mock('../index', () => ({
 	createProgrammaticEvaluator: (...args: unknown[]): unknown =>
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
+	basicTestCases: [{ prompt: 'Create a workflow that sends a daily email summary' }],
 }));
 
 /** Helper to create a minimal valid workflow for tests */

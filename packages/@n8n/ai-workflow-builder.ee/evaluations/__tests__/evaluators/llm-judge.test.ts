@@ -47,6 +47,7 @@ function createMockEvalResult(overrides: Record<string, unknown> = {}) {
 			workflowOrganization: 0.85,
 			modularity: 0.9,
 		},
+		bestPractices: { score: 0.82, violations: [] },
 		overallScore: 0.9,
 		summary: 'Good workflow',
 		...overrides,
@@ -120,6 +121,9 @@ describe('LLM-Judge Evaluator', () => {
 				expect.objectContaining({ evaluator: 'llm-judge', metric: 'maintainability' }),
 			);
 			expect(feedback).toContainEqual(
+				expect.objectContaining({ evaluator: 'llm-judge', metric: 'bestPractices' }),
+			);
+			expect(feedback).toContainEqual(
 				expect.objectContaining({ evaluator: 'llm-judge', metric: 'overallScore' }),
 			);
 		});
@@ -147,6 +151,29 @@ describe('LLM-Judge Evaluator', () => {
 				(f) => f.evaluator === 'llm-judge' && f.metric === 'functionality',
 			);
 			expect(funcFeedback?.comment).toContain('Missing HTTP node');
+		});
+
+		it('should include bestPractices violations in comments', async () => {
+			mockEvaluateWorkflow.mockResolvedValue(
+				createMockEvalResult({
+					bestPractices: {
+						score: 0.4,
+						violations: [
+							{ type: 'major', description: 'Missing rate limiting', pointsDeducted: 0.2 },
+						],
+					},
+				}),
+			);
+
+			const { createLLMJudgeEvaluator } = await import('../../evaluators/llm-judge');
+			const evaluator = createLLMJudgeEvaluator(mockLlm, mockNodeTypes);
+
+			const feedback = await evaluator.evaluate(createMockWorkflow(), { prompt: 'Test' });
+			const bpFeedback = feedback.find(
+				(f) => f.evaluator === 'llm-judge' && f.metric === 'bestPractices',
+			);
+
+			expect(bpFeedback?.comment).toContain('Missing rate limiting');
 		});
 
 		it('should handle evaluation errors gracefully', async () => {

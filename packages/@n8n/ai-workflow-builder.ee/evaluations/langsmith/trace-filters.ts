@@ -1,7 +1,7 @@
 import type { KVMap } from 'langsmith/schemas';
 
-import type { EvalLogger } from '../harness/logger.js';
 import { isSimpleWorkflow } from './types';
+import type { EvalLogger } from '../harness/logger.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Type guards
