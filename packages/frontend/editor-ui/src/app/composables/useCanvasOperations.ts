@@ -2882,15 +2882,17 @@ export function useCanvasOperations() {
 			query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
 		});
 
+		// Set skipCredentialAutoOpen BEFORE importTemplate to ensure it's available
+		// when SetupWorkflowCredentialsButton mounts (which happens during importTemplate)
+		if (options?.skipCredentialAutoOpen) {
+			workflowsStore.addToWorkflowMetadata({ skipCredentialAutoOpen: true });
+		}
+
 		await importTemplate({
 			id: templateId,
 			name: workflow.name,
 			workflow,
 		});
-
-		if (options?.skipCredentialAutoOpen) {
-			workflowsStore.addToWorkflowMetadata({ skipCredentialAutoOpen: true });
-		}
 
 		uiStore.stateIsDirty = true;
 
