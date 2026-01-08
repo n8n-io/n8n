@@ -234,8 +234,8 @@ export class LemlistV2 implements INodeType {
 
 						const body: IDataObject = { name };
 
-						if (additionalFields.labels) {
-							body.labels = (additionalFields.labels as string).split(',').map((l) => l.trim());
+						if (typeof additionalFields.labels === 'string') {
+							body.labels = additionalFields.labels.split(',').map((l) => l.trim());
 						}
 
 						responseData = await lemlistApiRequest.call(this, 'POST', '/campaigns', body);
@@ -320,8 +320,8 @@ export class LemlistV2 implements INodeType {
 						if (updateFields.name) {
 							body.name = updateFields.name;
 						}
-						if (updateFields.labels) {
-							body.labels = (updateFields.labels as string).split(',').map((l) => l.trim());
+						if (typeof updateFields.labels === 'string') {
+							body.labels = updateFields.labels.split(',').map((l) => l.trim());
 						}
 
 						responseData = await lemlistApiRequest.call(
@@ -1215,8 +1215,12 @@ export class LemlistV2 implements INodeType {
 							for (const filter of filtersInput.filterValues as IDataObject[]) {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
-									in: filter.in ? (filter.in as string).split(',').map((v) => v.trim()) : [],
-									out: filter.out ? (filter.out as string).split(',').map((v) => v.trim()) : [],
+									in:
+										typeof filter.in === 'string' ? filter.in.split(',').map((v) => v.trim()) : [],
+									out:
+										typeof filter.out === 'string'
+											? filter.out.split(',').map((v) => v.trim())
+											: [],
 								};
 								filtersArray.push(filterObj);
 							}
@@ -1248,8 +1252,12 @@ export class LemlistV2 implements INodeType {
 							for (const filter of filtersInput.filterValues as IDataObject[]) {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
-									in: filter.in ? (filter.in as string).split(',').map((v) => v.trim()) : [],
-									out: filter.out ? (filter.out as string).split(',').map((v) => v.trim()) : [],
+									in:
+										typeof filter.in === 'string' ? filter.in.split(',').map((v) => v.trim()) : [],
+									out:
+										typeof filter.out === 'string'
+											? filter.out.split(',').map((v) => v.trim())
+											: [],
 								};
 								filtersArray.push(filterObj);
 							}

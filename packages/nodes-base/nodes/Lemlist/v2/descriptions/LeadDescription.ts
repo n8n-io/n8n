@@ -548,6 +548,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
+		required: true,
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
@@ -609,6 +610,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
+		required: true,
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
