@@ -322,7 +322,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private externalSecretsProviderReloaded({
 		vaultType,
 	}: RelayEventMap['external-secrets-provider-reloaded']) {
-		this.telemetry.track('User reloaded external secrets settings', {
+		this.telemetry.track('User reloaded external secrets', {
 			vault_type: vaultType,
 		});
 	}
