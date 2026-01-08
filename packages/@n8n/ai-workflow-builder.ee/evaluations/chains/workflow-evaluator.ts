@@ -13,10 +13,13 @@ import {
 import type { EvaluationInput, EvaluationResult } from '../types/evaluation';
 
 /**
- * Weights for each evaluation category used in overall score calculation.
+ * Weights for each LLM-judge evaluation category used in overall score calculation.
+ *
+ * This is evaluator-internal weighting, and is independent from the harness-level
+ * cross-evaluator weighting in `evaluations/score-calculator.ts`.
  * Exported for use in tests.
  */
-export const EVALUATION_WEIGHTS = {
+export const LLM_JUDGE_CATEGORY_WEIGHTS = {
 	functionality: 0.25,
 	connections: 0.15,
 	expressions: 0.15,
@@ -29,23 +32,28 @@ export const EVALUATION_WEIGHTS = {
 } as const;
 
 /**
+ * @deprecated Use `LLM_JUDGE_CATEGORY_WEIGHTS` (kept for backwards compatibility within the package).
+ */
+export const EVALUATION_WEIGHTS = LLM_JUDGE_CATEGORY_WEIGHTS;
+
+/**
  * Total weight when structural similarity is not applicable.
  */
 export const TOTAL_WEIGHT_WITHOUT_STRUCTURAL =
-	EVALUATION_WEIGHTS.functionality +
-	EVALUATION_WEIGHTS.connections +
-	EVALUATION_WEIGHTS.expressions +
-	EVALUATION_WEIGHTS.nodeConfiguration +
-	EVALUATION_WEIGHTS.efficiency +
-	EVALUATION_WEIGHTS.dataFlow +
-	EVALUATION_WEIGHTS.maintainability +
-	EVALUATION_WEIGHTS.bestPractices;
+	LLM_JUDGE_CATEGORY_WEIGHTS.functionality +
+	LLM_JUDGE_CATEGORY_WEIGHTS.connections +
+	LLM_JUDGE_CATEGORY_WEIGHTS.expressions +
+	LLM_JUDGE_CATEGORY_WEIGHTS.nodeConfiguration +
+	LLM_JUDGE_CATEGORY_WEIGHTS.efficiency +
+	LLM_JUDGE_CATEGORY_WEIGHTS.dataFlow +
+	LLM_JUDGE_CATEGORY_WEIGHTS.maintainability +
+	LLM_JUDGE_CATEGORY_WEIGHTS.bestPractices;
 
 /**
  * Total weight when structural similarity is applicable.
  */
 export const TOTAL_WEIGHT_WITH_STRUCTURAL =
-	TOTAL_WEIGHT_WITHOUT_STRUCTURAL + EVALUATION_WEIGHTS.structuralSimilarity;
+	TOTAL_WEIGHT_WITHOUT_STRUCTURAL + LLM_JUDGE_CATEGORY_WEIGHTS.structuralSimilarity;
 
 /**
  * Calculate weighted score for the overall evaluation
@@ -53,7 +61,7 @@ export const TOTAL_WEIGHT_WITH_STRUCTURAL =
  * @returns Weighted overall score
  */
 export function calculateWeightedScore(result: EvaluationResult): number {
-	const w = EVALUATION_WEIGHTS;
+	const w = LLM_JUDGE_CATEGORY_WEIGHTS;
 
 	// Calculate weighted sum for all categories
 	const weightedSum =

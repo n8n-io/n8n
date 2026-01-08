@@ -95,6 +95,21 @@ describe('Report Generator', () => {
 			expect(metrics.evaluatorAverages['programmatic']).toBeCloseTo(1.0);
 		});
 
+		it('should ignore non-finite scores when computing evaluator averages', () => {
+			const results: ExampleResult[] = [
+				createExampleResult({
+					feedback: [
+						createFeedback('programmatic', 'connections', 1),
+						createFeedback('programmatic', 'trigger', Number.NaN),
+					],
+				}),
+			];
+
+			const metrics = calculateReportMetrics(results);
+
+			expect(metrics.evaluatorAverages['programmatic']).toBe(1);
+		});
+
 		it('should count violations by severity from comments', () => {
 			const results: ExampleResult[] = [
 				createExampleResult({

@@ -2,7 +2,7 @@ import {
 	calculateWeightedScore,
 	generateEvaluationSummary,
 	identifyCriticalIssues,
-	EVALUATION_WEIGHTS,
+	LLM_JUDGE_CATEGORY_WEIGHTS,
 	TOTAL_WEIGHT_WITHOUT_STRUCTURAL,
 	TOTAL_WEIGHT_WITH_STRUCTURAL,
 } from './workflow-evaluator';
@@ -71,14 +71,14 @@ describe('workflow-evaluator', () => {
 		it('should weight functionality at 25%', () => {
 			const result = createUniformResult(0);
 			result.functionality.score = 1.0;
-			const expected = EVALUATION_WEIGHTS.functionality / TOTAL_WEIGHT_WITHOUT_STRUCTURAL;
+			const expected = LLM_JUDGE_CATEGORY_WEIGHTS.functionality / TOTAL_WEIGHT_WITHOUT_STRUCTURAL;
 			expect(calculateWeightedScore(result)).toBeCloseTo(expected, 5);
 		});
 
 		it('should weight connections at 15%', () => {
 			const result = createUniformResult(0);
 			result.connections.score = 1.0;
-			const expected = EVALUATION_WEIGHTS.connections / TOTAL_WEIGHT_WITHOUT_STRUCTURAL;
+			const expected = LLM_JUDGE_CATEGORY_WEIGHTS.connections / TOTAL_WEIGHT_WITHOUT_STRUCTURAL;
 			expect(calculateWeightedScore(result)).toBeCloseTo(expected, 5);
 		});
 
@@ -116,7 +116,7 @@ describe('workflow-evaluator', () => {
 			result.maintainability.score = 1.0;
 			result.bestPractices.score = 0.5;
 
-			const w = EVALUATION_WEIGHTS;
+			const w = LLM_JUDGE_CATEGORY_WEIGHTS;
 			const weightedSum =
 				1.0 * w.functionality +
 				0.8 * w.connections +

@@ -33,6 +33,11 @@ export interface EvaluationContext {
 	 * When provided, treat it as the global knob for overall parallel LLM calls.
 	 */
 	llmCallLimiter?: LlmCallLimiter;
+	/**
+	 * Optional timeout used for LLM-bound work (generation + evaluators).
+	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
+	 */
+	timeoutMs?: number;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -100,7 +105,7 @@ export interface RunConfigBase {
 	timeoutMs?: number;
 	/** Lifecycle hooks for logging and monitoring */
 	lifecycle?: Partial<EvaluationLifecycle>;
-	/** Logger for all output (pass `createLogger(false)` for silent) */
+	/** Logger for all output (use `createQuietLifecycle()` to suppress output in tests) */
 	logger: EvalLogger;
 }
 

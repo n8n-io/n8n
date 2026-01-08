@@ -115,7 +115,7 @@ Final context passed to evaluators
 ```typescript
 import { createLogger } from './utils/logger';
 
-const logger = createLogger(true);
+const logger = createLogger(true); // verbose output
 
 const config: RunConfig = {
   mode: 'local',
@@ -140,7 +140,7 @@ await runEvaluation(config);
 ```typescript
 import { createLogger } from './utils/logger';
 
-const logger = createLogger(false);
+const logger = createLogger(false); // non-verbose output
 
 const config: RunConfig = {
   mode: 'langsmith',
@@ -157,6 +157,8 @@ const config: RunConfig = {
 
 await runEvaluation(config);
 ```
+
+If you want *no output* (e.g. unit tests), use `createQuietLifecycle()` (or pass a stub logger) instead of relying on a "silent logger".
 
 **Architecture:** The target function does ALL work (generation + evaluation). The LangSmith evaluator just extracts pre-computed feedback.
 

@@ -537,6 +537,39 @@ describe('Console Lifecycle', () => {
 			expect(logOutput).toContain('7');
 			expect(logOutput).toContain('85%');
 		});
+
+		it('should not print NaN when feedback contains non-finite scores', async () => {
+			const { createConsoleLifecycle } = await import('../lifecycle');
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(false) });
+
+			const config: RunConfig = {
+				mode: 'local',
+				dataset: [{ prompt: 'Test' }],
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [{ name: 'programmatic', evaluate: jest.fn() }],
+				logger: createLogger(false),
+			};
+
+			lifecycle.onStart(config);
+
+			const result: ExampleResult = {
+				index: 1,
+				prompt: 'Test',
+				status: 'pass',
+				score: 1,
+				durationMs: 10,
+				workflow: createMockWorkflow(),
+				feedback: [
+					{ evaluator: 'programmatic', metric: 'connections', score: 1, kind: 'metric' },
+					{ evaluator: 'programmatic', metric: 'trigger', score: Number.NaN, kind: 'metric' },
+				],
+			};
+
+			lifecycle.onExampleComplete(1, result);
+
+			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
+			expect(logOutput).not.toContain('NaN');
+		});
 	});
 
 	describe('createQuietLifecycle()', () => {

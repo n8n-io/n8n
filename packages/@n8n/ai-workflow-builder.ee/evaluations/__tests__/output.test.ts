@@ -29,6 +29,7 @@ interface ParsedFeedback {
 	score: number;
 	evaluators: Array<{
 		name: string;
+		averageScore: number;
 		feedback: Array<{ key: string; score: number }>;
 	}>;
 }
@@ -181,6 +182,25 @@ describe('Artifact Saver', () => {
 
 			const programmatic = feedback.evaluators.find((e) => e.name === 'programmatic');
 			expect(programmatic?.feedback).toHaveLength(1);
+		});
+
+		it('should ignore non-finite scores when computing evaluator averages', () => {
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
+			const result = createMockResult({
+				feedback: [
+					{ evaluator: 'programmatic', metric: 'connections', score: 1, kind: 'metric' },
+					{ evaluator: 'programmatic', metric: 'trigger', score: Number.NaN, kind: 'metric' },
+				],
+			});
+
+			saver.saveExample(result);
+
+			const feedbackPath = path.join(tempDir, 'example-001', 'feedback.json');
+			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
+
+			const programmatic = feedback.evaluators.find((e) => e.name === 'programmatic');
+			expect(programmatic).toBeDefined();
+			expect(programmatic?.averageScore).toBe(1);
 		});
 
 		it('should save error to error.txt when present', () => {

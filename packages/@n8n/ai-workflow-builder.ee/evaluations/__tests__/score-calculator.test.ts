@@ -12,7 +12,7 @@ import {
 	groupByEvaluator,
 	calculateWeightedScore,
 	aggregateScores,
-	DEFAULT_WEIGHTS,
+	DEFAULT_EVALUATOR_WEIGHTS,
 } from '../score-calculator';
 
 /** Helper to create feedback items */
@@ -313,15 +313,15 @@ describe('Score Calculator', () => {
 		});
 	});
 
-	describe('DEFAULT_WEIGHTS', () => {
+	describe('DEFAULT_EVALUATOR_WEIGHTS', () => {
 		it('should have weights for standard evaluators', () => {
-			expect(DEFAULT_WEIGHTS['llm-judge']).toBeDefined();
-			expect(DEFAULT_WEIGHTS['programmatic']).toBeDefined();
-			expect(DEFAULT_WEIGHTS['pairwise']).toBeDefined();
+			expect(DEFAULT_EVALUATOR_WEIGHTS['llm-judge']).toBeDefined();
+			expect(DEFAULT_EVALUATOR_WEIGHTS['programmatic']).toBeDefined();
+			expect(DEFAULT_EVALUATOR_WEIGHTS['pairwise']).toBeDefined();
 		});
 
 		it('should have weights that sum to approximately 1', () => {
-			const sum = Object.values(DEFAULT_WEIGHTS).reduce((a, b) => a + b, 0);
+			const sum = Object.values(DEFAULT_EVALUATOR_WEIGHTS).reduce((a, b) => a + b, 0);
 			expect(sum).toBeCloseTo(1.0);
 		});
 	});

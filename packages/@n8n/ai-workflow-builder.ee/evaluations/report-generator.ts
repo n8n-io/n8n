@@ -5,8 +5,8 @@
  */
 
 import { feedbackKey } from './feedback';
-import type { ExampleResult, RunSummary, Feedback } from './harness-types';
-import { groupByEvaluator, selectScoringItems } from './score-calculator';
+import type { ExampleResult, RunSummary } from './harness-types';
+import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
 
 /**
  * Violation severity levels.
@@ -62,6 +62,7 @@ export function extractViolationSeverity(comment?: string): ViolationSeverity | 
  * Format a number as a percentage string.
  */
 function formatPercentage(value: number, decimals = 1): string {
+	if (!Number.isFinite(value)) return 'N/A';
 	return `${(value * 100).toFixed(decimals)}%`;
 }
 
@@ -71,15 +72,6 @@ function formatPercentage(value: number, decimals = 1): string {
 function truncate(str: string, maxLength: number): string {
 	if (str.length <= maxLength) return str;
 	return str.slice(0, maxLength - 3) + '...';
-}
-
-/**
- * Calculate average score for an array of feedback items.
- */
-function calculateAverage(items: Feedback[]): number {
-	if (items.length === 0) return 0;
-	const total = items.reduce((sum, f) => sum + f.score, 0);
-	return total / items.length;
 }
 
 /**
@@ -97,7 +89,7 @@ export function calculateReportMetrics(results: ExampleResult[]): ReportMetrics 
 		const grouped = groupByEvaluator(result.feedback);
 		for (const [evaluator, items] of Object.entries(grouped)) {
 			if (!evaluatorScores[evaluator]) evaluatorScores[evaluator] = [];
-			evaluatorScores[evaluator].push(calculateAverage(selectScoringItems(items)));
+			evaluatorScores[evaluator].push(calculateFiniteAverage(selectScoringItems(items)));
 		}
 	}
 
@@ -182,7 +174,7 @@ export function generateMarkdownReport(
 `;
 		for (const result of results) {
 			const promptPreview = truncate(result.prompt, MAX_PROMPT_LENGTH);
-			const resultScore = result.feedback.length > 0 ? calculateAverage(result.feedback) : 0;
+			const resultScore = result.score;
 
 			report += `### Test ${result.index}: ${promptPreview}
 - **Status**: ${result.status}

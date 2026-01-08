@@ -36,14 +36,23 @@ export interface FeedbackKeyParts {
 }
 
 /**
- * Default weights for standard evaluators.
+ * Default weights for standard evaluators (cross-evaluator weighting).
+ *
+ * This is the *harness-level* weighting between evaluators like `llm-judge`,
+ * `programmatic`, and `pairwise`. It is independent from any evaluator-internal
+ * weighting (e.g. LLM judge category weights).
  * Weights should sum to approximately 1.0.
  */
-export const DEFAULT_WEIGHTS: ScoreWeights = {
+export const DEFAULT_EVALUATOR_WEIGHTS: ScoreWeights = {
 	'llm-judge': 0.4,
 	programmatic: 0.3,
 	pairwise: 0.3,
 };
+
+/**
+ * @deprecated Use `DEFAULT_EVALUATOR_WEIGHTS` (kept for backwards compatibility within the package).
+ */
+export const DEFAULT_WEIGHTS: ScoreWeights = DEFAULT_EVALUATOR_WEIGHTS;
 
 /** Default weight for unknown evaluators */
 const UNKNOWN_EVALUATOR_WEIGHT = 0.1;
@@ -105,7 +114,7 @@ export function groupByEvaluator(feedback: Feedback[]): Record<string, Feedback[
 /**
  * Calculate average score for an array of feedback items.
  */
-function calculateAverage(items: Feedback[]): number {
+export function calculateFiniteAverage(items: Feedback[]): number {
 	if (items.length === 0) return 0;
 	const finiteScores = items.map((f) => f.score).filter((s) => Number.isFinite(s));
 	if (finiteScores.length === 0) return 0;
@@ -119,7 +128,7 @@ function calculateAverage(items: Feedback[]): number {
  * Order of preference:
  * - `kind: 'score'` (single authoritative score)
  * - `kind: 'metric'` (stable category metrics)
- * - any non-`detail` items (includes items with undefined `kind`)
+ * - any non-`detail` items
  * - otherwise, all items
  */
 export function selectScoringItems(items: Feedback[]): Feedback[] {
@@ -147,7 +156,7 @@ export function selectScoringItems(items: Feedback[]): Feedback[] {
  */
 export function calculateWeightedScore(
 	feedback: Feedback[],
-	weights: ScoreWeights = DEFAULT_WEIGHTS,
+	weights: ScoreWeights = DEFAULT_EVALUATOR_WEIGHTS,
 ): number {
 	if (feedback.length === 0) return 0;
 
@@ -157,7 +166,7 @@ export function calculateWeightedScore(
 	let weightedSum = 0;
 
 	for (const [evaluator, items] of Object.entries(byEvaluator)) {
-		const avgScore = calculateAverage(selectScoringItems(items));
+		const avgScore = calculateFiniteAverage(selectScoringItems(items));
 		const weight = weights[evaluator] ?? UNKNOWN_EVALUATOR_WEIGHT;
 		weightedSum += avgScore * weight;
 		totalWeight += weight;
@@ -188,7 +197,7 @@ export function aggregateScores(feedback: Feedback[]): AggregatedScore {
 	const byEvaluator: Record<string, number> = {};
 	const grouped = groupByEvaluator(feedback);
 	for (const [evaluator, items] of Object.entries(grouped)) {
-		byEvaluator[evaluator] = calculateAverage(selectScoringItems(items));
+		byEvaluator[evaluator] = calculateFiniteAverage(selectScoringItems(items));
 	}
 
 	// Calculate by-category averages
@@ -207,7 +216,7 @@ export function aggregateScores(feedback: Feedback[]): AggregatedScore {
 	}
 
 	for (const [category, items] of Object.entries(categoryGroups)) {
-		byCategory[category] = calculateAverage(items);
+		byCategory[category] = calculateFiniteAverage(items);
 	}
 
 	return {

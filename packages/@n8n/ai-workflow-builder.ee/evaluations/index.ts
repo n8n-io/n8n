@@ -82,6 +82,7 @@ export {
 	groupByEvaluator,
 	calculateWeightedScore,
 	aggregateScores,
+	DEFAULT_EVALUATOR_WEIGHTS,
 	DEFAULT_WEIGHTS,
 	type ScoreWeights,
 	type AggregatedScore,

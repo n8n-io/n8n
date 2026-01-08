@@ -6,7 +6,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 import { evaluateWorkflow } from '../../chains/workflow-evaluator';
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
 import type { EvaluationInput } from '../../types/evaluation';
-import { runWithOptionalLimiter } from '../../utils/evaluation-helpers';
+import { runWithOptionalLimiter, withTimeout } from '../../utils/evaluation-helpers';
 
 const EVALUATOR_NAME = 'llm-judge';
 
@@ -61,7 +61,11 @@ export function createLLMJudgeEvaluator(
 			};
 
 			const result = await runWithOptionalLimiter(ctx.llmCallLimiter, async () => {
-				return await evaluateWorkflow(llm, input);
+				return await withTimeout({
+					promise: evaluateWorkflow(llm, input),
+					timeoutMs: ctx.timeoutMs,
+					label: 'llm-judge:evaluateWorkflow',
+				});
 			});
 
 			return [

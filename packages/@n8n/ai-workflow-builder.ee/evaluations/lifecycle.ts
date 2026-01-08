@@ -7,7 +7,7 @@ import type {
 	ExampleResult,
 	RunSummary,
 } from './harness-types.js';
-import { groupByEvaluator, selectScoringItems } from './score-calculator';
+import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
 import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
@@ -31,6 +31,7 @@ function exampleLabel(mode: RunConfig['mode'] | undefined): 'call' | 'ex' {
  * Format a score as percentage.
  */
 function formatScore(score: number): string {
+	if (!Number.isFinite(score)) return 'N/A';
 	return `${(score * 100).toFixed(0)}%`;
 }
 
@@ -80,6 +81,7 @@ const PAIRWISE_COUNT_METRICS = new Set([
 
 function formatMetricValue(evaluator: string, metric: string, score: number): string {
 	if (evaluator === 'pairwise' && PAIRWISE_COUNT_METRICS.has(metric)) {
+		if (!Number.isFinite(score)) return 'N/A';
 		return Number.isInteger(score) ? String(score) : score.toFixed(0);
 	}
 	return formatScore(score);
@@ -175,10 +177,7 @@ function formatEvaluatorLines(args: {
 	const { errors, nonErrorFeedback } = splitEvaluatorFeedback(feedback);
 
 	const scoringItems = selectScoringItems(feedback);
-	const avgScore =
-		scoringItems.length > 0
-			? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
-			: 0;
+	const avgScore = calculateFiniteAverage(scoringItems);
 
 	const colorFn = scoreColor(avgScore);
 

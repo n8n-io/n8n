@@ -484,6 +484,67 @@ describe('Runner - LangSmith Mode', () => {
 			});
 		});
 
+		it('should ignore invalid referenceWorkflow in dataset context', async () => {
+			const mockEvaluate = jest.mocked(langsmithEvaluate);
+			const lsClient = createMockLangsmithClient();
+
+			const evaluate = jest.fn<
+				ReturnType<Evaluator['evaluate']>,
+				Parameters<Evaluator['evaluate']>
+			>(async (_workflow, ctx) => [
+				{
+					evaluator: 'ref-check',
+					metric: 'hasRef',
+					score: ctx.referenceWorkflow ? 1 : 0,
+					kind: 'score',
+				},
+			]);
+
+			const evaluator: Evaluator = {
+				name: 'ref-check',
+				evaluate,
+			};
+
+			const config: RunConfig = {
+				mode: 'langsmith',
+				dataset: 'test-dataset',
+				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [evaluator],
+				langsmithClient: lsClient,
+				langsmithOptions: {
+					experimentName: 'test',
+					repetitions: 1,
+					concurrency: 1,
+				},
+				logger: silentLogger,
+			};
+
+			const { runEvaluation } = await import('../runner');
+			await runEvaluation(config);
+
+			expect(mockEvaluate).toHaveBeenCalledTimes(1);
+			const [target] = mockEvaluate.mock.calls[0];
+
+			const result = await callLangsmithTarget(target, {
+				prompt: 'Test',
+				evals: {
+					referenceWorkflow: { nodes: [{}], connections: {} },
+				},
+			});
+			expect(isLangsmithTargetOutput(result)).toBe(true);
+			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
+
+			const ctx = evaluate.mock.calls[0]?.[1];
+			expect(ctx?.referenceWorkflow).toBeUndefined();
+
+			expect(result.feedback).toContainEqual({
+				evaluator: 'ref-check',
+				metric: 'hasRef',
+				score: 0,
+				kind: 'score',
+			});
+		});
+
 		it('should pre-load and filter examples when filters are provided', async () => {
 			const mockEvaluate = jest.mocked(langsmithEvaluate);
 

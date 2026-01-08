@@ -118,11 +118,56 @@ function asRecord(value: unknown): Record<string, unknown> {
 	return isUnknownRecord(value) ? value : {};
 }
 
+function isNumberArray2(value: unknown): value is [number, number] {
+	return (
+		Array.isArray(value) &&
+		value.length === 2 &&
+		typeof value[0] === 'number' &&
+		Number.isFinite(value[0]) &&
+		typeof value[1] === 'number' &&
+		Number.isFinite(value[1])
+	);
+}
+
+function isNodeLike(value: unknown): boolean {
+	if (!isUnknownRecord(value)) return false;
+	const name = value.name;
+	const type = value.type;
+	const typeVersion = value.typeVersion;
+	const position = value.position;
+	return (
+		typeof name === 'string' &&
+		name.length > 0 &&
+		typeof type === 'string' &&
+		type.length > 0 &&
+		typeof typeVersion === 'number' &&
+		Number.isFinite(typeVersion) &&
+		isNumberArray2(position)
+	);
+}
+
+function isConnectionsLike(value: unknown): boolean {
+	if (!isUnknownRecord(value)) return false;
+	for (const nodeConnections of Object.values(value)) {
+		if (!isUnknownRecord(nodeConnections)) return false;
+		for (const connectionTypeValue of Object.values(nodeConnections)) {
+			if (!Array.isArray(connectionTypeValue)) return false;
+			for (const output of connectionTypeValue) {
+				if (!Array.isArray(output)) return false;
+				for (const connection of output) {
+					if (!isUnknownRecord(connection)) return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
 function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
 	if (!isUnknownRecord(value)) return false;
 	if (!Array.isArray(value.nodes)) return false;
-	if (!isUnknownRecord(value.connections)) return false;
-	return value.nodes.every(isUnknownRecord);
+	if (!isConnectionsLike(value.connections)) return false;
+	return value.nodes.every(isNodeLike);
 }
 
 function getNotionIdFromMetadata(metadata: unknown): string | undefined {
@@ -326,22 +371,22 @@ async function runLocalExample(args: {
 	try {
 		// Generate workflow
 		const genStartTime = Date.now();
-		const workflow = await withTimeout({
-			promise: runWithOptionalLimiter(
-				globalContext?.llmCallLimiter,
-				async () =>
-					// `return-await` is required here due to error handling via Promise.race timeouts.
-					await generateWorkflow(testCase.prompt),
-			),
-			timeoutMs,
-			label: 'workflow_generation',
+		const workflow = await runWithOptionalLimiter(globalContext?.llmCallLimiter, async () => {
+			return await withTimeout({
+				promise: generateWorkflow(testCase.prompt),
+				timeoutMs,
+				label: 'workflow_generation',
+			});
 		});
 		const genDurationMs = Date.now() - genStartTime;
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
 		const context = buildContext({
 			prompt: testCase.prompt,
-			globalContext,
+			globalContext: {
+				...(globalContext ?? {}),
+				timeoutMs,
+			},
 			testCaseContext: testCase.context,
 			referenceWorkflow: testCase.referenceWorkflow,
 		});
@@ -492,6 +537,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	const effectiveGlobalContext: GlobalRunContext = {
 		...(globalContext ?? {}),
 		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(4),
+		timeoutMs,
 	};
 
 	// Create artifact saver if outputDir is provided
@@ -583,6 +629,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const effectiveGlobalContext: GlobalRunContext = {
 		...(globalContext ?? {}),
 		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(langsmithOptions.concurrency),
+		timeoutMs,
 	};
 
 	// Create target function that does ALL work (generation + evaluation)
@@ -616,18 +663,20 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			// Generate workflow - wrapped in traceable for proper child trace visibility
 			const traceableGenerate = traceable(
 				async () =>
-					await runWithOptionalLimiter(limiter, async () => await generateWorkflow(prompt)),
+					await runWithOptionalLimiter(limiter, async () => {
+						return await withTimeout({
+							promise: generateWorkflow(prompt),
+							timeoutMs,
+							label: 'workflow_generation',
+						});
+					}),
 				{
 					name: 'workflow_generation',
 					run_type: 'chain',
 					client: lsClient,
 				},
 			);
-			const workflow = await withTimeout({
-				promise: traceableGenerate(),
-				timeoutMs,
-				label: 'workflow_generation',
-			});
+			const workflow = await traceableGenerate();
 			const genDurationMs = Date.now() - genStart;
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 

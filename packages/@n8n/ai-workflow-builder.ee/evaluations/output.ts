@@ -9,7 +9,7 @@ import * as path from 'path';
 
 import { feedbackKey } from './feedback';
 import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
-import { selectScoringItems } from './score-calculator';
+import { selectScoringItems, calculateFiniteAverage } from './score-calculator';
 import type { EvalLogger } from './utils/logger.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 
@@ -140,15 +140,10 @@ function formatFeedbackForExport(result: ExampleResult): object {
 				key: feedbackKey(f),
 				metric: f.metric,
 				score: f.score,
-				...(f.kind ? { kind: f.kind } : {}),
+				kind: f.kind,
 				...(f.comment ? { comment: f.comment } : {}),
 			})),
-			averageScore: (() => {
-				const scoringItems = selectScoringItems(items);
-				return scoringItems.length > 0
-					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
-					: 0;
-			})(),
+			averageScore: calculateFiniteAverage(selectScoringItems(items)),
 		})),
 		allFeedback: result.feedback,
 	};
@@ -172,10 +167,7 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 				evaluatorStats[evaluator] = { scores: [] };
 			}
 			const scoringItems = selectScoringItems(items);
-			const avg =
-				scoringItems.length > 0
-					? scoringItems.reduce((sum, f) => sum + f.score, 0) / scoringItems.length
-					: 0;
+			const avg = calculateFiniteAverage(scoringItems);
 			evaluatorStats[evaluator].scores.push(avg);
 		}
 	}

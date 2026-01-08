@@ -22,6 +22,11 @@ export async function withTimeout<T>(args: {
 	timeoutMs?: number;
 	label: string;
 }): Promise<T> {
+	// NOTE:
+	// - This is a best-effort timeout. It does NOT cancel/abort the underlying work.
+	// - If the underlying work supports cancellation (e.g. AbortSignal), plumb that through instead.
+	// - When combined with `p-limit`, prefer applying the timeout *inside* the limited function so the
+	//   limiter slot is released when the timeout triggers.
 	const { promise, timeoutMs, label } = args;
 	if (typeof timeoutMs !== 'number') return await promise;
 	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
