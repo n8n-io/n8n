@@ -7,9 +7,8 @@ import {
 	jsonParse,
 	UnexpectedError,
 	ensureError,
-	SEND_AND_WAIT_OPERATION,
-	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
 } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
@@ -348,6 +347,7 @@ export class ChatService {
 		}
 	}
 
+	// TODO: extract to utils?
 	private async shouldResumeOnMessage(executionId: string) {
 		const execution = await this.executionManager.findExecution(executionId);
 		if (!execution) {
@@ -355,14 +355,8 @@ export class ChatService {
 		}
 
 		const lastNode = getLastNodeExecuted(execution);
-		// for `sendAndWait` we resume execution on a new message
-		// only if the response type is `freeText`, otherwise we wait
-		// for the user to approve/disapprove through an n8n form
-		if (
-			lastNode?.type === CHAT_NODE_TYPE &&
-			lastNode?.parameters?.operation === SEND_AND_WAIT_OPERATION &&
-			lastNode?.parameters?.responseType !== FREE_TEXT_CHAT_RESPONSE_TYPE
-		) {
+		const isChatNode = lastNode?.type === CHAT_NODE_TYPE || lastNode?.type === CHAT_TOOL_NODE_TYPE;
+		if (isChatNode && lastNode?.parameters?.blockUserInput === true) {
 			return false;
 		}
 
