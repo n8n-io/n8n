@@ -116,4 +116,9 @@ export {
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
+export {
+	SecuritySettingsDto,
+	UpdateSecuritySettingsDto,
+} from './security-settings/security-settings.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
