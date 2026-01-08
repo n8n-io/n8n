@@ -587,11 +587,10 @@ describe('AuthController', () => {
 				postHog,
 			);
 
-			// Create payload with only inviterId (missing inviteeId) to test validation
+			// Create empty payload to test validation when neither token nor IDs are provided
 			// Use type assertion to bypass zod-class validation for all-optional schemas
 			// Validation is handled in the service layer
-			const inviterId = uuidv4();
-			const payload = { inviterId } as ResolveSignupTokenQueryDto;
+			const payload = {} as ResolveSignupTokenQueryDto;
 
 			const req = mock<AuthlessRequest>({
 				body: payload,
