@@ -1,20 +1,22 @@
 {
-  "name": "storybook",
+  "name": "@n8n/storybook",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "storybook dev -p 6006",
-    "build": "storybook build"
+    "build": "storybook build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "@n8n/chat": "workspace:*",
     "@n8n/design-system": "workspace:*",
-    "vue": "^3.5.24"
-
+    "vue": "catalog:frontend",
+    "vue-tsc": "catalog:frontend"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
+    "@n8n/typescript-config": "workspace:*",
     "@storybook/addon-a11y": "^10.1.11",
     "@storybook/addon-docs": "^10.1.11",
     "@storybook/addon-themes": "^10.1.11",
