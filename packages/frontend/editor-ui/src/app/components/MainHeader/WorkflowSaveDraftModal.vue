@@ -23,6 +23,14 @@ const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('pu
 const description = ref('');
 const versionName = ref('');
 
+const props = defineProps<{
+	modalName: string;
+	data: {
+		workflowId: string;
+		versionId: string;
+	};
+}>();
+
 const data = ref<{
 	workflowId: string;
 	versionId: string;
@@ -42,7 +50,12 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	if (!versionName.value) {
+	// Initialize data from props when modal is mounted
+	if (props.data) {
+		data.value = props.data;
+		versionName.value = generateVersionName(props.data.versionId);
+		description.value = '';
+	} else if (!versionName.value) {
 		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
 	}
 	modalBus.on('opened', onModalOpened);
@@ -89,14 +102,6 @@ async function handleSaveDraft() {
 
 	saving.value = false;
 }
-
-// Accept modal data when opened
-modalBus.on('setData', (modalData: typeof data.value) => {
-	data.value = modalData;
-	// Reset form when modal opens
-	versionName.value = generateVersionName(modalData.versionId);
-	description.value = '';
-});
 </script>
 
 <template>

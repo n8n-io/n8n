@@ -1665,7 +1665,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		id: string,
 		data: { versionId: string; name: string; description?: string },
 	): Promise<IWorkflowDb> {
-		// Update the workflow version with name and description without activating
+		// Call the new backend endpoint to save a named version
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
@@ -1674,8 +1674,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		// Update local workflow data
-		if (id === workflow.value.id && updatedWorkflow.activeVersion) {
-			setWorkflowActive(id, updatedWorkflow.activeVersion, false);
+		if (id === workflow.value.id) {
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 
 		return updatedWorkflow;

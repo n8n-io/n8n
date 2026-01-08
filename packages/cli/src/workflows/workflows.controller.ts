@@ -2,6 +2,7 @@ import {
 	ActivateWorkflowDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
+	SaveWorkflowVersionDto,
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -589,6 +590,32 @@ export class WorkflowsController {
 			name,
 			description,
 			expectedChecksum,
+		});
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
+		return { ...workflow, scopes, checksum };
+	}
+
+	@Post('/:workflowId/version')
+	@ProjectScope('workflow:update')
+	async saveVersion(
+		req: WorkflowRequest.SaveVersion,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: SaveWorkflowVersionDto,
+	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'update');
+
+		const { name, description, versionId } = body;
+
+		const workflow = await this.workflowService.saveNamedVersion(req.user, workflowId, {
+			name: name!,
+			description,
+			versionId,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);

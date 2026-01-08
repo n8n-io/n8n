@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
-import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import { N8nDropdownMenu2 as N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -114,8 +115,8 @@ function handleFileImport() {
 	}
 }
 
-const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
-	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>>>(() => {
+	const actions: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
@@ -206,7 +207,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
 				disabled: !onWorkflowPage.value || props.isNewWorkflow,
-				customClass: $style.deleteItem,
+				class: $style.deleteItem,
 				divided: true,
 			});
 		} else {
@@ -214,7 +215,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
 				disabled: !onWorkflowPage.value || props.isNewWorkflow,
-				customClass: $style.deleteItem,
+				class: $style.deleteItem,
 				divided: true,
 			});
 		}
@@ -388,11 +389,24 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<N8nActionDropdown
+		<N8nDropdownMenu
 			:items="workflowMenuItems"
+			:teleported="true"
+			placement="bottom-end"
+			:extra-popper-class="$style.actionsDropdown"
 			data-test-id="workflow-menu"
 			@select="onWorkflowMenuSelect"
-		/>
+		>
+			<template #trigger>
+				<N8nIconButton
+					icon="ellipsis"
+					type="tertiary"
+					size="medium"
+					aria-label="More workflow actions"
+					data-test-id="workflow-menu-button"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 <style lang="scss" module>
@@ -405,5 +419,8 @@ defineExpose({
 }
 .hiddenInput {
 	display: none;
+}
+.actionsDropdown {
+	z-index: 9999 !important;
 }
 </style>

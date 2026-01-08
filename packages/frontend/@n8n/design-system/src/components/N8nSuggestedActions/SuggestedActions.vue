@@ -153,7 +153,7 @@ const handleIgnoreClick = (actionId: string) => {
 .triggerContainer {
 	display: inline-block;
 	position: relative;
-	--tag--height: 24px;
+	--tag--height: 28px;
 }
 
 .activeTrigger {

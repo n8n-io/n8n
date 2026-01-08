@@ -416,10 +416,14 @@ const handleKeyboardShortcut = (event: KeyboardEvent) => {
 	// Prevent default for our shortcuts
 	if (event.key === 'p' && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
 		event.preventDefault();
-		const publishItem = dropdownMenuItems.value[0];
-		if (publishItem && !publishItem.disabled && !shouldHidePublishButton.value) {
-			void onDropdownMenuSelect('publish');
+		if (
+			!publishButtonConfig.value.enabled ||
+			readOnlyForPublish.value ||
+			shouldHidePublishButton.value
+		) {
+			return;
 		}
+		void onPublishButtonClick();
 	} else if (event.key === 's' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
 		event.preventDefault();
 		const saveDraftItem = dropdownMenuItems.value.find((item) => item.id === 'save-draft');
@@ -472,11 +476,12 @@ defineExpose({
 					</template>
 					<N8nButton
 						:loading="autoSaveForPublish"
-						:disabled="readOnlyForPublish"
+						:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
 						:class="$style.publish"
 						type="secondary"
 						size="medium"
 						data-test-id="workflow-publish-button"
+						@click="onPublishButtonClick"
 					>
 						<div :class="[$style.flex]">
 							<span
@@ -502,6 +507,7 @@ defineExpose({
 					v-model="dropdownOpen"
 					:items="dropdownMenuItems"
 					:loading="autoSaveForPublish"
+					placement="bottom"
 					:teleported="true"
 					:extra-popper-class="$style.publishDropdown"
 					data-test-id="workflow-publish-dropdown"
@@ -513,7 +519,7 @@ defineExpose({
 							:disabled="readOnlyForPublish"
 							:class="$style.dropdownButton"
 							type="secondary"
-							size="medium"
+							icon-size="large"
 							aria-label="Open publish actions menu"
 							data-test-id="workflow-publish-dropdown-button"
 						/>
@@ -544,7 +550,9 @@ defineExpose({
 
 <style lang="scss" module>
 .container {
-	display: contents;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .activeVersionIndicator {

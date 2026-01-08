@@ -381,7 +381,7 @@ $hoverBackground: var(--color--background--light-1);
 
 .timelineDotDefault {
 	border: var(--border);
-	border-color: var(--color--text--tint-2);
+	border-color: var(--color--mint-600);
 }
 
 .timelineLine {
