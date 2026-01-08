@@ -72,7 +72,7 @@ export const description: INodeProperties[] = [
 				orderBy: [true],
 			},
 		},
-		default: 'id',
+		default: 'createdAt',
 	},
 	{
 		displayName: 'Order By Direction',
