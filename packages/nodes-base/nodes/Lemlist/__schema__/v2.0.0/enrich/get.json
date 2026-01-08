@@ -91,11 +91,17 @@
                 "email": {
                     "type": "string"
                 },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
                 "linkedinUrl": {
                     "type": "string"
                 }
             }
         }
     },
-    "version": 3
+    "version": 4
 }

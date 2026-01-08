@@ -1,18 +1,164 @@
 {
     "type": "object",
     "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "activity_calendar_event_id": {
+            "type": "boolean"
+        },
+        "activity_exception_icon": {
+            "type": "boolean"
+        },
+        "activity_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "calendar_event_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "color": {
+            "type": "integer"
+        },
         "create_date": {
             "type": "string"
+        },
+        "date_last_stage_update": {
+            "type": "string"
+        },
+        "day_close": {
+            "type": "integer"
+        },
+        "day_open": {
+            "type": "integer"
         },
         "display_name": {
             "type": "string"
         },
+        "duplicate_lead_count": {
+            "type": "integer"
+        },
+        "duplicate_lead_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "has_message": {
+            "type": "boolean"
+        },
         "id": {
             "type": "integer"
         },
+        "is_automated_probability": {
+            "type": "boolean"
+        },
+        "is_blacklisted": {
+            "type": "boolean"
+        },
+        "lead_properties": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "string": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "message_attachment_count": {
+            "type": "integer"
+        },
+        "message_bounce": {
+            "type": "integer"
+        },
+        "message_follower_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "message_has_error": {
+            "type": "boolean"
+        },
+        "message_has_error_counter": {
+            "type": "integer"
+        },
+        "message_has_sms_error": {
+            "type": "boolean"
+        },
+        "message_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "message_is_follower": {
+            "type": "boolean"
+        },
+        "message_needaction": {
+            "type": "boolean"
+        },
+        "message_needaction_counter": {
+            "type": "integer"
+        },
+        "message_partner_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
         "name": {
+            "type": "string"
+        },
+        "partner_email_update": {
+            "type": "boolean"
+        },
+        "partner_is_blacklisted": {
+            "type": "boolean"
+        },
+        "partner_phone_update": {
+            "type": "boolean"
+        },
+        "phone_blacklisted": {
+            "type": "boolean"
+        },
+        "phone_sanitized_blacklisted": {
+            "type": "boolean"
+        },
+        "tag_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "website_message_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "won_status": {
+            "type": "string"
+        },
+        "write_date": {
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

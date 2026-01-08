@@ -93,6 +93,9 @@
                 }
             }
         },
+        "Created_Time": {
+            "type": "string"
+        },
         "Email_Opt_Out": {
             "type": "boolean"
         },
@@ -143,5 +146,5 @@
             "type": "null"
         }
     },
-    "version": 8
+    "version": 9
 }

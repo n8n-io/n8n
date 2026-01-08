@@ -7,6 +7,9 @@
         "fields": {
             "type": "object",
             "properties": {
+                "created": {
+                    "type": "string"
+                },
                 "issuetype": {
                     "type": "object",
                     "properties": {
@@ -98,6 +101,9 @@
                 },
                 "summary": {
                     "type": "string"
+                },
+                "updated": {
+                    "type": "string"
                 }
             }
         },
@@ -111,5 +117,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

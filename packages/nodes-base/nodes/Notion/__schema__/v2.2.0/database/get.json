@@ -92,12 +92,18 @@
         "last_edited_time": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "object": {
             "type": "string"
         },
         "parent": {
             "type": "object",
             "properties": {
+                "page_id": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -210,6 +216,45 @@
                                     }
                                 }
                             }
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "select": {
+                            "type": "object",
+                            "properties": {
+                                "options": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "color": {
+                                                "type": "string"
+                                            },
+                                            "description": {
+                                                "type": "null"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Name": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
                         },
                         "name": {
                             "type": "string"
@@ -358,5 +403,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

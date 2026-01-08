@@ -12,12 +12,21 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
             }
         },
         "createdDateTime": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "eTag": {
             "type": "string"
         },
         "file": {
@@ -61,6 +70,9 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
@@ -102,5 +114,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

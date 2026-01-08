@@ -1,8 +1,37 @@
 {
     "type": "object",
     "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "created": {
             "type": "string"
+        },
+        "credentials": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "id": {
             "type": "string"
@@ -13,6 +42,12 @@
         "profile": {
             "type": "object",
             "properties": {
+                "department": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -24,12 +59,26 @@
                 },
                 "login": {
                     "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
         "status": {
             "type": "string"
+        },
+        "type": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 3
+    "version": 4
 }

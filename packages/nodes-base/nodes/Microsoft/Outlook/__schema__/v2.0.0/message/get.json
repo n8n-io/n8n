@@ -52,6 +52,9 @@
         "id": {
             "type": "string"
         },
+        "subject": {
+            "type": "string"
+        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -72,5 +75,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }
