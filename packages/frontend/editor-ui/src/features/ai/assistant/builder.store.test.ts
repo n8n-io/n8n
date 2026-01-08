@@ -2772,6 +2772,27 @@ describe('AI Builder store', () => {
 			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'AI_BUILDING');
 		});
 
+		it('should update title to AI_BUILDING on each streaming message', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				// Simulate multiple streaming messages
+				onMessage({ messages: [{ role: 'assistant', type: 'message', text: 'First chunk' }] });
+				onMessage({ messages: [{ role: 'assistant', type: 'message', text: 'Second chunk' }] });
+				onMessage({ messages: [{ role: 'assistant', type: 'message', text: 'Third chunk' }] });
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'Build something' });
+
+			// Title should be set once in prepareForStreaming + once per message
+			const aiBuilidngCalls = setDocumentTitleMock.mock.calls.filter(
+				(call) => call[1] === 'AI_BUILDING',
+			);
+			expect(aiBuilidngCalls.length).toBe(4); // 1 from prepareForStreaming + 3 from messages
+		});
+
 		it('should set title to AI_DONE when streaming stops and tab is hidden', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 

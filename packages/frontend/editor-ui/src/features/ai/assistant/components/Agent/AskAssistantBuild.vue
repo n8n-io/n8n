@@ -2,7 +2,7 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -15,7 +15,6 @@ import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import shuffle from 'lodash/shuffle';
@@ -38,14 +37,6 @@ const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
 const { onDocumentVisible } = useDocumentVisibility();
-const documentTitle = useDocumentTitle();
-
-onMounted(() => {
-	// Sync document title with streaming state on mount
-	if (builderStore.streaming) {
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
-	}
-});
 
 onDocumentVisible(() => {
 	builderStore.clearDoneIndicatorTitle();

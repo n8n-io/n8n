@@ -556,6 +556,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						// Always update thinking message, even when undefined (to clear it)
 						builderThinkingMessage.value = result.thinkingMessage;
 					}
+
+					// Keep document title updated while streaming
+					documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, userMessageId, retry),
