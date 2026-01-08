@@ -2,9 +2,10 @@ name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
   pull_request:
+  merge_group:
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -24,7 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          # Use merge_group SHA when in merge queue, otherwise PR merge ref
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha
