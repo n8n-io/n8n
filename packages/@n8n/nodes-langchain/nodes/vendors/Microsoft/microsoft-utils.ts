@@ -119,10 +119,13 @@ const configureActivityCallback = (
 		const conversationId = turnContext.activity.conversation?.id;
 		const inputText = turnContext.activity.text || '';
 
+		const correlationId = uuid();
+		console.log(correlationId);
+
 		const baggageScope = new BaggageBuilder()
 			.tenantId(tenantDetails.tenantId)
 			.agentId(agentId)
-			.correlationId(uuid())
+			.correlationId(correlationId)
 			.agentName(agentName)
 			.conversationId(conversationId)
 			.build();
