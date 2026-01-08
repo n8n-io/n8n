@@ -7,7 +7,6 @@ import type {
 	IDataObject,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import * as a from 'node:assert';
 import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
