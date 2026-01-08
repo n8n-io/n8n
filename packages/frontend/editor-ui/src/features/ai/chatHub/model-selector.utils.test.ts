@@ -64,8 +64,8 @@ describe(buildModelSelectorMenuItems, () => {
 
 		expect(result1.some(({ label }) => label === 'chatHub.agent.personalAgents')).toBeTruthy();
 		expect(result1.some(({ label }) => label === 'chatHub.agent.workflowAgents')).toBeTruthy();
-		expect(result2.find(({ label }) => label === 'chatHub.agent.personalAgents')).toBeTruthy();
-		expect(result2.find(({ label }) => label === 'chatHub.agent.workflowAgents')).toBeUndefined();
+		expect(result2.some(({ label }) => label === 'chatHub.agent.personalAgents')).not.toBeTruthy();
+		expect(result2.some(({ label }) => label === 'chatHub.agent.workflowAgents')).not.toBeTruthy();
 	});
 
 	it('should group workflow agents by project when multiple projects exist', () => {
