@@ -1198,7 +1198,10 @@ export class LemlistV2 implements INodeType {
 						// ----------------------------------
 
 						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const seed = this.getNodeParameter('seed', i) as string;
+						const page = this.getNodeParameter('page', i) as number;
+						const size = this.getNodeParameter('size', i) as number;
+						const excludes = this.getNodeParameter('excludes', i) as string;
 
 						// Build filters array from fixedCollection
 						const filtersArray: IDataObject[] = [];
@@ -1206,30 +1209,20 @@ export class LemlistV2 implements INodeType {
 							for (const filter of filtersInput.filterValues as IDataObject[]) {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
+									in: filter.in ? (filter.in as string).split(',').map((v) => v.trim()) : [],
+									out: filter.out ? (filter.out as string).split(',').map((v) => v.trim()) : [],
 								};
-								if (filter.in) {
-									filterObj.in = (filter.in as string).split(',').map((v) => v.trim());
-								}
-								if (filter.out) {
-									filterObj.out = (filter.out as string).split(',').map((v) => v.trim());
-								}
 								filtersArray.push(filterObj);
 							}
 						}
 
 						const body: IDataObject = {
 							filters: filtersArray,
+							seed,
+							page,
+							size,
+							excludes: excludes ? excludes.split(',').map((v) => v.trim()) : [],
 						};
-
-						if (options.page) {
-							body.page = options.page;
-						}
-						if (options.size) {
-							body.size = options.size;
-						}
-						if (options.excludes) {
-							body.excludes = (options.excludes as string).split(',').map((v) => v.trim());
-						}
 
 						responseData = await lemlistApiRequest.call(this, 'POST', '/database/people', body);
 					} else if (operation === 'searchCompanies') {
@@ -1238,7 +1231,10 @@ export class LemlistV2 implements INodeType {
 						// ----------------------------------
 
 						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const seed = this.getNodeParameter('seed', i) as string;
+						const page = this.getNodeParameter('page', i) as number;
+						const size = this.getNodeParameter('size', i) as number;
+						const excludes = this.getNodeParameter('excludes', i) as string;
 
 						// Build filters array from fixedCollection
 						const filtersArray: IDataObject[] = [];
@@ -1246,30 +1242,20 @@ export class LemlistV2 implements INodeType {
 							for (const filter of filtersInput.filterValues as IDataObject[]) {
 								const filterObj: IDataObject = {
 									filterId: filter.filterId,
+									in: filter.in ? (filter.in as string).split(',').map((v) => v.trim()) : [],
+									out: filter.out ? (filter.out as string).split(',').map((v) => v.trim()) : [],
 								};
-								if (filter.in) {
-									filterObj.in = (filter.in as string).split(',').map((v) => v.trim());
-								}
-								if (filter.out) {
-									filterObj.out = (filter.out as string).split(',').map((v) => v.trim());
-								}
 								filtersArray.push(filterObj);
 							}
 						}
 
 						const body: IDataObject = {
 							filters: filtersArray,
+							seed,
+							page,
+							size,
+							excludes: excludes ? excludes.split(',').map((v) => v.trim()) : [],
 						};
-
-						if (options.page) {
-							body.page = options.page;
-						}
-						if (options.size) {
-							body.size = options.size;
-						}
-						if (options.excludes) {
-							body.excludes = (options.excludes as string).split(',').map((v) => v.trim());
-						}
 
 						responseData = await lemlistApiRequest.call(this, 'POST', '/database/companies', body);
 					}

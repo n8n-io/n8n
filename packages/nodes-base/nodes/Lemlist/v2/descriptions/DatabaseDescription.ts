@@ -73,14 +73,15 @@ export const databaseFields: INodeProperties[] = [
 						name: 'filterId',
 						type: 'string',
 						default: '',
-						description: 'The filter identifier (e.g., "job_title", "location", "company_size")',
+						required: true,
+						description: 'The filter identifier (e.g., "country", "job_title", "company_size")',
 					},
 					{
 						displayName: 'Include Values',
 						name: 'in',
 						type: 'string',
 						default: '',
-						description: 'Comma-separated list of values to include',
+						description: 'Comma-separated list of values to include (e.g., "France, Germany")',
 					},
 					{
 						displayName: 'Exclude Values',
@@ -94,44 +95,60 @@ export const databaseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
+		displayName: 'Seed',
+		name: 'seed',
+		type: 'string',
+		default: 'DEFAULT_SEED',
+		description: 'Seed for consistent results across paginated queries',
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['searchPeople'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Excludes',
-				name: 'excludes',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of properties to exclude from the results',
+	},
+	{
+		displayName: 'Page',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		description: 'Page number for pagination',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchPeople'],
 			},
-			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				default: 1,
-				description: 'Page number for pagination',
+		},
+	},
+	{
+		displayName: 'Size',
+		name: 'size',
+		type: 'number',
+		default: 50,
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		description: 'Number of results to return (1-100)',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchPeople'],
 			},
-			{
-				displayName: 'Size',
-				name: 'size',
-				type: 'number',
-				default: 50,
-				typeOptions: {
-					minValue: 1,
-					maxValue: 100,
-				},
-				description: 'Number of results to return (1-100)',
+		},
+	},
+	{
+		displayName: 'Excludes',
+		name: 'excludes',
+		type: 'string',
+		default: '',
+		description: 'Comma-separated list of properties to exclude from the results',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchPeople'],
 			},
-		],
+		},
 	},
 
 	// ----------------------------------
@@ -165,14 +182,15 @@ export const databaseFields: INodeProperties[] = [
 						name: 'filterId',
 						type: 'string',
 						default: '',
-						description: 'The filter identifier (e.g., "industry", "company_size", "location")',
+						required: true,
+						description: 'The filter identifier (e.g., "country", "industry", "company_size")',
 					},
 					{
 						displayName: 'Include Values',
 						name: 'in',
 						type: 'string',
 						default: '',
-						description: 'Comma-separated list of values to include',
+						description: 'Comma-separated list of values to include (e.g., "France, Germany")',
 					},
 					{
 						displayName: 'Exclude Values',
@@ -186,43 +204,59 @@ export const databaseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
+		displayName: 'Seed',
+		name: 'seed',
+		type: 'string',
+		default: 'DEFAULT_SEED',
+		description: 'Seed for consistent results across paginated queries',
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['searchCompanies'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Excludes',
-				name: 'excludes',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of properties to exclude from the results',
+	},
+	{
+		displayName: 'Page',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		description: 'Page number for pagination',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchCompanies'],
 			},
-			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				default: 1,
-				description: 'Page number for pagination',
+		},
+	},
+	{
+		displayName: 'Size',
+		name: 'size',
+		type: 'number',
+		default: 50,
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		description: 'Number of results to return (1-100)',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchCompanies'],
 			},
-			{
-				displayName: 'Size',
-				name: 'size',
-				type: 'number',
-				default: 50,
-				typeOptions: {
-					minValue: 1,
-					maxValue: 100,
-				},
-				description: 'Number of results to return (1-100)',
+		},
+	},
+	{
+		displayName: 'Excludes',
+		name: 'excludes',
+		type: 'string',
+		default: '',
+		description: 'Comma-separated list of properties to exclude from the results',
+		displayOptions: {
+			show: {
+				resource: ['database'],
+				operation: ['searchCompanies'],
 			},
-		],
+		},
 	},
 ];
