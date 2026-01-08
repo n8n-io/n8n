@@ -41,12 +41,12 @@ import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
 	'publish',
+	'saveAsNamed',
+	'rename',
 	'unpublish',
 	'clone',
 	'open',
 	'download',
-	'saveAsNamed',
-	'rename',
 ];
 
 const route = useRoute();
