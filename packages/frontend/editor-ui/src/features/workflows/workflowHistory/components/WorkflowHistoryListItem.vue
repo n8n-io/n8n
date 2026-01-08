@@ -323,7 +323,7 @@ onMounted(() => {
 					<template #trigger>
 						<N8nIconButton
 							:class="$style.actions"
-							icon="ellipsis-v"
+							icon="ellipsis"
 							type="highlight"
 							size="small"
 							aria-label="More actions"
