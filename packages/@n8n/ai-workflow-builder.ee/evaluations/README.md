@@ -113,7 +113,7 @@ Final context passed to evaluators
 ### Local Mode
 
 ```typescript
-import { createLogger } from './utils/logger';
+import { createLogger } from './harness/logger';
 
 const logger = createLogger(true); // verbose output
 
@@ -138,7 +138,7 @@ await runEvaluation(config);
 ### LangSmith Mode
 
 ```typescript
-import { createLogger } from './utils/logger';
+import { createLogger } from './harness/logger';
 
 const logger = createLogger(false); // non-verbose output
 
@@ -343,13 +343,13 @@ pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
 
 ```bash
 # Local mode (default)
-tsx evaluations/cli.ts --prompt "Create a workflow..." --verbose
+tsx evaluations/cli/index.ts --prompt "Create a workflow..." --verbose
 
 # LangSmith mode
-tsx evaluations/cli.ts --backend langsmith --name "my-experiment" --verbose
+tsx evaluations/cli/index.ts --backend langsmith --name "my-experiment" --verbose
 
 # Pairwise mode
-tsx evaluations/cli.ts --suite pairwise --prompt "..." --dos "Must use Slack"
+tsx evaluations/cli/index.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 ```
 
 ## Adding a New Evaluator
@@ -374,7 +374,7 @@ tsx evaluations/cli.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 
 2. Export from `evaluators/index.ts`
 
-3. Add to CLI in `cli.ts`
+3. Add to CLI in `cli/index.ts`
 
 4. Write tests in `__tests__/evaluators/`
 
@@ -383,30 +383,20 @@ tsx evaluations/cli.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 ```
 evaluations/
 ├── __tests__/               # Unit tests
-├── chains/                  # LLM evaluation chains
-├── core/                    # Core utilities (environment, args, trace filters)
+├── cli/                     # CLI entry + arg parsing + CSV loader
 ├── evaluators/              # Evaluator factories
 │   ├── llm-judge/
 │   ├── pairwise/
 │   ├── programmatic/
 │   └── similarity/
+├── harness/                 # Runner + lifecycle + scoring + artifacts
 ├── fixtures/                # Local fixtures (tracked)
 │   └── reference-workflows/
+├── judge/                   # LLM-judge internals (schemas + judge evaluators)
+├── langsmith/               # LangSmith-specific helpers (types + trace filters)
 ├── programmatic/            # Programmatic evaluation logic
-├── types/                   # Shared types
-├── utils/                   # Shared utilities
-├── cli.ts                   # CLI entry point
-├── constants.ts             # Shared constants
-├── harness-types.ts         # Harness-specific types
+├── support/                 # Environment + node loading + reports + test case gen
 ├── index.ts                 # Public exports
-├── lifecycle.ts             # Lifecycle hooks for logging
-├── load-nodes.ts            # Node type loading
-├── multi-gen.ts             # Multi-generation support
-├── output.ts                # Artifact saving
-├── report-generator.ts      # Markdown report generation
-├── runner.ts                # Core runEvaluation()
-├── score-calculator.ts      # Score aggregation
-├── test-case-generator.ts   # Test case generation
 └── README.md                # This file
 ```
 

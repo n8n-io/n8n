@@ -12,7 +12,7 @@ import {
 	createTestCaseGenerator,
 	basicTestCases,
 	type GeneratedTestCase,
-} from '../test-case-generator';
+} from '../support/test-case-generator';
 
 /** Type guard for message objects with content */
 function isMessageWithContent(msg: unknown): msg is { content: unknown } {

@@ -2,7 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
 import { programmaticEvaluation } from '../../programmatic/programmatic-evaluation';
 
 /**

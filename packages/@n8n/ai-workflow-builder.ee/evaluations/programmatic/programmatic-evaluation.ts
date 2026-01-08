@@ -15,7 +15,7 @@ import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,
 } from './evaluators/workflow-similarity';
-import { calculateOverallScore } from '../utils/score';
+import { calculateOverallScore } from './score';
 
 export async function programmaticEvaluation(
 	input: ProgrammaticEvaluationInput,

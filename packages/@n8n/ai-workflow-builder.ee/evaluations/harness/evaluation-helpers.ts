@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 
+import type { LlmCallLimiter } from './harness-types';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
-import { DEFAULTS } from '../constants';
-import type { LlmCallLimiter } from '../harness-types';
+import { DEFAULTS } from '../support/constants';
 
 export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {

@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { loadTestCasesFromCsv } from '../utils/csv-prompt-loader';
+import { loadTestCasesFromCsv } from '../cli/csv-prompt-loader';
 
 describe('csv-prompt-loader', () => {
 	const tempDirs: string[] = [];

@@ -12,7 +12,7 @@
  */
 
 // Core runner
-export { runEvaluation } from './runner';
+export { runEvaluation } from './harness/runner';
 
 // Types
 export type {
@@ -27,7 +27,7 @@ export type {
 	RunSummary,
 	EvaluationLifecycle,
 	LangsmithOptions,
-} from './harness-types';
+} from './harness/harness-types';
 
 // Lifecycle
 export {
@@ -35,7 +35,7 @@ export {
 	createQuietLifecycle,
 	mergeLifecycles,
 	type ConsoleLifecycleOptions,
-} from './lifecycle';
+} from './harness/lifecycle';
 
 // Evaluator factories
 export {
@@ -48,7 +48,11 @@ export {
 } from './evaluators';
 
 // Output
-export { createArtifactSaver, type ArtifactSaver, type ArtifactSaverOptions } from './output';
+export {
+	createArtifactSaver,
+	type ArtifactSaver,
+	type ArtifactSaverOptions,
+} from './harness/output';
 
 // Multi-generation utilities
 export {
@@ -56,14 +60,14 @@ export {
 	aggregateGenerations,
 	type GenerationDetail,
 	type MultiGenerationResult,
-} from './multi-gen';
+} from './harness/multi-gen';
 
 // Trace filtering (re-exported from v1 for convenience)
 export {
 	createTraceFilters,
 	isMinimalTracingEnabled,
 	type TraceFilters,
-} from './core/trace-filters';
+} from './langsmith/trace-filters';
 
 // Score calculation utilities
 export {
@@ -77,7 +81,7 @@ export {
 	type ScoreWeights,
 	type AggregatedScore,
 	type FeedbackKeyParts,
-} from './score-calculator';
+} from './harness/score-calculator';
 
 // Report generation
 export {
@@ -87,7 +91,7 @@ export {
 	type ViolationSeverity,
 	type ReportOptions,
 	type ReportMetrics,
-} from './report-generator';
+} from './support/report-generator';
 
 // Test case generation
 export {
@@ -96,4 +100,4 @@ export {
 	type TestCaseGeneratorOptions,
 	type GeneratedTestCase,
 	type TestCaseGenerator,
-} from './test-case-generator';
+} from './support/test-case-generator';

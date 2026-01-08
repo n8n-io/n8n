@@ -1,6 +1,6 @@
 import type { KVMap } from 'langsmith/schemas';
 
-import type { EvalLogger } from '../utils/logger.js';
+import type { EvalLogger } from '../harness/logger.js';
 
 /**
  * Large state fields that should be filtered from traces.

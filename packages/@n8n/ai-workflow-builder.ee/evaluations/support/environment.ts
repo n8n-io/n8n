@@ -4,12 +4,16 @@ import { MemorySaver } from '@langchain/langgraph';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { loadNodesFromFile } from './load-nodes.js';
 import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
-import { loadNodesFromFile } from '../load-nodes.js';
-import { createTraceFilters, isMinimalTracingEnabled, type TraceFilters } from './trace-filters.js';
-import type { EvalLogger } from '../utils/logger.js';
+import type { EvalLogger } from '../harness/logger.js';
+import {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from '../langsmith/trace-filters.js';
 
 /** Maximum batch size in bytes for trace uploads (2MB - reduced to avoid 403 errors) */
 const TRACE_BATCH_SIZE_LIMIT = 2_000_000;

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
-import { DEFAULTS } from '../constants';
-import type { LangsmithExampleFilters } from '../harness-types';
+import type { LangsmithExampleFilters } from '../harness/harness-types';
+import { DEFAULTS } from '../support/constants';
 
 export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';

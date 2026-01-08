@@ -1,3 +1,4 @@
+import type { EvaluationResult, CategoryScore } from './evaluation';
 import {
 	calculateWeightedScore,
 	generateEvaluationSummary,
@@ -6,7 +7,6 @@ import {
 	TOTAL_WEIGHT_WITHOUT_STRUCTURAL,
 	TOTAL_WEIGHT_WITH_STRUCTURAL,
 } from './workflow-evaluator';
-import type { EvaluationResult, CategoryScore } from '../types/evaluation';
 
 /**
  * Creates a minimal category score for testing.

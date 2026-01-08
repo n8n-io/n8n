@@ -7,7 +7,11 @@
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import { getMajorityThreshold, aggregateGenerations, type GenerationDetail } from '../multi-gen';
+import {
+	getMajorityThreshold,
+	aggregateGenerations,
+	type GenerationDetail,
+} from '../harness/multi-gen';
 
 /** Helper to create a mock workflow */
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {

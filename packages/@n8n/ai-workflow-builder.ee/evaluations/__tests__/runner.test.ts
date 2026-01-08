@@ -7,8 +7,8 @@ import type {
 	RunConfig,
 	EvaluationLifecycle,
 	ExampleResult,
-} from '../harness-types';
-import { createLogger } from '../utils/logger';
+} from '../harness/harness-types';
+import { createLogger } from '../harness/logger';
 
 const silentLogger = createLogger(false);
 
@@ -57,7 +57,7 @@ describe('Runner - Local Mode', () => {
 			};
 
 			// Import dynamically to avoid circular deps in test setup
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary = await runEvaluation(config);
 
 			expect(generateWorkflow).toHaveBeenCalledTimes(3);
@@ -84,7 +84,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary = await runEvaluation(config);
 
 			// All evaluators should be called
@@ -110,7 +110,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary = await runEvaluation(config);
 
 			// Should complete despite error
@@ -136,7 +136,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary = await runEvaluation(config);
 
 			expect(summary.totalExamples).toBe(3);
@@ -169,7 +169,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(evaluator.evaluate).toHaveBeenCalled();
@@ -196,7 +196,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(evaluator.evaluate).toHaveBeenCalled();
@@ -219,7 +219,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary1 = await runEvaluation(config1);
 			expect(summary1.passed).toBe(1);
 
@@ -259,7 +259,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(collected).toHaveLength(1);
@@ -282,7 +282,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onStart).toHaveBeenCalledWith(config);
@@ -302,7 +302,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onExampleStart).toHaveBeenCalledTimes(2);
@@ -325,7 +325,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onWorkflowGenerated).toHaveBeenCalledWith(
@@ -358,7 +358,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onEvaluatorComplete).toHaveBeenCalledTimes(2);
@@ -381,7 +381,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onEvaluatorError).toHaveBeenCalledWith('failing', error);
@@ -401,7 +401,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			await runEvaluation(config);
 
 			expect(lifecycle.onExampleComplete).toHaveBeenCalledWith(
@@ -428,7 +428,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../runner');
+			const { runEvaluation } = await import('../harness/runner');
 			const summary = await runEvaluation(config);
 
 			expect(lifecycle.onEnd).toHaveBeenCalledWith(summary);

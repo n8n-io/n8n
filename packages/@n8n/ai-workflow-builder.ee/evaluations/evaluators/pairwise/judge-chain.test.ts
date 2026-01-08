@@ -4,10 +4,10 @@ import { mock } from 'jest-mock-extended';
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './judge-chain';
-import * as baseEvaluator from '../../chains/evaluators/base';
+import * as baseEvaluator from '../../judge/evaluators/base';
 
 // Mock the base evaluator module
-jest.mock('../../chains/evaluators/base', () => ({
+jest.mock('../../judge/evaluators/base', () => ({
 	createEvaluatorChain: jest.fn(),
 	invokeEvaluatorChain: jest.fn(),
 }));

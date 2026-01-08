@@ -1,6 +1,6 @@
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
 import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,

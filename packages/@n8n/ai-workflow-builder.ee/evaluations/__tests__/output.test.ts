@@ -9,9 +9,9 @@ import * as path from 'path';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
-import type { ExampleResult, RunSummary } from '../harness-types';
-import { createArtifactSaver } from '../output';
-import { createLogger } from '../utils/logger';
+import type { ExampleResult, RunSummary } from '../harness/harness-types';
+import { createLogger } from '../harness/logger';
+import { createArtifactSaver } from '../harness/output';
 
 const silentLogger = createLogger(false);
 

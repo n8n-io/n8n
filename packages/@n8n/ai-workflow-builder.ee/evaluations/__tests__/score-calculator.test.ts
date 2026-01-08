@@ -5,7 +5,7 @@
  * from multiple evaluators.
  */
 
-import type { Feedback } from '../harness-types';
+import type { Feedback } from '../harness/harness-types';
 import {
 	parseFeedbackKey,
 	extractCategory,
@@ -13,7 +13,7 @@ import {
 	calculateWeightedScore,
 	aggregateScores,
 	DEFAULT_EVALUATOR_WEIGHTS,
-} from '../score-calculator';
+} from '../harness/score-calculator';
 
 /** Helper to create feedback items */
 function createFeedback(

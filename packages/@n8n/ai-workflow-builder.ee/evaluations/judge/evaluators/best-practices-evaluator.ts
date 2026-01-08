@@ -5,7 +5,7 @@ import { promptCategorizationChain } from '@/chains/prompt-categorization';
 import { documentation } from '@/tools/best-practices';
 
 import { createEvaluatorChain } from './base';
-import type { EvaluationInput } from '../../types/evaluation';
+import type { EvaluationInput } from '../evaluation';
 
 // Schema for best practices evaluation result
 const bestPracticesResultSchema = z.object({

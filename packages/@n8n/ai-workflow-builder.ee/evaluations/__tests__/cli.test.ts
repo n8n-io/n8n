@@ -28,7 +28,7 @@ const mockCreateProgrammaticEvaluator = jest.fn();
 const mockCreatePairwiseEvaluator = jest.fn();
 
 // Mock all external modules
-jest.mock('../core/argument-parser', () => ({
+jest.mock('../cli/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
 	getDefaultDatasetName: (suite: unknown): unknown =>
 		suite === 'pairwise' ? 'notion-pairwise-workflows' : 'workflow-builder-canvas-prompts',
@@ -36,21 +36,21 @@ jest.mock('../core/argument-parser', () => ({
 		suite === 'pairwise' ? 'pairwise-evals' : 'workflow-builder-evaluation',
 }));
 
-jest.mock('../core/environment', () => ({
+jest.mock('../support/environment', () => ({
 	setupTestEnvironment: (): unknown => mockSetupTestEnvironment(),
 	createAgent: (...args: unknown[]): unknown => mockCreateAgent(...args),
 }));
 
-jest.mock('../types/langsmith', () => ({
+jest.mock('../langsmith/types', () => ({
 	generateRunId: (): unknown => mockGenerateRunId(),
 	isWorkflowStateValues: (...args: unknown[]): unknown => mockIsWorkflowStateValues(...args),
 }));
 
-jest.mock('../utils/csv-prompt-loader', () => ({
+jest.mock('../cli/csv-prompt-loader', () => ({
 	loadTestCasesFromCsv: (...args: unknown[]): unknown => mockLoadTestCasesFromCsv(...args),
 }));
 
-jest.mock('../utils/evaluation-helpers', () => ({
+jest.mock('../harness/evaluation-helpers', () => ({
 	consumeGenerator: (...args: unknown[]): unknown => mockConsumeGenerator(...args),
 	getChatPayload: (...args: unknown[]): unknown => mockGetChatPayload(...args),
 }));

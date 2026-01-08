@@ -1,5 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
+import type { EvaluationInput, EvaluationResult } from './evaluation';
 import {
 	evaluateFunctionality,
 	evaluateConnections,
@@ -10,7 +11,6 @@ import {
 	evaluateMaintainability,
 	evaluateBestPractices,
 } from './evaluators';
-import type { EvaluationInput, EvaluationResult } from '../types/evaluation';
 
 /**
  * Weights for each LLM-judge evaluation category used in overall score calculation.

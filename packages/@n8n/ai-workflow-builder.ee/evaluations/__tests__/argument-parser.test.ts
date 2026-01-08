@@ -1,4 +1,4 @@
-import { parseEvaluationArgs } from '../core/argument-parser';
+import { parseEvaluationArgs } from '../cli/argument-parser';
 
 describe('parseEvaluationArgs', () => {
 	const originalEnv = process.env;

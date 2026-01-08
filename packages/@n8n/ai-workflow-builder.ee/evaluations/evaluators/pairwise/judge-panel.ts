@@ -2,8 +2,8 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
-import type { EvaluationContext } from '../../harness-types';
-import { runWithOptionalLimiter, withTimeout } from '../../utils/evaluation-helpers';
+import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
+import type { EvaluationContext } from '../../harness/harness-types';
 
 // ============================================================================
 // Types

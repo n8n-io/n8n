@@ -2,7 +2,7 @@ import { parse } from 'csv-parse/sync';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { TestCase } from '../harness-types.js';
+import type { TestCase } from '../harness/harness-types.js';
 
 type ParsedCsvRow = string[];
 

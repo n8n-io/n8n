@@ -4,7 +4,7 @@
 
 import pLimit from 'p-limit';
 
-import { withTimeout } from '../utils/evaluation-helpers';
+import { withTimeout } from '../harness/evaluation-helpers';
 
 describe('evaluation-helpers', () => {
 	describe('withTimeout()', () => {

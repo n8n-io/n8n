@@ -9,7 +9,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { z } from 'zod';
 
-import type { TestCase } from './harness-types';
+import type { TestCase } from '../harness/harness-types';
 
 /**
  * Options for test case generation.

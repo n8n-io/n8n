@@ -12,13 +12,11 @@ import pLimit from 'p-limit';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
-import { EVAL_TYPES, EVAL_USERS } from './constants';
 import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
-} from './core/argument-parser';
-import { setupTestEnvironment, createAgent } from './core/environment';
+} from './argument-parser';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -31,11 +29,13 @@ import {
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
-} from './index';
-import { generateRunId, isWorkflowStateValues } from './types/langsmith';
-import { loadTestCasesFromCsv } from './utils/csv-prompt-loader';
-import { consumeGenerator, getChatPayload } from './utils/evaluation-helpers';
-import { createLogger } from './utils/logger';
+} from '../index';
+import { loadTestCasesFromCsv } from './csv-prompt-loader';
+import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
+import { createLogger } from '../harness/logger';
+import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
+import { setupTestEnvironment, createAgent } from '../support/environment';
 
 /**
  * Create a workflow generator function.

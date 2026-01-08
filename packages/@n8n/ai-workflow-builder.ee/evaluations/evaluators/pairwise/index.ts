@@ -4,9 +4,9 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 import { runJudgePanel, type EvalCriteria } from './judge-panel';
 import { PAIRWISE_METRICS } from './metrics';
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness-types';
-import { aggregateGenerations, type GenerationDetail } from '../../multi-gen';
-import { runWithOptionalLimiter, withTimeout } from '../../utils/evaluation-helpers';
+import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
+import { aggregateGenerations, type GenerationDetail } from '../../harness/multi-gen';
 
 type MultiGenContext = EvaluationContext & {
 	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;

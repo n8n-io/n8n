@@ -6,7 +6,7 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { OperationalError } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import type { EvaluationInput } from '../../types/evaluation';
+import type { EvaluationInput } from '../evaluation';
 
 type EvaluatorChainInput = {
 	userPrompt: string;

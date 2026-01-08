@@ -11,8 +11,8 @@ import type {
 	ExampleResult,
 	RunSummary,
 	EvaluationLifecycle,
-} from '../harness-types';
-import { createLogger } from '../utils/logger';
+} from '../harness/harness-types';
+import { createLogger } from '../harness/logger';
 
 const mockLangsmithClient = () => mock<Client>();
 

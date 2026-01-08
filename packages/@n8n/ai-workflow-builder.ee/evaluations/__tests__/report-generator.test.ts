@@ -5,12 +5,12 @@
  * from evaluation results.
  */
 
-import type { ExampleResult, RunSummary, Feedback } from '../harness-types';
+import type { ExampleResult, RunSummary, Feedback } from '../harness/harness-types';
 import {
 	extractViolationSeverity,
 	calculateReportMetrics,
 	generateMarkdownReport,
-} from '../report-generator';
+} from '../support/report-generator';
 
 /** Helper to create a feedback item */
 function createFeedback(

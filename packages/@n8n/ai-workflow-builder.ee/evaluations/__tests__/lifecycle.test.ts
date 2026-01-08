@@ -13,8 +13,8 @@ import type {
 	ExampleResult,
 	RunSummary,
 	Feedback,
-} from '../harness-types';
-import { createLogger } from '../utils/logger';
+} from '../harness/harness-types';
+import { createLogger } from '../harness/logger';
 
 const mockLangsmithClient = () => mock<Client>();
 
@@ -49,7 +49,7 @@ function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 describe('Console Lifecycle', () => {
 	describe('createConsoleLifecycle()', () => {
 		it('should create a lifecycle with all hooks', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			expect(lifecycle.onStart).toBeDefined();
@@ -62,7 +62,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log experiment info on start with test cases array', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
@@ -82,7 +82,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log dataset name for langsmith mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
@@ -108,7 +108,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not log summary in langsmith mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const config: RunConfig = {
@@ -141,7 +141,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log example progress in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			lifecycle.onExampleStart(1, 10, 'Test prompt that is quite long and should be truncated');
@@ -152,7 +152,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not log example progress in non-verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onExampleStart(1, 10, 'Test prompt');
@@ -162,7 +162,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log workflow generation in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const workflow = createMockWorkflow('My Workflow');
@@ -173,7 +173,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log evaluator completion in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
@@ -186,7 +186,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not log evaluator completion in non-verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onEvaluatorComplete('llm-judge', [
@@ -197,7 +197,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should display critical metrics in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -228,7 +228,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should display violations in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -265,7 +265,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should display pairwise judge violations in verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -302,7 +302,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should limit violations display to 5 and show count', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -351,7 +351,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not display violations for error feedback', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -380,7 +380,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should handle empty feedback array', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -400,7 +400,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log evaluator errors', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			lifecycle.onEvaluatorError('test-evaluator', new Error('Something went wrong'));
@@ -412,7 +412,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log example completion with pass/fail status', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const passResult: ExampleResult = {
@@ -442,7 +442,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log example completion with error status', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const errorResult: ExampleResult = {
@@ -462,7 +462,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not log example completion in non-verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const result: ExampleResult = {
@@ -480,7 +480,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not log workflow generation in non-verbose mode', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const workflow = createMockWorkflow('My Workflow');
@@ -490,7 +490,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should use different colors for different score ranges', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			const result: ExampleResult = {
@@ -517,7 +517,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should log summary with statistics on end', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
 
 			const summary: RunSummary = {
@@ -539,7 +539,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should not print NaN when feedback contains non-finite scores', async () => {
-			const { createConsoleLifecycle } = await import('../lifecycle');
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(false) });
 
 			const config: RunConfig = {
@@ -574,7 +574,7 @@ describe('Console Lifecycle', () => {
 
 	describe('createQuietLifecycle()', () => {
 		it('should create lifecycle with empty hooks', async () => {
-			const { createQuietLifecycle } = await import('../lifecycle');
+			const { createQuietLifecycle } = await import('../harness/lifecycle');
 			const lifecycle = createQuietLifecycle();
 
 			// Should have all hooks
@@ -608,7 +608,7 @@ describe('Console Lifecycle', () => {
 
 	describe('mergeLifecycles()', () => {
 		it('should merge multiple lifecycles into one', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -638,7 +638,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should handle undefined hooks gracefully', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook = jest.fn();
 
@@ -666,7 +666,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should handle undefined lifecycles in array', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook = jest.fn();
 
@@ -690,7 +690,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onExampleStart hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -706,7 +706,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onWorkflowGenerated hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -723,7 +723,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onEvaluatorComplete hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -742,7 +742,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onEvaluatorError hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -759,7 +759,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onExampleComplete hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();
@@ -783,7 +783,7 @@ describe('Console Lifecycle', () => {
 		});
 
 		it('should merge onEnd hooks', async () => {
-			const { mergeLifecycles } = await import('../lifecycle');
+			const { mergeLifecycles } = await import('../harness/lifecycle');
 
 			const hook1 = jest.fn();
 			const hook2 = jest.fn();

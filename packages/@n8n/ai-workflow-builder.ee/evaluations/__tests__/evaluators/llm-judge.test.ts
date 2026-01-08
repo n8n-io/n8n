@@ -16,7 +16,7 @@ const mockEvaluateWorkflow = jest.fn();
 
 // Mock the evaluateWorkflow function from chains
 // Path from test file to chains module: evaluations/v2/__tests__/evaluators -> evaluations/chains
-jest.mock('../../chains/workflow-evaluator', () => ({
+jest.mock('../../judge/workflow-evaluator', () => ({
 	evaluateWorkflow: (...args: unknown[]): unknown => mockEvaluateWorkflow(...args),
 }));
 

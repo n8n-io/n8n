@@ -58,8 +58,8 @@ function filterNodeTypes(
 }
 
 export function loadNodesFromFile(): INodeTypeDescription[] {
-	const preferredPath = join(__dirname, '.data', 'nodes.json');
-	const legacyPath = join(__dirname, 'nodes.json');
+	const preferredPath = join(__dirname, '..', '.data', 'nodes.json');
+	const legacyPath = join(__dirname, '..', 'nodes.json');
 	const nodesPath = existsSync(preferredPath) ? preferredPath : legacyPath;
 
 	if (!existsSync(nodesPath)) {
