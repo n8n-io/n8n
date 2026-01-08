@@ -12,7 +12,6 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
 import { mock } from 'jest-mock-extended';
@@ -37,9 +36,6 @@ jest.mock('axios');
 const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 mockedAxios.create.mockReturnValue(mockAxiosInstance);
-
-jest.mock('syslog-client');
-const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 mockInstance(Publisher);
 
@@ -97,8 +93,6 @@ const testServer = utils.setupTestServer({
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
-
-	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
@@ -190,7 +184,7 @@ test('should anonymize audit message to syslog ', async () => {
 	syslogDestination.enable();
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((m, _options, _cb) => {
+	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
 		expect(o.payload).toHaveProperty('_secret');
@@ -199,7 +193,6 @@ test('should anonymize audit message to syslog ', async () => {
 			: expect(o.payload._secret).toBe('secret');
 		expect(o.payload).toHaveProperty('public');
 		expect(o.payload.public).toBe('public');
-		return syslogDestination.client;
 	});
 
 	syslogDestination.anonymizeAuditMessages = true;

@@ -210,6 +210,13 @@ export async function getInviteLink(
 	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
+export async function generateInviteLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return await makeRestApiRequest(context, 'POST', `/users/${id}/invite-link`);
+}
+
 export async function getPasswordResetLink(
 	context: IRestApiContext,
 	{ id }: { id: string },

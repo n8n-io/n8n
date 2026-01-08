@@ -6,7 +6,7 @@ test.describe('Users Settings', () => {
 		// This creates a new user in the same context, so the cookies are refreshed and owner is no longer logged in
 		await n8n.api.users.create();
 		await n8n.navigate.toUsers();
-		await expect(n8n.workflows.getNewWorkflowCard()).toBeVisible();
+		await expect.poll(() => n8n.page.url()).not.toContain('/settings/users');
 	});
 
 	test('should allow instance owner to access UM settings', async ({ n8n }) => {

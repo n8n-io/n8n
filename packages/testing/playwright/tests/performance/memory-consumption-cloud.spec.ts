@@ -1,15 +1,13 @@
-import { ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../fixtures/base';
 import { attachMetric } from '../../utils/performance-helper';
 
 test.use({
-	addContainerCapability: {
+	capability: {
 		resourceQuota: {
 			memory: 0.75,
 			cpu: 0.5,
 		},
-		observability: true,
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
 
@@ -21,7 +19,7 @@ test.describe('Memory Consumption @capability:observability', () => {
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
 	}, testInfo) => {
-		const obs = new ObservabilityHelper(n8nContainer.observability!);
+		const obs = n8nContainer.services.observability;
 
 		// Wait for container to stabilize (allows GC to run, startup memory to be freed)
 		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME_MS));

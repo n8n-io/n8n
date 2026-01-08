@@ -57,6 +57,13 @@ jobs:
       - name: Update Changelog
         run: node .github/scripts/update-changelog.mjs
 
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Push the base branch
         env:
           BASE_BRANCH: ${{ github.event.inputs.base-branch }}
@@ -83,6 +90,7 @@ jobs:
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
+          token: ${{ steps.generate_token.outputs.token }}
           base: 'release/${{ env.NEXT_RELEASE }}'
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'

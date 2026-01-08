@@ -1,34 +1,28 @@
+import type { N8NConfig } from 'n8n-containers/stack';
+
 /**
- * Shared container capability configurations.
+ * Capability definitions for `test.use({ capability: 'email' })`.
+ * Add `@capability:X` tag to tests for orchestration grouping.
  *
- * IMPORTANT: Import these instead of defining inline objects in test.use().
- * Using the same object reference enables Playwright worker reuse across
- * test files with identical configurations, avoiding redundant container creation.
- *
- * @example
- * ```ts
- * import { capabilities } from '../fixtures/capabilities';
- * test.use({ addContainerCapability: capabilities.email });
- * ```
+ * Maps capability names to service registry keys.
+ * Note: task-runner is always enabled, no capability needed.
  */
-export const capabilities = {
-	/** Email testing with Mailpit SMTP server */
-	email: { email: true },
+export const CAPABILITIES = {
+	email: { services: ['mailpit'] },
+	proxy: { services: ['proxy'] },
+	'source-control': { services: ['gitea'] },
+	oidc: { services: ['keycloak'] },
+	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+} as const satisfies Record<string, Partial<N8NConfig>>;
 
-	/** Mock HTTP server for external API testing */
-	proxy: { proxyServerEnabled: true },
+export type Capability = keyof typeof CAPABILITIES;
 
-	/** Git-based source control testing */
-	sourceControl: { sourceControl: true },
+/**
+ * Infrastructure modes (`@mode:X` tags). Most tests run against ALL modes via projects.
+ * Use @mode:X only for tests requiring specific infrastructure.
+ */
+export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const;
 
-	/** External task runner container */
-	taskRunner: { taskRunner: true },
-
-	/** OIDC/SSO testing with Keycloak (includes postgres) */
-	oidc: { oidc: true },
-
-	/** Observability stack (VictoriaLogs + VictoriaMetrics) */
-	observability: { observability: true },
-} as const;
-
-export type CapabilityName = keyof typeof capabilities;
+// Used by playwright-projects.ts to filter container-only tests in local mode
+export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];
+export const CONTAINER_ONLY_MODES = INFRASTRUCTURE_MODES;

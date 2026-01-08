@@ -55,6 +55,30 @@ Examples in parameter configuration:
 - "Set value to ={{ $('Previous Node').item.json.value }}"
 - "Set message to ={{ $('HTTP Request').item.json.message }}"`;
 
+const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods
+
+Regex operations:
+- Test pattern: ={{ /pattern/.test($json.text) }}
+- Extract match: ={{ $json.text.match(/pattern/)?.[1] }}
+- Replace text: ={{ $json.text.replace(/pattern/, 'replacement') }}
+- Split by pattern: ={{ $json.text.split(/pattern/) }}
+
+String operations:
+- Uppercase: ={{ $json.text.toUpperCase() }}
+- Trim whitespace: ={{ $json.text.trim() }}
+- Substring: ={{ $json.text.substring(0, 10) }}
+
+Array operations:
+- First item: ={{ $json.items[0] }}
+- Filter: ={{ $json.items.filter(i => i.active) }}
+- Map: ={{ $json.items.map(i => i.name) }}
+- Join: ={{ $json.items.join(', ') }}
+
+Generating items from expressions (use with Split Out node):
+- Create array from comma string: ={{ $json.text.split(',') }}
+- Generate range: ={{ Array.from({{length: 5}}, (_, i) => i + 1) }}
+- Use with Split Out node to create multiple output items from a single input`;
+
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
 - "Set subject to ={{ $fromAI('subject') }}"
@@ -143,6 +167,25 @@ When working with webhook or chat trigger nodes, use this URL as the base for co
 </instance_url>
 `;
 
+/**
+ * Builds recovery mode context for workflows that hit recursion errors (AI-1812)
+ * Used when configurator receives a workflow that was partially built before builder hit recursion limit
+ */
+export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[]): string {
+	return (
+		'=== CRITICAL: RECOVERY MODE ===\n\n' +
+		'WORKFLOW RECOVERY SCENARIO:\n' +
+		`The builder created ${nodeCount} node${nodeCount === 1 ? '' : 's'} (${nodeNames.join(', ')}) before hitting a recursion limit.\n\n` +
+		'REQUIRED ACTIONS - DO NOT SKIP:\n' +
+		'1. Call update_node_parameters for EVERY node listed above to ensure proper configuration\n' +
+		'2. Call validate_configuration to check for issues\n' +
+		'3. Scan the workflow for placeholders (format: <__PLACEHOLDER_VALUE__*__>) and missing credentials\n' +
+		'4. List ALL placeholders and missing credentials in your final response\n\n' +
+		'DO NOT respond with "workflow already exists" or "no changes needed". ' +
+		'You MUST use tools to analyze this recovered workflow.'
+	);
+}
+
 export function buildConfiguratorPrompt(): string {
 	return prompt()
 		.section('role', CONFIGURATOR_ROLE)
@@ -150,6 +193,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
 		.section('data_referencing', DATA_REFERENCING)
+		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('default_values_warning', DEFAULT_VALUES_WARNING)

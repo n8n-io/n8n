@@ -104,6 +104,10 @@ Pitfalls:
 
 Purpose: Introduces delays to respect rate limits and avoid overloading servers
 
+### Data Tables (n8n-nodes-base.dataTable)
+
+Purpose: Stores scraped data in n8n's built-in persistent data storage
+
 ### Google Sheets (n8n-nodes-base.googleSheets)
 
 Purpose: Stores scraped data in spreadsheets for easy access and sharing
