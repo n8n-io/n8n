@@ -53,11 +53,11 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 	} catch {
 		// ignore error as the message might be just a string
 	}
+
 	return chatMessage;
 }
 
 export function shouldBlockUserInput(message: ChatMessage): boolean {
-	console.log(message);
 	if (
 		message.type === 'component' &&
 		message.key === MessageComponentKey.WITH_BUTTONS &&
