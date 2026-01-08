@@ -24,7 +24,7 @@ import {
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { WorkflowSettings } from 'n8n-workflow';
+import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import { deepCopy, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -93,6 +93,7 @@ const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
+const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
 
 const {
 	resolvers: credentialResolvers,
@@ -535,6 +536,26 @@ const saveSettings = async () => {
 	if (isMCPEnabled.value && workflowSettings.value.availableInMCP) {
 		trackMcpAccessEnabledForWorkflow(workflowId.value);
 	}
+
+	if (workflowSettings.value.binaryMode !== originalBinaryMode.value) {
+		toast.showMessage({
+			title: i18n.baseText('workflowSettings.executionLogic.changed.title'),
+			message: h('span', [
+				i18n.baseText('workflowSettings.executionLogic.changed.description'),
+				h(
+					N8nLink,
+					{
+						to: 'https://docs.n8n.io/data/binary-data/',
+						size: 'small',
+						newWindow: true,
+					},
+					() => 'Learn more',
+				),
+			]),
+			type: 'warning',
+			duration: 0,
+		});
+	}
 };
 
 const toggleTimeout = () => {
@@ -555,8 +576,6 @@ const updateTimeSavedPerExecution = (value: string) => {
 };
 
 const onExecutionLogicModeChange = (value: string) => {
-	const currentBinaryMode = workflowSettings.value.binaryMode || 'separate';
-
 	if (value === 'v0' || value === 'v1') {
 		workflowSettings.value.binaryMode = 'separate';
 		workflowSettings.value.executionOrder = value;
@@ -565,26 +584,6 @@ const onExecutionLogicModeChange = (value: string) => {
 	if (value === 'v2') {
 		workflowSettings.value.binaryMode = BINARY_MODE_COMBINED;
 		workflowSettings.value.executionOrder = 'v1';
-	}
-
-	if (workflowSettings.value.binaryMode !== currentBinaryMode) {
-		toast.showMessage({
-			title: i18n.baseText('workflowSettings.executionLogic.changed.title'),
-			message: h('span', [
-				i18n.baseText('workflowSettings.executionLogic.changed.description'),
-				h(
-					N8nLink,
-					{
-						to: 'https://docs.n8n.io/data/binary-data/',
-						size: 'small',
-						newWindow: true,
-					},
-					() => 'Learn more',
-				),
-			]),
-			type: 'warning',
-			duration: 0,
-		});
 	}
 };
 
@@ -677,6 +676,7 @@ onMounted(async () => {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
 
+	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;

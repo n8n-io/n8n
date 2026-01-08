@@ -210,7 +210,7 @@ async function onDrop(value: string, event: MouseEvent) {
 	await dropInCodeEditor(
 		toRaw(editor.value),
 		event,
-		valueToInsert(value, props.language, props.mode),
+		valueToInsert(value, props.language, props.mode, workflowsStore.workflow.settings?.binaryMode),
 	);
 }
 
