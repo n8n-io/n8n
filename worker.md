@@ -149,7 +149,10 @@ async addJob(jobData: JobData, { priority }: { priority: number }) {
 **Worker Job Processing** (from `packages/cli/src/scaling/scaling.service.ts:83-109`):
 
 ```typescript
-setupWorker(concurrency: number, options?: { maxJobs?: number }) {
+setupWorker(
+  concurrency: number,
+  options?: { maxJobs?: number; onMaxJobsReached?: () => void },
+) {
   let processed = 0;
 
   void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {

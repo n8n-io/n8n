@@ -78,7 +78,7 @@ test('worker forwards max jobs option to scaling service', async () => {
 		}),
 	);
 
-	const workerOptions = scalingService.setupWorker.mock.calls[0][1];
+	const workerOptions = scalingService.setupWorker.mock.lastCall?.[1];
 	workerOptions?.onMaxJobsReached?.();
 
 	expect(killSpy).toHaveBeenCalledWith(process.pid, 'SIGTERM');
