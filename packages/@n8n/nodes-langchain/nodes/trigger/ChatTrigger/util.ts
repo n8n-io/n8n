@@ -1,7 +1,7 @@
 import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
-} from 'n8n-nodes-base/utils/sendAndWait/utils';
+} from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
 import {
 	ChatNodeMessageType,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
