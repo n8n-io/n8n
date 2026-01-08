@@ -4,6 +4,8 @@
   "scripts": {
     "test:all": "playwright test",
     "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui --project=ui:isolated",
+    "test:local:e2e-only": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui",
+    "test:local:isolated": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui:isolated",
     "test:ui": "playwright test --project=*ui*",
     "test:performance": "playwright test --project=performance",
     "test:chaos": "playwright test --project='*:chaos'",
@@ -18,6 +20,7 @@
     "test:workflows:update": "playwright test --project=cli-workflows --update-snapshots",
     "coverage:report": "node scripts/generate-coverage-report.js",
     "coverage:clean": "rm -rf coverage .nyc_output",
+    "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium --with-deps",
     "install-browsers:local": "playwright install chromium --with-deps",
     "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",

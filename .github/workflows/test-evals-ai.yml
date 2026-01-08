@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
-      - '.github/workflows/ci-evals.yml'
+      - '.github/workflows/test-evals-ai.yml'
   schedule:
     - cron: '0 22 * * 6'
   workflow_dispatch:
@@ -35,17 +35,36 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Select dataset
+        env:
+          DATASET_INPUT: ${{ github.event.inputs.dataset }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           DATASET="workflow-builder-canvas-prompts"
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$EVENT_NAME" = "schedule" ]; then
             DATASET="prompts-v2"
-          elif [ -n "${{ github.event.inputs.dataset }}" ]; then
-            DATASET="${{ github.event.inputs.dataset }}"
+          elif [ -n "$DATASET_INPUT" ]; then
+            DATASET="$DATASET_INPUT"
           fi
           echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
 
       - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install workflow comparison dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
 
       - name: Export Node Types
         run: |

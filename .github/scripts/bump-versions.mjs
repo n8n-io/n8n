@@ -64,12 +64,7 @@ for (const packageName in packageMap) {
 			? releaseType === 'experimental'
 				? generateExperimentalVersion(version)
 				: releaseType === 'premajor'
-					? semver.inc(
-							version,
-							version.includes('-rc.') ? 'prerelease' : 'premajor',
-							undefined,
-							'rc',
-						)
+				? semver.inc(version, version.includes('-rc.') ? 'prerelease' : 'premajor', undefined, 'rc')
 					: semver.inc(version, releaseType)
 			: version;
 

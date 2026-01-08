@@ -9,7 +9,7 @@ on:
       - master
     paths:
       - 'packages/frontend/@n8n/design-system/**'
-      - '.github/workflows/storybook.yml'
+      - '.github/workflows/test-visual-storybook.yml'
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Node.js
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
@@ -43,7 +43,7 @@ jobs:
           pnpm add --global wrangler
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         id: cloudflare_deployment
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
