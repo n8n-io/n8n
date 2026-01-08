@@ -4,6 +4,7 @@
  * Saves evaluation results to disk in JSON format for later analysis.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -113,18 +114,7 @@ function getExampleDirName(result: ExampleResult): string {
 function shortId(input: string): string {
 	// Small deterministic id to avoid collisions when example folders are written concurrently
 	// and to keep folder names stable across reruns with the same prompts.
-	const hash = fnv1a32(input);
-	return hash.toString(36);
-}
-
-function fnv1a32(input: string): number {
-	// 32-bit FNV-1a
-	let hash = 0x811c9dc5;
-	for (let i = 0; i < input.length; i++) {
-		hash ^= input.charCodeAt(i);
-		hash = Math.imul(hash, 0x01000193);
-	}
-	return hash >>> 0;
+	return createHash('md5').update(input).digest('hex').slice(0, 8);
 }
 
 /**
