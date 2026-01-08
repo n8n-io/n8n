@@ -1,6 +1,40 @@
-# Evaluation Harness
+# Evaluations (v2 harness)
 
-A factory-based, testable evaluation system for AI workflow generation.
+Internal evaluation harness for the AI Workflow Builder. Supports local CLI runs and LangSmith-backed runs, using the same evaluators.
+
+## Quick Start
+
+Run from the package directory:
+
+```bash
+pushd packages/@n8n/ai-workflow-builder.ee
+
+# Local: LLM-judge + programmatic
+pnpm eval --prompt "Create a workflow that..." --verbose
+
+# Local: pairwise + programmatic
+pnpm eval:pairwise --prompt "Create a workflow that..." --dos "Must use Slack" --donts "No HTTP Request node" --verbose
+
+# LangSmith: LLM-judge + programmatic
+pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "my-exp" --concurrency 10 --max-examples 20 --verbose
+
+# LangSmith: pairwise + programmatic
+pnpm eval:pairwise:langsmith --dataset "notion-pairwise-workflows" --name "pairwise-exp" --filter "technique:content_generation" --max-examples 50 --verbose
+
+popd
+```
+
+## Prerequisites
+
+- **LLM key** (required for generation and any LLM-based evaluators):
+  - `N8N_AI_ANTHROPIC_KEY` (see `evaluations/support/environment.ts`)
+- **Node definitions** (required for workflow generation, and used by evaluators):
+  - `evaluations/.data/nodes.json` (see `evaluations/support/load-nodes.ts`)
+  - Optional: `N8N_EVALS_DISABLED_NODES="n8n-nodes-base.httpRequest,..."` to exclude specific nodes from generation.
+- **LangSmith** (only for `--backend langsmith` runs):
+  - `LANGSMITH_API_KEY`
+  - `LANGSMITH_TRACING=true` (the harness sets this in LangSmith mode, but exporting it is fine)
+  - Optional: `LANGSMITH_MINIMAL_TRACING=false` to disable trace filtering (useful when debugging traces; default is filtered)
 
 ## Mental Model
 
@@ -14,6 +48,7 @@ A factory-based, testable evaluation system for AI workflow generation.
 │  - generateWorkflow: (prompt) => workflow                               │
 │  - evaluators: Evaluator[]                                              │
 │  - lifecycle: hooks for logging                                         │
+│  - outputDir?: write artifacts (local)                                  │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -41,7 +76,7 @@ A factory-based, testable evaluation system for AI workflow generation.
                            │ evaluator: str│
                            │ metric: str   │
                            │ score: 0-1    │
-                           │ kind?: str    │
+                           │ kind: str     │
                            │ comment?: str │
                            └──────────────┘
 ```
@@ -74,9 +109,14 @@ interface Feedback {
   metric: string;    // e.g., "functionality", "judge1", "efficiency.nodeCountEfficiency"
   score: number;    // 0.0 to 1.0
   comment?: string; // Optional explanation/violations
-  kind?: 'score' | 'metric' | 'detail';
+  kind: 'score' | 'metric' | 'detail';
 }
 ```
+
+`kind` is used by the harness scoring logic:
+- `score`: the evaluator’s single overall score (preferred for scoring)
+- `metric`: stable per-category metrics (useful to show, but not necessarily used for scoring if a `score` exists)
+- `detail`: verbose/unstable metrics and details (never used for scoring when a `score` is present)
 
 ### Lifecycle Hooks
 
@@ -131,9 +171,9 @@ const config: RunConfig = {
 await runEvaluation(config);
 ```
 
-- Processes test cases sequentially
-- Results logged to console
-- Exit code based on pass rate
+- Processes test cases sequentially (examples), but LLM-bound work is capped via `llmCallLimiter` (see `evaluations/harness/runner.ts`)
+- Results logged to console via lifecycle hooks
+- The harness returns a `RunSummary`; the CLI decides exit codes
 
 ### LangSmith Mode
 
@@ -148,12 +188,12 @@ const config: RunConfig = {
   generateWorkflow,
   evaluators: [llmJudge, programmatic],
   logger,
-		  langsmithOptions: {
-		    experimentName: 'experiment-1',
-		    repetitions: 1,
-		    concurrency: 4,
-		  },
-		};
+  langsmithOptions: {
+    experimentName: 'experiment-1',
+    repetitions: 1,
+    concurrency: 4,
+  },
+};
 
 await runEvaluation(config);
 ```
@@ -161,6 +201,7 @@ await runEvaluation(config);
 If you want *no output* (e.g. unit tests), use `createQuietLifecycle()` (or pass a stub logger) instead of relying on a "silent logger".
 
 **Architecture:** The target function does ALL work (generation + evaluation). The LangSmith evaluator just extracts pre-computed feedback.
+The runner flushes pending trace batches before returning, so traces/results reliably show up in LangSmith.
 
 ```typescript
 // Inside runLangsmith():
@@ -169,7 +210,7 @@ const target = async (inputs) => {
   // Wrap inner operations with traceable() for child traces
   const traceableGenerate = traceable(
     async () => await generateWorkflow(prompt),
-    { name: 'workflow_generation', run_type: 'chain' }
+    { name: 'workflow_generation', run_type: 'chain', client: lsClient }
   );
   const workflow = await traceableGenerate();
   const feedback = await evaluateWithPlugins(workflow, evaluators);
@@ -182,70 +223,10 @@ const target = async (inputs) => {
 
 ## LangSmith Tracing (Critical)
 
-### The Problem
+Do this in LangSmith mode:
 
-When using LangSmith's `evaluate()` function with `traceable()`, there's a subtle but critical interaction that can cause issues like:
-- Target function executing multiple times per example
-- Infinite loops
-- Missing traces
-
-### Root Cause
-
-The LangSmith SDK's `evaluate()` function internally checks if the target is already a traceable function:
-
-```javascript
-// From langsmith/dist/evaluation/_runner.js
-const wrappedFn = isTraceableFunction(fn)
-    ? fn  // Uses function AS-IS, without applying defaultOptions!
-    : traceable(fn, defaultOptions);
-```
-
-When you pre-wrap your target with `traceable()`:
-1. The SDK detects it via `isTraceableFunction()` (checks for `"langsmith:traceable"` property)
-2. It uses your function **as-is** without applying its critical `defaultOptions`
-3. `defaultOptions` contains essential configuration:
-   - `on_end` callback (captures the run for linking to dataset example)
-   - `reference_example_id` (links run to dataset example)
-   - `client` (the properly configured LangSmith client)
-   - `project_name` (experiment name)
-
-Without these options, the SDK cannot properly track the run, leading to undefined behavior.
-
-### The Solution
-
-**DO NOT** wrap the target function with `traceable()`. Let `evaluate()` handle it automatically.
-
-**DO** wrap inner operations (like workflow generation) with `traceable()` to create child traces.
-
-```typescript
-// ❌ WRONG - causes multiple executions or missing traces
-const target = traceable(async (inputs) => {
-  const workflow = await generateWorkflow(prompt);
-  return { workflow };
-}, { name: 'my_target' });
-
-// ✅ CORRECT - let evaluate() wrap the target, wrap inner operations
-const target = async (inputs) => {
-  // This creates a child trace under the automatically-created parent
-  const traceableGenerate = traceable(
-    async () => await generateWorkflow(prompt),
-    { name: 'workflow_generation', run_type: 'chain' }
-  );
-  const workflow = await traceableGenerate();
-  return { workflow };
-};
-
-await evaluate(target, { data, evaluators, client });
-```
-
-### Harmonized Approach
-
-All evaluation targets in this package follow the same pattern:
-1. **Do NOT** wrap the target function with `traceable()`
-2. **Do** wrap inner operations (workflow generation, judge panels) with `traceable()` for child traces
-3. Let `evaluate()` handle target tracing automatically
-
-This ensures consistent behavior and avoids the client mismatch issues that can occur when mixing `traceable()` with `evaluate()`.
+1. **Do not** wrap the top-level `target` with `traceable()` — `evaluate()` will wrap it and wire up the run correctly.
+2. **Do** wrap inner operations with `traceable()` for child traces, and pass `client: lsClient` so child runs attach to the same project/run tree.
 
 ## Available Evaluators
 
@@ -301,6 +282,13 @@ const evaluator = createProgrammaticEvaluator(nodeTypes);
 
 **Context required:** None
 
+## Metric Naming (LangSmith compatibility)
+
+LangSmith metric keys are derived from `Feedback` in `evaluations/harness/feedback.ts`:
+- `llm-judge`: **unprefixed** (e.g. `overallScore`, `maintainability.workflowOrganization`)
+- `programmatic`: **prefixed** (e.g. `programmatic.trigger`)
+- `pairwise`: v1-compatible keys stay **unprefixed** (e.g. `pairwise_primary`); non-v1 details are namespaced (e.g. `pairwise.judge1`)
+
 ## CLI Usage
 
 ### NPM Scripts
@@ -319,6 +307,10 @@ pnpm eval:pairwise --prompt "..." --dos "Must use Slack" --donts "No HTTP"
 pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
 ```
 
+Notes:
+- In `--backend langsmith` mode, the CLI requires `--dataset` and rejects `--prompt`, `--prompts-csv`, and `--test-case`.
+- `--output-dir` only applies to local mode (it writes artifacts to disk).
+
 ### Common Flags
 
 ```bash
@@ -335,8 +327,24 @@ pnpm eval:pairwise:langsmith --name "pairwise-exp" --verbose
 --prompt <text>     # Single prompt for local testing
 --dos <text>        # Pairwise: things the workflow should do
 --donts <text>      # Pairwise: things the workflow should not do
+--output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
 --multi-agent       # Enable multi-agent feature flag
+```
+
+### CSV Format
+
+`--prompts-csv` supports optional headers. Recognized columns:
+- `prompt` (required)
+- `id` (optional)
+- `dos` / `do` (optional)
+- `donts` / `dont` (optional)
+
+Example:
+
+```csv
+id,prompt,dos,donts
+pw-001,"Create a workflow to sync Gmail to Notion","Must use Notion","No HTTP Request node"
 ```
 
 ### Direct Usage
@@ -352,31 +360,35 @@ tsx evaluations/cli/index.ts --backend langsmith --name "my-experiment" --verbos
 tsx evaluations/cli/index.ts --suite pairwise --prompt "..." --dos "Must use Slack"
 ```
 
-## Adding a New Evaluator
+## Components & Where Things Live
 
-1. Create the evaluator factory in `evaluators/`:
+This directory is intentionally split by responsibility:
 
-```typescript
-// evaluators/my-evaluator.ts
-	export function createMyEvaluator(options): Evaluator<MyContext> {
-	  return {
-	    name: 'my-evaluator',
-	    async evaluate(workflow, ctx) {
-	      // Your evaluation logic
-	      return [
-	        { evaluator: 'my-evaluator', metric: 'score', score: 0.9, kind: 'score' },
-	        { evaluator: 'my-evaluator', metric: 'detail', score: 0.8, kind: 'detail', comment: '...' },
-	      ];
-	    },
-	  };
-	}
-```
+- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`)
+- `evaluations/harness/`: orchestration, scoring, logging, and artifact writing (`harness/runner.ts`, `harness/lifecycle.ts`, `harness/score-calculator.ts`, `harness/output.ts`)
+- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity)
+- `evaluations/judge/`: the LLM-judge “engine” (schemas + category evaluators + `judge/workflow-evaluator.ts`)
+- `evaluations/langsmith/`: LangSmith-specific helpers (`langsmith/trace-filters.ts`, `langsmith/types.ts`)
+- `evaluations/support/`: environment setup, node loading, report generation, and test-case generation
+- `evaluations/programmatic/`: programmatic evaluator implementation (TypeScript) + `programmatic/python/` (kept separate)
 
-2. Export from `evaluators/index.ts`
+## Extending
 
-3. Add to CLI in `cli/index.ts`
+### Adding a new evaluator
 
-4. Write tests in `__tests__/evaluators/`
+Add an evaluator by implementing the `Evaluator` interface and returning `Feedback[]`:
+- Put evaluator factories under `evaluations/evaluators/<name>/`
+- Make sure you emit at least one `kind: 'score'` item (the harness scoring prefers this)
+- If you need custom context, extend via `Evaluator<MyContext>` and validate required fields at runtime (keep the base context cast-free)
+- If you want stable LangSmith keys, update `evaluations/harness/feedback.ts`
+
+### Adding a new “runner” (backend)
+
+The harness runner is `evaluations/harness/runner.ts`. Today it supports:
+- `mode: 'local'` (local dataset array + optional artifacts)
+- `mode: 'langsmith'` (LangSmith dataset or preloaded examples)
+
+To add a new backend, keep evaluators backend-agnostic and extend the runner with a new `RunConfig['mode']` branch.
 
 ## File Structure
 
@@ -413,77 +425,10 @@ The harness uses "skip and continue" error handling:
 { evaluator: 'evaluator-name', metric: 'error', score: 0, kind: 'score', comment: 'Error message' }
 ```
 
-## LangSmith SDK Tips & Gotchas
+## Testing
 
-Additional findings from working with LangSmith SDK 0.4.x that may help future development:
-
-### Environment Variables
+From `packages/@n8n/ai-workflow-builder.ee`:
 
 ```bash
-LANGSMITH_TRACING=true      # Required for tracing to work (0.4.x)
-LANGSMITH_API_KEY=ls_...    # Your API key
-LANGSMITH_PROJECT=name      # Optional: default project for traces
-LANGSMITH_MINIMAL_TRACING=false  # Set to disable trace filtering (default: true)
+pnpm test:eval
 ```
-
-### Flushing Traces
-
-Always call `awaitPendingTraceBatches()` before the process exits to ensure all traces are sent:
-
-```typescript
-await evaluate(target, options);
-await client.awaitPendingTraceBatches();  // Don't forget this!
-```
-
-Without this, traces may be lost if the process exits before the background upload completes.
-
-### Trace Filtering (Reducing Payload Size)
-
-Large payloads can cause 403 errors. Use `hideInputs`/`hideOutputs` on the Client:
-
-```typescript
-const client = new Client({
-  hideInputs: (inputs) => filterLargeFields(inputs),
-  hideOutputs: (outputs) => filterLargeFields(outputs),
-  batchSizeBytesLimit: 2_000_000,  // 2MB limit
-  batchSizeLimit: 10,              // Max runs per batch
-});
-```
-
-Our trace filtering achieves ~80% reduction in payload size by:
-- Summarizing large arrays (messages, node types, templates)
-- Truncating large string inputs
-- Summarizing workflow JSON for large workflows
-
-### numRepetitions Behavior
-
-When `numRepetitions` is set, the SDK duplicates examples in the array:
-
-```typescript
-// numRepetitions: 3 with 2 examples = 6 total executions
-// [ex1, ex2] becomes [ex1, ex2, ex1, ex2, ex1, ex2]
-```
-
-### AsyncLocalStorage for Trace Context
-
-The SDK uses `AsyncLocalStorage` to track the current run tree. This enables:
-- Nested traces (child runs automatically link to parent)
-- Context propagation across async boundaries
-
-If traces aren't nesting correctly, ensure you're not breaking the async context chain.
-
-### Client Consistency
-
-The `traceable()` function uses the default client (from environment variables) unless you pass a custom client. If you create a custom client for `evaluate()`, inner `traceable()` calls may use a different client, causing:
-- Traces appearing in different projects
-- Missing parent-child relationships
-- Potential duplicate executions
-
-**Solution:** Use `setupTestEnvironment()` which creates a properly configured client, or ensure all code uses the same client instance.
-
-### Debugging Tips
-
-1. **Check trace count:** Add logging to track how many times target is called
-2. **Verify client:** Log which client is being used for evaluate() vs traceable()
-3. **Check environment:** Ensure `LANGSMITH_TRACING=true` is set
-4. **Inspect SDK source:** The evaluate logic is in `node_modules/langsmith/dist/evaluation/_runner.js`
