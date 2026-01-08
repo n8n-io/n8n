@@ -25,7 +25,7 @@
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/browser-playwright": "^4.0.16",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/coverage-v8": "catalog:",
     "@vue/tsconfig": "^0.8.1",
     "eslint-plugin-storybook": "^10.1.11",
     "playwright": "^1.57.0",
@@ -33,8 +33,8 @@
     "typescript": "~5.9.3",
     "unplugin-icons": "^22.5.0",
     "vite": "npm:rolldown-vite@7.2.5",
-    "vitest": "^4.0.16",
-    "vue-tsc": "^3.1.4"
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
   },
   "eslintConfig": {
     "extends": [
