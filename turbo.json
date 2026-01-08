@@ -38,6 +38,12 @@
 		"build:playwright": {
 			"dependsOn": ["install-browsers:ci", "build"]
 		},
+		"install-browsers": {
+			"cache": true,
+			"inputs": ["package.json"],
+			"outputs": [".playwright-browsers/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+		},
 		"install-browsers:ci": {
 			"cache": true,
 			"inputs": ["package.json"],
