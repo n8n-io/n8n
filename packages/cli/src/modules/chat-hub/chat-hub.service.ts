@@ -103,9 +103,7 @@ export class ChatHubService {
 	) {}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
-		this.logger.debug('[deleteChatWorkflow] start');
 		await this.workflowRepository.delete(workflowId);
-		this.logger.debug('[deleteChatWorkflow] end');
 	}
 
 	private getErrorMessage(execution: IExecutionResponse): string | undefined {
@@ -761,7 +759,6 @@ export class ChatHubService {
 					model,
 					retryOfMessageId,
 				});
-				this.logger.debug('[onBegin] end');
 			},
 			onItem: async (_message, _chunk) => {
 				// We could save partial messages to DB here if we wanted to,
