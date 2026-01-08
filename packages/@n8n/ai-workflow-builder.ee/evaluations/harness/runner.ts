@@ -94,15 +94,15 @@ function buildContext(args: {
 	prompt: string;
 	globalContext?: GlobalRunContext;
 	testCaseContext?: TestCaseContext;
-	referenceWorkflow?: SimpleWorkflow;
+	referenceWorkflows?: SimpleWorkflow[];
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflow } = args;
+	const { prompt, globalContext, testCaseContext, referenceWorkflows } = args;
 
 	return {
 		prompt,
 		...(globalContext ?? {}),
 		...(testCaseContext ?? {}),
-		...(referenceWorkflow ? { referenceWorkflow } : {}),
+		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 	};
 }
 
@@ -328,13 +328,15 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 	if (typeof record.dos === 'string') context.dos = record.dos;
 	if (typeof record.donts === 'string') context.donts = record.donts;
 
-	if (isSimpleWorkflow(record.referenceWorkflow))
-		context.referenceWorkflow = record.referenceWorkflow;
+	// Support both legacy referenceWorkflow (single) and referenceWorkflows (array) from dataset
 	if (
 		Array.isArray(record.referenceWorkflows) &&
 		record.referenceWorkflows.every((wf) => isSimpleWorkflow(wf))
 	) {
 		context.referenceWorkflows = record.referenceWorkflows;
+	} else if (isSimpleWorkflow(record.referenceWorkflow)) {
+		// Convert legacy single reference to array
+		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
 	return context;
@@ -388,7 +390,7 @@ async function runLocalExample(args: {
 				timeoutMs,
 			},
 			testCaseContext: testCase.context,
-			referenceWorkflow: testCase.referenceWorkflow,
+			referenceWorkflows: testCase.referenceWorkflows,
 		});
 
 		// Run evaluators in parallel

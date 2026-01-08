@@ -39,9 +39,10 @@ export async function invokeEvaluatorChain<TResult>(
 	input: EvaluationInput,
 	config?: RunnableConfig,
 ): Promise<TResult> {
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>\n${JSON.stringify(input.referenceWorkflow, null, 2)}\n</reference_workflow>`
-		: '';
+	const referenceSection =
+		input.referenceWorkflows && input.referenceWorkflows.length > 0
+			? `<reference_workflows>\n${JSON.stringify(input.referenceWorkflows, null, 2)}\n</reference_workflows>`
+			: '';
 
 	const result = await chain.invoke(
 		{

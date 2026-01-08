@@ -541,7 +541,7 @@ describe('Runner - LangSmith Mode', () => {
 				{
 					evaluator: 'ref-check',
 					metric: 'hasRef',
-					score: ctx.referenceWorkflow ? 1 : 0,
+					score: ctx.referenceWorkflows && ctx.referenceWorkflows.length > 0 ? 1 : 0,
 					kind: 'score',
 				},
 			]);
@@ -581,7 +581,7 @@ describe('Runner - LangSmith Mode', () => {
 			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
 			const ctx = evaluate.mock.calls[0]?.[1];
-			expect(ctx?.referenceWorkflow).toBeUndefined();
+			expect(ctx?.referenceWorkflows).toBeUndefined();
 
 			expect(result.feedback).toContainEqual({
 				evaluator: 'ref-check',

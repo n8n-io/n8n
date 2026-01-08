@@ -46,7 +46,7 @@ export function createProgrammaticEvaluator(
 				{
 					userPrompt: ctx.prompt,
 					generatedWorkflow: workflow,
-					referenceWorkflow: ctx.referenceWorkflow,
+					referenceWorkflows: ctx.referenceWorkflows,
 				},
 				nodeTypes,
 			);

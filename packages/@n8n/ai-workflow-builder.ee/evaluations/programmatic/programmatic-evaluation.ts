@@ -21,7 +21,7 @@ export async function programmaticEvaluation(
 	input: ProgrammaticEvaluationInput,
 	nodeTypes: INodeTypeDescription[],
 ) {
-	const { generatedWorkflow, referenceWorkflow, referenceWorkflows, preset = 'standard' } = input;
+	const { generatedWorkflow, referenceWorkflows, preset = 'standard' } = input;
 
 	const connectionsEvaluationResult = evaluateConnections(generatedWorkflow, nodeTypes);
 	const nodesEvaluationResult = evaluateNodes(generatedWorkflow, nodeTypes);
@@ -31,37 +31,24 @@ export async function programmaticEvaluation(
 	const fromAiEvaluationResult = evaluateFromAi(generatedWorkflow, nodeTypes);
 	const credentialsEvaluationResult = evaluateCredentials(generatedWorkflow);
 
-	// Workflow similarity evaluation (supports both single and multiple reference workflows)
+	// Workflow similarity evaluation
 	let similarityEvaluationResult = null;
 
-	// Prioritize referenceWorkflows (multiple) over referenceWorkflow (single)
 	if (referenceWorkflows && referenceWorkflows.length > 0) {
 		try {
-			similarityEvaluationResult = await evaluateWorkflowSimilarityMultiple(
-				generatedWorkflow,
-				referenceWorkflows,
-				preset,
-			);
-		} catch (error) {
-			// Fallback to neutral result if similarity check fails - error captured in violation
-			const violation: ProgrammaticViolation = {
-				name: 'workflow-similarity-evaluation-failed',
-				type: 'critical',
-				description: `Similarity evaluation failed: ${(error as Error).message}`,
-				pointsDeducted: 0,
-			};
-			similarityEvaluationResult = {
-				violations: [violation],
-				score: 0,
-			};
-		}
-	} else if (referenceWorkflow) {
-		try {
-			similarityEvaluationResult = await evaluateWorkflowSimilarity(
-				generatedWorkflow,
-				referenceWorkflow,
-				preset,
-			);
+			if (referenceWorkflows.length === 1) {
+				similarityEvaluationResult = await evaluateWorkflowSimilarity(
+					generatedWorkflow,
+					referenceWorkflows[0],
+					preset,
+				);
+			} else {
+				similarityEvaluationResult = await evaluateWorkflowSimilarityMultiple(
+					generatedWorkflow,
+					referenceWorkflows,
+					preset,
+				);
+			}
 		} catch (error) {
 			// Fallback to neutral result if similarity check fails - error captured in violation
 			const violation: ProgrammaticViolation = {

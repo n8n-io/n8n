@@ -19,8 +19,6 @@ export interface EvaluationContext {
 	dos?: string;
 	/** Pairwise criteria: forbidden behaviors */
 	donts?: string;
-	/** Optional reference workflow for similarity-based checks */
-	referenceWorkflow?: SimpleWorkflow;
 	/** Optional reference workflows for similarity-based checks (best match wins) */
 	referenceWorkflows?: SimpleWorkflow[];
 	/**
@@ -83,8 +81,8 @@ export interface TestCase {
 	id?: string;
 	/** Context passed to evaluators (e.g., pairwise dos/donts) */
 	context?: TestCaseContext;
-	/** Reference workflow for similarity comparison */
-	referenceWorkflow?: SimpleWorkflow;
+	/** Reference workflows for similarity comparison (best match wins) */
+	referenceWorkflows?: SimpleWorkflow[];
 }
 
 /**

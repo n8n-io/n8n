@@ -88,13 +88,13 @@ describe('Programmatic Evaluator', () => {
 				{
 					userPrompt: 'Create a test workflow',
 					generatedWorkflow: workflow,
-					referenceWorkflow: undefined,
+					referenceWorkflows: undefined,
 				},
 				mockNodeTypes,
 			);
 		});
 
-		it('should pass reference workflow when provided in context', async () => {
+		it('should pass reference workflows when provided in context', async () => {
 			mockProgrammaticEvaluation.mockResolvedValue(createMockEvaluationResult());
 
 			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
@@ -102,7 +102,7 @@ describe('Programmatic Evaluator', () => {
 
 			const workflow = createMockWorkflow();
 			const referenceWorkflow = createMockWorkflow('Reference');
-			const context = { prompt: 'Test prompt', referenceWorkflow };
+			const context = { prompt: 'Test prompt', referenceWorkflows: [referenceWorkflow] };
 
 			await evaluator.evaluate(workflow, context);
 
@@ -110,7 +110,7 @@ describe('Programmatic Evaluator', () => {
 				{
 					userPrompt: 'Test prompt',
 					generatedWorkflow: workflow,
-					referenceWorkflow,
+					referenceWorkflows: [referenceWorkflow],
 				},
 				mockNodeTypes,
 			);
@@ -199,7 +199,7 @@ describe('Programmatic Evaluator', () => {
 			expect(triggerFeedback?.comment).toBeUndefined();
 		});
 
-		it('should include similarity feedback when reference workflow provided', async () => {
+		it('should include similarity feedback when reference workflows provided', async () => {
 			mockProgrammaticEvaluation.mockResolvedValue(
 				createMockEvaluationResult({
 					similarity: {
@@ -216,7 +216,7 @@ describe('Programmatic Evaluator', () => {
 			const referenceWorkflow = createMockWorkflow('Reference');
 			const feedback = await evaluator.evaluate(workflow, {
 				prompt: 'Test',
-				referenceWorkflow,
+				referenceWorkflows: [referenceWorkflow],
 			});
 
 			const similarityFeedback = findFeedback(feedback, 'similarity');

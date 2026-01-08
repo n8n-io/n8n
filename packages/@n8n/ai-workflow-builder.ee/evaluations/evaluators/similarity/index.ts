@@ -41,7 +41,7 @@ function formatViolations(
  *
  * // With single reference workflow
  * const feedback = await evaluator.evaluate(workflow, {
- *   referenceWorkflow: referenceWorkflow
+ *   referenceWorkflows: [referenceWorkflow]
  * });
  *
  * // With multiple reference workflows (best match wins)
@@ -63,10 +63,9 @@ export function createSimilarityEvaluator(
 			const feedback: Feedback[] = [];
 
 			const referenceWorkflows = ctx.referenceWorkflows;
-			const referenceWorkflow = ctx.referenceWorkflow;
 
 			// No reference workflows provided - treat as configuration error
-			if (!referenceWorkflows?.length && !referenceWorkflow) {
+			if (!referenceWorkflows?.length) {
 				feedback.push({
 					evaluator: 'similarity',
 					metric: 'error',
@@ -88,22 +87,20 @@ export function createSimilarityEvaluator(
 					score: number;
 				};
 
-				if (referenceWorkflows?.length) {
+				if (referenceWorkflows.length === 1) {
+					result = await evaluateWorkflowSimilarity(
+						workflow,
+						referenceWorkflows[0],
+						preset,
+						customConfigPath,
+					);
+				} else {
 					result = await evaluateWorkflowSimilarityMultiple(
 						workflow,
 						referenceWorkflows,
 						preset,
 						customConfigPath,
 					);
-				} else if (referenceWorkflow) {
-					result = await evaluateWorkflowSimilarity(
-						workflow,
-						referenceWorkflow,
-						preset,
-						customConfigPath,
-					);
-				} else {
-					throw new Error('No reference workflow provided for similarity evaluation');
 				}
 
 				// Overall similarity score
