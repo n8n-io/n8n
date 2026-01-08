@@ -89,6 +89,7 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'nodeCreatorNode.new': 'New',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
 	'aiAssistant.versionCard.restoreModal.description':

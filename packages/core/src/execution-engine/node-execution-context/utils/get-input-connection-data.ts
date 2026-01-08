@@ -28,6 +28,7 @@ import {
 	NodeOperationError,
 	UserError,
 	sleepWithAbort,
+	isHitlToolType,
 } from 'n8n-workflow';
 import z, { ZodType } from 'zod';
 
@@ -44,13 +45,6 @@ import { isEngineRequest } from '../../requests-response';
 function ensureArray<T>(value: T | T[] | undefined): T[] {
 	if (value === undefined) return [];
 	return Array.isArray(value) ? value : [value];
-}
-
-/**
- * Check if a node is an HITL (Human-in-the-Loop) tool.
- */
-function isHitlTool(node: INode): boolean {
-	return node.type.endsWith('HitlTool');
 }
 
 export function createHitlToolkit(
@@ -416,7 +410,7 @@ export async function getInputConnectionData(
 	for (const connectedNode of connectedNodes) {
 		// Check if this is an HITL (Human-in-the-Loop) tool node
 		// HITL tools need special handling to create the middleware tool
-		if (isHitlTool(connectedNode)) {
+		if (isHitlToolType(connectedNode?.type)) {
 			const supplyData = await createHitlToolSupplyData(
 				connectedNode,
 				workflow,
