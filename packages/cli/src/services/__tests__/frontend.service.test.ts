@@ -237,7 +237,6 @@ describe('FrontendService', () => {
 		it('should return public settings with mfa', async () => {
 			const expectedPublicSettings = {
 				settingsMode: 'public',
-				defaultLocale: 'en',
 				userManagement: {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
