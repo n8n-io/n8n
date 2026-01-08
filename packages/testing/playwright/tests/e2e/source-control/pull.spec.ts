@@ -105,7 +105,7 @@ test.describe.skip('Pull resources from Git @capability:source-control', () => {
 		// modify workflow
 		await n8n.navigate.toWorkflow(workflow.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// add new workflow
 		await n8n.api.workflows.createInProject(project.id, {

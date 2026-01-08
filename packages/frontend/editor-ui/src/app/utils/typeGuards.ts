@@ -160,3 +160,11 @@ export function isTeamProjectRole(role: string): role is TeamProjectRole {
 
 export const isWorkflowListItem = (resource: WorkflowListResource): resource is WorkflowListItem =>
 	'resource' in resource ? resource.resource !== 'folder' : true;
+
+export function isDebouncedFunction(fn: unknown): fn is { cancel: () => void } {
+	return (
+		typeof fn === 'function' &&
+		'cancel' in fn &&
+		typeof (fn as Record<string, unknown>).cancel === 'function'
+	);
+}

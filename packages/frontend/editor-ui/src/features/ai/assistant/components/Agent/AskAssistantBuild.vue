@@ -2,6 +2,9 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { AutoSaveState } from '@/app/constants';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -27,6 +30,8 @@ const emit = defineEmits<{
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const collaborationStore = useCollaborationStore();
+const workflowAutosaveStore = useWorkflowAutosaveStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const router = useRouter();
@@ -89,7 +94,34 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
+const isAutosaving = computed(() => {
+	return (
+		workflowAutosaveStore.autoSaveState === AutoSaveState.Scheduled ||
+		workflowAutosaveStore.autoSaveState === AutoSaveState.InProgress
+	);
+});
+
+const isInputDisabled = computed(() => {
+	return collaborationStore.shouldBeReadOnly || isAutosaving.value;
+});
+
+const disabledTooltip = computed(() => {
+	if (!isInputDisabled.value) {
+		return undefined;
+	}
+	if (isAutosaving.value) {
+		return i18n.baseText('aiAssistant.builder.disabledTooltip.autosaving');
+	}
+	if (collaborationStore.shouldBeReadOnly) {
+		return i18n.baseText('aiAssistant.builder.disabledTooltip.readOnly');
+	}
+	return undefined;
+});
+
 async function onUserMessage(content: string) {
+	// Record activity to maintain write lock while building
+	collaborationStore.requestWriteAccess();
+
 	// Reset tidy up flag for each new message exchange
 	shouldTidyUp.value = false;
 
@@ -308,6 +340,8 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowsStore.workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
+			:disabled="isInputDisabled"
+			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
