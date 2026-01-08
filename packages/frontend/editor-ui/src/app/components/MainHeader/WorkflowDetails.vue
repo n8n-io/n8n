@@ -630,7 +630,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--lg);
 	flex-wrap: nowrap;
 }
 

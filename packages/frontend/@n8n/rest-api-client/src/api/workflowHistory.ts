@@ -31,7 +31,7 @@ export type WorkflowVersion = WorkflowHistory & {
 };
 
 export type WorkflowHistoryActionTypes = Array<
-	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download'
+	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download' | 'saveAsNamed'
 >;
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };

@@ -195,7 +195,6 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-
 	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
 		if (props.isArchived) {
 			actions.push({
@@ -223,7 +222,6 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 
 	return actions;
 });
-
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
@@ -375,7 +373,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 	}
 }
 
-
 defineExpose({
 	importFileRef,
 });
@@ -400,7 +397,8 @@ defineExpose({
 			<template #trigger>
 				<N8nIconButton
 					icon="ellipsis"
-					type="tertiary"
+					icon-size="large"
+					type="highlight"
 					size="medium"
 					aria-label="More workflow actions"
 					data-test-id="workflow-menu-button"

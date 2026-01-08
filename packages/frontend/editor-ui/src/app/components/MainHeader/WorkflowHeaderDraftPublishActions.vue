@@ -552,7 +552,7 @@ defineExpose({
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 }
 
 .activeVersionIndicator {
@@ -608,18 +608,29 @@ defineExpose({
 	margin-left: var(--spacing--xs);
 }
 
-.publish {
+.publish,
+.publish:disabled,
+.publish:hover:disabled {
 	border-bottom-right-radius: 0px;
 	border-top-right-radius: 0px;
+	border-right-color: transparent;
+}
+
+.publish:hover {
+	border-right-color: inherit;
 }
 
 .dropdownButton {
 	border-top-left-radius: 0px;
 	border-bottom-left-radius: 0px;
-	margin-left: -1px;
+}
+
+.splitButton:has(.publish:not(:disabled):hover) .dropdownButton {
+	border-left-color: transparent;
 }
 
 .splitButton {
 	display: inline-flex;
+	margin-right: var(--spacing--2xs);
 }
 </style>

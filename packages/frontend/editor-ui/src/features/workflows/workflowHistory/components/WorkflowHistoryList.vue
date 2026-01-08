@@ -89,6 +89,11 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
+	// Show "Save as named version" only for autosaved versions (no name)
+	if (item.name) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'saveAsNamed');
+	}
+
 	return filteredActions;
 };
 

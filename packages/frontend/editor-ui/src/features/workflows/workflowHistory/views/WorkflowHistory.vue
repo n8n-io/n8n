@@ -6,6 +6,7 @@ import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -32,6 +33,7 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
+import type { WorkflowSaveDraftModalEventBusEvents } from '@/app/components/MainHeader/WorkflowSaveDraftModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
@@ -45,6 +47,7 @@ const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'clone',
 	'open',
 	'download',
+	'saveAsNamed',
 ];
 const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
@@ -290,6 +293,53 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 	});
 };
 
+const saveVersionAsNamed = async (
+	versionId: WorkflowVersionId,
+	data: WorkflowHistoryAction['data'],
+) => {
+	const saveDraftEventBus = createEventBus<WorkflowSaveDraftModalEventBusEvents>();
+	
+	saveDraftEventBus.once('saved', async (savedData) => {
+		// Update the history item with the new name and description
+		const historyItem = workflowHistory.value.find(
+			(item) => item.versionId === savedData.versionId,
+		);
+		if (historyItem) {
+			historyItem.name = savedData.name;
+			historyItem.description = savedData.description;
+		}
+		
+		// Close the modal
+		uiStore.closeModal(WORKFLOW_SAVE_DRAFT_MODAL_KEY);
+		
+		sendTelemetry('User converted autosaved version to named version');
+		
+		// Reload workflow history to ensure we have the latest data
+		// Clear current history and reload
+		workflowHistory.value = [];
+		await loadMore({ take: requestNumberOfItems.value });
+		
+		// Navigate to the newly created named version
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId: workflowId.value,
+				versionId: savedData.versionId,
+			},
+		});
+	});
+	
+	// Open the save draft modal with the version ID and event bus
+	uiStore.openModalWithData({
+		name: WORKFLOW_SAVE_DRAFT_MODAL_KEY,
+		data: {
+			workflowId: workflowId.value,
+			versionId,
+			eventBus: saveDraftEventBus,
+		},
+	});
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -314,6 +364,9 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
 				unpublishWorkflowVersion(id, data);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.SAVEASNAMED:
+				await saveVersionAsNamed(id, data);
 				break;
 		}
 	} catch (error) {

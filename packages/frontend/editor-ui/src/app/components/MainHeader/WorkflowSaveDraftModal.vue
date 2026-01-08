@@ -3,7 +3,7 @@ import { computed, ref, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_SAVE_DRAFT_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nButton } from '@n8n/design-system';
 import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
@@ -23,17 +23,23 @@ const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('pu
 const description = ref('');
 const versionName = ref('');
 
+export type WorkflowSaveDraftModalEventBusEvents = {
+	saved: { versionId: string; name: string; description?: string };
+};
+
 const props = defineProps<{
 	modalName: string;
 	data: {
 		workflowId: string;
 		versionId: string;
+		eventBus?: EventBus<WorkflowSaveDraftModalEventBusEvents>;
 	};
 }>();
 
 const data = ref<{
 	workflowId: string;
 	versionId: string;
+	eventBus?: EventBus<WorkflowSaveDraftModalEventBusEvents>;
 }>({
 	workflowId: '',
 	versionId: '',
@@ -89,6 +95,15 @@ async function handleSaveDraft() {
 		telemetry.track('User saved draft version from canvas', {
 			workflow_id: data.value.workflowId,
 		});
+
+		// Emit saved event if event bus is provided
+		if (data.value.eventBus) {
+			data.value.eventBus.emit('saved', {
+				versionId: data.value.versionId,
+				name: versionName.value,
+				description: description.value,
+			});
+		}
 
 		// Close the modal after successful save
 		modalBus.emit('close');
