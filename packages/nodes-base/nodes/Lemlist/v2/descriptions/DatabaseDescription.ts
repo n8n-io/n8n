@@ -15,6 +15,12 @@ export const databaseOperations: INodeProperties[] = [
 				action: 'Get companies schema',
 			},
 			{
+				name: 'Get Filters',
+				value: 'getFilters',
+				description: 'Get available filters for database queries',
+				action: 'Get database filters',
+			},
+			{
 				name: 'Get People Schema',
 				value: 'getPeopleSchema',
 				description: 'Get the schema for people database',
@@ -43,6 +49,11 @@ export const databaseOperations: INodeProperties[] = [
 
 export const databaseFields: INodeProperties[] = [
 	// ----------------------------------
+	//        database: getFilters
+	// ----------------------------------
+	// No additional fields required - returns all available filters
+
+	// ----------------------------------
 	//        database: searchPeople
 	// ----------------------------------
 	{
@@ -56,7 +67,7 @@ export const databaseFields: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Filter',
 		description:
-			'Filters to apply to the people search. Use "Get People Schema" to see available filter IDs.',
+			'Filters to apply to the people search. Use the "Get Filters" operation to retrieve available filter IDs. Only filters with "leads" in their mode property can be used for people queries.',
 		displayOptions: {
 			show: {
 				resource: ['database'],
@@ -74,7 +85,8 @@ export const databaseFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						required: true,
-						description: 'The filter identifier (e.g., "country", "job_title", "company_size")',
+						description:
+							'The filter identifier to use. Use the "Get Filters" operation to retrieve the list of available filters and their IDs.',
 					},
 					{
 						displayName: 'Include Values',
@@ -165,7 +177,7 @@ export const databaseFields: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Filter',
 		description:
-			'Filters to apply to the companies search. Use "Get Companies Schema" to see available filter IDs.',
+			'Filters to apply to the companies search. Use the "Get Filters" operation to retrieve available filter IDs. Only filters with "companies" in their mode property can be used for company queries.',
 		displayOptions: {
 			show: {
 				resource: ['database'],
@@ -183,7 +195,8 @@ export const databaseFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						required: true,
-						description: 'The filter identifier (e.g., "country", "industry", "company_size")',
+						description:
+							'The filter identifier to use. Use the "Get Filters" operation to retrieve the list of available filters and their IDs.',
 					},
 					{
 						displayName: 'Include Values',

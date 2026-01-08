@@ -1180,7 +1180,13 @@ export class LemlistV2 implements INodeType {
 					//                             database
 					// *********************************************************************
 
-					if (operation === 'getPeopleSchema') {
+					if (operation === 'getFilters') {
+						// ----------------------------------
+						//        database: getFilters
+						// ----------------------------------
+
+						responseData = await lemlistApiRequest.call(this, 'GET', '/database/filters');
+					} else if (operation === 'getPeopleSchema') {
 						// ----------------------------------
 						//        database: getPeopleSchema
 						// ----------------------------------
