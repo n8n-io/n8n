@@ -485,7 +485,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('external-secrets-provider-reloaded', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User reloaded external secrets settings', {
+			expect(telemetry.track).toHaveBeenCalledWith('User reloaded external secrets', {
 				vault_type: 'aws',
 			});
 		});
