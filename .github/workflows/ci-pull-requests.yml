@@ -127,3 +127,15 @@ jobs:
           (needs.install-and-build.outputs.workflows_changed == 'true' &&
             needs.security-checks.result == 'skipped')
         run: exit 1
+
+  # Backward compatibility: 1.x branch protection requires this check name
+  # TODO: Remove this job once branch protection is updated to use 'Required Checks'
+  e2e-checks:
+    name: E2E - Checks
+    needs: [e2e-tests]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - name: Fail if E2E tests failed
+        if: needs.e2e-tests.result == 'failure'
+        run: exit 1
