@@ -19,7 +19,9 @@ RUN pnpm install --frozen-lockfile --ignore-scripts || true
 
 # Build n8n (Produces 'compiled' folder)
 # We limit concurrency to avoid OOM
-RUN node scripts/build-n8n.mjs
+# DOCKER_BUILD=true skips lefthook install in prepare script
+# CI=true enables CI mode in build script (no backups, non-verbose)
+RUN DOCKER_BUILD=true CI=true node scripts/build-n8n.mjs
 
 # --- Runtime Stage ---
 FROM node:22-alpine AS runner

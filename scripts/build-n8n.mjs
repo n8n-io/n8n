@@ -14,6 +14,9 @@ import path from 'path';
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
+// Check if running in Docker build
+const isDockerBuild = process.env.DOCKER_BUILD === 'true';
+
 // Check if test controller should be excluded (CI + flag not set)
 const excludeTestController =
 	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
@@ -97,11 +100,20 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install`;
-	installProcess.pipe(process.stdout);
-	await installProcess;
+	// Skip pnpm install if already done by Dockerfile (DOCKER_BUILD + ignore-scripts)
+	if (isDockerBuild) {
+		echo(chalk.gray('INFO: Skipping pnpm install (already done by Dockerfile)...'));
+	} else {
+		const installProcess = $`cd ${config.rootDir} && pnpm install`;
+		installProcess.pipe(process.stdout);
+		await installProcess;
+	}
 
-	const buildProcess = $`cd ${config.rootDir} && pnpm exec turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/node-cli`;
+	// Limit turbo concurrency in Docker builds to avoid OOM
+	const turboCommand = isDockerBuild
+		? 'pnpm exec turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/node-cli --concurrency=2'
+		: 'pnpm exec turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/node-cli';
+	const buildProcess = $`cd ${config.rootDir} && ${turboCommand}`;
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 
