@@ -65,6 +65,10 @@ function getApprovalStatus(
 	return undefined;
 }
 
+function getDenialMessage(toolName: string, toolId: string): string {
+	return `User rejected the tool call for ${toolName} with id ${toolId}. Please stop and ask the user for more information about why it was declined or suggest modifications to the tool call parameters. The tool is still available if needed.`;
+}
+
 /**
  * Process HITL (Human-in-the-Loop) tool responses.
  *
@@ -129,7 +133,7 @@ export function processHitlResponses(
 								{
 									json: {
 										id: toolId,
-										response: `User rejected the tool call for ${toolName} with id ${toolId}. STOP what you are doing and wait for the user to tell you how to proceed. You may call the tool again if user requests it.`,
+										response: getDenialMessage(toolName, toolId),
 										approved: false,
 									},
 								},
