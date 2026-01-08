@@ -103,12 +103,21 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			});
 	};
 
+	const renameVersion = async (
+		workflowId: string,
+		versionId: string,
+		data: { name?: string; description?: string },
+	): Promise<WorkflowHistory> => {
+		return await whApi.updateWorkflowVersion(rootStore.restApiContext, workflowId, versionId, data);
+	};
+
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
 		downloadVersion,
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
+		renameVersion,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};

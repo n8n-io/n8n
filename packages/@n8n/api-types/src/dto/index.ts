@@ -67,6 +67,7 @@ export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.d
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { SaveWorkflowVersionDto } from './workflows/save-workflow-version.dto';
+export { UpdateWorkflowVersionDto } from './workflows/update-workflow-version.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

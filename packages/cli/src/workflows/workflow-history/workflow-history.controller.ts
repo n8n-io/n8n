@@ -1,5 +1,9 @@
-import { PaginationDto, WorkflowHistoryVersionsByIdsDto } from '@n8n/api-types';
-import { RestController, Get, Post, Query, Body } from '@n8n/decorators';
+import {
+	PaginationDto,
+	WorkflowHistoryVersionsByIdsDto,
+	UpdateWorkflowVersionDto,
+} from '@n8n/api-types';
+import { RestController, Get, Post, Patch, Query, Body } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -65,6 +69,29 @@ export class WorkflowHistoryController {
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');
+			}
+			throw e;
+		}
+	}
+
+	@Patch('/workflow/:workflowId/version/:versionId')
+	async updateVersion(
+		req: WorkflowHistoryRequest.GetVersion,
+		_res: Response,
+		@Body body: UpdateWorkflowVersionDto,
+	) {
+		try {
+			return await this.historyService.updateVersionWithUser(
+				req.user,
+				req.params.workflowId,
+				req.params.versionId,
+				body,
+			);
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			} else if (e instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Could not find version');
 			}
 			throw e;
 		}
