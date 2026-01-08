@@ -385,17 +385,17 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should show binary mode warning toast when binary mode changes', async () => {
 			workflowsStore.workflowSettings.executionOrder = 'v1';
-			workflowsStore.workflowSettings.binaryMode = 'separate';
-
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
 			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
 			);
 			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			await waitFor(() => {
 				expect(toast.showMessage).toHaveBeenCalledWith(

@@ -535,6 +535,7 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
+						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
 					}),
 				}),
 			);

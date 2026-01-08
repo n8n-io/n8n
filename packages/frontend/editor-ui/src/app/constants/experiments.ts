@@ -10,12 +10,6 @@ export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const COMMAND_BAR_EXPERIMENT = {
-	name: 'command_bar',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -107,6 +101,12 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const TAMPER_PROOF_INVITE_LINKS = {
+	name: '061_tamper_proof_invite_links',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -120,4 +120,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
+	TAMPER_PROOF_INVITE_LINKS.name,
 ];

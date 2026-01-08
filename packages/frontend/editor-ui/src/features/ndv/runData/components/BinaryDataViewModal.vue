@@ -190,6 +190,13 @@ onBeforeUnmount(() => {
 	</Modal>
 </template>
 
+<style lang="scss">
+.el-overlay:has([data-test-id='binaryDataView-modal']),
+.el-dialog__wrapper:has([data-test-id='binaryDataView-modal']) {
+	z-index: 10000000 !important;
+}
+</style>
+
 <style lang="scss" scoped>
 .binary-data-modal-content {
 	width: 100%;

@@ -286,6 +286,8 @@ export function prepareReturnItem(
 
 		const target = binaryMode === BINARY_MODE_COMBINED ? 'json' : 'binary';
 
+		const fieldHelper = configureFieldHelper(options.dotNotation);
+
 		for (const assignment of binaryValues) {
 			const name = assignment.name;
 			const value = assignment.value as string;
@@ -303,7 +305,11 @@ export function prepareReturnItem(
 				continue;
 			}
 
-			// both json and binary keys are available
+			if (target === 'json') {
+				fieldHelper.set(returnItem.json, name, binaryData);
+				continue;
+			}
+
 			returnItem[target]![name] = binaryData;
 		}
 	}

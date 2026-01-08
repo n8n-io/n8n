@@ -10,12 +10,22 @@ import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { N8nButton, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
 const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
+import { usePostHog } from '@/app/stores/posthog.store';
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 
 const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
+const posthogStore = usePostHog();
+
+const isV2Enabled = computed(() => {
+	return posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+});
 
 const isLegacyBinaryMode = computed(
 	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
@@ -52,7 +62,7 @@ function openWorkflowSettings() {
 
 <template>
 	<div :class="$style.component">
-		<N8nNotice v-if="isLegacyBinaryMode" :class="$style.info" theme="info">
+		<N8nNotice v-if="isLegacyBinaryMode && isV2Enabled" :class="$style.info" theme="info">
 			{{ i18n.baseText('runData.legacyBinaryMode') }}
 			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
 		</N8nNotice>
