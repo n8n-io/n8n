@@ -8,6 +8,7 @@ import { test, expect } from '../../../fixtures/base';
  * These tests verify that form-waiting and webhook-waiting endpoints
  * require valid HMAC signatures to prevent session interception attacks.
  *
+ * Note: Send and Wait approval flow tests are in nodes/send-and-wait.spec.ts
  */
 test.describe('Waiting Endpoint Security', () => {
 	test.describe('webhook-waiting signature validation', () => {
@@ -26,20 +27,17 @@ test.describe('Waiting Endpoint Security', () => {
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting');
 			expect(execution).toBeDefined();
 
-			// Reject unsigned request
 			const unsignedResponse = await api.webhooks.trigger(`/webhook-waiting/${execution.id}`, {
 				maxNotFoundRetries: 0,
 			});
 			expect(unsignedResponse.status()).toBe(401);
 
-			// Reject tampered signature
 			const tamperedResponse = await api.webhooks.trigger(
 				`/webhook-waiting/${execution.id}?signature=tampered_invalid_signature_abc123`,
 				{ maxNotFoundRetries: 0 },
 			);
 			expect(tamperedResponse.status()).toBe(401);
 
-			// Extract the signed resumeUrl captured by the "Capture Resume URL" node
 			const fullExecution = await api.workflows.getExecution(execution.id);
 			expect(fullExecution.data).toBeDefined();
 
@@ -72,7 +70,6 @@ test.describe('Waiting Endpoint Security', () => {
 	test.describe('form-waiting signature validation', () => {
 		test('should reject unsigned and tampered requests, accept valid signature', async ({
 			n8n,
-			api,
 		}) => {
 			await n8n.start.fromBlankCanvas();
 
@@ -114,24 +111,26 @@ test.describe('Waiting Endpoint Security', () => {
 			expect(waitingUrl).toContain('signature=');
 
 			const urlObj = new URL(waitingUrl);
-			const executionId = urlObj.pathname.split('/').pop();
+			const executionId = urlObj.pathname.split('/').pop()!;
 			const validSignature = urlObj.searchParams.get('signature');
 
-			// Reject unsigned request
-			const unsignedResponse = await api.webhooks.trigger(`/form-waiting/${executionId}`, {
+			await expect(async () => {
+				const execution = await n8n.api.workflows.getExecution(executionId);
+				expect(execution.status).toBe('waiting');
+			}).toPass();
+
+			const unsignedResponse = await n8n.api.webhooks.trigger(`/form-waiting/${executionId}`, {
 				maxNotFoundRetries: 0,
 			});
 			expect(unsignedResponse.status()).toBe(401);
 
-			// Reject tampered signature
-			const tamperedResponse = await api.webhooks.trigger(
+			const tamperedResponse = await n8n.api.webhooks.trigger(
 				`/form-waiting/${executionId}?signature=tampered_fake_signature_xyz789`,
 				{ maxNotFoundRetries: 0 },
 			);
 			expect(tamperedResponse.status()).toBe(401);
 
-			// Accept valid signature
-			const signedResponse = await api.webhooks.trigger(
+			const signedResponse = await n8n.api.webhooks.trigger(
 				`/form-waiting/${executionId}?signature=${validSignature}`,
 				{ maxNotFoundRetries: 0 },
 			);
