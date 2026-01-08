@@ -64,7 +64,8 @@ export function createHitlToolkit(
 		return toolOrToolkit;
 	});
 
-	const hitlNodeSchema = getSchema(hitlNode);
+	// toolParameters and tool are filled programmatically in createEngineRequests, don't need to be in the schema
+	const hitlNodeSchema = getSchema(hitlNode).omit({ toolParameters: true, tool: true });
 	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
 	const gatedTools = connectedTools.map((tool) => {
 		let schema = tool.schema;
