@@ -3,10 +3,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
+import type { EvaluationInput } from './evaluation';
+import { evaluateWorkflow } from './workflow-evaluator';
 import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
-import type { EvaluationInput } from '../../judge/evaluation';
-import { evaluateWorkflow } from '../../judge/workflow-evaluator';
 
 const EVALUATOR_NAME = 'llm-judge';
 

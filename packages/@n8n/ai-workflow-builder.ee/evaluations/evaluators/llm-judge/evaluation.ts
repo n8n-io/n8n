@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { SimpleWorkflow } from '../../../src/types/workflow';
 
 // Violation schema
 const violationSchema = z.object({
