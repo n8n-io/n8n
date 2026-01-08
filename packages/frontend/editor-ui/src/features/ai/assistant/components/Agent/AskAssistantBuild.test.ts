@@ -8,6 +8,8 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			isInputDisabled?: boolean;
+			disabledTooltip?: string;
 		};
 	};
 }
@@ -111,6 +113,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { AutoSaveState } from '@/app/constants';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -204,6 +208,10 @@ describe('AskAssistantBuild', () => {
 				[STORES.COLLABORATION]: {
 					shouldBeReadOnly: false,
 				},
+				workflowAutosave: {
+					autoSaveState: AutoSaveState.Idle,
+					pendingAutoSave: null,
+				},
 			},
 		});
 
@@ -270,6 +278,118 @@ describe('AskAssistantBuild', () => {
 			const showAskOwnerTooltip = vm?.setupState?.showAskOwnerTooltip;
 
 			expect(showAskOwnerTooltip).toBe(false);
+		});
+
+		it('should disable input when autosave is scheduled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should disable input when autosave is in progress', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should not disable input when autosave is idle', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(false);
+		});
+
+		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should show autosaving tooltip when autosave is scheduled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show autosaving tooltip when autosave is in progress', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.readOnly');
+		});
+
+		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			// Autosaving tooltip takes priority over read-only tooltip
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should not show any tooltip when input is not disabled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBeUndefined();
 		});
 	});
 

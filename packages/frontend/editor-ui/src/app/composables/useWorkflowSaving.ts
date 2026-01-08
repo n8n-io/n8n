@@ -17,6 +17,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -154,9 +155,6 @@ export function useWorkflowSaving({
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
 			);
-			if (workflowId) {
-				onSaved?.(true); // First save of new workflow
-			}
 			return !!workflowId;
 		}
 
@@ -166,6 +164,9 @@ export function useWorkflowSaving({
 				return true;
 			}
 			uiStore.addActiveAction('workflowSaving');
+
+			// Capture dirty state count before save to detect changes made during save
+			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
 			// This can happen if the user has another workflow in the browser history and navigates
@@ -203,9 +204,12 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
-			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
+			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
@@ -293,6 +297,9 @@ export function useWorkflowSaving({
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
+			// Capture dirty state count before save to detect changes made during save
+			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
+
 			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
@@ -356,6 +363,7 @@ export function useWorkflowSaving({
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
+				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
 
@@ -381,7 +389,10 @@ export function useWorkflowSaving({
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
 					key: 'webhookId',
@@ -391,7 +402,7 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
+			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;
@@ -412,9 +423,13 @@ export function useWorkflowSaving({
 			}
 
 			uiStore.removeActiveAction('workflowSaving');
-			uiStore.markStateClean();
+			// Only mark state clean if no new changes were made during the save
+			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				uiStore.markStateClean();
+			}
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
+			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
@@ -443,8 +458,12 @@ export function useWorkflowSaving({
 					await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
-						autosaveStore.setAutoSaveState(AutoSaveState.Idle);
-						autosaveStore.setPendingAutoSave(null);
+						autosaveStore.reset();
+					}
+					// If changes were made during save, reschedule autosave
+					if (uiStore.stateIsDirty) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+						void autoSaveWorkflowDebounced();
 					}
 				}
 			})();
@@ -456,6 +475,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if a save is already in progress - the finally block
+		// will reschedule if there are pending changes
+		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+			return;
+		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};

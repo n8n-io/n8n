@@ -4,7 +4,8 @@ export type CollaborationMessage =
 	| WorkflowOpenedMessage
 	| WorkflowClosedMessage
 	| WriteAccessRequestedMessage
-	| WriteAccessReleaseRequestedMessage;
+	| WriteAccessReleaseRequestedMessage
+	| WriteAccessHeartbeatMessage;
 
 export const workflowOpenedMessageSchema = z
 	.object({
@@ -35,11 +36,20 @@ export const writeAccessReleaseRequestedMessageSchema = z
 	})
 	.strict();
 
+export const writeAccessHeartbeatMessageSchema = z
+	.object({
+		type: z.literal('writeAccessHeartbeat'),
+		workflowId: z.string().min(1),
+		userId: z.string().min(1),
+	})
+	.strict();
+
 export const workflowMessageSchema = z.discriminatedUnion('type', [
 	workflowOpenedMessageSchema,
 	workflowClosedMessageSchema,
 	writeAccessRequestedMessageSchema,
 	writeAccessReleaseRequestedMessageSchema,
+	writeAccessHeartbeatMessageSchema,
 ]);
 
 export type WorkflowOpenedMessage = z.infer<typeof workflowOpenedMessageSchema>;
@@ -51,6 +61,8 @@ export type WriteAccessRequestedMessage = z.infer<typeof writeAccessRequestedMes
 export type WriteAccessReleaseRequestedMessage = z.infer<
 	typeof writeAccessReleaseRequestedMessageSchema
 >;
+
+export type WriteAccessHeartbeatMessage = z.infer<typeof writeAccessHeartbeatMessageSchema>;
 
 export type WorkflowMessage = z.infer<typeof workflowMessageSchema>;
 
