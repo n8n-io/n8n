@@ -7,8 +7,8 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1]'
-        type: string
+        default: 1
+        type: number
       image:
         description: 'Image to use'
         required: false
@@ -19,8 +19,8 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1]'
-        type: string
+        default: 1
+        type: number
       image:
         description: 'Image to use'
         required: false

@@ -34,7 +34,7 @@ jobs:
           ref: ${{ inputs.git_ref }}
 
       - name: Set up Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
 
       - name: Set up Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows:setup
