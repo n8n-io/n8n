@@ -124,7 +124,7 @@ export async function runJudgePanel(
 				return result;
 			};
 
-			return await runWithOptionalLimiter(llmCallLimiter, runJudge);
+			return await runWithOptionalLimiter(runJudge, llmCallLimiter);
 		}),
 	);
 

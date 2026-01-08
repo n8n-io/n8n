@@ -11,8 +11,8 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 }
 
 export async function runWithOptionalLimiter<T>(
-	limiter: LlmCallLimiter | undefined,
 	fn: () => Promise<T>,
+	limiter?: LlmCallLimiter,
 ): Promise<T> {
 	return limiter ? await limiter(fn) : await fn();
 }

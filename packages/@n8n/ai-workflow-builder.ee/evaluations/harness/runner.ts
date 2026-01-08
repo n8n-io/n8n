@@ -371,13 +371,13 @@ async function runLocalExample(args: {
 	try {
 		// Generate workflow
 		const genStartTime = Date.now();
-		const workflow = await runWithOptionalLimiter(globalContext?.llmCallLimiter, async () => {
+		const workflow = await runWithOptionalLimiter(async () => {
 			return await withTimeout({
 				promise: generateWorkflow(testCase.prompt),
 				timeoutMs,
 				label: 'workflow_generation',
 			});
-		});
+		}, globalContext?.llmCallLimiter);
 		const genDurationMs = Date.now() - genStartTime;
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -761,13 +761,13 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			// Generate workflow - wrapped in traceable for proper child trace visibility
 			const traceableGenerate = traceable(
 				async () =>
-					await runWithOptionalLimiter(limiter, async () => {
+					await runWithOptionalLimiter(async () => {
 						return await withTimeout({
 							promise: generateWorkflow(prompt),
 							timeoutMs,
 							label: 'workflow_generation',
 						});
-					}),
+					}, limiter),
 				{
 					name: 'workflow_generation',
 					run_type: 'chain',

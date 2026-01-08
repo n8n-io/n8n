@@ -124,13 +124,13 @@ async function evaluateMultiGeneration(
 	// Generate all workflows and evaluate in parallel
 	const generationRuns = await Promise.all(
 		Array.from({ length: numGenerations }, async (_, i) => {
-			const workflow = await runWithOptionalLimiter(ctx.llmCallLimiter, async () => {
+			const workflow = await runWithOptionalLimiter(async () => {
 				return await withTimeout({
 					promise: ctx.generateWorkflow(ctx.prompt),
 					timeoutMs: ctx.timeoutMs,
 					label: 'pairwise:workflow_generation',
 				});
-			});
+			}, ctx.llmCallLimiter);
 			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
 				generationIndex: i + 1,
 				llmCallLimiter: ctx.llmCallLimiter,

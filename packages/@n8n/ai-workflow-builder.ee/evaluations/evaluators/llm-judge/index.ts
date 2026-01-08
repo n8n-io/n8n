@@ -60,13 +60,13 @@ export function createLLMJudgeEvaluator(
 				generatedWorkflow: workflow,
 			};
 
-			const result = await runWithOptionalLimiter(ctx.llmCallLimiter, async () => {
+			const result = await runWithOptionalLimiter(async () => {
 				return await withTimeout({
 					promise: evaluateWorkflow(llm, input),
 					timeoutMs: ctx.timeoutMs,
 					label: 'llm-judge:evaluateWorkflow',
 				});
-			});
+			}, ctx.llmCallLimiter);
 
 			return [
 				// Core category scores
