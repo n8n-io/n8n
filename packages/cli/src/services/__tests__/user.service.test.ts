@@ -4,6 +4,7 @@ import { Project } from '@n8n/db';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	ProjectRelation,
 	ProjectRepository,
 	Role,
@@ -214,7 +215,7 @@ describe('UserService', () => {
 					mailer.invite.mockResolvedValue({ emailSent: false });
 					// Feature flag enabled - should use JWT tokens
 					postHog.getFeatureFlags.mockResolvedValue({
-						'061_tamper_proof_invite_links': 'variant',
+						'061_tamper_proof_invite_links': true,
 					});
 
 					const result = await userService.inviteUsers(owner, invitations);
@@ -569,6 +570,367 @@ describe('UserService', () => {
 					projectId: personalProject.id,
 				},
 				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+			);
+		});
+	});
+
+	describe('getInvitationIdsFromPayload', () => {
+		it('should extract inviterId and inviteeId from valid JWT token', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': true,
+			});
+
+			const result = await userService.getInvitationIdsFromPayload({ token });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).toHaveBeenCalledWith(token);
+		});
+
+		it('should extract inviterId and inviteeId from legacy format (inviterId and inviteeId)', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': false,
+			});
+
+			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).not.toHaveBeenCalled();
+		});
+
+		it('should throw BadRequestError if JWT token verification fails', async () => {
+			const token = 'invalid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockImplementation(() => {
+				throw new Error('Invalid token');
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if JWT token payload is missing inviterId', async () => {
+			const token = 'valid-jwt-token';
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if JWT token payload is missing inviteeId', async () => {
+			const token = 'valid-jwt-token';
+			const inviterId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if neither token nor inviterId/inviteeId are provided', async () => {
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({})).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload({})).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if only inviterId is provided (missing inviteeId)', async () => {
+			const inviterId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError if only inviteeId is provided (missing inviterId)', async () => {
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+
+			await expect(userService.getInvitationIdsFromPayload({ inviteeId })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ inviteeId })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw BadRequestError when both token and inviterId/inviteeId are provided', async () => {
+			const token = 'valid-jwt-token';
+			const legacyInviterId = uuid();
+			const legacyInviteeId = uuid();
+
+			await expect(
+				userService.getInvitationIdsFromPayload({
+					token,
+					inviterId: legacyInviterId,
+					inviteeId: legacyInviteeId,
+				}),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				userService.getInvitationIdsFromPayload({
+					token,
+					inviterId: legacyInviterId,
+					inviteeId: legacyInviteeId,
+				}),
+			).rejects.toThrow('Invalid invite URL');
+		});
+
+		it('should accept JWT token when feature flag is enabled for instance owner', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': true,
+			});
+
+			const result = await userService.getInvitationIdsFromPayload({ token });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).toHaveBeenCalledWith(token);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			});
+			expect(postHog.getFeatureFlags).toHaveBeenCalledWith({
+				id: instanceOwner.id,
+				createdAt: instanceOwner.createdAt,
+			});
+		});
+
+		it('should reject JWT token when feature flag is disabled for instance owner', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': false,
+			});
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should accept legacy format when feature flag is disabled for instance owner', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': false,
+			});
+
+			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).not.toHaveBeenCalled();
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			});
+		});
+
+		it('should accept legacy format when feature flag is enabled for instance owner', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': true,
+			});
+
+			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
+
+			expect(result).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).not.toHaveBeenCalled();
+		});
+
+		it('should throw error when instance owner is not found', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Instance owner not found',
+			);
+		});
+
+		it('should throw error when feature flag is enabled but no token and only one ID provided', async () => {
+			const inviterId = uuid();
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': true,
+			});
+
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
+				'Invalid invite URL',
+			);
+		});
+
+		it('should throw error when feature flag is disabled but no inviterId/inviteeId provided', async () => {
+			const inviterId = uuid();
+			const inviteeId = uuid();
+			const token = 'valid-jwt-token';
+			const instanceOwner = Object.assign(new User(), {
+				id: uuid(),
+				createdAt: new Date(),
+				role: GLOBAL_OWNER_ROLE,
+			});
+
+			jwtService.verify.mockReturnValue({
+				inviterId,
+				inviteeId,
+			});
+
+			userRepository.findOne.mockResolvedValue(instanceOwner);
+			postHog.getFeatureFlags.mockResolvedValue({
+				'061_tamper_proof_invite_links': false,
+			});
+
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+				'Invalid invite URL',
 			);
 		});
 	});
