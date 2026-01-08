@@ -30,6 +30,8 @@ import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { ElSwitch } from 'element-plus';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import {
 	N8nActionBox,
 	N8nBadge,
@@ -55,6 +57,7 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const postHog = usePostHog();
 
 const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 
@@ -79,6 +82,10 @@ const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
 );
 
+const isTamperProofInviteLinksEnabled = computed(() =>
+	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
@@ -92,9 +99,22 @@ onMounted(async () => {
 const usersListActions = computed((): Array<UserAction<IUser>> => {
 	return [
 		{
+			label: i18n.baseText('settings.users.actions.generateInviteLink'),
+			value: 'generateInviteLink',
+			guard: (user) =>
+				isTamperProofInviteLinksEnabled.value &&
+				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
+				usersStore.usersLimitNotReached &&
+				user.id !== usersStore.currentUserId,
+		},
+		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
 			value: 'copyInviteLink',
-			guard: (user) => usersStore.usersLimitNotReached && !user.firstName && !!user.inviteAcceptUrl,
+			guard: (user) =>
+				!isTamperProofInviteLinksEnabled.value &&
+				usersStore.usersLimitNotReached &&
+				!user.firstName &&
+				!!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
@@ -164,6 +184,9 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 		case 'copyInviteLink':
 			await onCopyInviteLink(userId);
 			break;
+		case 'generateInviteLink':
+			await onGenerateInviteLink(userId);
+			break;
 		case 'copyPasswordResetLink':
 			await onCopyPasswordResetLink(userId);
 			break;
@@ -229,6 +252,23 @@ async function onCopyInviteLink(userId: string) {
 			title: i18n.baseText('settings.users.inviteUrlCreated'),
 			message: i18n.baseText('settings.users.inviteUrlCreated.message'),
 		});
+	}
+}
+async function onGenerateInviteLink(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.generateInviteLink({ id: userId });
+			void clipboard.copy(url.link);
+
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.inviteUrlCreated'),
+				message: i18n.baseText('settings.users.inviteUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
 	}
 }
 async function onCopyPasswordResetLink(userId: string) {
