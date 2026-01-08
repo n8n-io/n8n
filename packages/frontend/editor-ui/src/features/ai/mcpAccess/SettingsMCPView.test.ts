@@ -24,7 +24,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),

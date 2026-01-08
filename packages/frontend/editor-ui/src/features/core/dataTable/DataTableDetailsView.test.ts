@@ -9,7 +9,7 @@ import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/app/composables/useToast');
 vi.mock('vue-router');
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),
 	})),

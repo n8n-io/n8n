@@ -30,7 +30,7 @@ import { isEmpty, isJsonKeyObject } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import { useDocumentTitle } from './useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { isObject } from '@/app/utils/objectUtils';
 import findLast from 'lodash/findLast';

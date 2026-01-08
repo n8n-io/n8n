@@ -8,6 +8,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';

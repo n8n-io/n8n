@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/app/constants';
