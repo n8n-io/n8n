@@ -111,6 +111,82 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(row).toHaveProperty('createdAt');
 		expect(row).toHaveProperty('updatedAt');
 	});
+
+	test('should sort rows by column ascending', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [
+				{ name: 'Charlie', age: 35 },
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'name:asc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		expect(response.body.data[0].name).toBe('Alice');
+		expect(response.body.data[1].name).toBe('Bob');
+		expect(response.body.data[2].name).toBe('Charlie');
+	});
+
+	test('should sort rows by column descending', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [
+				{ name: 'Charlie', age: 35 },
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'age:desc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		expect(response.body.data[0].age).toBe(35);
+		expect(response.body.data[1].age).toBe(30);
+		expect(response.body.data[2].age).toBe(25);
+	});
+
+	test('should reject invalid sort format', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'invalid_format' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid sort format, expected <columnName>:<asc/desc>');
+	});
+
+	test('should reject invalid sort direction', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'name:invalid' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid sort direction');
+	});
 });
 
 describe('POST /data-tables/:dataTableId/rows', () => {

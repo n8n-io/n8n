@@ -45,9 +45,29 @@ export = {
 		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { skip, take, sortBy, search } = req.query;
+				const { skip, take, search } = req.query;
 				const filterString = typeof req.query.filter === 'string' ? req.query.filter : undefined;
 				const filter = filterString ? JSON.parse(filterString) : undefined;
+
+				// Parse sortBy parameter from "column:direction" format
+				let sortBy: [string, 'ASC' | 'DESC'] | undefined;
+				if (req.query.sortBy) {
+					const sortByString = String(req.query.sortBy);
+					const [column, direction] = sortByString.split(':');
+
+					if (!direction) {
+						return res.status(400).json({
+							message: 'Invalid sort format, expected <columnName>:<asc/desc>',
+						});
+					}
+
+					const upperDirection = direction.toUpperCase();
+					if (upperDirection !== 'ASC' && upperDirection !== 'DESC') {
+						return res.status(400).json({ message: 'Invalid sort direction' });
+					}
+
+					sortBy = [column, upperDirection];
+				}
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
 
