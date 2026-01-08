@@ -97,7 +97,7 @@ startTimer('package_build');
 
 echo(chalk.yellow('INFO: Running pnpm install and build...'));
 try {
-	const installProcess = $`cd ${config.rootDir} && pnpm install --frozen-lockfile`;
+	const installProcess = $`cd ${config.rootDir} && pnpm install`;
 	installProcess.pipe(process.stdout);
 	await installProcess;
 
@@ -126,6 +126,7 @@ try {
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
 	console.error(chalk.red('An error occurred during the build process:'));
+	console.error(error);
 	process.exit(1);
 }
 
