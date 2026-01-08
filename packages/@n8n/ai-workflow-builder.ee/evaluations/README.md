@@ -38,47 +38,43 @@ popd
 
 ## Mental Model
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           runEvaluation(config)                          │
-│                                                                          │
-│  Config contains:                                                        │
-│  - mode: 'local' | 'langsmith'                                          │
-│  - dataset: TestCase[] | string (LangSmith dataset name)                │
-│  - generateWorkflow: (prompt) => workflow                               │
-│  - evaluators: Evaluator[]                                              │
-│  - lifecycle: hooks for logging                                         │
-│  - outputDir?: write artifacts (local)                                  │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        For each test case:                               │
-│                                                                          │
-│   1. generateWorkflow(prompt)  →  SimpleWorkflow                        │
-│   2. evaluateWithPlugins(workflow, evaluators, context)                 │
-│      └── runs all evaluators IN PARALLEL                                │
-│   3. Aggregate feedback, determine pass/fail                            │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-             ┌──────────┐    ┌──────────┐    ┌──────────┐
-             │LLM-Judge │    │Pairwise  │    │Program.  │
-             │Evaluator │    │Evaluator │    │Evaluator │
-             └──────────┘    └──────────┘    └──────────┘
-                    │               │               │
-                    └───────────────┼───────────────┘
-                                    ▼
-                           ┌──────────────┐
-                           │  Feedback[]  │
-                           │              │
-                           │ evaluator: str│
-                           │ metric: str   │
-                           │ score: 0-1    │
-                           │ kind: str     │
-                           │ comment?: str │
-                           └──────────────┘
+```mermaid
+flowchart TB
+    subgraph Config["runEvaluation(config)"]
+        direction LR
+        C1["mode: 'local' | 'langsmith'"]
+        C2["dataset: TestCase[] | string"]
+        C3["generateWorkflow: (prompt) => workflow"]
+        C4["evaluators: Evaluator[]"]
+    end
+
+    Config --> Loop
+
+    subgraph Loop["For each test case"]
+        G["1. generateWorkflow(prompt)"]
+        E["2. evaluateWithPlugins (parallel)"]
+        A["3. Aggregate feedback"]
+        G --> E --> A
+    end
+
+    Loop --> Evaluators
+
+    subgraph Evaluators["Evaluators (run in parallel)"]
+        direction LR
+        LLM["LLM-Judge"]
+        Pair["Pairwise"]
+        Prog["Programmatic"]
+    end
+
+    Evaluators --> Feedback
+
+    subgraph Feedback["Feedback[]"]
+        F1["evaluator: string"]
+        F2["metric: string"]
+        F3["score: 0-1"]
+        F4["kind: 'score' | 'metric'"]
+        F5["comment?: string"]
+    end
 ```
 
 ## Key Concepts
