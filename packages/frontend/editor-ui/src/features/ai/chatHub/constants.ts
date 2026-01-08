@@ -12,6 +12,7 @@ export const CHAT_SESSIONS_PAGE_SIZE = 18;
 export const MAX_AGENT_NAME_CHARS_MENU = 45;
 export const NEW_AGENT_MENU_ID = 'agent::new';
 export const MAX_AGENT_NAME_CHARS = 30;
+export const MAX_FLATTENED_SEARCH_RESULTS_PER_PROVIDER = 10;
 
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',

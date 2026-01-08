@@ -20,6 +20,7 @@ import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import {
 	LLM_AGGREGATORS,
 	MAX_AGENT_NAME_CHARS_MENU,
+	MAX_FLATTENED_SEARCH_RESULTS_PER_PROVIDER,
 	NEW_AGENT_MENU_ID,
 	providerDisplayNames,
 } from './constants';
@@ -249,16 +250,18 @@ function buildLlmProviderMenuItem(
 		};
 	}
 
+	const manualModels = (providerSettings?.allowedModels ?? []).flatMap((model) =>
+		model.isManual
+			? [createFakeAgent({ provider, model: model.model }, { name: model.displayName })]
+			: [],
+	);
+
 	// Add any manually defined models in settings
-	for (const model of providerSettings?.allowedModels ?? []) {
-		if (model.isManual) {
-			models.push(createFakeAgent({ provider, model: model.model }, { name: model.displayName }));
-		}
-	}
+	const allModels = [...models, ...manualModels];
 
 	const agentOptions =
-		models.length > 0
-			? models
+		allModels.length > 0
+			? allModels
 					.flatMap((agent, index) => {
 						// Filter out models not allowed in settings
 						if (providerSettings && !isAllowedModel(providerSettings, agent.model)) {
@@ -331,7 +334,7 @@ export function applySearch(menuItems: MenuItem[], query: string, i18n: I18nClas
 		}
 
 		const results = collectFlattenedSearchResults(matched, []);
-		const flattenCount = Math.max(0, 10 - acc.length);
+		const flattenCount = Math.max(0, MAX_FLATTENED_SEARCH_RESULTS_PER_PROVIDER - acc.length);
 		const provider = matched.data?.provider;
 		const providerName = provider ? providerDisplayNames[provider] : '';
 
@@ -384,12 +387,14 @@ export function buildModelSelectorMenuItems(
 		return aInt - bInt;
 	});
 
-	for (let i = 0; i < sortedProviders.length; i++) {
-		const provider = sortedProviders[i];
+	let dividerInserted = false;
+
+	for (const provider of sortedProviders) {
 		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
 
 		if (item) {
-			menuItems.push(i === 0 ? { ...item, divided: true } : item);
+			menuItems.push(dividerInserted ? item : { ...item, divided: true });
+			dividerInserted = true;
 		}
 	}
 
