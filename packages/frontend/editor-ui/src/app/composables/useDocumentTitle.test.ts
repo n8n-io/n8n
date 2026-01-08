@@ -70,4 +70,44 @@ describe('useDocumentTitle', () => {
 			expect(document.title).toBe('[Done] My Workflow - n8n');
 		});
 	});
+
+	describe('getDocumentState', () => {
+		beforeEach(() => {
+			settings.releaseChannel = 'stable';
+		});
+
+		it('should return undefined initially', () => {
+			const { getDocumentState } = useDocumentTitle();
+			expect(getDocumentState()).toBeUndefined();
+		});
+
+		it('should return the current state after setDocumentTitle is called', () => {
+			const { setDocumentTitle, getDocumentState } = useDocumentTitle();
+			setDocumentTitle('My Workflow', 'AI_BUILDING');
+			expect(getDocumentState()).toBe('AI_BUILDING');
+		});
+
+		it('should track state changes', () => {
+			const { setDocumentTitle, getDocumentState } = useDocumentTitle();
+
+			setDocumentTitle('My Workflow', 'IDLE');
+			expect(getDocumentState()).toBe('IDLE');
+
+			setDocumentTitle('My Workflow', 'AI_BUILDING');
+			expect(getDocumentState()).toBe('AI_BUILDING');
+
+			setDocumentTitle('My Workflow', 'AI_DONE');
+			expect(getDocumentState()).toBe('AI_DONE');
+		});
+
+		it('should return undefined after reset is called', () => {
+			const { setDocumentTitle, getDocumentState, reset } = useDocumentTitle();
+
+			setDocumentTitle('My Workflow', 'AI_DONE');
+			expect(getDocumentState()).toBe('AI_DONE');
+
+			reset();
+			expect(getDocumentState()).toBeUndefined();
+		});
+	});
 });
