@@ -159,7 +159,9 @@ describe('processHitlResponses', () => {
 			const processedData = result.processedResponse.actionResponses[0].data?.data
 				?.ai_tool?.[0]?.[0]?.json as Record<string, unknown>;
 			expect(processedData.approved).toBe(false);
-			expect(processedData.response).toContain('denied by human reviewer');
+			expect(processedData.response).toContain(
+				'User rejected the tool call for Gated Tool Node with id action-1. STOP what you are doing and wait for the user to tell you how to proceed. You may call the tool again if user requests it.',
+			);
 		});
 	});
 

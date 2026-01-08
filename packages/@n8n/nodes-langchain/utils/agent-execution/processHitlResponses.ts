@@ -101,7 +101,8 @@ export function processHitlResponses(
 
 		const { hitl } = actionResponse.action.metadata;
 		const approved = getApprovalStatus(actionResponse);
-
+		const toolName = hitl.gatedToolNodeName;
+		const toolId = actionResponse.action.id;
 		if (approved === true) {
 			hasApprovedHitlTools = true;
 
@@ -110,7 +111,7 @@ export function processHitlResponses(
 				nodeName: hitl.gatedToolNodeName,
 				input: { tool: hitl.toolName, ...hitl.originalInput },
 				type: NodeConnectionTypes.AiTool,
-				id: actionResponse.action.id,
+				id: toolId,
 				metadata: {
 					itemIndex,
 					// Set the parent node to the HITL node for proper log tree structure
@@ -127,7 +128,8 @@ export function processHitlResponses(
 							[
 								{
 									json: {
-										response: 'Tool execution was denied by human reviewer.',
+										id: toolId,
+										response: `User rejected the tool call for ${toolName} with id ${toolId}. STOP what you are doing and wait for the user to tell you how to proceed. You may call the tool again if user requests it.`,
 										approved: false,
 									},
 								},
