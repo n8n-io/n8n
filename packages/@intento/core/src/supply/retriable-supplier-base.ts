@@ -27,7 +27,7 @@ export abstract class RetriableSupplierBase<
 		let result: TS | TE | undefined;
 
 		for (let attempt = 0; attempt < this.context.maxAttempts; attempt++) {
-			result = await this.supply(request.clone(), cancellationSignal);
+			result = await this.supply(request, cancellationSignal);
 			if (result instanceof SupplyResponseBase) return result;
 			if (!result.isRetriable) return result;
 		}

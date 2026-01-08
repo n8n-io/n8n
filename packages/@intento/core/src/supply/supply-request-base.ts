@@ -46,11 +46,4 @@ export abstract class SupplyRequestBase implements ITraceable, IDataProvider {
 
 	abstract asLogMetadata(): LogMetadata;
 	abstract asDataObject(): IDataObject;
-
-	/**
-	 * Creates a deep copy of the request for retry attempts.
-	 *
-	 * NOTE: SupplierBase calls this before each retry to ensure request immutability.
-	 */
-	abstract clone(): this;
 }

@@ -23,35 +23,35 @@ export abstract class SupplierBase<TI extends SupplyRequestBase, TS extends Supp
 
 	protected abstract onError(request: TI, error: Error): TE;
 
-	async supply(request: TI, signal?: AbortSignal): Promise<TS | TE> {
-		const runIndex = this.startSupply(request);
+	async supply(request: TI, signal?: AbortSignal, attempt: number = 0): Promise<TS | TE> {
+		const runIndex = this.startSupply(request, attempt);
 		try {
 			const result = await this.execute(request, signal);
-			this.completeSupply(runIndex, result);
+			this.completeSupply(runIndex, result, attempt);
 			return result;
 		} catch (error) {
 			const supplyError = this.onError(request, error as Error);
-			this.completeSupply(runIndex, supplyError);
+			this.completeSupply(runIndex, supplyError, attempt);
 			return supplyError;
 		}
 	}
 
-	private startSupply(request: TI): number {
-		this.tracer.debug(`🚚 [${this.descriptor.name}] Starting supply...`, request.asLogMetadata());
+	private startSupply(request: TI, attempt: number): number {
+		this.tracer.debug(`🚚 [${this.descriptor.name}] Starting supply attempt ${attempt}...`, request.asLogMetadata());
 		const runIndex = this.functions.addInputData(this.connection, [[{ json: request.asDataObject() }]]);
 		return runIndex.index;
 	}
 
-	private completeSupply(index: number, result: TS | TE): void {
+	private completeSupply(index: number, result: TS | TE, attempt: number): void {
 		if (result instanceof SupplyResponseBase) {
-			this.tracer.debug(`🚚 [${this.descriptor.name}] supplied data successfully`, result.asLogMetadata());
+			this.tracer.debug(`🚚 [${this.descriptor.name}] supplied data successfully on attempt ${attempt}`, result.asLogMetadata());
 			this.functions.addOutputData(this.connection, index, [[{ json: result.asDataObject() }]]);
 			return;
 		}
 		if (result.isRetriable) {
-			this.tracer.info(`🚚 [${this.descriptor.name}] failed supply`, result.asLogMetadata());
+			this.tracer.info(`🚚 [${this.descriptor.name}] failed supply on attempt ${attempt}`, result.asLogMetadata());
 		} else {
-			this.tracer.warn(`🚚 [${this.descriptor.name}] failed supply with non-retriable error`, result.asLogMetadata());
+			this.tracer.warn(`🚚 [${this.descriptor.name}] failed supply with non-retriable error on attempt ${attempt}`, result.asLogMetadata());
 		}
 		this.functions.addOutputData(this.connection, index, result.asError(this.functions.getNode()));
 	}
