@@ -276,7 +276,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 'pending',
 				options: [
 					{
 						name: 'Pending',
