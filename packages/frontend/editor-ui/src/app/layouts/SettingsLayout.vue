@@ -1,10 +1,14 @@
 <script lang="ts" setup>
-import SettingsSidebar from '@/app/components/SettingsSidebar.vue';
+import BaseLayout from './BaseLayout.vue';
 import { VIEWS } from '@/app/constants';
 import { isRouteLocationRaw } from '@/app/utils/typeGuards';
-import { onMounted, ref } from 'vue';
+import { defineAsyncComponent, onMounted, ref } from 'vue';
 import type { HistoryState } from 'vue-router';
 import { useRouter } from 'vue-router';
+
+const SettingsSidebar = defineAsyncComponent(
+	async () => await import('@/app/components/SettingsSidebar.vue'),
+);
 
 const router = useRouter();
 
@@ -29,33 +33,29 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<SettingsSidebar @return="onReturn" />
+	<BaseLayout>
+		<template #sidebar>
+			<Suspense>
+				<SettingsSidebar @return="onReturn" />
+			</Suspense>
+		</template>
+
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<!--
-					Because we're using nested routes the props are going to be bind to the top level route
-					so we need to pass them down to the child component
-				-->
-				<RouterView name="settingsView" v-bind="$attrs" />
+				<RouterView />
 			</div>
 		</div>
-	</div>
+	</BaseLayout>
 </template>
 
 <style lang="scss" module>
-.container {
+.contentContainer {
 	height: 100%;
 	width: 100%;
 	display: flex;
 	overflow: hidden;
-}
-
-.contentContainer {
-	composes: container;
 	justify-content: center;
 	padding-top: 70.5px;
-	height: 100%;
 	overflow: auto;
 	background-color: var(--color--background--light-2);
 	position: relative;
