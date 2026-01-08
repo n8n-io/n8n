@@ -4,17 +4,19 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Messages',
 		name: 'messages',
-		placeholder: 'Add Message',
 		type: 'fixedCollection',
+		description: 'Messages for the conversation',
+		required: true,
 		displayOptions: {
 			show: {
-				operation: ['chat'],
+				operation: ['asyncCreate'],
 			},
 		},
 		typeOptions: {
 			multipleValues: true,
+			sortable: true,
 		},
-		description: 'The messages to generate a completion for',
+		placeholder: 'Add Message',
 		default: {
 			message: [
 				{
@@ -31,30 +33,22 @@ export const properties: INodeProperties[] = [
 					{
 						displayName: 'Role',
 						name: 'role',
+						required: true,
 						type: 'options',
 						options: [
-							{
-								name: 'System',
-								value: 'system',
-							},
-							{
-								name: 'User',
-								value: 'user',
-							},
-							{
-								name: 'Assistant',
-								value: 'assistant',
-							},
+							{ name: 'System', value: 'system' },
+							{ name: 'User', value: 'user' },
+							{ name: 'Assistant', value: 'assistant' },
 						],
 						default: 'user',
-						description: 'The role of the author of this message',
 					},
 					{
 						displayName: 'Content',
 						name: 'content',
 						type: 'string',
 						default: '',
-						description: 'The contents of the message',
+						description: 'The content of the message',
+						required: true,
 					},
 				],
 			},
@@ -62,7 +56,7 @@ export const properties: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'messages',
+				property: 'request.messages',
 				value: '={{ $value.message }}',
 			},
 		},
@@ -71,13 +65,13 @@ export const properties: INodeProperties[] = [
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
-				operation: ['chat'],
+				operation: ['asyncCreate'],
 			},
 		},
-		default: false,
-		description: 'Whether to return only essential fields (ID, citations, message)',
+		description: 'Whether to return only essential fields (ID, model, status, created_at)',
 		routing: {
 			output: {
 				postReceive: [
@@ -86,7 +80,7 @@ export const properties: INodeProperties[] = [
 						enabled: '={{ $value }}',
 						properties: {
 							value:
-								'={{ { "id": $response.body?.id, "created": $response.body?.created, "citations": $response.body?.citations || $response.body?.search_results || [], "message": $response.body?.choices?.[0]?.message?.content || $response.body?.content || "", "reasoning_steps": $response.body?.choices?.[0]?.message?.reasoning_steps || $response.body?.reasoning_steps || [], "search_results": $response.body?.search_results || [] } }}',
+								'={{ { id: $response.body?.id, model: $response.body?.model, status: $response.body?.status, created_at: $response.body?.created_at } }}',
 						},
 					},
 				],
@@ -97,20 +91,20 @@ export const properties: INodeProperties[] = [
 		displayName: 'Stream Response',
 		name: 'stream',
 		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
-				operation: ['chat'],
+				operation: ['asyncCreate'],
 			},
 			hide: {
 				proSearch: [true],
 			},
 		},
-		default: false,
 		description: 'Whether to stream the response incrementally. Required for Pro Search.',
 		routing: {
 			send: {
 				type: 'body',
-				property: 'stream',
+				property: 'request.stream',
 				value: '={{ $parameter.proSearch === true ? true : $value }}',
 			},
 		},
@@ -119,18 +113,18 @@ export const properties: INodeProperties[] = [
 		displayName: 'Stream Response',
 		name: 'streamLocked',
 		type: 'boolean',
+		default: true,
 		displayOptions: {
 			show: {
-				operation: ['chat'],
+				operation: ['asyncCreate'],
 				proSearch: [true],
 			},
 		},
-		default: true,
 		description: 'Whether streaming is required and automatically enabled when Pro Search is on',
 		routing: {
 			send: {
 				type: 'body',
-				property: 'stream',
+				property: 'request.stream',
 				value: '={{ true }}',
 			},
 		},
@@ -139,13 +133,13 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: ['chat'],
-			},
-		},
 		placeholder: 'Add Option',
 		default: {},
+		displayOptions: {
+			show: {
+				operation: ['asyncCreate'],
+			},
+		},
 		options: [
 			{
 				displayName: 'Frequency Penalty',
@@ -160,7 +154,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'frequency_penalty',
+						property: 'request.frequency_penalty',
 					},
 				},
 			},
@@ -174,7 +168,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'max_tokens',
+						property: 'request.max_tokens',
 					},
 				},
 			},
@@ -192,7 +186,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'temperature',
+						property: 'request.temperature',
 					},
 				},
 			},
@@ -210,7 +204,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'top_k',
+						property: 'request.top_k',
 					},
 				},
 			},
@@ -220,7 +214,7 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 				default: 0.9,
 				description:
-					'The nucleus sampling parameter, where the model considers the results of the tokens with top_p probability mass. Values are between 0 and 1. We recommend either altering Top K or Top P, but not both.',
+					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with Top P probability mass. We recommend either altering Top K or Top P, but not both.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 1,
@@ -228,7 +222,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'top_p',
+						property: 'request.top_p',
 					},
 				},
 			},
@@ -238,26 +232,43 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 				default: 0,
 				description:
-					"Values greater than 1.0 penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				typeOptions: {
+					minValue: -2.0,
+					maxValue: 2.0,
+				},
 				routing: {
 					send: {
 						type: 'body',
-						property: 'presence_penalty',
+						property: 'request.presence_penalty',
 					},
 				},
 			},
 			{
-				displayName: 'Language Preference',
-				name: 'languagePreference',
-				type: 'string',
-				default: '',
+				displayName: 'Return Images',
+				name: 'returnImages',
+				type: 'boolean',
+				default: false,
 				description:
-					'Preferred language for the response content (e.g., English, Korean, Spanish). Supported by sonar and sonar-pro models.',
-				placeholder: 'e.g. English',
+					'Whether or not a request to an online model should return images. Requires Perplexity API usage Tier-2.',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'language_preference',
+						property: 'request.return_images',
+					},
+				},
+			},
+			{
+				displayName: 'Return Related Questions',
+				name: 'returnRelatedQuestions',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether or not a request to an online model should return related questions. Requires Perplexity API usage Tier-2.',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.return_related_questions',
 					},
 				},
 			},
@@ -267,12 +278,12 @@ export const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Comma-separated list of domains to filter search results. Use - to exclude (e.g., "-reddit.com").',
+					'Limit the citations used by the online model to URLs from the specified domains. For blacklisting, add a <code>-</code> to the beginning of the domain string (e.g., <code>-domain1</code>). Maximum 20 domains. Requires Perplexity API usage Tier-2+.',
 				placeholder: 'e.g. domain1,domain2,-domain3',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'search_domain_filter',
+						property: 'request.search_domain_filter',
 						value:
 							'={{ typeof $value === "string" && $value ? $value.split(",").map(domain => domain.trim()).filter(domain => domain) : $value }}',
 					},
@@ -293,7 +304,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'search_recency_filter',
+						property: 'request.search_recency_filter',
 					},
 				},
 			},
@@ -311,7 +322,22 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'search_mode',
+						property: 'request.search_mode',
+					},
+				},
+			},
+			{
+				displayName: 'Language Preference',
+				name: 'languagePreference',
+				type: 'string',
+				default: '',
+				description:
+					'Preferred language for the response content (e.g., English, Korean, Spanish). Supported by sonar and sonar-pro models.',
+				placeholder: 'e.g. English',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.language_preference',
 					},
 				},
 			},
@@ -325,7 +351,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'disable_search',
+						property: 'request.disable_search',
 					},
 				},
 			},
@@ -339,7 +365,7 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'enable_search_classifier',
+						property: 'request.enable_search_classifier',
 					},
 				},
 			},
@@ -356,19 +382,20 @@ export const properties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'web_search_options.search_context_size',
+						property: 'request.web_search_options.search_context_size',
 					},
 				},
 			},
 			{
-				displayName: 'Media: Return Images',
-				name: 'returnImages',
+				displayName: 'Web Search: Image Search Relevance Enhanced',
+				name: 'imageSearchRelevanceEnhanced',
 				type: 'boolean',
 				default: false,
+				description: 'Whether to improve relevance of image search results to the query',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'return_images',
+						property: 'request.web_search_options.image_search_relevance_enhanced',
 					},
 				},
 			},
@@ -377,22 +404,81 @@ export const properties: INodeProperties[] = [
 				name: 'returnVideos',
 				type: 'boolean',
 				default: false,
+				description: 'Whether to enable video content in responses',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'media_response.overrides.return_videos',
+						property: 'request.media_response.overrides.return_videos',
 					},
 				},
 			},
 			{
-				displayName: 'Return Related Questions',
-				name: 'returnRelatedQuestions',
+				displayName: 'Media: Return Images Override',
+				name: 'returnImagesOverride',
 				type: 'boolean',
 				default: false,
+				description: 'Whether to override top-level return_images parameter',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'return_related_questions',
+						property: 'request.media_response.overrides.return_images',
+					},
+				},
+			},
+			{
+				displayName: 'Search After Date',
+				name: 'searchAfterDateFilter',
+				type: 'string',
+				default: '',
+				description: 'Filter citations to content published after this date (MM/DD/YYYY format)',
+				placeholder: '01/15/2024',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.search_after_date_filter',
+					},
+				},
+			},
+			{
+				displayName: 'Search Before Date',
+				name: 'searchBeforeDateFilter',
+				type: 'string',
+				default: '',
+				description: 'Filter citations to content published before this date (MM/DD/YYYY format)',
+				placeholder: '12/31/2024',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.search_before_date_filter',
+					},
+				},
+			},
+			{
+				displayName: 'Last Updated After',
+				name: 'lastUpdatedAfterFilter',
+				type: 'string',
+				default: '',
+				description: 'Filter citations to content last updated after this date (MM/DD/YYYY format)',
+				placeholder: '01/15/2024',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.last_updated_after_filter',
+					},
+				},
+			},
+			{
+				displayName: 'Last Updated Before',
+				name: 'lastUpdatedBeforeFilter',
+				type: 'string',
+				default: '',
+				description:
+					'Filter citations to content last updated before this date (MM/DD/YYYY format)',
+				placeholder: '12/31/2024',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'request.last_updated_before_filter',
 					},
 				},
 			},

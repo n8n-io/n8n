@@ -3,9 +3,13 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { sendErrorPostReceive } from '../GenericFunctions';
+import {
+	sendErrorPostReceive,
+	validateModelParameters,
+	processProSearchResponse,
+} from '../GenericFunctions';
 
 // Mock implementation for `this` in `sendErrorPostReceive`
 const mockExecuteSingleFunctions = {
@@ -49,7 +53,7 @@ describe('Generic Functions', () => {
 			).rejects.toThrow(NodeApiError);
 		});
 
-		it('should throw NodeApiError with "Invalid model" message if error type is invalid_model', async () => {
+		it('should throw NodeApiError with "Invalid model selected" message if error type is invalid_model', async () => {
 			const errorResponse = {
 				statusCode: 400,
 				body: {
@@ -68,19 +72,19 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
+					message: 'Invalid model selected',
 					description:
-						'The model is not valid. Permitted models can be found in the documentation at https://docs.perplexity.ai/guides/model-cards.',
+						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/getting-started/models for details.',
 				}),
 			);
 		});
 
-		it('should throw NodeApiError with "Invalid parameter" message if error type is invalid_parameter', async () => {
+		it('should throw NodeApiError with error message if error type is invalid_request_error', async () => {
 			const errorResponse = {
 				statusCode: 400,
 				body: {
 					error: {
-						type: 'invalid_parameter',
+						type: 'invalid_request_error',
 						message: 'Invalid parameter provided',
 					},
 				},
@@ -96,7 +100,7 @@ describe('Generic Functions', () => {
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Invalid parameter provided.',
 					description:
-						'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});
@@ -121,18 +125,20 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
-					description: 'Permitted models documentation...',
+					message: 'Invalid model selected [Item 0]',
+					description:
+						'The selected model is not valid. Valid models are: sonar, sonar-pro, sonar-deep-research, sonar-reasoning-pro. See https://docs.perplexity.ai/getting-started/models for details.',
 				}),
 			);
 		});
 
-		it('should handle "invalid_parameter" error with non-string message', async () => {
+		it('should handle error with non-string message', async () => {
 			const errorResponse = {
 				statusCode: 400,
+				statusMessage: 'Bad Request',
 				body: {
 					error: {
-						type: 'invalid_parameter',
+						type: 'invalid_request_error',
 						message: { detail: 'Invalid param' },
 					},
 				},
@@ -146,8 +152,9 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'An unexpected issue occurred.',
-					description: 'Please check parameters...',
+					message: 'Bad Request.',
+					description:
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});
@@ -155,6 +162,7 @@ describe('Generic Functions', () => {
 		it('should throw generic error for unknown error type', async () => {
 			const errorResponse = {
 				statusCode: 500,
+				statusMessage: 'Internal Server Error',
 				body: {
 					error: {
 						type: 'server_error',
@@ -172,7 +180,8 @@ describe('Generic Functions', () => {
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
 					message: 'Internal server error.',
-					description: 'Refer to API documentation...',
+					description:
+						'Please check your message format and parameters. For Chat Completions API documentation, see: https://docs.perplexity.ai/api-reference/chat-completions-post',
 				}),
 			);
 		});
@@ -200,6 +209,190 @@ describe('Generic Functions', () => {
 					message: 'Error with item [Item 2].',
 				}),
 			);
+		});
+	});
+
+	describe('validateModelParameters', () => {
+		it('should not throw error for valid parameters', () => {
+			const params = {
+				model: 'sonar-deep-research',
+				reasoningEffort: 'high',
+				stream: true,
+			};
+
+			expect(() => {
+				validateModelParameters.call(mockExecuteSingleFunctions, params);
+			}).not.toThrow();
+		});
+
+		it('should throw error when reasoningEffort is used with non-deep-research model', () => {
+			const params = {
+				model: 'sonar-pro',
+				reasoningEffort: 'high',
+			};
+
+			expect(() => {
+				validateModelParameters.call(mockExecuteSingleFunctions, params);
+			}).toThrow(NodeOperationError);
+		});
+
+		it('should throw error when Pro Search is used without streaming', () => {
+			const params = {
+				model: 'sonar-pro',
+				webSearchOptions: { searchType: 'pro' },
+				stream: false,
+			};
+
+			expect(() => {
+				validateModelParameters.call(mockExecuteSingleFunctions, params);
+			}).toThrow(NodeOperationError);
+		});
+
+		it('should not throw error when Pro Search is used with streaming', () => {
+			const params = {
+				model: 'sonar-pro',
+				webSearchOptions: { searchType: 'pro' },
+				stream: true,
+			};
+
+			expect(() => {
+				validateModelParameters.call(mockExecuteSingleFunctions, params);
+			}).not.toThrow();
+		});
+	});
+
+	describe('processProSearchResponse', () => {
+		let testResponse: IN8nHttpFullResponse;
+
+		beforeEach(() => {
+			testResponse = { statusCode: 200, headers: {}, body: {} };
+		});
+
+		it('should pass through non-streaming response unchanged', async () => {
+			const testData: INodeExecutionData[] = [
+				{
+					json: {
+						id: 'test-123',
+						model: 'sonar-pro',
+						object: 'chat.completion',
+						choices: [{ message: { role: 'assistant', content: 'Hello' } }],
+					},
+				},
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			expect(result[0].json).toEqual(testData[0].json);
+		});
+
+		it('should parse SSE string with single chunk', async () => {
+			const sseString =
+				'data: {"id":"123","model":"sonar-pro","object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello"}}]}\r\n\r\n';
+			const testData: INodeExecutionData[] = [
+				{ json: sseString as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			expect(result[0].json).toHaveProperty('id', '123');
+			expect(result[0].json).toHaveProperty('choices');
+			const resultJson = result[0].json as { choices: Array<{ message: { content: string } }> };
+			expect(resultJson.choices[0].message.content).toBe('Hello');
+		});
+
+		it('should accumulate content from multiple SSE chunks', async () => {
+			const sseString =
+				'data: {"id":"123","model":"sonar-pro","object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello"}}]}\r\n\r\n' +
+				'data: {"id":"123","model":"sonar-pro","object":"chat.completion.chunk","choices":[{"delta":{"content":" world"}}]}\r\n\r\n';
+			const testData: INodeExecutionData[] = [
+				{ json: sseString as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			const resultJson = result[0].json as { choices: Array<{ message: { content: string } }> };
+			expect(resultJson.choices[0].message.content).toBe('Hello world');
+		});
+
+		it('should extract reasoning steps from chat.reasoning chunks', async () => {
+			const sseString =
+				'data: {"id":"123","model":"sonar-pro","object":"chat.reasoning","choices":[{"delta":{"reasoning_steps":[{"thought":"Searching","type":"web_search"}]}}]}\r\n\r\n';
+			const testData: INodeExecutionData[] = [
+				{ json: sseString as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			const resultJson = result[0].json as {
+				choices: Array<{ message: { reasoning_steps: unknown[] } }>;
+			};
+			expect(resultJson.choices[0].message.reasoning_steps).toHaveLength(1);
+		});
+
+		it('should extract search results from reasoning steps', async () => {
+			const sseString =
+				'data: {"id":"123","model":"sonar-pro","object":"chat.reasoning","choices":[{"delta":{"reasoning_steps":[{"thought":"Searching","type":"web_search","web_search":{"search_results":[{"title":"Test","url":"http://test.com"}]}}]}}]}\r\n\r\n';
+			const testData: INodeExecutionData[] = [
+				{ json: sseString as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			const resultJson = result[0].json as { search_results: unknown[] };
+			expect(resultJson.search_results).toHaveLength(1);
+		});
+
+		it('should skip malformed SSE chunks', async () => {
+			const sseString =
+				'data: {"id":"123","object":"chat.completion.chunk","choices":[{"delta":{"content":"Good"}}]}\r\n\r\n' +
+				'data: {invalid json}\r\n\r\n' +
+				'data: [DONE]\r\n\r\n';
+			const testData: INodeExecutionData[] = [
+				{ json: sseString as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			const resultJson = result[0].json as { choices: Array<{ message: { content: string } }> };
+			expect(resultJson.choices[0].message.content).toBe('Good');
+		});
+
+		it('should handle empty SSE string', async () => {
+			const testData: INodeExecutionData[] = [
+				{ json: '' as unknown as INodeExecutionData['json'] },
+			];
+
+			const result = await processProSearchResponse.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+
+			expect(result[0].json).toBe('');
 		});
 	});
 });

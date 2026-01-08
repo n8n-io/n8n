@@ -14,8 +14,7 @@ describe('Perplexity Node - Chat Completions', () => {
 		nock('https://api.perplexity.ai')
 			.post('/chat/completions', (body) => {
 				return (
-					body?.model?.value === 'sonar' &&
-					body?.model?.mode === 'id' &&
+					body?.model === 'sonar' &&
 					Array.isArray(body?.messages) &&
 					body.messages.length === 3 &&
 					body.messages[0].role === 'user' &&

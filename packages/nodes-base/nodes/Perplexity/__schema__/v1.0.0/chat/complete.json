@@ -1,108 +1,155 @@
 {
-    "type": "object",
-    "properties": {
-        "choices": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "delta": {
-                        "type": "object",
-                        "properties": {
-                            "content": {
-                                "type": "string"
-                            },
-                            "role": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "finish_reason": {
-                        "type": "string"
-                    },
-                    "index": {
-                        "type": "integer"
-                    },
-                    "message": {
-                        "type": "object",
-                        "properties": {
-                            "content": {
-                                "type": "string"
-                            },
-                            "role": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "citations": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "created": {
-            "type": "integer"
-        },
-        "id": {
-            "type": "string"
-        },
-        "model": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
-        "search_results": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "snippet": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "usage": {
-            "type": "object",
-            "properties": {
-                "completion_tokens": {
-                    "type": "integer"
-                },
-                "cost": {
-                    "type": "object",
-                    "properties": {
-                        "request_cost": {
-                            "type": "number"
-                        },
-                        "total_cost": {
-                            "type": "number"
-                        }
-                    }
-                },
-                "prompt_tokens": {
-                    "type": "integer"
-                },
-                "search_context_size": {
-                    "type": "string"
-                },
-                "total_tokens": {
-                    "type": "integer"
-                }
-            }
-        }
-    },
-    "version": 4
+	"type": "object",
+	"properties": {
+		"choices": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"delta": {
+						"type": "object",
+						"properties": {
+							"content": {
+								"type": "string"
+							},
+							"role": {
+								"type": "string"
+							}
+						}
+					},
+					"finish_reason": {
+						"type": "string"
+					},
+					"index": {
+						"type": "integer"
+					},
+					"message": {
+						"type": "object",
+						"properties": {
+							"content": {
+								"type": "string"
+							},
+							"role": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		},
+		"citations": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"created": {
+			"type": "integer"
+		},
+		"id": {
+			"type": "string"
+		},
+		"model": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"search_results": {
+			"type": "array",
+			"nullable": true,
+			"items": {
+				"type": "object",
+				"properties": {
+					"title": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string",
+						"format": "uri"
+					},
+					"snippet": {
+						"type": "string"
+					},
+					"date": {
+						"type": "string",
+						"format": "date",
+						"nullable": true
+					},
+					"last_updated": {
+						"type": "string",
+						"format": "date",
+						"nullable": true
+					}
+				},
+				"required": ["title", "url", "snippet"]
+			}
+		},
+		"videos": {
+			"type": "array",
+			"nullable": true,
+			"description": "A list of video results when media_response.overrides.return_videos is enabled",
+			"items": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"format": "uri",
+						"description": "The URL of the video"
+					},
+					"thumbnail_url": {
+						"type": "string",
+						"format": "uri",
+						"nullable": true,
+						"description": "The URL of the video thumbnail image"
+					},
+					"thumbnail_width": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The width of the thumbnail image in pixels"
+					},
+					"thumbnail_height": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The height of the thumbnail image in pixels"
+					},
+					"duration": {
+						"type": "integer",
+						"nullable": true,
+						"description": "The duration of the video in seconds"
+					}
+				},
+				"required": ["url"]
+			}
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"completion_tokens": {
+					"type": "integer"
+				},
+				"cost": {
+					"type": "object",
+					"properties": {
+						"request_cost": {
+							"type": "number"
+						},
+						"total_cost": {
+							"type": "number"
+						}
+					}
+				},
+				"prompt_tokens": {
+					"type": "integer"
+				},
+				"search_context_size": {
+					"type": "string"
+				},
+				"total_tokens": {
+					"type": "integer"
+				}
+			}
+		}
+	},
+	"version": 4
 }
