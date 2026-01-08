@@ -2,7 +2,15 @@ import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
-import { ProjectRelation, User, UserRepository, ProjectRepository, Not, In } from '@n8n/db';
+import {
+	ProjectRelation,
+	User,
+	UserRepository,
+	ProjectRepository,
+	Not,
+	In,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	getGlobalScopes,
@@ -14,6 +22,7 @@ import {
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
@@ -27,7 +36,6 @@ import { RoleService } from './role.service';
 import { JwtService } from './jwt.service';
 
 const TAMPER_PROOF_INVITE_LINKS_EXPERIMENT = '061_tamper_proof_invite_links';
-const TAMPER_PROOF_INVITE_LINKS_VARIANT = 'variant';
 
 @Service()
 export class UserService {
@@ -166,8 +174,7 @@ export class UserService {
 				id: owner.id,
 				createdAt: owner.createdAt,
 			});
-			useTamperProofLinks =
-				featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === TAMPER_PROOF_INVITE_LINKS_VARIANT;
+			useTamperProofLinks = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
 		} catch (error) {
 			// If feature flag check fails, fall back to old mechanism
 			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
@@ -398,5 +405,79 @@ export class UserService {
 				);
 			}
 		});
+	}
+
+	/**
+	 * Extract inviterId and inviteeId from either JWT token or legacy query parameters
+	 * Validates the format based on the feature flag for the inviter
+	 * @param payload - ResolveSignupTokenQueryDto containing either token or inviterId/inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if format doesn't match feature flag, JWT is invalid, or required parameters are missing
+	 */
+	private async processTokenBasedInvite(
+		token: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		try {
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			if (!decoded.inviterId || !decoded.inviteeId) {
+				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
+				throw new BadRequestError('Invalid invite URL');
+			}
+
+			return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
+		} catch (error) {
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+			this.logger.debug('Failed to verify JWT token', { error });
+			throw new BadRequestError('Invalid invite URL');
+		}
+	}
+
+	private async processInviteeIdInviterIdBasedInvite(
+		inviterId: string,
+		inviteeId: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		return { inviterId, inviteeId };
+	}
+
+	async getInvitationIdsFromPayload(payload: {
+		token?: string;
+		inviterId?: string;
+		inviteeId?: string;
+	}): Promise<{ inviterId: string; inviteeId: string }> {
+		if (payload.token && (payload.inviteeId || payload.inviterId)) {
+			this.logger.error('Invalid invite url containing both token and inviterId / inviteeId');
+			throw new BadRequestError('Invalid invite URL');
+		}
+
+		const instanceOwner = await this.userRepository.findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		});
+
+		if (!instanceOwner) {
+			throw new BadRequestError('Instance owner not found');
+		}
+
+		let isTamperProofLinksEnabled = false;
+		try {
+			const featureFlags = await this.postHog.getFeatureFlags({
+				id: instanceOwner.id,
+				createdAt: instanceOwner.createdAt,
+			});
+			isTamperProofLinksEnabled = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
+		} catch (error) {
+			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
+		}
+
+		if (isTamperProofLinksEnabled && payload.token) {
+			return await this.processTokenBasedInvite(payload.token);
+		}
+
+		if (payload.inviterId && payload.inviteeId) {
+			return await this.processInviteeIdInviterIdBasedInvite(payload.inviterId, payload.inviteeId);
+		}
+
+		throw new BadRequestError('Invalid invite URL');
 	}
 }
