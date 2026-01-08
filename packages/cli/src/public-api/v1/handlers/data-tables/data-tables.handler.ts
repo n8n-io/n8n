@@ -1,3 +1,10 @@
+import {
+	ListDataTableContentQueryDto,
+	AddDataTableRowsDto,
+	UpdateDataTableRowDto,
+	UpsertDataTableRowDto,
+	DeleteDataTableRowsDto,
+} from '@n8n/api-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -19,6 +26,20 @@ const handleError = (error: unknown, res: express.Response): express.Response =>
 		return res.status(400).json({ message: error.message });
 	}
 	throw error;
+};
+
+/**
+ * Convert all query parameter values to strings for DTO validation.
+ * Express/Supertest may parse some values as numbers/booleans.
+ */
+const stringifyQuery = (query: Record<string, unknown>): Record<string, string | undefined> => {
+	const result: Record<string, string | undefined> = {};
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== undefined && value !== null) {
+			result[key] = String(value);
+		}
+	}
+	return result;
 };
 
 /**
@@ -45,28 +66,13 @@ export = {
 		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { skip, take, search } = req.query;
-				const filterString = typeof req.query.filter === 'string' ? req.query.filter : undefined;
-				const filter = filterString ? JSON.parse(filterString) : undefined;
 
-				// Parse sortBy parameter from "column:direction" format
-				let sortBy: [string, 'ASC' | 'DESC'] | undefined;
-				if (req.query.sortBy) {
-					const sortByString = String(req.query.sortBy);
-					const [column, direction] = sortByString.split(':');
-
-					if (!direction) {
-						return res.status(400).json({
-							message: 'Invalid sort format, expected <columnName>:<asc/desc>',
-						});
-					}
-
-					const upperDirection = direction.toUpperCase();
-					if (upperDirection !== 'ASC' && upperDirection !== 'DESC') {
-						return res.status(400).json({ message: 'Invalid sort direction' });
-					}
-
-					sortBy = [column, upperDirection];
+				// Validate query parameters using DTO (convert to strings first)
+				const payload = ListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
+				if (!payload.success) {
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+					});
 				}
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
@@ -74,7 +80,7 @@ export = {
 				const result = await Container.get(DataTableService).getManyRowsAndCount(
 					dataTableId,
 					projectId,
-					{ skip, take, filter, sortBy, search },
+					payload.data,
 				);
 
 				return res.json({
@@ -93,15 +99,22 @@ export = {
 		async (req: DataTableRequest.InsertRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { data, returnType } = req.body;
+
+				// Validate request body using DTO
+				const payload = AddDataTableRowsDto.safeParse(req.body);
+				if (!payload.success) {
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
+				}
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
 
 				const result = await Container.get(DataTableService).insertRows(
 					dataTableId,
 					projectId,
-					data,
-					returnType,
+					payload.data.data,
+					payload.data.returnType,
 				);
 
 				return res.json(result);
@@ -117,10 +130,18 @@ export = {
 		async (req: DataTableRequest.UpdateRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { filter, data, returnData = false, dryRun = false } = req.body;
+
+				// Validate request body using DTO
+				const payload = UpdateDataTableRowDto.safeParse(req.body);
+				if (!payload.success) {
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
+				}
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
 				const service = Container.get(DataTableService);
+				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
 				const result = dryRun
@@ -142,10 +163,18 @@ export = {
 		async (req: DataTableRequest.UpsertRow, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { filter, data, returnData = false, dryRun = false } = req.body;
+
+				// Validate request body using DTO
+				const payload = UpsertDataTableRowDto.safeParse(req.body);
+				if (!payload.success) {
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
+				}
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
 				const service = Container.get(DataTableService);
+				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
 				const result = dryRun
@@ -167,27 +196,23 @@ export = {
 		async (req: DataTableRequest.DeleteRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { filter: filterString, returnData, dryRun } = req.query;
 
-				if (!filterString) {
+				// Validate query parameters using DTO (convert to strings first)
+				const payload = DeleteDataTableRowsDto.safeParse(stringifyQuery(req.query));
+				if (!payload.success) {
 					return res.status(400).json({
-						message:
-							'Filter is required for delete operations to prevent accidental deletion of all data',
+						message: payload.error.errors[0]?.message || 'Invalid query parameters',
 					});
 				}
 
-				const filter = JSON.parse(filterString);
 				const projectId = await getProjectIdForDataTable(dataTableId);
-
-				const returnDataBool = returnData === 'true' || returnData === true;
-				const dryRunBool = dryRun === 'true' || dryRun === true;
-
 				const service = Container.get(DataTableService);
+				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
 
-				const result = dryRunBool
-					? await service.deleteRows(dataTableId, projectId, params, returnDataBool, true)
-					: returnDataBool
+				const result = dryRun
+					? await service.deleteRows(dataTableId, projectId, params, returnData, true)
+					: returnData
 						? await service.deleteRows(dataTableId, projectId, params, true, false)
 						: await service.deleteRows(dataTableId, projectId, params, false, false);
 

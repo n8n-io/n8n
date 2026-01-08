@@ -51,9 +51,19 @@ async function createApiRouter(
 	});
 
 	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
+
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
+		// Error handler specifically for JSON parsing - must come immediately after express.json()
+		(error: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+			if (error instanceof SyntaxError && 'body' in error) {
+				return res.status(400).json({
+					message: 'Invalid JSON in request body',
+				});
+			}
+			next(error);
+		},
 		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
