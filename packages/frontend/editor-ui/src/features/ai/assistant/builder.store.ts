@@ -120,8 +120,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Track the last user message ID for telemetry
 	const lastUserMessageId = ref<string | undefined>();
 
-	// Track if [Done] indicator is showing in title (as we only show it when the user is not on the document)
-	const showingCompletionIndicationOnTitle = ref(false);
 	const documentTitle = useDocumentTitle();
 
 	// Store dependencies
@@ -275,10 +273,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Update page title on completion. We show Done when the user is not on the page
 		if (document.hidden) {
-			showingCompletionIndicationOnTitle.value = true;
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
 		} else {
-			showingCompletionIndicationOnTitle.value = false;
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 		}
 	}
@@ -345,7 +341,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		streaming.value = true;
 
 		// Updates page title to show AI is building
-		showingCompletionIndicationOnTitle.value = false;
 		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
 	}
 
@@ -929,8 +924,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Should be called from a component that watches document visibility.
 	 */
 	function clearDoneIndicatorTitle() {
-		if (showingCompletionIndicationOnTitle.value) {
-			showingCompletionIndicationOnTitle.value = false;
+		if (documentTitle.getDocumentState() === 'AI_DONE') {
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 		}
 	}
