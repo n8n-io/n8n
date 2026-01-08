@@ -162,7 +162,7 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-
+		} finally {
 			if (!res.writableEnded) res.end();
 		}
 	}
@@ -206,7 +206,7 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-
+		} finally {
 			if (!res.writableEnded) res.end();
 		}
 	}
@@ -250,7 +250,7 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-
+		} finally {
 			if (!res.writableEnded) res.end();
 		}
 	}

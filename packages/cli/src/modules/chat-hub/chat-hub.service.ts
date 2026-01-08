@@ -47,6 +47,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -83,7 +84,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
-import { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 
 @Service()
 export class ChatHubService {
@@ -236,6 +237,40 @@ export class ChatHubService {
 			}
 
 			throw error;
+		}
+
+		const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId);
+		if (
+			model.provider === 'n8n' &&
+			previousMessage?.status === 'waiting' &&
+			previousMessage?.executionId
+		) {
+			const execution = await this.executionRepository.findSingleExecution(
+				previousMessage.executionId.toString(),
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+			if (!execution) {
+				throw new OperationalError('Chat session has expired.');
+			}
+			this.logger.debug(
+				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
+			);
+			await this.messageRepository.updateChatMessage(previousMessage.id, {
+				status: 'success',
+			});
+			return await this.resumeChatExecution(
+				execution,
+				message,
+				sessionId,
+				messageId,
+				previousMessage.id,
+				model,
+				res,
+				responseMode,
+			);
 		}
 
 		await this.executeChatWorkflowWithCleanup(
@@ -707,6 +742,8 @@ export class ChatHubService {
 		if (!previousMessage) {
 			throw new BadRequestError('The previous message does not exist in the session');
 		}
+
+		return previousMessage;
 	}
 
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -806,7 +843,7 @@ export class ChatHubService {
 			executionMode,
 		);
 
-		let messageId = uuidv4();
+		const messageId = uuidv4();
 		const executionId = running.executionId;
 
 		if (!executionId) {
@@ -825,7 +862,7 @@ export class ChatHubService {
 
 		try {
 			await this.waitForExecutionCompletion(executionId);
-			let execution = await this.executionRepository.findSingleExecution(executionId, {
+			const execution = await this.executionRepository.findSingleExecution(executionId, {
 				includeData: true,
 				unflattenData: true,
 			});
@@ -836,7 +873,7 @@ export class ChatHubService {
 			}
 
 			const message = this.getMessage(execution, responseMode);
-			const status = 'success';
+			const status = execution && execution.status === 'waiting' ? 'waiting' : 'success';
 
 			await this.endResponse(
 				res,
@@ -848,63 +885,22 @@ export class ChatHubService {
 				retryOfMessageId,
 			);
 
-			while (execution && execution.status === 'waiting') {
+			if (status === 'waiting') {
 				const lastNode = getLastNodeExecuted(execution);
-
 				if (lastNode && shouldResumeImmediately(lastNode)) {
 					this.logger.debug(
 						`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
 					);
-					await this.resumeExecution(sessionId, execution, '');
-
-					previousMessageId = messageId;
-					retryOfMessageId = null;
-					messageId = uuidv4();
-
-					await this.beginResponse(
-						res,
-						executionId,
-						messageId,
+					await this.resumeChatExecution(
+						execution,
+						'',
 						sessionId,
-						model,
-						previousMessageId,
-						retryOfMessageId,
-					);
-
-					await this.waitForExecutionCompletion(executionId);
-
-					execution = await this.executionRepository.findSingleExecution(executionId, {
-						includeData: true,
-						unflattenData: true,
-					});
-
-					if (!execution) {
-						throw new OperationalError(
-							'Chat execution not found after completion - make sure your instance is saving executions.',
-						);
-					}
-
-					if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
-						const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
-						throw new OperationalError(message);
-					}
-
-					const message = this.getMessage(execution, responseMode);
-
-					await this.endResponse(
-						res,
-						message ?? '',
-						'success',
-						executionId,
 						messageId,
-						previousMessageId,
-						retryOfMessageId,
+						messageId,
+						model,
+						res,
+						responseMode,
 					);
-				} else {
-					this.logger.debug(
-						`Execution ${execution.id} is waiting for user input at node ${lastNode?.name}`,
-					);
-					// session.nodeWaitingForChatResponse = lastNode?.name;
 				}
 			}
 		} catch (e: unknown) {
@@ -926,8 +922,81 @@ export class ChatHubService {
 				retryOfMessageId,
 			);
 		}
+	}
 
-		res.end();
+	private async resumeChatExecution(
+		execution: IExecutionResponse | undefined,
+		message: string,
+		sessionId: ChatSessionId,
+		messageId: string,
+		previousMessageId: ChatMessageId,
+		model: ChatHubConversationModel,
+		res: Response,
+		responseMode: ChatTriggerResponseMode,
+	) {
+		// Mark the waiting message as successful
+		await this.messageRepository.updateChatMessage(previousMessageId, {
+			status: 'success',
+		});
+
+		while (execution && execution.status === 'waiting') {
+			await this.resumeExecution(sessionId, execution, message);
+			await this.messageRepository.updateChatMessage(messageId, {
+				status: 'success',
+			});
+			previousMessageId = messageId;
+			messageId = uuidv4();
+
+			await this.beginResponse(
+				res,
+				execution.id,
+				messageId,
+				sessionId,
+				model,
+				previousMessageId,
+				null,
+			);
+
+			await this.waitForExecutionCompletion(execution.id);
+
+			execution = await this.executionRepository.findSingleExecution(execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			if (!execution) {
+				throw new OperationalError(
+					'Chat execution not found after completion - make sure your instance is saving executions.',
+				);
+			}
+
+			if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
+				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(message);
+			}
+
+			const reply = this.getMessage(execution, responseMode);
+
+			await this.endResponse(
+				res,
+				reply ?? '',
+				'success',
+				execution.id,
+				messageId,
+				previousMessageId,
+				null,
+			);
+
+			const lastNode = getLastNodeExecuted(execution);
+			if (!lastNode || !shouldResumeImmediately(lastNode)) {
+				return;
+			}
+
+			this.logger.debug(
+				`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+			);
+			message = '';
+		}
 	}
 
 	/**
@@ -1290,6 +1359,10 @@ export class ChatHubService {
 				throw new OperationalError('There was a problem executing the chat workflow.');
 			}
 		} catch (error: unknown) {
+			if (error instanceof ExecutionNotFoundError) {
+				return;
+			}
+
 			if (error instanceof ManualExecutionCancelledError) {
 				throw error;
 			}
