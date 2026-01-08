@@ -1008,7 +1008,7 @@ export class LemlistV2 implements INodeType {
 							if (additionalFields[day]) {
 								body[day] =
 									typeof additionalFields[day] === 'string'
-										? JSON.parse(additionalFields[day] as string)
+										? JSON.parse(additionalFields[day])
 										: additionalFields[day];
 							}
 						}
@@ -1067,7 +1067,7 @@ export class LemlistV2 implements INodeType {
 							if (updateFields[day]) {
 								body[day] =
 									typeof updateFields[day] === 'string'
-										? JSON.parse(updateFields[day] as string)
+										? JSON.parse(updateFields[day])
 										: updateFields[day];
 							}
 						}
@@ -1203,7 +1203,7 @@ export class LemlistV2 implements INodeType {
 						//        database: searchPeople
 						// ----------------------------------
 
-						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
+						const filtersInput = this.getNodeParameter('filters', i);
 						const seed = this.getNodeParameter('seed', i) as string;
 						const page = this.getNodeParameter('page', i) as number;
 						const size = this.getNodeParameter('size', i) as number;
@@ -1236,7 +1236,7 @@ export class LemlistV2 implements INodeType {
 						//        database: searchCompanies
 						// ----------------------------------
 
-						const filtersInput = this.getNodeParameter('filters', i) as IDataObject;
+						const filtersInput = this.getNodeParameter('filters', i);
 						const seed = this.getNodeParameter('seed', i) as string;
 						const page = this.getNodeParameter('page', i) as number;
 						const size = this.getNodeParameter('size', i) as number;
@@ -1273,7 +1273,7 @@ export class LemlistV2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;
@@ -1284,7 +1284,7 @@ export class LemlistV2 implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 
 		return [returnData];

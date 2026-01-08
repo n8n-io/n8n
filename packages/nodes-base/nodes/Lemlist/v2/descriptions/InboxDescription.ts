@@ -11,7 +11,7 @@ export const inboxOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all inbox conversations',
+				description: 'Get many inbox conversations',
 				action: 'Get many inbox conversations',
 			},
 			{

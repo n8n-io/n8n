@@ -23,7 +23,7 @@ export const webhookOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all webhooks',
+				description: 'Get many webhooks',
 				action: 'Get many webhooks',
 			},
 		],
@@ -62,10 +62,6 @@ export const webhookFields: INodeProperties[] = [
 		default: '*',
 		options: [
 			{
-				name: 'All Events',
-				value: '*',
-			},
-			{
 				name: 'Aircall Created',
 				value: 'aircallCreated',
 			},
@@ -84,6 +80,10 @@ export const webhookFields: INodeProperties[] = [
 			{
 				name: 'Aircall Not Interested',
 				value: 'aircallNotInterested',
+			},
+			{
+				name: 'All Events',
+				value: '*',
 			},
 			{
 				name: 'API Done',

@@ -89,6 +89,14 @@ export const sequenceFields: INodeProperties[] = [
 		default: 'email',
 		options: [
 			{
+				name: 'API',
+				value: 'api',
+			},
+			{
+				name: 'Condition',
+				value: 'condition',
+			},
+			{
 				name: 'Email',
 				value: 'email',
 			},
@@ -107,14 +115,6 @@ export const sequenceFields: INodeProperties[] = [
 			{
 				name: 'Manual',
 				value: 'manual',
-			},
-			{
-				name: 'API',
-				value: 'api',
-			},
-			{
-				name: 'Condition',
-				value: 'condition',
 			},
 		],
 		description: 'Type of step to create',
