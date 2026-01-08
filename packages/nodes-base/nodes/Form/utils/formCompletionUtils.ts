@@ -1,10 +1,10 @@
 import { type Response } from 'express';
 import {
-	type NodeTypeAndVersion,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	type IBinaryData,
 	type IDataObject,
+	type INode,
 	OperationalError,
 } from 'n8n-workflow';
 
@@ -46,7 +46,7 @@ export const binaryResponse = async (
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
 	res: Response,
-	trigger: NodeTypeAndVersion,
+	trigger: INode,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;

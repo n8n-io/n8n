@@ -81,11 +81,13 @@ describe('formCompletionUtils', () => {
 			render: jest.fn(),
 		});
 
-		const trigger = {
+		const trigger: INode = {
+			id: 'trigger-id',
 			name: 'triggerNode',
 			type: 'trigger',
 			typeVersion: 1,
-			disabled: false,
+			position: [0, 0],
+			parameters: {},
 		};
 
 		afterEach(() => {

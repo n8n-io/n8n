@@ -144,6 +144,15 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('getFormTrigger', () => {
+		it('should return null (base implementation)', () => {
+			// NodeExecutionContext.getFormTrigger() returns null
+			// The actual implementation is in WebhookContext
+			const result = testContext.getFormTrigger();
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('getKnownNodeTypes', () => {
 		it('should call getKnownTypes method of nodeTypes', () => {
 			testContext.getKnownNodeTypes();

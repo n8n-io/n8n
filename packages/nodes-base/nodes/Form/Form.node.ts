@@ -15,12 +15,17 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseJsonToFormFields,
 	NodeConnectionTypes,
+	WebhookAuthorizationError,
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
-import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { prepareFormReturnItem, resolveRawData } from './utils/utils';
+import { getFormTriggerContext, renderFormNode } from './utils/formNodeUtils';
+import {
+	prepareFormReturnItem,
+	resolveRawData,
+	validateFormTriggerAuthentication,
+} from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
@@ -348,7 +353,20 @@ export class Form extends Node {
 
 		const operation = context.getNodeParameter('operation', '') as string;
 
-		const trigger = getFormTriggerNode(context);
+		const formTriggerContext = getFormTriggerContext(context);
+		const trigger = formTriggerContext.node;
+
+		// Validate authentication from FormTrigger for multi-page forms
+		try {
+			await validateFormTriggerAuthentication(formTriggerContext);
+		} catch (error) {
+			if (error instanceof WebhookAuthorizationError) {
+				res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+				res.status(error.responseCode).send();
+				return { noWebhookResponse: true };
+			}
+			throw error;
+		}
 
 		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
 			| 'test'

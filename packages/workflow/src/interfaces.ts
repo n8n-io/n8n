@@ -917,6 +917,21 @@ export type NodeTypeAndVersion = {
 	parameters?: INodeParameters;
 };
 
+/**
+ * Context for accessing Form Trigger node and its authentication.
+ * Provides secure access to Form Trigger's auth configuration without exposing raw credentials.
+ */
+export interface IFormTriggerContext {
+	/** The Form Trigger node */
+	node: INode;
+	/**
+	 * Validates authentication from request based on Form Trigger's auth configuration.
+	 * Throws WebhookAuthorizationError on failure.
+	 * Request is obtained from the context (getRequestObject()).
+	 */
+	validateAuth(): Promise<void>;
+}
+
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
@@ -952,6 +967,7 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
+	getFormTrigger: () => IFormTriggerContext | null;
 	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
 
@@ -1851,6 +1867,12 @@ export interface INodeType {
 			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
 		};
 	};
+	/**
+	 * Validates authentication for this node.
+	 * Used by Form Trigger to validate auth on subsequent form pages.
+	 * Throws WebhookAuthorizationError on failure.
+	 */
+	validateAuth?(context: IWebhookFunctions): Promise<void>;
 }
 
 /**

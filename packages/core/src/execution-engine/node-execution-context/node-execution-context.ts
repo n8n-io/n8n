@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IFormTriggerContext,
 	IGetNodeParameterOptions,
 	INode,
 	INodeCredentialDescription,
@@ -160,6 +161,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			}
 		}
 
+		return null;
+	}
+
+	/**
+	 * Gets the form trigger node with authentication validation capabilities.
+	 *
+	 * This base implementation returns null. WebhookContext overrides this
+	 * to provide full functionality including auth validation.
+	 */
+	getFormTrigger(): IFormTriggerContext | null {
 		return null;
 	}
 

@@ -5,6 +5,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
+	IFormTriggerContext,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
@@ -16,7 +17,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createDeferredPromise,
+	createEmptyRunExecutionData,
+	FORM_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -166,5 +172,43 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			connectionType,
 			itemIndex,
 		);
+	}
+
+	/**
+	 * Gets the form trigger node with authentication validation capabilities.
+	 *
+	 * This provides secure access to Form Trigger's auth configuration without exposing raw credentials.
+	 * The returned context includes a validateAuth() method that calls the Form Trigger's validateAuth method.
+	 */
+	getFormTrigger(): IFormTriggerContext | null {
+		for (const node of Object.values(this.workflow.nodes)) {
+			if (node.type === FORM_TRIGGER_NODE_TYPE) {
+				const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+				return {
+					node,
+					validateAuth: async () => {
+						if (!nodeType.validateAuth) return;
+
+						// Create a WebhookContext with the Form Trigger node
+						// This makes getCredentials() return Form Trigger's credentials
+						// and getNodeParameter() return Form Trigger's parameters
+						const formTriggerContext = new WebhookContext(
+							this.workflow,
+							node, // Form Trigger node, not current node
+							this.additionalData, // Same additionalData (has httpRequest)
+							this.mode,
+							this.webhookData, // From current webhook context
+							[], // closeFunctions (not needed for auth)
+							this.runExecutionData,
+						);
+
+						await nodeType.validateAuth(formTriggerContext);
+					},
+				};
+			}
+		}
+
+		return null;
 	}
 }
