@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Coolify/Deployment
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache python3 make g++ git
@@ -22,7 +22,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts || true
 RUN node scripts/build-n8n.mjs
 
 # --- Runtime Stage ---
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /home/node
 
