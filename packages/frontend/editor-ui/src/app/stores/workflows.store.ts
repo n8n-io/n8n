@@ -27,11 +27,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
-import type {
-	WorkflowMetadata,
-	WorkflowDataCreate,
-	WorkflowDataUpdate,
-} from '@n8n/rest-api-client/api/workflows';
+import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
 	IConnection,
@@ -146,7 +142,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const nodeMetadata = ref<NodeMetadataMap>({});
@@ -1030,33 +1025,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setPinData(validPinData);
 
 		dataPinningEventBus.emit('pin-data', validPinData);
-	}
-
-	function addWorkflowTagIds(tags: string[]) {
-		workflow.value.tags = [
-			...new Set([...(workflow.value.tags ?? []), ...tags]),
-		] as IWorkflowDb['tags'];
-	}
-
-	function removeWorkflowTagId(tagId: string) {
-		const tags = workflow.value.tags as string[];
-		const updated = tags.filter((id: string) => id !== tagId);
-		workflow.value.tags = updated as IWorkflowDb['tags'];
-	}
-
-	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
-		workflow.value.scopes = scopes;
-	}
-
-	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		workflow.value.meta = metadata;
-	}
-
-	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
-		workflow.value.meta = {
-			...workflow.value.meta,
-			...data,
-		};
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
@@ -1991,7 +1959,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionStartedData,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
-		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		workflowsById,
 		nodeMetadata,
@@ -2082,11 +2049,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowExecutionRunData,
 		setWorkflowPinData,
 		setParentFolder,
-		addWorkflowTagIds,
-		removeWorkflowTagId,
-		setWorkflowScopes,
-		setWorkflowMetadata,
-		addToWorkflowMetadata,
 		setWorkflow,
 		pinData,
 		unpinData,
