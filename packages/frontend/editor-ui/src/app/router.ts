@@ -633,6 +633,7 @@ export const routes: RouteRecordRaw[] = [
 						path: 'edit/:roleSlug',
 						name: VIEWS.PROJECT_ROLE_SETTINGS,
 						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+						props: true,
 					},
 				],
 				meta: {
