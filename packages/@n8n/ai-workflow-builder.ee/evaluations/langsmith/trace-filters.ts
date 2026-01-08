@@ -1,6 +1,22 @@
 import type { KVMap } from 'langsmith/schemas';
 
 import type { EvalLogger } from '../harness/logger.js';
+import { isSimpleWorkflow } from './types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Type guards
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Type guard: check if value is a non-null object (Record).
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Large state fields that should be filtered from traces.
@@ -50,19 +66,15 @@ function hasFilterableFields(obj: KVMap): boolean {
  * Preserves node counts and names without full definitions.
  */
 function summarizeWorkflow(workflow: unknown): Record<string, unknown> {
-	if (!workflow || typeof workflow !== 'object') {
+	if (!isSimpleWorkflow(workflow)) {
 		return { unknown: true };
 	}
 
-	const wf = workflow as Record<string, unknown>;
-	const nodes = wf.nodes as Array<{ name?: string }> | undefined;
-	const connections = wf.connections as Record<string, unknown> | undefined;
-
 	return {
-		nodeCount: Array.isArray(nodes) ? nodes.length : 0,
-		nodeNames: Array.isArray(nodes) ? nodes.map((n) => n.name).filter(Boolean) : [],
-		connectionCount: connections ? Object.keys(connections).length : 0,
-		name: wf.name,
+		nodeCount: workflow.nodes.length,
+		nodeNames: workflow.nodes.map((n) => n.name).filter(Boolean),
+		connectionCount: Object.keys(workflow.connections).length,
+		name: workflow.name,
 	};
 }
 
@@ -71,11 +83,10 @@ function summarizeWorkflow(workflow: unknown): Record<string, unknown> {
  */
 function summarizeCachedTemplates(templates: unknown[]): Array<Record<string, unknown>> {
 	return templates.map((t) => {
-		if (!t || typeof t !== 'object') return { unknown: true };
-		const template = t as Record<string, unknown>;
+		if (!isRecord(t)) return { unknown: true };
 		return {
-			templateId: template.templateId,
-			name: template.name,
+			templateId: t.templateId,
+			name: t.name,
 		};
 	});
 }
@@ -135,11 +146,10 @@ function filterWorkflowContext(ctx: Record<string, unknown>): Record<string, unk
  * Summarize a workflow field if it exceeds the node threshold.
  */
 function summarizeLargeWorkflow(workflow: unknown): unknown {
-	if (!workflow || typeof workflow !== 'object') {
+	if (!isSimpleWorkflow(workflow)) {
 		return workflow;
 	}
-	const wf = workflow as { nodes?: unknown[] };
-	if (wf.nodes && wf.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
+	if (workflow.nodes.length > WORKFLOW_SUMMARY_THRESHOLD) {
 		return summarizeWorkflow(workflow);
 	}
 	return workflow;
@@ -197,10 +207,8 @@ export function createTraceFilters(logger?: EvalLogger): TraceFilters {
 		filterLargeStateFields(filtered);
 
 		// Handle workflowContext if present
-		if (filtered.workflowContext && typeof filtered.workflowContext === 'object') {
-			filtered.workflowContext = filterWorkflowContext(
-				filtered.workflowContext as Record<string, unknown>,
-			);
+		if (isRecord(filtered.workflowContext)) {
+			filtered.workflowContext = filterWorkflowContext(filtered.workflowContext);
 		}
 
 		// Handle workflowJSON if present at top level

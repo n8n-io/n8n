@@ -303,7 +303,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		onEvaluatorComplete: () => {},
 
 		onEvaluatorError(name: string, error: Error): void {
-			if (verbose) return;
+			if (!verbose) return;
 			logger.error(`    ERROR in ${name}: ${error.message}`);
 		},
 
@@ -382,6 +382,11 @@ export function createQuietLifecycle(): EvaluationLifecycle {
 	};
 }
 
+/** Type predicate for filtering undefined values */
+function isDefined<T>(value: T | undefined): value is T {
+	return value !== undefined;
+}
+
 /**
  * Merge multiple partial lifecycles into a single complete lifecycle.
  * All hooks will be called in order.
@@ -389,7 +394,7 @@ export function createQuietLifecycle(): EvaluationLifecycle {
 export function mergeLifecycles(
 	...lifecycles: Array<Partial<EvaluationLifecycle> | undefined>
 ): EvaluationLifecycle {
-	const validLifecycles = lifecycles.filter(Boolean) as Array<Partial<EvaluationLifecycle>>;
+	const validLifecycles = lifecycles.filter(isDefined);
 
 	return {
 		onStart(config: RunConfig): void {

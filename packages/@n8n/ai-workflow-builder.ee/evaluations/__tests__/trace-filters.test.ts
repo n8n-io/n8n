@@ -24,7 +24,15 @@ describe('trace-filters', () => {
 
 		const msg = { type: 'ai', content: 'hello' };
 		const input: KVMap = {
-			cachedTemplates: [{ templateId: 't1', name: 'Template' }],
+			cachedTemplates: [
+				{
+					templateId: 't1',
+					name: 'Template',
+					// Extra properties that should be filtered out
+					workflow: { nodes: [], connections: {} },
+					description: 'A long description that should be removed',
+				},
+			],
 			messages: [msg],
 		};
 
@@ -32,6 +40,7 @@ describe('trace-filters', () => {
 
 		expect(Array.isArray(filtered.messages)).toBe(true);
 		expect(filtered.messages).toEqual([msg]);
+		// Verify that cachedTemplates was summarized - only templateId and name are preserved
 		expect(filtered.cachedTemplates).toEqual([{ templateId: 't1', name: 'Template' }]);
 		expect(logs.join('\n')).toContain('LangSmith trace filtering: ACTIVE');
 	});

@@ -61,6 +61,7 @@ export function createProgrammaticEvaluator(
 					'metric',
 					formatViolations(result.connections.violations),
 				),
+				fb('nodes', result.nodes.score, 'metric', formatViolations(result.nodes.violations)),
 				fb('trigger', result.trigger.score, 'metric', formatViolations(result.trigger.violations)),
 				fb(
 					'agentPrompt',
@@ -70,6 +71,12 @@ export function createProgrammaticEvaluator(
 				),
 				fb('tools', result.tools.score, 'metric', formatViolations(result.tools.violations)),
 				fb('fromAi', result.fromAi.score, 'metric', formatViolations(result.fromAi.violations)),
+				fb(
+					'credentials',
+					result.credentials.score,
+					'metric',
+					formatViolations(result.credentials.violations),
+				),
 			];
 
 			// Similarity check (if reference workflow provided)

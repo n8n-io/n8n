@@ -123,13 +123,7 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 		return args.maxExamples ? testCases.slice(0, args.maxExamples) : testCases;
 	}
 
-	// Default test case
-	const defaults: TestCase[] = [
-		{
-			prompt: 'Create a workflow that sends a daily email summary',
-		},
-	];
-	return args.maxExamples ? defaults.slice(0, args.maxExamples) : defaults;
+	return args.maxExamples ? basicTestCases.slice(0, args.maxExamples) : basicTestCases;
 }
 
 /**

@@ -27,20 +27,24 @@ function createMockEvaluationResult(
 	overrides: Partial<{
 		overallScore: number;
 		connections: { score: number; violations: Array<{ type: string; description: string }> };
+		nodes: { score: number; violations: Array<{ type: string; description: string }> };
 		trigger: { score: number; violations: Array<{ type: string; description: string }> };
 		agentPrompt: { score: number; violations: Array<{ type: string; description: string }> };
 		tools: { score: number; violations: Array<{ type: string; description: string }> };
 		fromAi: { score: number; violations: Array<{ type: string; description: string }> };
+		credentials: { score: number; violations: Array<{ type: string; description: string }> };
 		similarity: { score: number; violations: Array<{ type: string; description: string }> } | null;
 	}> = {},
 ) {
 	return {
 		overallScore: 0.85,
 		connections: { score: 1.0, violations: [] },
+		nodes: { score: 1.0, violations: [] },
 		trigger: { score: 1.0, violations: [] },
 		agentPrompt: { score: 0.9, violations: [] },
 		tools: { score: 1.0, violations: [] },
 		fromAi: { score: 0.8, violations: [] },
+		credentials: { score: 1.0, violations: [] },
 		similarity: null,
 		...overrides,
 	};

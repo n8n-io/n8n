@@ -48,11 +48,11 @@ describe('Multi-Generation Utilities', () => {
 			expect(getMajorityThreshold(5)).toBe(3);
 		});
 
-		it('should return 2 for 2 judges', () => {
+		it('should return 1 for 2 judges (tie-goes-to-pass)', () => {
 			expect(getMajorityThreshold(2)).toBe(1);
 		});
 
-		it('should return 3 for 4 judges', () => {
+		it('should return 2 for 4 judges (tie-goes-to-pass)', () => {
 			expect(getMajorityThreshold(4)).toBe(2);
 		});
 	});

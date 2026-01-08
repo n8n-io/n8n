@@ -399,9 +399,9 @@ describe('Console Lifecycle', () => {
 			expect(logOutput).toContain('0%');
 		});
 
-		it('should log evaluator errors', async () => {
+		it('should log evaluator errors in verbose mode', async () => {
 			const { createConsoleLifecycle } = await import('../harness/lifecycle');
-			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
+			const lifecycle = createConsoleLifecycle({ verbose: true, logger: createLogger(true) });
 
 			lifecycle.onEvaluatorError('test-evaluator', new Error('Something went wrong'));
 
@@ -409,6 +409,15 @@ describe('Console Lifecycle', () => {
 			const errorOutput = mockConsole.error.mock.calls.flat().join(' ');
 			expect(errorOutput).toContain('test-evaluator');
 			expect(errorOutput).toContain('Something went wrong');
+		});
+
+		it('should NOT log evaluator errors in non-verbose mode', async () => {
+			const { createConsoleLifecycle } = await import('../harness/lifecycle');
+			const lifecycle = createConsoleLifecycle({ verbose: false, logger: createLogger(false) });
+
+			lifecycle.onEvaluatorError('test-evaluator', new Error('Something went wrong'));
+
+			expect(mockConsole.error).not.toHaveBeenCalled();
 		});
 
 		it('should log example completion with pass/fail status', async () => {
