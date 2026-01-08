@@ -96,7 +96,7 @@ export class InvitationController {
 		req: AuthlessRequest,
 		res: Response,
 		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
+		@Param('id') userId: string,
 	) {
 		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
@@ -107,7 +107,24 @@ export class InvitationController {
 			);
 		}
 
-		const { inviterId, firstName, lastName, password } = payload;
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId from either JWT token or legacy inviterId parameter
+		// inviteeId comes from URL parameter
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
+			token: payload.token,
+			inviterId: payload.inviterId,
+			// If inviteeId is not provided, use the URL parameter for backwards compatibility
+			inviteeId: payload.inviteeId ?? userId,
+		});
+
+		if (inviteeId !== userId) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because the invitee ID does not match the URL parameter',
+				{ inviteeId, userId },
+			);
+			throw new BadRequestError('Invalid invite URL');
+		}
 
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
