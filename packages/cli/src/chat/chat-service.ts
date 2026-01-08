@@ -191,6 +191,11 @@ export class ChatService {
 
 				if (!execution) return;
 
+				if (execution.status === 'success') {
+					this.processSuccessExecution(session);
+					return;
+				}
+
 				if (session.nodeWaitingForChatResponse) {
 					this.waitForChatResponseOrContinue(execution, session);
 					return;
@@ -198,11 +203,6 @@ export class ChatService {
 
 				if (execution.status === 'waiting') {
 					await this.processWaitingExecution(execution, session, sessionKey);
-					return;
-				}
-
-				if (execution.status === 'success') {
-					this.processSuccessExecution(session);
 					return;
 				}
 			} catch (e) {
@@ -259,17 +259,26 @@ export class ChatService {
 
 	private async getExecutionOrCleanupSession(executionId: string, sessionKey: string) {
 		const execution = await this.executionManager.findExecution(executionId);
-
+		const session = this.sessions.get(sessionKey);
 		if (!execution || ['error', 'canceled', 'crashed'].includes(execution.status)) {
-			const session = this.sessions.get(sessionKey);
-
 			if (!session) return null;
 
 			this.cleanupSession(session, sessionKey);
 			return null;
 		}
 
-		if (execution.status === 'running') return null;
+		if (execution.status === 'running') {
+			if (session?.nodeWaitingForChatResponse) {
+				// if the execution is running and there is a node waiting for a
+				// chat response it means that the execution was resumed by a
+				// form, so we send a continue message to the frontend to let it
+				// know that no user message is expected
+				session.connection.send(N8N_CONTINUE);
+				session.nodeWaitingForChatResponse = undefined;
+			}
+
+			return null;
+		}
 
 		return execution;
 	}
