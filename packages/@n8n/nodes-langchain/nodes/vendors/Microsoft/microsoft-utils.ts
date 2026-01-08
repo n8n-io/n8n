@@ -29,11 +29,10 @@ import { invokeAgent } from './langchain-utils';
 
 import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
 
-import type { ClientConfig, Connection } from '@langchain/mcp-adapters';
-import { MultiServerMCPClient } from '@langchain/mcp-adapters';
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { convertJsonSchemaToZod } from '../../../utils/schemaParsing';
-import { z } from 'zod';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';
+import { createCallTool, mcpToolToDynamicTool } from '../../mcp/McpClientTool/utils';
 
 export type MicrosoftAgent365Credentials = {
 	clientId: string;
@@ -73,68 +72,70 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 
 	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
 	const servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
-	const mcpServers: Record<string, Connection> = {};
+
+	if (servers.length === 0) return undefined;
 
 	const tenantId =
 		turnContext.activity.recipient?.tenantId || turnContext.activity?.channelData?.tenant?.id;
 
+	const tools: DynamicStructuredTool[] = [];
+	const clients: Client[] = [];
+	const timeout = 60000; // 60 seconds default timeout
+
+	// Connect to each MCP server individually using n8n's pattern
 	for (const server of servers) {
 		const headers: Record<string, string> = {};
 		if (mcpAuthToken) {
 			headers['Authorization'] = `Bearer ${mcpAuthToken}`;
 		}
-
 		if (tenantId) {
 			headers['x-ms-tenant-id'] = tenantId;
 		}
 
-		mcpServers[server.mcpServerName] = {
-			type: 'http',
-			url: server.url,
+		// Use n8n's connectMcpClient utility
+		const clientResult = await connectMcpClient({
+			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
+			endpointUrl: server.url,
 			headers,
-		} as Connection;
+			name: 'Microsoft-Agent-365',
+			version: 1,
+		});
+
+		if (!clientResult.ok) {
+			console.error(`Failed to connect to MCP server ${server.mcpServerName}:`, clientResult.error);
+			continue;
+		}
+
+		const client = clientResult.result;
+		clients.push(client);
+
+		// Get all tools from this server using n8n's utility
+		const mcpTools = await getAllTools(client);
+
+		// Convert each tool using n8n's exact pattern
+		for (const tool of mcpTools) {
+			// Create tool call wrapper using n8n's createCallTool
+			const callToolFunc = createCallTool(tool.name, client, timeout, (errorMessage) => {
+				console.error(`Tool "${tool.name}" execution error:`, errorMessage);
+			});
+
+			// Convert to DynamicStructuredTool using n8n's mcpToolToDynamicTool
+			const dynamicTool = mcpToolToDynamicTool(tool, callToolFunc);
+			tools.push(dynamicTool);
+		}
 	}
 
-	if (Object.keys(mcpServers).length === 0) return undefined;
+	if (tools.length === 0) return undefined;
 
-	const mcpClientConfig = { mcpServers } as ClientConfig;
-
-	const client = new MultiServerMCPClient(mcpClientConfig);
-	const rawTools = await client.getTools();
-
-	// Convert tools from JSON Schema to Zod schema format
-	// The MultiServerMCPClient returns tools with JSON Schema, but LangChain agents
-	// require DynamicStructuredTool instances with Zod schemas for proper validation
-	const tools = rawTools.map((rawTool: any) => {
-		const inputSchema = rawTool.lc_kwargs?.schema || rawTool.schema;
-
-		if (!inputSchema) {
-			// Tool has no schema, return as-is
-			return rawTool;
-		}
-
-		// Check if already a Zod schema (has _def property)
-		if (inputSchema && typeof inputSchema === 'object' && '_def' in inputSchema) {
-			return rawTool;
-		}
-
-		// Convert JSON Schema to Zod schema
-		const rawSchema = convertJsonSchemaToZod(inputSchema);
-
-		// Ensure we always have an object schema for structured tools
-		const objectSchema =
-			rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
-
-		// Create a new DynamicStructuredTool with the converted Zod schema
-		return new DynamicStructuredTool({
-			name: rawTool.name,
-			description: rawTool.description ?? '',
-			schema: objectSchema,
-			func: rawTool.func || rawTool.lc_kwargs?.func,
-		});
-	});
-
-	return { tools, client };
+	// Return tools and a cleanup function to close all clients
+	return {
+		tools,
+		client: {
+			async close() {
+				await Promise.all(clients.map(async (c) => await c.close()));
+			},
+		},
+	};
 }
 
 const configureActivityCallback = (
