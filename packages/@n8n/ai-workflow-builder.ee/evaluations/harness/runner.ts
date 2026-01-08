@@ -800,18 +800,21 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				lifecycle,
 			);
 			const evalDurationMs = Date.now() - evalStart;
-
 			const totalDurationMs = Date.now() - startTime;
+
 			const score = calculateExampleScore(feedback);
 			const status = hasErrorFeedback(feedback)
 				? 'error'
 				: determineStatus({ score, passThreshold });
+
 			stats.total++;
 			stats.scoreSum += score;
 			stats.durationSumMs += totalDurationMs;
+
 			if (status === 'pass') stats.passed++;
 			else if (status === 'fail') stats.failed++;
 			else stats.errors++;
+
 			const result: ExampleResult = {
 				index,
 				prompt,
