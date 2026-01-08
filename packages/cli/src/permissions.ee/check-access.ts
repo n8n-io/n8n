@@ -46,6 +46,7 @@ export async function userHasScopes(
 			.getRawMany()
 	).map((row: { id: string }) => row.id);
 
+
 	// Find which resource roles are defined to contain the required scopes.
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.

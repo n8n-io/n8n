@@ -289,7 +289,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
-
 		const { type: dbType } = this.globalConfig.database;
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = this.globalConfig.database.sqlite.executeVacuumOnStartup;

@@ -36,6 +36,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleCacheService } from './role-cache.service';
 import { isUniqueConstraintError } from '@/response-helper';
+import { RoleScopeEnricherService } from '@/services/role-scope-enrichers/role-scope-enricher.service';
 
 @Service()
 export class RoleService {
@@ -44,6 +45,7 @@ export class RoleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
+		private readonly roleScopeEnricherService: RoleScopeEnricherService
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
@@ -324,68 +326,5 @@ export class RoleService {
 				// TODO: handle custom roles licensing
 				return true;
 		}
-	}
-
-	/**
-	 * Adds a scope to a role by directly manipulating the role_scope join table.
-	 * This method works for both system roles and custom roles.
-	 *
-	 * @param roleSlug - The slug of the role to add the scope to
-	 * @param scopeSlug - The slug of the scope to add
-	 * @throws {NotFoundError} If the role doesn't exist
-	 */
-	async addScopeToRole(roleSlug: string, scopeSlug: string): Promise<void> {
-		// 1. Verify role exists
-		const role = await this.roleRepository.findBySlug(roleSlug);
-		if (!role) {
-			throw new NotFoundError(`Role ${roleSlug} not found`);
-		}
-
-		// 2. Check if scope already exists on role
-		const hasScope = role.scopes.some((s) => s.slug === scopeSlug);
-		if (hasScope) {
-			return; // Idempotent - already has the scope
-		}
-
-		// 3. Use manager to insert into role_scope table
-		await this.roleRepository.manager.query(
-			`INSERT INTO role_scope (roleSlug, scopeSlug) VALUES (?, ?)
-			 ON CONFLICT (roleSlug, scopeSlug) DO NOTHING`,
-			[roleSlug, scopeSlug],
-		);
-
-		// 4. Invalidate cache after scope modification
-		await this.roleCacheService.invalidateCache();
-	}
-
-	/**
-	 * Removes a scope from a role by directly manipulating the role_scope join table.
-	 * This method works for both system roles and custom roles.
-	 *
-	 * @param roleSlug - The slug of the role to remove the scope from
-	 * @param scopeSlug - The slug of the scope to remove
-	 * @throws {NotFoundError} If the role doesn't exist
-	 */
-	async removeScopeFromRole(roleSlug: string, scopeSlug: string): Promise<void> {
-		// 1. Verify role exists
-		const role = await this.roleRepository.findBySlug(roleSlug);
-		if (!role) {
-			throw new NotFoundError(`Role ${roleSlug} not found`);
-		}
-
-		// 2. Check if scope exists on role
-		const hasScope = role.scopes.some((s) => s.slug === scopeSlug);
-		if (!hasScope) {
-			return; // Idempotent - scope not present
-		}
-
-		// 3. Use manager to delete from role_scope table
-		await this.roleRepository.manager.query(
-			'DELETE FROM role_scope WHERE roleSlug = ? AND scopeSlug = ?',
-			[roleSlug, scopeSlug],
-		);
-
-		// 4. Invalidate cache after scope modification
-		await this.roleCacheService.invalidateCache();
 	}
 }
