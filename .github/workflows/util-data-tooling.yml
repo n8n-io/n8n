@@ -9,7 +9,7 @@ name: 'Util: Data Tooling'
 
 on:
   workflow_dispatch:
-  
+
 jobs:
   sqlite-export-sqlite-import:
     name: sqlite database export -> sqlite database import
@@ -78,7 +78,7 @@ jobs:
 
       - name: Export postgres
         if: steps.paths-filter.outputs.db == 'true'
-        run: ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs 
+        run: ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs
       - name: Import postgres
         if: steps.paths-filter.outputs.db == 'true'
         run: ./packages/cli/bin/n8n import:entities --inputDir packages/cli/commands/export/outputs --truncateTables

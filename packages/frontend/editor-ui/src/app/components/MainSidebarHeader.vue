@@ -205,7 +205,6 @@ const {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--3xs);
-	margin-bottom: var(--spacing--2xs);
 	justify-content: space-between;
 	gap: var(--spacing--4xs);
 
