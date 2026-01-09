@@ -40,6 +40,7 @@ export class ModuleRegistry {
 		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
+		'log-streaming',
 	];
 
 	private readonly activeModules: string[] = [];

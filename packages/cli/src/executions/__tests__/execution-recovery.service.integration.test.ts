@@ -19,9 +19,9 @@ import { v4 as uuid } from 'uuid';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
-import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import type { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import { EventMessageNode } from '@/modules/log-streaming.ee/event-message-classes/event-message-node';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { createExecution } from '@test-integration/db/executions';
@@ -108,7 +108,7 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				const inexistentExecutionId = randomInt(100).toString();
-				const noMessages: EventMessage[] = [];
+				const noMessages: EventMessageTypes[] = [];
 
 				/**
 				 * Act

@@ -1,8 +1,8 @@
-import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
-import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
-import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
+import type { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import { EventMessageNode } from '@/modules/log-streaming.ee/event-message-classes/event-message-node';
+import { EventMessageWorkflow } from '@/modules/log-streaming.ee/event-message-classes/event-message-workflow';
 
-export const setupMessages = (executionId: string, workflowName: string): EventMessage[] => {
+export const setupMessages = (executionId: string, workflowName: string): EventMessageTypes[] => {
 	return [
 		new EventMessageWorkflow({
 			eventName: 'n8n.workflow.started',

@@ -1,8 +1,7 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 
 /**
  * Log Streaming module provides enterprise-grade event logging
@@ -21,41 +20,41 @@ export class LogStreamingModule implements ModuleInterface {
 		// Import controller to register routes
 		await import('./event-bus.controller');
 
-		// Import and initialize the service
-		const { MessageEventBus } = await import('./message-event-bus');
-		const { LogStreamingEventRelay } = await import('./log-streaming.event-relay');
+		// Import and initialize the service (later)
+		// const { MessageEventBus } = await import('./message-event-bus');
+		// const { LogStreamingEventRelay } = await import('./log-streaming.event-relay');
 
-		const service = Container.get(MessageEventBus);
-		const relay = Container.get(LogStreamingEventRelay);
-		const instanceSettings = Container.get(InstanceSettings);
+		// const service = Container.get(MessageEventBus);
+		// const relay = Container.get(LogStreamingEventRelay);
+		// const instanceSettings = Container.get(InstanceSettings);
 
-		// Initialize with appropriate options based on process type
-		const initOptions: {
-			skipRecoveryPass?: boolean;
-			workerId?: string;
-			webhookProcessorId?: string;
-		} = {};
+		// // Initialize with appropriate options based on process type
+		// const initOptions: {
+		// 	skipRecoveryPass?: boolean;
+		// 	workerId?: string;
+		// 	webhookProcessorId?: string;
+		// } = {};
 
-		// Worker processes need workerId
-		if (instanceSettings.instanceType === 'worker') {
-			initOptions.workerId = instanceSettings.hostId;
-		}
+		// // Worker processes need workerId
+		// if (instanceSettings.instanceType === 'worker') {
+		// 	initOptions.workerId = instanceSettings.hostId;
+		// }
 
-		// Webhook processes need webhookProcessorId
-		if (instanceSettings.instanceType === 'webhook') {
-			initOptions.webhookProcessorId = instanceSettings.hostId;
-		}
+		// // Webhook processes need webhookProcessorId
+		// if (instanceSettings.instanceType === 'webhook') {
+		// 	initOptions.webhookProcessorId = instanceSettings.hostId;
+		// }
 
-		// Main process runs recovery pass
-		if (instanceSettings.instanceType === 'main') {
-			initOptions.skipRecoveryPass = false;
-		} else {
-			// Worker/webhook skip recovery
-			initOptions.skipRecoveryPass = true;
-		}
+		// // Main process runs recovery pass
+		// if (instanceSettings.instanceType === 'main') {
+		// 	initOptions.skipRecoveryPass = false;
+		// } else {
+		// 	// Worker/webhook skip recovery
+		// 	initOptions.skipRecoveryPass = true;
+		// }
 
-		await service.initialize(initOptions);
-		relay.init();
+		// await service.initialize(initOptions);
+		// relay.init();
 	}
 
 	async entities() {
@@ -66,21 +65,5 @@ export class LogStreamingModule implements ModuleInterface {
 	async settings() {
 		const { LogStreamingSettings } = await import('./log-streaming.settings');
 		return Container.get(LogStreamingSettings).settings();
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		const { MessageEventBus } = await import('./message-event-bus');
-		const service = Container.get(MessageEventBus);
-
-		// Stop log writer
-		if (service.logWriter) {
-			await service.logWriter.close();
-		}
-
-		// Stop all destinations
-		for (const destination of Object.values(service.destinations)) {
-			await destination.close();
-		}
 	}
 }

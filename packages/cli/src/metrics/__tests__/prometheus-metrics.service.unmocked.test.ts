@@ -6,8 +6,8 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import type { EventService } from '@/events/event.service';
+import { EventMessageWorkflow } from '@/modules/log-streaming.ee/event-message-classes/event-message-workflow';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
