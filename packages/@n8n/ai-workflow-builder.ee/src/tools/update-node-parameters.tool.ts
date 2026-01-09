@@ -1,11 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
-import type {
-	INode,
-	INodeTypeDescription,
-	INodeParameters,
-	Logger,
-	INodeProperties,
+import {
+	displayParameter,
+	type INode,
+	type INodeTypeDescription,
+	type INodeParameters,
+	type Logger,
+	type INodeProperties,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -47,191 +48,25 @@ const updateNodeParametersSchema = z.object({
 });
 
 /**
- * Check if a property should be visible for a specific node version.
- * Only evaluates @version conditions, ignoring other displayOptions.
- *
- * @param property - The node property to check
- * @param nodeVersion - The version of the node
- * @returns true if the property is visible for the given version
- */
-function isPropertyVisibleForVersion(property: INodeProperties, nodeVersion: number): boolean {
-	const displayOptions = property.displayOptions;
-
-	// No displayOptions means always visible
-	if (!displayOptions) {
-		return true;
-	}
-
-	const { show, hide } = displayOptions;
-
-	// Check 'show' conditions for @version
-	if (show?.['@version']) {
-		const versionConditions = show['@version'];
-		const matches = checkVersionCondition(versionConditions, nodeVersion);
-		if (!matches) {
-			return false; // Version doesn't match show condition
-		}
-	}
-
-	// Check 'hide' conditions for @version
-	if (hide?.['@version']) {
-		const versionConditions = hide['@version'];
-		const matches = checkVersionCondition(versionConditions, nodeVersion);
-		if (matches) {
-			return false; // Version matches hide condition
-		}
-	}
-
-	return true;
-}
-
-/**
- * Check if a version matches the given version conditions.
- * Supports both simple values (e.g., [1, 2]) and complex conditions (e.g., [{ _cnd: { gte: 2.2 } }])
- */
-function checkVersionCondition(conditions: unknown[], nodeVersion: number): boolean {
-	return conditions.some((condition) => {
-		// Simple value match
-		if (typeof condition === 'number') {
-			return condition === nodeVersion;
-		}
-
-		// Complex condition with _cnd operator
-		if (
-			condition &&
-			typeof condition === 'object' &&
-			'_cnd' in condition &&
-			typeof (condition as Record<string, unknown>)._cnd === 'object'
-		) {
-			const cnd = (condition as { _cnd: Record<string, number> })._cnd;
-			const [operator, targetValue] = Object.entries(cnd)[0];
-
-			switch (operator) {
-				case 'eq':
-					return nodeVersion === targetValue;
-				case 'not':
-					return nodeVersion !== targetValue;
-				case 'gte':
-					return nodeVersion >= targetValue;
-				case 'lte':
-					return nodeVersion <= targetValue;
-				case 'gt':
-					return nodeVersion > targetValue;
-				case 'lt':
-					return nodeVersion < targetValue;
-				default:
-					return false;
-			}
-		}
-
-		return false;
-	});
-}
-
-/**
- * Filter node properties to only include those visible for a specific version.
- * This ONLY evaluates @version conditions, preserving properties that depend
- * on other parameter values (like resource/operation).
+ * Filter node properties based on the node's current context (version, resource, operation).
+ * Uses the core n8n-workflow displayParameter utility which handles all displayOptions logic
+ * including @version, resource, operation, action, and complex _cnd conditions.
  *
  * @param properties - The node's properties array
- * @param nodeVersion - The version of the node
- * @returns Filtered array of properties visible for the given version
+ * @param node - The node instance (for typeVersion)
+ * @param nodeType - The node type description
+ * @param currentValues - Current parameter values (resource, operation, etc.)
+ * @returns Filtered array of properties visible in the current context
  */
-function filterPropertiesByVersion(
+function filterPropertiesForContext(
 	properties: INodeProperties[],
-	nodeVersion: number,
-	_nodeTypeDescription: INodeTypeDescription,
+	node: INode,
+	nodeType: INodeTypeDescription,
+	currentValues: INodeParameters,
 ): INodeProperties[] {
-	return properties.filter((property) => isPropertyVisibleForVersion(property, nodeVersion));
-}
-
-/**
- * Check if a property should be visible for a specific resource.
- */
-function isPropertyVisibleForResource(property: INodeProperties, resource: string): boolean {
-	const displayOptions = property.displayOptions;
-
-	// No displayOptions or no resource condition means visible for all resources
-	if (!displayOptions?.show?.resource && !displayOptions?.hide?.resource) {
-		return true;
-	}
-
-	// Check 'show' conditions for resource
-	if (displayOptions.show?.resource) {
-		const resourceCondition = displayOptions.show.resource;
-		if (!resourceCondition.includes(resource)) {
-			return false;
-		}
-	}
-
-	// Check 'hide' conditions for resource
-	if (displayOptions.hide?.resource) {
-		const resourceCondition = displayOptions.hide.resource;
-		if (resourceCondition.includes(resource)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-/**
- * Check if a property should be visible for a specific operation.
- */
-function isPropertyVisibleForOperation(property: INodeProperties, operation: string): boolean {
-	const displayOptions = property.displayOptions;
-
-	// No displayOptions or no operation condition means visible for all operations
-	if (!displayOptions?.show?.operation && !displayOptions?.hide?.operation) {
-		return true;
-	}
-
-	// Check 'show' conditions for operation
-	if (displayOptions.show?.operation) {
-		const operationCondition = displayOptions.show.operation;
-		if (!operationCondition.includes(operation)) {
-			return false;
-		}
-	}
-
-	// Check 'hide' conditions for operation
-	if (displayOptions.hide?.operation) {
-		const operationCondition = displayOptions.hide.operation;
-		if (operationCondition.includes(operation)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-/**
- * Filter node properties by resource and operation.
- * This dramatically reduces the context sent to the LLM for nodes with many resources/operations.
- *
- * @param properties - The node's properties array
- * @param resource - The resource to filter by (optional)
- * @param operation - The operation to filter by (optional)
- * @returns Filtered array of properties
- */
-function filterPropertiesByResourceOperation(
-	properties: INodeProperties[],
-	resource?: string,
-	operation?: string,
-): INodeProperties[] {
-	return properties.filter((property) => {
-		// If resource is specified, check resource visibility
-		if (resource && !isPropertyVisibleForResource(property, resource)) {
-			return false;
-		}
-
-		// If operation is specified, check operation visibility
-		if (operation && !isPropertyVisibleForOperation(property, operation)) {
-			return false;
-		}
-
-		return true;
-	});
+	return properties.filter((property) =>
+		displayParameter(currentValues, property, { typeVersion: node.typeVersion }, nodeType),
+	);
 }
 
 /**
@@ -254,8 +89,6 @@ async function processParameterUpdates(
 	llm: BaseChatModel,
 	logger?: Logger,
 	instanceUrl?: string,
-	resource?: string,
-	operation?: string,
 ): Promise<INodeParameters> {
 	const workflow = getCurrentWorkflow(state);
 
@@ -265,51 +98,27 @@ async function processParameterUpdates(
 	// Format inputs for the chain
 	const formattedChanges = formatChangesForPrompt(changes);
 
-	// DEBUG: Log node version and type info
-	console.log('=== DEBUG: processParameterUpdates ===');
-	console.log('Node ID:', nodeId);
-	console.log('Node Type:', node.type);
-	console.log('Node Version:', node.typeVersion);
-	console.log('Resource filter:', resource ?? 'none', resource ? '(auto-detected)' : '');
-	console.log('Operation filter:', operation ?? 'none', operation ? '(auto-detected)' : '');
-
-	// Get the node's properties definition as JSON (unfiltered)
-	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
-	const nodePropertiesTokenEstimate = Math.ceil(nodePropertiesJson.length / 4);
-	console.log(
-		`Node properties JSON size (UNFILTERED): ${nodePropertiesJson.length} chars (~${nodePropertiesTokenEstimate} tokens)`,
-	);
-
-	// Step 1: Filter by version
-	const versionFilteredProperties = filterPropertiesByVersion(
+	// Filter properties based on node's current context (version, resource, operation, etc.)
+	// Uses core n8n-workflow displayParameter which handles all displayOptions logic
+	const currentValues = (node.parameters ?? {}) as INodeParameters;
+	const filteredProperties = filterPropertiesForContext(
 		nodeType.properties || [],
-		node.typeVersion,
+		node,
 		nodeType,
-	);
-	console.log(
-		`After version filtering: ${versionFilteredProperties.length} properties (from ${nodeType.properties?.length ?? 0})`,
+		currentValues,
 	);
 
-	// Step 2: Filter by resource/operation (if provided or auto-detected from node)
-	const finalFilteredProperties = filterPropertiesByResourceOperation(
-		versionFilteredProperties,
-		resource,
-		operation,
-	);
+	const filteredPropertiesJson = JSON.stringify(filteredProperties, null, 2);
 
-	// Get final filtered JSON for the LLM
-	const filteredPropertiesJson = JSON.stringify(finalFilteredProperties, null, 2);
-	const filteredTokenEstimate = Math.ceil(filteredPropertiesJson.length / 4);
-
-	const totalReduction =
-		nodeType.properties?.length && nodeType.properties.length > 0
-			? ((1 - finalFilteredProperties.length / nodeType.properties.length) * 100).toFixed(1)
-			: '0.0';
-
-	console.log(`After resource/operation filtering: ${finalFilteredProperties.length} properties`);
-	console.log(
-		`FINAL: ${filteredPropertiesJson.length} chars (~${filteredTokenEstimate} tokens) - ${totalReduction}% reduction`,
-	);
+	logger?.debug('Filtered node properties for LLM context', {
+		nodeId,
+		nodeType: node.type,
+		nodeVersion: node.typeVersion,
+		resource: currentValues.resource,
+		operation: currentValues.operation,
+		originalCount: nodeType.properties?.length ?? 0,
+		filteredCount: filteredProperties.length,
+	});
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -410,11 +219,6 @@ export function createUpdateNodeParametersTool(
 					return createErrorResponse(config, error);
 				}
 
-				// Auto-detect resource/operation from node's existing parameters
-				// Builder sets these via initialParameters during node creation
-				const resource = node.parameters?.resource as string | undefined;
-				const operation = node.parameters?.operation as string | undefined;
-
 				// Find the node type
 				const nodeType = findNodeType(node.type, node.typeVersion, nodeTypes);
 				if (!nodeType) {
@@ -430,6 +234,8 @@ export function createUpdateNodeParametersTool(
 				});
 
 				try {
+					// Resource/operation filtering happens automatically inside processParameterUpdates
+					// based on node.parameters (set by Builder via initialParameters)
 					const updatedParameters = await processParameterUpdates(
 						node,
 						nodeType,
@@ -439,8 +245,6 @@ export function createUpdateNodeParametersTool(
 						llm,
 						logger,
 						instanceUrl,
-						resource,
-						operation,
 					);
 
 					// Create updated node
