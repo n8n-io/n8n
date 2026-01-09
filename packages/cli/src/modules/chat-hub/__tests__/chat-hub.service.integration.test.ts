@@ -1315,7 +1315,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 50);
+				});
 
 				return { executionId };
 			});
@@ -1426,7 +1426,7 @@ describe('chatHub', () => {
 					});
 					// Call finishRun after the execution update is complete
 					finishRun({} as IRun);
-				}, 50);
+				});
 
 				return { executionId };
 			});
@@ -1591,7 +1591,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 50);
+				});
 
 				return { executionId };
 			});
@@ -1630,7 +1630,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 50);
+				});
 			});
 
 			await chatHubService.sendHumanMessage(mockResponse, member, {
@@ -1740,7 +1740,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 50);
+				});
 
 				return { executionId };
 			});
@@ -1848,7 +1848,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 50);
+				});
 
 				return { executionId };
 			});
