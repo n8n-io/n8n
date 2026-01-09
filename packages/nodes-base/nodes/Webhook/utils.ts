@@ -223,10 +223,8 @@ export async function validateWebhookAuthentication(
 		const providedAuth = basicAuth(req);
 		// Authorization data is missing
 		if (!providedAuth) {
-			console.log('no provided auth');
 			const authToken = headers['x-auth-token'];
 			if (!authToken) {
-				console.log('no authToken', headers);
 				throw new WebhookAuthorizationError(401);
 			}
 
