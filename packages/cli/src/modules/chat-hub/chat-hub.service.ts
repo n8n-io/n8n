@@ -875,6 +875,12 @@ export class ChatHubService {
 				);
 			}
 
+			// Check for execution errors
+			if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
+				const errorMessage = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(errorMessage);
+			}
+
 			const message = this.getMessage(execution, responseMode);
 			const status = execution && execution.status === 'waiting' ? 'waiting' : 'success';
 
