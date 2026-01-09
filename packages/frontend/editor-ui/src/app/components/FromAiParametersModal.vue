@@ -407,7 +407,6 @@ const onExecute = async () => {
 
 	telemetry.track('User clicked execute node button in modal', telemetryPayload);
 
-	console.log('onExecute', node.value.name, agentRequest);
 	await runWorkflow({
 		destinationNode: { nodeName: node.value.name, mode: 'inclusive' },
 	});
