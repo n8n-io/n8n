@@ -168,7 +168,7 @@ describe('rewireGraph()', () => {
 			.values()
 			.next().value as INode;
 
-		expect(executorNode.parameters.query).toEqual(agentRequest.query);
+		expect(executorNode.parameters.query).toEqual(JSON.stringify(agentRequest.query));
 		expect(executorNode.parameters.toolName).toEqual(agentRequest.tool.name);
 	});
 
