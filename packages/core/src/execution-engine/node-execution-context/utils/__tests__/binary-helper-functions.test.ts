@@ -793,11 +793,10 @@ describe('detectBinaryEncoding', () => {
 	});
 
 	it('should detect ASCII encoding', () => {
-		const asciiBuffer = Buffer.from('Simple ASCII text 123');
+		const asciiBuffer = Buffer.from(Buffer.from('Simple ASCII text 123').toString('ascii'));
 		const encoding = detectBinaryEncoding(asciiBuffer);
 		expect(encoding).toBeDefined();
-		// ASCII is often detected as UTF-8, ASCII, or similar encodings
-		expect(['UTF-8', 'ASCII', 'ascii', 'windows-1252', 'ISO-8859-1']).toContain(encoding);
+		expect(encoding).toBe("ASCII");
 	});
 
 	it('should detect Windows-1252 encoding', () => {
