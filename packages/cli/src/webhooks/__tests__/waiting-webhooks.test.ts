@@ -204,6 +204,44 @@ describe('WaitingWebhooks', () => {
 			/* Assert */
 			expect(result).toBe(false);
 		});
+
+		it('should validate signature correctly when webhookSuffix is present', () => {
+			/* Arrange */
+			// Signature is generated for base URL without suffix
+			const signature = generateValidSignature();
+			// But the request URL includes the suffix
+			const mockReq = mock<express.Request>({
+				url: `/webhook/test/my-custom-suffix?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
+				host: EXAMPLE_HOST,
+				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
+				headers: { host: EXAMPLE_HOST },
+			});
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq, 'my-custom-suffix');
+
+			/* Assert */
+			expect(result).toBe(true);
+		});
+
+		it('should fail validation when suffix is not stripped', () => {
+			/* Arrange */
+			// Signature is generated for base URL without suffix
+			const signature = generateValidSignature();
+			// Request URL includes the suffix, but we don't pass suffix parameter
+			const mockReq = mock<express.Request>({
+				url: `/webhook/test/my-custom-suffix?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
+				host: EXAMPLE_HOST,
+				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
+				headers: { host: EXAMPLE_HOST },
+			});
+
+			/* Act - not passing suffix parameter */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert - should fail because suffix is not stripped */
+			expect(result).toBe(false);
+		});
 	});
 
 	describe('executeWebhook - signature validation', () => {

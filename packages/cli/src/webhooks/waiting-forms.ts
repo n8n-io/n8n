@@ -55,8 +55,8 @@ export class WaitingForms extends WaitingWebhooks {
 
 	/**
 	 * Validates signature for form requests.
-	 * Strips the status suffix before validation since the signature
-	 * is generated for the base form URL.
+	 * Strips suffixes before validation since the signature
+	 * is generated for the base form URL (without webhookSuffix or status suffix).
 	 */
 	private validateFormSignatureInRequest(req: express.Request, suffix?: string): boolean {
 		try {
@@ -66,9 +66,9 @@ export class WaitingForms extends WaitingWebhooks {
 			const parsedUrl = new URL(req.url, `http://${req.host}`);
 			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
 
-			// Strip the status suffix - signature is for base URL
-			if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
-				parsedUrl.pathname = parsedUrl.pathname.replace(`/${WAITING_FORMS_EXECUTION_STATUS}`, '');
+			// Strip the suffix - signature is for base URL (without webhookSuffix or status suffix)
+			if (suffix) {
+				parsedUrl.pathname = parsedUrl.pathname.replace(`/${suffix}`, '');
 			}
 
 			const urlForSigning = prepareUrlForSigning(parsedUrl);

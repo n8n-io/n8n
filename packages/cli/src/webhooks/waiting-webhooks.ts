@@ -4,14 +4,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings, validateUrlSignature } from 'n8n-core';
-import {
-	FORM_NODE_TYPE,
-	type INodes,
-	type IWorkflowBase,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_NODE_TYPE,
-	Workflow,
-} from 'n8n-workflow';
+import { type INodes, type IWorkflowBase, SEND_AND_WAIT_OPERATION, Workflow } from 'n8n-workflow';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
@@ -87,10 +80,16 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	validateSignatureInRequest(req: express.Request) {
+	validateSignatureInRequest(req: express.Request, suffix?: string) {
 		// req.host is set correctly even when n8n is behind a reverse proxy
 		// as long as N8N_PROXY_HOPS is set correctly
 		const parsedUrl = new URL(req.url, `http://${req.host}`);
+
+		// Strip the suffix - signature is for base URL (without webhookSuffix)
+		if (suffix) {
+			parsedUrl.pathname = parsedUrl.pathname.replace(`/${suffix}`, '');
+		}
+
 		return validateUrlSignature(parsedUrl, req.host, this.instanceSettings.hmacSignatureSecret);
 	}
 
@@ -110,7 +109,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		const execution = await this.getExecution(executionId);
 
 		if (execution?.data.validateSignature) {
-			if (!this.validateSignatureInRequest(req)) {
+			if (!this.validateSignatureInRequest(req, suffix)) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);
 				if (this.isSendAndWaitRequest(nodes, suffix)) {
@@ -215,22 +214,6 @@ export class WaitingWebhooks implements IWebhookManager {
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
-			}
-
-			if (!execution.data.resultData.error && execution.status === 'waiting') {
-				const childNodes = workflow.getChildNodes(
-					execution.data.resultData.lastNodeExecuted as string,
-				);
-
-				const hasChildForms = childNodes.some(
-					(node) =>
-						workflow.nodes[node].type === FORM_NODE_TYPE ||
-						workflow.nodes[node].type === WAIT_NODE_TYPE,
-				);
-
-				if (hasChildForms) {
-					return { noWebhookResponse: true };
-				}
 			}
 
 			throw new NotFoundError(errorMessage);

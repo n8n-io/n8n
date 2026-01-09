@@ -67,6 +67,15 @@ function extractApprovalUrls(blocks: SlackBlock[]): { approveUrl?: string; rejec
 	};
 }
 
+function extractFormUrl(blocks: SlackBlock[]): string | undefined {
+	const buttons = blocks
+		.filter((b) => b.type === 'actions' && b.elements)
+		.flatMap((b) => b.elements?.filter((el) => el.type === 'button' && el.url) ?? []);
+
+	// For custom forms, there's a single button with the form URL (contains signature)
+	return buttons.find((btn) => btn.url?.includes('signature='))?.url;
+}
+
 async function waitForSlackRequest(proxyServer: ProxyServer) {
 	await expect(async () => {
 		const requests = await proxyServer.getAllRequestsMade();
@@ -74,7 +83,7 @@ async function waitForSlackRequest(proxyServer: ProxyServer) {
 			(r) => r.httpRequest?.path === '/api/chat.postMessage' && r.httpRequest?.method === 'POST',
 		);
 		expect(slackRequest).toBeDefined();
-	}).toPass({ timeout: 10000 });
+	}).toPass();
 }
 
 async function getApprovalUrlsFromSlack(proxyServer: ProxyServer) {
@@ -84,6 +93,15 @@ async function getApprovalUrlsFromSlack(proxyServer: ProxyServer) {
 	);
 	const blocks = getBlocksFromBody(slackRequest?.httpRequest?.body as { blocks?: SlackBlock[] });
 	return extractApprovalUrls(blocks!);
+}
+
+async function getFormUrlFromSlack(proxyServer: ProxyServer) {
+	const requests = await proxyServer.getAllRequestsMade();
+	const slackRequest = requests.find(
+		(r) => r.httpRequest?.path === '/api/chat.postMessage' && r.httpRequest?.method === 'POST',
+	);
+	const blocks = getBlocksFromBody(slackRequest?.httpRequest?.body as { blocks?: SlackBlock[] });
+	return extractFormUrl(blocks!);
 }
 
 async function clickApprovalLink(page: Page, url: string) {
@@ -126,9 +144,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 		await clickApprovalLink(n8n.page, approveUrl!);
 
-		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible({
-			timeout: 15000,
-		});
+		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
 	});
 
 	test('should complete rejection flow when clicking reject URL', async ({
@@ -150,9 +166,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 		await clickApprovalLink(n8n.page, rejectUrl!);
 
-		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible({
-			timeout: 15000,
-		});
+		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
 	});
 
 	test('should reject requests with invalid signatures', async ({
@@ -173,14 +187,49 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 		const unsignedResponse = await n8n.api.webhooks.trigger(
 			`/webhook-waiting/${execution.id}/slack-send-wait`,
-			{ maxNotFoundRetries: 0 },
 		);
 		expect(unsignedResponse.status()).toBe(401);
 
 		const tamperedResponse = await n8n.api.webhooks.trigger(
 			`/webhook-waiting/${execution.id}/slack-send-wait?approved=true&signature=tampered`,
-			{ maxNotFoundRetries: 0 },
 		);
 		expect(tamperedResponse.status()).toBe(401);
+	});
+
+	test('should complete form submission flow', async ({ n8n, proxyServer, slackCredential }) => {
+		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
+			'send-and-wait-form.json',
+			{ transform: withSlackCredential(slackCredential) },
+		);
+		await n8n.navigate.toWorkflow(workflowId);
+
+		await n8n.canvas.clickExecuteWorkflowButton();
+		await waitForSlackRequest(proxyServer);
+
+		const formUrl = await getFormUrlFromSlack(proxyServer);
+		expect(formUrl).toContain('signature=');
+
+		const formPage = await n8n.page.context().newPage();
+		await formPage.goto(formUrl!);
+
+		await expect(formPage.getByText('Test Form')).toBeVisible({ timeout: 10000 });
+		await expect(formPage.getByText('Please provide your information')).toBeVisible();
+
+		await formPage.getByLabel('Name').fill('John Doe');
+		await formPage.getByLabel('Email').fill('john@example.com');
+		await formPage.getByLabel('Comments').fill('This is a test comment');
+
+		await formPage.getByRole('button', { name: 'Submit Form' }).click();
+
+		await expect(formPage.getByText('Got it, thanks')).toBeVisible({ timeout: 10000 });
+
+		await formPage.close();
+
+		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
+
+		await n8n.canvas.openNode('Capture Result');
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('John Doe');
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 1)).toHaveText('john@example.com');
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 2)).toHaveText('This is a test comment');
 	});
 });
