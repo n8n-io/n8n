@@ -1,10 +1,10 @@
 import type { SecuritySettingsDto, UpdateSecuritySettingsDto } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
-import { makeRestApiRequest, get } from '../utils';
+import { makeRestApiRequest } from '../utils';
 
 export async function getSecuritySettings(context: IRestApiContext): Promise<SecuritySettingsDto> {
-	return (await get(context.baseUrl, '/settings/security')).data;
+	return await makeRestApiRequest(context, 'GET', '/settings/security');
 }
 
 export async function updateSecuritySettings(

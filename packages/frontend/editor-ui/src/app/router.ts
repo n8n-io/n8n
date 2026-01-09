@@ -614,7 +614,14 @@ export const routes: RouteRecordRaw[] = [
 							return isFeatureEnabled(PERSONAL_PROJECT_GOVERNANCE.name);
 						},
 					},
-					// TODO: add telemetry
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
 				},
 			},
 			{

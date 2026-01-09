@@ -117,7 +117,6 @@ export class UsersController {
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
-
 		const response = await userQuery.getManyAndCount();
 
 		const [users, count] = response;
