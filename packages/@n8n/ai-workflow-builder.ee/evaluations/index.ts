@@ -238,26 +238,19 @@ function getFlagValue(flag: string): string | undefined {
  * Parse feature flags from environment variables or CLI arguments.
  * Environment variables:
  *   - EVAL_FEATURE_TEMPLATE_EXAMPLES=true - Enable template examples feature
- *   - EVAL_FEATURE_MULTI_AGENT=true - Enable multi-agent feature
  * CLI arguments:
  *   - --template-examples - Enable template examples feature
- *   - --multi-agent - Enable multi-agent feature
  */
 function parseFeatureFlags(): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
-
 	const templateExamplesFromCli = process.argv.includes('--template-examples');
-	const multiAgentFromCli = process.argv.includes('--multi-agent');
 
 	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
-	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
 
 	// Only return feature flags object if at least one flag is set
-	if (templateExamples || multiAgent) {
+	if (templateExamples) {
 		return {
 			templateExamples: templateExamples || undefined,
-			multiAgent: multiAgent || undefined,
 		};
 	}
 

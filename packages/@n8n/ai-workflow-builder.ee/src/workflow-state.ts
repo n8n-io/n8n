@@ -1,5 +1,4 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types';
@@ -33,31 +32,6 @@ function operationsReducer(
 	}
 	// Otherwise, append new operations
 	return [...(current ?? []), ...update];
-}
-
-// Creates a reducer that trims the message history to keep only the last `maxUserMessages` HumanMessage instances
-export function createTrimMessagesReducer(maxUserMessages: number) {
-	return (current: BaseMessage[]): BaseMessage[] => {
-		// Count HumanMessage instances and remember their indices
-		const humanMessageIndices: number[] = [];
-		current.forEach((msg, index) => {
-			if (msg instanceof HumanMessage) {
-				humanMessageIndices.push(index);
-			}
-		});
-
-		// If we have fewer than or equal to maxUserMessages, return as is
-		if (humanMessageIndices.length <= maxUserMessages) {
-			return current;
-		}
-
-		// Find the index of the first HumanMessage that we want to keep
-		const startHumanMessageIndex =
-			humanMessageIndices[humanMessageIndices.length - maxUserMessages];
-
-		// Slice from that HumanMessage onwards
-		return current.slice(startHumanMessageIndex);
-	};
 }
 
 export const WorkflowState = Annotation.Root({
