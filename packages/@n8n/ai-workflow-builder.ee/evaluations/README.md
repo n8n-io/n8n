@@ -78,7 +78,7 @@ flowchart TB
         F1["evaluator: string"]
         F2["metric: string"]
         F3["score: 0-1"]
-        F4["kind: 'score' | 'metric'"]
+        F4["kind: 'score' | 'metric' | 'detail'"]
         F5["comment?: string"]
     end
 ```
