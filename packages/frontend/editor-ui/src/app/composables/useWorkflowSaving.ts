@@ -217,7 +217,9 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
-			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+			if (tags) {
+				workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+			}
 
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
