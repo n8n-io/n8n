@@ -81,6 +81,9 @@ import {
 	EditMessagePayload,
 	chatTriggerParamsShape,
 	ChatTriggerResponseMode,
+	NonStreamingResponseMode,
+	ResponseNodesResponseMode,
+	isResponseNodesResponseMode,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -243,6 +246,7 @@ export class ChatHubService {
 		const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId);
 		if (
 			model.provider === 'n8n' &&
+			isResponseNodesResponseMode(responseMode) &&
 			previousMessage?.status === 'waiting' &&
 			previousMessage?.executionId
 		) {
@@ -835,7 +839,7 @@ export class ChatHubService {
 		previousMessageId: string,
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
-		responseMode: ChatTriggerResponseMode,
+		responseMode: NonStreamingResponseMode,
 	) {
 		const running = await this.workflowExecutionService.executeChatWorkflow(
 			user,
@@ -882,7 +886,7 @@ export class ChatHubService {
 			}
 
 			const message = this.getMessage(execution, responseMode);
-			const status = execution && execution.status === 'waiting' ? 'waiting' : 'success';
+			const status = execution?.status === 'waiting' ? 'waiting' : 'success';
 
 			await this.endResponse(
 				res,
@@ -894,7 +898,7 @@ export class ChatHubService {
 				retryOfMessageId,
 			);
 
-			if (status === 'waiting') {
+			if (status === 'waiting' && isResponseNodesResponseMode(responseMode)) {
 				const lastNode = getLastNodeExecuted(execution);
 				if (lastNode && shouldResumeImmediately(lastNode)) {
 					this.logger.debug(
@@ -941,7 +945,7 @@ export class ChatHubService {
 		previousMessageId: ChatMessageId,
 		model: ChatHubConversationModel,
 		res: Response,
-		responseMode: ChatTriggerResponseMode,
+		responseMode: ResponseNodesResponseMode,
 	) {
 		// Mark the waiting message as successful
 		await this.messageRepository.updateChatMessage(previousMessageId, {
@@ -982,7 +986,7 @@ export class ChatHubService {
 			}
 
 			const reply = this.getMessage(execution, responseMode);
-			const status = execution && execution.status === 'waiting' ? 'waiting' : 'success';
+			const status = execution?.status === 'waiting' ? 'waiting' : 'success';
 
 			await this.endResponse(
 				res,
@@ -1052,7 +1056,7 @@ export class ChatHubService {
 	}
 
 	private extractMessage(entry: INodeExecutionData, responseMode: ChatTriggerResponseMode) {
-		if (responseMode === 'responseNode' || responseMode === 'responseNodes') {
+		if (isResponseNodesResponseMode(responseMode)) {
 			return entry.sendMessage ?? '';
 		}
 
