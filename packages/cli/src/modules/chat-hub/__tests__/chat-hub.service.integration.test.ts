@@ -1742,7 +1742,8 @@ describe('chatHub', () => {
 		});
 
 		it('should handle execution with waiting status and mark message as waiting', async () => {
-			// Create an active workflow with chat trigger configured for lastNode response mode
+			// Create an active workflow with chat trigger configured for responseNode mode
+			// (waiting status is only used for responseNode/responseNodes modes)
 			const workflow = await createActiveWorkflow(
 				{
 					name: 'Waiting Chat Workflow',
@@ -1756,7 +1757,7 @@ describe('chatHub', () => {
 							parameters: {
 								availableInChat: true,
 								options: {
-									responseMode: 'lastNode',
+									responseMode: 'responseNode',
 								},
 							},
 						},
@@ -1809,7 +1810,8 @@ describe('chatHub', () => {
 												main: [
 													[
 														{
-															json: { output: 'Please wait for input...' },
+															json: {},
+															sendMessage: 'Please wait for input...',
 														},
 													],
 												],
