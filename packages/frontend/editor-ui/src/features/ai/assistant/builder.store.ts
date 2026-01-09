@@ -768,6 +768,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		aiBuilderMadeEdits.value = false;
 	}
 
+	/**
+	 * Sets the AI Builder edits flag.
+	 * Called by the useWorkflowUpdate composable when AI Builder makes changes.
+	 */
+	function setBuilderMadeEdits(value: boolean): void {
+		aiBuilderMadeEdits.value = value;
+	}
+
 	function updateBuilderCredits(quota?: number, claimed?: number) {
 		creditsQuota.value = quota;
 		creditsClaimed.value = claimed;
@@ -940,6 +948,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		trackWorkflowBuilderJourney,
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
+		setBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
 		// Version management

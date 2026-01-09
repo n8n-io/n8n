@@ -186,7 +186,14 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	tidyUp: {
+		source: CanvasLayoutSource;
+		nodeIdsFilter?: string[];
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+		onComplete?: () => void;
+	};
 	'create:sticky': never;
 };
 

@@ -579,7 +579,15 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean }) {
+function onTidyUp(
+	event: CanvasLayoutEvent,
+	options?: {
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+		onComplete?: () => void;
+	},
+) {
 	tidyUp(event, options);
 }
 

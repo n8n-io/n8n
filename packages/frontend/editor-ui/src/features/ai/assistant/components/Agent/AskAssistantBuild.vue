@@ -2,6 +2,7 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useHistoryStore } from '@/app/stores/history.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -16,6 +17,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useToast } from '@/app/composables/useToast';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
+import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -27,6 +31,7 @@ const emit = defineEmits<{
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const historyStore = useHistoryStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const router = useRouter();
@@ -35,10 +40,11 @@ const route = useRoute();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
+const { updateWorkflow } = useWorkflowUpdate();
 
-// Track processed workflow updates
+// Track processed workflow updates and accumulated node IDs for tidyUp
 const processedWorkflowUpdates = ref(new Set<string>());
-const shouldTidyUp = ref(false);
+const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
@@ -90,8 +96,8 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 async function onUserMessage(content: string) {
-	// Reset tidy up flag for each new message exchange
-	shouldTidyUp.value = false;
+	// Reset accumulated node IDs for each new message exchange
+	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
@@ -105,7 +111,7 @@ async function onUserMessage(content: string) {
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
-	shouldTidyUp.value = false;
+	accumulatedNodeIdsToTidyUp.value = [];
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -175,38 +181,60 @@ async function onWorkflowExecuted() {
 	});
 }
 
+function parseWorkflowJson(workflowJson: string): WorkflowDataUpdate | undefined {
+	try {
+		return jsonParse<WorkflowDataUpdate>(workflowJson);
+	} catch {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('aiAssistant.builder.workflowParsingError.title'),
+			message: i18n.baseText('aiAssistant.builder.workflowParsingError.content'),
+		});
+		return undefined;
+	}
+}
+
 // Watch for workflow updates and apply them
 watch(
 	() => builderStore.workflowMessages,
-	(messages) => {
-		messages
-			.filter((msg) => {
-				return msg.id && !processedWorkflowUpdates.value.has(msg.id);
-			})
-			.forEach((msg) => {
-				if (msg.id && isWorkflowUpdatedMessage(msg)) {
-					processedWorkflowUpdates.value.add(msg.id);
+	async (messages) => {
+		for (const msg of messages) {
+			if (!msg.id || processedWorkflowUpdates.value.has(msg.id)) continue;
+			if (!isWorkflowUpdatedMessage(msg)) continue;
 
-					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
+			processedWorkflowUpdates.value.add(msg.id);
 
-					if (result.success) {
-						// Only tidy up if new nodes are added per user message
-						const hasNewNodes = Boolean(result.newNodeIds && result.newNodeIds.length > 0);
-						shouldTidyUp.value = shouldTidyUp.value || hasNewNodes;
+			const workflowData = parseWorkflowJson(msg.codeSnippet);
+			if (!workflowData) continue;
 
-						// Import the updated workflow
-						nodeViewEventBus.emit('importWorkflowData', {
-							data: result.workflowData,
-							tidyUp: shouldTidyUp.value,
-							nodesIdsToTidyUp: result.newNodeIds,
-							regenerateIds: false,
-							trackEvents: false,
-						});
-					}
-				}
+			const result = await updateWorkflow(workflowData, {
+				isInitialGeneration: builderStore.initialGeneration,
+				nodeIdsToTidyUp: accumulatedNodeIdsToTidyUp.value,
 			});
+
+			// Accumulate new node IDs so subsequent messages tidy up all new nodes
+			if (result.newNodeIds.length > 0) {
+				accumulatedNodeIdsToTidyUp.value = [
+					...accumulatedNodeIdsToTidyUp.value,
+					...result.newNodeIds,
+				];
+			}
+		}
 	},
 	{ deep: true },
+);
+
+// Manage undo recording based on streaming state - start when streaming begins, stop when it ends
+// This ensures all builder changes during a streaming session can be undone at once
+watch(
+	() => builderStore.streaming,
+	(isStreaming, wasStreaming) => {
+		if (isStreaming && !wasStreaming) {
+			historyStore.startRecordingUndo();
+		} else if (!isStreaming && wasStreaming) {
+			historyStore.stopRecordingUndo();
+		}
+	},
 );
 
 // If this is the initial generation, streaming has ended, and there were workflow updates,
