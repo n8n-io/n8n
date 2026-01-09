@@ -1629,121 +1629,7 @@ describe('chatHub', () => {
 			expect(errorChunk.type).toBe('error');
 		});
 
-		it('should respond with responseNode mode and extract sendMessage', async () => {
-			// Create an active workflow with chat trigger configured for responseNode mode
-			const workflow = await createActiveWorkflow(
-				{
-					name: 'Response Node Chat Workflow',
-					nodes: [
-						{
-							id: 'chat-trigger-1',
-							name: 'Chat Trigger',
-							type: CHAT_TRIGGER_NODE_TYPE,
-							typeVersion: 1.4,
-							position: [0, 0],
-							parameters: {
-								availableInChat: true,
-								options: {
-									responseMode: 'responseNode',
-								},
-							},
-						},
-						{
-							id: 'respond-1',
-							name: 'Respond to Chat',
-							type: '@n8n/n8n-nodes-langchain.chatTriggerResponse',
-							typeVersion: 1,
-							position: [200, 0],
-							parameters: {},
-						},
-					],
-					connections: {
-						'Chat Trigger': {
-							main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
-						},
-					},
-				},
-				member,
-			);
-
-			// Mock the execution to return sendMessage from responseNode
-			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-				const executionId = await executionRepository.createNewExecution({
-					finished: false,
-					mode: 'webhook',
-					status: 'running',
-					workflowId: workflowData.id,
-					data: executionData,
-					workflowData,
-				});
-
-				// Update execution with result containing sendMessage
-				setTimeout(async () => {
-					await executionRepository.updateExistingExecution(executionId, {
-						status: 'success',
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									'Respond to Chat': [
-										{
-											startTime: Date.now(),
-											executionTime: 100,
-											executionIndex: 0,
-											executionStatus: 'success',
-											source: [],
-											data: {
-												main: [
-													[
-														{
-															json: {},
-															sendMessage: 'Response from chat node!',
-														},
-													],
-												],
-											},
-										},
-									],
-								},
-								lastNodeExecuted: 'Respond to Chat',
-							},
-						}),
-					});
-					finishRun({} as IRun);
-				}, 50);
-
-				return { executionId };
-			});
-
-			await chatHubService.sendHumanMessage(mockResponse, member, {
-				userId: member.id,
-				sessionId,
-				messageId,
-				message: 'Test message',
-				model: { provider: 'n8n', workflowId: workflow.id },
-				credentials: {},
-				previousMessageId: null,
-				tools: [],
-				attachments: [],
-			});
-
-			const messages = await retryUntil(async () => {
-				const messages = await messagesRepository.getManyBySessionId(sessionId);
-				expect(messages.length).toBeGreaterThanOrEqual(2);
-				expect(messages[1]?.status).toBe('success');
-				return messages;
-			});
-
-			// Verify AI message has sendMessage content
-			expect(messages[1]?.type).toBe('ai');
-			expect(messages[1]?.status).toBe('success');
-			expect(messages[1]?.content).toBe('Response from chat node!');
-
-			// Verify item chunk has correct content
-			const itemChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
-			expect(itemChunk.content).toBe('Response from chat node!');
-		});
-
-		it('should resume immediately when Respond to Chat node has waitUserReply: false', async () => {
+		it('should respond with responseNodes response mode and resume immediately when waitUserReply is false', async () => {
 			// Create an active workflow with Respond to Chat node that doesn't wait for user reply
 			const workflow = await createActiveWorkflow(
 				{
@@ -1895,7 +1781,7 @@ describe('chatHub', () => {
 			expect(aiMessages[aiMessages.length - 1]?.status).toBe('success');
 		});
 
-		it('should wait for user reply when Respond to Chat node has waitUserReply: true', async () => {
+		it('should respond with responseNodes response mode and wait for user when waitUserReply is true', async () => {
 			// Create an active workflow with Respond to Chat node that waits for user reply
 			const workflow = await createActiveWorkflow(
 				{
