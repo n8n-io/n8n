@@ -136,7 +136,7 @@ export class MessageEventBusLogWriter {
 		let workerFileName;
 		if (inTest) {
 			workerFileName =
-				'./dist/eventbus/message-event-bus-writer/message-event-bus-log-writer-worker.js';
+				'./dist/modules/log-streaming.ee/log-writer/message-event-bus-log-writer-worker.js';
 		} else {
 			workerFileName = safeJoinPath(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}

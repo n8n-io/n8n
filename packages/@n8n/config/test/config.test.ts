@@ -144,15 +144,6 @@ describe('GlobalConfig', () => {
 				},
 			},
 		} as UserManagementConfig,
-		eventBus: {
-			checkUnsentInterval: 0,
-			crashRecoveryMode: 'extensive',
-			logWriter: {
-				keepLogCount: 3,
-				logBaseName: 'n8nEventLog',
-				maxFileSizeInKB: 10240,
-			},
-		},
 		externalHooks: {
 			files: [],
 		},
