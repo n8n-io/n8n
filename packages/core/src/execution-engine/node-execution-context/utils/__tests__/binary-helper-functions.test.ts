@@ -669,6 +669,18 @@ describe('prepareBinaryData', () => {
 		);
 	});
 
+	it('correctly determines video mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp4');
+
+		expect(result.mimeType).toEqual('video/mp4');
+	});
+
+	it('correctly determines audio mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp3');
+
+		expect(result.mimeType).toEqual('audio/mpeg');
+	});
+
 	it('handles IncomingMessage with responseUrl', async () => {
 		const incomingMessage = bufferToIncomingMessage(buffer);
 		incomingMessage.responseUrl = 'http://example.com/file.txt';
