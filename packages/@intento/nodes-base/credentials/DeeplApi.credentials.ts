@@ -23,8 +23,8 @@ export class DeeplApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			qs: {
-				auth_key: '={{$credentials.apiKey}}',
+			headers: {
+				Authorization: '=DeepL-Auth-Key {{$credentials.apiKey}}',
 			},
 		},
 	};
