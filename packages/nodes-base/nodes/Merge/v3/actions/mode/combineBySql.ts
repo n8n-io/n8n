@@ -31,6 +31,8 @@ function disableAlasqlFileAccess() {
 		throw new Error('File access operations are disabled for security reasons');
 	};
 
+	console.log(alasql);
+
 	// Disable file reading functions that could be used to access the file system
 	if (alasql.fn) {
 		alasql.fn.FILE = disabledFunction;
@@ -51,6 +53,16 @@ function disableAlasqlFileAccess() {
 		alasql.from.CSV = disabledFunction;
 		alasql.from.XLSX = disabledFunction;
 		alasql.from.XLS = disabledFunction;
+	}
+
+	if ('into' in alasql) {
+		const into = alasql.into as unknown as any;
+		into.FILE = disabledFunction;
+		into.JSON = disabledFunction;
+		into.TXT = disabledFunction;
+		into.CSV = disabledFunction;
+		into.XLSX = disabledFunction;
+		into.XLS = disabledFunction;
 	}
 
 	// Override the engines that handle file operations
