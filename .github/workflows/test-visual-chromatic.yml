@@ -23,6 +23,8 @@ jobs:
           filters: |
             design_system:
               - 'packages/frontend/@n8n/design-system/**'
+              - 'packages/frontend/@n8n/chat/**'
+              - 'packages/frontend/@n8n/storybook/**'
               - '.github/workflows/test-visual-storybook.yml'
     outputs:
       has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
@@ -48,14 +50,14 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system --filter=@n8n/storybook
 
       - name: Publish to Chromatic
         uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
         id: chromatic_tests
         continue-on-error: true
         with:
-          workingDir: packages/frontend/@n8n/design-system
+          workingDir: packages/frontend/@n8n/storybook
           autoAcceptChanges: 'master'
           skip: 'release/**'
           onlyChanged: true
