@@ -53,6 +53,11 @@ describe('SignupView', () => {
 		toast = useToast();
 
 		usersStore = mockedStore(useUsersStore);
+
+		// Clear route query between tests
+		Object.keys(route.query).forEach((key) => {
+			delete route.query[key];
+		});
 	});
 
 	it('should not throw error when opened', async () => {
@@ -103,9 +108,34 @@ describe('SignupView', () => {
 		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
 	});
 
-	it('should accept invitation with tokens', async () => {
+	it('should validate signup token with JWT token', async () => {
+		const mockToken =
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
+		// Only set token, not inviterId or inviteeId
+		route.query.token = mockToken;
+		route.query.inviterId = undefined;
+		route.query.inviteeId = undefined;
+
+		usersStore.validateSignupToken.mockResolvedValueOnce({
+			inviter: {
+				firstName: 'John',
+				lastName: 'Doe',
+			},
+		});
+
+		renderComponent();
+
+		expect(usersStore.validateSignupToken).toHaveBeenCalledWith({
+			token: mockToken,
+			inviterId: undefined,
+			inviteeId: undefined,
+		});
+	});
+
+	it('should accept invitation with legacy inviterId and inviteeId', async () => {
 		route.query.inviterId = '123';
 		route.query.inviteeId = '456';
+		route.query.token = undefined;
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
@@ -141,9 +171,88 @@ describe('SignupView', () => {
 		expect(usersStore.acceptInvitation).toHaveBeenCalledWith({
 			inviterId: '123',
 			inviteeId: '456',
+			token: undefined,
 			firstName: 'Jane',
 			lastName: 'Doe',
 			password: '324R435gfg5fgj!',
 		});
+	});
+
+	it('should accept invitation with JWT token', async () => {
+		const mockToken =
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
+		route.query.token = mockToken;
+		route.query.inviterId = undefined;
+		route.query.inviteeId = undefined;
+
+		usersStore.validateSignupToken.mockResolvedValueOnce({
+			inviter: {
+				firstName: 'John',
+				lastName: 'Doe',
+			},
+		});
+
+		const { getByRole, container } = renderComponent();
+
+		const acceptButton = getByRole('button', { name: 'Finish account setup' });
+
+		const firstNameInput = container.querySelector('input[name="firstName"]');
+		const lastNameInput = container.querySelector('input[name="lastName"]');
+		const passwordInput = container.querySelector('input[type="password"]');
+
+		if (!firstNameInput || !lastNameInput || !passwordInput) {
+			throw new Error('Inputs not found');
+		}
+
+		await userEvent.type(firstNameInput, 'Jane');
+		await userEvent.type(lastNameInput, 'Doe');
+		await userEvent.type(passwordInput, '324R435gfg5fgj!');
+
+		await userEvent.click(acceptButton);
+
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(usersStore.acceptInvitation).toHaveBeenCalledWith({
+			token: mockToken,
+			inviterId: undefined,
+			inviteeId: undefined,
+			firstName: 'Jane',
+			lastName: 'Doe',
+			password: '324R435gfg5fgj!',
+		});
+	});
+
+	it('should not accept invitation when missing inviterId or inviteeId in legacy format', async () => {
+		route.query.inviterId = '123';
+		route.query.inviteeId = undefined;
+		route.query.token = undefined;
+
+		usersStore.validateSignupToken.mockResolvedValueOnce({
+			inviter: {
+				firstName: 'John',
+				lastName: 'Doe',
+			},
+		});
+
+		const { getByRole, container } = renderComponent();
+
+		const acceptButton = getByRole('button', { name: 'Finish account setup' });
+
+		const firstNameInput = container.querySelector('input[name="firstName"]');
+		const lastNameInput = container.querySelector('input[name="lastName"]');
+		const passwordInput = container.querySelector('input[type="password"]');
+
+		if (!firstNameInput || !lastNameInput || !passwordInput) {
+			throw new Error('Inputs not found');
+		}
+
+		// Fill out the form so onSubmit is called
+		await userEvent.type(firstNameInput, 'Jane');
+		await userEvent.type(lastNameInput, 'Doe');
+		await userEvent.type(passwordInput, '324R435gfg5fgj!');
+
+		await userEvent.click(acceptButton);
+
+		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
 	});
 });

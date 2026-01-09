@@ -495,5 +495,218 @@ describe('InvitationController', () => {
 			// Verify that getInvitationIdsFromPayload was called
 			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalled();
 		});
+
+		it('throws a BadRequestError if inviterId or inviteeId is missing in legacy format', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest<{ id: string }>>({
+				body: payload,
+				params: { id: uuidv4() },
+			});
+			const res = mock<Response>();
+
+			await expect(
+				invitationController.acceptInvitation(req, res, payload, req.params.id),
+			).rejects.toThrow(new BadRequestError('InviterId and inviteeId are required'));
+		});
+	});
+
+	describe('acceptInvitationWithToken', () => {
+		it('throws a BadRequestError if SSO is enabled', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				token: 'valid-jwt-token',
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(
+				invitationController.acceptInvitationWithToken(req, res, payload),
+			).rejects.toThrow(
+				new BadRequestError(
+					'Invite links are not supported on this system, please use single sign on instead.',
+				),
+			);
+		});
+
+		it('throws a BadRequestError if token is missing', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(
+				invitationController.acceptInvitationWithToken(req, res, payload),
+			).rejects.toThrow(new BadRequestError('Token is required'));
+		});
+
+		it('accepts the invitation successfully with JWT token', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+			const token = 'valid-jwt-token';
+			const inviterId = uuidv4();
+			const inviteeId = uuidv4();
+			const inviter = mock<User>({
+				id: inviterId,
+				email: 'valid@email.com',
+				role: GLOBAL_OWNER_ROLE,
+			});
+			const invitee = mock<User>({
+				id: inviteeId,
+				email: 'valid@email.com',
+				password: null,
+				role: GLOBAL_MEMBER_ROLE,
+			});
+
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId,
+				inviteeId,
+			});
+			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
+			jest.spyOn(passwordUtility, 'hash').mockResolvedValue('Password123!');
+			jest.spyOn(userRepository, 'save').mockResolvedValue(invitee);
+			jest.spyOn(authService, 'issueCookie').mockResolvedValue(invitee as never);
+			jest.spyOn(eventService, 'emit').mockResolvedValue(invitee as never);
+			jest.spyOn(userService, 'toPublic').mockResolvedValue(invitee as unknown as PublicUser);
+			jest.spyOn(externalHooks, 'run').mockResolvedValue(invitee as never);
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				token,
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+				browserId: 'browser-id',
+			});
+			const res = mock<Response>();
+
+			expect(await invitationController.acceptInvitationWithToken(req, res, payload)).toEqual(
+				invitee as unknown as PublicUser,
+			);
+
+			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith({
+				token,
+			});
+			expect(userRepository.find).toHaveBeenCalledWith({
+				where: [{ id: inviterId }, { id: inviteeId }],
+				relations: ['role'],
+			});
+			expect(passwordUtility.hash).toHaveBeenCalledWith('Password123!');
+			expect(userRepository.save).toHaveBeenCalled();
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, invitee, false, 'browser-id');
+			expect(eventService.emit).toHaveBeenCalledWith('user-signed-up', {
+				user: invitee,
+				userType: 'email',
+				wasDisabledLdapUser: false,
+			});
+		});
+
+		it('throws a BadRequestError if users are not found', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+			const token = 'valid-jwt-token';
+			const inviterId = uuidv4();
+			const inviteeId = uuidv4();
+
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId,
+				inviteeId,
+			});
+			jest.spyOn(userRepository, 'find').mockResolvedValue([]);
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				token,
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(
+				invitationController.acceptInvitationWithToken(req, res, payload),
+			).rejects.toThrow(new BadRequestError('Invalid payload or URL'));
+		});
+
+		it('throws a BadRequestError if invitee already has a password', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+			const token = 'valid-jwt-token';
+			const inviterId = uuidv4();
+			const inviteeId = uuidv4();
+			const inviter = mock<User>({
+				id: inviterId,
+				email: 'valid@email.com',
+				role: GLOBAL_OWNER_ROLE,
+			});
+			const invitee = mock<User>({
+				id: inviteeId,
+				email: 'valid@email.com',
+				password: 'Password123!',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+
+			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+				inviterId,
+				inviteeId,
+			});
+			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
+
+			const invitationController = defaultInvitationController();
+
+			const payload = {
+				token,
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(
+				invitationController.acceptInvitationWithToken(req, res, payload),
+			).rejects.toThrow(new BadRequestError('This invite has been accepted already'));
+		});
 	});
 });
