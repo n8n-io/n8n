@@ -9,7 +9,7 @@ import {
 	type ChatSessionId,
 	ChatHubConversationModel,
 	ChatHubMessageStatus,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	ChatHubBaseLLMModel,
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
@@ -41,9 +41,16 @@ import {
 	WorkflowExecuteMode,
 	AGENT_LANGCHAIN_NODE_TYPE,
 	sleep,
+	NodeConnectionTypes,
+	INodeExecutionData,
+	UserError,
+	UnexpectedError,
 } from 'n8n-workflow';
+import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -64,6 +71,7 @@ import {
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	STREAM_CLOSE_TIMEOUT,
+	SUPPORTED_RESPONSE_MODES,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -74,10 +82,12 @@ import {
 	EditMessagePayload,
 	chatTriggerParamsShape,
 	ChatTriggerResponseMode,
+	NonStreamingResponseMode,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
 
 @Service()
 export class ChatHubService {
@@ -86,6 +96,7 @@ export class ChatHubService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionService: ExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionManager: ChatExecutionManager,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -168,6 +179,25 @@ export class ChatHubService {
 		let responseMode: ChatTriggerResponseMode;
 
 		try {
+			let customAgentWorkflow:
+				| {
+						workflowData: IWorkflowBase;
+						executionData: IRunExecutionData;
+						responseMode: ChatTriggerResponseMode;
+				  }
+				| undefined;
+			if (model.provider === 'n8n') {
+				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
+				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
+				customAgentWorkflow = await this.prepareCustomAgentWorkflow(
+					user,
+					sessionId,
+					model.workflowId,
+					message,
+					attachments,
+				);
+			}
+
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
@@ -201,6 +231,10 @@ export class ChatHubService {
 					trx,
 				);
 
+				if (customAgentWorkflow) {
+					return customAgentWorkflow;
+				}
+
 				return await this.prepareReplyWorkflow(
 					user,
 					sessionId,
@@ -231,14 +265,49 @@ export class ChatHubService {
 			throw error;
 		}
 
+		const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId);
+		if (
+			model.provider === 'n8n' &&
+			responseMode === 'responseNodes' &&
+			previousMessage?.status === 'waiting' &&
+			previousMessage?.executionId
+		) {
+			const execution = await this.executionRepository.findSingleExecution(
+				previousMessage.executionId.toString(),
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+			if (!execution) {
+				throw new OperationalError('Chat session has expired.');
+			}
+			this.logger.debug(
+				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
+			);
+			await this.messageRepository.updateChatMessage(previousMessage.id, {
+				status: 'success',
+			});
+			return await this.resumeChatExecution(
+				execution,
+				message,
+				sessionId,
+				messageId,
+				previousMessage.id,
+				model,
+				res,
+				responseMode,
+			);
+		}
+
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			messageId,
-			model,
 			null,
 			responseMode,
 		);
@@ -246,16 +315,18 @@ export class ChatHubService {
 		// Generate title for the session on receiving the first human message.
 		// This could be moved on a separate API call perhaps, maybe triggered after the first message is sent?
 		if (previousMessageId === null) {
-			await this.generateSessionTitle(
-				user,
-				sessionId,
-				message,
-				processedAttachments,
-				credentials,
-				model,
-			).catch((error) => {
-				this.logger.error(`Title generation failed: ${error}`);
-			});
+			try {
+				await this.generateSessionTitle(
+					user,
+					sessionId,
+					message,
+					processedAttachments,
+					credentials,
+					model,
+				);
+			} catch (error) {
+				this.logger.warn(`Title generation failed: ${error}`);
+			}
 		}
 	}
 
@@ -359,11 +430,11 @@ export class ChatHubService {
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			messageId,
-			model,
 			null,
 			responseMode,
 		);
@@ -432,11 +503,11 @@ export class ChatHubService {
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			previousMessageId,
-			model,
 			retryOfMessageId,
 			responseMode,
 		);
@@ -455,13 +526,7 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
-			return await this.prepareCustomAgentWorkflow(
-				user,
-				sessionId,
-				model.workflowId,
-				message,
-				attachments,
-			);
+			throw new UnexpectedError('n8n provider workflow should be prepared outside transaction');
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -626,9 +691,9 @@ export class ChatHubService {
 		}
 
 		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
-		if (responseMode !== 'streaming') {
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(
-				'Chat Trigger node response mode must be set to streaming to use the workflow on Chat',
+				'Chat Trigger node response mode must be set to "Streaming" or "When Last Node Finishes" to use the workflow on Chat',
 			);
 		}
 
@@ -636,9 +701,9 @@ export class ChatHubService {
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
 
-		if (chatResponseNodes.length > 0) {
+		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
 			throw new BadRequestError(
-				'Respond to Chat nodes are not supported in custom agent workflows',
+				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
 			);
 		}
 
@@ -700,6 +765,8 @@ export class ChatHubService {
 		if (!previousMessage) {
 			throw new BadRequestError('The previous message does not exist in the session');
 		}
+
+		return previousMessage;
 	}
 
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -729,11 +796,11 @@ export class ChatHubService {
 	private async executeChatWorkflow(
 		res: Response,
 		user: User,
+		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
 		executionMode: WorkflowExecuteMode = 'chat',
 		responseMode: ChatTriggerResponseMode,
@@ -742,10 +809,393 @@ export class ChatHubService {
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
 		);
 
-		if (responseMode !== 'streaming') {
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
 		}
 
+		if (responseMode === 'responseNode') {
+			throw new OperationalError(
+				"Response mode 'Using Respond to Webhook Node' is not supported for chat.",
+			);
+		}
+
+		if (responseMode === 'lastNode' || responseMode === 'responseNodes') {
+			return await this.executeLastNode(
+				res,
+				user,
+				model,
+				workflowData,
+				executionData,
+				sessionId,
+				previousMessageId,
+				retryOfMessageId,
+				executionMode,
+				responseMode,
+			);
+		} else if (responseMode === 'streaming') {
+			return await this.executeWithStreaming(
+				res,
+				user,
+				model,
+				workflowData,
+				executionData,
+				sessionId,
+				previousMessageId,
+				retryOfMessageId,
+				executionMode,
+			);
+		}
+	}
+
+	private async executeLastNode(
+		res: Response,
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+		executionMode: WorkflowExecuteMode,
+		responseMode: NonStreamingResponseMode,
+	) {
+		const running = await this.workflowExecutionService.executeChatWorkflow(
+			user,
+			workflowData,
+			executionData,
+			undefined,
+			false,
+			executionMode,
+		);
+
+		const messageId = uuidv4();
+		const executionId = running.executionId;
+
+		if (!executionId) {
+			throw new OperationalError('There was a problem starting the chat execution.');
+		}
+
+		await this.beginResponse(
+			res,
+			executionId,
+			messageId,
+			sessionId,
+			model,
+			previousMessageId,
+			retryOfMessageId,
+		);
+
+		try {
+			await this.waitForExecutionCompletion(executionId);
+			const execution = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+			if (!execution) {
+				throw new OperationalError(
+					'Chat execution not found after completion - make sure your instance is saving executions.',
+				);
+			}
+
+			// Check for execution errors
+			if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
+				const errorMessage = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(errorMessage);
+			}
+
+			const message = this.getMessage(execution, responseMode);
+			const status = execution?.status === 'waiting' ? 'waiting' : 'success';
+
+			await this.endResponse(
+				res,
+				message ?? '',
+				status,
+				executionId,
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+			);
+
+			if (status === 'waiting' && responseMode === 'responseNodes') {
+				const lastNode = getLastNodeExecuted(execution);
+				if (lastNode && shouldResumeImmediately(lastNode)) {
+					this.logger.debug(
+						`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+					);
+					await this.resumeChatExecution(
+						execution,
+						'',
+						sessionId,
+						messageId,
+						messageId,
+						model,
+						res,
+						responseMode,
+					);
+				}
+			}
+		} catch (e: unknown) {
+			if (e instanceof ManualExecutionCancelledError) {
+				// When messages are cancelled they're already marked cancelled on `stopGeneration`
+				return;
+			}
+
+			const message =
+				e instanceof Error ? e.message : 'Unknown error occurred during chat execution';
+
+			await this.endResponse(
+				res,
+				message ?? '',
+				'error',
+				executionId,
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+			);
+		}
+	}
+
+	private async resumeChatExecution(
+		execution: IExecutionResponse | undefined,
+		message: string,
+		sessionId: ChatSessionId,
+		messageId: string,
+		previousMessageId: ChatMessageId,
+		model: ChatHubConversationModel,
+		res: Response,
+		responseMode: 'responseNodes',
+	) {
+		// Mark the waiting message as successful
+		await this.messageRepository.updateChatMessage(previousMessageId, {
+			status: 'success',
+		});
+
+		while (execution && execution.status === 'waiting') {
+			await this.resumeExecution(sessionId, execution, message);
+			previousMessageId = messageId;
+			messageId = uuidv4();
+
+			await this.beginResponse(
+				res,
+				execution.id,
+				messageId,
+				sessionId,
+				model,
+				previousMessageId,
+				null,
+			);
+
+			await this.waitForExecutionCompletion(execution.id);
+
+			execution = await this.executionRepository.findSingleExecution(execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			if (!execution) {
+				throw new OperationalError(
+					'Chat execution not found after completion - make sure your instance is saving executions.',
+				);
+			}
+
+			if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
+				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+				throw new OperationalError(message);
+			}
+
+			const reply = this.getMessage(execution, responseMode);
+			const status = execution?.status === 'waiting' ? 'waiting' : 'success';
+
+			await this.endResponse(
+				res,
+				reply ?? '',
+				status,
+				execution.id,
+				messageId,
+				previousMessageId,
+				null,
+			);
+
+			const lastNode = getLastNodeExecuted(execution);
+			if (status === 'waiting' && lastNode && shouldResumeImmediately(lastNode)) {
+				// Resuming execution immediately, so mark the last message as successful
+				this.logger.debug(
+					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+				);
+				await this.messageRepository.updateChatMessage(messageId, {
+					status: 'success',
+				});
+
+				// There's no new human input
+				message = '';
+			} else {
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Returns the message to be sent of the last executed node
+	 */
+	private getMessage(execution: IExecutionResponse, responseMode: ChatTriggerResponseMode) {
+		const nodeName = this.getLastNodeExecuted(execution);
+		if (!nodeName) return undefined;
+
+		const outputs = this.getNodeOutputs(execution, nodeName);
+		const entry = this.getFirstOutputEntry(outputs);
+		if (!entry) return undefined;
+
+		return this.extractMessage(entry, responseMode);
+	}
+
+	private getLastNodeExecuted(execution: IExecutionResponse): string | undefined {
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
+		return typeof lastNodeExecuted === 'string' ? lastNodeExecuted : undefined;
+	}
+
+	private getNodeOutputs(execution: IExecutionResponse, nodeName: string) {
+		const runData = execution.data.resultData.runData[nodeName];
+		const runIndex = runData.length - 1;
+		const data = runData[runIndex]?.data;
+
+		return data?.main ?? data?.[NodeConnectionTypes.AiTool] ?? [];
+	}
+
+	private getFirstOutputEntry(
+		outputs: Array<INodeExecutionData[] | null>,
+	): INodeExecutionData | undefined {
+		for (const branch of outputs) {
+			if (!Array.isArray(branch) || branch.length === 0) continue;
+
+			return branch[0];
+		}
+
+		return undefined;
+	}
+
+	private extractMessage(entry: INodeExecutionData, responseMode: ChatTriggerResponseMode) {
+		if (responseMode === 'responseNodes') {
+			return entry.sendMessage ?? '';
+		}
+
+		if (responseMode === 'lastNode') {
+			const response = (entry.json ?? {}) as Record<string, unknown>;
+			const message = response.output ?? response.text ?? response.message ?? '';
+			return typeof message === 'string' ? message : jsonStringify(message);
+		}
+
+		return undefined;
+	}
+
+	private async beginResponse(
+		res: Response,
+		executionId: string | null,
+		messageId: string,
+		sessionId: string,
+		model: ChatHubConversationModel,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+	) {
+		const beginChunk: MessageChunk = {
+			type: 'begin',
+			metadata: {
+				timestamp: Date.now(),
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+				executionId: executionId ? parseInt(executionId, 10) : null,
+			},
+		};
+
+		if (!res.headersSent) {
+			res.writeHead(200, JSONL_STREAM_HEADERS);
+			res.flushHeaders();
+		}
+
+		res.write(jsonStringify(beginChunk) + '\n');
+		res.flush();
+
+		await this.saveAIMessage({
+			id: messageId,
+			content: '',
+			sessionId,
+			executionId: executionId ?? undefined,
+			model,
+			previousMessageId,
+			retryOfMessageId,
+			status: 'running',
+		});
+	}
+
+	private async endResponse(
+		res: Response,
+		content: string,
+		status: ChatHubMessageStatus,
+		executionId: string | null,
+		messageId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+	) {
+		const contentChunk: MessageChunk = {
+			type: status === 'error' ? 'error' : 'item',
+			content,
+			metadata: {
+				timestamp: Date.now(),
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+				executionId: executionId ? parseInt(executionId, 10) : null,
+			},
+		};
+
+		res.write(jsonStringify(contentChunk) + '\n');
+		res.flush();
+
+		if (status !== 'error') {
+			const endChunk: MessageChunk = {
+				type: 'end',
+				metadata: {
+					timestamp: Date.now(),
+					messageId,
+					previousMessageId,
+					retryOfMessageId,
+					executionId: executionId ? parseInt(executionId, 10) : null,
+				},
+			};
+
+			res.write(jsonStringify(endChunk) + '\n');
+			res.flush();
+		}
+
+		await this.messageRepository.updateChatMessage(messageId, {
+			content,
+			status,
+		});
+	}
+
+	private async resumeExecution(
+		sessionId: ChatSessionId,
+		execution: IExecutionResponse,
+		message: string,
+	) {
+		await this.executionManager.runWorkflow(execution, {
+			action: 'sendMessage',
+			chatInput: message,
+			sessionId,
+		});
+	}
+
+	private async executeWithStreaming(
+		res: Response,
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+		executionMode: WorkflowExecuteMode,
+	) {
 		// Capture the streaming response as it's being generated to save
 		// partial messages in the database when generation gets cancelled.
 		let executionId: string | undefined = undefined;
@@ -814,7 +1264,6 @@ export class ChatHubService {
 			} catch {
 				return text;
 			}
-
 			if (chunk.type === 'error' && !chunk.content) {
 				chunk.content = executionId
 					? await this.waitForErrorDetails(executionId, workflowData.id)
@@ -822,10 +1271,10 @@ export class ChatHubService {
 			}
 
 			const message = await aggregator.ingest(chunk);
-			const enriched: EnrichedStructuredChunk = {
+			const messageChunk: MessageChunk = {
 				...chunk,
 				metadata: {
-					...chunk.metadata,
+					timestamp: chunk.metadata.timestamp,
 					messageId: message.id,
 					previousMessageId: message.previousMessageId,
 					retryOfMessageId: message.retryOfMessageId,
@@ -833,7 +1282,7 @@ export class ChatHubService {
 				},
 			};
 
-			return jsonStringify(enriched) + '\n';
+			return jsonStringify(messageChunk) + '\n';
 		};
 
 		const stream = interceptResponseWrites(res, transform);
@@ -850,9 +1299,9 @@ export class ChatHubService {
 		stream.flushHeaders();
 
 		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			user,
 			workflowData,
 			executionData,
-			user,
 			stream,
 			true,
 			executionMode,
@@ -891,18 +1340,23 @@ export class ChatHubService {
 		return await new Promise<void>((resolve, reject) => {
 			const poller = setInterval(async () => {
 				try {
-					const result = await this.executionRepository.findSingleExecution(executionId, {
+					const execution = await this.executionRepository.findSingleExecution(executionId, {
 						includeData: false,
 						unflattenData: false,
 					});
 
 					// Stop polling when execution is done (or missing if instance doesn't save executions)
-					if (!result || EXECUTION_FINISHED_STATUSES.includes(result.status)) {
+					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
 						this.logger.debug(
-							`Execution ${executionId} finished with status ${result?.status ?? 'missing'}`,
+							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
 						);
 						clearInterval(poller);
-						resolve();
+
+						if (execution?.status === 'canceled') {
+							reject(new ManualExecutionCancelledError(executionId));
+						} else {
+							resolve();
+						}
 					}
 				} catch (error) {
 					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
@@ -934,8 +1388,12 @@ export class ChatHubService {
 				throw new OperationalError('There was a problem executing the chat workflow.');
 			}
 		} catch (error: unknown) {
-			if (error instanceof ManualExecutionCancelledError) {
+			if (error instanceof ExecutionNotFoundError) {
 				return;
+			}
+
+			if (error instanceof ManualExecutionCancelledError) {
+				throw error;
 			}
 
 			if (error instanceof Error) {
@@ -948,11 +1406,11 @@ export class ChatHubService {
 	private async executeChatWorkflowWithCleanup(
 		res: Response,
 		user: User,
+		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
 	) {
@@ -964,11 +1422,11 @@ export class ChatHubService {
 			await this.executeChatWorkflow(
 				res,
 				user,
+				model,
 				workflowData,
 				executionData,
 				sessionId,
 				previousMessageId,
-				model,
 				retryOfMessageId,
 				executionMode,
 				responseMode,
@@ -1002,11 +1460,6 @@ export class ChatHubService {
 			if (title) {
 				await this.sessionRepository.updateChatSession(sessionId, { title });
 			}
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				this.logger.error(`Error during session title generation workflow execution: ${error}`);
-			}
-			throw error;
 		} finally {
 			await this.deleteChatWorkflow(workflowData.id);
 		}
@@ -1102,7 +1555,7 @@ export class ChatHubService {
 		);
 
 		if (!workflowEntity?.activeVersion) {
-			throw new BadRequestError('Workflow not found for title generation');
+			throw new UserError('Workflow not found for title generation');
 		}
 
 		const modelNodes = this.findSupportedLLMNodes(workflowEntity.activeVersion.nodes);
@@ -1111,26 +1564,26 @@ export class ChatHubService {
 		);
 
 		if (modelNodes.length === 0) {
-			throw new BadRequestError('No supported Model nodes found in workflow for title generation');
+			throw new UserError('No supported Model nodes found in workflow for title generation');
 		}
 
 		const modelNode = modelNodes[0];
 		const llmModel = (modelNode.node.parameters?.model as INodeParameters)?.value;
 		if (!llmModel) {
-			throw new BadRequestError(
+			throw new UserError(
 				`No model set on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
 
 		if (typeof llmModel !== 'string' || llmModel.length === 0 || llmModel.startsWith('=')) {
-			throw new BadRequestError(
+			throw new UserError(
 				`Invalid model set on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
 
 		const llmCredentials = modelNode.node.credentials;
 		if (!llmCredentials) {
-			throw new BadRequestError(
+			throw new UserError(
 				`No credentials found on Model node "${modelNode.node.name}" for title generation`,
 			);
 		}
@@ -1217,9 +1670,9 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 	): Promise<string | null> {
 		const { executionId } = await this.workflowExecutionService.executeChatWorkflow(
+			user,
 			workflowData,
 			executionData,
-			user,
 			undefined,
 			false,
 			'chat',
@@ -1324,7 +1777,11 @@ export class ChatHubService {
 		agentName?: string,
 		trx?: EntityManager,
 	) {
-		await this.ensureValidModel(user, model);
+		// Skip validation on n8n provider as it is already done outside the transaction
+		// at prepareCustomAgentWorkflow to avoid deadlocks
+		if (model.provider !== 'n8n') {
+			await this.ensureValidModel(user, model);
+		}
 
 		return await this.sessionRepository.createChatSession(
 			{

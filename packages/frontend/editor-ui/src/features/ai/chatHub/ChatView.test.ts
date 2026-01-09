@@ -13,7 +13,7 @@ import {
 	createMockModelsResponse,
 	createMockSession,
 	wrapOnMessageUpdate,
-	type SimulateStreamChunkFn,
+	type SimulateMessageChunkFn,
 } from './__test__/data';
 import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
@@ -105,7 +105,7 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let simulateStreamChunk: SimulateStreamChunkFn;
+	let simulateStreamChunk: SimulateMessageChunkFn;
 	let simulateStreamDone: () => void;
 
 	beforeEach(() => {
