@@ -8,6 +8,7 @@ import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
 import { ref, computed } from 'vue';
 import { useToast } from '@/app/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -35,6 +36,8 @@ type Props = {
 
 const props = defineProps<Props>();
 
+const i18n = useI18n();
+
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
 	try {
@@ -50,8 +53,8 @@ async function downloadBinaryData() {
 		saveAs(blob, name);
 	} catch (error) {
 		useToast().showMessage({
-			title: 'Error downloading file',
-			message: 'File could not be downloaded',
+			title: i18n.baseText('runData.downloadBinaryData.error.title'),
+			message: i18n.baseText('runData.downloadBinaryData.error.message'),
 			type: 'error',
 		});
 	}

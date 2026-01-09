@@ -21,6 +21,7 @@ import {
 	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -70,7 +71,7 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode: WorkflowSettingsBinaryMode = 'separate',
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): IBinaryData {
 	if (isBinaryValue(parameterData)) {
 		return parameterData;
@@ -141,7 +142,7 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode: WorkflowSettingsBinaryMode = 'separate',
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 

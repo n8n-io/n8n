@@ -2305,6 +2305,8 @@
 	"runData.executionStatus.failed": "Execution failed",
 	"runData.executionStatus.canceled": "Execution canceled",
 	"runData.downloadBinaryData": "Download",
+	"runData.downloadBinaryData.error.title": "Error downloading file",
+	"runData.downloadBinaryData.error.message": "File could not be downloaded",
 	"runData.executeNode": "Test Node",
 	"runData.executionTime": "Execution Time",
 	"runData.fileExtension": "File Extension",
