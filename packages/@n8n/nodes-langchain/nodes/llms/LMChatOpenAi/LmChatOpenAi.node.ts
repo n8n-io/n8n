@@ -2,7 +2,6 @@ import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchai
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
-	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -14,7 +13,6 @@ import {
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { MODELS_ALLOWING_NON_RESPONSES_API_PATTERN } from '../../vendors/OpenAi/helpers/constants';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -740,19 +738,6 @@ export class LmChatOpenAi implements INodeType {
 				: (this.getNodeParameter('model', itemIndex) as string);
 
 		const responsesApiEnabled = this.getNodeParameter('responsesApiEnabled', itemIndex, false);
-
-		// Validate that models not supporting non-Responses API have it enabled
-		if (!responsesApiEnabled && !MODELS_ALLOWING_NON_RESPONSES_API_PATTERN.test(modelName ?? '')) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Model "${modelName}" requires "Use Responses API" to be enabled`,
-				{
-					itemIndex,
-					description:
-						'This model is only available through the OpenAI Responses API. Open the OpenAI Chat Model node settings and enable "Use Responses API" to use this model.',
-				},
-			);
-		}
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as ModelOptions;
 
