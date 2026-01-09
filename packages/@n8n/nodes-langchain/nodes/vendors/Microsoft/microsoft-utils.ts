@@ -314,19 +314,3 @@ const createAuthConfig = (credentials: MicrosoftAgent365Credentials) => {
 
 	return config;
 };
-
-/**
- * Helper function to ensure observability environment variables are set
- * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if not already set
- */
-export function setObservabilityDefaultEnv(): void {
-	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
-		process.env.ENABLE_OBSERVABILITY = 'true';
-	}
-	if (
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
-	) {
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
-	}
-}

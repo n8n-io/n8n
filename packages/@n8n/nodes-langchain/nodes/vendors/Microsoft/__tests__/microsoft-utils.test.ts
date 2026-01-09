@@ -5,7 +5,6 @@ import { NodeOperationError } from 'n8n-workflow';
 import {
 	createMicrosoftAgentApplication,
 	configureAdapterProcessCallback,
-	setObservabilityDefaultEnv,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
 } from '../microsoft-utils';
@@ -356,97 +355,6 @@ describe('microsoft-utils', () => {
 					scopes: ['mcp-scope'],
 				}),
 			);
-		});
-	});
-
-	describe('setObservabilityDefaultEnv', () => {
-		const originalEnv = process.env;
-
-		beforeEach(() => {
-			jest.resetModules();
-			process.env = { ...originalEnv };
-		});
-
-		afterEach(() => {
-			process.env = originalEnv;
-		});
-
-		test('should set ENABLE_OBSERVABILITY to true when undefined', () => {
-			delete process.env.ENABLE_OBSERVABILITY;
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-		});
-
-		test('should set ENABLE_OBSERVABILITY to true when empty string', () => {
-			process.env.ENABLE_OBSERVABILITY = '';
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-		});
-
-		test('should not override ENABLE_OBSERVABILITY when already set', () => {
-			process.env.ENABLE_OBSERVABILITY = 'false';
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('false');
-		});
-
-		test('should set ENABLE_A365_OBSERVABILITY_EXPORTER to true when undefined', () => {
-			delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-		});
-
-		test('should set ENABLE_A365_OBSERVABILITY_EXPORTER to true when empty string', () => {
-			process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = '';
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-		});
-
-		test('should not override ENABLE_A365_OBSERVABILITY_EXPORTER when already set', () => {
-			process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'false';
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('false');
-		});
-
-		test('should set both environment variables when both are undefined', () => {
-			delete process.env.ENABLE_OBSERVABILITY;
-			delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-		});
-
-		test('should set both environment variables when both are empty strings', () => {
-			process.env.ENABLE_OBSERVABILITY = '';
-			process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = '';
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-		});
-
-		test('should handle mixed scenarios correctly', () => {
-			process.env.ENABLE_OBSERVABILITY = 'custom-value';
-			delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-			setObservabilityDefaultEnv();
-
-			expect(process.env.ENABLE_OBSERVABILITY).toBe('custom-value');
-			expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
 		});
 	});
 });

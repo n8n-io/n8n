@@ -13,7 +13,6 @@ import {
 	configureAdapterProcessCallback,
 	createMicrosoftAgentApplication,
 	type MicrosoftAgent365Credentials,
-	setObservabilityDefaultEnv,
 } from './microsoft-utils';
 
 // TODO : remove after resolved ====================================
@@ -191,8 +190,6 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		//================================================================================
 
 		try {
-			setObservabilityDefaultEnv();
-
 			const credentials = (await this.getCredentials(
 				'microsoftAgent365Api',
 			)) as MicrosoftAgent365Credentials;
