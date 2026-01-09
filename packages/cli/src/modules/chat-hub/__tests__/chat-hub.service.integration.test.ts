@@ -1629,6 +1629,47 @@ describe('chatHub', () => {
 			expect(errorChunk.type).toBe('error');
 		});
 
+		it('should throw error when responseNode mode is used', async () => {
+			// Create an active workflow with chat trigger configured for responseNode mode
+			// (which is not supported for chat hub)
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Response Node Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'responseNode',
+								},
+							},
+						},
+					],
+					connections: {},
+				},
+				member,
+			);
+
+			await expect(
+				chatHubService.sendHumanMessage(mockResponse, member, {
+					userId: member.id,
+					sessionId,
+					messageId,
+					message: 'Test message',
+					model: { provider: 'n8n', workflowId: workflow.id },
+					credentials: {},
+					previousMessageId: null,
+					tools: [],
+					attachments: [],
+				}),
+			).rejects.toThrow("Response mode 'Using Respond to Webhook Node' is not supported for chat.");
+		});
+
 		it('should respond with responseNodes response mode and resume immediately when waitUserReply is false', async () => {
 			// Create an active workflow with Respond to Chat node that doesn't wait for user reply
 			const workflow = await createActiveWorkflow(
