@@ -47,12 +47,7 @@ const readOnlyForPublish = computed(() => {
 });
 
 const shouldHidePublishButton = computed(() => {
-	return (
-		props.readOnly ||
-		props.isArchived ||
-		!props.workflowPermissions.publish ||
-		!props.workflowPermissions.update
-	);
+	return props.readOnly || props.isArchived || !props.workflowPermissions.update;
 });
 
 const uiStore = useUIStore();
@@ -281,7 +276,12 @@ defineExpose({
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
-			<N8nTooltip :disabled="workflowPublishState === 'not-published-eligible'" :show-after="300">
+			<N8nTooltip
+				:disabled="
+					workflowPublishState === 'not-published-eligible' && props.workflowPermissions.publish
+				"
+				:show-after="300"
+			>
 				<template #content>
 					<div>
 						<template v-if="publishButtonConfig.tooltip">
