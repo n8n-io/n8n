@@ -1889,7 +1889,7 @@ watch(
 
 			// Trigger auto-save (debounced) for writers only
 			// Skip auto-save when AI Builder is streaming to keep version history clean
-			if (!collaborationStore.shouldBeReadOnly && !builderStore.streaming) {
+			if (!builderStore.streaming) {
 				void workflowSaving.autoSaveWorkflow();
 			}
 		}
