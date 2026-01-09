@@ -54,6 +54,7 @@ export {
 	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
