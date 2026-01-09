@@ -111,6 +111,9 @@ export function shouldModifyState(
 const PROMPT_IS_TOO_LARGE_ERROR =
 	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';
 
+const WORKFLOW_TOO_COMPLEX_ERROR =
+	'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.';
+
 function getWorkflowContext(state: typeof WorkflowState.State) {
 	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 	const executionData = state.workflowContext?.executionData ?? {};
@@ -631,13 +634,44 @@ export class WorkflowBuilderAgent {
 
 		// If it's not an abort error, check for GraphRecursionError
 		if (error instanceof GraphRecursionError) {
-			throw new ApplicationError(
-				'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
-			);
+			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+		}
+
+		// Check for 401 expired token errors (typically from long-running generations)
+		if (this.isTokenExpiredError(error)) {
+			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Re-throw any other errors
 		throw error;
+	}
+
+	/**
+	 * Checks if the error is a 401 expired token error from the LLM provider.
+	 * This typically occurs during very long-running workflow generations.
+	 */
+	private isTokenExpiredError(error: unknown): boolean {
+		if (!error || typeof error !== 'object') {
+			return false;
+		}
+
+		// Check for status/statusCode property being 401
+		if ('status' in error && error.status === 401) {
+			return true;
+		}
+		if ('statusCode' in error && error.statusCode === 401) {
+			return true;
+		}
+
+		// Check for error message containing 401 and expired token indicators
+		if ('message' in error && typeof error.message === 'string') {
+			const message = error.message.toLowerCase();
+			if (message.includes('401') && message.includes('expired')) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {
