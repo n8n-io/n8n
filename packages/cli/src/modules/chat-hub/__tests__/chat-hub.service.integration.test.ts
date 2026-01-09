@@ -952,13 +952,13 @@ describe('chatHub', () => {
 
 		it('should respond and persist generated response chunks sent from workflow execution', async () => {
 			// First call: main message execution with stream
-			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
 					mode: 'chat',
 					status: 'running',
 					workflowId: workflowData.id,
-					data,
+					data: executionData,
 					workflowData,
 				});
 
@@ -1028,13 +1028,13 @@ describe('chatHub', () => {
 
 		it('should respond and persist an error chunk sent from workflow execution', async () => {
 			// First call: main message execution with stream
-			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
 					mode: 'chat',
 					status: 'running',
 					workflowId: workflowData.id,
-					data,
+					data: executionData,
 					workflowData,
 				});
 
@@ -1101,7 +1101,7 @@ describe('chatHub', () => {
 
 		it('should respond and persist an error set in the workflow execution', async () => {
 			// First call: main message execution with stream
-			spyExecute.mockImplementationOnce(async (workflowData, executionData, _u, stream) => {
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
 					mode: 'chat',
@@ -1343,5 +1343,619 @@ describe('chatHub', () => {
 			loggerWarnSpy.mockRestore();
 			setTimeoutSpy.mockRestore();
 		}, 5000);
+	});
+
+	describe('sendHumanMessage with n8n workflows', () => {
+		let writeMock: jest.Mock;
+		let flushMock: jest.Mock;
+
+		let mockResponse: Response;
+
+		let sessionId: string;
+		let messageId: string;
+
+		let spyExecute: jest.SpyInstance<
+			ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
+			Parameters<WorkflowExecutionService['executeChatWorkflow']>
+		>;
+		let finishRun = (_: IRun) => {};
+
+		beforeEach(async () => {
+			jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+
+			// Mock settings repository
+			jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+
+			spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+
+			jest
+				.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				// eslint-disable-next-line @typescript-eslint/promise-function-async
+				.mockImplementation(() => {
+					return new Promise((r) => {
+						finishRun = r;
+					});
+				});
+
+			writeMock = jest.fn().mockReturnValue(true);
+			flushMock = jest.fn();
+			mockResponse = Object.assign(new EventEmitter(), {
+				write: writeMock,
+				end: jest.fn(function (this: EventEmitter) {
+					setImmediate(() => {
+						this.emit('finish');
+						this.emit('close');
+					});
+					return this;
+				}),
+				writeHead: jest.fn().mockReturnThis(),
+				flushHeaders: jest.fn(),
+				flush: flushMock,
+				headersSent: false,
+			}) as unknown as Response;
+
+			sessionId = crypto.randomUUID();
+			messageId = crypto.randomUUID();
+		});
+
+		it('should respond with lastNode response mode and extract output from json', async () => {
+			// Create an active workflow with chat trigger configured for lastNode response mode
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Last Node Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'lastNode',
+								},
+							},
+						},
+						{
+							id: 'agent-1',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 2.2,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock the execution to return lastNode output
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				// Update execution with successful result
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'success',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'AI Agent': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: { output: 'Hello from last node!' },
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'AI Agent',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				expect(messages.length).toBeGreaterThanOrEqual(2);
+				expect(messages[1]?.status).toBe('success');
+				return messages;
+			});
+
+			// Verify human message
+			expect(messages[0]?.type).toBe('human');
+			expect(messages[0]?.content).toBe('Test message');
+
+			// Verify AI message with lastNode output
+			expect(messages[1]?.type).toBe('ai');
+			expect(messages[1]?.status).toBe('success');
+			expect(messages[1]?.content).toBe('Hello from last node!');
+
+			// Verify response chunks were written (begin, item, end)
+			expect(writeMock).toHaveBeenCalledTimes(3);
+
+			// Verify begin chunk
+			const beginChunk = JSON.parse(writeMock.mock.calls[0][0].trim());
+			expect(beginChunk.type).toBe('begin');
+
+			// Verify item chunk with content
+			const itemChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
+			expect(itemChunk.type).toBe('item');
+			expect(itemChunk.content).toBe('Hello from last node!');
+
+			// Verify end chunk
+			const endChunk = JSON.parse(writeMock.mock.calls[2][0].trim());
+			expect(endChunk.type).toBe('end');
+		});
+
+		it('should respond with lastNode response mode and handle errors', async () => {
+			// Create an active workflow with chat trigger configured for lastNode response mode
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Last Node Error Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'lastNode',
+								},
+							},
+						},
+						{
+							id: 'agent-1',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 2.2,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock the execution to return an error
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				// Update execution with error result - ensure execution is updated BEFORE finishRun
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'error',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								error: new NodeOperationError(mock<INode>(), 'Workflow execution failed'),
+							},
+						}),
+					});
+					// Call finishRun after the execution update is complete
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				expect(messages.length).toBeGreaterThanOrEqual(2);
+				expect(messages[1]?.status).toBe('error');
+				return messages;
+			});
+
+			// Verify AI message has error status
+			expect(messages[1]?.type).toBe('ai');
+			expect(messages[1]?.status).toBe('error');
+			expect(messages[1]?.content).toBe('Workflow execution failed');
+
+			// Verify response chunks (begin, error)
+			expect(writeMock).toHaveBeenCalledTimes(2);
+
+			const beginChunk = JSON.parse(writeMock.mock.calls[0][0].trim());
+			expect(beginChunk.type).toBe('begin');
+
+			const errorChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
+			expect(errorChunk.type).toBe('error');
+		});
+
+		it('should respond with responseNode mode and extract sendMessage', async () => {
+			// Create an active workflow with chat trigger configured for responseNode mode
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Response Node Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'responseNode',
+								},
+							},
+						},
+						{
+							id: 'respond-1',
+							name: 'Respond to Chat',
+							type: '@n8n/n8n-nodes-langchain.chatTriggerResponse',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock the execution to return sendMessage from responseNode
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				// Update execution with result containing sendMessage
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'success',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'Respond to Chat': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: {},
+															sendMessage: 'Response from chat node!',
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'Respond to Chat',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				expect(messages.length).toBeGreaterThanOrEqual(2);
+				expect(messages[1]?.status).toBe('success');
+				return messages;
+			});
+
+			// Verify AI message has sendMessage content
+			expect(messages[1]?.type).toBe('ai');
+			expect(messages[1]?.status).toBe('success');
+			expect(messages[1]?.content).toBe('Response from chat node!');
+
+			// Verify item chunk has correct content
+			const itemChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
+			expect(itemChunk.content).toBe('Response from chat node!');
+		});
+
+		it('should handle execution with waiting status and mark message as waiting', async () => {
+			// Create an active workflow with chat trigger configured for lastNode response mode
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Waiting Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'lastNode',
+								},
+							},
+						},
+						{
+							id: 'wait-1',
+							name: 'Wait Node',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								waitForUserReply: true,
+							},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'Wait Node', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock the execution to return waiting status
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				// Update execution with waiting status
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'waiting',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'Wait Node': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: { output: 'Please wait for input...' },
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'Wait Node',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				expect(messages.length).toBeGreaterThanOrEqual(2);
+				expect(messages[1]?.status).toBe('waiting');
+				return messages;
+			});
+
+			// Verify AI message has waiting status
+			expect(messages[1]?.type).toBe('ai');
+			expect(messages[1]?.status).toBe('waiting');
+			expect(messages[1]?.content).toBe('Please wait for input...');
+		});
+
+		it('should extract text field when output is not present in lastNode mode', async () => {
+			// Create an active workflow
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Text Field Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'lastNode',
+								},
+							},
+						},
+						{
+							id: 'code-1',
+							name: 'Code Node',
+							type: 'n8n-nodes-base.code',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'Code Node', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock the execution to return text field instead of output
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'success',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'Code Node': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: { text: 'Response from text field!' },
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'Code Node',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				expect(messages.length).toBeGreaterThanOrEqual(2);
+				expect(messages[1]?.status).toBe('success');
+				return messages;
+			});
+
+			// Verify AI message extracts text field
+			expect(messages[1]?.content).toBe('Response from text field!');
+		});
 	});
 });
