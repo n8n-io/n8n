@@ -33,6 +33,7 @@ import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
+	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
@@ -432,6 +433,11 @@ function hookFunctionsSave(
 				executionData: fullExecutionData,
 			});
 
+			await updateExistingExecutionMetadata(
+				this.executionId,
+				fullRunData.data?.resultData?.metadata,
+			);
+
 			if (!isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 			}
@@ -498,6 +504,8 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			// In scaling mode, worker saves execution without metadata
+			// Main process will save metadata after deletion decisions to avoid FK violations
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -610,6 +618,12 @@ export function getLifecycleHooksForScalingMain(
 				workflowId: this.workflowData.id,
 				executionId: this.executionId,
 			});
+		} else {
+			// Only save metadata if execution is being kept
+			await updateExistingExecutionMetadata(
+				this.executionId,
+				fullRunData.data?.resultData?.metadata,
+			);
 		}
 	});
 

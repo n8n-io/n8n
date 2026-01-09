@@ -51,6 +51,9 @@ export default {
 	'assistantChat.builder.generatedNodes': 'Generated workflow nodes',
 	'assistantChat.builder.toolRunning': 'Tool still running',
 	'assistantChat.builder.toolError': 'Some tool calls have failed. Agent will retry these.',
+	'assistantChat.thinking.workflowGenerated': 'Workflow generated',
+	'assistantChat.thinking.thinking': 'Thinking',
+	'assistantChat.thinking.processing': 'Processing',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'n8n AI',
 	'assistantChat.aiAssistantBetaLabel': 'Beta',
@@ -89,4 +92,16 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'aiAssistant.textMessage.restoreVersion': 'Restore version',
+	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
+	'aiAssistant.versionCard.restoreModal.description':
+		'Your current version will be saved in version history for {pruneTime}.',
+	'aiAssistant.versionCard.restoreModal.descriptionNoLimit':
+		'Your current version will be saved in version history.',
+	'aiAssistant.versionCard.restoreModal.hour': '{count} hour',
+	'aiAssistant.versionCard.restoreModal.hours': '{count} hours',
+	'aiAssistant.versionCard.restoreModal.day': '{count} day',
+	'aiAssistant.versionCard.restoreModal.days': '{count} days',
+	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
+	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
 } as N8nLocale;

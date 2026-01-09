@@ -1,8 +1,10 @@
 import { tool } from '@langchain/core/tools';
-import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import type { Logger } from '@n8n/backend-common';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import type { NodeConfigurationEntry } from '@/types';
 import {
 	extractResourceOperations,
 	formatResourceOperationsForPrompt,
@@ -16,7 +18,12 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getWorkflowState } from './helpers/state';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
-import type { NodeDetailsOutput } from '../types/tools';
+import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools';
+import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils';
+import { fetchWorkflowsFromTemplates } from './web/templates';
+
+/** Maximum number of example configurations to include */
+const MAX_NODE_EXAMPLES = 5;
 
 /**
  * Schema for node details tool input
@@ -83,7 +90,7 @@ function formatNodeDetails(
 	details: NodeDetails,
 	withParameters: boolean = false,
 	withConnections: boolean = true,
-	examples: INodeParameters[] = [],
+	examples: NodeConfigurationEntry[] = [],
 	resourceOperationInfo?: ResourceOperationInfo | null,
 ): string {
 	const parts: string[] = [];
@@ -119,13 +126,14 @@ function formatNodeDetails(
 		parts.push('</connections>');
 	}
 
-	// Example configurations from workflow examples (with token limit)
+	// Example configurations from workflow examples (with token limit, max 5)
 	if (examples.length > 0) {
-		const { parts: exampleParts } = examples.reduce<{ parts: string[]; chars: number }>(
-			(acc, example) => {
-				const exampleStr = JSON.stringify(example, null, 2);
+		const limitedExamples = examples.slice(0, MAX_NODE_EXAMPLES);
+		const { parts: exampleParts } = limitedExamples.reduce<{ parts: string[]; chars: number }>(
+			(acc, config) => {
+				const exampleStr = JSON.stringify(config.parameters, null, 2);
 				if (acc.chars + exampleStr.length <= MAX_NODE_EXAMPLE_CHARS) {
-					acc.parts.push(exampleStr);
+					acc.parts.push(`<example>\n${exampleStr}\n</example>`);
 					acc.chars += exampleStr.length;
 				}
 				return acc;
@@ -166,11 +174,80 @@ export const NODE_DETAILS_TOOL: BuilderToolBase = {
 };
 
 /**
+ * Get example configurations for a node type.
+ * First checks the cached templates, then fetches from templates API if none found.
+ */
+async function getNodeExamples(
+	nodeName: string,
+	nodeVersion: number,
+	logger?: Logger,
+	onProgress?: (message: string) => void,
+): Promise<{
+	examples: NodeConfigurationEntry[];
+	newTemplates?: WorkflowMetadata[];
+}> {
+	// First, try to get examples from cached templates
+	try {
+		const state = getWorkflowState();
+		const cachedTemplates = state?.cachedTemplates ?? [];
+
+		// Extract configurations directly from cached templates
+		const filteredConfigs = getNodeConfigurationsFromTemplates(
+			cachedTemplates,
+			nodeName,
+			nodeVersion,
+		);
+
+		if (filteredConfigs.length > 0) {
+			logger?.debug('Found node configurations in cached templates', {
+				nodeName,
+				nodeVersion,
+				count: filteredConfigs.length,
+			});
+			return { examples: filteredConfigs };
+		}
+	} catch {
+		// State may not be available in some environments
+	}
+
+	// No cached data, fetch from templates API
+	onProgress?.(`Fetching examples for ${nodeName}...`);
+
+	try {
+		const result = await fetchWorkflowsFromTemplates(
+			{ nodes: nodeName, rows: 10 },
+			{ maxTemplates: 5, logger },
+		);
+
+		if (result.workflows.length > 0) {
+			const nodeConfigs = getNodeConfigurationsFromTemplates(
+				result.workflows,
+				nodeName,
+				nodeVersion,
+			);
+
+			logger?.debug('Fetched node configurations from templates API', {
+				nodeName,
+				nodeVersion,
+				count: nodeConfigs.length,
+				workflowCount: result.workflows.length,
+			});
+
+			return { examples: nodeConfigs, newTemplates: result.workflows };
+		}
+	} catch (error) {
+		logger?.warn('Failed to fetch node examples from templates', { nodeName, error });
+	}
+
+	return { examples: [] };
+}
+
+/**
  * Factory function to create the node details tool
  */
-export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
+export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
 	const dynamicTool = tool(
-		(input: unknown, config) => {
+		async (input: unknown, config) => {
 			const reporter = createProgressReporter(
 				config,
 				NODE_DETAILS_TOOL.toolName,
@@ -203,18 +280,13 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				// Extract resource/operation info for nodes that follow this pattern
 				const resourceOperationInfo = extractResourceOperations(nodeType, nodeVersion);
 
-				// Get example configurations from state, filtered by node type and version
-				let examples: INodeParameters[] = [];
-				try {
-					const state = getWorkflowState();
-					const allNodeConfigs = state?.nodeConfigurations?.[nodeName] ?? [];
-					examples = allNodeConfigs
-						.filter((config) => config.version === nodeVersion)
-						.map((config) => config.parameters);
-				} catch {
-					// State may not be available in test environments
-					examples = [];
-				}
+				// Get example configurations (from cache or fetch from templates)
+				const { examples, newTemplates } = await getNodeExamples(
+					nodeName,
+					nodeVersion,
+					logger,
+					(msg) => reportProgress(reporter, msg),
+				);
 
 				// Format the output message with examples and resource/operation info
 				const message = formatNodeDetails(
@@ -233,8 +305,10 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				};
 				reporter.complete(output);
 
-				// Return success response
-				return createSuccessResponse(config, message);
+				// Return success response with state updates if we fetched new templates
+				const stateUpdates = newTemplates ? { cachedTemplates: newTemplates } : undefined;
+
+				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
@@ -259,7 +333,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 		{
 			name: NODE_DETAILS_TOOL.toolName,
 			description:
-				'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.',
+				'Get detailed information about a specific n8n node type including properties, available connections, and up to 5 example configurations. Use this before adding nodes to understand their input/output structure.',
 			schema: nodeDetailsSchema,
 		},
 	);

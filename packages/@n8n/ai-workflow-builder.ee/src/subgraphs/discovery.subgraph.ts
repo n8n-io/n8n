@@ -26,10 +26,10 @@ import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
-import { appendArrayReducer, nodeConfigurationsReducer } from '../utils/state-reducers';
+import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -115,11 +115,10 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Node configurations collected from workflow examples
-	// Used to provide example parameter configurations when get_node_details is called
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
-		default: () => ({}),
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
 	}),
 });
 
@@ -154,7 +153,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const baseTools = [
 			createGetBestPracticesTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
-			createNodeDetailsTool(config.parsedNodeTypes),
+			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
 
 		// Conditionally add workflow examples tool if feature flag is enabled
@@ -297,11 +296,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		});
 
+		// Return hydrated output, including templateIds from workflow examples
 		return {
 			nodesFound: hydratedNodesFound,
 			bestPractices: bestPracticesTool?.text,
 			templateIds: state.templateIds ?? [],
-			nodeConfigurations: state.nodeConfigurations ?? {},
 		};
 	}
 
@@ -359,6 +358,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			userRequest,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -368,11 +368,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
-		const nodeConfigurations = subgraphOutput.nodeConfigurations || {};
 		const discoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
-			nodeConfigurations,
 		};
 
 		// Create coordination log entry (not a message)
@@ -393,8 +391,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 			// Pass template IDs for telemetry
 			templateIds,
-			// Pass node configurations for example parameters in node details
-			nodeConfigurations,
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

@@ -1,5 +1,3 @@
-import type { NodeConfigurationsMap } from './tools';
-
 /**
  * Available operation for a resource
  */
@@ -33,5 +31,4 @@ export interface DiscoveryContext {
 		availableResources?: DiscoveryResourceInfo[];
 	}>;
 	bestPractices?: string;
-	nodeConfigurations?: NodeConfigurationsMap;
 }
