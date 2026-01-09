@@ -323,7 +323,9 @@ describe('ToolExecutor Node', () => {
 
 			expect(hasGatedToolNodeName).toHaveBeenCalledWith(mockTool.metadata);
 			expect(extractHitlMetadata).toHaveBeenCalledWith(mockTool.metadata, 'gated_tool', {
-				param: 'value',
+				toolParameters: {
+					param: 'value',
+				},
 			});
 
 			// Verify the result is a NodeOutput with actions
@@ -343,7 +345,6 @@ describe('ToolExecutor Node', () => {
 			expect(result.actions[0].actionType).toBe('ExecutionNodeAction');
 			expect(result.actions[0].input).toMatchObject({
 				tool: 'gated_tool',
-				toolName: 'gated_tool',
 				approval: 'pending',
 			});
 		});
