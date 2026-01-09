@@ -250,11 +250,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const validateSignupToken = async (params: {
-		token?: string;
-		inviteeId?: string;
-		inviterId?: string;
-	}) => {
+	const validateSignupToken = async (
+		params: { token?: string } | { inviteeId?: string; inviterId?: string },
+	) => {
 		return await usersApi.validateSignupToken(rootStore.restApiContext, params);
 	};
 
