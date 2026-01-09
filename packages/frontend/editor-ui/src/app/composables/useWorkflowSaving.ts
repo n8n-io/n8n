@@ -402,10 +402,6 @@ export function useWorkflowSaving({
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			// Only mark state clean if no new changes were made during the save
-			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
-				uiStore.markStateClean();
-			}
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
 					key: 'webhookId',
