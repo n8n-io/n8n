@@ -301,7 +301,7 @@ overrides:
   form-data: 4.0.4
   tmp: 0.2.4
   nodemailer: 7.0.11
-  validator: 13.15.22
+  validator: 13.15.26
   zod: 3.25.67
   js-yaml: 4.1.1
   node-forge: 1.3.2
@@ -1888,8 +1888,8 @@ importers:
         specifier: 'catalog:'
         version: 10.0.0
       validator:
-        specifier: 13.15.22
-        version: 13.15.22
+        specifier: 13.15.26
+        version: 13.15.26
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -4977,14 +4977,8 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  '@emnapi/core@1.5.0':
-    resolution: {integrity: sha512-sbP8GzB1WDzacS8fgNPpHlp6C9VZe+SJP3F90W9rLemaQj2PzIuTEl1qDOYQf58YIpyjViI24y9aPWCjEzY2cg==}
-
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
-
-  '@emnapi/runtime@1.5.0':
-    resolution: {integrity: sha512-97/BJ3iXHww3djw6hYIfErCZFee7qCtrneuLa20UXFCOTCfBM2cvQHjWJ2EG0s0MtdNwInarqCTz35i4wWXHsQ==}
 
   '@emnapi/runtime@1.8.1':
     resolution: {integrity: sha512-mehfKSMWjjNol8659Z8KxEMrdSJDDot5SXMq00dM8BN4o+CLNXQ0xH2V7EchNHV4RmbZLmmPdEaXZc5H2FXmDg==}
@@ -6593,9 +6587,6 @@ packages:
 
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
-
-  '@napi-rs/wasm-runtime@1.0.7':
-    resolution: {integrity: sha512-SeDnOO0Tk7Okiq6DbXmmBODgOAb9dp9gjlphokTUxmt8U3liIP1ZsozBahH69j/RJv+Rfs6IwUKHTgQYJ/HBAw==}
 
   '@napi-rs/wasm-runtime@1.1.1':
     resolution: {integrity: sha512-p64ah1M1ld8xjWv3qbvFwHiFVWrq1yFvV4f7w+mzaqiR4IlSgkqhcRdHwsGgomwzBH51sRY4NEowLxnaBjcW/A==}
@@ -10375,9 +10366,6 @@ packages:
 
   citty@0.1.6:
     resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
-
-  cjs-module-lexer@1.2.2:
-    resolution: {integrity: sha512-cOU9usZw8/dXIXKtwa8pM0OTJQuJkxMN6w30csNRUerHfeQ5R6U3kkU/FtJeIf3M202OHfY2U8ccInBG7/xogA==}
 
   cjs-module-lexer@1.4.3:
     resolution: {integrity: sha512-9z8TZaGM1pfswYeXrUpzPrkx8UnWYdhJclsiYMm6x/w5+nN+8Tf/LnAgfLGQCm59qAOxU8WwHEq2vNwF6i4j+Q==}
@@ -15899,7 +15887,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -17962,8 +17949,8 @@ packages:
   validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
 
-  validator@13.15.22:
-    resolution: {integrity: sha512-uT/YQjiyLJP7HSrv/dPZqK9L28xf8hsNca01HSz1dfmI0DgMfjopp1rO/z13NeGF1tVystF0Ejx3y4rUKPw+bQ==}
+  validator@13.15.26:
+    resolution: {integrity: sha512-spH26xU080ydGggxRyR1Yhcbgx+j3y5jbNXk/8L+iRvdIEQ4uTRH2Sgf2dokud6Q4oAtsbNvJ1Ft+9xmm6IZcA==}
     engines: {node: '>= 0.10'}
 
   vary@1.1.2:
@@ -21577,7 +21564,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -21636,20 +21623,9 @@ snapshots:
     dependencies:
       vue: 3.5.26(typescript@5.9.2)
 
-  '@emnapi/core@1.5.0':
-    dependencies:
-      '@emnapi/wasi-threads': 1.1.0
-      tslib: 2.8.1
-    optional: true
-
   '@emnapi/core@1.8.1':
     dependencies:
       '@emnapi/wasi-threads': 1.1.0
-      tslib: 2.8.1
-    optional: true
-
-  '@emnapi/runtime@1.5.0':
-    dependencies:
       tslib: 2.8.1
     optional: true
 
@@ -23093,13 +23069,6 @@ snapshots:
       '@tybys/wasm-util': 0.9.0
     optional: true
 
-  '@napi-rs/wasm-runtime@1.0.7':
-    dependencies:
-      '@emnapi/core': 1.5.0
-      '@emnapi/runtime': 1.5.0
-      '@tybys/wasm-util': 0.10.1
-    optional: true
-
   '@napi-rs/wasm-runtime@1.1.1':
     dependencies:
       '@emnapi/core': 1.8.1
@@ -23799,7 +23768,7 @@ snapshots:
 
   '@rolldown/binding-wasm32-wasi@1.0.0-beta.50':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.0.7
+      '@napi-rs/wasm-runtime': 1.1.1
     optional: true
 
   '@rolldown/binding-wasm32-wasi@1.0.0-beta.53':
@@ -27125,6 +27094,11 @@ snapshots:
 
   axe-core@4.7.2: {}
 
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.12.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
+
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
@@ -27789,8 +27763,6 @@ snapshots:
     dependencies:
       consola: 3.4.2
 
-  cjs-module-lexer@1.2.2: {}
-
   cjs-module-lexer@1.4.3: {}
 
   class-transformer@0.5.1: {}
@@ -27799,7 +27771,7 @@ snapshots:
     dependencies:
       '@types/validator': 13.7.10
       libphonenumber-js: 1.10.14
-      validator: 13.15.22
+      validator: 13.15.26
 
   classnames@2.5.1: {}
 
@@ -30599,7 +30571,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30609,7 +30581,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -31623,7 +31595,7 @@ snapshots:
       '@jest/types': 29.6.1
       '@types/node': 20.19.21
       chalk: 4.1.2
-      cjs-module-lexer: 1.2.2
+      cjs-module-lexer: 1.4.3
       collect-v8-coverage: 1.0.1
       glob: 7.2.3
       graceful-fs: 4.2.11
@@ -35033,7 +35005,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
 
@@ -37190,7 +37162,7 @@ snapshots:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
 
-  validator@13.15.22: {}
+  validator@13.15.26: {}
 
   vary@1.1.2: {}
 

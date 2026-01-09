@@ -2,6 +2,7 @@ import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
 export const EXECUTION_POLL_INTERVAL = 1000;
+export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'canceled',
 	'crashed',

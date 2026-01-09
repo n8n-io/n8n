@@ -164,6 +164,18 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	}),
 }));
 
+// Mock useDocumentVisibility
+let onDocumentVisibleCallback: (() => void) | null = null;
+vi.mock('@/app/composables/useDocumentVisibility', () => ({
+	useDocumentVisibility: () => ({
+		isVisible: { value: true },
+		onDocumentVisible: (callback: () => void) => {
+			onDocumentVisibleCallback = callback;
+		},
+		onDocumentHidden: vi.fn(),
+	}),
+}));
+
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
@@ -177,6 +189,7 @@ describe('AskAssistantBuild', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		onDocumentVisibleCallback = null;
 
 		const pinia = createTestingPinia({
 			initialState: {
@@ -1667,6 +1680,32 @@ describe('AskAssistantBuild', () => {
 				regenerateIds: false,
 				trackEvents: false,
 			});
+		});
+	});
+
+	describe('document visibility handling', () => {
+		it('should register onDocumentVisible callback on mount', () => {
+			renderComponent();
+
+			// Callback should be registered
+			expect(onDocumentVisibleCallback).not.toBeNull();
+		});
+
+		it('should call clearDoneIndicatorTitle when document becomes visible', async () => {
+			builderStore.clearDoneIndicatorTitle = vi.fn();
+
+			renderComponent();
+
+			await flushPromises();
+
+			// Verify callback was registered
+			expect(onDocumentVisibleCallback).not.toBeNull();
+
+			// Simulate document becoming visible
+			onDocumentVisibleCallback!();
+
+			// Verify clearDoneIndicatorTitle was called
+			expect(builderStore.clearDoneIndicatorTitle).toHaveBeenCalled();
 		});
 	});
 });
