@@ -83,7 +83,18 @@ function disableAlasqlFileAccess() {
 
 	// Block ALL file-based database engines
 	if (alasql.engines) {
-		const engines = ['FILE', 'FILESTORAGE', 'LOCALSTORAGE', 'INDEXEDDB', 'SQLITE'];
+		const engines = [
+			'FILE',
+			'FILESTORAGE',
+			'LOCALSTORAGE',
+			'INDEXEDDB',
+			'SQLITE',
+			'JSON',
+			'TXT',
+			'CSV',
+			'XLSX',
+			'XLS',
+		];
 		const enginesObj = alasql.engines;
 		engines.forEach((engine) => {
 			enginesObj[engine] = disabledFunction;
