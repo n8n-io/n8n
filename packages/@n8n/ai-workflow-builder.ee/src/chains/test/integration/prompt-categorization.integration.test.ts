@@ -21,7 +21,11 @@ const testPrompts = [
 		name: 'Monitoring workflow',
 		prompt:
 			'Create a workflow that monitors my website every 5 minutes and sends me a Slack notification if it goes down',
-		expectedTechniques: [WorkflowTechnique.MONITORING, WorkflowTechnique.NOTIFICATION],
+		expectedTechniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.MONITORING,
+			WorkflowTechnique.NOTIFICATION,
+		],
 	},
 	{
 		name: 'Form input with AI',
@@ -31,6 +35,7 @@ const testPrompts = [
 			WorkflowTechnique.FORM_INPUT,
 			WorkflowTechnique.DATA_ANALYSIS,
 			WorkflowTechnique.DATA_TRANSFORMATION,
+			WorkflowTechnique.DATA_PERSISTENCE,
 		],
 	},
 	{
@@ -41,6 +46,7 @@ const testPrompts = [
 			WorkflowTechnique.SCHEDULING,
 			WorkflowTechnique.SCRAPING_AND_RESEARCH,
 			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_PERSISTENCE,
 		],
 	},
 	{
@@ -57,16 +63,13 @@ const testPrompts = [
 			WorkflowTechnique.FORM_INPUT,
 			WorkflowTechnique.DOCUMENT_PROCESSING,
 			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_PERSISTENCE,
 		],
 	},
 	{
 		name: 'Scheduled content generation',
 		prompt: 'Generate and post daily social media content about trending topics in AI',
-		expectedTechniques: [
-			WorkflowTechnique.SCHEDULING,
-			WorkflowTechnique.CONTENT_GENERATION,
-			WorkflowTechnique.NOTIFICATION,
-		],
+		expectedTechniques: [WorkflowTechnique.SCHEDULING, WorkflowTechnique.CONTENT_GENERATION],
 	},
 	{
 		name: 'Human in the loop approval',
@@ -77,6 +80,11 @@ const testPrompts = [
 			WorkflowTechnique.NOTIFICATION,
 			WorkflowTechnique.TRIAGE,
 		],
+	},
+	{
+		name: 'Data persistence workflow',
+		prompt: 'Save all incoming webhook data from our payment provider for audit purposes',
+		expectedTechniques: [WorkflowTechnique.DATA_PERSISTENCE],
 	},
 ];
 

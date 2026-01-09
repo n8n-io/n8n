@@ -47,7 +47,7 @@ import {
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -97,9 +97,14 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useClipboard', async () => {
+vi.mock('@vueuse/core', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const original = await importOriginal<typeof import('@vueuse/core')>();
 	const copySpy = vi.fn();
-	return { useClipboard: vi.fn(() => ({ copy: copySpy })) };
+	return {
+		...original,
+		useClipboard: vi.fn(() => ({ copy: copySpy })),
+	};
 });
 
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -3672,6 +3677,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
+			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations();
 
@@ -3690,7 +3696,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
+			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -4278,6 +4284,8 @@ describe('useCanvasOperations', () => {
 				'getNewWorkflowDataAndMakeShareable',
 			);
 
+			const addToWorkflowMetadataSpy = vi.spyOn(workflowState, 'addToWorkflowMetadata');
+
 			const { importTemplate } = useCanvasOperations();
 
 			const templateId = 'template-id';
@@ -4305,7 +4313,7 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
+			expect(addToWorkflowMetadataSpy).toHaveBeenCalledWith({
 				templateId,
 			});
 		});
