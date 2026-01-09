@@ -130,8 +130,8 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	return sanitize(css, {
 		allowedTags: [], // No HTML tags allowed
 		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
+		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
 	});
 }
 
