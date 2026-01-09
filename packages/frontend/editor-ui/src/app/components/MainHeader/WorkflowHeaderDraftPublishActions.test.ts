@@ -209,6 +209,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
+					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						publish: false,
@@ -220,15 +221,53 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 
-		it('should be hidden when workflow is archived', () => {
+		it('should be visible but disabled when user has only workflow:update permission', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should be hidden when user has only workflow:publish permission', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					isArchived: true,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: false,
+						publish: true,
+					},
 				},
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+
+		it('should be visible when user has both workflow:update and workflow:publish permissions', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: true,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
 		});
 	});
 
@@ -306,8 +345,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(openModalSpy).not.toHaveBeenCalled();
 		});
 
-		it('should be disabled when user lacks workflow:publish permission', () => {
-			const { queryByTestId } = renderComponent({
+		it('should be visible but disabled when user lacks workflow:publish permission', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					workflowPermissions: {
@@ -318,7 +357,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 	});
 
@@ -391,16 +431,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Read-only mode', () => {
-		it('should render publish button when read-only', () => {
-			const { getByTestId } = renderComponent({
+		it('should not render publish button when read-only', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					readOnly: true,
 				},
 			});
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeInTheDocument();
+			const publishButton = queryByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeInTheDocument();
 		});
 	});
 
@@ -409,6 +449,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
+					readOnly: false,
 					isArchived: true,
 				},
 			});

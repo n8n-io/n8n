@@ -8,6 +8,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -67,6 +68,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const collaborationStore = useCollaborationStore();
 const foldersStore = useFoldersStore();
 const i18n = useI18n();
 
@@ -102,6 +104,12 @@ const isNewWorkflow = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
+// For workflow name and tags editing: needs update permission and not archived
+const readOnlyActions = computed(() => {
+	if (isNewWorkflow.value) return props.readOnly;
+	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+});
+
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -134,6 +142,10 @@ watch(
 );
 
 function onTagsEditEnable() {
+	if (readOnlyActions.value) {
+		return;
+	}
+
 	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
 
@@ -155,6 +167,14 @@ async function onTagsBlur() {
 	if (tagsSaving.value) {
 		return;
 	}
+
+	if (readOnlyActions.value) {
+		isTagsEditEnabled.value = false;
+		return;
+	}
+
+	collaborationStore.requestWriteAccess();
+
 	tagsSaving.value = true;
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
@@ -456,8 +476,8 @@ onBeforeUnmount(() => {
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
-							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
-							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:read-only="readOnlyActions"
+							:disabled="readOnlyActions"
 							@update:model-value="onNameSubmit"
 						/>
 					</template>
@@ -467,11 +487,7 @@ onBeforeUnmount(() => {
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
-					v-if="
-						isTagsEditEnabled &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
+					v-if="isTagsEditEnabled && !readOnlyActions"
 					ref="dropdown"
 					v-model="appliedTagIds"
 					:event-bus="tagsEventBus"
@@ -481,13 +497,7 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div
-					v-else-if="
-						(tags ?? []).length === 0 &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
-				>
+				<div v-else-if="(tags ?? []).length === 0 && !readOnlyActions">
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 						+ {{ i18n.baseText('workflowDetails.addTag') }}
 					</span>
@@ -524,7 +534,7 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="readOnly"
+				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"

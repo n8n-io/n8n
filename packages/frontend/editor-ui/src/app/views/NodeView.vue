@@ -138,9 +138,11 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
-import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -206,8 +208,12 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const collaborationStore = useCollaborationStore();
 
 const workflowState = useWorkflowState();
+
+// Initialize activity detection for collaboration
+useActivityDetection();
 provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -306,6 +312,7 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
+		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
 		builderStore.streaming
@@ -1606,6 +1613,10 @@ function checkIfEditingIsAllowed(): boolean {
 		return false;
 	}
 
+	if (collaborationStore.shouldBeReadOnly) {
+		return false;
+	}
+
 	if (isReadOnlyRoute.value || isReadOnlyEnvironment.value) {
 		const messageContext = isReadOnlyRoute.value ? 'executions' : 'workflows';
 		readOnlyNotification.value = toast.showMessage({
@@ -1873,10 +1884,33 @@ watch(
 	},
 );
 
+// Acquire write access when user makes first edit, and trigger auto-save
 watch(
 	() => uiStore.dirtyStateSetCount,
-	() => {
-		void workflowSaving.autoSaveWorkflow();
+	(dirtyStateSetCount) => {
+		if (dirtyStateSetCount > 0) {
+			collaborationStore.requestWriteAccess();
+
+			// Trigger auto-save (debounced) for writers only
+			// Skip auto-save when AI Builder is streaming to keep version history clean
+			if (!builderStore.streaming) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
+// Trigger auto-save when AI Builder streaming ends with unsaved changes
+watch(
+	() => builderStore.streaming,
+	(isStreaming, wasStreaming) => {
+		// Only trigger when streaming just ended (was streaming, now not)
+		if (wasStreaming && !isStreaming) {
+			// Trigger auto-save if there are unsaved changes
+			if (uiStore.stateIsDirty && !collaborationStore.shouldBeReadOnly) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
 	},
 );
 
@@ -1941,6 +1975,12 @@ onMounted(() => {
 
 	documentTitle.reset();
 	resetWorkspace();
+
+	// Register callback for collaboration store to refresh canvas when workflow updates arrive
+	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
+		// Refresh the canvas with updated workflow
+		await initializeWorkspace(workflow);
+	});
 
 	void initializeData().then(() => {
 		void initializeRoute()
@@ -2128,9 +2168,16 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<N8nCanvasCollaborationPill
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				:first-name="collaborationStore.currentWriter.user.firstName"
+				:last-name="collaborationStore.currentWriter.user.lastName"
+				:class="$style.canvasCenterPill"
+			/>
+
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
-				:class="$style.thinkingPill"
+				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
 			/>
@@ -2244,7 +2291,7 @@ onBeforeUnmount(() => {
 	transform: translateX(-50%);
 }
 
-.thinkingPill {
+.canvasCenterPill {
 	position: absolute;
 	left: 50%;
 	top: 50%;

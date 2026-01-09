@@ -90,6 +90,9 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getNodeCredentialsSelect()).toBeDisabled();
 
 			await n8n.ndv.clickBackToCanvasButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should open W1, add node using C2 as U2', async ({ n8n }) => {
@@ -118,6 +121,9 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getNodeCredentialsSelect().locator('input')).toBeEnabled();
 
 			await n8n.ndv.clickBackToCanvasButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should not have access to W2, as U3', async ({ n8n }) => {
@@ -154,6 +160,9 @@ test.describe('@isolated', () => {
 
 			await n8n.workflows.cards.getWorkflow('Workflow W2').click();
 			await n8n.canvas.clickExecuteWorkflowButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should automatically test C2 when opened by U2 sharee', async ({ n8n }) => {

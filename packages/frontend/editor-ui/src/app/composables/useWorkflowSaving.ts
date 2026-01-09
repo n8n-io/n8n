@@ -9,7 +9,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { useToast } from './useToast';
@@ -18,6 +17,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -47,6 +47,7 @@ export function useWorkflowSaving({
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
+
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -147,6 +148,19 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
+		// Prevent concurrent saves - if a save is already in progress, skip this one
+		// for autosaves (they will be rescheduled), or wait for non-autosaves
+		if (uiStore.isActionActive.workflowSaving) {
+			if (autosaved) {
+				// Autosave will be rescheduled by the finally block of the in-progress save
+				return true;
+			}
+			// For manual saves, wait for the pending autosave to complete first
+			if (autosaveStore.pendingAutoSave) {
+				await autosaveStore.pendingAutoSave;
+			}
+		}
+
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
 		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
@@ -204,9 +218,7 @@ export function useWorkflowSaving({
 			}
 
 			if (tags) {
-				const createdTags = (workflowData.tags || []) as ITag[];
-				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowState.setWorkflowTagIds(tagIds);
+				workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 			}
 
 			// Only mark state clean if no new changes were made during the save
@@ -401,9 +413,7 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowState.setWorkflowTagIds(tagIds);
+			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;
@@ -461,6 +471,11 @@ export function useWorkflowSaving({
 					if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
 						autosaveStore.reset();
 					}
+					// If changes were made during save, reschedule autosave
+					if (uiStore.stateIsDirty) {
+						autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+						void autoSaveWorkflowDebounced();
+					}
 				}
 			})();
 
@@ -471,6 +486,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if a save is already in progress - the finally block
+		// will reschedule if there are pending changes
+		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
+			return;
+		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};

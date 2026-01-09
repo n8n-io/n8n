@@ -215,11 +215,11 @@ describe('WorkflowDetails', () => {
 			} as unknown as ReturnType<typeof useRoute>);
 		});
 
-		it('should not have workflow duplicate and import without update permission', async () => {
+		it('should not have workflow duplicate and import when read-only', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
+					readOnly: true,
 					isArchived: false,
 					scopes: ['workflow:read'],
 				},
@@ -378,6 +378,22 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
+		it('should not have edit actions on archived workflow even with update permission', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					readOnly: false,
+					scopes: ['workflow:update', 'workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
 		it("should call onWorkflowMenuSelect on 'Archive' option click on nonactive workflow", async () => {
