@@ -4,8 +4,9 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Run', () => {
+test.describe('Workflow Run @fixme', () => {
+	test.fixme();
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

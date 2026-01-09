@@ -16,7 +16,7 @@ Define clear categories and outcomes before building. Design in logical stages:
 1. **Trigger & Input**: Capture incoming items (webhook, email trigger, form submission, schedule)
 2. **Preprocessing**: Fetch additional data if needed (CRM lookup, field normalization)
 3. **Classification**: Assign categories via rules or AI
-4. **Routing**: Direct items to appropriate branches using Switch node
+4. **Routing**: Direct items to appropriate branches using Switch node or Text Classifier Node
 5. **Actions**: Execute category-specific tasks (create tasks, send alerts, update records)
 6. **Logging**: Track outcomes for monitoring and analysis
 
@@ -36,9 +36,52 @@ Example prompt: "Classify this email as INTERESTED, NOT_INTERESTED, or QUESTION"
 
 Best practices:
 - Use structured output format (JSON with specific fields)
-- Set low temperature (0-0.2) for consistency
-- Include few-shot examples for accuracy
+- Set low temperature parameter of the model (0-0.2) for consistency
+- Include few-shot examples of input + classification
 - Implement error handling for unexpected outputs
+
+#### Text Classifier Node
+Use the Text Classifier node (@n8n/n8n-nodes-langchain.textClassifier) for straightforward text classification tasks. Configure with predefined category labels and descriptions for accurate results.
+
+Example workflow pattern:
+\`\`\`mermaid
+flowchart LR
+    A[Webhook Trigger] --> B[Set: Normalize Data]
+    B --> C[Text Classifier]
+    C --> D{Switch: Route by Category}
+    D -->|High Priority| E[Slack: Alert Team]
+    D -->|Medium Priority| F[Create Task]
+    D -->|Low Priority| G[Log to Sheet]
+    D -->|Default| H[Manual Review]
+\`\`\`
+
+### Combined Approach
+For robust triage, combine rule-based and AI classification. Use AI Agent node with structured output to assign categories, scores, or tags, then route with Switch nodes.
+When using AI with structured output, always add reasoning field alongside category or score to aid debugging.
+
+Example workflow pattern:
+\`\`\`mermaid
+flowchart LR
+    A[Email Trigger] --> B[Set: Extract Fields]
+    B --> C{IF: Contains Keywords}
+    C -->|Yes| D[Set: Rule-based Category]
+    C -->|No| E[AI Agent: Classify with Structured Output]
+    D --> F[Merge]
+    E --> F
+    F --> G{Switch: Route by Category}
+    G -->|Category A| H[Action A]
+    G -->|Category B| I[Action B]
+    G -->|Default| J[Manual Review]
+\`\`\`
+
+**Structured Output Schema Example:**
+\`\`\`json
+{
+  "category": "INTERESTED | NOT_INTERESTED | QUESTION",
+  "confidence": 0.95,
+  "reasoning": "Customer asked about pricing and availability"
+}
+\`\`\`
 
 ## Routing & Branching
 
@@ -46,27 +89,10 @@ Use Switch node as primary traffic controller:
 - Configure cases for each classification value
 - Always define Default case for unexpected values
 - Each item follows exactly one branch
-- Keep branches modular using Execute Workflow node for complex logic
 
-Avoid parallel IF nodes that could match multiple conditions - use Switch or chain IF nodes with Execute Once setting.
+Avoid parallel IF nodes that could match multiple conditions - use Switch node.
 
 ## Recommended Nodes
-
-### Trigger Nodes
-
-**Webhook** (n8n-nodes-base.webhook):
-- Purpose: Capture incoming items for triage via HTTP requests
-- Best for: Form submissions, webhook integrations
-
-**Gmail Trigger** (n8n-nodes-base.gmailTrigger):
-- Purpose: Automatically process new emails
-- Best for: Email-based triage workflows
-
-**Schedule Trigger** (n8n-nodes-base.scheduleTrigger):
-- Purpose: Periodic batch processing of items
-- Best for: Regular review of database records or API data
-
-### Classification Nodes
 
 **IF** (n8n-nodes-base.if):
 - Purpose: Simple binary decisions
@@ -78,70 +104,23 @@ Avoid parallel IF nodes that could match multiple conditions - use Switch or cha
 - Use when: Multiple categories (3+ outcomes)
 - CRITICAL: Always configure Default output for unmatched items
 
-**OpenAI** (@n8n/n8n-nodes-langchain.openAi):
-- Purpose: AI-powered text classification
-- Best practices:
-  - Use structured output format
-  - Set low temperature (0-0.2) for consistency
-  - Include few-shot examples
-
-**AI Agent** (@n8n/n8n-nodes-langchain.agent):
-- Purpose: Complex classification requiring multiple steps or tool use
-- Use when: Classification needs context lookup or multi-step reasoning
-
-### Data Processing
-
-**Set** (n8n-nodes-base.set):
-- Purpose: Normalize fields, add metadata, store classification results
-- Use early: Standardize incoming data structure
-
-**Function** (n8n-nodes-base.function):
-- Purpose: Custom classification logic using JavaScript
-- Use when: Complex rules that can't be expressed in IF/Switch
-
-**HTTP Request** (n8n-nodes-base.httpRequest):
-- Purpose: Fetch additional context (CRM data, user history)
-- Use before: Classification to enrich decision context
-
-### Integration & Action Nodes
-
-**Slack** (n8n-nodes-base.slack):
-- Purpose: Send notifications, create channels by category
-- Example: Alert #urgent-tickets channel for high-priority items
-
-**HubSpot** (n8n-nodes-base.hubspot):
-- Purpose: Update contact records, create tasks, set lead scores
-- Example: Tag contacts based on classification
-
-**JIRA** (n8n-nodes-base.jira):
-- Purpose: Create issues with appropriate priority/assignee
-- Example: Auto-assign bugs to engineering team
-
-**Database Nodes**:
-- Postgres (n8n-nodes-base.postgres)
-- MySQL (n8n-nodes-base.mySql)
-- MongoDB (n8n-nodes-base.mongoDb)
-
-Purpose: Log triage outcomes, track metrics, store classification history
-
-**Google Sheets** (n8n-nodes-base.googleSheets):
-- Purpose: Simple logging and reporting
-- Example: Track daily triage volumes by category
-
-### Workflow Control
-
-**Execute Workflow** (n8n-nodes-base.executeWorkflow):
-- Purpose: Modular branch logic
-- Use when: Category-specific actions are complex
-- Pattern: Switch → Execute Workflow (per category)
-
-**Error Trigger** (n8n-nodes-base.errorTrigger):
-- Purpose: Catch and handle classification failures
-- CRITICAL: Always implement for production triage workflows
-
 **Merge** (n8n-nodes-base.merge):
 - Purpose: Consolidate branches for unified logging
 - Use after: Category-specific actions before final logging step
+
+**Text Classifier** (@n8n/n8n-nodes-langchain.textClassifier):
+- Purpose: AI-powered text classification with predefined labels
+- Use when: Need to assign categories to unstructured text
+- CRITICAL: Always configure "When No Clear Match" option to output items to "Other" branch
+
+**AI Agent** (@n8n/n8n-nodes-langchain.agent):
+- Purpose: Complex classification or scoring requiring multiple steps or tool use
+- Use when: Classification needs context lookup, multi-step reasoning with tools, numerical scoring or other complex outputs
+- CRITICAL: Always use structured output format (JSON schema)
+
+**IMPORTANT**: For all AI nodes (Text Classifier, AI Agent):
+	- Set low temperature of the model (0-0.2) for consistency
+	- Include few-shot examples in prompts
 
 ## Common Pitfalls to Avoid
 
@@ -150,58 +129,17 @@ Purpose: Log triage outcomes, track metrics, store classification history
 
 **Solution**: Always configure Default case to route unclassified items to a fallback action (e.g., manual review queue, admin notification)
 
+### No "Other" Branch in Text Classifier
+**Problem**: Items that don't match any category get dropped if "When No Clear Match" isn't set.
+
+**Solution**: In Text Classifier node, set "When No Clear Match" to "Output on Extra, 'Other' Branch" to capture unmatched items.
+
 ### Overlapping Conditions
 **Problem**: Categories must be mutually exclusive. Items matching multiple conditions cause unpredictable routing.
 
 **Solution**:
 - Order checks from most specific to general
 - Use Switch with distinct values instead of multiple IF nodes
-- Test edge cases thoroughly
-
-### Costly API Overuse
-**Problem**: Calling AI APIs multiple times for same item wastes resources.
-
-**Solution**:
-- Use pin data feature during development
-- Classify each item only once, store result in variable for reuse
-- Enable caching where available
-- Batch similar items when possible
-
-### Missing Error Handling
-**Problem**: AI calls can fail or return unexpected formats, breaking the workflow.
-
-**Solution**:
-- Implement Error Trigger workflow to catch failures
-- Add validation after AI classification
-- Handle unexpected outputs gracefully with default categorization
-- Log all errors for review
-
-### Poor Documentation
-**Problem**: Generic node names make workflows hard to maintain.
-
-**Solution**:
-- Name nodes clearly (e.g., "Classify with OpenAI", "Route by Priority")
-- Use Sticky Notes for complex sections
-- Store constants in Set nodes or environment variables
-- Document classification criteria
-
-### Relying 100% on AI
-**Problem**: AI can misclassify critical items, leading to wrong actions.
-
-**Solution**:
-- For critical decisions, combine AI with rule validation
-- Monitor accuracy metrics
-- Implement human verification for high-risk categories
-- Use confidence thresholds to route uncertain items to manual review
-
-### No Monitoring
-**Problem**: Can't track accuracy, volume trends, or system health.
-
-**Solution**:
-- Log all triage outcomes to database/sheets
-- Track metrics: category volumes, error rates, processing times
-- Set up alerts for anomalies (e.g., sudden spike in unclassified items)
-- Review misclassifications regularly to improve rules/prompts
 `;
 
 	getDocumentation(): string {
