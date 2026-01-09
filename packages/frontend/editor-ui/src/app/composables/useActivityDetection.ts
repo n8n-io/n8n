@@ -6,7 +6,6 @@ export function useActivityDetection() {
 	const collaborationStore = useCollaborationStore();
 
 	const recordActivity = useDebounceFn(() => {
-		console.log('[ActivityDetection] 🖱️ User activity detected, recording...');
 		collaborationStore.recordActivity();
 	}, 100);
 

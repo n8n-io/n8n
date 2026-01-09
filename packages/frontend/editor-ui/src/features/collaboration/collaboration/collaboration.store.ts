@@ -18,6 +18,8 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
 const LOCK_STATE_POLL_INTERVAL = 20 * TIME.SECOND;
+const INACTIVITY_CHECK_INTERVAL = 5 * TIME.SECOND;
+const INACTIVITY_TIMEOUT_THRESHOLD = 20 * TIME.SECOND;
 
 /**
  * Store for tracking active users for workflows. I.e. to show
@@ -110,7 +112,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		// If lock is gone on backend but still exists in frontend, clear it
 		if (!writeLockUserId && currentWriterId.value) {
-			console.log('[Collaboration] 🔓 Lock expired on backend - clearing local state');
 			currentWriterId.value = null;
 			stopLockStatePolling();
 		}
@@ -156,10 +157,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	function requestWriteAccess() {
 		if (shouldBeReadOnly.value) {
-			console.log('[Collaboration] ❌ Write access denied - another user is writing', {
-				currentWriter: currentWriterId.value,
-				requestingUser: usersStore.currentUserId,
-			});
 			return false;
 		}
 
@@ -167,19 +164,14 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return true;
 		}
 
-		console.log('[Collaboration] 🔓 Requesting write access', {
-			userId: usersStore.currentUserId,
-			workflowId: workflowsStore.workflowId,
-		});
-
 		try {
 			pushStore.send({
 				type: 'writeAccessRequested',
 				workflowId: workflowsStore.workflowId,
 				userId: usersStore.currentUserId,
 			});
-		} catch (error) {
-			console.error('[Collaboration] ❌ Failed to send writeAccessRequested message:', error);
+		} catch {
+			// Ignore errors
 		}
 
 		return true;
@@ -198,11 +190,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				type: 'writeAccessReleaseRequested',
 				workflowId: workflowsStore.workflowId,
 			});
-		} catch (error) {
-			console.error(
-				'[Collaboration] ❌ Failed to send writeAccessReleaseRequested message:',
-				error,
-			);
+		} catch {
+			// Ignore errors
 		}
 	}
 
@@ -211,22 +200,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		// Don't release write lock while AI Builder is streaming
 		if (builderStore.streaming) {
-			console.log('[Collaboration] ⏱️ Skipping inactivity check - AI Builder is streaming');
 			return;
 		}
 
 		const timeSinceActivity = Date.now() - lastActivityTime.value;
-		const timeoutThreshold = 20 * TIME.SECOND;
 
-		console.log(
-			'[Collaboration] ⏱️ Time since inactivity',
-			`${Math.floor(timeSinceActivity / 1000)}s`,
-		);
-
-		if (timeSinceActivity >= timeoutThreshold) {
-			console.log('[Collaboration] ⏰ Inactivity timeout - releasing write access', {
-				inactiveFor: `${Math.floor(timeSinceActivity / 1000)}s`,
-			});
+		if (timeSinceActivity >= INACTIVITY_TIMEOUT_THRESHOLD) {
 			releaseWriteAccess();
 		}
 	}
@@ -240,7 +219,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	function startInactivityCheck() {
 		stopInactivityCheck();
-		activityCheckInterval.value = window.setInterval(checkInactivity, 1000);
+		activityCheckInterval.value = window.setInterval(checkInactivity, INACTIVITY_CHECK_INTERVAL);
 	}
 
 	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
@@ -257,8 +236,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				workflowId,
 			);
 			return response.userId;
-		} catch (error) {
-			console.error('[Collaboration] ❌ Failed to fetch write-lock state:', error);
+		} catch {
 			return null;
 		}
 	}
@@ -278,12 +256,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		// Only skip updates if the user has write access AND has unsaved changes
 		// Readers should always receive updates since they can't make changes
 		if (!shouldBeReadOnly.value && uiStore.stateIsDirty) {
-			console.log('[Collaboration] ⚠️ Skipping workflow update - local changes exist');
 			return;
 		}
 
 		try {
-			console.log('[Collaboration] 📥 Fetching updated workflow...');
 			// Fetch the latest workflow data
 			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflowsStore.workflowId);
 
@@ -295,10 +271,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				workflowsStore.setWorkflow(updatedWorkflow);
 				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 			}
-
-			console.log('[Collaboration] ✅ Workflow updated successfully');
-		} catch (error) {
-			console.error('[Collaboration] ❌ Failed to fetch updated workflow:', error);
+		} catch {
+			// Ignore errors
 		}
 	}
 
@@ -308,11 +282,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		const writerStillPresent = collaborators.value.some((c) => c.user.id === currentWriterId.value);
 
 		if (!writerStillPresent) {
-			const wasReadOnly = shouldBeReadOnly.value;
-			console.log('[Collaboration] 🔒 Write lock holder left - clearing lock', {
-				writerId: currentWriterId.value,
-				wasReadOnly,
-			});
 			currentWriterId.value = null;
 		}
 	}
@@ -351,11 +320,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				event.data.workflowId === workflowsStore.workflowId
 			) {
 				currentWriterId.value = event.data.userId;
-				const writer = collaborators.value.find((c) => c.user.id === event.data.userId);
-				console.log(
-					'[Collaboration] 🔓 Write access acquired by:',
-					writer?.user.email || event.data.userId,
-				);
 				recordActivity();
 
 				// Start heartbeat if current user acquired the lock
@@ -373,15 +337,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				event.type === 'writeAccessReleased' &&
 				event.data.workflowId === workflowsStore.workflowId
 			) {
-				const wasReadOnly = shouldBeReadOnly.value;
 				currentWriterId.value = null;
 				stopWriteLockHeartbeat();
 				stopLockStatePolling();
-				console.log('[Collaboration] 🔒 Write access released', {
-					currentWriterId: currentWriterId.value,
-					wasReadOnly,
-				});
-
 				return;
 			}
 

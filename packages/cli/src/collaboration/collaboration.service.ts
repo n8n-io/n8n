@@ -91,7 +91,6 @@ export class CollaborationService {
 		// If the user closing the workflow holds the write lock, release it
 		const currentLockHolder = await this.state.getWriteLock(workflowId);
 		if (currentLockHolder === userId) {
-			console.log('[CollaborationService] 🔓 Releasing write lock - user closed workflow');
 			await this.state.releaseWriteLock(workflowId);
 			await this.sendWriteAccessReleasedMessage(workflowId);
 		}
@@ -240,12 +239,7 @@ export class CollaborationService {
 			return null;
 		}
 
-		const lockHolder = await this.state.getWriteLock(workflowId);
-		console.log('[CollaborationService] 🔍 Fetched write-lock for workflow', {
-			workflowId,
-			lockHolder,
-		});
-		return lockHolder;
+		return await this.state.getWriteLock(workflowId);
 	}
 
 	/**
