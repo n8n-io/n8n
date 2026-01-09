@@ -54,6 +54,15 @@ const EVALUATOR_SYSTEM_PROMPT = prompt()
 - You verify every claim against the actual node configurations, connections, and parameters.`,
 	)
 	.section(
+		'clarifications',
+		`When evaluating criteria about "provider-specific nodes" or "using a specific AI provider":
+
+- Provider-specific nodes (e.g., n8n-nodes-langchain.openAi, n8n-nodes-langchain.anthropic) are standalone nodes that directly call a provider's API.
+- Chat model sub-nodes (e.g., @n8n/n8n-nodes-langchain.lmChatAnthropic, @n8n/n8n-nodes-langchain.lmChatOpenAi) are NOT provider-specific nodes. They are required infrastructure for connecting generic nodes like the AI Agent to a language model.
+
+If a criterion says "do not use provider-specific nodes" or similar, the presence of lmChat* sub-nodes should NOT count as a violation - these are necessary connectors, not provider-specific workflow nodes.`,
+	)
+	.section(
 		'constraints',
 		`- Judge ONLY against the provided evaluation criteria. Do not apply external "best practices" unless explicitly asked.
 - If a criterion is "not verifiable" from the JSON alone (e.g., requires runtime data), mark it as a violation and explain why.
