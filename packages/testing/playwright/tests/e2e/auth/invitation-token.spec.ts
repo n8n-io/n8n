@@ -209,10 +209,6 @@ test.describe('Invitation Token Acceptance', () => {
 		// Verify authentication cookie is set
 		const setCookieHeader = acceptResponse.headers()['set-cookie'];
 		expect(setCookieHeader).toBeTruthy();
-		// set-cookie can be a string or array of strings
-		const cookieHeader = Array.isArray(setCookieHeader)
-			? setCookieHeader.join('')
-			: setCookieHeader;
-		expect(cookieHeader).toContain('n8n-auth');
+		expect(String(setCookieHeader)).toContain('n8n-auth');
 	});
 });
