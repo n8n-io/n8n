@@ -14,6 +14,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useToast } from '@/app/composables/useToast';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import shuffle from 'lodash/shuffle';
@@ -35,6 +36,11 @@ const route = useRoute();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
+const { onDocumentVisible } = useDocumentVisibility();
+
+onDocumentVisible(() => {
+	builderStore.clearDoneIndicatorTitle();
+});
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());

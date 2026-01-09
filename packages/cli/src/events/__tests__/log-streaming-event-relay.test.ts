@@ -1243,6 +1243,44 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('Secret events', () => {
+		it('should log on `external-secrets-provider-settings-saved`', () => {
+			const event: RelayEventMap['external-secrets-provider-settings-saved'] = {
+				userId: 'user123',
+				vaultType: 'aws',
+				isValid: true,
+				isNew: false,
+			};
+
+			eventService.emit('external-secrets-provider-settings-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.provider.settings.saved',
+				payload: {
+					userId: 'user123',
+					vaultType: 'aws',
+					isValid: true,
+					isNew: false,
+				},
+			});
+		});
+
+		it('should log on `external-secrets-provider-reloaded`', () => {
+			const event: RelayEventMap['external-secrets-provider-reloaded'] = {
+				vaultType: 'aws',
+			};
+
+			eventService.emit('external-secrets-provider-reloaded', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.provider.reloaded',
+				payload: {
+					vaultType: 'aws',
+				},
+			});
+		});
+	});
+
 	describe('auth events', () => {
 		it('should log on `user-login-failed` event', () => {
 			const event: RelayEventMap['user-login-failed'] = {
