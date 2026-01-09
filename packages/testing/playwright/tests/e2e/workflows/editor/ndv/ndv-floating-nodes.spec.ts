@@ -85,10 +85,10 @@ test.describe('NDV Floating Nodes Navigation', () => {
 		await expect(n8n.ndv.getContainer()).toBeVisible();
 
 		await n8n.ndv.connectAISubNode('ai_languageModel', 'Anthropic Chat Model');
-		await n8n.ndv.connectAISubNode('ai_memory', 'Simple Memory');
+		await n8n.ndv.connectAISubNode('ai_memory', 'Redis Chat Memory');
 		await n8n.ndv.connectAISubNode('ai_tool', 'HTTP Request Tool');
 
-		await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(2);
+		await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(3);
 	});
 
 	test('should have the floating nodes in correct order', async ({ n8n }) => {

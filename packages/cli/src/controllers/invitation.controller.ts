@@ -89,43 +89,17 @@ export class InvitationController {
 	}
 
 	/**
-	 * Fill out user shell with first name, last name, and password.
+	 * Process invitation acceptance: validate users, update invitee, and handle authentication.
 	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
+	private async processInvitationAcceptance(
+		inviterId: string,
+		inviteeId: string,
+		firstName: string,
+		lastName: string,
+		password: string,
 		req: AuthlessRequest,
 		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') userId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		const { firstName, lastName, password } = payload;
-
-		// Extract inviterId from either JWT token or legacy inviterId parameter
-		// inviteeId comes from URL parameter
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
-			token: payload.token,
-			inviterId: payload.inviterId,
-			// If inviteeId is not provided, use the URL parameter for backwards compatibility
-			inviteeId: payload.inviteeId ?? userId,
-		});
-
-		if (inviteeId !== userId) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the invitee ID does not match the URL parameter',
-				{ inviteeId, userId },
-			);
-			throw new BadRequestError('Invalid invite URL');
-		}
-
+	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
 			relations: ['role'],
@@ -175,5 +149,87 @@ export class InvitationController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password using JWT token.
+	 */
+	@Post('/accept', { skipAuth: true })
+	async acceptInvitationWithToken(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.token) {
+			this.logger.debug('Request to accept invitation failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId and inviteeId from JWT token
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
+			token: payload.token,
+		});
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
+	 */
+	@Post('/:id/accept', { skipAuth: true })
+	async acceptInvitation(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+		@Param('id') inviteeId: string,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.inviterId || !inviteeId) {
+			this.logger.debug(
+				'Request to accept invitation failed because inviterId or inviteeId is missing',
+			);
+			throw new BadRequestError('InviterId and inviteeId are required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		const inviterId = payload.inviterId;
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
 	}
 }
