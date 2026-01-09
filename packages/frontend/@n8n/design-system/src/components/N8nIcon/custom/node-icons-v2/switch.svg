@@ -1,8 +1,8 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M21.5 5.25H2" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M21.5 18.75H14.49C13.1614 18.75 11.9911 17.8761 11.6136 16.6023L8.88637 7.39773C8.50893 6.12387 7.33857 5.25 6.00997 5.25H2" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M21.5 12H12.49C11.1614 12 9.99107 11.1261 9.61363 9.85227L8.88637 7.39773C8.50893 6.12387 7.33857 5.25 6.00997 5.25H2" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M19 9.5L21.5 12L19 14.5" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M19 2.75L21.5 5.25L19 7.75" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M19 16.25L21.5 18.75L19 21.25" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M21.5 5.25H2" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M21.5 18.75H14.49C13.1614 18.75 11.9911 17.8761 11.6136 16.6023L8.88637 7.39773C8.50893 6.12387 7.33857 5.25 6.00997 5.25H2" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M21.5 12H12.49C11.1614 12 9.99107 11.1261 9.61363 9.85227L8.88637 7.39773C8.50893 6.12387 7.33857 5.25 6.00997 5.25H2" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M19 9.5L21.5 12L19 14.5" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M19 2.75L21.5 5.25L19 7.75" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M19 16.25L21.5 18.75L19 21.25" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
 </svg>

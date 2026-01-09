@@ -1,8 +1,8 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="12" cy="7" r="1.5" fill="black" style="fill:black;fill-opacity:1;"/>
-<circle cx="6.5" cy="16.5" r="1.5" fill="black" style="fill:black;fill-opacity:1;"/>
-<circle cx="17.5" cy="16.5" r="1.5" fill="black" style="fill:black;fill-opacity:1;"/>
-<path d="M15.2476 8.87502C15.5892 8.28337 15.7512 7.63733 15.7506 7C15.7494 5.70523 15.077 4.44637 13.875 3.75242C12.0814 2.71689 9.78794 3.33142 8.75241 5.12502C7.71687 6.91861 8.3314 9.21208 10.125 10.2476L6.5 16.5" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M6.5 12.75C4.42893 12.75 2.75 14.4289 2.75 16.5C2.75 18.5711 4.42893 20.25 6.5 20.25C8.57107 20.25 10.25 18.5711 10.25 16.5H17.5" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
-<path d="M14.2524 18.375C15.2879 20.1686 17.5814 20.7831 19.375 19.7476C21.1686 18.7121 21.7831 16.4186 20.7476 14.625C19.7121 12.8314 17.4186 12.2169 15.625 13.2524L12 7" stroke="black" style="stroke:black;stroke-opacity:1;" stroke-width="1.5"/>
+<circle cx="12" cy="7" r="1.5" fill="currentColor" style="fill:currentColor;fill-opacity:1;"/>
+<circle cx="6.5" cy="16.5" r="1.5" fill="currentColor" style="fill:currentColor;fill-opacity:1;"/>
+<circle cx="17.5" cy="16.5" r="1.5" fill="currentColor" style="fill:currentColor;fill-opacity:1;"/>
+<path d="M15.2476 8.87502C15.5892 8.28337 15.7512 7.63733 15.7506 7C15.7494 5.70523 15.077 4.44637 13.875 3.75242C12.0814 2.71689 9.78794 3.33142 8.75241 5.12502C7.71687 6.91861 8.3314 9.21208 10.125 10.2476L6.5 16.5" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M6.5 12.75C4.42893 12.75 2.75 14.4289 2.75 16.5C2.75 18.5711 4.42893 20.25 6.5 20.25C8.57107 20.25 10.25 18.5711 10.25 16.5H17.5" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
+<path d="M14.2524 18.375C15.2879 20.1686 17.5814 20.7831 19.375 19.7476C21.1686 18.7121 21.7831 16.4186 20.7476 14.625C19.7121 12.8314 17.4186 12.2169 15.625 13.2524L12 7" stroke="currentColor" style="stroke:currentColor;stroke-opacity:1;" stroke-width="1.5"/>
 </svg>
