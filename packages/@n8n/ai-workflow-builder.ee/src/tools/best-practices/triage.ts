@@ -41,7 +41,7 @@ Best practices:
 - Implement error handling for unexpected outputs
 
 #### Text Classifier Node
-Use the Text Classifier node (@n8n/n8n-nodes-langchain.textClassifier) for straightforward text classification tasks. Configure with predefined labels and training data for accurate results.
+Use the Text Classifier node (@n8n/n8n-nodes-langchain.textClassifier) for straightforward text classification tasks. Configure with predefined category labels and descriptions for accurate results.
 
 Example workflow pattern:
 \`\`\`mermaid
