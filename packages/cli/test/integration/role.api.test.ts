@@ -1,9 +1,13 @@
 import { ALL_ROLES } from '@n8n/permissions';
-import type { Role } from '@n8n/permissions';
+import type { Role, Scope } from '@n8n/permissions';
 
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { ALL } from 'node:dns';
+import { Container } from '@n8n/di';
+import { SecuritySettingsService } from '@/services/security-settings.service';
+import { PERSONAL_PROJECT_OWNER_SCOPES } from '@n8n/permissions/src/roles/scopes/project-scopes.ee';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
@@ -30,11 +34,17 @@ function checkForRole(role: Role, roles: Role[]) {
 	});
 }
 
+function checkForScopes(roleSlug: string, scopes: Scope[], response: Role[]) {
+	const role = response.find((r) => r.slug === roleSlug);
+	expect(role).toBeDefined();
+	role!.scopes.sort();
+	expect(role!.scopes).toEqual(scopes.sort());
+}
+
 beforeAll(async () => {
 	memberAgent = testServer.authAgentFor(await createMember());
 
 	expectedGlobalRoles = ALL_ROLES.global;
-	expectedProjectRoles = ALL_ROLES.project;
 	expectedCredentialRoles = ALL_ROLES.credential;
 	expectedWorkflowRoles = ALL_ROLES.workflow;
 });
@@ -62,13 +72,44 @@ describe('GET /roles/', () => {
 		}
 	});
 
-	test('should return fixed project roles', async () => {
-		const resp = await memberAgent.get('/roles/');
+	describe('Project roles', () => {
+		let securitySettingsService: SecuritySettingsService;
 
-		expect(resp.status).toBe(200);
-		for (const role of expectedProjectRoles) {
-			checkForRole(role, resp.body.data.project);
-		}
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+		});
+
+		test('should when no security settings are set - default to adding workflow:publish scope', async () => {
+			const resp = await memberAgent.get('/roles/');
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[...PERSONAL_PROJECT_OWNER_SCOPES, 'workflow:publish'],
+				resp.body.data.project,
+			);
+		});
+
+		test('should match fixed scopes when security settings are all explicitly disabled', async () => {
+			await securitySettingsService.setPersonalSpacePublishing(false);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			for (const role of ALL_ROLES.project) {
+				checkForRole(role, resp.body.data.project);
+			}
+		});
+
+		test('should return the list with project:personalOwner - workflow:publish scope when the personal project publish security setting is explicitly enabled', async () => {
+			await securitySettingsService.setPersonalSpacePublishing(true);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[...PERSONAL_PROJECT_OWNER_SCOPES, 'workflow:publish'],
+				resp.body.data.project,
+			);
+		});
 	});
 
 	test('should return fixed credential sharing roles', async () => {

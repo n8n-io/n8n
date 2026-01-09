@@ -90,7 +90,7 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
 			},
 			{
-				id: 'settings-sso',
+				id: 'settings-security',
 				icon: 'shield',
 				label: i18n.baseText('settings.security'),
 				position: 'top',
