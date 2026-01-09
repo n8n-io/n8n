@@ -344,7 +344,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(openModalSpy).not.toHaveBeenCalled();
 		});
 
-		it('should be disabled when user lacks workflow:publish permission', () => {
+		it('should be hidden when user lacks workflow:publish permission', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
@@ -356,7 +356,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 	});
 
