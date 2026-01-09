@@ -41,7 +41,8 @@ const readOnlyForPublish = computed(() => {
 	return (
 		props.readOnly ||
 		props.isArchived ||
-		(!props.workflowPermissions.update && !props.workflowPermissions.publish)
+		!props.workflowPermissions.update ||
+		!props.workflowPermissions.publish
 	);
 });
 
@@ -49,7 +50,8 @@ const shouldHidePublishButton = computed(() => {
 	return (
 		props.readOnly ||
 		props.isArchived ||
-		(!props.workflowPermissions.publish && !props.workflowPermissions.update)
+		!props.workflowPermissions.publish ||
+		!props.workflowPermissions.update
 	);
 });
 
