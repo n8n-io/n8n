@@ -31,12 +31,6 @@ export const BATCH_11AUG_EXPERIMENT = {
 	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
 };
 
-export const PRE_BUILT_AGENTS_EXPERIMENT = {
-	name: '038_pre_built_agents',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const TEMPLATE_RECO_V2 = {
 	name: '039_template_onboarding_v2',
 	control: 'control',
@@ -105,7 +99,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
-	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,

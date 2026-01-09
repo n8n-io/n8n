@@ -41,6 +41,7 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -110,6 +111,7 @@ export class ExecutionService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
 	) {}
 
 	async findOne(
@@ -268,6 +270,20 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		this.eventService.emit('workflow-executed', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowData.name,
+			executionId: retriedExecutionId,
+			source: 'user-retry',
+		});
+
 		return {
 			id: retriedExecutionId,
 			mode: executionData.mode,
@@ -307,6 +323,18 @@ export class ExecutionService {
 		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
 			deleteBefore,
 			ids,
+		});
+
+		this.eventService.emit('execution-deleted', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			executionIds: ids ?? [],
+			deleteBefore,
 		});
 	}
 

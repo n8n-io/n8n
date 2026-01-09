@@ -2,7 +2,7 @@
   "name": "@n8n/chat",
   "version": "1.3.0",
   "scripts": {
-    "dev": "pnpm run storybook",
+    "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",
     "build": "pnpm build:vite && pnpm build:bundle",
     "build:vite": "cross-env vite build",
     "build:bundle": "cross-env INCLUDE_VUE=true vite build",
@@ -14,10 +14,8 @@
     "lint:fix": "eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
-    "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../../../.prettierignore",
-    "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../../../.prettierignore",
-    "storybook": "storybook dev -p 6006 --no-open",
-    "build:storybook": "storybook build"
+    "format": "biome format --write src && prettier --write src/ --ignore-path ../../../../.prettierignore",
+    "format:check": "biome ci src && prettier --check src/ --ignore-path ../../../../.prettierignore"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/chat.umd.js",
@@ -48,11 +46,11 @@
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
-    "@n8n/storybook": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@storybook/vue3-vite": "catalog:storybook",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "unplugin-icons": "^0.19.0",
