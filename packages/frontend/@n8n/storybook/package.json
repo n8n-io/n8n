@@ -28,7 +28,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vue/tsconfig": "catalog:frontend",
     "eslint-plugin-storybook": "catalog:storybook",
-    "playwright": "^1.57.0",
+    "playwright": "catalog:e2e",
     "storybook": "catalog:storybook",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
