@@ -146,10 +146,6 @@ export class CollaborationService {
 	) {
 		const { workflowId } = msg;
 
-		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
-			return;
-		}
-
 		const currentLockHolder = await this.state.getWriteLock(workflowId);
 
 		if (currentLockHolder !== userId) {
@@ -162,10 +158,6 @@ export class CollaborationService {
 
 	private async handleWriteAccessHeartbeat(userId: User['id'], msg: WriteAccessHeartbeatMessage) {
 		const { workflowId } = msg;
-
-		if (!(await this.accessService.hasWriteAccess(userId, workflowId))) {
-			return;
-		}
 
 		// Renew the write lock TTL if the user holds it
 		await this.state.renewWriteLock(workflowId, userId);
