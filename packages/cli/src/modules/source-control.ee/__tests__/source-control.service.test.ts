@@ -1020,10 +1020,21 @@ describe('SourceControlService', () => {
 			jest.spyOn(sourceControlService, 'sanityCheck').mockRestore();
 		});
 
-		it('should initialize git service when folders do not exist but source control is connected', async () => {
+		it('should throw error when folders do not exist', async () => {
 			// ARRANGE
 			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+			expect(gitService.initService).not.toHaveBeenCalled();
+		});
+
+		it('should initialize git service when folders exist but git service is not initialized', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.git = null as any;
 			gitService.initService.mockResolvedValue(undefined);
 			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
 			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
@@ -1033,18 +1044,6 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.initService).toHaveBeenCalled();
-		});
-
-		it('should throw error when folders do not exist and source control is not connected', async () => {
-			// ARRANGE
-			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
-			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
-
-			// ACT & ASSERT
-			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
-				'Source control is not properly set up, please disconnect and reconnect.',
-			);
-			expect(gitService.initService).not.toHaveBeenCalled();
 		});
 
 		it('should pass when folders exist and branch matches', async () => {
