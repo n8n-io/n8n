@@ -224,10 +224,11 @@ const getHitlToolParameters = async (newNode: INode): Promise<IFormInput[]> => {
 		.map((nodeName) => workflowsStore.getNodeByName(nodeName))
 		.filter((tool): tool is INode => !!tool);
 
+	const ignoredFields = ['tool', 'toolParameters'];
+
 	// Add HITL node parameters
 	const regularParameters = getRegularToolParameters(newNode, true)
-		// filter a field added by fromAi('toolName'), we get it from the tool selector
-		.filter((parameter) => parameter.name !== 'query.toolName')
+		.filter((parameter) => !ignoredFields.includes(parameter.name.replace(/^query\./, '')))
 		.map((parameter) => ({
 			...parameter,
 			name: `${getToolName(newNode)}_${parameter.name}`,
@@ -406,6 +407,7 @@ const onExecute = async () => {
 
 	telemetry.track('User clicked execute node button in modal', telemetryPayload);
 
+	console.log('onExecute', node.value.name, agentRequest);
 	await runWorkflow({
 		destinationNode: { nodeName: node.value.name, mode: 'inclusive' },
 	});

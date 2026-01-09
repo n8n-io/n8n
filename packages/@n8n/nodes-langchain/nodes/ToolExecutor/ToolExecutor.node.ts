@@ -10,7 +10,6 @@ import get from 'lodash/get';
 import type {
 	EngineRequest,
 	EngineResponse,
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -114,13 +113,15 @@ export class ToolExecutor implements INodeType {
 
 						if (toolName === toolkitTool.name) {
 							if (hasGatedToolNodeName(toolkitTool.metadata) && node) {
-								const toolInput = getQueryData(toolName) ?? {};
+								const toolInput = {
+									toolParameters: getQueryData(toolName) ?? {},
+								};
 								const hitlInput = getQueryData(node);
 
 								const hitlMetadata = extractHitlMetadata(
 									toolkitTool.metadata,
 									toolkitTool.name,
-									toolInput as IDataObject,
+									toolInput,
 								);
 
 								// prepare request for execution engine to execute the HITL node
@@ -130,7 +131,7 @@ export class ToolExecutor implements INodeType {
 										nodeName: node,
 										input: {
 											tool: toolName,
-											toolName,
+											toolParameters: JSON.stringify(toolInput),
 											...hitlInput,
 										},
 										type: 'ai_tool',
