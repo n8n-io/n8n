@@ -55,6 +55,30 @@ Examples in parameter configuration:
 - "Set value to ={{ $('Previous Node').item.json.value }}"
 - "Set message to ={{ $('HTTP Request').item.json.message }}"`;
 
+const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods
+
+Regex operations:
+- Test pattern: ={{ /pattern/.test($json.text) }}
+- Extract match: ={{ $json.text.match(/pattern/)?.[1] }}
+- Replace text: ={{ $json.text.replace(/pattern/, 'replacement') }}
+- Split by pattern: ={{ $json.text.split(/pattern/) }}
+
+String operations:
+- Uppercase: ={{ $json.text.toUpperCase() }}
+- Trim whitespace: ={{ $json.text.trim() }}
+- Substring: ={{ $json.text.substring(0, 10) }}
+
+Array operations:
+- First item: ={{ $json.items[0] }}
+- Filter: ={{ $json.items.filter(i => i.active) }}
+- Map: ={{ $json.items.map(i => i.name) }}
+- Join: ={{ $json.items.join(', ') }}
+
+Generating items from expressions (use with Split Out node):
+- Create array from comma string: ={{ $json.text.split(',') }}
+- Generate range: ={{ Array.from({{length: 5}}, (_, i) => i + 1) }}
+- Use with Split Out node to create multiple output items from a single input`;
+
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
 - "Set subject to ={{ $fromAI('subject') }}"
@@ -169,6 +193,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
 		.section('data_referencing', DATA_REFERENCING)
+		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('default_values_warning', DEFAULT_VALUES_WARNING)

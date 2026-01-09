@@ -627,6 +627,16 @@ describe('copyBinaryFile', () => {
 			filePath,
 		);
 	});
+
+	it('should sanitize filenames', async () => {
+		await copyBinaryFile(workflowId, executionId, filePath, '../../../etc/passwd');
+
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			{ type: 'execution', workflowId, executionId },
+			expect.objectContaining({ fileName: 'passwd' }),
+			filePath,
+		);
+	});
 });
 
 describe('prepareBinaryData', () => {

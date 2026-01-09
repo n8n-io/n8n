@@ -3677,6 +3677,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
+			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations();
 
@@ -3695,7 +3696,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
+			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -4283,6 +4284,8 @@ describe('useCanvasOperations', () => {
 				'getNewWorkflowDataAndMakeShareable',
 			);
 
+			const addToWorkflowMetadataSpy = vi.spyOn(workflowState, 'addToWorkflowMetadata');
+
 			const { importTemplate } = useCanvasOperations();
 
 			const templateId = 'template-id';
@@ -4310,7 +4313,7 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
+			expect(addToWorkflowMetadataSpy).toHaveBeenCalledWith({
 				templateId,
 			});
 		});
