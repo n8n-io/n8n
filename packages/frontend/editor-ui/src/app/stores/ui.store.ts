@@ -26,12 +26,12 @@ import {
 	LOCAL_STORAGE_THEME,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
-	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
@@ -149,7 +149,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
-				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
@@ -231,6 +230,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			data: {
 				nodeName: undefined,
 			},
+		},
+		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
 		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
@@ -546,6 +549,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 		workflowListEventBus: EventBus,
 	) => {

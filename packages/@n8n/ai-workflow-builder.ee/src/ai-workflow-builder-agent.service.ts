@@ -301,4 +301,16 @@ export class AiWorkflowBuilderService {
 			creditsClaimed: 0,
 		};
 	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified messageId
+	 * Used when restoring to a previous version
+	 */
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		messageId: string,
+	): Promise<boolean> {
+		return await this.sessionManager.truncateMessagesAfter(workflowId, user.id, messageId);
+	}
 }

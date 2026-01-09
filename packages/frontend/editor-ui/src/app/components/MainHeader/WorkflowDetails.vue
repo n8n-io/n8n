@@ -5,13 +5,7 @@ import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import {
-	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	VIEWS,
-	IS_DRAFT_PUBLISH_ENABLED,
-} from '@/app/constants';
+import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -26,7 +20,6 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import WorkflowHeaderActions from '@/app/components/MainHeader/WorkflowHeaderActions.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -68,10 +61,6 @@ const props = defineProps<{
 	description?: IWorkflowDb['description'];
 }>();
 
-const emit = defineEmits<{
-	'workflow:deactivated': [];
-}>();
-
 const $style = useCssModule();
 
 const settingsStore = useSettingsStore();
@@ -95,10 +84,8 @@ const workflowSaving = useWorkflowSaving({ router });
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
-const workflowHeaderActionsRef = useTemplateRef<
-	| InstanceType<typeof WorkflowHeaderActions>
-	| InstanceType<typeof WorkflowHeaderDraftPublishActions>
->('workflowHeaderActions');
+const workflowHeaderActionsRef =
+	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -111,7 +98,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
 const isWorkflowSaving = computed(() => {
@@ -162,6 +149,9 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
+
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
@@ -169,7 +159,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -249,9 +239,13 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId(props.id, route.params.name);
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
+
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -413,8 +407,11 @@ function getToastContent() {
 	return { title, toastMessage };
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
+	if (!id) return;
+
+	// Only show toast if this is a newly created workflow
+	const shouldShowToast = wasNewWorkflow ?? false;
 
 	if (!shouldShowToast) return;
 
@@ -553,7 +550,6 @@ onBeforeUnmount(() => {
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
-				v-if="IS_DRAFT_PUBLISH_ENABLED"
 				:id="id"
 				ref="workflowHeaderActions"
 				:tags="tags"
@@ -564,22 +560,6 @@ onBeforeUnmount(() => {
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
 				@workflow:saved="onSaveButtonClick"
-			/>
-			<WorkflowHeaderActions
-				v-else
-				:id="id"
-				ref="workflowHeaderActions"
-				:name="name"
-				:tags="tags"
-				:current-folder="currentFolder"
-				:meta="meta"
-				:read-only="readOnly"
-				:is-archived="isArchived"
-				:active="active"
-				:is-new-workflow="isNewWorkflow"
-				:workflow-permissions="workflowPermissions"
-				@workflow:saved="onSaveButtonClick"
-				@workflow:deactivated="emit('workflow:deactivated')"
 			/>
 		</PushConnectionTracker>
 	</div>

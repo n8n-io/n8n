@@ -56,6 +56,7 @@ const defaultWorkflowProps = {
 		read: true,
 		update: true,
 		delete: true,
+		publish: true,
 	},
 };
 
@@ -204,6 +205,34 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
+	describe('Publish button visibility', () => {
+		it('should be hidden when user lacks workflow:publish and workflow:update permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: false,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+
+		it('should be hidden when workflow is archived', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isArchived: true,
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Publish button behavior', () => {
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
@@ -276,6 +305,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(openModalSpy).not.toHaveBeenCalled();
+		});
+
+		it('should be disabled when user lacks workflow:publish permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 	});
 

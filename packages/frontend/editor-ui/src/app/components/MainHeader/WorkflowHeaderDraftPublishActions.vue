@@ -85,6 +85,10 @@ const isWorkflowSaved = computed(() => {
 });
 
 const publishButtonEnabled = computed(() => {
+	if (!props.workflowPermissions.publish) {
+		return false;
+	}
+
 	if (!containsTrigger.value) {
 		return false;
 	}
@@ -101,6 +105,10 @@ const publishButtonEnabled = computed(() => {
 });
 
 const publishTooltipText = computed(() => {
+	if (!props.workflowPermissions.publish) {
+		return i18n.baseText('workflows.publish.permissionDenied');
+	}
+
 	const wfHasAnyChanges =
 		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
 
@@ -165,7 +173,10 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
+		<div
+			v-if="!isArchived && (workflowPermissions.update || workflowPermissions.publish)"
+			:class="$style.publishButtonWrapper"
+		>
 			<N8nTooltip :disabled="!publishTooltipText">
 				<template #content>
 					{{ publishTooltipText }}

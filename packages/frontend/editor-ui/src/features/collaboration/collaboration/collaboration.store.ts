@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/app/constants';
+import { TIME } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -89,15 +89,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function notifyWorkflowOpened() {
-		const { workflowId } = workflowsStore;
-		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
-		pushStore.send({ type: 'workflowOpened', workflowId });
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
+		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
 	}
 
 	function notifyWorkflowClosed() {
-		const { workflowId } = workflowsStore;
-		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
-		pushStore.send({ type: 'workflowClosed', workflowId });
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
+		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
 
 		collaborators.value = collaborators.value.filter(
 			({ user }) => user.id !== usersStore.currentUserId,

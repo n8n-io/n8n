@@ -70,8 +70,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
-import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { getAiTemplatesCallout } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -173,7 +172,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
-	const calloutHelpers = useCalloutHelpers();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
@@ -192,9 +190,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
 	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
-	const callouts: NodeViewItem[] = !calloutHelpers.isPreBuiltAgentsCalloutVisible.value
-		? [getAiTemplatesCallout(aiTemplatesURL)]
-		: [getPreBuiltAgentsCalloutWithDivider()];
+	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -429,10 +425,7 @@ export function TriggerView() {
 					name: WEBHOOK_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-					iconData: {
-						type: 'file',
-						fileBuffer: '/static/webhook-icon.svg',
-					},
+					iconData: { type: 'icon', icon: 'webhook' },
 				},
 			},
 			{
@@ -444,10 +437,7 @@ export function TriggerView() {
 					name: FORM_TRIGGER_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
-					iconData: {
-						type: 'file',
-						fileBuffer: '/static/form-grey.svg',
-					},
+					iconData: { type: 'icon', icon: 'form' },
 				},
 			},
 			{

@@ -119,6 +119,25 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
+		it('should not upsert statistics for execution mode chat', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'chat',
+				startedAt: new Date(),
+			};
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(0);
+		});
+
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
 			'should upsert `count` and `rootCount` for execution status %s',
 			async (status) => {
