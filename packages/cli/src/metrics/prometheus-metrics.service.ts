@@ -11,13 +11,13 @@ import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
+import type { Includes, MetricCategory, MetricLabel } from './types';
+
 import { N8N_VERSION } from '@/constants';
-import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
+import { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
 import { CacheService } from '@/services/cache/cache.service';
-
-import type { Includes, MetricCategory, MetricLabel } from './types';
 
 @Service()
 export class PrometheusMetricsService {

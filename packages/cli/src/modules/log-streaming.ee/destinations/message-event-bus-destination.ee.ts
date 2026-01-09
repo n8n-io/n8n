@@ -6,7 +6,6 @@ import {
 	LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS,
 	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
 } from '@n8n/constants';
-import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -15,10 +14,11 @@ import { v4 as uuid } from 'uuid';
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
 
+import { EventDestinationsRepository } from '../database/repositories/event-destinations.repository';
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import type { MessageEventBus, MessageWithCallback } from '../message-event-bus';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.

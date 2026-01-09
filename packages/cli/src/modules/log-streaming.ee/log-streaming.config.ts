@@ -1,6 +1,5 @@
+import { Config, Env, Nested } from '@n8n/config';
 import { z } from 'zod';
-
-import { Config, Env, Nested } from '../decorators';
 
 @Config
 class LogWriterConfig {
@@ -21,7 +20,7 @@ const recoveryModeSchema = z.enum(['simple', 'extensive']);
 type RecoveryMode = z.infer<typeof recoveryModeSchema>;
 
 @Config
-export class EventBusConfig {
+export class LogStreamingConfig {
 	/** How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. `0` to disable */
 	@Env('N8N_EVENTBUS_CHECKUNSENTINTERVAL')
 	checkUnsentInterval: number = 0;
