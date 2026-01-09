@@ -3,10 +3,10 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LogStreamingEventRelay } from '@/modules/log-streaming.ee/log-streaming.event-relay';
 
 describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();

@@ -16,13 +16,13 @@ import { v4 as uuid } from 'uuid';
 
 import { mock } from 'jest-mock-extended';
 
-import type { EventNamesTypes } from '@/eventbus/event-message-classes';
-import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
-import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
-import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
+import type { EventNamesTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import { EventMessageAudit } from '@/modules/log-streaming.ee/event-message-classes/event-message-audit';
+import { EventMessageGeneric } from '@/modules/log-streaming.ee/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
+import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -30,7 +30,7 @@ import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+jest.unmock('@/modules/log-streaming.ee/message-event-bus');
 jest.mock('axios');
 
 const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();

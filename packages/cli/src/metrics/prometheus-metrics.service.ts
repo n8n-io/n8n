@@ -11,19 +11,17 @@ import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import type { Includes, MetricCategory, MetricLabel } from './types';
-
 import { N8N_VERSION } from '@/constants';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import type { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
 import { CacheService } from '@/services/cache/cache.service';
+
+import type { Includes, MetricCategory, MetricLabel } from './types';
 
 @Service()
 export class PrometheusMetricsService {
 	constructor(
 		private readonly cacheService: CacheService,
-		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
@@ -248,7 +246,8 @@ export class PrometheusMetricsService {
 	private initEventBusMetrics() {
 		if (!this.includes.metrics.logs) return;
 
-		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
+		// Listen to log-streaming events through EventService instead of direct dependency
+		this.eventService.on('log-streaming.metrics', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
 
@@ -340,44 +339,47 @@ export class PrometheusMetricsService {
 		switch (__type) {
 			case EventMessageTypeNames.audit:
 				if (eventName.startsWith('n8n.audit.user.credentials')) {
-					return this.includes.labels.credentialsType
-						? {
-								credential_type: String(
-									(event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
-								),
-							}
-						: {};
+					if (this.includes.labels.credentialsType && 'credentialType' in payload) {
+						const credentialType = payload.credentialType;
+						return {
+							credential_type: String(credentialType ?? 'unknown').replace(/\./g, '_'),
+						};
+					}
+					return {};
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
-					return this.buildWorkflowLabels(payload);
+					return this.buildWorkflowLabels(payload as Record<string, unknown>);
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				const nodeLabels: Record<string, string> = this.buildWorkflowLabels(payload);
+				const nodeLabels: Record<string, string> = this.buildWorkflowLabels(
+					payload as Record<string, unknown>,
+				);
 
-				if (this.includes.labels.nodeType) {
-					nodeLabels.node_type = String(
-						(payload.nodeType ?? 'unknown').replace('n8n-nodes-', '').replace(/\./g, '_'),
-					);
+				if (this.includes.labels.nodeType && 'nodeType' in payload) {
+					const nodeType = payload.nodeType;
+					nodeLabels.node_type = String(nodeType ?? 'unknown')
+						.replace('n8n-nodes-', '')
+						.replace(/\./g, '_');
 				}
 
 				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
-				return this.buildWorkflowLabels(payload);
+				return this.buildWorkflowLabels(payload as Record<string, unknown>);
 		}
 
 		return {};
 	}
 
-	private buildWorkflowLabels(payload: any): Record<string, string> {
+	private buildWorkflowLabels(payload: Record<string, unknown>): Record<string, string> {
 		const labels: Record<string, string> = {};
-		if (this.includes.labels.workflowId) {
+		if (this.includes.labels.workflowId && 'workflowId' in payload) {
 			labels.workflow_id = String(payload.workflowId ?? 'unknown');
 		}
-		if (this.includes.labels.workflowName) {
+		if (this.includes.labels.workflowName && 'workflowName' in payload) {
 			labels.workflow_name = String(payload.workflowName ?? 'unknown');
 		}
 		return labels;

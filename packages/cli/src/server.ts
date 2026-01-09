@@ -17,9 +17,7 @@ import { AuthService } from '@/auth/auth.service';
 import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -54,7 +52,6 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
@@ -260,13 +257,6 @@ export class Server extends AbstractServer {
 		);
 
 		this.configureSettingsRoute();
-
-		// ----------------------------------------
-		// EventBus Setup
-		// ----------------------------------------
-		const eventBus = Container.get(MessageEventBus);
-		await eventBus.initialize();
-		Container.get(LogStreamingEventRelay).init();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup

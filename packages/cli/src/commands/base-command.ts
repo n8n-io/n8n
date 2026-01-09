@@ -27,7 +27,6 @@ import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
@@ -158,9 +157,6 @@ export abstract class BaseCommand<F = never> {
 			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			await Container.get(TaskRunnerModule).start();
 		}
-
-		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
-		Container.get(MessageEventBus);
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();

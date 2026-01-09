@@ -10,6 +10,7 @@ import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
+import { EventService } from '../../events/event.service';
 import { EventDestinationsRepository } from './database/repositories/event-destinations.repository';
 import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';
 import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
@@ -60,6 +61,8 @@ export interface MessageEventBusInitializeOptions {
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
+	private closePromise?: Promise<void>;
+
 	logWriter: MessageEventBusLogWriter;
 
 	destinations: {
@@ -78,6 +81,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logStreamingConfig: LogStreamingConfig,
+		private readonly eventService: EventService,
 	) {
 		super();
 	}
@@ -232,8 +236,25 @@ export class MessageEventBus extends EventEmitter {
 			}, this.logStreamingConfig.checkUnsentInterval);
 		}
 
+		// Listen for instance shutdown to close the event bus and flush all events
+		this.eventService.on('instance-stopped', () => {
+			if (!this.closePromise) {
+				this.closePromise = this.close();
+			}
+		});
+
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
+	}
+
+	/**
+	 * Wait for the event bus to finish closing if a close operation is in progress.
+	 * This is called after 'instance-stopped' event is emitted to ensure all events are flushed.
+	 */
+	async waitForClose(): Promise<void> {
+		if (this.closePromise) {
+			await this.closePromise;
+		}
 	}
 
 	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
@@ -294,6 +315,9 @@ export class MessageEventBus extends EventEmitter {
 		}
 		this.isInitialized = false;
 		this.logger.debug('EventBus shut down.');
+
+		// Emit event to notify that log streaming is fully closed
+		this.eventService.emit('log-streaming-closed', {});
 	}
 
 	@OnPubSubEvent('restart-event-bus')
@@ -345,7 +369,9 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit('metrics.eventBus.event', msg);
+		// Emit metrics through EventService for core services (like prometheus-metrics)
+		// This avoids core services depending on the log-streaming module
+		this.eventService.emit('log-streaming.metrics', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!

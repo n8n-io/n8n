@@ -9,7 +9,7 @@ import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

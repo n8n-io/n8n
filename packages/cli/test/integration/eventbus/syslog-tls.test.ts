@@ -5,14 +5,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type TestAgent from 'supertest/lib/agent';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
+import { EventMessageGeneric } from '@/modules/log-streaming.ee/event-message-classes/event-message-generic';
 
 import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+jest.unmock('@/modules/log-streaming.ee/message-event-bus');
 
 const tlsServer = new TlsSyslogServer();
 let serverPort: number;

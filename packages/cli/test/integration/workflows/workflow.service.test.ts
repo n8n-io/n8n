@@ -18,7 +18,7 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

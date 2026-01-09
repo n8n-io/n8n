@@ -6,33 +6,19 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
-import type { EventService } from '@/events/event.service';
+import { EventMessageWorkflow } from '@/modules/log-streaming.ee/event-message-classes/event-message-workflow';
+import { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
-import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
-
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const customPrefix = 'custom_';
 
 const cacheService = mock<CacheService>();
-const eventService = mock<EventService>();
+const eventService = new EventService();
 const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 const workflowRepository = mock<WorkflowRepository>();
 const app = mock<express.Application>();
-const eventBus = new MessageEventBus(
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-);
 
 describe('workflow_success_total', () => {
 	test('support workflow id labels', async () => {
@@ -50,7 +36,6 @@ describe('workflow_success_total', () => {
 
 		const prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
-			eventBus,
 			globalConfig,
 			eventService,
 			instanceSettings,
@@ -66,7 +51,7 @@ describe('workflow_success_total', () => {
 			payload: { workflowId: '1234' },
 		});
 
-		eventBus.emit('metrics.eventBus.event', event);
+		eventService.emit('log-streaming.metrics', event);
 
 		// ASSERT
 		const workflowSuccessCounter =
@@ -94,7 +79,6 @@ workflow_success_total{workflow_id="1234"} 1"
 
 		const prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
-			eventBus,
 			globalConfig,
 			eventService,
 			instanceSettings,
@@ -110,7 +94,7 @@ workflow_success_total{workflow_id="1234"} 1"
 			payload: { workflowName: 'wf_1234' },
 		});
 
-		eventBus.emit('metrics.eventBus.event', event);
+		eventService.emit('log-streaming.metrics', event);
 
 		// ASSERT
 		const workflowSuccessCounter =
@@ -135,7 +119,6 @@ workflow_success_total{workflow_name="wf_1234"} 1"
 
 		const prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
-			eventBus,
 			globalConfig,
 			eventService,
 			instanceSettings,
@@ -180,7 +163,6 @@ describe('Active workflow count', () => {
 
 	const prometheusMetricsService = new PrometheusMetricsService(
 		cacheService,
-		eventBus,
 		globalConfig,
 		eventService,
 		instanceSettings,

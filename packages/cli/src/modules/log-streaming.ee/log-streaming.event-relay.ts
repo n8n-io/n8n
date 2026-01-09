@@ -7,6 +7,7 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 
+import { EventMessageGeneric } from './event-message-classes/event-message-generic';
 import { MessageEventBus } from './message-event-bus';
 
 @Service()
@@ -21,6 +22,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	init() {
 		this.setupListeners({
+			'worker-started': (event) => this.workerStarted(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -86,6 +88,21 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-stalled': (event) => this.jobStalled(event),
 		});
 	}
+
+	// #region Lifecycle
+
+	private workerStarted({ workerId }: RelayEventMap['worker-started']) {
+		void this.eventBus.send(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId,
+				},
+			}),
+		);
+	}
+
+	// #endregion
 
 	// #region Workflow
 

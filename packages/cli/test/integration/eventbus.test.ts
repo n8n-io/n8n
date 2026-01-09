@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 import { createUser } from './shared/db/users';

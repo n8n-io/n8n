@@ -34,6 +34,12 @@ export type RelayEventMap = {
 
 	'instance-stopped': {};
 
+	'log-streaming-closed': {};
+
+	'worker-started': {
+		workerId: string;
+	};
+
 	'instance-owner-setup': {
 		userId: string;
 	};

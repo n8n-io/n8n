@@ -18,7 +18,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
@@ -102,12 +101,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				Container.get(Subscriber).shutdown();
 			}
 
-			Container.get(EventService).emit('instance-stopped');
+			// Emit instance-stopped event which triggers MessageEventBus to close and flush all events
+			const eventService = Container.get(EventService);
+			const logStreamingClosed = new Promise<void>((resolve) => {
+				eventService.once('log-streaming-closed', () => resolve());
+			});
+			eventService.emit('instance-stopped', {});
 
 			await Container.get(ActiveExecutions).shutdown();
 
-			// Finally shut down Event Bus
-			await Container.get(MessageEventBus).close();
+			// Wait for log streaming to finish closing and flushing all events
+			await logStreamingClosed;
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

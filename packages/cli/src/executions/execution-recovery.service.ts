@@ -19,7 +19,7 @@ import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import type { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';

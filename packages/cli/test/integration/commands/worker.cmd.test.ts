@@ -7,8 +7,8 @@ import { BinaryDataService } from 'n8n-core';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { MessageEventBus } from '@/modules/log-streaming.ee/message-event-bus';
+import { LogStreamingEventRelay } from '@/modules/log-streaming.ee/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
