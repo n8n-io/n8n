@@ -582,5 +582,6 @@ export function getModelMetadata(
 export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
 	'streaming',
 	'lastNode',
+	'responseNode',
 	'responseNodes',
 ] as const;
