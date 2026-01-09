@@ -945,8 +945,8 @@ describe('Test PostgresV2, select operation', () => {
 			[
 				{
 					query:
-						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name >= $5 AND $6:name = $7 ORDER BY $8:name ASC LIMIT 5',
-					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id'],
+						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name >= $5 AND $6:name = $7 ORDER BY $8:name ASC LIMIT $9',
+					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id', 5],
 				},
 			],
 			nodeOptions,

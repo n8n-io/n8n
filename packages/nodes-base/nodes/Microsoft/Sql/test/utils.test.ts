@@ -370,6 +370,8 @@ describe('MSSQL tests', () => {
 			expect(escapeTableName("[[test] (id,text) values(1,'123'); DROP TABLE users; -- ]")).toEqual(
 				"[[test]] (id,text) values(1,'123'); DROP TABLE users; -- ]",
 			);
+			expect(escapeTableName('schema.[table]')).toEqual('[schema.[table]]]');
+			expect(escapeTableName('[schema].table')).toEqual('[[schema]].table]');
 		});
 	});
 });

@@ -131,7 +131,8 @@ export async function execute(
 		if (!returnAll) {
 			const limitRaw = this.getNodeParameter('limit', i, 50);
 			const limit = tryToParseNumber(limitRaw);
-			query += ` LIMIT ${limit}`;
+			values.push(limit);
+			query += ` LIMIT $${values.length}`;
 		}
 
 		const queryWithValues = { query, values };
