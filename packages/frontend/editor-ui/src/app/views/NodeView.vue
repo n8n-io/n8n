@@ -1974,20 +1974,8 @@ onMounted(() => {
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
-		const activeNodeName = ndvStore.activeNode?.name;
-
 		// Refresh the canvas with updated workflow
 		await initializeWorkspace(workflow);
-
-		// Reopen NDV if it was open (with a small delay to ensure workflow is fully initialized)
-		if (activeNodeName) {
-			setTimeout(() => {
-				const updatedNode = workflowsStore.getNodeByName(activeNodeName);
-				if (updatedNode) {
-					ndvStore.setActiveNodeName(activeNodeName, 'other');
-				}
-			}, 100);
-		}
 	});
 
 	void initializeData().then(() => {
