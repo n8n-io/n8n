@@ -247,13 +247,8 @@ export class WorkflowBuilderAgent {
 			for await (const output of streamProcessor) {
 				yield output;
 			}
-			// Only call onGenerationSuccess if stream completed without errors
-			if (this.onGenerationSuccess) {
-				await this.onGenerationSuccess();
-			}
 		} catch (error) {
 			// handleAgentStreamError returns for aborts, throws for other errors
-			// If it returns (abort case), onGenerationSuccess is not called
 			await this.handleAgentStreamError(error, agent, threadConfig);
 		}
 	}
