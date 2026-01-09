@@ -45,6 +45,8 @@ export type ActivityCapture = {
 	output: string[];
 };
 
+const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
+
 export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Credentials) {
 	const authConfig: AuthConfiguration = createAuthConfig(credentials);
 
@@ -80,19 +82,17 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 
 	const tools: DynamicStructuredTool[] = [];
 	const clients: Client[] = [];
-	const timeout = 60000; // 60 seconds default timeout
+	const timeout = 60000;
 
-	// Connect to each MCP server individually using n8n's pattern
 	for (const server of servers) {
 		const headers: Record<string, string> = {};
 		if (mcpAuthToken) {
 			headers['Authorization'] = `Bearer ${mcpAuthToken}`;
 		}
 		if (tenantId) {
-			headers['x-ms-tenant-id'] = tenantId;
+			headers[MS_TENANT_ID_HEADER] = tenantId;
 		}
 
-		// Use n8n's connectMcpClient utility
 		const clientResult = await connectMcpClient({
 			serverTransport: 'httpStreamable', // Microsoft servers use HTTP
 			endpointUrl: server.url,
@@ -109,17 +109,13 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 		const client = clientResult.result;
 		clients.push(client);
 
-		// Get all tools from this server using n8n's utility
 		const mcpTools = await getAllTools(client);
 
-		// Convert each tool using n8n's exact pattern
 		for (const tool of mcpTools) {
-			// Create tool call wrapper using n8n's createCallTool
 			const callToolFunc = createCallTool(tool.name, client, timeout, (errorMessage) => {
 				console.error(`Tool "${tool.name}" execution error:`, errorMessage);
 			});
 
-			// Convert to DynamicStructuredTool using n8n's mcpToolToDynamicTool
 			const dynamicTool = mcpToolToDynamicTool(tool, callToolFunc);
 			tools.push(dynamicTool);
 		}
@@ -127,7 +123,6 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 
 	if (tools.length === 0) return undefined;
 
-	// Return tools and a cleanup function to close all clients
 	return {
 		tools,
 		client: {
