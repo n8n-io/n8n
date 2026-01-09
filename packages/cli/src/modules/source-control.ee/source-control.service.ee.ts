@@ -130,19 +130,14 @@ export class SourceControlService {
 				false,
 			);
 
-			// Recovery for secondary instances in multi-main: folders don't exist locally
-			// but source control is configured in the shared database.
 			if (!foldersExisted) {
-				if (this.sourceControlPreferencesService.isSourceControlConnected()) {
-					await this.initGitService();
-				} else {
-					throw new UserError('No folders exist');
-				}
+				throw new UserError('No folders exist');
 			}
 
 			if (!this.gitService.git) {
 				await this.initGitService();
 			}
+
 			const branches = await this.gitService.getCurrentBranch();
 			if (
 				branches.current === '' ||
