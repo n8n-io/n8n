@@ -31,8 +31,6 @@ function disableAlasqlFileAccess() {
 		throw new Error('File access operations are disabled for security reasons');
 	};
 
-	console.log(alasql);
-
 	// Disable file reading functions that could be used to access the file system
 	if (alasql.fn) {
 		alasql.fn.FILE = disabledFunction;
