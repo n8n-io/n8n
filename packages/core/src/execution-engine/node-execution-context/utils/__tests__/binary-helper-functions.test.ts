@@ -415,7 +415,7 @@ describe('test binary data helper methods', () => {
 			).rejects.toThrow('Provided parameter is not a string or binary data object.');
 		});
 
-		it('should throw error when path is undefined in combined mode', async () => {
+		it('should throw error when path resolves to undefined in combined mode', async () => {
 			const inputData: ITaskDataConnections = {
 				main: [
 					[
