@@ -130,8 +130,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const levelPromises = level.map(async (name) => {
 			const service = SERVICE_REGISTRY[name];
 			const options = service.getOptions?.(ctx);
-			const result = await service.start(network, uniqueProjectName, options, ctx);
-			return { name, service, result };
+			try {
+				const result = await service.start(network, uniqueProjectName, options, ctx);
+				return { name, service, result };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+			}
 		});
 
 		const results = await Promise.all(levelPromises);
