@@ -81,7 +81,7 @@ test.describe('Wait Node Form Resume', () => {
 
 			// Add Wait node with form resume
 			await n8n.canvas.addNode('Wait', { closeNDV: false });
-			await n8n.ndv.setParameterSelectValue('Resume', 'On Form Submitted');
+			await n8n.ndv.setParameterDropdown('Resume', 'On Form Submitted');
 			await n8n.ndv.fillParameterInput('Form Title', 'Test Wait Form');
 			await n8n.ndv.addFixedCollectionItem(); // Add form field
 			await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field');

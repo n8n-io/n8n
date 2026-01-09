@@ -645,8 +645,7 @@ export async function executeWebhook(
 		if (responseMode === 'formPage' && !didSendResponse) {
 			runExecutionData.validateSignature = true;
 
-			const webhookPath = webhookData.path ? `/${webhookData.path}` : '';
-			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}${webhookPath}`);
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
 			const urlForSigning = prepareUrlForSigning(formUrl);
 			const instanceSettings = Container.get(InstanceSettings);
 			const token = generateUrlSignature(urlForSigning, instanceSettings.hmacSignatureSecret);
