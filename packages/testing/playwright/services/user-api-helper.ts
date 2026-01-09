@@ -52,7 +52,6 @@ export class UserApiHelper {
 		const acceptResponse = await this.api.request.post(`/rest/invitations/${inviteeId}/accept`, {
 			data: {
 				inviterId,
-				inviteeId,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				password: user.password,

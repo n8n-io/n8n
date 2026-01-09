@@ -237,7 +237,6 @@ describe('InvitationController', () => {
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId,
-				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
@@ -269,7 +268,6 @@ describe('InvitationController', () => {
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId,
-				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
@@ -311,17 +309,12 @@ describe('InvitationController', () => {
 				role: GLOBAL_OWNER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
-				inviterId,
-				inviteeId,
-			});
 			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
 
 			const invitationController = defaultInvitationController();
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId,
-				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
@@ -357,10 +350,6 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
-				inviterId,
-				inviteeId,
-			});
 			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
 			jest.spyOn(passwordUtility, 'hash').mockResolvedValue('Password123!');
 			jest.spyOn(userRepository, 'save').mockResolvedValue(invitee);
@@ -373,7 +362,6 @@ describe('InvitationController', () => {
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId,
-				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
@@ -390,7 +378,7 @@ describe('InvitationController', () => {
 			);
 		});
 
-		it('accepts the invitation successfully with legacy inviterId and inviteeId', async () => {
+		it('accepts the invitation successfully with legacy inviterId and inviteeId from URL', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
@@ -420,7 +408,6 @@ describe('InvitationController', () => {
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId,
-				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
@@ -435,35 +422,6 @@ describe('InvitationController', () => {
 			expect(await invitationController.acceptInvitation(req, res, payload, inviteeId)).toEqual(
 				invitee as unknown as PublicUser,
 			);
-		});
-
-		it('throws a BadRequestError if inviteeId from payload does not match userId from URL', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
-
-			const inviterId = uuidv4();
-			const inviteeId = uuidv4();
-			const userId = uuidv4(); // Different from inviteeId
-
-			const invitationController = defaultInvitationController();
-
-			const payload = new AcceptInvitationRequestDto({
-				inviterId,
-				inviteeId,
-				firstName: 'John',
-				lastName: 'Doe',
-				password: 'Password123!',
-			});
-
-			const req = mock<AuthlessRequest<{ id: string }>>({
-				body: payload,
-				params: { id: userId },
-			});
-			const res = mock<Response>();
-
-			await expect(
-				invitationController.acceptInvitation(req, res, payload, userId),
-			).rejects.toThrow(new BadRequestError('Invalid invite URL'));
 		});
 
 		it('throws a BadRequestError if inviterId or inviteeId is missing in legacy format', async () => {

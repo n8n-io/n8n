@@ -200,7 +200,7 @@ export class InvitationController {
 		req: AuthlessRequest,
 		res: Response,
 		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') userId: string,
+		@Param('id') inviteeId: string,
 	) {
 		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
@@ -211,7 +211,7 @@ export class InvitationController {
 			);
 		}
 
-		if (!payload.inviterId || !payload.inviteeId) {
+		if (!payload.inviterId || !inviteeId) {
 			this.logger.debug(
 				'Request to accept invitation failed because inviterId or inviteeId is missing',
 			);
@@ -221,15 +221,6 @@ export class InvitationController {
 		const { firstName, lastName, password } = payload;
 
 		const inviterId = payload.inviterId;
-		const inviteeId = payload.inviteeId;
-
-		if (inviteeId !== userId) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the invitee ID does not match the URL parameter',
-				{ inviteeId, userId },
-			);
-			throw new BadRequestError('Invalid invite URL');
-		}
 
 		return await this.processInvitationAcceptance(
 			inviterId,
