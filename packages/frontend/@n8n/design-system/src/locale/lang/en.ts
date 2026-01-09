@@ -95,9 +95,9 @@ export default {
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
 	'aiAssistant.versionCard.restoreModal.description':
-		'This will replace your current version. Existing version will be saved for {pruneTime} in version history.',
+		'Your current version will be saved in version history for {pruneTime}.',
 	'aiAssistant.versionCard.restoreModal.descriptionNoLimit':
-		'This will replace your current version. Existing version will be saved in version history.',
+		'Your current version will be saved in version history.',
 	'aiAssistant.versionCard.restoreModal.hour': '{count} hour',
 	'aiAssistant.versionCard.restoreModal.hours': '{count} hours',
 	'aiAssistant.versionCard.restoreModal.day': '{count} day',
