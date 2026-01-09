@@ -1,6 +1,7 @@
-export type * from './functions-interface';
-export type * from './context-interface';
-export type * from './data-provider-interface';
-export type * from './traceable-interface';
-export type * from './descriptor-interface';
+export type * from './i-functions';
+export type * from './i-context';
+export type * from './i-data-provider';
+export type * from './i-traceable';
+export type * from './i-descriptor';
+export type * from './i-validatable';
 export type * from './text-type';

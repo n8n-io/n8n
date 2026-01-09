@@ -3,40 +3,29 @@ import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 import type { ISegment } from 'types/*';
 
-export class TranslationRequest extends SupplyRequest {
+export class MergeRequest extends SupplyRequest {
 	readonly segments: ISegment[];
-	readonly to: string;
-	readonly from?: string;
 
-	constructor(segments: ISegment[], to: string, from?: string) {
+	constructor(segments: ISegment[]) {
 		super();
-
 		this.segments = segments;
-		this.to = to;
-		this.from = from;
 
 		Object.freeze(this);
 	}
 
 	throwIfInvalid(): void {
-		if (!this.to || this.to.trim() === '') throw new Error('targetLanguage is required');
 		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
 		return {
 			...super.asLogMetadata(),
-			from: this.from,
-			to: this.to,
 			segmentsCount: this.segments.length,
 		};
 	}
-
 	asDataObject(): IDataObject {
 		return {
 			...super.asDataObject(),
-			from: this.from,
-			to: this.to,
 			segments: this.segments,
 		};
 	}

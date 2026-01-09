@@ -22,26 +22,10 @@ const DELAY = {
 
 export type DelayMode = 'noDelay' | 'randomDelay' | 'fixedDelay';
 
-/**
- * Delay configuration context for rate limiting and pacing requests.
- *
- * Supports three modes: no delay, fixed delay, or random delay (for jitter).
- * Used to prevent overwhelming APIs or simulate human-like request patterns.
- */
 export class DelayContext implements IContext {
-	/** Delay strategy: 'noDelay', 'randomDelay', or 'fixedDelay' */
 	readonly delayMode: DelayMode;
-	/** Delay duration in milliseconds - required for randomDelay and fixedDelay modes */
 	readonly delayValue?: number;
 
-	/**
-	 * Creates delay context from n8n node parameters.
-	 *
-	 * NOTE: @mapTo decorators execute bottom-to-top, binding parameters to n8n properties.
-	 *
-	 * @param delayMode - Delay strategy to apply
-	 * @param delayValue - Delay duration in ms, must be 100-60000 when required
-	 */
 	constructor(@mapTo(DELAY.KEYS.DELAY_MODE) delayMode: DelayMode, @mapTo(DELAY.KEYS.DELAY_VALUE) delayValue?: number) {
 		this.delayMode = delayMode;
 		this.delayValue = delayValue;
@@ -49,15 +33,6 @@ export class DelayContext implements IContext {
 		Object.freeze(this);
 	}
 
-	/**
-	 * Validates delay configuration based on selected mode.
-	 *
-	 * NOTE: Delay value must be 100-60000ms when required to prevent premature/infinite waits.
-	 *
-	 * @throws Error if delayValue missing for randomDelay/fixedDelay modes
-	 * @throws Error if delayValue outside 100-60000ms range
-	 * @throws Error if delayMode is not a recognized value
-	 */
 	throwIfInvalid(): void {
 		switch (this.delayMode) {
 			case DELAY.MODES.NO_DELAY:
@@ -82,11 +57,6 @@ export class DelayContext implements IContext {
 		};
 	}
 
-	/**
-	 * Calculates delay in milliseconds based on configured mode.
-	 *
-	 * @returns 0 for noDelay, delayValue for fixedDelay, random value [0, delayValue) for randomDelay
-	 */
 	calculateDelay(): number {
 		switch (this.delayMode) {
 			case DELAY.MODES.NO_DELAY:
@@ -101,12 +71,6 @@ export class DelayContext implements IContext {
 	}
 }
 
-/**
- * n8n node properties for delay context.
- *
- * Defines UI form fields for delay configuration in n8n workflow editor.
- * Property names must match DELAY.KEYS for @mapTo decorator binding.
- */
 export const CONTEXT_DELAY = [
 	{
 		displayName: 'Delay Mode',

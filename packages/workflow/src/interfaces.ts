@@ -1950,8 +1950,8 @@ export const NodeConnectionTypes = {
 	AiTextSplitter: 'ai_textSplitter',
 	AiTool: 'ai_tool',
 	AiVectorStore: 'ai_vectorStore',
-	IntentoTranslationProvider: 'intento_translationProvider',
-	IntentoTextSplitter: 'intento_textSplitter',
+	IntentoTranslationSupplier: 'intento_translationSupplier',
+	IntentoSegmentSupplier: 'intento_segmentSupplier',
 	Main: 'main',
 } as const;
 

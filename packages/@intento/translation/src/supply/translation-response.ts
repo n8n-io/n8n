@@ -1,43 +1,42 @@
-import type { Text } from 'intento-core';
-import { SupplyResponseBase } from 'intento-core';
+import { SupplyResponse } from 'intento-core';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 import type { TranslationRequest } from 'supply/translation-request';
+import type { ISegment, ITranslation } from 'types/*';
 
-export class TranslationResponse extends SupplyResponseBase {
+export class TranslationResponse extends SupplyResponse {
 	readonly from?: string;
 	readonly to: string;
-	readonly text: Text;
-	readonly translation: Text;
-	readonly detectedLanguage?: Text;
+	readonly segments: ISegment[];
+	readonly translation: ITranslation[];
 
-	constructor(request: TranslationRequest, translation: Text, detectedLanguage?: Text) {
+	constructor(request: TranslationRequest, translation: ITranslation[]) {
 		super(request);
 		this.from = request.from;
 		this.to = request.to;
-		this.text = request.text;
+		this.segments = request.segments;
 		this.translation = translation;
-		this.detectedLanguage = detectedLanguage;
 	}
+
+	throwIfInvalid(): void {}
 
 	asLogMetadata(): LogMetadata {
 		return {
-			requestId: this.requestId,
+			...super.asLogMetadata(),
 			from: this.from,
 			to: this.to,
-			detectedLanguage: this.detectedLanguage,
-			latencyMs: this.latencyMs,
+			segmentsCount: this.segments.length,
+			translationCount: this.translation.length,
 		};
 	}
 
 	asDataObject(): IDataObject {
 		return {
+			...super.asDataObject(),
 			from: this.from,
 			to: this.to,
-			text: this.text,
+			segments: this.segments,
 			translation: this.translation,
-			detectedLanguage: this.detectedLanguage,
-			latencyMs: this.latencyMs,
 		};
 	}
 }

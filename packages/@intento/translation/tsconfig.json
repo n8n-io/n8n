@@ -5,9 +5,11 @@
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
+			"agents/*": ["agents/*"],
 			"context/*": ["context/*"],
 			"supply/*": ["supply/*"],
-			"suppliers/*": ["suppliers/*"]
+			"suppliers/*": ["suppliers/*"],
+			"types/*": ["types/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

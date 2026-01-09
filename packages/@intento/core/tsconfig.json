@@ -5,6 +5,7 @@
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
+			"agents/*": ["agents/*"],
 			"context/*": ["context/*"],
 			"supply/*": ["supply/*"],
 			"tracing/*": ["tracing/*"],

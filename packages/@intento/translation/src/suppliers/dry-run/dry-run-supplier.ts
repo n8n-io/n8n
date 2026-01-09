@@ -1,11 +1,13 @@
-import { ContextFactory, Delay, type IFunctions } from 'intento-core';
-import { NodeApiError, type IntentoConnectionType } from 'n8n-workflow';
-
 import { DelayContext, SplitContext } from 'context/*';
+import type { SupplyError, IFunctions } from 'intento-core';
+import { ContextFactory, Delay } from 'intento-core';
+import type { IntentoConnectionType } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { DryRunContext } from 'suppliers/dry-run/dry-run-context';
 import { DryRunDescriptor } from 'suppliers/dry-run/dry-run-descriptor';
-import type { TranslationRequest, TranslationError } from 'supply/*';
+import type { TranslationRequest } from 'supply/*';
 import { TranslationResponse, TranslationSupplierBase } from 'supply/*';
+import type { ITranslation } from 'types/*';
 
 export class DryRunSupplier extends TranslationSupplierBase {
 	private readonly delayContext: DelayContext;
@@ -24,7 +26,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 		Object.freeze(this);
 	}
 
-	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
+	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | SupplyError> {
 		signal?.throwIfAborted();
 
 		const delayMs = this.delayContext.calculateDelay();
@@ -43,35 +45,56 @@ export class DryRunSupplier extends TranslationSupplierBase {
 	}
 
 	private passTranslation(request: TranslationRequest): TranslationResponse {
-		this.tracer.info(`🧪 [${this.descriptor.name}] Passing through original text without translation.`);
-		return new TranslationResponse(request, request.text, request.from);
+		this.tracer.debug(`🧪 [${this.descriptor.name}] Passing through original text without translation.`);
+		const translations: ITranslation[] = request.segments.map((segment) => ({
+			segmentPosition: segment.segmentPosition,
+			textPosition: segment.textPosition,
+			translation: segment.text,
+			detectedLanguage: request.from,
+		}));
+		this.tracer.info(`🧪 [${this.descriptor.name}] Passed through ${translations.length} segment(s) without translation.`);
+		return new TranslationResponse(request, translations);
 	}
 
 	private replaceTranslation(request: TranslationRequest): TranslationResponse {
-		this.tracer.info(
-			`🧪 [${this.descriptor.name}] Replacing text using pattern ${this.dryRunContext.replacePattern} to ${this.dryRunContext.replaceTo}.`,
-		);
-		const match = this.dryRunContext.replacePattern!.match(/^\/(.+)\/([gimusy]*)$/);
+		const replaceBy = this.dryRunContext.replacePattern!;
+		const replaceTo = this.dryRunContext.replaceTo!;
+		this.tracer.debug(`🧪 [${this.descriptor.name}] Replacing text using pattern ${replaceBy} to ${replaceTo}.`);
+
+		const match = replaceBy.match(/^\/(.+)\/([gimusy]*)$/);
 		const pattern = new RegExp(match![1], match![2]);
-		if (!Array.isArray(request.text)) {
-			const replacedText = request.text.replace(pattern, this.dryRunContext.replaceTo!);
-			return new TranslationResponse(request, replacedText, request.from);
-		}
-		const replacedTexts = request.text.map((segment) => segment.replace(pattern, this.dryRunContext.replaceTo!));
-		return new TranslationResponse(request, replacedTexts, request.from);
+
+		const translations: ITranslation[] = request.segments.map((segment) => {
+			const text = segment.text.replace(pattern, replaceTo);
+			return {
+				segmentPosition: segment.segmentPosition,
+				textPosition: segment.textPosition,
+				translation: text,
+				detectedLanguage: request.from,
+			};
+		});
+
+		this.tracer.info(`🧪 [${this.descriptor.name}] Replaced text in ${translations.length} segment(s).`);
+		return new TranslationResponse(request, translations);
 	}
 
 	private overrideTranslation(request: TranslationRequest): TranslationResponse {
-		this.tracer.info(`🧪 [${this.descriptor.name}] Overriding translation with predefined text.`);
-		if (!Array.isArray(request.text)) {
-			return new TranslationResponse(request, this.dryRunContext.override!, request.from);
-		}
-		const overriddenTexts = request.text.map(() => this.dryRunContext.override!);
-		return new TranslationResponse(request, overriddenTexts, request.from);
+		this.tracer.debug(`🧪 [${this.descriptor.name}] Overriding translation with predefined text.`);
+		const override = this.dryRunContext.override!;
+
+		const translations: ITranslation[] = request.segments.map((segment) => ({
+			segmentPosition: segment.segmentPosition,
+			textPosition: segment.textPosition,
+			translation: override,
+			detectedLanguage: request.from,
+		}));
+
+		this.tracer.info(`🧪 [${this.descriptor.name}] Overrode translation in ${translations.length} segment(s).`);
+		return new TranslationResponse(request, translations);
 	}
 
 	private failTranslation(): never {
-		this.tracer.info(`🧪 [${this.descriptor.name}] Failing translation with predefined error.`);
+		this.tracer.info(`🧪 [${this.descriptor.name}] Failed translation with predefined error.`);
 		throw new NodeApiError(this.functions.getNode(), {
 			httpCode: this.dryRunContext.errorCode!,
 			message: `🧪 [${this.descriptor.name}] Simulated translation failure: ${this.dryRunContext.errorMessage}`,

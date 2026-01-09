@@ -1,8 +1,6 @@
 import { IContext, mapTo, Text } from 'intento-core';
 import { INodeProperties } from 'n8n-workflow';
 
-import { TranslationRequest } from 'supply/translation-request';
-
 const TRANSLATION = {
 	KEYS: {
 		FROM: 'translation_context_from',
@@ -39,10 +37,6 @@ export class TranslationContext implements IContext {
 			from: this.from,
 			to: this.to,
 		};
-	}
-
-	toRequest(): TranslationRequest {
-		return new TranslationRequest(this.text, this.to, this.from);
 	}
 }
 

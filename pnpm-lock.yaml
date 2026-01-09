@@ -411,6 +411,12 @@ importers:
 
   packages/@intento/translation:
     dependencies:
+      '@echogarden/icu-segmentation-wasm':
+        specifier: ^0.2.2
+        version: 0.2.2
+      '@echogarden/text-segmentation':
+        specifier: ^0.4.1
+        version: 0.4.1(@echogarden/icu-segmentation-wasm@0.2.2)
       intento-core:
         specifier: workspace:^
         version: link:../core
@@ -4749,6 +4755,17 @@ packages:
 
   '@dual-bundle/import-meta-resolve@4.1.0':
     resolution: {integrity: sha512-+nxncfwHM5SgAtrVzgpzJOI1ol0PkumhVo469KCf9lUi21IGcY90G98VuHm9VRrUypmAzawAHO9bs6hqeADaVg==}
+
+  '@echogarden/icu-segmentation-wasm@0.2.2':
+    resolution: {integrity: sha512-2o0ZnpQY9nRIDtwnD/3WXu70Lj/enfRwIxAHOKu35oC7Mz3KD2XBosCdO/i0E0rdq9yaCUGcp2sRTbd6KjaVdA==}
+
+  '@echogarden/text-segmentation@0.4.1':
+    resolution: {integrity: sha512-FAJsvjgxW5zYLB5/6f9sUk+q6J0gUB3sZTaK9hD3woz+zxaNT8LjYOORRyg0mcU7eTdkOZ8uzhLZBW3z/1A1tg==}
+    peerDependencies:
+      '@echogarden/icu-segmentation-wasm': ~0.2.1
+    peerDependenciesMeta:
+      '@echogarden/icu-segmentation-wasm':
+        optional: true
 
   '@element-plus/icons-vue@2.3.1':
     resolution: {integrity: sha512-XxVUZv48RZAd87ucGS48jPf6pKu0yV5UCg9f4FFwtrYxXOwWuVJo6wOvSLKEoMQKjv8GsX/mhP6UsC1lRwbUWg==}
@@ -15610,6 +15627,9 @@ packages:
   regenerator-runtime@0.14.1:
     resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
 
+  regexp-composer@0.3.0:
+    resolution: {integrity: sha512-ckR2a9zQeVBuGdNcHxC5yVHnDN2HdDaSg7DN8SOn1b6xzdqIFmy2/W1yvYX2x4pO31lBDEJdWb69Bd00NahS8w==}
+
   regexp-tree@0.1.27:
     resolution: {integrity: sha512-iETxpjK6YoRWJG5o6hXLwvjYAoW+FEZn9os0PD/b6AP6xQwsa/Y7lCVgIixBbUPMfhu+i2LtdeAqVTgGlQarfA==}
     hasBin: true
@@ -17633,8 +17653,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.2.1:
-    resolution: {integrity: sha512-gKV7XOkQl4urSuLHNY1tnVQf7wVgtb/mKbRyxSLWGZUY9RK7aDPhBenTjm+i8ZFe0zC2PZeHMPtOZXZfyaFOzQ==}
+  vue-component-type-helpers@3.2.2:
+    resolution: {integrity: sha512-x8C2nx5XlUNM0WirgfTkHjJGO/ABBxlANZDtHw2HclHtQnn+RFPTnbjMJn8jHZW4TlUam0asHcA14lf1C6Jb+A==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -17742,6 +17762,10 @@ packages:
 
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
+
+  wasm-heap-manager@0.2.2:
+    resolution: {integrity: sha512-eMCDKBEa4sY9X5ETUeNUBSiZeRYsGB+ZzO6dXEAFn9ybqKbYlQpayrD7NwA3IfILBQwmB8+T0Fi2pZ6WWP1dow==}
+    engines: {node: '>=18'}
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
@@ -20729,6 +20753,16 @@ snapshots:
       node-source-walk: 7.0.1
 
   '@dual-bundle/import-meta-resolve@4.1.0': {}
+
+  '@echogarden/icu-segmentation-wasm@0.2.2':
+    dependencies:
+      wasm-heap-manager: 0.2.2
+
+  '@echogarden/text-segmentation@0.4.1(@echogarden/icu-segmentation-wasm@0.2.2)':
+    dependencies:
+      regexp-composer: 0.3.0
+    optionalDependencies:
+      '@echogarden/icu-segmentation-wasm': 0.2.2
 
   '@element-plus/icons-vue@2.3.1(vue@3.5.13(typescript@5.9.2))':
     dependencies:
@@ -24048,7 +24082,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.2.1
+      vue-component-type-helpers: 3.2.2
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -33552,6 +33586,8 @@ snapshots:
 
   regenerator-runtime@0.14.1: {}
 
+  regexp-composer@0.3.0: {}
+
   regexp-tree@0.1.27: {}
 
   regexp.escape@2.0.1:
@@ -36031,7 +36067,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.2.1: {}
+  vue-component-type-helpers@3.2.2: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
@@ -36148,6 +36184,8 @@ snapshots:
   walker@1.0.8:
     dependencies:
       makeerror: 1.0.12
+
+  wasm-heap-manager@0.2.2: {}
 
   wcwidth@1.0.1:
     dependencies:

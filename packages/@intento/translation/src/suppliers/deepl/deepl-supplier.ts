@@ -1,7 +1,7 @@
-import type { IFunctions } from 'intento-core';
+import type { IFunctions, SupplyError } from 'intento-core';
 import type { IHttpRequestOptions, IntentoConnectionType } from 'n8n-workflow';
 
-import type { TranslationError, TranslationRequest, TranslationResponse } from 'supply/*';
+import type { TranslationRequest, TranslationResponse } from 'supply/*';
 import { TranslationSupplierBase } from 'supply/translation-supplier-base';
 
 import { DeeplDescriptor } from './deepl-descriptor';
@@ -19,11 +19,11 @@ export class DeeplSupplier extends TranslationSupplierBase {
 		};
 	}
 
-	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | TranslationError> {
+	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | SupplyError> {
 		signal?.throwIfAborted();
 
 		const body = {
-			text: request.text,
+			text: request.segments,
 			target_lang: request.to,
 		};
 
@@ -36,7 +36,7 @@ export class DeeplSupplier extends TranslationSupplierBase {
 
 		const response = (await this.functions.helpers.httpRequestWithAuthentication.call(
 			this.functions,
-			DeeplDescriptor.credentials,
+			DeeplDescriptor.credentials!,
 			options,
 		)) as unknown;
 

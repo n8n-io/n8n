@@ -29,6 +29,8 @@
     "intento-core": "workspace:^"
   },
   "dependencies": {
+    "@echogarden/icu-segmentation-wasm": "^0.2.2",
+    "@echogarden/text-segmentation": "^0.4.1",
     "n8n-workflow": "workspace:^",
     "intento-core": "workspace:^"
   }

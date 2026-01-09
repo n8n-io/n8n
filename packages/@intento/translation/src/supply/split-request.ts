@@ -1,43 +1,39 @@
+import type { Text } from 'intento-core';
 import { SupplyRequest } from 'intento-core';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
-import type { ISegment } from 'types/*';
-
-export class TranslationRequest extends SupplyRequest {
-	readonly segments: ISegment[];
-	readonly to: string;
+export class SplitRequest extends SupplyRequest {
+	readonly text: Text;
+	readonly segmentLimit: number;
 	readonly from?: string;
 
-	constructor(segments: ISegment[], to: string, from?: string) {
+	constructor(text: Text, segmentLimit: number, from?: string) {
 		super();
-
-		this.segments = segments;
-		this.to = to;
+		this.text = text;
+		this.segmentLimit = segmentLimit;
 		this.from = from;
 
 		Object.freeze(this);
 	}
 
 	throwIfInvalid(): void {
-		if (!this.to || this.to.trim() === '') throw new Error('targetLanguage is required');
+		if (this.segmentLimit <= 0) throw new Error('Segment limit must be a positive integer.');
 		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
 		return {
 			...super.asLogMetadata(),
+			segmentLimit: this.segmentLimit,
 			from: this.from,
-			to: this.to,
-			segmentsCount: this.segments.length,
 		};
 	}
-
 	asDataObject(): IDataObject {
 		return {
 			...super.asDataObject(),
+			text: this.text,
+			segmentLimit: this.segmentLimit,
 			from: this.from,
-			to: this.to,
-			segments: this.segments,
 		};
 	}
 }

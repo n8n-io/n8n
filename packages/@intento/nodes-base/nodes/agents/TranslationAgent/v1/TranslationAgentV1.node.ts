@@ -1,9 +1,6 @@
-import type { IFunctions } from 'intento-core';
-import { ContextFactory, SupplyFactory, Tracer } from 'intento-core';
-import type { TranslationSupplierBase } from 'intento-translation';
-import { TranslationError, TranslationResponse, CONTEXT_TRANSLATION, TranslationContext } from 'intento-translation';
+import { CONTEXT_TRANSLATION, TranslationAgent } from 'intento-translation';
 import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, INodeTypeBaseDescription } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class TranslationAgentV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -18,12 +15,13 @@ export class TranslationAgentV1 implements INodeType {
 					const inputs = [{ type: 'main' }];
 					for (let i = 0; i < numberModels; i++) {
 						inputs.push({
-							type: 'intento_translationProvider',
+							type: 'intento_translationSupplier',
 							maxConnections: 1,
 							displayName: 'M' + i,
 							required: i === 0,
 						});
 					}
+					inputs.push({ type: 'intento_segmentSupplier', maxConnections: 1, required: true, displayName: 'Segmentation' });
 					return inputs;
 				})($parameter.numberModels)
 			}}`,
@@ -53,30 +51,8 @@ export class TranslationAgentV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tracer = new Tracer(this);
-		tracer.debug('🤖 Executing Translation Agent node...');
-		const result = await TranslationAgentV1.supplyTranslation(this, tracer);
-		if (result instanceof TranslationResponse) return [[{ json: result.asDataObject() }]];
-		//	if (result instanceof TranslationError && this.continueOnFail()) {
-		const error = { json: { error: result.asDataObject() } };
-		const errorOutput = this.helpers.constructExecutionMetaData([error], { itemData: { item: 0 } });
-		return [errorOutput];
-		//	}
-		tracer.error('🤖 All translation suppliers failed.', result?.asLogMetadata());
-		return [[]];
-	}
-
-	private static async supplyTranslation(functions: IFunctions, tracer: Tracer): Promise<TranslationResponse | TranslationError> {
-		const connection = NodeConnectionTypes.IntentoTranslationProvider;
-		const context = ContextFactory.read<TranslationContext>(TranslationContext, functions, tracer);
-		const suppliers = await SupplyFactory.getSuppliers<TranslationSupplierBase>(functions, connection, tracer);
-		let result: TranslationError | TranslationResponse | undefined;
-		for (let i = 0; i < suppliers.length; i++) {
-			const request = context.toRequest();
-			result = await suppliers[i].supplyWithRetries(request, functions.getExecutionCancelSignal());
-			if (result instanceof TranslationResponse) return result;
-			if (i >= suppliers.length - 1) return result;
-		}
-		throw new NodeOperationError(functions.getNode(), 'No translation suppliers were found.');
+		const signal = this.getExecutionCancelSignal();
+		const agent = await TranslationAgent.initializeAgent(this, signal!);
+		return await agent.run(signal!);
 	}
 }

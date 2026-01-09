@@ -1,0 +1,16 @@
+{
+	"node": "@intento/nodes.tools.echogarden",
+	"name": "EchoGarden Tool",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"description": "EchoGarden Tool allows to split/merge text for better processing in translation tasks.",
+	"keywords": ["intento", "echogarden", "text", "split", "merge"],
+	"subcategories": {
+		"Core Nodes": ["Translation"]
+	},
+	"resources": {
+		"primaryDocumentation": [],
+		"credentialDocumentation": []
+	}
+}

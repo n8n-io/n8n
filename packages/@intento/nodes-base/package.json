@@ -27,7 +27,8 @@
     "nodes": [
       "dist/nodes/agents/TranslationAgent/TranslationAgent.node.js",
       "dist/nodes/tools/DryRunTool/DryRunTool.node.js",
-      "dist/nodes/tools/DeeplTool/DeeplTool.node.js"
+      "dist/nodes/tools/DeeplTool/DeeplTool.node.js",
+      "dist/nodes/tools/EchoGardenTool/EchoGardenTool.node.js"
     ]
   },
   "devDependencies": {

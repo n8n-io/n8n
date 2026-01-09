@@ -2,6 +2,7 @@
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
 		"paths": {
+			"agents/*": ["agents/*"],
 			"context/*": ["context/*"],
 			"supply/*": ["supply/*"],
 			"tracing/*": ["tracing/*"],

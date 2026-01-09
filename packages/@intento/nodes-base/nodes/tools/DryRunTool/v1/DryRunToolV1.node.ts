@@ -1,5 +1,5 @@
 import { CONTEXT_EXECUTION } from 'intento-core';
-import { DryRunSupplier, CONTEXT_DELAY, CONTEXT_DRY_RUN, CONTEXT_SPLIT } from 'intento-translation';
+import { DryRunSupplier, CONTEXT_SPLIT, CONTEXT_DELAY, CONTEXT_DRY_RUN } from 'intento-translation';
 import type { INodeType, INodeTypeDescription, INodeTypeBaseDescription, ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -12,14 +12,14 @@ export class DryRunToolV1 implements INodeType {
 			version: 1,
 			defaults: { name: 'DryRun' },
 			inputs: [],
-			outputs: [NodeConnectionTypes.IntentoTranslationProvider],
+			outputs: [NodeConnectionTypes.IntentoTranslationSupplier],
 			properties: [...CONTEXT_DELAY, ...CONTEXT_DRY_RUN, ...CONTEXT_SPLIT, ...CONTEXT_EXECUTION],
 		};
 	}
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		return await Promise.resolve({
-			response: new DryRunSupplier(NodeConnectionTypes.IntentoTranslationProvider, this),
+			response: new DryRunSupplier(NodeConnectionTypes.IntentoTranslationSupplier, this),
 		});
 	}
 }
