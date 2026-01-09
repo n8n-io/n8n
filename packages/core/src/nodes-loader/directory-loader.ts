@@ -111,6 +111,13 @@ export abstract class DirectoryLoader {
 		this.types = { nodes: [], credentials: [] };
 	}
 
+	/** Reload types from source if they were released from memory */
+	async ensureTypesLoaded() {
+		if (this.types.nodes.length === 0 && this.types.credentials.length === 0) {
+			await this.loadAll();
+		}
+	}
+
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
 	}

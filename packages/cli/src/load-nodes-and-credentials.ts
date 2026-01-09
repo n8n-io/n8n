@@ -103,6 +103,13 @@ export class LoadNodesAndCredentials {
 		this.postProcessors.push(fn);
 	}
 
+	releaseTypes() {
+		this.types = { nodes: [], credentials: [] };
+		for (const loader of Object.values(this.loaders)) {
+			loader.types = { nodes: [], credentials: [] };
+		}
+	}
+
 	isKnownNode(type: string) {
 		return type in this.known.nodes;
 	}
@@ -472,6 +479,9 @@ export class LoadNodesAndCredentials {
 		this.types = { nodes: [], credentials: [] };
 
 		for (const loader of Object.values(this.loaders)) {
+			// Reload types if they were released from memory
+			await loader.ensureTypesLoaded();
+
 			// list of node & credential types that will be sent to the frontend
 			const { known, types, directory, packageName } = loader;
 			this.types.nodes = this.types.nodes.concat(
