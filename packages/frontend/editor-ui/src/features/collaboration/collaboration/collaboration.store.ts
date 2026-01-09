@@ -1,3 +1,4 @@
+/* eslint-disable import-x/extensions */
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -9,11 +10,11 @@ import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import * as workflowsApi from '@/app/api/workflows';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import * as workflowsApi from '@/app/api/workflows';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
@@ -38,35 +39,87 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		useBeforeUnload({ route });
 	const unloadTimeout = ref<NodeJS.Timeout | null>(null);
 
-	addBeforeUnloadHandler(() => {
-		// Notify that workflow is closed straight away
-		notifyWorkflowClosed();
-		if (uiStore.stateIsDirty) {
-			// If user decided to stay on the page we notify that the workflow is opened again
-			unloadTimeout.value = setTimeout(() => notifyWorkflowOpened, 5 * TIME.SECOND);
-		}
-	});
-
 	const collaborators = ref<Collaborator[]>([]);
-
-	const heartbeatTimer = ref<number | null>(null);
-	const writeLockHeartbeatTimer = ref<number | null>(null);
-	const lockStatePollTimer = ref<number | null>(null);
 
 	// Write-lock state for single-write mode
 	const currentWriterId = ref<string | null>(null);
 	const lastActivityTime = ref<number>(Date.now());
 	const activityCheckInterval = ref<number | null>(null);
 
-	const startHeartbeat = () => {
-		stopHeartbeat();
-		heartbeatTimer.value = window.setInterval(notifyWorkflowOpened, HEARTBEAT_INTERVAL);
-	};
+	const heartbeatTimer = ref<number | null>(null);
+	const writeLockHeartbeatTimer = ref<number | null>(null);
+	const lockStatePollTimer = ref<number | null>(null);
+
+	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
+
+	// Callback for refreshing the canvas after workflow updates
+	let refreshCanvasCallback: ((workflow: IWorkflowDb) => void) | null = null;
+
+	// Computed properties for write-lock state
+	const isCurrentUserWriter = computed(() => {
+		return currentWriterId.value === usersStore.currentUserId;
+	});
+
+	const currentWriter = computed(() => {
+		if (!currentWriterId.value) return null;
+		return collaborators.value.find((c) => c.user.id === currentWriterId.value);
+	});
+
+	const isAnyoneWriting = computed(() => {
+		return currentWriterId.value !== null;
+	});
+
+	const shouldBeReadOnly = computed(() => {
+		return isAnyoneWriting.value && !isCurrentUserWriter.value;
+	});
+
+	async function fetchWriteLockState(): Promise<string | null> {
+		try {
+			const { workflowId } = workflowsStore;
+			if (!workflowsStore.isWorkflowSaved[workflowId]) {
+				return null;
+			}
+
+			const response = await workflowsApi.getWorkflowWriteLock(
+				rootStore.restApiContext,
+				workflowId,
+			);
+			return response.userId;
+		} catch {
+			return null;
+		}
+	}
+
+	function notifyWorkflowOpened() {
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
+		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
+	}
+
+	function notifyWorkflowClosed() {
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
+		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
+
+		collaborators.value = collaborators.value.filter(
+			({ user }) => user.id !== usersStore.currentUserId,
+		);
+	}
 
 	const stopHeartbeat = () => {
 		if (heartbeatTimer.value !== null) {
 			clearInterval(heartbeatTimer.value);
 			heartbeatTimer.value = null;
+		}
+	};
+
+	const startHeartbeat = () => {
+		stopHeartbeat();
+		heartbeatTimer.value = window.setInterval(notifyWorkflowOpened, HEARTBEAT_INTERVAL);
+	};
+
+	const stopWriteLockHeartbeat = () => {
+		if (writeLockHeartbeatTimer.value !== null) {
+			clearInterval(writeLockHeartbeatTimer.value);
+			writeLockHeartbeatTimer.value = null;
 		}
 	};
 
@@ -83,19 +136,19 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		});
 	};
 
-	const stopWriteLockHeartbeat = () => {
-		if (writeLockHeartbeatTimer.value !== null) {
-			clearInterval(writeLockHeartbeatTimer.value);
-			writeLockHeartbeatTimer.value = null;
-		}
-	};
-
 	const startWriteLockHeartbeat = () => {
 		stopWriteLockHeartbeat();
 		writeLockHeartbeatTimer.value = window.setInterval(
 			sendWriteLockHeartbeat,
 			WRITE_LOCK_HEARTBEAT_INTERVAL,
 		);
+	};
+
+	const stopLockStatePolling = () => {
+		if (lockStatePollTimer.value !== null) {
+			clearInterval(lockStatePollTimer.value);
+			lockStatePollTimer.value = null;
+		}
 	};
 
 	/**
@@ -117,37 +170,20 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	};
 
-	const stopLockStatePolling = () => {
-		if (lockStatePollTimer.value !== null) {
-			clearInterval(lockStatePollTimer.value);
-			lockStatePollTimer.value = null;
-		}
-	};
-
 	const startLockStatePolling = () => {
 		stopLockStatePolling();
 		lockStatePollTimer.value = window.setInterval(pollLockState, LOCK_STATE_POLL_INTERVAL);
 	};
 
-	// Computed properties for write-lock state
-	const isCurrentUserWriter = computed(() => {
-		return currentWriterId.value === usersStore.currentUserId;
+	addBeforeUnloadHandler(() => {
+		// Notify that workflow is closed straight away
+		notifyWorkflowClosed();
+		if (uiStore.stateIsDirty) {
+			// If user decided to stay on the page we notify that the workflow is opened again
+			unloadTimeout.value = setTimeout(() => notifyWorkflowOpened, 5 * TIME.SECOND);
+		}
 	});
 
-	const currentWriter = computed(() => {
-		if (!currentWriterId.value) return null;
-		return collaborators.value.find((c) => c.user.id === currentWriterId.value);
-	});
-
-	const isAnyoneWriting = computed(() => {
-		return currentWriterId.value !== null;
-	});
-
-	const shouldBeReadOnly = computed(() => {
-		return isAnyoneWriting.value && !isCurrentUserWriter.value;
-	});
-
-	// Write-lock methods
 	function recordActivity() {
 		if (!isCurrentUserWriter.value) {
 			return;
@@ -221,28 +257,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		stopInactivityCheck();
 		activityCheckInterval.value = window.setInterval(checkInactivity, INACTIVITY_CHECK_INTERVAL);
 	}
-
-	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
-
-	async function fetchWriteLockState(): Promise<string | null> {
-		try {
-			const { workflowId } = workflowsStore;
-			if (!workflowsStore.isWorkflowSaved[workflowId]) {
-				return null;
-			}
-
-			const response = await workflowsApi.getWorkflowWriteLock(
-				rootStore.restApiContext,
-				workflowId,
-			);
-			return response.userId;
-		} catch {
-			return null;
-		}
-	}
-
-	// Callback for refreshing the canvas after workflow updates
-	let refreshCanvasCallback: ((workflow: IWorkflowDb) => void) | null = null;
 
 	function setRefreshCanvasCallback(fn: (workflow: IWorkflowDb) => void) {
 		refreshCanvasCallback = fn;
@@ -373,20 +387,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		if (unloadTimeout.value) {
 			clearTimeout(unloadTimeout.value);
 		}
-	}
-
-	function notifyWorkflowOpened() {
-		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
-		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
-	}
-
-	function notifyWorkflowClosed() {
-		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
-		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
-
-		collaborators.value = collaborators.value.filter(
-			({ user }) => user.id !== usersStore.currentUserId,
-		);
 	}
 
 	return {
