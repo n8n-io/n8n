@@ -35,7 +35,6 @@ const VALID_FLAGS = [
 	'--dos',
 	'--donts',
 	'--template-examples',
-	'--multi-agent',
 ] as const;
 
 /** Validate that all provided CLI flags are recognized */
