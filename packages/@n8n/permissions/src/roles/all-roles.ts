@@ -63,12 +63,12 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 		roleType,
 	}));
 
-export const ALL_ROLES: AllRolesMap = {
+export const ALL_ROLES: AllRolesMap = Object.freeze({
 	global: mapToRoleObject(GLOBAL_SCOPE_MAP, 'global'),
 	project: mapToRoleObject(PROJECT_SCOPE_MAP, 'project'),
 	credential: mapToRoleObject(CREDENTIALS_SHARING_SCOPE_MAP, 'credential'),
 	workflow: mapToRoleObject(WORKFLOW_SHARING_SCOPE_MAP, 'workflow'),
-};
+});
 
 export const isBuiltInRole = (role: string): role is AllRoleTypes => {
 	return Object.prototype.hasOwnProperty.call(ROLE_NAMES, role);
