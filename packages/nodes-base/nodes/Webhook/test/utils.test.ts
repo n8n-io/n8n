@@ -729,7 +729,7 @@ describe('Auth token generation', () => {
 
 		beforeEach(() => {
 			testNode = {
-				id: new Date().getMilliseconds.toString(),
+				id: new Date().getMilliseconds().toString(),
 				webhookId: 'webhook-456',
 				type: 'n8n-nodes-base.formTrigger',
 			} as INode;
