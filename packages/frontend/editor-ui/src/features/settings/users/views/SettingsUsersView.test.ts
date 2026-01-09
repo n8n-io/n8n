@@ -725,6 +725,33 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
+		it('should hide generate invite link action when user has already accepted invite', () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			// Set user with firstName (already accepted)
+			usersStore.usersList.state.items[2].firstName = 'John';
+
+			renderComponent();
+
+			// Generate invite link should not be in the actions list when user has accepted
+			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
+
+			spy.mockRestore();
+		});
+
 		it('should handle copy password reset link error', async () => {
 			usersStore.getUserPasswordResetLink = vi
 				.fn()
