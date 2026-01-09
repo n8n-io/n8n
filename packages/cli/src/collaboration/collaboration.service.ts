@@ -123,11 +123,7 @@ export class CollaborationService {
 	}
 
 	private async handleWriteAccessRequested(userId: User['id'], msg: WriteAccessRequestedMessage) {
-		const { workflowId, userId: requestedUserId } = msg;
-
-		if (userId !== requestedUserId) {
-			return;
-		}
+		const { workflowId } = msg;
 
 		if (!(await this.accessService.hasWriteAccess(userId, workflowId))) {
 			return;
@@ -165,11 +161,7 @@ export class CollaborationService {
 	}
 
 	private async handleWriteAccessHeartbeat(userId: User['id'], msg: WriteAccessHeartbeatMessage) {
-		const { workflowId, userId: requestedUserId } = msg;
-
-		if (userId !== requestedUserId) {
-			return;
-		}
+		const { workflowId } = msg;
 
 		if (!(await this.accessService.hasWriteAccess(userId, workflowId))) {
 			return;

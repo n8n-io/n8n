@@ -132,7 +132,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		pushStore.send({
 			type: 'writeAccessHeartbeat',
 			workflowId: workflowsStore.workflowId,
-			userId: usersStore.currentUserId,
 		});
 	};
 
@@ -204,7 +203,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			pushStore.send({
 				type: 'writeAccessRequested',
 				workflowId: workflowsStore.workflowId,
-				userId: usersStore.currentUserId,
 			});
 		} catch {
 			// Ignore errors

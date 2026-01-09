@@ -75,7 +75,6 @@ describe('CollaborationService', () => {
 		const message: WriteAccessRequestedMessage = {
 			type: 'writeAccessRequested',
 			workflowId,
-			userId,
 		};
 
 		return await collaborationService.handleUserMessage(userId, message);

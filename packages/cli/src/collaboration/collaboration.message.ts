@@ -25,7 +25,6 @@ export const writeAccessRequestedMessageSchema = z
 	.object({
 		type: z.literal('writeAccessRequested'),
 		workflowId: z.string().min(1),
-		userId: z.string().min(1),
 	})
 	.strict();
 
@@ -40,7 +39,6 @@ export const writeAccessHeartbeatMessageSchema = z
 	.object({
 		type: z.literal('writeAccessHeartbeat'),
 		workflowId: z.string().min(1),
-		userId: z.string().min(1),
 	})
 	.strict();
 
