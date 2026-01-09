@@ -43,6 +43,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
+import { useFormFieldRenameTracking } from '@/features/ndv/shared/useFormFieldRenameTracking';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
@@ -80,6 +81,7 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
+const formFieldRenameTracking = useFormFieldRenameTracking();
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
@@ -493,6 +495,9 @@ const close = async () => {
 		ndvStore.setOutputPanelEditModeEnabled(false);
 	}
 
+	// Detect and apply form field renames before closing
+	formFieldRenameTracking.onNdvClose();
+
 	await externalHooks.run('dataDisplay.nodeEditingFinished');
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
@@ -599,6 +604,9 @@ watch(
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
 			avgInputRowHeight.value = 0;
+
+			// Capture initial form fields for rename tracking
+			formFieldRenameTracking.captureInitialFormFields(node);
 
 			setTimeout(() => ndvStore.setNDVPushRef(), 0);
 

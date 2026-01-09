@@ -40,7 +40,7 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { renameFormFields } from './node-parameters/rename-node-utils';
-import { applyAccessPatterns } from './node-reference-parser-utils';
+import { applyAccessPatterns, applyFieldAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
 import { dedupe } from './utils';
 
@@ -482,6 +482,111 @@ export class Workflow {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Rename a form field and update all expressions that reference it
+	 *
+	 * @param nodeName The name of the form node containing the field
+	 * @param currentFieldName The current name of the field
+	 * @param newFieldName The new name of the field
+	 */
+	renameFormField(nodeName: string, currentFieldName: string, newFieldName: string): void {
+		if (currentFieldName === newFieldName) return;
+
+		// Get nodes that are directly connected to the form node (for implicit references)
+		const directlyConnectedNodes = new Set<string>();
+		if (this.connectionsBySourceNode[nodeName]) {
+			for (const type of Object.keys(this.connectionsBySourceNode[nodeName])) {
+				for (const connections of Object.values(
+					this.connectionsBySourceNode[nodeName][type] || {},
+				)) {
+					for (const connection of connections || []) {
+						if (connection?.node) {
+							directlyConnectedNodes.add(connection.node);
+						}
+					}
+				}
+			}
+		}
+
+		// Update expressions in all nodes
+		for (const node of Object.values(this.nodes)) {
+			node.parameters = this.renameFieldInParameterValue(
+				node.parameters,
+				nodeName,
+				currentFieldName,
+				newFieldName,
+				directlyConnectedNodes.has(node.name),
+			) as INodeParameters;
+		}
+	}
+
+	/**
+	 * Recursively update field references in parameter values
+	 */
+	private renameFieldInParameterValue(
+		parameterValue: NodeParameterValueType,
+		nodeName: string,
+		currentFieldName: string,
+		newFieldName: string,
+		isDirectlyConnected: boolean,
+	): NodeParameterValueType {
+		if (typeof parameterValue !== 'object') {
+			// Reached the actual value
+			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+				// For explicit references like $('NodeName').item.json['field']
+				parameterValue = applyFieldAccessPatterns(
+					parameterValue,
+					nodeName,
+					currentFieldName,
+					newFieldName,
+					true, // scope to node
+				);
+
+				// For implicit references like $json['field'] in directly connected nodes
+				if (isDirectlyConnected) {
+					parameterValue = applyFieldAccessPatterns(
+						parameterValue,
+						nodeName,
+						currentFieldName,
+						newFieldName,
+						false, // don't scope to node - handles $json['field']
+					);
+				}
+			}
+			return parameterValue;
+		}
+
+		if (Array.isArray(parameterValue)) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const returnArray: any[] = [];
+			for (const currentValue of parameterValue) {
+				returnArray.push(
+					this.renameFieldInParameterValue(
+						currentValue as NodeParameterValueType,
+						nodeName,
+						currentFieldName,
+						newFieldName,
+						isDirectlyConnected,
+					),
+				);
+			}
+			return returnArray;
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const returnData: any = {};
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.renameFieldInParameterValue(
+				parameterValue![parameterName as keyof typeof parameterValue],
+				nodeName,
+				currentFieldName,
+				newFieldName,
+				isDirectlyConnected,
+			);
+		}
+		return returnData;
 	}
 
 	/**

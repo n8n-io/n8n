@@ -125,6 +125,90 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 	return expression;
 }
 
+/**
+ * Patterns for matching field access in expressions
+ * Used for renaming form fields and other JSON property accesses
+ */
+type FieldAccessPattern = {
+	checkPattern: string;
+	replacePattern: (fieldName: string) => string;
+};
+
+const FIELD_ACCESS_PATTERNS: FieldAccessPattern[] = [
+	// .json['fieldName'] - bracket notation with single quotes (explicit refs like $('Node').item.json['field'])
+	{
+		checkPattern: ".json['",
+		replacePattern: (s) => String.raw`(\.json\[')${s}('\])`,
+	},
+	// .json["fieldName"] - bracket notation with double quotes
+	{
+		checkPattern: '.json["',
+		replacePattern: (s) => String.raw`(\.json\[")${s}("\])`,
+	},
+	// $json['fieldName'] - implicit reference with single quotes
+	{
+		checkPattern: "$json['",
+		replacePattern: (s) => String.raw`(\$json\[')${s}('\])`,
+	},
+	// $json["fieldName"] - implicit reference with double quotes
+	{
+		checkPattern: '$json["',
+		replacePattern: (s) => String.raw`(\$json\[")${s}("\])`,
+	},
+	// .json.fieldName - dot notation (only works for valid JS identifiers)
+	{
+		checkPattern: '.json.',
+		replacePattern: (s) =>
+			String.raw`(\.json\.)${s}(\s|$|\.|\[|\)|\}|,|;|\+|\-|\*|\/|\||&|!|=|<|>|\?)`,
+	},
+	// $json.fieldName - implicit dot notation
+	{
+		checkPattern: '$json.',
+		replacePattern: (s) =>
+			String.raw`(\$json\.)${s}(\s|$|\.|\[|\)|\}|,|;|\+|\-|\*|\/|\||&|!|=|<|>|\?)`,
+	},
+];
+
+/**
+ * Applies field access patterns to rename field references in expressions.
+ * This handles patterns like:
+ * - $('Node').item.json['fieldName'] -> $('Node').item.json['newFieldName']
+ * - $json['fieldName'] -> $json['newFieldName']
+ *
+ * @param expression The expression string to update
+ * @param nodeName The name of the node whose field is being renamed (for scoped updates)
+ * @param previousFieldName The old field name
+ * @param newFieldName The new field name
+ * @param scopeToNode If true, only update references that include the node name
+ */
+export function applyFieldAccessPatterns(
+	expression: string,
+	nodeName: string,
+	previousFieldName: string,
+	newFieldName: string,
+	scopeToNode: boolean = true,
+): string {
+	// Quick check if the expression contains the field name
+	if (!expression.includes(previousFieldName)) return expression;
+
+	// If scoping to node, also check if the node name is referenced
+	if (scopeToNode && !expression.includes(nodeName)) return expression;
+
+	const escapedOldFieldName = backslashEscape(previousFieldName);
+	const escapedNewFieldName = dollarEscape(newFieldName);
+
+	for (const pattern of FIELD_ACCESS_PATTERNS) {
+		if (expression.includes(pattern.checkPattern)) {
+			expression = expression.replace(
+				new RegExp(pattern.replacePattern(escapedOldFieldName), 'g'),
+				`$1${escapedNewFieldName}$2`,
+			);
+		}
+	}
+
+	return expression;
+}
+
 function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 	let jsLegal = nodeName
 		.replaceAll(' ', '_')
