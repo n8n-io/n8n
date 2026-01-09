@@ -1763,6 +1763,8 @@ describe('chatHub', () => {
 			// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 			const executionManager = Container.get(ChatExecutionManager);
 			jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+				// Delay to ensure getPostExecutePromise has been called
+				// and finishRun has been reassigned before this callback runs.
 				setTimeout(async () => {
 					await executionRepository.updateExistingExecution(capturedExecutionId, {
 						status: 'success',
@@ -1794,7 +1796,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				});
+				}, 100);
 			});
 
 			await chatHubService.sendHumanMessage(mockResponse, member, {
