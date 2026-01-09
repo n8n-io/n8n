@@ -111,7 +111,13 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		if (execution?.data.validateSignature) {
 			if (!this.validateSignatureInRequest(req)) {
-				res.status(401).json({ error: 'Invalid token' });
+				const { workflowData } = execution;
+				const { nodes } = this.createWorkflow(workflowData);
+				if (this.isSendAndWaitRequest(nodes, suffix)) {
+					res.status(401).render('form-invalid-token');
+				} else {
+					res.status(401).json({ error: 'Invalid token' });
+				}
 				return { noWebhookResponse: true };
 			}
 		}

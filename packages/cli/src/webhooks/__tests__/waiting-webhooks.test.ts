@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -166,7 +167,7 @@ describe('WaitingWebhooks', () => {
 			/* Arrange */
 			const mockReq = mock<express.Request>({
 				url: '/webhook/test',
-				hostname: 'example.com',
+				host: EXAMPLE_HOST,
 				query: {},
 			});
 
@@ -181,7 +182,7 @@ describe('WaitingWebhooks', () => {
 			/* Arrange */
 			const mockReq = mock<express.Request>({
 				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=`,
-				hostname: 'example.com',
+				host: EXAMPLE_HOST,
 				query: { [WAITING_TOKEN_QUERY_PARAM]: '' },
 			});
 
@@ -202,6 +203,129 @@ describe('WaitingWebhooks', () => {
 
 			/* Assert */
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('executeWebhook - signature validation', () => {
+		it('should return 401 with HTML for send-and-wait requests with invalid signature', async () => {
+			/* Arrange */
+			const nodeId = 'send-and-wait-node-id';
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'SendAndWaitNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: true,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: nodeId,
+							name: 'SendAndWaitNode',
+							type: 'n8n-nodes-base.sendAndWait',
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const mockStatus = jest.fn().mockReturnThis();
+			const mockRender = jest.fn();
+			const mockJson = jest.fn();
+			const res = mock<express.Response>({
+				status: mockStatus,
+				render: mockRender,
+				json: mockJson,
+			});
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: nodeId },
+				method: 'GET',
+				url: '/webhook/execution-id/' + nodeId,
+				host: 'example.com',
+				query: {},
+			});
+
+			/* Act */
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			/* Assert */
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(mockJson).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should return 401 with JSON for non-send-and-wait requests with invalid signature', async () => {
+			/* Arrange */
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: true,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'wait-node-id',
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							parameters: { operation: 'webhook' },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const mockStatus = jest.fn().mockReturnThis();
+			const mockRender = jest.fn();
+			const mockJson = jest.fn();
+			const res = mock<express.Response>({
+				status: mockStatus,
+				render: mockRender,
+				json: mockJson,
+			});
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: 'wait-node-id' },
+				method: 'GET',
+				url: '/webhook/execution-id/wait-node-id',
+				host: 'example.com',
+				query: {},
+			});
+
+			/* Act */
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			/* Assert */
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid token' });
+			expect(mockRender).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 
