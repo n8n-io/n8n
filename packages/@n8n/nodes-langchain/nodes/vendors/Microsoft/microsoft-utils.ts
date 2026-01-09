@@ -47,6 +47,13 @@ export type ActivityCapture = {
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
 
+function isMicrosoftObservabilityEnabled(): boolean {
+	return (
+		process.env.ENABLE_OBSERVABILITY === 'true' &&
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === 'true'
+	);
+}
+
 export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Credentials) {
 	const authConfig: AuthConfiguration = createAuthConfig(credentials);
 
@@ -223,13 +230,17 @@ export function configureAdapterProcessCallback(
 			'agentic',
 		);
 
-		const observability = ObservabilityManager.configure((builder: Builder) =>
-			builder
-				.withService('TypeScript Sample Agent', '1.0.0')
-				.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
-		);
+		let observability: ReturnType<typeof ObservabilityManager.configure> | undefined;
 
-		observability.start();
+		if (isMicrosoftObservabilityEnabled()) {
+			observability = ObservabilityManager.configure((builder: Builder) =>
+				builder
+					.withService('TypeScript Sample Agent', '1.0.0')
+					.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
+			);
+
+			observability.start();
+		}
 
 		const mcpTokenRef = { token: undefined as string | undefined };
 
@@ -273,7 +284,9 @@ export function configureAdapterProcessCallback(
 		} catch (error) {
 			throw new NodeOperationError(nodeContext.getNode(), error);
 		} finally {
-			await observability.shutdown();
+			if (observability) {
+				await observability.shutdown();
+			}
 		}
 	};
 }
