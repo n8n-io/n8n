@@ -139,8 +139,9 @@ export class SourceControlGitService {
 			const repositoryUrl = preferences.repositoryUrl;
 			const proxyUrl = proxyFromEnv.getProxyForUrl(repositoryUrl);
 			if (proxyUrl) {
-				const proxyConfigKey = repositoryUrl.startsWith('https://') ? 'https.proxy' : 'http.proxy';
-				httpsGitOptions.config.push(`${proxyConfigKey}=${proxyUrl}`);
+				// Git uses http.proxy for both HTTP and HTTPS URLs
+				this.logger.debug('Proxy configuration added', { proxyUrl });
+				httpsGitOptions.config.push(`http.proxy=${proxyUrl}`);
 			}
 
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');

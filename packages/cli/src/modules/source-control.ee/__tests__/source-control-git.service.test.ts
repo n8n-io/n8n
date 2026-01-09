@@ -250,7 +250,7 @@ describe('SourceControlGitService', () => {
 				process.env = originalEnv;
 			});
 
-			it('should add https.proxy config when HTTPS_PROXY is set for https repository', async () => {
+			it('should add http.proxy config when HTTPS_PROXY is set for https repository', async () => {
 				const credentials = { username: 'testuser', password: 'testpass' };
 				const repositoryUrl = 'https://github.com/user/repo.git';
 				const proxyUrl = 'http://proxy.company.com:8080';
@@ -267,10 +267,11 @@ describe('SourceControlGitService', () => {
 
 				await sourceControlGitService.setGitCommand();
 
+				// Git uses http.proxy for both HTTP and HTTPS URLs
 				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
 				expect(simpleGitCalls.length).toBeGreaterThan(0);
 				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
-				expect(lastCallConfig).toContain(`https.proxy=${proxyUrl}`);
+				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
 			});
 
 			it('should add http.proxy config when HTTP_PROXY is set for http repository', async () => {
