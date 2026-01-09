@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
+import { prompt } from '../../src/prompts/builder';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import { createEvaluatorChain, invokeEvaluatorChain } from '../chains/evaluators/base';
 
@@ -17,19 +18,27 @@ const pairwiseEvaluationLLMResultSchema = z.object({
 	violations: z
 		.array(
 			z.object({
-				rule: z.string(),
-				justification: z.string(),
+				rule: z.string().describe('The criterion that was violated'),
+				justification: z
+					.string()
+					.describe('Evidence from the workflow explaining why this is a violation'),
 			}),
 		)
-		.describe('List of criteria that were violated'),
+		.describe(
+			'List of criteria that were violated. If no criteria passed, include an entry explaining why.',
+		),
 	passes: z
 		.array(
 			z.object({
-				rule: z.string(),
-				justification: z.string(),
+				rule: z.string().describe('The criterion that was passed'),
+				justification: z
+					.string()
+					.describe('Evidence from the workflow proving the criterion is satisfied'),
 			}),
 		)
-		.describe('List of criteria that were passed'),
+		.describe(
+			'List of criteria that were passed. Return an empty array [] if no criteria could be verified as passing.',
+		),
 });
 
 export type PairwiseEvaluationResult = z.infer<typeof pairwiseEvaluationLLMResultSchema> & {
@@ -39,43 +48,59 @@ export type PairwiseEvaluationResult = z.infer<typeof pairwiseEvaluationLLMResul
 	diagnosticScore: number;
 };
 
-const EVALUATOR_SYSTEM_PROMPT = `You are an expert n8n workflow auditor. Your task is to strictly evaluate a candidate workflow against a provided set of requirements.
-
-<role_definition>
-- You are objective, precise, and evidence-based.
+const EVALUATOR_SYSTEM_PROMPT = prompt()
+	.section(
+		'role',
+		'You are an expert n8n workflow auditor. Your task is to strictly evaluate a candidate workflow against a provided set of requirements.',
+	)
+	.section(
+		'role_definition',
+		`- You are objective, precise, and evidence-based.
 - You do not assume functionality that is not explicitly configured in the JSON.
-- You verify every claim against the actual node configurations, connections, and parameters.
-</role_definition>
-
-<constraints>
-- Judge ONLY against the provided evaluation criteria. Do not apply external "best practices" unless explicitly asked.
+- You verify every claim against the actual node configurations, connections, and parameters.`,
+	)
+	.section(
+		'constraints',
+		`- Judge ONLY against the provided evaluation criteria. Do not apply external "best practices" unless explicitly asked.
 - If a criterion is "not verifiable" from the JSON alone (e.g., requires runtime data), mark it as a violation and explain why.
 - For every pass or violation, you MUST cite the specific node name or parameter that serves as evidence.
-- Do not hallucinate nodes or parameters.
-</constraints>`;
+- Do not hallucinate nodes or parameters.`,
+	)
+	.build();
 
-const humanTemplate = `
-<task_context>
-Analyze the following n8n workflow against the provided checklist of criteria.
-</task_context>
-
-<evaluation_criteria>
-{userPrompt}
-</evaluation_criteria>
-
-<workflow_candidate>
-{generatedWorkflow}
-</workflow_candidate>
-
-<instructions>
-1. Read the <evaluation_criteria> carefully.
+const humanTemplate = prompt()
+	.section(
+		'task_context',
+		'Analyze the following n8n workflow against the provided checklist of criteria.',
+	)
+	.section('evaluation_criteria', '{userPrompt}')
+	.section('workflow_candidate', '{generatedWorkflow}')
+	.section(
+		'instructions',
+		`1. Read the <evaluation_criteria> carefully. It contains <do> and <dont> criteria.
 2. For each criterion:
     - Search for evidence in the <workflow_candidate>.
-    - Determine if it passes or fails.
+    - Classify as PASS or VIOLATION using the rules below.
     - Provide a clear 'justification' citing the evidence (e.g., "Node 'HTTP Request' has method set to 'GET'").
-3. Output the result as a structured JSON with 'violations' and 'passes'.
-</instructions>
-`;
+3. Output the result as a structured JSON with 'violations' and 'passes'.`,
+	)
+	.section(
+		'classification_rules',
+		`CRITICAL: Understand how to classify each criterion correctly:
+
+For <do> criteria (positive requirements like "Use X" or "Include Y"):
+- PASS: The required element IS present in the workflow
+- VIOLATION: The required element is NOT present in the workflow
+
+For <dont> criteria (anti-patterns to avoid):
+- PASS: The forbidden element is NOT present (the anti-pattern was avoided)
+- VIOLATION: The forbidden element IS present (the anti-pattern was used)
+
+Example: <dont>Use code node to organize data</dont>
+- If NO code node exists for organizing data → PASS (anti-pattern avoided)
+- If a code node IS used for organizing data → VIOLATION (anti-pattern present)`,
+	)
+	.build();
 
 export async function evaluateWorkflowPairwise(
 	llm: BaseChatModel,
@@ -84,12 +109,18 @@ export async function evaluateWorkflowPairwise(
 ): Promise<PairwiseEvaluationResult> {
 	const dos = input.evalCriteria?.dos ?? '';
 	const donts = input.evalCriteria?.donts ?? '';
-	const formattedDonts = donts
-		.split('\n')
-		.filter((line) => line.trim().length > 0)
-		.map((line) => `DO NOT ${line}`)
-		.join('\n');
-	const criteriaList = `[DO]\n${dos}\n\n[DON'T]\n${formattedDonts}`;
+
+	const doLines = dos.split('\n').filter((line) => line.trim().length > 0);
+	const dontLines = donts.split('\n').filter((line) => line.trim().length > 0);
+
+	const criteriaBuilder = prompt({ format: 'xml' });
+	for (const line of doLines) {
+		criteriaBuilder.section('do', line.trim());
+	}
+	for (const line of dontLines) {
+		criteriaBuilder.section('dont', line.trim());
+	}
+	const criteriaList = criteriaBuilder.build();
 
 	const chain = createEvaluatorChain(
 		llm,
