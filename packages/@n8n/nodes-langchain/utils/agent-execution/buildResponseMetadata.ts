@@ -1,8 +1,7 @@
 import type { EngineResponse } from 'n8n-workflow';
 
-import { buildSteps } from '@utils/agent-execution';
-
-import type { RequestResponseMetadata } from '../types';
+import { buildSteps } from './buildSteps';
+import type { RequestResponseMetadata } from './types';
 
 /**
  * Builds metadata for an engine request, tracking iteration count and previous requests.
