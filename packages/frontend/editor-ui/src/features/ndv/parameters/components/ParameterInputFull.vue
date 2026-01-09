@@ -519,6 +519,9 @@ function removeOverride(clearField = false) {
 	z-index: 1;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	background: var(--ndv--background--color);
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
 
 	&.visible {
 		opacity: 1;
