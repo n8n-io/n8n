@@ -9,7 +9,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	NodeExecutionHint,
-	INodeProperties,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -31,22 +30,6 @@ import {
 	type RecurrentEvent,
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
-
-const preBuiltAgentsCallout: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Interact with your Google Calendar using our pre-built',
-	name: 'preBuiltAgentsCalloutGoogleCalendar',
-	type: 'callout',
-	typeOptions: {
-		calloutAction: {
-			label: 'Calendar agent',
-			icon: 'bot',
-			type: 'openSampleWorkflowTemplate',
-			templateId: 'calendar_agent_with_gcal',
-		},
-	},
-	default: '',
-};
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,7 +53,6 @@ export class GoogleCalendar implements INodeType {
 			},
 		],
 		properties: [
-			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',
