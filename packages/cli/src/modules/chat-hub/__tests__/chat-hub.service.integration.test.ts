@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User, CredentialsEntity } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { saveCredential } from '@test-integration/db/credentials';
-import { BinaryDataService } from 'n8n-core';
+import { EventEmitter } from 'events';
+import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
+import { InstanceSettings, BinaryDataService } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	RESPOND_TO_CHAT_NODE_TYPE,
@@ -13,21 +15,19 @@ import {
 	type INode,
 	type IRun,
 } from 'n8n-workflow';
-import type { Response } from 'express';
-import { EventEmitter } from 'events';
+
+import { saveCredential } from '@test-integration/db/credentials';
+import { createAdmin, createMember } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
 
 import { ActiveExecutions } from '../../../active-executions';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
+import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
+import { STREAM_CLOSE_TIMEOUT } from '../chat-hub.constants';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
-import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
-import { InstanceSettings } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
-import { retryUntil } from '@test-integration/retry-until';
-import { SettingsRepository } from '@n8n/db';
-import { STREAM_CLOSE_TIMEOUT } from '../chat-hub.constants';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
@@ -1207,7 +1207,7 @@ describe('chatHub', () => {
 				});
 
 			// First call: main message execution with stream that closes quickly
-			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+			spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
 					mode: 'chat',
@@ -1281,7 +1281,7 @@ describe('chatHub', () => {
 				});
 
 			// First call: main message execution with stream that never closes
-			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+			spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
 					mode: 'chat',
@@ -1362,7 +1362,7 @@ describe('chatHub', () => {
 		>;
 		let finishRun = (_: IRun) => {};
 
-		beforeEach(async () => {
+		beforeEach(() => {
 			jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 
 			// Mock settings repository
@@ -1588,7 +1588,6 @@ describe('chatHub', () => {
 							},
 						}),
 					});
-					// Call finishRun after the execution update is complete
 					finishRun({} as IRun);
 				});
 
@@ -1763,8 +1762,6 @@ describe('chatHub', () => {
 			// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 			const executionManager = Container.get(ChatExecutionManager);
 			jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
-				// Delay to ensure getPostExecutePromise has been called
-				// and finishRun has been reassigned before this callback runs.
 				setTimeout(async () => {
 					await executionRepository.updateExistingExecution(capturedExecutionId, {
 						status: 'success',
@@ -1796,7 +1793,7 @@ describe('chatHub', () => {
 						}),
 					});
 					finishRun({} as IRun);
-				}, 100);
+				});
 			});
 
 			await chatHubService.sendHumanMessage(mockResponse, member, {

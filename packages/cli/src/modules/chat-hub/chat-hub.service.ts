@@ -44,6 +44,7 @@ import {
 	NodeConnectionTypes,
 	INodeExecutionData,
 	UserError,
+	UnexpectedError,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -178,6 +179,25 @@ export class ChatHubService {
 		let responseMode: ChatTriggerResponseMode;
 
 		try {
+			let customAgentWorkflow:
+				| {
+						workflowData: IWorkflowBase;
+						executionData: IRunExecutionData;
+						responseMode: ChatTriggerResponseMode;
+				  }
+				| undefined;
+			if (model.provider === 'n8n') {
+				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
+				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
+				customAgentWorkflow = await this.prepareCustomAgentWorkflow(
+					user,
+					sessionId,
+					model.workflowId,
+					message,
+					attachments,
+				);
+			}
+
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
@@ -210,6 +230,10 @@ export class ChatHubService {
 					undefined,
 					trx,
 				);
+
+				if (customAgentWorkflow) {
+					return customAgentWorkflow;
+				}
 
 				return await this.prepareReplyWorkflow(
 					user,
@@ -502,13 +526,7 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
-			return await this.prepareCustomAgentWorkflow(
-				user,
-				sessionId,
-				model.workflowId,
-				message,
-				attachments,
-			);
+			throw new UnexpectedError('n8n provider workflow should be prepared outside transaction');
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -1765,7 +1783,11 @@ export class ChatHubService {
 		agentName?: string,
 		trx?: EntityManager,
 	) {
-		await this.ensureValidModel(user, model);
+		// Skip validation on n8n provider as it is already done outside the transaction
+		// at prepareCustomAgentWorkflow to avoid deadlocks
+		if (model.provider !== 'n8n') {
+			await this.ensureValidModel(user, model);
+		}
 
 		return await this.sessionRepository.createChatSession(
 			{
