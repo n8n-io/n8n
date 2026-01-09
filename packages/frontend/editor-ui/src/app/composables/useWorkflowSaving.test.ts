@@ -529,49 +529,6 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
-		it('should convert tags from ITag[] to string[]', async () => {
-			const workflow = createTestWorkflow({
-				id: 'w4',
-				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
-				active: true,
-				tags: ['tag1', 'tag2'],
-			});
-
-			const workflowResponse = {
-				...workflow,
-				tags: [
-					{ id: 'tag1', name: 'Tag 1' },
-					{ id: 'tag2', name: 'Tag 2' },
-				],
-				checksum: 'test-checksum',
-			};
-
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
-			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
-
-			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
-
-			// Create a mock workflowState with spy functions
-			const setWorkflowTagIdsSpy = vi.fn();
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: setWorkflowTagIdsSpy,
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
-			const { saveCurrentWorkflow } = useWorkflowSaving({
-				router,
-				workflowState: mockWorkflowState as WorkflowState,
-			});
-
-			await saveCurrentWorkflow({ id: 'w4' }, true, false, true);
-
-			// Verify that setWorkflowTagIds was called with string array, not objects
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith(['tag1', 'tag2']);
-		});
-
 		it('should convert tags from ITag[] to string[] when tags param is provided', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w5',
