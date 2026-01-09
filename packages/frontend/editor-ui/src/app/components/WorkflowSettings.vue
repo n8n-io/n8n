@@ -549,7 +549,7 @@ const saveSettings = async () => {
 						size: 'small',
 						newWindow: true,
 					},
-					() => 'Learn more',
+					() => i18n.baseText('generic.learnMore'),
 				),
 			]),
 			type: 'warning',
