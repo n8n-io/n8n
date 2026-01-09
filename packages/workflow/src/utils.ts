@@ -494,7 +494,7 @@ export function sanitizeFilename(fileName: string): string {
 
 	// If the result is empty or just dots, use a default name
 	if (!sanitized || /^\.+$/.test(sanitized)) {
-		sanitized = 'file';
+		sanitized = 'untitled';
 	}
 
 	return sanitized;

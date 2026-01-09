@@ -922,12 +922,12 @@ describe('sanitizeFilename', () => {
 	});
 
 	it('should handle empty and invalid inputs', () => {
-		expect(sanitizeFilename('')).toBe('file');
+		expect(sanitizeFilename('')).toBe('untitled');
 	});
 
 	it('should handle edge cases', () => {
-		expect(sanitizeFilename('.')).toBe('file');
-		expect(sanitizeFilename('..')).toBe('file');
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
 	});
 
 	it('should prevent path traversal attacks', () => {
@@ -960,6 +960,6 @@ describe('sanitizeFilename', () => {
 
 	it('should remove null bytes', () => {
 		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
-		expect(sanitizeFilename('\0\0\0')).toBe('file');
+		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });
