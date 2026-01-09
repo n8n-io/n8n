@@ -231,8 +231,9 @@ export async function validateWebhookAuthentication(
 			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
 			if (
 				!expectedAuthToken ||
+				typeof authToken !== 'string' ||
 				expectedAuthToken.length !== authToken.length ||
-				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken as string))
+				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken))
 			) {
 				throw new WebhookAuthorizationError(403);
 			}

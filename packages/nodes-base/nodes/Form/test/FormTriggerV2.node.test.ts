@@ -222,7 +222,7 @@ describe('FormTrigger', () => {
 		});
 	});
 
-	it('should throw on invalid webhook authentication when token is invalid', async () => {
+	it('webhook execution not successful when token is invalid', async () => {
 		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
