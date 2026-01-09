@@ -18,7 +18,6 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
@@ -69,7 +68,6 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
-const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
 
 const router = useRouter();
@@ -100,10 +98,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 const isNewWorkflow = computed(() => {
 	return !workflowsStore.isWorkflowSaved[props.id];
-});
-
-const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive.workflowSaving;
 });
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
@@ -138,40 +132,6 @@ watch(
 		renameInput.value?.forceCancel();
 	},
 );
-
-async function onSaveButtonClick() {
-	// If the workflow is saving, do not allow another save
-	if (isWorkflowSaving.value) {
-		return;
-	}
-
-	const id = getWorkflowId(props.id, route.params.name);
-
-	const name = props.name;
-	const tags = props.tags as string[];
-
-	// Capture the "new" state before saving, as the route will be replaced during save
-	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
-
-	const saved = await workflowSaving.saveCurrentWorkflow({
-		id,
-		name,
-		tags,
-	});
-
-	if (saved) {
-		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		if (route.name === VIEWS.EXECUTION_DEBUG) {
-			await router.replace({
-				name: VIEWS.WORKFLOW,
-				params: { name: props.id },
-			});
-		}
-	}
-}
 
 function onTagsEditEnable() {
 	appliedTagIds.value = (props.tags ?? []) as string[];
@@ -568,7 +528,6 @@ onBeforeUnmount(() => {
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
-				@workflow:saved="onSaveButtonClick"
 			/>
 		</PushConnectionTracker>
 	</div>
