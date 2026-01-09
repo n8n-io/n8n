@@ -3,21 +3,21 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
+import { BaseCommand } from './base-command';
+
 import { N8N_VERSION } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { EventMessageGeneric } from '@/modules/log-streaming.ee/event-message-classes/event-message-generic';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-
-import { BaseCommand } from './base-command';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),

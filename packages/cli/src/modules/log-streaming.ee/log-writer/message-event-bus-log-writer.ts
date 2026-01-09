@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { inTest, Logger, safeJoinPath } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { once as eventOnce } from 'events';
 import { createReadStream, existsSync, rmSync } from 'fs';
@@ -28,7 +27,8 @@ import type { EventMessageNodeOptions } from '../event-message-classes/event-mes
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
+import { LogStreamingConfig } from '../log-streaming.config';
+import type { EventMessageReturnMode } from '../message-event-bus';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -59,13 +59,10 @@ export class MessageEventBusLogWriter {
 
 	private readonly logger: Logger;
 
-	private readonly globalConfig: GlobalConfig;
-
 	private _worker: Worker | undefined;
 
 	constructor() {
 		this.logger = Container.get(Logger);
-		this.globalConfig = Container.get(GlobalConfig);
 	}
 
 	get worker(): Worker | undefined {
@@ -86,13 +83,12 @@ export class MessageEventBusLogWriter {
 			MessageEventBusLogWriter.options = {
 				logFullBasePath: safeJoinPath(
 					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
-					options?.logBaseName ?? Container.get(GlobalConfig).eventBus.logWriter.logBaseName,
+					options?.logBaseName ?? Container.get(LogStreamingConfig).logWriter.logBaseName,
 				),
 				keepNumberOfFiles:
-					options?.keepNumberOfFiles ?? Container.get(GlobalConfig).eventBus.logWriter.keepLogCount,
+					options?.keepNumberOfFiles ?? Container.get(LogStreamingConfig).logWriter.keepLogCount,
 				maxFileSizeInKB:
-					options?.maxFileSizeInKB ??
-					Container.get(GlobalConfig).eventBus.logWriter.maxFileSizeInKB,
+					options?.maxFileSizeInKB ?? Container.get(LogStreamingConfig).logWriter.maxFileSizeInKB,
 			};
 			await MessageEventBusLogWriter.instance.startThread();
 		}
@@ -186,7 +182,7 @@ export class MessageEventBusLogWriter {
 			sentMessages: [],
 			unfinishedExecutions: {},
 		};
-		const configLogCount = this.globalConfig.eventBus.logWriter.keepLogCount;
+		const configLogCount = Container.get(LogStreamingConfig).logWriter.keepLogCount;
 		const logCount = logHistory ? Math.min(configLogCount, logHistory) : configLogCount;
 		for (let i = logCount; i >= 0; i--) {
 			const logFileName = this.getLogFileName(i);
@@ -286,7 +282,7 @@ export class MessageEventBusLogWriter {
 		logHistory?: number,
 	): Promise<EventMessageTypes[]> {
 		const result: EventMessageTypes[] = [];
-		const configLogCount = this.globalConfig.eventBus.logWriter.keepLogCount;
+		const configLogCount = Container.get(LogStreamingConfig).logWriter.keepLogCount;
 		const logCount = logHistory ? Math.min(configLogCount, logHistory) : configLogCount;
 		for (let i = 0; i < logCount; i++) {
 			const logFileName = this.getLogFileName(i);

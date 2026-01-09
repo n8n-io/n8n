@@ -3,10 +3,11 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+
+import { MessageEventBus } from './message-event-bus';
 
 @Service()
 export class LogStreamingEventRelay extends EventRelay {

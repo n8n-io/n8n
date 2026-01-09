@@ -7,20 +7,20 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
-import { eventNamesAll } from './event-message-classes';
-import { MessageEventBus } from './message-event-bus/message-event-bus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
-} from './message-event-bus-destination/message-event-bus-destination-sentry.ee';
+} from './destinations/message-event-bus-destination-sentry.ee';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
-} from './message-event-bus-destination/message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './message-event-bus-destination/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './message-event-bus-destination/message-event-bus-destination.ee';
+} from './destinations/message-event-bus-destination-syslog.ee';
+import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
+import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
+import { eventNamesAll } from './event-message-classes';
+import { MessageEventBus } from './message-event-bus';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const isWithIdString = (candidate: unknown): candidate is { id: string } => {
 	const o = candidate as { id: string };

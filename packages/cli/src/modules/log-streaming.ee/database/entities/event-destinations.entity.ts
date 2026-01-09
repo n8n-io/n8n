@@ -1,7 +1,6 @@
+import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Entity, PrimaryColumn } from '@n8n/typeorm';
 import { MessageEventBusDestinationOptions } from 'n8n-workflow';
-
-import { JsonColumn, WithTimestamps } from './abstract-entity';
 
 @Entity({ name: 'event_destinations' })
 export class EventDestinations extends WithTimestamps {
