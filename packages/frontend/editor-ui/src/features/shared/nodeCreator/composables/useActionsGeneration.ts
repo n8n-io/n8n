@@ -9,12 +9,14 @@ import {
 } from '@/app/constants';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
-import type {
-	ICredentialType,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeTypeDescription,
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	type ICredentialType,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { i18n } from '@n8n/i18n';
@@ -374,10 +376,7 @@ export function useActionsGenerator() {
 		const visibleNodeTypes = nodeTypes.filter((node) => {
 			// Filter out evaluation nodes if evaluation is not enabled
 			if (!evaluationStore.isEvaluationEnabled) {
-				if (
-					node.name === 'n8n-nodes-base.evaluation' ||
-					node.name === 'n8n-nodes-base.evaluationTrigger'
-				) {
+				if ([EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE].includes(node.name)) {
 					return false;
 				}
 			}
