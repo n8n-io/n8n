@@ -4,10 +4,9 @@ import type { Role, Scope } from '@n8n/permissions';
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { ALL } from 'node:dns';
 import { Container } from '@n8n/di';
 import { SecuritySettingsService } from '@/services/security-settings.service';
-import { PERSONAL_PROJECT_OWNER_SCOPES } from '@n8n/permissions/src/roles/scopes/project-scopes.ee';
+import { PROJECT_SCOPE_MAP } from '@n8n/permissions';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
@@ -17,7 +16,6 @@ let memberAgent: SuperAgentTest;
 
 const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
 let expectedGlobalRoles: Role[];
-let expectedProjectRoles: Role[];
 let expectedCredentialRoles: Role[];
 let expectedWorkflowRoles: Role[];
 
@@ -84,7 +82,7 @@ describe('GET /roles/', () => {
 			expect(resp.status).toBe(200);
 			checkForScopes(
 				'project:personalOwner',
-				[...PERSONAL_PROJECT_OWNER_SCOPES, 'workflow:publish'],
+				[...PROJECT_SCOPE_MAP['project:personalOwner'], 'workflow:publish'],
 				resp.body.data.project,
 			);
 		});
@@ -106,7 +104,7 @@ describe('GET /roles/', () => {
 			expect(resp.status).toBe(200);
 			checkForScopes(
 				'project:personalOwner',
-				[...PERSONAL_PROJECT_OWNER_SCOPES, 'workflow:publish'],
+				[...PROJECT_SCOPE_MAP['project:personalOwner'], 'workflow:publish'],
 				resp.body.data.project,
 			);
 		});
