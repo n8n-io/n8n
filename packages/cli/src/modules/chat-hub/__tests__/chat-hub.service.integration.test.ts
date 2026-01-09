@@ -7,6 +7,7 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { BinaryDataService } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	RESPOND_TO_CHAT_NODE_TYPE,
 	createRunExecutionData,
 	NodeOperationError,
 	type INode,
@@ -16,6 +17,7 @@ import type { Response } from 'express';
 import { EventEmitter } from 'events';
 
 import { ActiveExecutions } from '../../../active-executions';
+import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
@@ -1741,12 +1743,11 @@ describe('chatHub', () => {
 			expect(itemChunk.content).toBe('Response from chat node!');
 		});
 
-		it('should handle execution with waiting status and mark message as waiting', async () => {
-			// Create an active workflow with chat trigger configured for responseNode mode
-			// (waiting status is only used for responseNode/responseNodes modes)
+		it('should resume immediately when Respond to Chat node has waitUserReply: false', async () => {
+			// Create an active workflow with Respond to Chat node that doesn't wait for user reply
 			const workflow = await createActiveWorkflow(
 				{
-					name: 'Waiting Chat Workflow',
+					name: 'Auto Resume Chat Workflow',
 					nodes: [
 						{
 							id: 'chat-trigger-1',
@@ -1757,31 +1758,34 @@ describe('chatHub', () => {
 							parameters: {
 								availableInChat: true,
 								options: {
-									responseMode: 'responseNode',
+									responseMode: 'responseNodes',
 								},
 							},
 						},
 						{
-							id: 'wait-1',
-							name: 'Wait Node',
-							type: 'n8n-nodes-base.wait',
+							id: 'respond-1',
+							name: 'Respond to Chat',
+							type: RESPOND_TO_CHAT_NODE_TYPE,
 							typeVersion: 1,
 							position: [200, 0],
 							parameters: {
-								waitForUserReply: true,
+								message: 'Intermediate message',
+								waitUserReply: false, // Key: causes shouldResumeImmediately to return true
 							},
 						},
 					],
 					connections: {
 						'Chat Trigger': {
-							main: [[{ node: 'Wait Node', type: 'main', index: 0 }]],
+							main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
 						},
 					},
 				},
 				member,
 			);
 
-			// Mock the execution to return waiting status
+			let capturedExecutionId: string;
+
+			// Mock initial execution - returns waiting status
 			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
 				const executionId = await executionRepository.createNewExecution({
 					finished: false,
@@ -1791,15 +1795,15 @@ describe('chatHub', () => {
 					data: executionData,
 					workflowData,
 				});
+				capturedExecutionId = executionId;
 
-				// Update execution with waiting status
 				setTimeout(async () => {
 					await executionRepository.updateExistingExecution(executionId, {
 						status: 'waiting',
 						data: createRunExecutionData({
 							resultData: {
 								runData: {
-									'Wait Node': [
+									'Respond to Chat': [
 										{
 											startTime: Date.now(),
 											executionTime: 100,
@@ -1811,7 +1815,7 @@ describe('chatHub', () => {
 													[
 														{
 															json: {},
-															sendMessage: 'Please wait for input...',
+															sendMessage: 'Intermediate message',
 														},
 													],
 												],
@@ -1819,7 +1823,156 @@ describe('chatHub', () => {
 										},
 									],
 								},
-								lastNodeExecuted: 'Wait Node',
+								lastNodeExecuted: 'Respond to Chat',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+
+				return { executionId };
+			});
+
+			// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
+			const executionManager = Container.get(ChatExecutionManager);
+			jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(capturedExecutionId, {
+						status: 'success',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'Respond to Chat': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: {},
+															sendMessage: 'Final message',
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'Respond to Chat',
+							},
+						}),
+					});
+					finishRun({} as IRun);
+				}, 50);
+			});
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'n8n', workflowId: workflow.id },
+				credentials: {},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			const messages = await retryUntil(async () => {
+				const messages = await messagesRepository.getManyBySessionId(sessionId);
+				// Should have 3 messages: human, AI (intermediate marked success), AI (final)
+				expect(messages.length).toBeGreaterThanOrEqual(3);
+				return messages;
+			});
+
+			// All AI messages should have status 'success' (auto-resumed and completed)
+			const aiMessages = messages.filter((m) => m.type === 'ai');
+			expect(aiMessages.length).toBeGreaterThanOrEqual(2);
+			expect(aiMessages[aiMessages.length - 1]?.status).toBe('success');
+		});
+
+		it('should wait for user reply when Respond to Chat node has waitUserReply: true', async () => {
+			// Create an active workflow with Respond to Chat node that waits for user reply
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Wait Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+								options: {
+									responseMode: 'responseNodes',
+								},
+							},
+						},
+						{
+							id: 'respond-1',
+							name: 'Respond to Chat',
+							type: RESPOND_TO_CHAT_NODE_TYPE,
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								message: 'Please provide input',
+								waitUserReply: true, // Key: causes shouldResumeImmediately to return false
+							},
+						},
+					],
+					connections: {
+						'Chat Trigger': {
+							main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
+						},
+					},
+				},
+				member,
+			);
+
+			// Mock execution - returns waiting status
+			spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'webhook',
+					status: 'running',
+					workflowId: workflowData.id,
+					data: executionData,
+					workflowData,
+				});
+
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'waiting',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									'Respond to Chat': [
+										{
+											startTime: Date.now(),
+											executionTime: 100,
+											executionIndex: 0,
+											executionStatus: 'success',
+											source: [],
+											data: {
+												main: [
+													[
+														{
+															json: {},
+															sendMessage: 'Please provide input',
+														},
+													],
+												],
+											},
+										},
+									],
+								},
+								lastNodeExecuted: 'Respond to Chat',
 							},
 						}),
 					});
@@ -1844,14 +1997,14 @@ describe('chatHub', () => {
 			const messages = await retryUntil(async () => {
 				const messages = await messagesRepository.getManyBySessionId(sessionId);
 				expect(messages.length).toBeGreaterThanOrEqual(2);
-				expect(messages[1]?.status).toBe('waiting');
+				expect(messages[1]?.status).toBe('waiting'); // Should stay waiting
 				return messages;
 			});
 
-			// Verify AI message has waiting status
+			// AI message should have status 'waiting' (no auto-resume)
 			expect(messages[1]?.type).toBe('ai');
 			expect(messages[1]?.status).toBe('waiting');
-			expect(messages[1]?.content).toBe('Please wait for input...');
+			expect(messages[1]?.content).toBe('Please provide input');
 		});
 
 		it('should extract text field when output is not present in lastNode mode', async () => {
