@@ -281,21 +281,12 @@ describe('InvitationController', () => {
 			});
 			const res = mock<Response>();
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
-				inviterId,
-				inviteeId,
-			});
 			jest.spyOn(userRepository, 'find').mockResolvedValue([]);
 
 			await expect(
 				invitationController.acceptInvitation(req, res, payload, inviteeId),
 			).rejects.toThrow(new BadRequestError('Invalid payload or URL'));
 
-			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith({
-				token: undefined,
-				inviterId,
-				inviteeId,
-			});
 			expect(userRepository.find).toHaveBeenCalledWith({
 				where: [{ id: inviterId }, { id: inviteeId }],
 				relations: ['role'],
@@ -399,11 +390,10 @@ describe('InvitationController', () => {
 			);
 		});
 
-		it('accepts the invitation successfully with JWT token', async () => {
+		it('accepts the invitation successfully with legacy inviterId and inviteeId', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
-			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
 			const inviter = mock<User>({
@@ -418,10 +408,6 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
-				inviterId,
-				inviteeId,
-			});
 			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
 			jest.spyOn(passwordUtility, 'hash').mockResolvedValue('Password123!');
 			jest.spyOn(userRepository, 'save').mockResolvedValue(invitee);
@@ -432,15 +418,13 @@ describe('InvitationController', () => {
 
 			const invitationController = defaultInvitationController();
 
-			// Use type assertion to bypass zod-class validation for all-optional schemas
-			// Validation is handled in the service layer
-			const payload = {
-				token,
+			const payload = new AcceptInvitationRequestDto({
+				inviterId,
 				inviteeId,
 				firstName: 'John',
 				lastName: 'Doe',
 				password: 'Password123!',
-			} as AcceptInvitationRequestDto;
+			});
 
 			const req = mock<AuthlessRequest<{ id: string }>>({
 				body: payload,
@@ -451,12 +435,6 @@ describe('InvitationController', () => {
 			expect(await invitationController.acceptInvitation(req, res, payload, inviteeId)).toEqual(
 				invitee as unknown as PublicUser,
 			);
-
-			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith({
-				token,
-				inviterId: undefined,
-				inviteeId,
-			});
 		});
 
 		it('throws a BadRequestError if inviteeId from payload does not match userId from URL', async () => {
@@ -466,11 +444,6 @@ describe('InvitationController', () => {
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
 			const userId = uuidv4(); // Different from inviteeId
-
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
-				inviterId,
-				inviteeId,
-			});
 
 			const invitationController = defaultInvitationController();
 
@@ -491,9 +464,6 @@ describe('InvitationController', () => {
 			await expect(
 				invitationController.acceptInvitation(req, res, payload, userId),
 			).rejects.toThrow(new BadRequestError('Invalid invite URL'));
-
-			// Verify that getInvitationIdsFromPayload was called
-			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalled();
 		});
 
 		it('throws a BadRequestError if inviterId or inviteeId is missing in legacy format', async () => {
