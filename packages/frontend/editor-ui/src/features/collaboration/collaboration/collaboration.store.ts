@@ -191,10 +191,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function requestWriteAccess() {
-		if (shouldBeReadOnly.value) {
-			return false;
-		}
-
 		if (isCurrentUserWriter.value) {
 			return true;
 		}
@@ -205,17 +201,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				workflowId: workflowsStore.workflowId,
 			});
 		} catch {
-			// Ignore errors
+			return false;
 		}
 
 		return true;
 	}
 
 	function releaseWriteAccess() {
-		if (!isCurrentUserWriter.value) {
-			return;
-		}
-
 		currentWriterId.value = null;
 		stopWriteLockHeartbeat();
 
@@ -224,8 +216,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				type: 'writeAccessReleaseRequested',
 				workflowId: workflowsStore.workflowId,
 			});
+			return true;
 		} catch {
-			// Ignore errors
+			return false;
 		}
 	}
 
@@ -265,12 +258,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return;
 		}
 
-		// Only skip updates if the user has write access AND has unsaved changes
-		// Readers should always receive updates since they can't make changes
-		if (!shouldBeReadOnly.value && uiStore.stateIsDirty) {
-			return;
-		}
-
 		try {
 			// Fetch the latest workflow data
 			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflowsStore.workflowId);
@@ -278,13 +265,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			// Refresh the canvas with the new workflow data
 			if (refreshCanvasCallback) {
 				refreshCanvasCallback(updatedWorkflow);
-			} else {
-				// Fallback to just updating the store
-				workflowsStore.setWorkflow(updatedWorkflow);
-				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 			}
+			return true;
 		} catch {
-			// Ignore errors
+			return false;
 		}
 	}
 
