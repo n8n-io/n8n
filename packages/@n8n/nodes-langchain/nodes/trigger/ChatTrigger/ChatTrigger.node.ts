@@ -417,7 +417,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it. Currently, only "Streaming" and "When Last Node Finishes" response modes are supported.',
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it.',
 				name: 'availableInChatNotice',
 				type: 'notice',
 				displayOptions: {
