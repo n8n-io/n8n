@@ -23,23 +23,23 @@ export function useActivityDetection() {
 		});
 	};
 
+	// Watch for writer status changes
+	watch(
+		() => collaborationStore.isCurrentUserWriter,
+		(isWriter) => {
+			if (isWriter) {
+				attachListeners();
+			} else {
+				detachListeners();
+			}
+		},
+	);
+
 	onMounted(() => {
 		// Attach listeners if user is writer
 		if (collaborationStore.isCurrentUserWriter) {
 			attachListeners();
 		}
-
-		// Watch for writer status changes
-		watch(
-			() => collaborationStore.isCurrentUserWriter,
-			(isWriter) => {
-				if (isWriter) {
-					attachListeners();
-				} else {
-					detachListeners();
-				}
-			},
-		);
 	});
 
 	onUnmounted(() => {
