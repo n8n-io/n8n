@@ -92,7 +92,6 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.getMany();
 
 		// Group by workflowId
-		const versionsToDelete = [];
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
 		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
@@ -101,7 +100,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			...skipRules,
 		]);
 
-		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
-		return { seen: workflows.length, deleted: versionsToDelete.length };
+		const result = await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
+		return { seen: workflows.length, deleted: grouped.removed.length };
 	}
 }
