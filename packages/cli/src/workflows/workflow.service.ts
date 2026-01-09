@@ -579,12 +579,20 @@ export class WorkflowService {
 
 		const activationMode = wasActive ? 'update' : 'activate';
 
-		await this.workflowRepository.update(workflowId, {
+		// Clear auto-deactivation metadata if present (user is manually reactivating)
+		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = {
 			activeVersionId: versionIdToActivate,
 			active: true,
 			// workflow content did not change, so we keep updatedAt as is
 			updatedAt: workflow.updatedAt,
-		});
+		};
+
+		if (workflow.meta?.autoDeactivatedAt) {
+			const { autoDeactivatedAt, autoDeactivationThreshold, ...restMeta } = workflow.meta;
+			updatePayload.meta = restMeta;
+		}
+
+		await this.workflowRepository.update(workflowId, updatePayload);
 
 		const workflowForActivation = await this.workflowRepository.findOne({
 			where: { id: workflowId },

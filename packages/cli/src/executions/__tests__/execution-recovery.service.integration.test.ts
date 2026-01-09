@@ -454,6 +454,10 @@ describe('ExecutionRecoveryService', () => {
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
+				expect(updatedWorkflow.meta?.autoDeactivatedAt).toBeDefined();
+				expect(updatedWorkflow.meta?.autoDeactivationThreshold).toBe(
+					globalConfig.executions.recovery.maxLastExecutions,
+				);
 			});
 		});
 	});

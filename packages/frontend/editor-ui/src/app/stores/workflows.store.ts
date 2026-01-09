@@ -960,6 +960,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setWorkflowAutoDeactivatedMeta(
+		targetWorkflowId: string,
+		meta: { autoDeactivatedAt: string; autoDeactivationThreshold: number },
+	) {
+		const targetWorkflow = workflowsById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.meta = {
+				...targetWorkflow.meta,
+				...meta,
+			};
+		}
+		if (targetWorkflowId === workflow.value.id) {
+			workflow.value.meta = {
+				...workflow.value.meta,
+				...meta,
+			};
+		}
+	}
+
 	async function fetchActiveWorkflows(): Promise<string[]> {
 		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
@@ -2042,6 +2061,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
+		setWorkflowAutoDeactivatedMeta,
 		fetchActiveWorkflows,
 		setIsArchived,
 		setDescription,

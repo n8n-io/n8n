@@ -270,6 +270,10 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+const isAutoDeactivated = computed(() => {
+	return !!props.data.meta?.autoDeactivatedAt && !props.data.active;
+});
+
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
@@ -605,28 +609,39 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div v-else :class="$style.publishIndicator" data-test-id="workflow-card-publish-indicator">
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
+				<template v-else>
+					<div
+						v-if="isAutoDeactivated"
+						:class="$style.warningIndicator"
+						data-test-id="workflow-card-auto-deactivated"
 					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
-				</div>
+						<N8nTooltip :content="locale.baseText('workflows.item.autoDeactivated.tooltip')">
+							<N8nIcon icon="triangle-alert" size="large" :class="$style.warningIndicatorColor" />
+						</N8nTooltip>
+					</div>
+					<div :class="$style.publishIndicator" data-test-id="workflow-card-publish-indicator">
+						<N8nTooltip
+							:content="
+								isWorkflowPublished
+									? locale.baseText('generic.published')
+									: locale.baseText('generic.notPublished')
+							"
+						>
+							<N8nIcon
+								v-if="isWorkflowPublished"
+								icon="circle-check"
+								size="large"
+								:class="$style.publishIndicatorColor"
+							/>
+							<N8nIcon
+								v-else
+								icon="circle-minus"
+								size="large"
+								:class="$style.notPublishedIndicatorColor"
+							/>
+						</N8nTooltip>
+					</div>
+				</template>
 
 				<N8nActionToggle
 					:actions="actions"
@@ -756,6 +771,16 @@ const tags = computed(
 			color: var(--color--neutral-400);
 		}
 	}
+}
+
+.warningIndicator {
+	display: flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
+.warningIndicatorColor {
+	color: var(--color--warning);
 }
 
 @include mixins.breakpoint('sm-and-down') {

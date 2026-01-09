@@ -6,12 +6,12 @@
 				<mj-include path="./_logo.mjml" />
 				<mj-text font-size="22px" font-weight="400">Workflow automatically deactivated</mj-text>
 				<mj-text
-					>n8n has automatically deactivated <b>"{{ workflowName }}"</b> due to repeated
-					crashes.</mj-text
+					>n8n has automatically deactivated <b>"{{ workflowName }}"</b> because the last
+					{{ threshold }} executions all crashed.</mj-text
 				>
 				<mj-text
-					>Please review its recent executions and resolve any issues before reactivating
-					it.</mj-text
+					>To prevent further issues, the workflow has been disabled. Please review its recent
+					executions and resolve any problems before reactivating it.</mj-text
 				>
 				<mj-button href="{{ workflowUrl }}" background-color="#ff6d5a">View Workflow</mj-button>
 				<mj-include path="./_footer.mjml" />

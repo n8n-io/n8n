@@ -68,6 +68,17 @@ export class ExecutionRecoveryService {
 
 				if (workflow.activeVersionId !== null) {
 					await this.workflowRepository.updateActiveState(workflowId, false);
+
+					// Store auto-deactivation metadata
+					const autoDeactivatedAt = new Date().toISOString();
+					await this.workflowRepository.update(workflowId, {
+						meta: {
+							...workflow.meta,
+							autoDeactivatedAt,
+							autoDeactivationThreshold: maxLastExecutions,
+						},
+					});
+
 					this.logger.warn(
 						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 					);
@@ -76,11 +87,19 @@ export class ExecutionRecoveryService {
 					await this.userManagementMailer.notifyWorkflowAutodeactivated({
 						recipient,
 						workflow,
+						threshold: maxLastExecutions,
 					});
 
 					this.push.once('editorUiConnected', async () => {
 						await sleep(1000);
-						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+						this.push.broadcast({
+							type: 'workflowAutoDeactivated',
+							data: {
+								workflowId,
+								autoDeactivatedAt,
+								threshold: maxLastExecutions,
+							},
+						});
 					});
 				}
 
