@@ -13,6 +13,7 @@ export const CAPABILITIES = {
 	'source-control': { services: ['gitea'] },
 	oidc: { services: ['keycloak'] },
 	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	kafka: { services: ['kafka'] },
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;
