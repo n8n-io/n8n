@@ -18,27 +18,21 @@ const pairwiseEvaluationLLMResultSchema = z.object({
 	violations: z
 		.array(
 			z.object({
-				rule: z.string().describe('The criterion that was violated'),
-				justification: z
-					.string()
-					.describe('Evidence from the workflow explaining why this is a violation'),
+				rule: z.string(),
+				justification: z.string(),
 			}),
 		)
 		.describe(
-			'List of criteria that were violated. If no criteria passed, include an entry explaining why.',
+			'List of criteria that were violated, this must be passed as a JSON array not a string.',
 		),
 	passes: z
 		.array(
 			z.object({
-				rule: z.string().describe('The criterion that was passed'),
-				justification: z
-					.string()
-					.describe('Evidence from the workflow proving the criterion is satisfied'),
+				rule: z.string(),
+				justification: z.string(),
 			}),
 		)
-		.describe(
-			'List of criteria that were passed. Return an empty array [] if no criteria could be verified as passing.',
-		),
+		.describe('The criterion that was passed, this must be passed as a JSON array not a string.'),
 });
 
 export type PairwiseEvaluationResult = z.infer<typeof pairwiseEvaluationLLMResultSchema> & {
