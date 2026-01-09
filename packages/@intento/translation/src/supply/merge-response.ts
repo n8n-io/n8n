@@ -5,10 +5,12 @@ import type { MergeRequest } from 'supply/merge-request';
 
 export class MergeResponse extends SupplyResponse {
 	readonly text: string[];
+	readonly detectedLanguage?: string[][];
 
-	constructor(request: MergeRequest, text: string[]) {
+	constructor(request: MergeRequest, text: string[], detectedLanguage?: string[][]) {
 		super(request);
 		this.text = text;
+		this.detectedLanguage = detectedLanguage;
 
 		Object.freeze(this);
 	}
@@ -20,6 +22,7 @@ export class MergeResponse extends SupplyResponse {
 	asLogMetadata(): LogMetadata {
 		return {
 			...super.asLogMetadata(),
+			detectedLanguageCount: this.detectedLanguage?.length,
 			textCount: this.text.length,
 		};
 	}
@@ -27,6 +30,7 @@ export class MergeResponse extends SupplyResponse {
 		return {
 			...super.asDataObject(),
 			text: this.text,
+			detectedLanguage: this.detectedLanguage,
 		};
 	}
 }

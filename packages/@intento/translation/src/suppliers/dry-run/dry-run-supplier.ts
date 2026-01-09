@@ -1,8 +1,9 @@
-import { DelayContext, SplitContext } from 'context/*';
 import type { SupplyError, IFunctions } from 'intento-core';
 import { ContextFactory, Delay } from 'intento-core';
 import type { IntentoConnectionType } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+import { DelayContext, SplitContext } from 'context/*';
 import { DryRunContext } from 'suppliers/dry-run/dry-run-context';
 import { DryRunDescriptor } from 'suppliers/dry-run/dry-run-descriptor';
 import type { TranslationRequest } from 'supply/*';
@@ -26,7 +27,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 		Object.freeze(this);
 	}
 
-	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | SupplyError> {
+	protected async translate(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | SupplyError> {
 		signal?.throwIfAborted();
 
 		const delayMs = this.delayContext.calculateDelay();
@@ -49,7 +50,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 		const translations: ITranslation[] = request.segments.map((segment) => ({
 			segmentPosition: segment.segmentPosition,
 			textPosition: segment.textPosition,
-			translation: segment.text,
+			text: segment.text,
 			detectedLanguage: request.from,
 		}));
 		this.tracer.info(`🧪 [${this.descriptor.name}] Passed through ${translations.length} segment(s) without translation.`);
@@ -69,7 +70,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 			return {
 				segmentPosition: segment.segmentPosition,
 				textPosition: segment.textPosition,
-				translation: text,
+				text,
 				detectedLanguage: request.from,
 			};
 		});
@@ -85,7 +86,7 @@ export class DryRunSupplier extends TranslationSupplierBase {
 		const translations: ITranslation[] = request.segments.map((segment) => ({
 			segmentPosition: segment.segmentPosition,
 			textPosition: segment.textPosition,
-			translation: override,
+			text: override,
 			detectedLanguage: request.from,
 		}));
 

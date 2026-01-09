@@ -1,6 +1,6 @@
 export interface ITranslation {
 	readonly textPosition: number;
 	readonly segmentPosition: number;
-	readonly translation: string;
+	readonly text: string;
 	readonly detectedLanguage?: string;
 }

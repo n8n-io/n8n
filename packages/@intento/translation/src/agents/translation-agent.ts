@@ -3,17 +3,12 @@ import { SupplyError, AgentBase, ContextFactory, SupplyFactory } from 'intento-c
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { TranslationContext } from 'context/*';
-import {
-	SplitRequest,
-	SplitResponse,
-	TranslationRequest,
-	TranslationResponse,
-	type SegmentsSupplierBase,
-	type TranslationSupplierBase,
-} from 'supply/*';
+import type { SegmentsSupplierBase, TranslationSupplierBase } from 'supply/*';
+import { SplitRequest, SplitResponse, TranslationRequest, TranslationResponse } from 'supply/*';
 import { MergeRequest } from 'supply/merge-request';
 import { MergeResponse } from 'supply/merge-response';
 import type { ISegment } from 'types/i-segment';
+import type { ITranslation } from 'types/i-translation';
 
 export class TranslationAgent extends AgentBase {
 	private context?: TranslationContext;
@@ -66,13 +61,13 @@ export class TranslationAgent extends AgentBase {
 		if (error) return error;
 
 		// Step 5: Merge translated segments
-		const translation = results.map((res) => (res as TranslationResponse).segments).flat();
+		const translation = results.map((res) => (res as TranslationResponse).translations).flat();
 		const mergeResult = await this.mergeTranslations(translation, signal);
 		return mergeResult;
 	}
 
 	private async splitText(signal: AbortSignal): Promise<SplitResponse | SupplyError> {
-		const limit = this.translation?.map((supplier) => supplier.descriptor.segmentLimit).reduce((a, b) => Math.min(a!, b!));
+		const limit = this.translation?.map((supplier) => supplier.descriptor.segmentLimit).reduce((a, b) => Math.min(a, b));
 		const request = new SplitRequest(this.context!.text, limit!, this.context!.from);
 		const result = await this.segmentation!.supply(request, signal);
 		if (result instanceof SupplyError || result instanceof SplitResponse) return result;
@@ -81,7 +76,7 @@ export class TranslationAgent extends AgentBase {
 
 	private createRequests(segments: ISegment[], signal: AbortSignal): TranslationRequest[] {
 		signal.throwIfAborted();
-		const limit = this.translation?.map((supplier) => supplier.descriptor.batchLimit).reduce((a, b) => Math.min(a!, b!));
+		const limit = this.translation?.map((supplier) => supplier.descriptor.batchLimit).reduce((a, b) => Math.min(a, b));
 		const requests: TranslationRequest[] = [];
 		for (let i = 0; i < segments.length; i += limit!) {
 			const batch = segments.slice(i, i + limit!);
@@ -101,7 +96,7 @@ export class TranslationAgent extends AgentBase {
 		throw new Error('No translation suppliers were found.');
 	}
 
-	private async mergeTranslations(segments: ISegment[], signal: AbortSignal): Promise<MergeResponse | SupplyError> {
+	private async mergeTranslations(segments: ITranslation[], signal: AbortSignal): Promise<MergeResponse | SupplyError> {
 		signal.throwIfAborted();
 		const request = new MergeRequest(segments);
 		const response = await this.segmentation!.supply(request, signal);

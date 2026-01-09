@@ -1,14 +1,14 @@
 import { SupplyRequest } from 'intento-core';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
-import type { ISegment } from 'types/*';
+import type { ITranslation } from 'types/*';
 
 export class MergeRequest extends SupplyRequest {
-	readonly segments: ISegment[];
+	readonly translations: ITranslation[];
 
-	constructor(segments: ISegment[]) {
+	constructor(translations: ITranslation[]) {
 		super();
-		this.segments = segments;
+		this.translations = translations;
 
 		Object.freeze(this);
 	}
@@ -20,13 +20,13 @@ export class MergeRequest extends SupplyRequest {
 	asLogMetadata(): LogMetadata {
 		return {
 			...super.asLogMetadata(),
-			segmentsCount: this.segments.length,
+			translationsCount: this.translations.length,
 		};
 	}
 	asDataObject(): IDataObject {
 		return {
 			...super.asDataObject(),
-			segments: this.segments,
+			translations: this.translations,
 		};
 	}
 }

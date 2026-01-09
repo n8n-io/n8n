@@ -21,22 +21,30 @@ export abstract class SegmentsSupplierBase extends SupplierBase<SplitRequest | M
 
 	protected async executeMerge(request: MergeRequest, signal?: AbortSignal): Promise<MergeResponse | SupplyError> {
 		signal?.throwIfAborted();
-		const segments = request.segments;
+		const translations = request.translations;
 
 		// Sort by text position first, then by segment position
-		const sorted = segments.sort((a, b) => {
+		const sorted = translations.sort((a, b) => {
 			if (a.textPosition !== b.textPosition) return a.textPosition - b.textPosition;
 			return a.segmentPosition - b.segmentPosition;
 		});
 
 		// Group segments by text position and merge them
-		const grouped = new Map<number, string>();
+		const textItems = new Map<number, string>();
+		const languageItems = new Map<number, Set<string>>();
 
-		for (const segment of sorted) {
-			const existing = grouped.get(segment.textPosition);
-			grouped.set(segment.textPosition, existing ? existing + segment.text : segment.text);
+		for (const translation of sorted) {
+			const text = textItems.get(translation.textPosition);
+			textItems.set(translation.textPosition, text ? text + translation.text : translation.text);
+
+			const languages = languageItems.get(translation.textPosition) ?? new Set<string>();
+			if (translation.detectedLanguage) languages.add(translation.detectedLanguage);
+			languageItems.set(translation.textPosition, languages);
 		}
 
-		return await Promise.resolve(new MergeResponse(request, Array.from(grouped.values())));
+		const text = Array.from(textItems.values());
+		const languages = Array.from(languageItems.values()).map((set) => Array.from(set));
+
+		return await Promise.resolve(new MergeResponse(request, text, languages));
 	}
 }

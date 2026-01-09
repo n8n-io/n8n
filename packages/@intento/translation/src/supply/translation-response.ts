@@ -8,14 +8,14 @@ export class TranslationResponse extends SupplyResponse {
 	readonly from?: string;
 	readonly to: string;
 	readonly segments: ISegment[];
-	readonly translation: ITranslation[];
+	readonly translations: ITranslation[];
 
-	constructor(request: TranslationRequest, translation: ITranslation[]) {
+	constructor(request: TranslationRequest, translations: ITranslation[]) {
 		super(request);
 		this.from = request.from;
 		this.to = request.to;
 		this.segments = request.segments;
-		this.translation = translation;
+		this.translations = translations;
 	}
 
 	throwIfInvalid(): void {}
@@ -26,7 +26,7 @@ export class TranslationResponse extends SupplyResponse {
 			from: this.from,
 			to: this.to,
 			segmentsCount: this.segments.length,
-			translationCount: this.translation.length,
+			translationCount: this.translations.length,
 		};
 	}
 
@@ -36,7 +36,7 @@ export class TranslationResponse extends SupplyResponse {
 			from: this.from,
 			to: this.to,
 			segments: this.segments,
-			translation: this.translation,
+			translation: this.translations,
 		};
 	}
 }
