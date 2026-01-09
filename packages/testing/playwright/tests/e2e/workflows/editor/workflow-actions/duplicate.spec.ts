@@ -3,8 +3,9 @@ import { nanoid } from 'nanoid';
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Duplicate', () => {
+test.describe('Workflow Duplicate @fixme', () => {
+	test.fixme();
+
 	const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 
 	test.beforeEach(async ({ n8n }) => {

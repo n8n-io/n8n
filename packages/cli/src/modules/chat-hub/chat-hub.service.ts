@@ -40,6 +40,7 @@ import {
 	createRunExecutionData,
 	WorkflowExecuteMode,
 	AGENT_LANGCHAIN_NODE_TYPE,
+	sleep,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -62,6 +63,7 @@ import {
 	JSONL_STREAM_HEADERS,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
+	STREAM_CLOSE_TIMEOUT,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -758,7 +760,7 @@ export class ChatHubService {
 					retryOfMessageId,
 				});
 			},
-			onItem: (_message, _chunk) => {
+			onItem: async (_message, _chunk) => {
 				// We could save partial messages to DB here if we wanted to,
 				// but they would be very frequent updates.
 			},
@@ -819,7 +821,7 @@ export class ChatHubService {
 					: 'Request was not processed';
 			}
 
-			const message = aggregator.ingest(chunk);
+			const message = await aggregator.ingest(chunk);
 			const enriched: EnrichedStructuredChunk = {
 				...chunk,
 				metadata: {
@@ -835,9 +837,14 @@ export class ChatHubService {
 		};
 
 		const stream = interceptResponseWrites(res, transform);
+		let onStreamClosed = () => {};
+		const resolveOnStreamClosed = new Promise<void>((r) => {
+			onStreamClosed = r;
+		});
 
 		stream.on('finish', aggregator.finalizeAll);
 		stream.on('close', aggregator.finalizeAll);
+		stream.on('close', onStreamClosed);
 
 		stream.writeHead(200, JSONL_STREAM_HEADERS);
 		stream.flushHeaders();
@@ -857,7 +864,19 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		await this.waitForExecutionCompletion(executionId);
+		const streamClosePromise = Promise.race([
+			resolveOnStreamClosed,
+			sleep(STREAM_CLOSE_TIMEOUT).then(() => {
+				this.logger.warn(
+					`Stream did not close within timeout (${STREAM_CLOSE_TIMEOUT}ms) for execution ${executionId}`,
+				);
+			}),
+		]);
+
+		await Promise.all([
+			streamClosePromise, // To prevent premature workflow/execution deletion, wait for stream to close
+			this.waitForExecutionCompletion(executionId),
+		]);
 	}
 
 	private async waitForExecutionCompletion(executionId: string): Promise<void> {
@@ -1589,9 +1608,7 @@ export class ChatHubService {
 			}
 
 			// Wait with exponential backoff (double wait time, cap at 2 second)
-			await new Promise((resolve) =>
-				setTimeout(resolve, Math.min(500 * Math.pow(2, retries), 2000)),
-			);
+			await sleep(Math.min(500 * Math.pow(2, retries), 2000));
 		}
 
 		return errorText;
