@@ -184,9 +184,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	});
 
 	function recordActivity() {
-		if (!isCurrentUserWriter.value) {
-			return;
-		}
 		lastActivityTime.value = Date.now();
 	}
 
@@ -316,10 +313,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				event.data.workflowId === workflowsStore.workflowId
 			) {
 				currentWriterId.value = event.data.userId;
-				recordActivity();
 
-				// Start heartbeat if current user acquired the lock
+				// Start heartbeat and record activity if current user acquired the lock
 				if (isCurrentUserWriter.value) {
+					recordActivity();
 					startWriteLockHeartbeat();
 					stopLockStatePolling();
 				} else {

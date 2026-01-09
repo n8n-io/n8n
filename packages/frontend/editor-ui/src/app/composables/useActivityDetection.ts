@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
@@ -11,16 +11,39 @@ export function useActivityDetection() {
 
 	const events = ['mousedown', 'keydown', 'touchstart'];
 
-	onMounted(() => {
+	const attachListeners = () => {
 		events.forEach((event) => {
 			document.addEventListener(event, recordActivity, { passive: true });
 		});
-	});
+	};
 
-	onUnmounted(() => {
+	const detachListeners = () => {
 		events.forEach((event) => {
 			document.removeEventListener(event, recordActivity);
 		});
+	};
+
+	onMounted(() => {
+		// Attach listeners if user is writer
+		if (collaborationStore.isCurrentUserWriter) {
+			attachListeners();
+		}
+
+		// Watch for writer status changes
+		watch(
+			() => collaborationStore.isCurrentUserWriter,
+			(isWriter) => {
+				if (isWriter) {
+					attachListeners();
+				} else {
+					detachListeners();
+				}
+			},
+		);
+	});
+
+	onUnmounted(() => {
+		detachListeners();
 	});
 
 	return {
