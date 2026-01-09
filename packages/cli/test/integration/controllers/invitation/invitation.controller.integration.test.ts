@@ -62,6 +62,7 @@ describe('InvitationController', () => {
 
 			const memberProps = {
 				inviterId: instanceOwner.id,
+				inviteeId: memberShell.id,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
@@ -93,6 +94,7 @@ describe('InvitationController', () => {
 
 			const memberProps = {
 				inviterId: instanceOwner.id,
+				inviteeId: adminShell.id,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
@@ -175,6 +177,7 @@ describe('InvitationController', () => {
 
 			const memberProps = {
 				inviterId: instanceOwner.id,
+				inviteeId: member.id,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),

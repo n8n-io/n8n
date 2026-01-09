@@ -112,9 +112,8 @@ describe('SignupView', () => {
 		const mockToken =
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
 		// Only set token, not inviterId or inviteeId
+		// beforeEach already clears the query, so we just set what we need
 		route.query.token = mockToken;
-		route.query.inviterId = undefined;
-		route.query.inviteeId = undefined;
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
@@ -135,7 +134,7 @@ describe('SignupView', () => {
 	it('should accept invitation with legacy inviterId and inviteeId', async () => {
 		route.query.inviterId = '123';
 		route.query.inviteeId = '456';
-		route.query.token = undefined;
+		// beforeEach already clears the query, so token won't be set
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
@@ -181,9 +180,8 @@ describe('SignupView', () => {
 	it('should accept invitation with JWT token', async () => {
 		const mockToken =
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
+		// beforeEach already clears the query, so we just set what we need
 		route.query.token = mockToken;
-		route.query.inviterId = undefined;
-		route.query.inviteeId = undefined;
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
@@ -223,8 +221,7 @@ describe('SignupView', () => {
 
 	it('should not accept invitation when missing inviterId or inviteeId in legacy format', async () => {
 		route.query.inviterId = '123';
-		route.query.inviteeId = undefined;
-		route.query.token = undefined;
+		// beforeEach already clears the query, so inviteeId and token won't be set
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
