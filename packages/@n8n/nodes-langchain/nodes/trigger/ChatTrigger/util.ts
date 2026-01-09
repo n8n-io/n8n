@@ -86,7 +86,7 @@ const freeTextResponseTypeOption: INodePropertyOptions = {
 	name: 'Free Text',
 	// use a different name to not show options for `freeText` response type
 	value: FREE_TEXT_CHAT_RESPONSE_TYPE,
-	description: 'User can respond in the chat',
+	description: 'User can submit a response in the chat',
 };
 
 const blockUserInput: INodeProperties = {
