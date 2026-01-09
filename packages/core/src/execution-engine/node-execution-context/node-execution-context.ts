@@ -163,8 +163,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return null;
 	}
 
+	@Memoized
+	get workflowSettings() {
+		return Object.freeze(structuredClone(this.workflow.settings));
+	}
+
 	getWorkflowSettings() {
-		return this.workflow.settings;
+		return this.workflowSettings;
 	}
 
 	@Memoized

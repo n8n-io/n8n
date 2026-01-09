@@ -101,7 +101,7 @@ export const valueToInsert = (
 	value: string,
 	language: CodeNodeLanguageOption,
 	mode: CodeExecutionMode,
-	binaryMode?: WorkflowSettingsBinaryMode,
+	binaryMode: WorkflowSettingsBinaryMode = 'separate',
 ): string => {
 	if (isPython(language)) return pythonInsert(value, mode);
 	if (isPyodide(language)) return pyodideInsert(value, mode);
