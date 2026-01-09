@@ -103,14 +103,12 @@ For varied or complex documents:
 Option 1 - Using Document Loader (Recommended for binary files):
 1. Pass binary data directly to Document Loader node (set Data Source to "Binary")
 2. Connect to AI Agent or LLM Chain for processing
-3. Use Structured Output Parser to ensure consistent JSON
-4. Validate extracted fields before processing
+3. Validate extracted fields before processing
 
 Option 2 - Using text extraction:
 1. Extract raw text using Extract from File or OCR
 2. Pass to AI Agent or LLM Chain with structured prompt
-3. Use Structured Output Parser to ensure consistent JSON
-4. Validate extracted fields before processing
+3. Validate extracted fields before processing
 
 Example system prompt structure:
 "Extract the following fields from the document: [field list]. Return as JSON with this schema: [schema example]"
@@ -198,7 +196,6 @@ Configuration: Include structured output tools for consistent results
 
 **LLM Chain (@n8n/n8n-nodes-langchain.chainLlm)**
 Purpose: Document classification and data extraction
-Use with: Structured Output Parser for JSON consistency
 
 **Document Loader (@n8n/n8n-nodes-langchain.documentLoader)**
 Purpose: Load and process documents directly from binary data for AI processing

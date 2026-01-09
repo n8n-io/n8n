@@ -220,10 +220,4 @@ function onLogout() {
 	margin-bottom: var(--spacing--3xs);
 	background-color: var(--color--border);
 }
-
-@media screen and (max-height: 470px) {
-	:global(#help) {
-		display: none;
-	}
-}
 </style>

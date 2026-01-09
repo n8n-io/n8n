@@ -108,10 +108,8 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const {
 	dismissCallout,
 	isCalloutDismissed,
-	openPreBuiltAgentsCollection,
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
-	isPreBuiltAgentsCalloutVisible,
 } = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
@@ -488,14 +486,6 @@ function isRagStarterCallout(parameter: INodeProperties): boolean {
 	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
 }
 
-function isAgentDefaultCallout(parameter: INodeProperties): boolean {
-	return parameter.type === 'callout' && parameter.name === 'aiAgentStarterCallout';
-}
-
-function isPreBuiltAgentsCallout(parameter: INodeProperties): boolean {
-	return parameter.type === 'callout' && parameter.name.startsWith('preBuiltAgentsCallout');
-}
-
 function isCalloutVisible(parameter: INodeProperties): boolean {
 	if (isCalloutDismissed(parameter.name)) return false;
 
@@ -503,28 +493,11 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 		return isRagStarterCalloutVisible.value;
 	}
 
-	if (isAgentDefaultCallout(parameter)) {
-		return !isPreBuiltAgentsCalloutVisible.value;
-	}
-
-	if (isPreBuiltAgentsCallout(parameter)) {
-		return isPreBuiltAgentsCalloutVisible.value;
-	}
-
 	return true;
 }
 
 function onCalloutAction(action: CalloutAction) {
 	switch (action.type) {
-		case 'openPreBuiltAgentsCollection':
-			void openPreBuiltAgentsCollection({
-				telemetry: {
-					source: 'ndv',
-					nodeType: activeNode.value?.type,
-				},
-				resetStacks: false,
-			});
-			break;
 		case 'openSampleWorkflowTemplate':
 			void openSampleWorkflowTemplate(action.templateId, {
 				telemetry: {

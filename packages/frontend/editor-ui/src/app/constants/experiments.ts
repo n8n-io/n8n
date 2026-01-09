@@ -25,23 +25,16 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
 });
 
-export const PRE_BUILT_AGENTS_EXPERIMENT = createExperiment('038_pre_built_agents');
-
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const UPGRADE_PLAN_CTA_EXPERIMENT = {
-	name: '054_upgrade_plan_cta',
-	control: 'control',
-	variant: 'variant',
-};
+export const UPGRADE_PLAN_CTA_EXPERIMENT = createExperiment('054_upgrade_plan_cta');
 
-export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
-	name: '046_templates_data_quality',
+export const TEMPLATES_DATA_QUALITY_EXPERIMENT = createExperiment('046_templates_data_quality', {
 	control: 'control',
 	variant1: 'variant-batch-1',
 	variant2: 'variant-batch-2',
 	variant3: 'variant-batch-3',
-};
+});
 
 export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
 	control: 'control',
@@ -49,46 +42,30 @@ export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-wor
 	variant2: 'variant-2-twoboxes',
 });
 
-export const READY_TO_RUN_V2_P3_EXPERIMENT = {
-	name: '059_ready-to-run-worfklow_v2-3',
+export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
 	variant6: 'variant-6',
-};
+});
 
 export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3');
 
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
-export const TEMPLATE_SETUP_EXPERIENCE = {
-	name: '055_template_setup_experience',
-	control: 'control',
-	variant: 'variant',
-};
+export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
 
-export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
-	name: '056_ai_builder_template_examples',
-	control: 'control',
-	variant: 'variant',
-};
+export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
+	'056_ai_builder_template_examples',
+);
 
-export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
-	name: '057_ai_builder_multi_agent',
-	control: 'control',
-	variant: 'variant',
-};
+export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = createExperiment('057_ai_builder_multi_agent');
 
-export const TAMPER_PROOF_INVITE_LINKS = {
-	name: '061_tamper_proof_invite_links',
-	control: 'control',
-	variant: 'variant',
-};
+export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
-	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
@@ -96,5 +73,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 ];

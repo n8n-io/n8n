@@ -1439,18 +1439,12 @@ export interface CalloutActionBase {
 	icon?: string;
 }
 
-export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
-	type: 'openPreBuiltAgentsCollection';
-}
-
 export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
 	type: 'openSampleWorkflowTemplate';
 	templateId: string;
 }
 
-export type CalloutAction =
-	| CalloutActionOpenPreBuiltAgentsCollection
-	| CalloutActionOpenSampleWorkflowTemplate;
+export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
