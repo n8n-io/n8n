@@ -56,10 +56,32 @@ test('worker initializes all its components', async () => {
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupWorker).toHaveBeenCalledWith(expect.any(Number), undefined);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
 	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
 	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
 	expect(Container.get(ExecutionsConfig).mode).toBe('queue');
+});
+
+test('worker forwards max jobs option to scaling service', async () => {
+	const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => true);
+
+	await command.run(['--max-jobs=2']);
+
+	expect(scalingService.setupWorker).toHaveBeenCalledWith(
+		expect.any(Number),
+		expect.objectContaining({
+			maxJobs: 2,
+			onMaxJobsReached: expect.any(Function),
+		}),
+	);
+
+	const workerOptions = scalingService.setupWorker.mock.lastCall?.[1];
+	workerOptions?.onMaxJobsReached?.();
+
+	expect(killSpy).toHaveBeenCalledWith(process.pid, 'SIGTERM');
+
+	killSpy.mockRestore();
 });
