@@ -1,0 +1,145 @@
+# ============================================================================
+# Pre-Deployment Security Check - Block Deploys with Critical CVEs
+# ============================================================================
+#
+# This workflow prevents deployment if CRITICAL vulnerabilities are detected.
+# It runs before Render.com builds to ensure only secure code is deployed.
+#
+# Runs: On push to master (before Render auto-deploy)
+# Action: FAILS build if CRITICAL CVEs found
+# ============================================================================
+
+name: Security - Pre-Deploy Check
+
+on:
+  push:
+    branches:
+      - master
+      - claude/**
+    paths:
+      - 'packages/**'
+      - 'docker/**'
+      - 'Dockerfile*'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ===================================
+  # Security Gate Job
+  # ===================================
+  security-gate:
+    name: Security Gate Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ----- Checkout -----
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ----- Setup -----
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+
+      # ----- Install -----
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ----- Build -----
+      - name: Build n8n application
+        run: pnpm build:deploy
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # ----- Build Docker Image -----
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f docker/images/n8n/Dockerfile.hardened \
+            -t n8n:pre-deploy-check \
+            --build-arg N8N_VERSION=$(cat package.json | jq -r .version) \
+            .
+
+      # ----- Scan for CRITICAL Vulnerabilities -----
+      - name: Scan for CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'n8n:pre-deploy-check'
+          format: 'table'
+          exit-code: '1'  # Fail if vulnerabilities found
+          severity: 'CRITICAL'
+          vuln-type: 'os,library'
+          ignore-unfixed: false
+
+      # ----- Success Message -----
+      - name: Security gate passed
+        if: success()
+        run: |
+          echo "✅ Security gate passed!"
+          echo "No CRITICAL vulnerabilities detected."
+          echo "Deployment can proceed safely."
+
+# ============================================================================
+# HOW THIS PROTECTS YOU
+# ============================================================================
+#
+# This workflow creates a "security gate" that:
+#
+# 1. Runs BEFORE Render auto-deploys
+# 2. Scans for CRITICAL vulnerabilities only
+# 3. FAILS the workflow if any found
+# 4. Prevents push to master from completing
+#
+# If this workflow fails:
+# - Your push to master is marked as FAILED
+# - Render will NOT auto-deploy (if configured to deploy on success only)
+# - You must fix vulnerabilities before deploying
+#
+# ============================================================================
+# BYPASSING THE GATE (NOT RECOMMENDED)
+# ============================================================================
+#
+# In emergencies, you can bypass this check:
+#
+# Option 1: Push to a different branch
+#   git push origin feature-branch
+#   # Then manually trigger Render deploy from dashboard
+#
+# Option 2: Temporarily disable workflow
+#   # Rename this file to .yml.disabled
+#   # Deploy
+#   # Re-enable afterwards
+#
+# Option 3: Update severity threshold
+#   # Change severity: 'CRITICAL' to severity: 'CRITICAL,HIGH'
+#   # Only if you understand the risks
+#
+# ============================================================================
+# FIXING VULNERABILITIES
+# ============================================================================
+#
+# If this check fails:
+#
+# 1. View the workflow logs to see which CVEs were found
+# 2. Check if upstream n8n has fixes:
+#    git fetch upstream
+#    git merge upstream/master
+# 3. Check Dependabot PRs for patches
+# 4. If no fix available:
+#    - Add to ignore-unfixed: true (temporary)
+#    - Or wait for upstream patch
+#    - Or apply manual patch
+#
+# ============================================================================

@@ -1,0 +1,76 @@
+# ============================================================================
+# Dependabot Auto-Merge - Automatic merging of security patches
+# ============================================================================
+#
+# This workflow automatically merges Dependabot PRs for:
+# - Security patches (CRITICAL and HIGH severity)
+# - Patch version updates (production dependencies)
+#
+# Runs: On every Dependabot PR creation
+# Action: Auto-merge after tests pass
+# ============================================================================
+
+name: Dependabot Auto-Merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ===================================
+  # Auto-Merge Security Patches
+  # ===================================
+  auto-merge:
+    name: Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Auto-merge security patches
+        if: |
+          contains(github.event.pull_request.labels.*.name, 'security') ||
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' &&
+           steps.metadata.outputs.dependency-type == 'direct:production')
+        run: |
+          echo "Auto-merging security patch or production patch update"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-approve for development dependencies
+        if: steps.metadata.outputs.dependency-type == 'direct:development'
+        run: |
+          echo "Auto-approving development dependency update"
+          gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ============================================================================
+# HOW IT WORKS
+# ============================================================================
+#
+# 1. Workflow triggers when Dependabot creates or updates a PR
+# 2. Fetches metadata about the dependency update
+# 3. Auto-merges if:
+#    a. PR has "security" label (vulnerability fix)
+#    b. It's a patch update for production dependencies (e.g., 1.2.3 → 1.2.4)
+# 4. Auto-approves (but doesn't merge) development dependency updates
+#
+# Requires:
+# - Repository Settings > General > Pull Requests > "Allow auto-merge" enabled
+# - Repository Settings > Branches > Branch protection for master disabled
+#   OR configure branch protection to allow auto-merge
+#
+# ============================================================================

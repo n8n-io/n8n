@@ -1,0 +1,164 @@
+# ============================================================================
+# CodeQL Security Analysis - Static Code Analysis for Vulnerabilities
+# ============================================================================
+#
+# CodeQL analyzes your TypeScript/JavaScript code for:
+# - Security vulnerabilities (SQL injection, XSS, etc.)
+# - Code quality issues
+# - Common programming errors
+# - Best practice violations
+#
+# Runs: On push to master, PRs, and weekly schedule
+# Results: Published to GitHub Security tab
+# ============================================================================
+
+name: Security - CodeQL Analysis
+
+on:
+  push:
+    branches:
+      - master
+      - claude/**
+    paths:
+      - '**.ts'
+      - '**.js'
+      - '**.vue'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+  pull_request:
+    branches:
+      - master
+
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6:00 UTC
+
+  workflow_dispatch:
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
+jobs:
+  # ===================================
+  # CodeQL Analysis Job
+  # ===================================
+  analyze:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript']
+
+    steps:
+      # ----- Checkout -----
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ----- Initialize CodeQL -----
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+          config: |
+            paths-ignore:
+              - '**/node_modules/**'
+              - '**/dist/**'
+              - '**/build/**'
+              - '**/coverage/**'
+              - '**/*.test.ts'
+              - '**/*.spec.ts'
+
+      # ----- Setup Node.js & pnpm -----
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+
+      # ----- Install Dependencies -----
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ----- Build (Required for CodeQL) -----
+      - name: Build project
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # ----- Perform CodeQL Analysis -----
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
+
+# ============================================================================
+# VIEWING CODEQL RESULTS
+# ============================================================================
+#
+# After analysis runs, view results in:
+#
+# 1. GitHub Security Tab:
+#    - Repository > Security > Code scanning alerts
+#    - Filter by language (javascript-typescript)
+#    - See detailed vulnerability reports
+#
+# 2. Pull Request Annotations:
+#    - CodeQL comments directly on PR code
+#    - Shows exact line with vulnerability
+#    - Suggests fixes
+#
+# 3. Workflow Summary:
+#    - Actions > Security - CodeQL Analysis
+#    - Summary page shows vulnerability count
+#
+# ============================================================================
+# WHAT CODEQL DETECTS
+# ============================================================================
+#
+# Security Issues:
+# - SQL Injection (CWE-89)
+# - Cross-Site Scripting (XSS) (CWE-79)
+# - Path Traversal (CWE-22)
+# - Command Injection (CWE-78)
+# - Insecure Cryptography (CWE-327)
+# - Hardcoded Credentials (CWE-798)
+# - CSRF vulnerabilities
+# - Open Redirects
+# - Prototype Pollution
+# - And 200+ more security patterns
+#
+# Code Quality Issues:
+# - Unused variables
+# - Dead code
+# - Type errors
+# - Logic errors
+# - Performance issues
+#
+# ============================================================================
+# FALSE POSITIVES
+# ============================================================================
+#
+# If CodeQL reports a false positive:
+#
+# 1. Review the alert in GitHub Security tab
+# 2. If it's actually safe, click "Dismiss alert"
+# 3. Select reason: "False positive" or "Won't fix"
+# 4. Add comment explaining why
+#
+# To suppress in code:
+# // codeql[rule-id]
+# const safe = userInput; // This is actually safe because...
+#
+# ============================================================================
