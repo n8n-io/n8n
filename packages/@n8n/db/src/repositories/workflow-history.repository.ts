@@ -100,7 +100,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			...skipRules,
 		]);
 
-		const result = await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
+		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
 		return { seen: workflows.length, deleted: grouped.removed.length };
 	}
 }

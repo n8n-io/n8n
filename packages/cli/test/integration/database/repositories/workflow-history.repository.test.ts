@@ -224,7 +224,6 @@ describe('WorkflowHistoryRepository', () => {
 			expect(deleted).toBe(2);
 
 			const history = await repository.find();
-			// expect(history.length).toBe(4);
 			expect(history).toEqual([
 				expect.objectContaining({ versionId: id2 }),
 				expect.objectContaining({ versionId: id4 }),

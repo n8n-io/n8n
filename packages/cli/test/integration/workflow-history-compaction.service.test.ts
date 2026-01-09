@@ -203,23 +203,20 @@ describe('compacting cycle', () => {
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
 		const allVersions = allHistories.map((x) => x.versionId);
 
-		const expectedVersions = [
-			wf1_history[0],
-			wf1_history[1],
-			wf1_history[3],
-			wf2_history[0],
-			wf2_history[2],
-			wf3_history[0],
-			wf3_history[2],
-		].map((x) => x[1]);
+		const expectedVersions = [wf1_history[0], wf1_history[3], wf2_history[2], wf3_history[2]].map(
+			(x) => x[1],
+		);
 		expect(allVersions).toEqual(expect.arrayContaining(expectedVersions));
 
-		const includesWf1 = allVersions.includes(wf1_history[2][1]);
-		const includesWf2 = allVersions.includes(wf2_history[1][1]);
-		const includesWf3 = allVersions.includes(wf3_history[1][1]);
+		// Here we check that exactly one of the three workflows was not handled yet
+		// To confirm that batching made us stop after the second workflow
+		const includesWf1 =
+			allVersions.includes(wf1_history[1][1]) && allVersions.includes(wf1_history[2][1]);
+		const includesWf2 =
+			allVersions.includes(wf2_history[0][1]) && allVersions.includes(wf2_history[1][1]);
+		const includesWf3 =
+			allVersions.includes(wf3_history[0][1]) && allVersions.includes(wf3_history[1][1]);
 
-		// Batching should cause the compaction to stop before one of the three workflows
-		// Is handled.
 		expect(0 + +includesWf1 + +includesWf2 + +includesWf3).toBe(1);
 	});
 });
