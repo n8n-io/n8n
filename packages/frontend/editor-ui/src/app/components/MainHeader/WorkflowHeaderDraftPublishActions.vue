@@ -304,12 +304,12 @@ defineExpose({
 					<div :class="[$style.flex]">
 						<span
 							v-if="publishButtonConfig.showIndicator"
-							:class="[
-								$style.indicatorDot,
-								publishButtonConfig.indicatorClass === 'published' && $style.indicatorPublished,
-								publishButtonConfig.indicatorClass === 'changes' && $style.indicatorChanges,
-								publishButtonConfig.indicatorClass === 'error' && $style.indicatorIssues,
-							]"
+							:class="{
+								[$style.indicatorDot]: true,
+								[$style.indicatorPublished]: publishButtonConfig.indicatorClass === 'published',
+								[$style.indicatorChanges]: publishButtonConfig.indicatorClass === 'changes',
+								[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
+							}"
 						/>
 						<span
 							:class="[
