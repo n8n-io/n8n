@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
+import N8nCallout from '@n8n/design-system/components/N8nCallout';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -15,8 +16,8 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 
 const { state, isLoading } = useAsyncState(async () => {
-	const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
-	return response.data.personalSpacePublishing;
+	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
+	return settings.personalSpacePublishing;
 }, undefined);
 
 const personalSpacePublishing = computed({
@@ -43,10 +44,8 @@ async function updatePublishingSetting(value: boolean) {
 			message: '',
 		});
 	} catch (error) {
-		if (state.value) {
-			// Revert optimistic update on error
-			state.value.personalSpacePublishing = !value;
-		}
+		// Revert optimistic update on error
+		state.value = !value;
 		showError(error, i18n.baseText('settings.security.personalSpace.publishing.error'));
 	}
 }
@@ -62,6 +61,9 @@ async function updatePublishingSetting(value: boolean) {
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
 		</N8nHeading>
 
+		<N8nCallout theme="warning">
+			{{ i18n.baseText('settings.security.personalSpace.publishing.warning') }}
+		</N8nCallout>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true">

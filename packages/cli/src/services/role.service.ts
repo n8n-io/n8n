@@ -1,5 +1,5 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -33,6 +33,8 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { RoleCacheService } from './role-cache.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -46,6 +48,7 @@ export class RoleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
+		private readonly logger: Logger,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
@@ -332,66 +335,45 @@ export class RoleService {
 		}
 	}
 
-	/**
-	 * Adds a scope to a role by directly manipulating the role_scope join table.
-	 * This method works for both system roles and custom roles.
-	 *
-	 * @param roleSlug - The slug of the role to add the scope to
-	 * @param scopeSlug - The slug of the scope to add
-	 * @throws {NotFoundError} If the role doesn't exist
-	 */
-	async addScopeToRole(roleSlug: string, scopeSlug: string): Promise<void> {
-		// 1. Verify role exists
+	async addScopeToRole(roleSlug: Role['slug'], scopeSlug: Scope): Promise<void> {
 		const role = await this.roleRepository.findBySlug(roleSlug);
 		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
 			throw new NotFoundError(`Role ${roleSlug} not found`);
 		}
 
-		// 2. Check if scope already exists on role
-		const hasScope = role.scopes.some((s) => s.slug === scopeSlug);
-		if (hasScope) {
-			return; // Idempotent - already has the scope
+		const scope = await this.scopeRepository.findOne({ where: { slug: scopeSlug } });
+
+		if (!scope) {
+			this.logger.error(
+				`Scope ${scopeSlug} not found - unable to add this scope to role ${roleSlug}`,
+			);
+			throw new NotFoundError(`Scope ${scopeSlug} not found`);
 		}
 
-		// 3. Use manager to insert into role_scope table
-		await this.roleRepository.manager.query(
-			`INSERT INTO role_scope (roleSlug, scopeSlug) VALUES (?, ?)
-			 ON CONFLICT (roleSlug, scopeSlug) DO NOTHING`,
-			[roleSlug, scopeSlug],
-		);
+		if (role.scopes.find((s) => s.slug === scopeSlug)) {
+			this.logger.debug(`Scope ${scopeSlug} is already assigned on role ${roleSlug}`);
+			return;
+		}
 
-		// 4. Invalidate cache after scope modification
-		await this.roleCacheService.invalidateCache();
+		this.logger.debug(`Adding scope ${scopeSlug} to role ${roleSlug}`);
+		role.scopes.push(scope);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Added scope ${scopeSlug} to role ${roleSlug}`);
 	}
 
-	/**
-	 * Removes a scope from a role by directly manipulating the role_scope join table.
-	 * This method works for both system roles and custom roles.
-	 *
-	 * @param roleSlug - The slug of the role to remove the scope from
-	 * @param scopeSlug - The slug of the scope to remove
-	 * @throws {NotFoundError} If the role doesn't exist
-	 */
 	async removeScopeFromRole(roleSlug: string, scopeSlug: string): Promise<void> {
-		// 1. Verify role exists
 		const role = await this.roleRepository.findBySlug(roleSlug);
 		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
 			throw new NotFoundError(`Role ${roleSlug} not found`);
 		}
 
-		// 2. Check if scope exists on role
-		const hasScope = role.scopes.some((s) => s.slug === scopeSlug);
-		if (!hasScope) {
-			return; // Idempotent - scope not present
-		}
-
-		// 3. Use manager to delete from role_scope table
-		await this.roleRepository.manager.query(
-			'DELETE FROM role_scope WHERE roleSlug = ? AND scopeSlug = ?',
-			[roleSlug, scopeSlug],
-		);
-
-		// 4. Invalidate cache after scope modification
-		await this.roleCacheService.invalidateCache();
+		this.logger.debug(`Removing scope ${scopeSlug} from role ${roleSlug}`);
+		role.scopes = role.scopes.filter((s) => s.slug !== scopeSlug);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Removed scope ${scopeSlug} from role ${roleSlug}`);
 	}
 }
