@@ -20,7 +20,6 @@ import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
@@ -88,8 +87,6 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
-const PrebuiltAgentTemplatesView = async () =>
-	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -132,26 +129,6 @@ export const routes: RouteRecordRaw[] = [
 			},
 			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/templates/agents',
-		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
-		component: PrebuiltAgentTemplatesView,
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			middleware: ['authenticated'],
-		},
-		beforeEnter: (_to, _from, next) => {
-			const calloutHelpers = useCalloutHelpers();
-			const templatesStore = useTemplatesStore();
-
-			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
-				window.location.href = templatesStore.websiteTemplateRepositoryURL;
-			} else {
-				next();
-			}
 		},
 	},
 	// Following two routes are kept in-app:
