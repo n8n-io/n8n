@@ -1,11 +1,10 @@
-import { sharedTags } from '@n8n/storybook/main';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
 import { setup } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 
-import { N8nPlugin } from '../src/plugin';
+import { N8nPlugin } from '@n8n/design-system';
 
 import './storybook.scss';
 import { allModes } from './modes';
@@ -94,4 +93,4 @@ export const decorators = [
 	}),
 ];
 
-export const tags = sharedTags;
+export const tags = ['autodocs'];
