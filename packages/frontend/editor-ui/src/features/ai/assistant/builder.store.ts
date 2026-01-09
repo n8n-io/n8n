@@ -44,6 +44,7 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -118,6 +119,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track the last user message ID for telemetry
 	const lastUserMessageId = ref<string | undefined>();
+
+	const documentTitle = useDocumentTitle();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -267,6 +270,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		trackEndBuilderResponse(payload);
 		currentStreamingMessage.value = undefined;
+
+		// Update page title on completion. We show Done when the user is not on the page
+		if (document.hidden) {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+		} else {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+		}
 	}
 
 	function abortStreaming() {
@@ -329,6 +339,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		// Updates page title to show AI is building
+		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
 	}
 
 	/**
@@ -873,11 +886,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// 1. Restore the workflow using existing workflow history store
-		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(
-			workflowId,
-			versionId,
-			false,
-		);
+		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(workflowId, versionId);
 
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
@@ -908,6 +917,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 
 		return updatedWorkflow;
+	}
+
+	/**
+	 * Clears the [Done] indicator from the page title and resets to IDLE.
+	 * Should be called from a component that watches document visibility.
+	 */
+	function clearDoneIndicatorTitle() {
+		if (documentTitle.getDocumentState() === 'AI_DONE') {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+		}
 	}
 
 	// Public API
@@ -949,5 +968,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,
+		// Title management for AI builder
+		clearDoneIndicatorTitle,
 	};
 });

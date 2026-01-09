@@ -9,22 +9,17 @@ import type {
 	NodeFilterType,
 	OpenTemplateElement,
 	LinkCreateElement,
-	ViewCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_OTHER_TOOLS,
-	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
-	AI_CATEGORY_LANGUAGE_MODELS,
-	AI_CATEGORY_MEMORY,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
-	PRE_BUILT_AGENTS_COLLECTION,
 	RECOMMENDED_NODES,
 	BETA_NODES,
 } from '@/app/constants';
@@ -42,10 +37,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
-import {
-	PrebuiltAgentTemplates,
-	SampleTemplates,
-} from '@/features/workflows/templates/utils/workflowSamples';
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -362,45 +354,6 @@ export function getRagStarterCallout(): OpenTemplateElement {
 	};
 }
 
-// Callout without a divider
-export function getPreBuiltAgentsCallout(): ViewCreateElement {
-	return {
-		uuid: uuidv4(),
-		key: PRE_BUILT_AGENTS_COLLECTION,
-		type: 'view',
-		properties: {
-			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
-			icon: 'box',
-			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
-			borderless: true,
-			tag: {
-				type: 'info',
-				text: i18n.baseText('generic.recommended'),
-			},
-		},
-	};
-}
-
-// Callout with divider after it
-export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
-	return {
-		uuid: uuidv4(),
-		key: PRE_BUILT_AGENTS_COLLECTION,
-		type: 'link',
-		properties: {
-			key: PRE_BUILT_AGENTS_COLLECTION,
-			url: '',
-			title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
-			icon: 'box',
-			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
-			tag: {
-				type: 'info',
-				text: i18n.baseText('generic.recommended'),
-			},
-		},
-	};
-}
-
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
 		uuid: 'ai_templates_root',
@@ -427,62 +380,6 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push(getRagStarterCallout());
 	}
-	return results;
-}
-
-const getTemplateLink = (
-	templateId: string,
-	availableTemplates: OpenTemplateElement[],
-): OpenTemplateElement | undefined => {
-	const templateLink = availableTemplates.find((template) => template.key === templateId);
-
-	if (templateLink?.properties) {
-		templateLink.properties.compact = true;
-	}
-
-	return templateLink;
-};
-
-export function getActiveViewCallouts(
-	title: string | undefined,
-	isPreBuiltAgentsCalloutVisible: boolean,
-	templates: OpenTemplateElement[],
-) {
-	const results: INodeCreateElement[] = [];
-
-	if (isPreBuiltAgentsCalloutVisible && title) {
-		if (title === AI_CATEGORY_LANGUAGE_MODELS) {
-			results.push(getPreBuiltAgentsCalloutWithDivider());
-		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
-			results.push(getPreBuiltAgentsCallout());
-		} else if (title === 'Google Calendar') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.CalendarAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Telegram') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Google Drive') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.KnowledgeStoreAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Google Sheets') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.TaskManagementAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		} else if (title === 'Gmail') {
-			const templateLink = getTemplateLink(PrebuiltAgentTemplates.EmailTriageAgent, templates);
-			if (templateLink) {
-				results.push(templateLink);
-			}
-		}
-	}
-
 	return results;
 }
 

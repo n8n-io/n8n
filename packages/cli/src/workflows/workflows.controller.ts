@@ -1,8 +1,10 @@
 import {
 	ActivateWorkflowDto,
+	CreateWorkflowDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
+	UpdateWorkflowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -38,6 +40,14 @@ import express from 'express';
 import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { CredentialsService } from '../credentials/credentials.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -49,6 +59,7 @@ import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
@@ -57,15 +68,6 @@ import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import { userHasScopes } from '@/permissions.ee/check-access';
-
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowRequest } from './workflow.request';
-import { WorkflowService } from './workflow.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { CredentialsService } from '../credentials/credentials.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -95,44 +97,32 @@ export class WorkflowsController {
 	) {}
 
 	@Post('/')
-	async create(req: WorkflowRequest.Create) {
-		if (req.body.id) {
-			const workflowExists = await this.workflowRepository.existsBy({ id: req.body.id });
+	async create(req: AuthenticatedRequest, _res: unknown, @Body body: CreateWorkflowDto) {
+		if (body.id) {
+			const workflowExists = await this.workflowRepository.existsBy({ id: body.id });
 			if (workflowExists) {
-				throw new BadRequestError(`Workflow with id ${req.body.id} exists already.`);
+				throw new BadRequestError(`Workflow with id ${body.id} exists already.`);
 			}
 		}
-		// @ts-expect-error: We shouldn't accept this because it can
-		// mess with relations of other workflows
-		delete req.body.shared;
 
-		// @ts-expect-error: We shouldn't accept this, this will be set when activating
-		if (req.body.activeVersionId || req.body.active) {
-			this.logger.warn(
-				'Creating a workflow as active is not supported. The workflow will be created as inactive.',
-				{ userId: req.user.id },
-			);
-
-			// @ts-expect-error: We shouldn't accept this
-			delete req.body.activeVersionId;
-			// @ts-expect-error: We shouldn't accept this
-			delete req.body.activeVersion;
-			req.body.active = false;
-		}
-
-		const { autosaved = false } = req.body;
+		const { autosaved = false } = body;
 
 		const newWorkflow = new WorkflowEntity();
 
-		Object.assign(newWorkflow, req.body);
+		// Security: Object.assign is now safe because the DTO validates and filters all input
+		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
+		// triggerCount, versionCounter, isArchived, etc. are never set from user input
+		Object.assign(newWorkflow, body);
 
+		// Ensure workflow is created as inactive
+		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 
 		await validateEntity(newWorkflow);
 
 		await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-		const { tags: tagIds } = req.body;
+		const { tags: tagIds } = body;
 
 		if (tagIds?.length && !this.globalConfig.tags.disabled) {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
@@ -166,8 +156,8 @@ export class WorkflowsController {
 
 		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const { parentFolderId } = req.body;
-			let { projectId } = req.body;
+			const { parentFolderId } = body;
+			let { projectId } = body;
 
 			if (projectId === undefined) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -259,7 +249,7 @@ export class WorkflowsController {
 			publicApi: false,
 			projectId: project!.id,
 			projectType: project!.type,
-			uiContext: req.body.uiContext,
+			uiContext: body.uiContext,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
@@ -440,22 +430,28 @@ export class WorkflowsController {
 
 	@Patch('/:workflowId')
 	@ProjectScope('workflow:update')
-	async update(req: WorkflowRequest.Update) {
-		const { workflowId } = req.params;
+	async update(
+		req: WorkflowRequest.Update,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: UpdateWorkflowDto,
+	) {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } =
-			req.body;
+		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
-		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
+		// Validate timeSavedMode if present
 		if (
-			rest.settings?.timeSavedMode !== undefined &&
-			!['fixed', 'dynamic'].includes(rest.settings.timeSavedMode)
+			body.settings?.timeSavedMode !== undefined &&
+			!['fixed', 'dynamic'].includes(body.settings.timeSavedMode)
 		) {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
+		// Security: Object.assign is now safe because the DTO validates and filters all input
+		// Only fields defined in UpdateWorkflowDto are assigned; internal fields like
+		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -603,11 +599,29 @@ export class WorkflowsController {
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 
-		return await this.workflowExecutionService.executeManually(
+		const result = await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
 			req.headers['push-ref'],
 		);
+
+		if ('executionId' in result) {
+			this.eventService.emit('workflow-executed', {
+				user: {
+					id: req.user.id,
+					email: req.user.email,
+					firstName: req.user.firstName,
+					lastName: req.user.lastName,
+					role: req.user.role,
+				},
+				workflowId: req.body.workflowData.id,
+				workflowName: req.body.workflowData.name,
+				executionId: result.executionId,
+				source: 'user-manual',
+			});
+		}
+
+		return result;
 	}
 
 	@Licensed('feat:sharing')

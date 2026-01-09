@@ -358,6 +358,7 @@ $hoverBackground: var(--color--background--light-1);
 
 .unnamedTime {
 	margin-left: var(--spacing--5xs);
+	white-space: nowrap;
 }
 
 .actions {
