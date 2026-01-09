@@ -84,8 +84,16 @@ export class WorkflowChangeSet<T extends DiffableNode> {
 	readonly connections: ConnectionsDiff;
 
 	constructor(from: DiffableWorkflow<T>, to: DiffableWorkflow<T>) {
-		this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
-		this.connections = compareConnections(from.connections, to.connections);
+		if (from === to) {
+			// avoid expensive deep comparison
+			this.nodes = new Map(
+				from.nodes.map((node) => [node.id, { node, status: NodeDiffStatus.Eq }]),
+			);
+			this.connections = { added: {}, removed: {} };
+		} else {
+			this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
+			this.connections = compareConnections(from.connections, to.connections);
+		}
 	}
 }
 /**
@@ -171,26 +179,6 @@ export const SKIP_RULES = {
 	skipDifferentUsers,
 };
 
-export type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {
-	workflowChangeSet: WorkflowChangeSet<W['nodes'][number]>;
-	groupedWorkflows: W[];
-	from: W;
-	to: W;
-};
-
-function compareWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
-	previous: W,
-	next: W,
-): GroupedWorkflowHistory<W> {
-	const workflowChangeSet = new WorkflowChangeSet(previous, next);
-	return {
-		workflowChangeSet,
-		groupedWorkflows: [],
-		from: previous,
-		to: next,
-	};
-}
-
 export type DiffRule<
 	W extends WorkflowDiffBase = WorkflowDiffBase,
 	N extends W['nodes'][number] = W['nodes'][number],
@@ -200,51 +188,36 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
 	skipRules: Array<DiffRule<W>> = [],
-): Array<GroupedWorkflowHistory<W>> {
-	if (workflows.length === 0) return [];
+): { removed: W[]; remaining: W[] } {
+	if (workflows.length === 0) return { removed: [], remaining: [] };
 	if (workflows.length === 1) {
-		return [
-			{
-				workflowChangeSet: new WorkflowChangeSet(workflows[0], workflows[0]),
-				groupedWorkflows: [],
-				from: workflows[0],
-				to: workflows[0],
-			},
-		];
+		return {
+			removed: [],
+			remaining: workflows,
+		};
 	}
 
-	const diffs: Array<GroupedWorkflowHistory<W>> = [];
+	const remaining = [...workflows];
+	const removed: W[] = [];
 
-	for (let i = 0; i < workflows.length - 1; ++i) {
-		diffs.push(compareWorkflows(workflows[i], workflows[i + 1]));
-	}
-	let prevDiffsLength = diffs.length;
-	do {
-		prevDiffsLength = diffs.length;
-		const n = diffs.length;
-		diffLoop: for (let i = n - 1; i > 0; --i) {
-			const wcs = new WorkflowChangeSet(diffs[i - 1].from, diffs[i].to);
-			for (const shouldSkip of skipRules) {
-				if (shouldSkip(diffs[i - 1].from, diffs[i].to, wcs)) continue diffLoop;
-			}
-			for (const rule of rules) {
-				const shouldMerge = rule(diffs[i - 1].from, diffs[i].to, wcs);
-				if (shouldMerge) {
-					const right = diffs.splice(i, 1)[0];
-					if (!right) throw new Error('invariant broken');
+	const n = remaining.length;
 
-					// merge diffs
-					diffs[i - 1].workflowChangeSet = wcs;
-					diffs[i - 1].groupedWorkflows.push(diffs[i - 1].to);
-					diffs[i - 1].groupedWorkflows.push(...right.groupedWorkflows);
-					diffs[i - 1].to = right.to;
-					break;
-				}
+	diffLoop: for (let i = n - 1; i > 0; --i) {
+		const wcs = new WorkflowChangeSet(remaining[i - 1], remaining[i]);
+		for (const shouldSkip of skipRules) {
+			if (shouldSkip(remaining[i - 1], remaining[i], wcs)) continue diffLoop;
+		}
+		for (const rule of rules) {
+			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs);
+			if (shouldMerge) {
+				const left = remaining.splice(i - 1, 1)[0];
+				removed.push(left);
+				break;
 			}
 		}
-	} while (prevDiffsLength !== diffs.length);
+	}
 
-	return diffs;
+	return { removed, remaining };
 }
 
 /**

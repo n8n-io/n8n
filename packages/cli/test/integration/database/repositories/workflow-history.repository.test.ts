@@ -113,7 +113,7 @@ describe('WorkflowHistoryRepository', () => {
 			}
 		});
 
-		it.only('should never prune previously active or named versions', async () => {
+		it('should never prune previously active or named versions', async () => {
 			// ARRANGE
 			const id1 = uuid();
 			const id2 = uuid();
@@ -170,15 +170,13 @@ describe('WorkflowHistoryRepository', () => {
 
 			// ASSERT
 			expect(seen).toBe(5);
-			// expect(deleted).toBe(1);
+			expect(deleted).toBe(2);
 
 			const history = await repository.find();
 			// expect(history.length).toBe(4);
 			expect(history).toEqual([
 				expect.objectContaining({ versionId: id1 }),
-				// expect.objectContaining({ versionId: id2 }),
-				// expect.objectContaining({ versionId: id3 }),
-				// expect.objectContaining({ versionId: id4 }),
+				expect.objectContaining({ versionId: id2 }),
 				expect.objectContaining({ versionId: id5 }),
 			]);
 
