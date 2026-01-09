@@ -11,7 +11,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
@@ -223,13 +223,19 @@ export async function validateWebhookAuthentication(
 		const providedAuth = basicAuth(req);
 		// Authorization data is missing
 		if (!providedAuth) {
+			console.log('no provided auth');
 			const authToken = headers['x-auth-token'];
 			if (!authToken) {
+				console.log('no authToken', headers);
 				throw new WebhookAuthorizationError(401);
 			}
 
 			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
-			if (!expectedAuthToken || expectedAuthToken !== authToken) {
+			if (
+				!expectedAuthToken ||
+				expectedAuthToken.length !== authToken.length ||
+				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken as string))
+			) {
 				throw new WebhookAuthorizationError(403);
 			}
 		} else if (

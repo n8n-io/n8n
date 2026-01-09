@@ -228,25 +228,25 @@ describe('FormTrigger', () => {
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
 
-		await expect(
-			testVersionedWebhookTriggerNode(FormTrigger, 2, {
-				mode: 'manual',
-				node: {
-					parameters: {
-						formTitle: 'Test Form',
-						formDescription: 'Test Description',
-						responseMode: 'onReceived',
-						formFields: { values: formFields },
-						authentication: 'basicAuth',
-					},
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					authentication: 'basicAuth',
 				},
-				request: { method: 'POST', query: {} },
-				credential: {
-					user: 'testuser',
-					password: 'testpass',
-				},
-			}),
-		).rejects.toThrow('Invalid form post authentication token');
+			},
+			request: { method: 'POST', query: {}, headers: {} },
+			credential: {
+				user: 'testuser',
+				password: 'testpass',
+			},
+		});
+
+		expect(responseData).toEqual({ noWebhookResponse: true });
 	});
 
 	it('should validate POST requests with correct authentication token', async () => {
@@ -286,9 +286,8 @@ describe('FormTrigger', () => {
 			},
 			request: {
 				method: 'POST',
-				query: { token },
-				headers: { 'content-type': 'multipart/form-data' },
 				contentType: 'multipart/form-data',
+				headers: { 'content-type': 'multipart/form-data', 'x-auth-token': token },
 			},
 			bodyData,
 			credential: credentials,

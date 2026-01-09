@@ -101,7 +101,7 @@ describe('WaitingWebhooks', () => {
 	describe('findAccessControlOptions', () => {
 		it('should return * as allowed origins', async () => {
 			const options = await waitingWebhooks.findAccessControlOptions();
-			expect(options).toBe({ allowedOrigins: '*' });
+			expect(options).toEqual({ allowedOrigins: '*' });
 		});
 	});
 
