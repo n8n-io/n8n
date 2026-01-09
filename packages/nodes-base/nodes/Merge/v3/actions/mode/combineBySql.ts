@@ -20,6 +20,8 @@ type AlaSQLBase = typeof alasqlImport;
 type AlaSQLExtended = AlaSQLBase & {
 	// Access `engines` internal structure to override file access engines
 	engines?: AlaSQLBase['fn'];
+	// Access `into` handlers to override file write operations
+	into?: AlaSQLBase['fn'];
 	// Fix Database constructor typing
 	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
 };
@@ -53,14 +55,14 @@ function disableAlasqlFileAccess() {
 		alasql.from.XLS = disabledFunction;
 	}
 
-	if ('into' in alasql) {
-		const into = alasql.into as unknown as any;
-		into.FILE = disabledFunction;
-		into.JSON = disabledFunction;
-		into.TXT = disabledFunction;
-		into.CSV = disabledFunction;
-		into.XLSX = disabledFunction;
-		into.XLS = disabledFunction;
+	// Also disable the INTO handlers which are used for file write operations
+	if (alasql.into) {
+		alasql.into.FILE = disabledFunction;
+		alasql.into.JSON = disabledFunction;
+		alasql.into.TXT = disabledFunction;
+		alasql.into.CSV = disabledFunction;
+		alasql.into.XLSX = disabledFunction;
+		alasql.into.XLS = disabledFunction;
 	}
 
 	// Override the engines that handle file operations

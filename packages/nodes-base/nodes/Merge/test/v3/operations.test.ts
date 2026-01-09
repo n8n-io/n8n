@@ -561,6 +561,90 @@ describe('Test MergeV3, combineBySql operation', () => {
 			});
 		});
 
+		it('should block INTO FILE() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO FILE('output.txt') FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
+		it('should block INTO JSON() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO JSON('output.json') FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
+		it('should block INTO CSV() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO CSV('output.csv', {headers: true}) FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
+		it('should block INTO TXT() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO TXT('output.txt') FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
+		it('should block INTO XLSX() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO XLSX('output.xlsx') FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
+		it('should block INTO XLS() write operations', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'combineBySql',
+				query: "SELECT * INTO XLS('output.xls') FROM input1",
+			};
+
+			await expect(
+				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
+			).rejects.toMatchObject({
+				message: 'Issue while executing query',
+				description: 'File access operations are disabled for security reasons',
+			});
+		});
+
 		it('should still allow normal SQL operations', async () => {
 			const nodeParameters: IDataObject = {
 				operation: 'combineBySql',
