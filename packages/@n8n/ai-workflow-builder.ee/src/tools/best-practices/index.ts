@@ -13,7 +13,7 @@ import { FormInputBestPractices } from './form-input';
 // import { HumanInTheLoopBestPractices } from './human-in-the-loop';
 // import { KnowledgeBaseBestPractices } from './knowledge-base';
 // import { MonitoringBestPractices } from './monitoring';
-// import { NotificationBestPractices } from './notification';
+import { NotificationBestPractices } from './notification';
 import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 // import { SchedulingBestPractices } from './scheduling';
 // import { TriageBestPractices } from './triage';
@@ -30,7 +30,7 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.ENRICHMENT]: undefined, // new EnrichmentBestPractices(),
 	[WorkflowTechnique.FORM_INPUT]: new FormInputBestPractices(),
 	[WorkflowTechnique.KNOWLEDGE_BASE]: undefined, // new KnowledgeBaseBestPractices(),
-	[WorkflowTechnique.NOTIFICATION]: undefined, // new NotificationBestPractices(),
+	[WorkflowTechnique.NOTIFICATION]: new NotificationBestPractices(),
 	[WorkflowTechnique.TRIAGE]: undefined, // new TriageBestPractices(),
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined, // new HumanInTheLoopBestPractices(),
 	[WorkflowTechnique.MONITORING]: undefined, // new MonitoringBestPractices(),

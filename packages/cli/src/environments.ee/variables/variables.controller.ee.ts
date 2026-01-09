@@ -72,6 +72,7 @@ export class VariablesController {
 	}
 
 	@Delete('/:id')
+	@Licensed('feat:variables')
 	async deleteVariable(req: AuthenticatedRequest<{ id: string }>) {
 		await this.variablesService.deleteForUser(req.user, req.params.id);
 

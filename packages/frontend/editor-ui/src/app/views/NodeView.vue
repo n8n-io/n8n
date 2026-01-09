@@ -534,7 +534,12 @@ function updateNodesIssues() {
 
 async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	documentTitle.setDocumentTitle(data.name, 'IDLE');
+	// Show AI_BUILDING status if builder is actively streaming, otherwise IDLE
+	if (builderStore.streaming) {
+		documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
+	} else {
+		documentTitle.setDocumentTitle(data.name, 'IDLE');
+	}
 
 	await initializeWorkspace(data);
 
@@ -1504,7 +1509,6 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 				await openWorkflow(workflowData);
 			}
 		}

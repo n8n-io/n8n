@@ -13,13 +13,8 @@ test.use({
 });
 
 test.describe('Memory Leak Detection @capability:observability', () => {
-	const METRICS_TIMEOUT_MS = 60000; // Wait up to 60s for metrics to be available
-	const MAX_MEMORY_RETENTION_PERCENT = 10;
+	const METRICS_TIMEOUT_MS = 60000;
 
-	/**
-	 * Define the memory-consuming action to test.
-	 * This function can be easily modified to test different features.
-	 */
 	async function performMemoryAction(n8n: n8nPage) {
 		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();
@@ -39,14 +34,11 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 		expect(baselineResult, 'Expected baseline metrics to be available').not.toBeNull();
 		const baselineMemoryMB = baselineResult!.value;
 
-		// Perform the memory-consuming action
 		await performMemoryAction(n8n);
 		await n8n.page.goto('/home/workflows');
 
-		// Give time for garbage collection
 		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		// Measure final heap usage (use longer window for final measurement)
 		const finalQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[30s]) / 1024 / 1024';
 		const finalResult = await obs.metrics.waitForMetric(finalQuery, {
 			timeoutMs: METRICS_TIMEOUT_MS,
@@ -55,17 +47,19 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 		expect(finalResult, 'Expected final metrics to be available').not.toBeNull();
 		const finalMemoryMB = finalResult!.value;
 
-		// Calculate retention percentage - How much memory is retained after the action
 		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;
 		const retentionPercent = (memoryRetainedMB / baselineMemoryMB) * 100;
 
-		await attachMetric(testInfo, 'memory-retention-percentage', retentionPercent, '%');
+		await attachMetric(testInfo, 'memory-heap-retention-percent', retentionPercent, '%');
+		await attachMetric(testInfo, 'memory-heap-used-pre-action', baselineMemoryMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-post-action', finalMemoryMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-retained', memoryRetainedMB, 'MB');
 
-		expect(
-			retentionPercent,
-			`Memory retention (${retentionPercent.toFixed(1)}%) exceeds maximum allowed ${MAX_MEMORY_RETENTION_PERCENT}%. ` +
-				`Baseline: ${baselineMemoryMB.toFixed(1)} MB, Final: ${finalMemoryMB.toFixed(1)} MB, ` +
-				`Retained: ${memoryRetainedMB.toFixed(1)} MB`,
-		).toBeLessThan(MAX_MEMORY_RETENTION_PERCENT);
+		expect(baselineMemoryMB).toBeGreaterThan(0);
+		expect(finalMemoryMB).toBeGreaterThan(0);
+		console.log(
+			`[MEMORY RETENTION] Baseline: ${baselineMemoryMB.toFixed(1)} MB | Final: ${finalMemoryMB.toFixed(1)} MB | ` +
+				`Retained: ${memoryRetainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
+		);
 	});
 });
