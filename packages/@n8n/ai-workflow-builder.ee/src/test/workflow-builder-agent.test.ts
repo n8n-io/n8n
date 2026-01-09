@@ -221,6 +221,22 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
+		it('should handle 401 expired token error', async () => {
+			const expiredTokenError = Object.assign(new Error('Token expired'), { status: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
 		it('should handle invalid request errors', async () => {
 			const invalidRequestError = Object.assign(new Error('Request failed'), {
 				error: {

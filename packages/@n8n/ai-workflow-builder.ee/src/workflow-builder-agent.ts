@@ -656,10 +656,10 @@ export class WorkflowBuilderAgent {
 		}
 
 		// Check for status/statusCode property being 401
-		if ('status' in error && error.status === 401) {
-			return true;
-		}
-		if ('statusCode' in error && error.statusCode === 401) {
+		if (
+			('status' in error && error.status === 401) ||
+			('statusCode' in error && error.statusCode === 401)
+		) {
 			return true;
 		}
 
