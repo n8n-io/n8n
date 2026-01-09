@@ -111,6 +111,9 @@ export class Perplexity implements INodeType {
 		requestDefaults: {
 			baseURL: 'https://api.perplexity.ai',
 			ignoreHttpStatusErrors: true,
+			headers: {
+				'X-Service': 'n8n',
+			},
 		},
 		properties: [
 			{
