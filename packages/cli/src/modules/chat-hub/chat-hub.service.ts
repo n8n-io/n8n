@@ -683,9 +683,9 @@ export class ChatHubService {
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
 
-		if (chatResponseNodes.length > 0 && !['responseNode', 'responseNodes'].includes(responseMode)) {
+		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
 			throw new BadRequestError(
-				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or "Using \'Respond to Webhook\' Node." or remove the nodes from the workflow.',
+				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
 			);
 		}
 
