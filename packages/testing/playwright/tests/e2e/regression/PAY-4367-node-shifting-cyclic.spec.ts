@@ -45,7 +45,7 @@ test.describe('PAY-4367: Node shifting in cyclic workflows', () => {
 
 		// ASSERT: Start should NOT have shifted (it's to the left of insertion)
 		// This was the bug - Start would shift because it's "downstream" via the cycle
-		expect(posStartAfter.x).toBeCloseTo(posStartBefore.x, 0);
+		expect(posStartAfter.x).toBe(posStartBefore.x);
 
 		// ASSERT: Middle and End should have shifted right
 		expect(posMiddleAfter.x).toBeGreaterThan(posMiddleBefore.x);
