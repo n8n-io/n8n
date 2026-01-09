@@ -65,7 +65,7 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
 		default: () => [],
 	}),
-	// Technique categories identified from categorize_prompt tool for telemetry
+	// Technique categories identified from get_best_practices tool for telemetry
 	techniqueCategories: Annotation<string[]>({
 		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
 		default: () => [],
