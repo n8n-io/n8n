@@ -185,11 +185,15 @@ describe('AiWorkflowBuilderService', () => {
 		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
 		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
 
-		// Mock WorkflowBuilderAgent
-		MockedWorkflowBuilderAgent.mockImplementation(() => {
+		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
+		MockedWorkflowBuilderAgent.mockImplementation((config) => {
 			const mockAgent = mock<WorkflowBuilderAgent>();
 			(mockAgent.chat as jest.Mock).mockImplementation(async function* () {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
+				// Simulate the agent calling onGenerationSuccess after successful stream
+				if (config.onGenerationSuccess) {
+					await config.onGenerationSuccess();
+				}
 			});
 			return mockAgent;
 		});

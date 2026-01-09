@@ -46,6 +46,8 @@ export interface WorkflowBuilderAgentConfig {
 	runMetadata?: Record<string, unknown>;
 	/** Feature flags for enabling/disabling features */
 	featureFlags?: BuilderFeatureFlags;
+	/** Callback when generation completes successfully (not aborted) */
+	onGenerationSuccess?: () => Promise<void>;
 }
 
 export interface ExpressionValue {
@@ -81,6 +83,7 @@ export class WorkflowBuilderAgent {
 	private tracer?: LangChainTracer;
 	private instanceUrl?: string;
 	private runMetadata?: Record<string, unknown>;
+	private onGenerationSuccess?: () => Promise<void>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -91,6 +94,7 @@ export class WorkflowBuilderAgent {
 		this.tracer = config.tracer;
 		this.instanceUrl = config.instanceUrl;
 		this.runMetadata = config.runMetadata;
+		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
 	/**
@@ -242,7 +246,13 @@ export class WorkflowBuilderAgent {
 			for await (const output of streamProcessor) {
 				yield output;
 			}
+			// Only call onGenerationSuccess if stream completed without errors
+			if (this.onGenerationSuccess) {
+				await this.onGenerationSuccess();
+			}
 		} catch (error) {
+			// handleAgentStreamError returns for aborts, throws for other errors
+			// If it returns (abort case), onGenerationSuccess is not called
 			await this.handleAgentStreamError(error, agent, threadConfig);
 		}
 	}

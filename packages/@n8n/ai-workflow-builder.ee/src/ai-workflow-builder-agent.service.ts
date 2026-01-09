@@ -182,9 +182,10 @@ export class AiWorkflowBuilderService {
 				n8nVersion: this.n8nVersion,
 				featureFlags: featureFlags ?? {},
 			},
+			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
 		});
 
-		return { agent, authHeaders };
+		return { agent };
 	}
 
 	private async onGenerationSuccess(
@@ -211,7 +212,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const { agent, authHeaders } = await this.getAgent(user, payload.id, payload.featureFlags);
+		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
@@ -219,10 +220,7 @@ export class AiWorkflowBuilderService {
 			yield output;
 		}
 
-		// After the stream completes successfully, track generation success for credits
-		await this.onGenerationSuccess(user, authHeaders);
-
-		// After the stream completes, track telemetry
+		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
 				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
