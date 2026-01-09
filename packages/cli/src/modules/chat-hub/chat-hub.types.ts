@@ -66,12 +66,7 @@ const ChatTriggerResponseModeSchema = z.enum([
 	'responseNodes',
 ]);
 export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
-export type NonStreamingResponseMode = Exclude<ChatTriggerResponseMode, 'streaming'>;
-export type ResponseNodesResponseMode = 'responseNode' | 'responseNodes';
-
-export function isResponseNodesResponseMode(mode: string): mode is ResponseNodesResponseMode {
-	return mode === 'responseNode' || mode === 'responseNodes';
-}
+export type NonStreamingResponseMode = 'lastNode' | 'responseNodes';
 
 export const chatTriggerParamsShape = z.object({
 	availableInChat: z.boolean().optional().default(false),

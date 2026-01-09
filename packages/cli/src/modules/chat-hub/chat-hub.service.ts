@@ -82,8 +82,6 @@ import {
 	chatTriggerParamsShape,
 	ChatTriggerResponseMode,
 	NonStreamingResponseMode,
-	ResponseNodesResponseMode,
-	isResponseNodesResponseMode,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -246,7 +244,7 @@ export class ChatHubService {
 		const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId);
 		if (
 			model.provider === 'n8n' &&
-			isResponseNodesResponseMode(responseMode) &&
+			responseMode === 'responseNodes' &&
 			previousMessage?.status === 'waiting' &&
 			previousMessage?.executionId
 		) {
@@ -797,11 +795,13 @@ export class ChatHubService {
 			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
 		}
 
-		if (
-			responseMode === 'lastNode' ||
-			responseMode === 'responseNodes' ||
-			responseMode === 'responseNode'
-		) {
+		if (responseMode === 'responseNode') {
+			throw new OperationalError(
+				"Response mode 'Using Respond to Webhook Node' is not supported for chat.",
+			);
+		}
+
+		if (responseMode === 'lastNode' || responseMode === 'responseNodes') {
 			return await this.executeLastNode(
 				res,
 				user,
@@ -898,7 +898,7 @@ export class ChatHubService {
 				retryOfMessageId,
 			);
 
-			if (status === 'waiting' && isResponseNodesResponseMode(responseMode)) {
+			if (status === 'waiting' && responseMode === 'responseNodes') {
 				const lastNode = getLastNodeExecuted(execution);
 				if (lastNode && shouldResumeImmediately(lastNode)) {
 					this.logger.debug(
@@ -945,7 +945,7 @@ export class ChatHubService {
 		previousMessageId: ChatMessageId,
 		model: ChatHubConversationModel,
 		res: Response,
-		responseMode: ResponseNodesResponseMode,
+		responseMode: 'responseNodes',
 	) {
 		// Mark the waiting message as successful
 		await this.messageRepository.updateChatMessage(previousMessageId, {
@@ -1056,7 +1056,7 @@ export class ChatHubService {
 	}
 
 	private extractMessage(entry: INodeExecutionData, responseMode: ChatTriggerResponseMode) {
-		if (isResponseNodesResponseMode(responseMode)) {
+		if (responseMode === 'responseNodes') {
 			return entry.sendMessage ?? '';
 		}
 
