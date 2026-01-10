@@ -600,7 +600,69 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
+			let { nodes, connections } = dbWorkflow.activeVersion;
+
+			/**
+			 * TEMPORARY WORKAROUND TO MAKE START NODE DEPRECATION LESS DISRUPTIVE
+			 *
+			 * Background:
+			 * - The Start node (n8n-nodes-base.start) was deprecated and removed from package.json in PR #23183
+			 * - This prevents the node from loading, causing "Unrecognized node type" errors
+			 *
+			 * Problem:
+			 * Many workflows have BOTH a Start node AND another trigger (Cron, Schedule, Webhook, etc.).
+			 * Without this workaround, these workflows would fail to activate entirely, even though they
+			 * have a valid trigger and could work perfectly fine. This would break functioning workflows
+			 * unnecessarily and create a poor user experience during the deprecation transition.
+			 *
+			 * When a workflow with a Start node tries to activate:
+			 * - The Workflow constructor calls nodeTypes.getByNameAndVersion() for each node
+			 * - Start node lookup fails with "Unrecognized node type" error
+			 * - Entire workflow activation fails, even if it has other valid triggers
+			 *
+			 * Solution:
+			 * At startup/leadership change, we filter out deprecated Start nodes to allow activation:
+			 * 1. Identify all non-disabled Start nodes in the workflow
+			 * 2. Remove them from the nodes array
+			 * 3. Delete their outgoing connections from the connections object
+			 * 4. Log a warning message recommending users replace the Start node
+			 *
+			 * Impact:
+			 * - Workflows with Start nodes + other triggers can activate successfully via the other triggers
+			 * - Start nodes only served as manual execution entry points and can be safely removed
+			 * - Users get a clear warning but their workflows continue to function
+			 * - This makes the deprecation gradual and non-breaking for users
+			 *
+			 * Removal Plan:
+			 * Remove lines 605-658 in v3.0.0 when Start node support is fully dropped.
+			 * By that time, users should have migrated via the breaking change migration tool.
+			 */
+			const DEPRECATED_START_NODE_TYPE = 'n8n-nodes-base.start';
+
+			if (['init', 'leadershipChange'].includes(activationMode)) {
+				// Get names of deprecated Start nodes that are not disabled
+				const startNodeNames = nodes
+					.filter((node) => node.type === DEPRECATED_START_NODE_TYPE && !node.disabled)
+					.map((node) => node.name);
+
+				if (startNodeNames.length > 0) {
+					this.logger.warn(
+						`Workflow ${formatWorkflow(dbWorkflow)} contains deprecated Start node(s). The workflow will remain active but Start nodes should be replaced with Manual Trigger or Execute Workflow Trigger nodes.`,
+						{ workflowId: dbWorkflow.id },
+					);
+
+					// Filter out Start nodes
+					nodes = nodes.filter((node) => !startNodeNames.includes(node.name));
+
+					// Filter out connections from Start nodes
+					const filteredConnections = { ...connections };
+					for (const startNodeName of startNodeNames) {
+						delete filteredConnections[startNodeName];
+					}
+					connections = filteredConnections;
+				}
+			}
+
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 
