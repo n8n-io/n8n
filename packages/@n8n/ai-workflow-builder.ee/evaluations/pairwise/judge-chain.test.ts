@@ -61,7 +61,7 @@ describe('evaluateWorkflowPairwise', () => {
 		expect(baseEvaluator.invokeEvaluatorChain).toHaveBeenCalledWith(
 			undefined, // The chain (undefined because createEvaluatorChain mock returns undefined)
 			expect.objectContaining({
-				userPrompt: expect.stringContaining('[DO]'),
+				userPrompt: expect.stringContaining('<do>'),
 				generatedWorkflow: input.workflowJSON,
 			}),
 			undefined, // config parameter (not passed in this test)
