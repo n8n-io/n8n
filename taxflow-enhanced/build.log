@@ -1,0 +1,13 @@
+
+> taxflow-enhanced@0.0.0 build
+> tsc -b && vite build
+
+vite v7.2.4 building client environment for production...
+transforming...
+✓ 1930 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.46 kB │ gzip:   0.30 kB
+dist/assets/index-BgBPWUy9.css   19.23 kB │ gzip:   3.75 kB
+dist/assets/index-ly-4Qjcn.js   490.69 kB │ gzip: 156.91 kB
+✓ built in 7.64s

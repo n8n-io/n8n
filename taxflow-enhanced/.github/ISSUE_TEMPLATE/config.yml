@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/yourusername/taxflow-enhanced/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/yourusername/taxflow-enhanced#documentation
+    about: View the complete documentation
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/yourusername/taxflow-enhanced/security/policy
+    about: Report security vulnerabilities privately
