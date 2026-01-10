@@ -1197,10 +1197,12 @@ const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isExecutionDisabled = computed(() => {
+	const doesNotHaveExecutePermission = !workflowPermissions.value.execute;
 	if (
-		containsChatTriggerNodes.value &&
-		isOnlyChatTriggerNodeActive.value &&
-		!chatTriggerNodePinnedData.value
+		doesNotHaveExecutePermission ||
+		(containsChatTriggerNodes.value &&
+			isOnlyChatTriggerNodeActive.value &&
+			!chatTriggerNodePinnedData.value)
 	) {
 		return true;
 	}
@@ -2118,6 +2120,7 @@ onBeforeUnmount(() => {
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
 					:disabled="isExecutionDisabled"
+					:no-execute-permission="!workflowPermissions?.execute"
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
@@ -2249,6 +2252,11 @@ onBeforeUnmount(() => {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;
+		button {
+			:nth-child(2) {
+				display: none;
+			}
+		}
 	}
 
 	button {
