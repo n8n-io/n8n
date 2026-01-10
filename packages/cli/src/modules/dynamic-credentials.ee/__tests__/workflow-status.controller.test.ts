@@ -286,5 +286,60 @@ describe('WorkflowStatusController', () => {
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toEqual([]);
 		});
+
+		it('should set CORS headers on successful request', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+				headers: { authorization: 'Bearer token-123' },
+			});
+			const res = mock<Response>();
+
+			mockService.getWorkflowStatus.mockResolvedValue([]);
+
+			await controller.checkWorkflowForExecution(req, res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Headers',
+				'Content-Type, Authorization, X-Requested-With',
+			);
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '86400');
+		});
+	});
+
+	describe('handlePreflightExecutionStatus', () => {
+		it('should handle OPTIONS preflight request with 204 status', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			await controller.handlePreflightExecutionStatus(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(res.end).toHaveBeenCalled();
+		});
+
+		it('should set CORS headers on preflight request', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			await controller.handlePreflightExecutionStatus(req, res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Headers',
+				'Content-Type, Authorization, X-Requested-With',
+			);
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '86400');
+		});
 	});
 });

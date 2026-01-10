@@ -1,4 +1,4 @@
-import { Post, RestController } from '@n8n/decorators';
+import { Options, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -22,8 +22,29 @@ export class DynamicCredentialsController {
 		private readonly cipher: Cipher,
 	) {}
 
+	// Add CORS headers helper
+	private setCorsHeaders(res: Response) {
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+		res.header('Access-Control-Allow-Credentials', 'true');
+		res.header('Access-Control-Max-Age', '86400'); // 24 hours
+	}
+
+	/**
+	 * OPTIONS /credentials/:id/authorize
+	 *
+	 * Handles CORS preflight requests
+	 */
+	@Options('/:id/authorize', { skipAuth: true })
+	async handlePreflightAuthorize(_req: Request, res: Response): Promise<void> {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
 	@Post('/:id/authorize', { skipAuth: true })
-	async authorizeCredential(req: Request, _res: Response): Promise<string> {
+	async authorizeCredential(req: Request, res: Response): Promise<string> {
+		this.setCorsHeaders(res);
 		const credential = await this.enterpriseCredentialsService.getOne(req.params.id);
 		const token = getBearerToken(req);
 
