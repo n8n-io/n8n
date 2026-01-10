@@ -1,0 +1,250 @@
+import type { INodeProperties } from 'n8n-workflow';
+
+export const TriggerOptions: INodeProperties[] = [
+	{
+		displayName: 'Workspace Name or ID',
+		name: 'workspaceId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getWorkspaces',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'wi0qdp7n',
+			},
+		],
+	},
+	{
+		displayName: 'Base Name or ID',
+		name: 'projectId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['workspaceId.value'],
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getBases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'p979g1063032uw4',
+			},
+		],
+	},
+	{
+		displayName: 'Table Name or ID',
+		name: 'table',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description:
+			'The table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsDependsOn: ['projectId.value'],
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getTables',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ml0pwy7932yabfg',
+			},
+		],
+	},
+	{
+		displayName: 'Trigger Field Name',
+		name: 'triggerFieldName',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description:
+			'Created or Last Modified Time field that will be used to determine which record to return and whether the trigger will execute. If the table do not have Create or Last Modified Time, please create one for it to appear on the list. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsDependsOn: ['table.value'],
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getTriggerFields',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'Last Modified Time',
+			},
+		],
+	},
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		default: false,
+		description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
+	},
+	{
+		displayName: 'Download Field Name or ID',
+		name: 'downloadFieldNames',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDownloadFields',
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				downloadAttachments: [true],
+			},
+		},
+		default: '',
+		description:
+			'Name of the fields of type \'attachment\' that should be downloaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'View Name or ID',
+				name: 'viewId',
+				type: 'options',
+				default: '',
+				noDataExpression: true,
+				description:
+					'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsDependsOn: ['table.value'],
+					loadOptionsMethod: 'getViews',
+				},
+				placeholder: 'View ID',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description: 'The select fields of the returned rows',
+				typeOptions: {
+					loadOptionsMethod: 'getFields',
+					loadOptionsDependsOn: ['base.value', 'table.value'],
+				},
+				default: [],
+				placeholder: 'Add field',
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: 'Add Sort Rule',
+				description: 'The sorting rules for the returned rows',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'property',
+						displayName: 'Property',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'field',
+								type: 'resourceLocator',
+								description: 'Name of the field to select on',
+								default: { mode: 'list', value: '' },
+								typeOptions: {
+									loadOptionsDependsOn: ['table.value'],
+								},
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										type: 'list',
+										typeOptions: {
+											searchListMethod: 'getFields',
+											searchable: true,
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'c9xxmrtn2wfe39l',
+									},
+								],
+							},
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'ASC',
+										value: 'asc',
+										description: 'Sort in ascending order (small -> large)',
+									},
+									{
+										name: 'DESC',
+										value: 'desc',
+										description: 'Sort in descending order (large -> small)',
+									},
+								],
+								default: 'asc',
+								description: 'The sort direction',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Filter By Formula',
+				name: 'where',
+				type: 'string',
+				default: '',
+				placeholder: '(name,like,example%)~or(name,eq,test)',
+				description: 'A formula used to filter rows',
+			},
+		],
+	},
+];
