@@ -269,3 +269,121 @@ export function createChatHubModuleSettings(
 		...overrides,
 	};
 }
+
+/**
+ * Simple conversation with one user prompt and one AI response
+ */
+export const SIMPLE_CONVERSATION: ChatHubConversationResponse = {
+	session: createMockSession({
+		id: 'existing-session-123',
+		title: 'Test Conversation',
+		lastMessageAt: new Date().toISOString(),
+		provider: 'custom-agent',
+		agentId: 'agent-123',
+	}),
+	conversation: {
+		messages: {
+			'msg-1': createMockMessageDto({
+				id: 'msg-1',
+				sessionId: 'existing-session-123',
+				content: 'What is the weather today?',
+			}),
+			'msg-2': createMockMessageDto({
+				id: 'msg-2',
+				sessionId: 'existing-session-123',
+				type: 'ai',
+				name: 'Assistant',
+				content: 'The weather is sunny today.',
+				provider: 'custom-agent',
+				agentId: 'agent-123',
+				previousMessageId: 'msg-1',
+			}),
+		},
+	},
+};
+
+/**
+ * Conversation with file attachments for testing editing
+ */
+export const CONVERSATION_WITH_ATTACHMENTS: ChatHubConversationResponse = {
+	session: createMockSession({
+		id: 'existing-session-123',
+		provider: 'custom-agent',
+		agentId: 'agent-123',
+	}),
+	conversation: {
+		messages: {
+			'msg-1': createMockMessageDto({
+				id: 'msg-1',
+				sessionId: 'existing-session-123',
+				content: 'Please analyze these files',
+				attachments: [
+					{ fileName: 'file1.txt', mimeType: 'text/plain' },
+					{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
+					{ fileName: 'file3.jpg', mimeType: 'image/jpeg' },
+				],
+			}),
+			'msg-2': createMockMessageDto({
+				id: 'msg-2',
+				sessionId: 'existing-session-123',
+				type: 'ai',
+				name: 'Assistant',
+				content: 'Analysis complete',
+				provider: 'custom-agent',
+				agentId: 'agent-123',
+				previousMessageId: 'msg-1',
+			}),
+		},
+	},
+};
+
+/**
+ * Multi-step AI conversation where AI sends multiple sequential responses
+ * (e.g., when using tools). This simulates an AI agent performing a multi-step task.
+ */
+export const MULTI_STEP_AI_CONVERSATION: ChatHubConversationResponse = {
+	session: createMockSession({
+		id: 'existing-session-123',
+		provider: 'custom-agent',
+		agentId: 'agent-123',
+	}),
+	conversation: {
+		messages: {
+			'msg-1': createMockMessageDto({
+				id: 'msg-1',
+				sessionId: 'existing-session-123',
+				content: 'Check latest news on the web',
+			}),
+			'msg-2': createMockMessageDto({
+				id: 'msg-2',
+				sessionId: 'existing-session-123',
+				type: 'ai',
+				name: 'Assistant',
+				content: 'I will help you find latest news',
+				provider: 'custom-agent',
+				agentId: 'agent-123',
+				previousMessageId: 'msg-1',
+			}),
+			'msg-3': createMockMessageDto({
+				id: 'msg-3',
+				sessionId: 'existing-session-123',
+				type: 'ai',
+				name: 'Assistant',
+				content: 'Let me use web search tool',
+				provider: 'custom-agent',
+				agentId: 'agent-123',
+				previousMessageId: 'msg-2',
+			}),
+			'msg-4': createMockMessageDto({
+				id: 'msg-4',
+				sessionId: 'existing-session-123',
+				type: 'ai',
+				name: 'Assistant',
+				content: 'Here are latest news: Breaking news today...',
+				provider: 'custom-agent',
+				agentId: 'agent-123',
+				previousMessageId: 'msg-3',
+			}),
+		},
+	},
+};

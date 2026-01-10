@@ -9,10 +9,12 @@ import {
 	createChatHubModuleSettings,
 	createMockAgent,
 	createMockConversationResponse,
-	createMockMessageDto,
 	createMockModelsResponse,
 	createMockSession,
 	wrapOnMessageUpdate,
+	SIMPLE_CONVERSATION,
+	CONVERSATION_WITH_ATTACHMENTS,
+	MULTI_STEP_AI_CONVERSATION,
 	type SimulateStreamChunkFn,
 } from './__test__/data';
 import * as chatApi from './chat.api';
@@ -287,36 +289,7 @@ describe('ChatView', () => {
 		beforeEach(() => {
 			mockRoute.params = { id: 'existing-session-123' };
 
-			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
-				createMockConversationResponse({
-					session: createMockSession({
-						id: 'existing-session-123',
-						title: 'Test Conversation',
-						lastMessageAt: new Date().toISOString(),
-						provider: 'custom-agent',
-						agentId: 'agent-123',
-					}),
-					conversation: {
-						messages: {
-							'msg-1': createMockMessageDto({
-								id: 'msg-1',
-								sessionId: 'existing-session-123',
-								content: 'What is the weather today?',
-							}),
-							'msg-2': createMockMessageDto({
-								id: 'msg-2',
-								sessionId: 'existing-session-123',
-								type: 'ai',
-								name: 'Assistant',
-								content: 'The weather is sunny today.',
-								provider: 'custom-agent',
-								agentId: 'agent-123',
-								previousMessageId: 'msg-1',
-							}),
-						},
-					},
-				}),
-			);
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(SIMPLE_CONVERSATION);
 		});
 
 		it('preselects agent set for the session', async () => {
@@ -446,48 +419,19 @@ describe('ChatView', () => {
 
 			mockRoute.params = { id: 'existing-session-123' };
 
-			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
-				createMockConversationResponse({
-					session: createMockSession({
-						id: 'existing-session-123',
-						title: 'Existing Conversation',
-						lastMessageAt: new Date().toISOString(),
-						provider: 'custom-agent',
-						agentId: 'agent-123',
-					}),
-					conversation: {
-						messages: {
-							'msg-1': createMockMessageDto({
-								id: 'msg-1',
-								sessionId: 'existing-session-123',
-								content: 'Previous question',
-							}),
-							'msg-2': createMockMessageDto({
-								id: 'msg-2',
-								sessionId: 'existing-session-123',
-								type: 'ai',
-								name: 'Assistant',
-								content: 'Previous answer',
-								provider: 'openai',
-								model: 'gpt-4',
-								previousMessageId: 'msg-1',
-							}),
-						},
-					},
-				}),
-			);
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(SIMPLE_CONVERSATION);
 
 			const rendered = renderComponent({ pinia });
 			const textarea = await rendered.findByRole('textbox');
 
 			await user.click(textarea);
-			await user.type(textarea, 'New question');
+			await user.type(textarea, 'Will it rain tomorrow?');
 			await user.click(rendered.getByRole('button', { name: /send/i }));
 
 			expect(chatApi.sendMessageApi).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					message: 'New question',
+					message: 'Will it rain tomorrow?',
 					model: { provider: 'custom-agent', agentId: 'agent-123' },
 					sessionId: 'existing-session-123',
 					credentials: {},
@@ -508,7 +452,7 @@ describe('ChatView', () => {
 
 			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 
-			simulateStreamChunk('item', 'AI response here', {
+			simulateStreamChunk('item', 'No rain expected tomorrow', {
 				messageId: 'ai-message-456',
 				previousMessageId: messageIdFromApi,
 			});
@@ -518,14 +462,14 @@ describe('ChatView', () => {
 			});
 			simulateStreamDone();
 
-			expect(await rendered.findByText('AI response here')).toBeInTheDocument();
+			expect(await rendered.findByText('No rain expected tomorrow')).toBeInTheDocument();
 
 			const messages = rendered.container.querySelectorAll('[data-message-id]');
 			expect(messages).toHaveLength(4);
-			expect(messages[0]).toHaveTextContent('Previous question');
-			expect(messages[1]).toHaveTextContent('Previous answer');
-			expect(messages[2]).toHaveTextContent('New question');
-			expect(messages[3]).toHaveTextContent('AI response here');
+			expect(messages[0]).toHaveTextContent('What is the weather today?');
+			expect(messages[1]).toHaveTextContent('The weather is sunny today.');
+			expect(messages[2]).toHaveTextContent('Will it rain tomorrow?');
+			expect(messages[3]).toHaveTextContent('No rain expected tomorrow');
 
 			expect(mockRouterPush).not.toHaveBeenCalled();
 		});
@@ -568,45 +512,13 @@ describe('ChatView', () => {
 	});
 
 	describe('Editing messages', () => {
-		beforeEach(() => {
+		it('edits message with adding and removing files', async () => {
 			mockRoute.params = { id: 'existing-session-123' };
 
 			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
-				createMockConversationResponse({
-					session: createMockSession({
-						id: 'existing-session-123',
-						provider: 'custom-agent',
-						agentId: 'agent-123',
-					}),
-					conversation: {
-						messages: {
-							'msg-1': createMockMessageDto({
-								id: 'msg-1',
-								sessionId: 'existing-session-123',
-								content: 'Please analyze these files',
-								attachments: [
-									{ fileName: 'file1.txt', mimeType: 'text/plain' },
-									{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
-									{ fileName: 'file3.jpg', mimeType: 'image/jpeg' },
-								],
-							}),
-							'msg-2': createMockMessageDto({
-								id: 'msg-2',
-								sessionId: 'existing-session-123',
-								type: 'ai',
-								name: 'Assistant',
-								content: 'Analysis complete',
-								provider: 'custom-agent',
-								agentId: 'agent-123',
-								previousMessageId: 'msg-1',
-							}),
-						},
-					},
-				}),
+				CONVERSATION_WITH_ATTACHMENTS,
 			);
-		});
 
-		it('edits message with adding and removing files', async () => {
 			const user = userEvent.setup();
 			const rendered = renderComponent({ pinia });
 
@@ -672,6 +584,98 @@ describe('ChatView', () => {
 			simulateStreamDone();
 
 			expect(await rendered.findByText('Updated analysis complete')).toBeInTheDocument();
+		});
+	});
+
+	describe('Regenerating messages', () => {
+		it('regenerates AI response and displays streamed content', async () => {
+			mockRoute.params = { id: 'existing-session-123' };
+
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(MULTI_STEP_AI_CONVERSATION);
+
+			const user = userEvent.setup();
+			const rendered = renderComponent({ pinia });
+
+			await rendered.findByText('Let me use web search tool');
+
+			const messages0 = rendered.container.querySelectorAll('[data-message-id]');
+			expect(messages0).toHaveLength(4);
+			expect(messages0[0]).toHaveTextContent('Check latest news on the web');
+			expect(messages0[1]).toHaveTextContent('I will help you find latest news');
+			expect(messages0[2]).toHaveTextContent('Let me use web search tool');
+			expect(messages0[3]).toHaveTextContent('Here are latest news: Breaking news today...');
+
+			const aiMessage = rendered.getByTestId('chat-message-msg-3');
+
+			await user.click(within(aiMessage).getByTestId('chat-message-regenerate'));
+
+			expect(chatApi.regenerateMessageApi).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					sessionId: 'existing-session-123',
+					retryId: 'msg-3',
+					payload: expect.objectContaining({
+						model: { provider: 'custom-agent', agentId: 'agent-123' },
+						credentials: {},
+					}),
+				},
+				expect.any(Function),
+				expect.any(Function),
+				expect.any(Function),
+			);
+
+			await rendered.findByTestId('chat-typing-indicator');
+
+			const messages1 = rendered.container.querySelectorAll('[data-message-id]');
+
+			// Verify that the whole sequence of AI response is gone and
+			// there's one empty message with typing indicator now, although regenerate button on msg-3 is clicked
+			expect(messages1).toHaveLength(2);
+			expect(messages1[1]).toHaveTextContent('');
+			within(messages1[1] as HTMLElement).getByTestId('chat-typing-indicator');
+
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-regenerated',
+				previousMessageId: 'msg-1',
+				retryOfMessageId: 'msg-3',
+			});
+
+			simulateStreamChunk('item', 'Nothing found', {
+				messageId: 'ai-message-regenerated',
+				previousMessageId: 'msg-1',
+				retryOfMessageId: 'msg-3',
+			});
+
+			await rendered.findByText(/Nothing found/);
+
+			const messages2 = rendered.container.querySelectorAll('[data-message-id]');
+
+			// Verify that the received chunk is shown and typing indicator is still there
+			expect(messages2).toHaveLength(2);
+			expect(messages2[1]).toHaveTextContent('Nothing found');
+			within(messages2[1] as HTMLElement).getByTestId('chat-typing-indicator');
+
+			simulateStreamChunk('item', ' this time', {
+				messageId: 'ai-message-regenerated',
+				previousMessageId: 'msg-1',
+				retryOfMessageId: 'msg-3',
+			});
+
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-regenerated',
+				previousMessageId: 'msg-1',
+				retryOfMessageId: 'msg-3',
+			});
+
+			simulateStreamDone();
+
+			await vi.waitFor(() => {
+				expect(rendered.queryByTestId('chat-typing-indicator')).not.toBeInTheDocument();
+			});
+
+			const messages3 = rendered.container.querySelectorAll('[data-message-id]');
+			expect(messages3).toHaveLength(2);
+			expect(messages3[1]).toHaveTextContent('Nothing found this time');
 		});
 	});
 });
