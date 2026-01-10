@@ -5,7 +5,7 @@ export const DEFAULT_USER_PASSWORD = 'PlaywrightTest123';
 
 export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking ‘Execute workflow’';
-export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat Trigger';
+export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat';
 export const CHAT_TRIGGER_NODE_DISPLAY_NAME = 'When chat message received';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
