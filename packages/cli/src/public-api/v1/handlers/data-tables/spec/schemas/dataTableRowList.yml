@@ -1,0 +1,13 @@
+type: object
+properties:
+  data:
+    type: array
+    items:
+      $ref: './dataTableRow.yml'
+    description: Array of data table rows
+  count:
+    type: integer
+    description: Total number of rows matching the query
+required:
+  - data
+  - count
