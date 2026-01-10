@@ -47,6 +47,7 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --kafka           Enable Kafka broker for message queue trigger testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -123,6 +124,7 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			kafka: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -144,6 +146,7 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.kafka) services.push('kafka');
 
 	// Build configuration
 	const config: N8NConfig = {

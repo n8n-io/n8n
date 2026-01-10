@@ -101,7 +101,9 @@ export const observabilityFixtures: Fixtures<
 			await use(undefined);
 
 			// After test: attach logs if failed
-			if (testInfo.status !== testInfo.expectedStatus && n8nContainer?.services?.observability) {
+			// Check serviceResults directly to avoid triggering lazy helper creation
+			const hasObservability = n8nContainer?.serviceResults?.victoriaLogs !== undefined;
+			if (testInfo.status !== testInfo.expectedStatus && hasObservability) {
 				await attachLogsOnFailure(n8nContainer, testInfo);
 			}
 		},
