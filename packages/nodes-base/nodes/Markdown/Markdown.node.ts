@@ -590,14 +590,49 @@ export class Markdown implements INodeType {
 				}
 
 				if (mode === 'markdownToHtml') {
-					const markdown = this.getNodeParameter('markdown', i) as string;
+					let markdown = this.getNodeParameter('markdown', i) as string;
+					const lines = markdown.split('\n');
+
+					let inFencedCodeBlock = false;
+
+					const normalizedLines = lines.map((line) => {
+						// Detect fenced code blocks, allowing leading indentation
+						if (/^(\s*)```/.test(line)) {
+							inFencedCodeBlock = !inFencedCodeBlock;
+							return line;
+						}
+
+						// Detect indented code blocks (4+ spaces) outside fenced blocks
+						const isIndentedCodeBlock = !inFencedCodeBlock && line.startsWith('    ');
+						if (inFencedCodeBlock || isIndentedCodeBlock) {
+							return line; // skip normalization inside code blocks
+						}
+
+						// Match all list types: -, *, +, numbered (1. or 1))
+						const match = line.match(/^(\s*)([-*+]|[0-9]+[.)])(\s+)(.*)$/);
+						if (!match) return line;
+
+						const leadingSpaces = match[1].length;
+						const marker = match[2];
+						const content = match[4];
+
+						// Calculate nesting level based on 2-space indent
+						const level = Math.floor(leadingSpaces / 2);
+
+						// Normalize to 4 spaces per level
+						const normalizedIndent = '    '.repeat(level);
+
+						return normalizedIndent + marker + ' ' + content;
+					});
+
+					const normalizedMarkdown = normalizedLines.join('\n');
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 					const options = this.getNodeParameter('options', i);
 
 					const converter = new Converter();
 
 					Object.keys(options).forEach((key) => converter.setOption(key, options[key]));
-					const htmlFromMarkdown = converter.makeHtml(markdown);
+					const htmlFromMarkdown = converter.makeHtml(normalizedMarkdown);
 
 					const newItem = deepCopy(items[i].json);
 					set(newItem, destinationKey, htmlFromMarkdown);
