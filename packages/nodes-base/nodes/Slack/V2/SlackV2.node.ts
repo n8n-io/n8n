@@ -372,6 +372,8 @@ export class SlackV2 implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+		const formatTimestamp = (timestamp: string): string | number =>
+			nodeVersion >= 2.4 ? timestamp : new Date(timestamp).getTime() / 1000;
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			await slackApiRequest.call(
@@ -548,10 +550,10 @@ export class SlackV2 implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = new Date(filters.latest as string).getTime() / 1000;
+							qs.latest = formatTimestamp(filters.latest as string);
 						}
 						if (filters.oldest) {
-							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
+							qs.oldest = formatTimestamp(filters.oldest as string);
 						}
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
@@ -729,10 +731,10 @@ export class SlackV2 implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = new Date(filters.latest as string).getTime() / 1000;
+							qs.latest = formatTimestamp(filters.latest as string);
 						}
 						if (filters.oldest) {
-							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
+							qs.oldest = formatTimestamp(filters.oldest as string);
 						}
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
