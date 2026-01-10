@@ -12,10 +12,17 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getModels } from './methods/loadOptions';
 
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
 export class LmChatMistralCloud implements INodeType {
+	methods = {
+		loadOptions: {
+			getModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Mistral Cloud Chat Model',
 
@@ -59,49 +66,15 @@ export class LmChatMistralCloud implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The model which will generate the completion. <a href="https://docs.mistral.ai/platform/endpoints/">Learn more</a>.',
 				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.id.includes('embed') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{ $responseItem.id }}',
-											value: '={{ $responseItem.id }}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsMethod: 'getModels',
 				},
 				routing: {
 					send: {

@@ -76,7 +76,7 @@ export class ChatHubModelsService {
 							provider,
 							await this.fetchModelsForProvider(user, provider, credentials, additionalData),
 						];
-					} catch {
+					} catch (e) {
 						return [
 							provider,
 							{ models: [], error: 'Could not retrieve models. Verify credentials.' },
@@ -201,47 +201,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				// From Gemini node
-				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts#L75
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/v1beta/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'models',
-								},
-							},
-							{
-								type: 'filter',
-								properties: {
-									pass: "={{ !$responseItem.name.includes('embedding') }}",
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.name}}',
-									value: '={{$responseItem.name}}',
-									description: '={{$responseItem.description}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.modelName',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.google,
 			{},
@@ -253,40 +215,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				// From Ollama Model node
-				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LMOllama/description.ts#L24
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/api/tags',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'models',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.name}}',
-									value: '={{$responseItem.name}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.ollama,
 			{},
@@ -315,82 +246,18 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		// From AWS Bedrock node
-		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L100
-		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L155
-		const foundationModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'modelSummaries',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.modelName}}',
-									description: '={{$responseItem.modelArn}}',
-									value: '={{$responseItem.modelId}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		const foundationModelsRequest = this.nodeParametersService.getOptionsViaMethodName(
+			'getFoundationModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.awsBedrock,
 			{},
 			credentials,
 		);
 
-		const inferenceProfileModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/inference-profiles?maxResults=1000',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'inferenceProfileSummaries',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.inferenceProfileName}}',
-									description:
-										'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
-									value: '={{$responseItem.inferenceProfileId}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		const inferenceProfileModelsRequest = this.nodeParametersService.getOptionsViaMethodName(
+			'getInferenceProfiles',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.awsBedrock,
 			{},
@@ -409,44 +276,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'filter',
-								properties: {
-									pass: "={{ !$responseItem.id.includes('embed') }}",
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{ $responseItem.id }}',
-									value: '={{ $responseItem.id }}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.mistralCloud,
 			{},
@@ -458,39 +290,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/v1/models?page_size=100&endpoint=chat',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'models',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.name}}',
-									value: '={{$responseItem.name}}',
-									description: '={{$responseItem.description}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.cohere,
 			{},
@@ -502,38 +304,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.id}}',
-									value: '={{$responseItem.id}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.deepSeek,
 			{},
@@ -545,38 +318,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.id}}',
-									value: '={{$responseItem.id}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.openRouter,
 			{},
@@ -588,38 +332,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'filter',
-								properties: {
-									pass: '={{ $responseItem.active === true && $responseItem.object === "model" }}',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.id}}',
-									value: '={{$responseItem.id}}',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.groq,
 			{},
@@ -631,38 +346,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.id}}',
-									value: '={{$responseItem.id}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.xAiGrok,
 			{},
@@ -674,38 +360,9 @@ export class ChatHubModelsService {
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		return await this.nodeParametersService.getOptionsViaLoadOptions(
-			{
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/models',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.id}}',
-									value: '={{$responseItem.id}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+		return await this.nodeParametersService.getOptionsViaMethodName(
+			'getModels',
+			'parameters.model',
 			additionalData,
 			PROVIDER_NODE_TYPE_MAP.vercelAiGateway,
 			{},
