@@ -126,19 +126,17 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const conditions: INodePropertyOptions[] = [];
 
 	if (type === 'boolean') {
-		conditions.push.apply(conditions, booleanConditions);
+		conditions.push(...equalsConditions, ...booleanConditions, ...nullConditions);
+		return conditions;
 	}
 
 	// String columns get LIKE operators
 	if (type === 'string') {
-		conditions.push.apply(conditions, equalsConditions);
-		conditions.push.apply(conditions, stringConditions);
-		conditions.push.apply(conditions, comparableConditions);
+		conditions.push(...equalsConditions, ...stringConditions, ...comparableConditions);
 	}
 
 	if (['number', 'date'].includes(type)) {
-		conditions.push.apply(conditions, equalsConditions);
-		conditions.push.apply(conditions, comparableConditions);
+		conditions.push(...equalsConditions, ...comparableConditions);
 	}
 
 	conditions.push.apply(conditions, nullConditions);
