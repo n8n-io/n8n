@@ -11,6 +11,7 @@ import { parseString } from 'xml2js';
 import type { Request } from 'aws4';
 import {
 	AWS_GLOBAL_DOMAIN,
+	AWS_SERVICE_NAME_MAPPING,
 	type AwsCredentialsTypeBase,
 	regions,
 	type AWSRegion,
@@ -50,18 +51,52 @@ export function getAwsDomain(region: AWSRegion): string {
 }
 
 /**
+ * Normalizes AWS service names from endpoint hostnames to their correct SigV4 signing names.
+ * Some AWS services use different names in their endpoint hostnames than what's required
+ * for Signature Version 4 credential scoping.
+ *
+ * @param hostnameService - The service name extracted from the endpoint hostname
+ * @returns The correct service name to use for SigV4 signing
+ *
+ * @example
+ * normalizeServiceName('bedrock-runtime') // returns 'bedrock'
+ * normalizeServiceName('s3') // returns 's3' (unchanged)
+ * normalizeServiceName('iot-data') // returns 'iotdevicegateway'
+ *
+ * @see {@link https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html AWS Signature Version 4}
+ */
+export function normalizeServiceName(hostnameService: string): string {
+	// Check explicit mapping first for known service name mismatches
+	if (AWS_SERVICE_NAME_MAPPING[hostnameService]) {
+		return AWS_SERVICE_NAME_MAPPING[hostnameService];
+	}
+
+	// Fallback to pattern matching for future-proofing
+	// All bedrock-*-runtime services sign as 'bedrock'
+	if (hostnameService.startsWith('bedrock-') && hostnameService.includes('runtime')) {
+		return 'bedrock';
+	}
+
+	// Return original service name if no mapping exists
+	return hostnameService;
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
  * Some AWS services are global and don't have a region.
+ * The extracted service name is normalized to the correct SigV4 signing service name.
  *
  * @param url - The AWS service URL to parse
- * @returns Object containing the service name and region (null for global services)
+ * @returns Object containing the normalized service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
  */
 export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
 	const hostname = url.hostname;
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
-	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	const [hostnameService, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	// Normalize the service name to handle hostname/SigV4 naming mismatches
+	const service = normalizeServiceName(hostnameService);
 	return { service, region };
 }
 
@@ -129,8 +164,12 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			}
 		}
 		const parsed = parseAwsUrl(endpoint);
-		service = parsed.service;
-		if (parsed.region) {
+		// Only override service if not explicitly provided
+		if (!service || service === '') {
+			service = parsed.service;
+		}
+		// Only override region if not explicitly provided and URL has a valid region
+		if (parsed.region && (!region || region === '')) {
 			region = parsed.region;
 		}
 	} else {
@@ -159,8 +198,12 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
 			const parsed = parseAwsUrl(customUrl);
-			service = parsed.service;
-			if (parsed.region) {
+			// Only override service if not explicitly provided
+			if (!service || service === '') {
+				service = parsed.service;
+			}
+			// Only override region if not explicitly provided and URL has a valid region
+			if (parsed.region && (!region || region === '')) {
 				region = parsed.region;
 			}
 			if (service === 'sts') {
@@ -180,6 +223,10 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			endpoint.searchParams.append(key, query[key] as string);
 		});
 	}
+
+	// Normalize service name after all service resolution logic
+	// This ensures both URL-parsed and explicitly-provided service names are normalized
+	service = normalizeServiceName(service);
 
 	if (body && typeof body === 'object' && isObjectEmpty(body)) {
 		body = '';
@@ -215,6 +262,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		path,
 		body: bodyContent,
 		region,
+		service,
 	} as unknown as Request;
 
 	return { signOpts, url: endpoint.origin + path };

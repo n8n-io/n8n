@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -613,11 +614,11 @@ export class InvoiceNinja implements INodeType {
 							});
 						}
 						if (apiVersion === 'v5') {
-							responseData = await invoiceNinjaApiRequest.call(
-								this,
-								'GET',
-								`/invoices/${invoiceId}/email`,
-							);
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/emails', {
+								template: 'email_template_invoice',
+								entity: 'invoice',
+								entity_id: invoiceId,
+							});
 						}
 					}
 					if (operation === 'get') {
@@ -687,6 +688,95 @@ export class InvoiceNinja implements INodeType {
 							`/invoices/${invoiceId}`,
 						);
 						responseData = responseData.data;
+					}
+					if (operation === 'archive') {
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						if (apiVersion === 'v4') {
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'PUT',
+								`/invoices/${invoiceId}`,
+								{ archived: true },
+							);
+						}
+						if (apiVersion === 'v5') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/invoices/bulk', {
+								action: 'archive',
+								ids: [invoiceId],
+							});
+						}
+						responseData = responseData.data || responseData;
+					}
+					if (operation === 'markSent') {
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						if (apiVersion === 'v4') {
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'PUT',
+								`/invoices/${invoiceId}`,
+								{ invoice_status_id: 2 },
+							);
+						}
+						if (apiVersion === 'v5') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/invoices/bulk', {
+								action: 'mark_sent',
+								ids: [invoiceId],
+							});
+						}
+						responseData = responseData.data || responseData;
+					}
+					if (operation === 'markPaid') {
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						if (apiVersion === 'v4') {
+							// v4 doesn't have a direct mark paid endpoint, would need to create a payment
+							throw new Error('Mark Paid operation is only supported in API v5');
+						}
+						if (apiVersion === 'v5') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/invoices/bulk', {
+								action: 'mark_paid',
+								ids: [invoiceId],
+							});
+						}
+						responseData = responseData.data || responseData;
+					}
+					if (operation === 'download') {
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+
+						if (apiVersion === 'v4') {
+							throw new Error('Download operation is only supported in API v5');
+						}
+
+						const credentials = await this.getCredentials('invoiceNinjaApi');
+						const defaultUrl = 'https://invoicing.co';
+						const baseUrl = credentials.url || defaultUrl;
+						const downloadUrl = `${baseUrl}/api/v1/invoices/${invoiceId}/download`;
+
+						const options: IRequestOptions = {
+							method: 'GET',
+							uri: downloadUrl,
+							encoding: null,
+							json: false,
+						};
+
+						const pdfData = await this.helpers.requestWithAuthentication.call(
+							this,
+							'invoiceNinjaApi',
+							options,
+						);
+
+						const binaryData = await this.helpers.prepareBinaryData(
+							pdfData as Buffer,
+							`invoice_${invoiceId}.pdf`,
+							'application/pdf',
+						);
+
+						responseData = {
+							json: {},
+							binary: {
+								[binaryProperty]: binaryData,
+							},
+						};
 					}
 				}
 				if (resource === 'task') {
@@ -1207,11 +1297,11 @@ export class InvoiceNinja implements INodeType {
 							});
 						}
 						if (apiVersion === 'v5') {
-							responseData = await invoiceNinjaApiRequest.call(
-								this,
-								'GET',
-								`${resourceEndpoint}/${quoteId}/email`,
-							);
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/emails', {
+								template: 'email_template_quote',
+								entity: 'quote',
+								entity_id: quoteId,
+							});
 						}
 					}
 					if (operation === 'get') {
