@@ -115,7 +115,7 @@
 					"tags": "test,",
 					"test": ""
 				},
-				"limeItemsUi": {
+				"lineItemsUi": {
 					"lineItemValues": [
 						{
 							"productId": "={{$node[\"Shopify\"].json[\"id\"]}}",
