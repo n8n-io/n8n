@@ -386,5 +386,17 @@ describe('getFileSystemHelperFunctions', () => {
 				),
 			).rejects.toThrow('not writable');
 		});
+
+		it('should include allowed paths in error message when path is restricted', async () => {
+			securityConfig.restrictFileAccessTo = '/allowed/path';
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath('/blocked/path/test.txt'),
+					'content',
+					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
+				),
+			).rejects.toThrow('Allowed paths: /allowed/path');
+		});
 	});
 });

@@ -140,9 +140,13 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 
 	async writeContentToFile(resolvedFilePath, content, flag) {
 		if (isFilePathBlocked(resolvedFilePath)) {
+			const allowedPaths = getAllowedPaths();
+			const message = allowedPaths.length
+				? ` Allowed paths: ${allowedPaths.join(', ')}`
+				: '';
 			throw new NodeOperationError(
 				node,
-				`The file "${String(resolvedFilePath)}" is not writable.`,
+				`The file "${String(resolvedFilePath)}" is not writable.${message}`,
 				{
 					level: 'warning',
 				},
