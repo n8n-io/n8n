@@ -135,6 +135,7 @@ export const propertyEvents = [
 	'contact.propertyChange',
 	'company.propertyChange',
 	'deal.propertyChange',
+	'ticket.propertyChange',
 ];
 
 export const contactFields = [
