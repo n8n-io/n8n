@@ -192,7 +192,7 @@ export async function testWebhookTriggerNode(
 		getMode: () => options.mode ?? 'trigger',
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
-		getHeaderData: () => options.headerData ?? {},
+		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
