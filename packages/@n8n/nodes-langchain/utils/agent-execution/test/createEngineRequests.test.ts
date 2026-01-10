@@ -277,6 +277,104 @@ describe('createEngineRequests', () => {
 		});
 	});
 
+	describe('DeepSeek reasoning_content extraction', () => {
+		it('should extract reasoning_content from DeepSeek message with reasoning_content field', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							reasoning_content: 'I need to calculate 2+2 using DeepSeek reasoning.',
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'I need to calculate 2+2 using DeepSeek reasoning.',
+			);
+		});
+
+		it('should not extract reasoning_content when field is absent', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							role: 'assistant',
+							content: 'No reasoning content here',
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
+		});
+
+		it('should not extract reasoning_content when value is not a string', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							reasoning_content: null,
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
+		});
+
+		it('should work with both DeepSeek reasoning_content and other metadata', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							reasoning_content: 'DeepSeek reasoning step 1',
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'DeepSeek reasoning step 1',
+			);
+			expect(result[0].metadata).toMatchObject({
+				itemIndex: 0,
+			});
+		});
+	});
+
 	describe('Complex tool inputs', () => {
 		it('should handle complex nested objects in tool input', async () => {
 			const tools = [createMockTool('complex_tool', { sourceNodeName: 'ComplexNode' })];
