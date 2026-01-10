@@ -8,9 +8,14 @@ import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
 const renderComponent = createComponentRenderer(N8nDataTableServer);
 
 const getRenderedOptions = async () => {
-	const dropdown = await waitFor(() => screen.getByRole('listbox'));
+	const dropdown = await waitFor(() => screen.getByTestId('page-size-select'));
 	expect(dropdown).toBeInTheDocument();
-	return dropdown.querySelectorAll('.el-select-dropdown__item');
+
+	const popoverId = dropdown.getAttribute('aria-controls') as string;
+	const popover = document.getElementById(popoverId) as HTMLElement;
+	expect(popover).toBeVisible();
+
+	return popover.querySelectorAll('[role="option"]');
 };
 
 const itemFactory = () => ({
