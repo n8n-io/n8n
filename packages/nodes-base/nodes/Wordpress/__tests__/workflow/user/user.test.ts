@@ -15,6 +15,7 @@ describe('Wordpress > User Workflows', () => {
 				last_name: 'Tester',
 				email: 'nathan@domain.com',
 				password: 'fake-password',
+				roles: ['subscriber', 'contributor'],
 			})
 			.reply(200, userCreate);
 		mock.get('/wp-json/wp/v2/users/2').query({ context: 'view' }).reply(200, userGet);
@@ -26,6 +27,7 @@ describe('Wordpress > User Workflows', () => {
 				first_name: 'Name',
 				last_name: 'Change',
 				nickname: 'newuser',
+				roles: ['subscriber'],
 			})
 			.reply(200, userUpdate);
 	});

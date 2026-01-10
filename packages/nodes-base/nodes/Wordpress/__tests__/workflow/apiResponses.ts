@@ -565,15 +565,20 @@ export const userCreate = {
 	locale: 'en_GB',
 	nickname: 'new-user',
 	slug: 'new-user',
-	roles: ['subscriber'],
+	roles: ['subscriber', 'contributor'],
 	registered_date: '2025-03-27T19:49:07+00:00',
 	capabilities: {
 		read: true,
 		level_0: true,
+		edit_posts: true,
+		level_1: true,
+		delete_posts: true,
 		subscriber: true,
+		contributor: true,
 	},
 	extra_capabilities: {
 		subscriber: true,
+		contributor: true,
 	},
 	avatar_urls: {
 		'24': 'https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=24&d=mm&r=g',
