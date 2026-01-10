@@ -11,6 +11,9 @@ declare global {
 		json: {
 			[key: string]: unknown;
 		};
+		binary?: {
+			[key: string]: BinaryData;
+		};
 	};
 
 	type MaybePromise<T> = Promise<T> | T;
@@ -32,6 +35,18 @@ declare global {
 		fileType: string;
 		fileSize: string;
 		mimeType: string;
+	}
+
+	interface N8nBinaryData {
+		data: string;
+		mimeType: string;
+		fileType?: BinaryFileType;
+		fileName?: string;
+		directory?: string;
+		fileExtension?: string;
+		fileSize?: string;
+		bytes?: number;
+		id?: string;
 	}
 
 	interface N8nVars {}
