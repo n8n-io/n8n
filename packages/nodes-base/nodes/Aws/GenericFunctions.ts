@@ -3,19 +3,26 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
+	ITriggerFunctions,
 	IHttpRequestOptions,
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { parseString as parseXml } from 'xml2js';
+
 import type {
 	AwsAssumeRoleCredentialsType,
 	AwsIamCredentialsType,
 } from '../../credentials/common/aws/types';
 
 export async function getAwsCredentials(
-	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	context:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions
+		| ITriggerFunctions,
 ) {
 	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
 
@@ -36,7 +43,12 @@ export async function getAwsCredentials(
 }
 
 export async function awsApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions
+		| ITriggerFunctions,
 	service: string,
 	method: IHttpRequestMethods,
 	path: string,
@@ -53,7 +65,7 @@ export async function awsApiRequest(
 		body: service === 'lambda' ? body : JSON.stringify(body),
 		url: '',
 		headers,
-		region: credentials?.region as string,
+		region: credentials?.region,
 	} as IHttpRequestOptions;
 
 	try {
@@ -80,7 +92,12 @@ export async function awsApiRequestREST(
 }
 
 export async function awsApiRequestSOAP(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions
+		| ITriggerFunctions,
 	service: string,
 	method: IHttpRequestMethods,
 	path: string,
