@@ -922,6 +922,14 @@ export class StripeTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const activationMode = this.getActivationMode();
+
+				// When the workflow is being updated (re-published), keep the existing
+				// Stripe webhook to avoid creating duplicates
+				if (activationMode === 'update') {
+					return true;
+				}
+
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
