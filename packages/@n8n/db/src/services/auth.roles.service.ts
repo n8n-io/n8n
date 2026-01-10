@@ -103,11 +103,6 @@ export class AuthRolesService {
 		}
 	}
 
-	/**
-	 * Reads the security setting that controls whether workflow:publish scope
-	 * should be included in the project:personalOwner role.
-	 * Defaults to true for backward compatibility.
-	 */
 	private async shouldPersonalOwnerHavePublishScope(): Promise<boolean> {
 		const setting = await this.settingsRepository.findByKey(PERSONAL_SPACE_PUBLISHING_SETTING_KEY);
 		// Default to true if setting doesn't exist (backward compatibility)
@@ -115,21 +110,23 @@ export class AuthRolesService {
 	}
 
 	/**
-	 * Filters the expected scopes for a role based on settings.
+	 * Modifies the expected scopes for a role based on settings.
 	 * Currently only applies to project:personalOwner role.
+	 * Uses a "closed first" approach: workflow:publish is not in the base definition
+	 * and is added when the setting is enabled.
 	 */
-	private async getExpectedScopesForRole(
+	private async updateScopesBasedOnSettings(
 		roleSlug: string,
 		defaultScopes: string[],
 	): Promise<string[]> {
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			const shouldHavePublish = await this.shouldPersonalOwnerHavePublishScope();
-			if (!shouldHavePublish) {
+			if (shouldHavePublish) {
 				this.logger.debug(
-					'Personal space publishing is disabled - removing workflow:publish scope from project:personalOwner role',
+					`Personal space publishing is enabled - adding workflow:publish scope to ${PROJECT_OWNER_ROLE_SLUG} role`,
 				);
-				return defaultScopes.filter((scope) => scope !== 'workflow:publish');
+				return [...defaultScopes, 'workflow:publish'];
 			}
 		}
 		return defaultScopes;
@@ -162,8 +159,7 @@ export class AuthRolesService {
 				ALL_ROLES[roleNamespace].map(async (role) => {
 					const existingRole = existingRolesMap.get(role.slug);
 
-					// Get expected scopes, filtered based on settings
-					const expectedScopes = await this.getExpectedScopesForRole(role.slug, role.scopes);
+					const expectedScopes = await this.updateScopesBasedOnSettings(role.slug, role.scopes);
 
 					if (!existingRole) {
 						const newRole = this.roleRepository.create({

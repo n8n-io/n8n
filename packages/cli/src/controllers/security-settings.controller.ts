@@ -12,7 +12,8 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		const personalSpacePublishing = await this.securitySettingsService.getPersonalSpacePublishing();
+		const personalSpacePublishing =
+			await this.securitySettingsService.isPersonalSpacePublishingEnabled();
 
 		return { personalSpacePublishing };
 	}
