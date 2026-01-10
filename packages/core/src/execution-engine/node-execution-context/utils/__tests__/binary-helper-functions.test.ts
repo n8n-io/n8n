@@ -415,7 +415,7 @@ describe('test binary data helper methods', () => {
 			).rejects.toThrow('Provided parameter is not a string or binary data object.');
 		});
 
-		it('should throw error when path is undefined in combined mode', async () => {
+		it('should throw error when path resolves to undefined in combined mode', async () => {
 			const inputData: ITaskDataConnections = {
 				main: [
 					[
@@ -793,11 +793,10 @@ describe('detectBinaryEncoding', () => {
 	});
 
 	it('should detect ASCII encoding', () => {
-		const asciiBuffer = Buffer.from('Simple ASCII text 123');
+		const asciiBuffer = Buffer.from(Buffer.from('Simple ASCII text 123').toString('ascii'));
 		const encoding = detectBinaryEncoding(asciiBuffer);
 		expect(encoding).toBeDefined();
-		// ASCII is often detected as UTF-8, ASCII, or similar encodings
-		expect(['UTF-8', 'ASCII', 'ascii', 'windows-1252', 'ISO-8859-1']).toContain(encoding);
+		expect(encoding).toBe('ASCII');
 	});
 
 	it('should detect Windows-1252 encoding', () => {
@@ -1297,6 +1296,16 @@ describe('copyBinaryFile', () => {
 				fileType: undefined,
 				mimeType: 'application/octet-stream',
 			},
+			filePath,
+		);
+	});
+
+	it('should sanitize filenames', async () => {
+		await copyBinaryFile(workflowId, executionId, filePath, '../../../etc/passwd');
+
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			{ type: 'execution', workflowId, executionId },
+			expect.objectContaining({ fileName: 'passwd' }),
 			filePath,
 		);
 	});

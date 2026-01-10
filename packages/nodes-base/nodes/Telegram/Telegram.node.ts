@@ -6,7 +6,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
-	INodeProperties,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -30,22 +29,6 @@ import {
 	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../utils/sendAndWait/utils';
-
-const preBuiltAgentsCallout: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Interact with Telegram using our pre-built',
-	name: 'preBuiltAgentsCalloutTelegram',
-	type: 'callout',
-	typeOptions: {
-		calloutAction: {
-			label: 'Voice assistant agent',
-			icon: 'bot',
-			type: 'openSampleWorkflowTemplate',
-			templateId: 'voice_assistant_agent_with_telegram',
-		},
-	},
-	default: '',
-};
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,7 +54,6 @@ export class Telegram implements INodeType {
 		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
-			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',

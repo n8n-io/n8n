@@ -72,6 +72,54 @@ describe('AssignmentCollection.vue', () => {
 		vi.clearAllMocks();
 	});
 
+	it('updates when node and value props change externally (e.g., collaboration)', async () => {
+		const initialValue: AssignmentCollectionValue = {
+			assignments: [{ id: 'id-1', name: 'key1', value: 'value1', type: 'string' }],
+		};
+
+		const initialNode = {
+			parameters: {},
+			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',
+			name: 'Edit Fields',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.3,
+			position: [1120, 380] as [number, number],
+			credentials: {},
+			disabled: false,
+		};
+
+		const { findAllByTestId, rerender } = renderComponent({
+			props: {
+				value: initialValue,
+				node: initialNode,
+			},
+		});
+
+		let assignments = await findAllByTestId('assignment');
+		expect(assignments.length).toEqual(1);
+		expect(getInput(within(assignments[0]).getByTestId('assignment-value'))).toHaveValue('value1');
+
+		// Simulate external update (e.g., from collaboration) - both node and value change
+		const updatedValue: AssignmentCollectionValue = {
+			assignments: [
+				{ id: 'id-1', name: 'key1', value: 'updatedValue1', type: 'string' },
+				{ id: 'id-2', name: 'key2', value: 'value2', type: 'string' },
+			],
+		};
+
+		// Node object is replaced (new reference) when workflow is re-initialized
+		const updatedNode = { ...initialNode };
+
+		await rerender({ value: updatedValue, node: updatedNode });
+
+		assignments = await findAllByTestId('assignment');
+		expect(assignments.length).toEqual(2);
+		expect(getInput(within(assignments[0]).getByTestId('assignment-value'))).toHaveValue(
+			'updatedValue1',
+		);
+		expect(getInput(within(assignments[1]).getByTestId('assignment-value'))).toHaveValue('value2');
+	});
+
 	it('renders empty state properly', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 		expect(getByTestId('assignment-collection-fields')).toBeInTheDocument();

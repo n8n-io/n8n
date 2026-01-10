@@ -25,7 +25,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
-import { deepCopy, BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { deepCopy, BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -33,6 +33,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -60,6 +61,7 @@ const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
@@ -142,7 +144,9 @@ const isMCPEnabled = computed(
 const isCredentialResolverEnabled = computed(() =>
 	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
 );
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const readOnlyEnv = computed(
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
@@ -549,7 +553,7 @@ const saveSettings = async () => {
 						size: 'small',
 						newWindow: true,
 					},
-					() => 'Learn more',
+					() => i18n.baseText('generic.learnMore'),
 				),
 			]),
 			type: 'warning',
@@ -577,7 +581,7 @@ const updateTimeSavedPerExecution = (value: string) => {
 
 const onExecutionLogicModeChange = (value: string) => {
 	if (value === 'v0' || value === 'v1') {
-		workflowSettings.value.binaryMode = 'separate';
+		workflowSettings.value.binaryMode = BINARY_MODE_SEPARATE;
 		workflowSettings.value.executionOrder = value;
 	}
 
@@ -670,7 +674,7 @@ onMounted(async () => {
 		workflowSettingsData.executionOrder = 'v0';
 	}
 	if (workflowSettingsData.binaryMode === undefined) {
-		workflowSettingsData.binaryMode = 'separate';
+		workflowSettingsData.binaryMode = BINARY_MODE_SEPARATE;
 	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;

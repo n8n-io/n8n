@@ -5,7 +5,7 @@ import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import type { Node } from 'estree';
 import type { CodeNodeLanguageOption } from './CodeNodeEditor.vue';
 import type { CodeExecutionMode, WorkflowSettingsBinaryMode } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 
 export function walk<T extends RangeNode>(
 	node: Node | esprima.Program,
@@ -101,7 +101,7 @@ export const valueToInsert = (
 	value: string,
 	language: CodeNodeLanguageOption,
 	mode: CodeExecutionMode,
-	binaryMode?: WorkflowSettingsBinaryMode,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): string => {
 	if (isPython(language)) return pythonInsert(value, mode);
 	if (isPyodide(language)) return pyodideInsert(value, mode);

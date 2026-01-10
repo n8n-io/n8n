@@ -57,8 +57,9 @@ test.describe('Langchain Integration @capability:proxy', () => {
 	});
 
 	// Create a ticket for this for AI team to fix
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Error Handling and Logs Display', () => {
+	test.describe('Error Handling and Logs Display @fixme', () => {
+		test.fixme();
+
 		// Helper function to set up the agent workflow with Postgres error configuration
 		async function setupAgentWorkflowWithPostgresError(n8n: n8nPage) {
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });

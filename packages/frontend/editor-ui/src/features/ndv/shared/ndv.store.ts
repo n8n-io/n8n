@@ -17,14 +17,13 @@ import {
 } from './ndv.constants';
 import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
-import { NodeConnectionTypes, BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { useI18n } from '@n8n/i18n';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -95,8 +94,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-
-	const i18n = useI18n();
 
 	const activeNode = computed(() => {
 		return workflowsStore.getNodeByName(activeNodeName.value || '');
@@ -218,20 +215,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 
 	const isNDVOpen = computed(() => activeNodeName.value !== null);
-
-	const binaryDataAccessTooltip = computed(() => {
-		if (workflowsStore.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
-			return i18n.baseText('ndv.binaryData.combinedTooltip', {
-				interpolate: {
-					example: "{{ $('Target Node').item.binaryName }}",
-				},
-			});
-		}
-
-		return i18n.baseText('ndv.binaryData.separateTooltip', {
-			interpolate: { example: "{{ $('Target Node').item.binary.data }}" },
-		});
-	});
 
 	const unsetActiveNodeName = (): void => {
 		activeNodeName.value = null;
@@ -440,7 +423,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		isTableHoverOnboarded,
 		mainPanelDimensions,
 		lastSetActiveNodeSource,
-		binaryDataAccessTooltip,
 		setActiveNodeName,
 		unsetActiveNodeName,
 		setInputNodeName,

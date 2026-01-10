@@ -63,7 +63,7 @@ const N8nTree = getCurrentInstance()?.type;
 <template>
 	<div v-if="isObject(value)" class="n8n-tree">
 		<div v-if="isBinary(value)">
-			<slot name="binary" v-bind:value="value" v-bind:path="path" />
+			<slot name="binary" :value="value" :path="path" />
 		</div>
 		<div v-else v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
 			<div v-if="isSimple(value[label])" :class="$style.simple">

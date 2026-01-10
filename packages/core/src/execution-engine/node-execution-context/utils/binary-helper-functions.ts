@@ -21,6 +21,8 @@ import {
 	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+	sanitizeFilename,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -70,7 +72,7 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode?: WorkflowSettingsBinaryMode,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): IBinaryData {
 	if (isBinaryValue(parameterData)) {
 		return parameterData;
@@ -87,7 +89,21 @@ export function assertBinaryData(
 		);
 	}
 
-	if (binaryMode === 'separate' || binaryMode === undefined) {
+	if (binaryMode === BINARY_MODE_COMBINED) {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const binaryData = get(itemData, parameterData);
+		if (!isBinaryValue(binaryData)) {
+			throw new NodeOperationError(
+				node,
+				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
+				},
+			);
+		}
+		return binaryData;
+	} else {
 		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 		if (binaryKeyData === undefined) {
 			throw new NodeOperationError(
@@ -114,20 +130,6 @@ export function assertBinaryData(
 		}
 
 		return binaryPropertyData;
-	} else {
-		const itemData = inputData.main[inputIndex]![itemIndex].json;
-		const binaryData = get(itemData, parameterData);
-		if (binaryData === undefined || !isBinaryValue(binaryData)) {
-			throw new NodeOperationError(
-				node,
-				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
-				{
-					itemIndex,
-					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
-				},
-			);
-		}
-		return binaryData;
 	}
 }
 
@@ -141,7 +143,7 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
-	binaryMode?: WorkflowSettingsBinaryMode,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
@@ -152,7 +154,7 @@ export async function getBinaryDataBuffer(
 	} else if (typeof parameterData === 'string') {
 		const itemData = inputData.main[inputIndex]![itemIndex].json;
 		const data = get(itemData, parameterData);
-		if (data === undefined || !isBinaryValue(data)) {
+		if (!isBinaryValue(data)) {
 			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 		}
 		binaryData = data;
@@ -234,9 +236,9 @@ export async function copyBinaryFile(
 	};
 
 	if (fileName) {
-		returnData.fileName = fileName;
+		returnData.fileName = sanitizeFilename(fileName);
 	} else if (filePath) {
-		returnData.fileName = path.parse(filePath).base;
+		returnData.fileName = sanitizeFilename(filePath);
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(

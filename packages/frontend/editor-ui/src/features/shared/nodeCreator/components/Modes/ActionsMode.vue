@@ -29,7 +29,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
-import { getActiveViewCallouts, isNodePreviewKey } from '../../nodeCreator.utils';
+import { isNodePreviewKey } from '../../nodeCreator.utils';
 
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
@@ -55,7 +55,7 @@ const {
 } = useActions();
 
 const nodeCreatorStore = useNodeCreatorStore();
-const calloutHelpers = useCalloutHelpers();
+const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -163,7 +163,7 @@ function onKeySelect(activeItemId: string) {
 
 function onSelected(actionCreateElement: INodeCreateElement) {
 	if (actionCreateElement.type === 'openTemplate') {
-		calloutHelpers.openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
+		openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
 				section: useViewStacks().activeViewStack.title,
@@ -247,13 +247,7 @@ onMounted(() => {
 	trackActionsView();
 });
 
-const callouts = computed<INodeCreateElement[]>(() =>
-	getActiveViewCallouts(
-		useViewStacks().activeViewStack.title,
-		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
-		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
-	),
-);
+const callouts = computed<INodeCreateElement[]>(() => []);
 </script>
 
 <template>

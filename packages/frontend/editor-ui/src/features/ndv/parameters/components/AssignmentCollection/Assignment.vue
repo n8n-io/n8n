@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import InputTriple from '../InputTriple/InputTriple.vue';
 import ParameterInputFull from '../ParameterInputFull.vue';
 import ParameterInputHint from '../ParameterInputHint.vue';
@@ -32,6 +33,13 @@ const props = defineProps<Props>();
 const assignment = ref<AssignmentValue>(props.modelValue);
 const valueInputHovered = ref(false);
 
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		assignment.value = newValue;
+	},
+);
+
 const emit = defineEmits<{
 	'update:model-value': [value: AssignmentValue];
 	remove: [];
@@ -40,6 +48,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
+const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -192,7 +201,7 @@ const onValueDrop = (droppedExpression: string) => {
 				<template v-if="!hideType" #middle>
 					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
 						<template #content>
-							{{ ndvStore.binaryDataAccessTooltip }}
+							{{ binaryDataAccessTooltip }}
 						</template>
 						<TypeSelect
 							:class="$style.select"
