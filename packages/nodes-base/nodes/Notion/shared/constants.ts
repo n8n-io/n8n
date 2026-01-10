@@ -8,8 +8,8 @@ const baseUrlRegexp = '(?:https|http)://www\\.notion\\.so/(?:[a-z0-9-]{2,}/)?';
 export const databaseUrlExtractionRegexp = `${baseUrlRegexp}(${notionIdRegexp})`;
 export const databaseUrlValidationRegexp = `${databaseUrlExtractionRegexp}.*`;
 
-export const databasePageUrlExtractionRegexp = `${baseUrlRegexp}(?:[a-zA-Z0-9-]{1,}-)?(${notionIdRegexp})`;
+export const databasePageUrlExtractionRegexp = `${baseUrlRegexp}(?:[a-zA-Z0-9-_]{1,}-)?(${notionIdRegexp})`;
 export const databasePageUrlValidationRegexp = `${databasePageUrlExtractionRegexp}.*`;
 
-export const blockUrlExtractionRegexp = `${baseUrlRegexp}(?:[a-zA-Z0-9-]{2,}-)?(${notionIdRegexp})`;
+export const blockUrlExtractionRegexp = `${baseUrlRegexp}(?:[a-zA-Z0-9-_]{2,}-)?(${notionIdRegexp})`;
 export const blockUrlValidationRegexp = `${blockUrlExtractionRegexp}.*`;
