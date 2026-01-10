@@ -142,6 +142,7 @@ export class JobProcessor {
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
+			additionalData.pushRef = pushRef;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}

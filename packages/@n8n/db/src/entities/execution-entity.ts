@@ -74,6 +74,13 @@ export class ExecutionEntity {
 	@Column({ nullable: true })
 	workflowId: string;
 
+	/**
+	 * ID of the parent execution if this execution is a subworkflow (mode='integrated').
+	 * Null for top-level executions.
+	 */
+	@Column({ type: 'int', nullable: true, transformer: idStringifier })
+	parentExecutionId: string | null;
+
 	@DateTimeColumn({ nullable: true })
 	waitTill: Date | null;
 
