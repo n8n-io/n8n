@@ -52,7 +52,6 @@ export const DEFAULTS = {
 	REPETITIONS: 1,
 	DATASET_NAME: 'notion-pairwise-workflows',
 	FEATURE_FLAGS: {
-		multiAgent: true,
 		templateExamples: false,
 	},
 } as const;

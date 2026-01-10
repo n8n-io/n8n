@@ -288,8 +288,8 @@ GENERATE_TEST_CASES=true pnpm eval
 # With custom concurrency
 EVALUATION_CONCURRENCY=10 pnpm eval
 
-# With feature flags enabled
-pnpm eval --multi-agent --template-examples
+# With template examples feature flag enabled
+pnpm eval --template-examples
 ```
 
 ### Langsmith Evaluation
@@ -303,8 +303,8 @@ export LANGSMITH_DATASET_NAME=your_dataset_name
 # Run evaluation
 pnpm eval:langsmith
 
-# With feature flags enabled
-pnpm eval:langsmith --multi-agent
+# With template examples feature flag enabled
+pnpm eval:langsmith --template-examples
 ```
 
 ### Pairwise Evaluation
@@ -328,7 +328,6 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
 | `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
 | `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
-| `--multi-agent` | Enable multi-agent architecture (see [Feature Flags](#feature-flags)) | false |
 | `--template-examples` | Enable template-based examples (see [Feature Flags](#feature-flags)) | false |
 
 #### Local Mode (No LangSmith Required)
@@ -500,7 +499,6 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `EVALUATION_CONCURRENCY` - Number of parallel test executions (default: 5)
 - `GENERATE_TEST_CASES` - Set to "true" to generate additional test cases
 - `LLM_MODEL` - Model identifier for metadata tracking
-- `EVAL_FEATURE_MULTI_AGENT` - Set to "true" to enable multi-agent mode
 - `EVAL_FEATURE_TEMPLATE_EXAMPLES` - Set to "true" to enable template examples
 - `N8N_EVALS_DISABLED_NODES` - Comma-separated list of node types to disable (e.g., `n8n-nodes-base.slack,@n8n/n8n-nodes-langchain.agent`)
 
@@ -512,33 +510,20 @@ Feature flags control experimental or optional behaviors in the AI Workflow Buil
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `multiAgent` | Enables multi-agent architecture with specialized sub-agents (supervisor, builder, configurator, discovery) | `false` |
 | `templateExamples` | Enables template-based examples in agent prompts | `false` |
 
 #### Setting Feature Flags
 
 **Via Environment Variables:**
 ```bash
-# Enable multi-agent mode
-EVAL_FEATURE_MULTI_AGENT=true pnpm eval
-
 # Enable template examples
 EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:pairwise
-
-# Enable both
-EVAL_FEATURE_MULTI_AGENT=true EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:langsmith
 ```
 
 **Via CLI Arguments:**
 ```bash
-# Enable multi-agent mode
-pnpm eval --multi-agent
-
 # Enable template examples
 pnpm eval:pairwise --template-examples
-
-# Enable both
-pnpm eval:langsmith --multi-agent --template-examples
 ```
 
 #### Usage Across Evaluation Modes
@@ -547,27 +532,27 @@ Feature flags work consistently across all evaluation modes:
 
 **CLI Evaluation:**
 ```bash
-pnpm eval --multi-agent --template-examples
+pnpm eval --template-examples
 ```
 
 **Langsmith Evaluation:**
 ```bash
-pnpm eval:langsmith --multi-agent
+pnpm eval:langsmith --template-examples
 ```
 
 **Pairwise Evaluation (LangSmith mode):**
 ```bash
-pnpm eval:pairwise --multi-agent --template-examples
+pnpm eval:pairwise --template-examples
 ```
 
 **Pairwise Evaluation (Local mode):**
 ```bash
-pnpm eval:pairwise --prompt "Create a Slack workflow" --dos "Use Slack node" --multi-agent
+pnpm eval:pairwise --prompt "Create a Slack workflow" --dos "Use Slack node" --template-examples
 ```
 
 When feature flags are enabled, they are logged at the start of the evaluation:
 ```
-➔ Feature flags enabled: multiAgent, templateExamples
+➔ Feature flags enabled: templateExamples
 ```
 
 ## Output
