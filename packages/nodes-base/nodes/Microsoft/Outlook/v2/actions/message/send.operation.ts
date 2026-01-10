@@ -216,6 +216,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	additionalFields.subject = subject;
 	additionalFields.bodyContent = bodyContent || ' ';
 	additionalFields.toRecipients = toRecipients;
+	additionalFields.bodyContentType = 'html';
 
 	const saveToSentItems =
 		additionalFields.saveToSentItems === undefined ? true : additionalFields.saveToSentItems;
