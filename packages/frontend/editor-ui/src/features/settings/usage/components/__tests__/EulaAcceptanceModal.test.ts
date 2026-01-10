@@ -16,6 +16,19 @@ describe('EulaAcceptanceModal', () => {
 		expect(await findByTestId('eula-acceptance-modal')).toBeInTheDocument();
 	});
 
+	it('should display the audit notice', async () => {
+		const { findByText } = renderComponent({
+			props: {
+				modelValue: true,
+				eulaUrl: 'https://example.com/eula.pdf',
+			},
+		});
+
+		expect(
+			await findByText('Your acceptance will be recorded for audit purposes.'),
+		).toBeInTheDocument();
+	});
+
 	it('should display the EULA link with correct URL', async () => {
 		const eulaUrl = 'https://example.com/eula.pdf';
 		const { findByTestId } = renderComponent({
