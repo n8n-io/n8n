@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -41,6 +41,7 @@ const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
+// === MFA / LDAP labels ===
 const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
 const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);
 const emailLabel = computed(() => {
@@ -51,6 +52,7 @@ const emailLabel = computed(() => {
 	return label;
 });
 
+// === Форма авторизации ===
 const formConfig: IFormBoxConfig = reactive({
 	title: locale.baseText('auth.signin'),
 	buttonText: locale.baseText('auth.signin'),
@@ -86,6 +88,7 @@ const formConfig: IFormBoxConfig = reactive({
 	],
 });
 
+// === Логин ===
 const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	await login({
 		emailOrLdapLoginId: emailOrLdapLoginId.value,
@@ -101,14 +104,8 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
-
-	// Allow local redirects
-	if (redirect.startsWith('/')) {
-		return true;
-	}
-
+	if (redirect.startsWith('/')) return true;
 	try {
-		// Only allow origin domain redirects
 		const url = new URL(redirect);
 		return url.origin === window.location.origin;
 	} catch {
@@ -153,7 +150,6 @@ const login = async (form: LoginRequestDto) => {
 				window.location.href = redirect;
 				return;
 			}
-
 			void router.push(redirect);
 			return;
 		}
@@ -196,24 +192,67 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
+
+// Модальное окно политики конфиденциальности
+const showPrivacyModal = ref(false);
 </script>
 
 <template>
-	<div>
-		<AuthView
-			v-if="!showMfaView"
-			:form="formConfig"
-			:form-loading="loading"
-			:with-sso="true"
-			data-test-id="signin-form"
-			@submit="onEmailPasswordSubmitted"
-		/>
-		<MfaView
-			v-if="showMfaView"
-			:report-error="reportError"
-			@submit="onMFASubmitted"
-			@on-back-click="onBackClick"
-			@on-form-changed="onFormChanged"
-		/>
-	</div>
+  <div class="login-page">
+    <!-- Логотип -->
+    <div class="login-logo">
+      <img src="/assets/logo.png" alt="Logo" />
+    </div>
+
+    <!-- Форма авторизации -->
+    <AuthView
+      v-if="!showMfaView"
+      :form="formConfig"
+      :form-loading="loading"
+      :with-sso="true"
+      data-test-id="signin-form"
+      @submit="onEmailPasswordSubmitted"
+    />
+    <MfaView
+      v-if="showMfaView"
+      :report-error="reportError"
+      @submit="onMFASubmitted"
+      @on-back-click="onBackClick"
+      @on-form-changed="onFormChanged"
+    />
+
+    <!-- Футер -->
+    <div class="login-footer">
+      <a href="#" @click.prevent="showPrivacyModal = true">Политика конфиденциальности</a>
+    </div>
+
+    <!-- Модалка -->
+    <Modal v-if="showPrivacyModal" @close="showPrivacyModal = false">
+      <h3>Политика конфиденциальности</h3>
+      <p>Текст вашей политики конфиденциальности...</p>
+      <button @click="showPrivacyModal = false">Закрыть</button>
+    </Modal>
+  </div>
 </template>
+
+<style scoped>
+.login-page {
+  min-height: 100vh;
+  background-color: #00c3c8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.login-logo {
+  margin-bottom: 2rem;
+}
+
+.login-footer {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: white;
+}
+</style>
