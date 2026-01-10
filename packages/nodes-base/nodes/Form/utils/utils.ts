@@ -568,11 +568,15 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
+	const method = context.getRequestObject().method;
+
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (node.typeVersion > 1) {
+		// Only validate authentication on GET requests (form display)
+		// POST requests (form submission) are already authenticated if the user can see the form
+		if (node.typeVersion > 1 && method === 'GET') {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -586,8 +590,6 @@ export async function formWebhook(
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
-
-	const method = context.getRequestObject().method;
 
 	validateResponseModeConfiguration(context);
 

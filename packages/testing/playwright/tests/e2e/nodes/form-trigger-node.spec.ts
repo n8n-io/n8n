@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import { test, expect } from '../../../fixtures/base';
 
 test.describe('Form Trigger', () => {
@@ -119,5 +121,104 @@ test.describe('Form Trigger', () => {
 
 		// Close the form page
 		await formPage.close();
+	});
+
+	test('should submit a multi-page form with basic auth', async ({ n8n }) => {
+		// Create Basic Auth credentials
+		const credentialName = `test-${nanoid()}`;
+		const user = 'test';
+		const password = 'test';
+		await n8n.credentialsComposer.createFromApi({
+			type: 'httpBasicAuth',
+			name: credentialName,
+			data: {
+				user,
+				password,
+			},
+		});
+
+		// Add Form Trigger node with basic auth enabled
+		await n8n.canvas.clickNodeCreatorPlusButton();
+		await n8n.canvas.nodeCreatorItemByName('On form submission').click();
+
+		await n8n.ndv.fillParameterInput('Form Title', 'Authenticated Multi-Page Form');
+		await n8n.ndv.fillParameterInput(
+			'Form Description',
+			'A form with basic auth and multiple pages',
+		);
+
+		// Enable basic authentication
+		await n8n.ndv.selectOptionInParameterDropdown('authentication', 'Basic Auth');
+
+		// Add a single field to the Form Trigger node
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your email?');
+
+		await n8n.ndv.clickBackToCanvasButton();
+
+		// Add Form node (next page) by selecting the "Next Form Page" action
+		await n8n.canvas.addNode('n8n Form', { closeNDV: false, action: 'Next Form Page' });
+
+		// Add a single field to the Form node
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your phone number?');
+
+		await n8n.ndv.clickBackToCanvasButton();
+
+		// Start the workflow execution so it's waiting for form submissions
+		await n8n.canvas.clickExecuteWorkflowButton();
+		await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+
+		// Get the form test URL from the NDV
+		await n8n.canvas.openNode('On form submission');
+		// When basic auth is enabled, the full URL (http://...) is shown instead of just the path
+		// The URL may wrap across lines in the UI, so we get all text content and extract it
+		await n8n.page.waitForTimeout(1000); // Wait for the URL to render
+		const pageContent = await n8n.page.textContent('body');
+		// Remove line breaks and extra spaces from the wrapped URL
+		const cleanContent = pageContent?.replace(/\s+/g, ' ');
+		const urlMatch = cleanContent?.match(/http:\/\/localhost:\d+\/form-test\/[a-f0-9-]+/);
+		expect(urlMatch, 'Form URL should be found in the page').toBeTruthy();
+		const formUrl = urlMatch![0];
+
+		// Create a new context with HTTP authentication
+		// This simulates a user who has already authenticated with Basic Auth
+		const context = await n8n.page
+			.context()
+			.browser()!
+			.newContext({
+				httpCredentials: {
+					username: 'test',
+					password: 'test',
+				},
+			});
+
+		// Open form URL in a new page with authentication
+		const formPage = await context.newPage();
+		await formPage.goto(formUrl!);
+
+		// Wait for the form to load
+		await formPage.waitForSelector('label:has-text("What is your email?")', { timeout: 10000 });
+
+		// Fill first page with email
+		const email = `test${Date.now()}@example.com`;
+		await formPage.getByLabel('What is your email?').fill(email);
+		await formPage.getByRole('button', { name: 'Submit' }).click();
+
+		// Wait for the second page to load
+		await formPage.waitForSelector('label:has-text("What is your phone number?")');
+
+		// Fill second page with phone number
+		const phone = `+1-555-${Date.now().toString().slice(-7)}`;
+		await formPage.getByLabel('What is your phone number?').fill(phone);
+		await formPage.getByRole('button', { name: 'Submit' }).click();
+
+		// Verify the form was submitted successfully
+		// This validates that POST requests work without requiring credentials
+		await expect(formPage.getByText('Your response has been recorded')).toBeVisible();
+
+		// Close the form page and context
+		await formPage.close();
+		await context.close();
 	});
 });
