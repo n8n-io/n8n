@@ -14,7 +14,6 @@ import type {
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
-	randomInt,
 	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
@@ -322,9 +321,8 @@ describe('ActiveExecutions', () => {
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			executionRepository.createNewExecution.mockImplementation(async () =>
-				randomInt(1000, 2000).toString(),
-			);
+			let i = 1000;
+			executionRepository.createNewExecution.mockImplementation(async () => `${i++}`);
 
 			(sleep as jest.Mock).mockImplementation(() => {
 				// @ts-expect-error private property
