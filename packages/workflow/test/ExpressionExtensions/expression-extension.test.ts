@@ -2,9 +2,9 @@
 
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 
-import { evaluate } from './helpers';
+import { evaluate, evaluateParam } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
-import { extendTransform, extend } from '../../src/extensions';
+import { extendTransform, extend, hasArrayWildcardSyntax } from '../../src/extensions';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
@@ -261,6 +261,255 @@ describe('Expression Parser', () => {
 			const result = extend('TEST', 'toUpperCase', []);
 
 			expect(result).toEqual('TEST');
+		});
+	});
+
+	describe('Array wildcard [*] syntax', () => {
+		describe('hasArrayWildcardSyntax detection', () => {
+			test('detects [*] in expression', () => {
+				expect(hasArrayWildcardSyntax('items[*].name')).toBe(true);
+				expect(hasArrayWildcardSyntax('$json.items[*].title')).toBe(true);
+				expect(hasArrayWildcardSyntax('data[ * ].field')).toBe(true);
+			});
+
+			test('does not detect false positives', () => {
+				expect(hasArrayWildcardSyntax('items[0].name')).toBe(false);
+				expect(hasArrayWildcardSyntax('items.name')).toBe(false);
+				expect(hasArrayWildcardSyntax('items["*"].name')).toBe(false);
+			});
+		});
+
+		describe('extendTransform for [*] syntax', () => {
+			test('transforms simple [*] access to $jmesPath', () => {
+				expect(extendTransform('items[*].name')?.code).toBe('$jmesPath(items, "[*].name")');
+			});
+
+			test('transforms $json prefixed [*] access', () => {
+				expect(extendTransform('$json.items[*].title')?.code).toBe(
+					'$jmesPath($json.items, "[*].title")',
+				);
+			});
+
+			test('transforms nested path after [*]', () => {
+				expect(extendTransform('$json.orders[*].customer.name')?.code).toBe(
+					'$jmesPath($json.orders, "[*].customer.name")',
+				);
+			});
+
+			test('transforms deeply nested path after [*]', () => {
+				expect(extendTransform('data[*].address.city.zipCode')?.code).toBe(
+					'$jmesPath(data, "[*].address.city.zipCode")',
+				);
+			});
+
+			test('transforms with computed property access after [*]', () => {
+				expect(extendTransform('items[*]["field-name"]')?.code).toBe(
+					'$jmesPath(items, "[*].field-name")',
+				);
+			});
+		});
+
+		describe('evaluate [*] syntax end-to-end', () => {
+			test('extracts single field from array of objects', () => {
+				const data = [{ items: [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Charlie' }] }];
+				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual(['Alice', 'Bob', 'Charlie']);
+			});
+
+			test('extracts nested field from array of objects', () => {
+				const data = [
+					{
+						orders: [
+							{ customer: { name: 'Alice', city: 'NYC' } },
+							{ customer: { name: 'Bob', city: 'LA' } },
+						],
+					},
+				];
+				expect(evaluate('={{ $json.orders[*].customer.name }}', data)).toEqual(['Alice', 'Bob']);
+			});
+
+			test('works with empty array', () => {
+				const data = [{ items: [] }];
+				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual([]);
+			});
+
+			test('filters out items with missing fields (JMESPath behavior)', () => {
+				// JMESPath filters out items that don't have the requested field
+				const data = [{ items: [{ name: 'Alice' }, { other: 'value' }, { name: 'Charlie' }] }];
+				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual(['Alice', 'Charlie']);
+			});
+		});
+
+		describe('fixedCollection array expansion with [*] syntax', () => {
+			test('expands single template with multiple [*] expressions into multiple objects', () => {
+				const data = [
+					{
+						items: [
+							{ name: 'Product A', price: 10 },
+							{ name: 'Product B', price: 20 },
+							{ name: 'Product C', price: 30 },
+						],
+					},
+				];
+
+				// Simulating a fixedCollection with lineItemValues array containing one template
+				const paramValue = {
+					lineItemValues: [
+						{
+							productName: '={{ $json.items[*].name }}',
+							amount: '={{ $json.items[*].price }}',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				expect(result).toEqual({
+					lineItemValues: [
+						{ productName: 'Product A', amount: 10 },
+						{ productName: 'Product B', amount: 20 },
+						{ productName: 'Product C', amount: 30 },
+					],
+				});
+			});
+
+			test('preserves scalar values across expanded objects', () => {
+				const data = [
+					{
+						items: [{ name: 'A' }, { name: 'B' }],
+					},
+				];
+
+				const paramValue = {
+					lineItemValues: [
+						{
+							productName: '={{ $json.items[*].name }}',
+							currency: 'USD',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				expect(result).toEqual({
+					lineItemValues: [
+						{ productName: 'A', currency: 'USD' },
+						{ productName: 'B', currency: 'USD' },
+					],
+				});
+			});
+
+			test('handles mismatched array lengths with undefined fill', () => {
+				const data = [
+					{
+						items: [
+							{ name: 'A', price: 10 },
+							{ name: 'B', price: 20 },
+							{ name: 'C' }, // No price
+						],
+					},
+				];
+
+				const paramValue = {
+					lineItemValues: [
+						{
+							productName: '={{ $json.items[*].name }}',
+							amount: '={{ $json.items[*].price }}',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				// JMESPath filters out items without the requested field,
+				// so we get 3 names but only 2 prices
+				expect(result).toEqual({
+					lineItemValues: [
+						{ productName: 'A', amount: 10 },
+						{ productName: 'B', amount: 20 },
+						{ productName: 'C', amount: undefined },
+					],
+				});
+			});
+
+			test('works with nested property extraction', () => {
+				const data = [
+					{
+						orders: [
+							{ customer: { name: 'Alice' }, total: 100 },
+							{ customer: { name: 'Bob' }, total: 200 },
+						],
+					},
+				];
+
+				const paramValue = {
+					lineItemValues: [
+						{
+							customerName: '={{ $json.orders[*].customer.name }}',
+							orderTotal: '={{ $json.orders[*].total }}',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				expect(result).toEqual({
+					lineItemValues: [
+						{ customerName: 'Alice', orderTotal: 100 },
+						{ customerName: 'Bob', orderTotal: 200 },
+					],
+				});
+			});
+
+			test('handles empty array input', () => {
+				const data = [{ items: [] }];
+
+				const paramValue = {
+					lineItemValues: [
+						{
+							name: '={{ $json.items[*].name }}',
+							price: '={{ $json.items[*].price }}',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				expect(result).toEqual({
+					lineItemValues: [],
+				});
+			});
+
+			test('works with multiple templates - expands each independently', () => {
+				const data = [
+					{
+						products: [{ name: 'P1' }, { name: 'P2' }],
+						services: [{ name: 'S1' }],
+					},
+				];
+
+				const paramValue = {
+					lineItemValues: [
+						{
+							itemName: '={{ $json.products[*].name }}',
+							type: 'product',
+						},
+						{
+							itemName: '={{ $json.services[*].name }}',
+							type: 'service',
+						},
+					],
+				};
+
+				const result = evaluateParam(paramValue, data);
+
+				expect(result).toEqual({
+					lineItemValues: [
+						{ itemName: 'P1', type: 'product' },
+						{ itemName: 'P2', type: 'product' },
+						{ itemName: 'S1', type: 'service' },
+					],
+				});
+			});
 		});
 	});
 });

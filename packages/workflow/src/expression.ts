@@ -1,16 +1,16 @@
+import { ApplicationError } from '@n8n/errors';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
+import { hasExpandableArrays, expandArraysToObjects } from './expression-array-expander';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { extend, extendOptional } from './extensions';
+import { extend, extendOptional, hasArrayWildcardSyntax } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import { getGlobalState } from './global-state';
-import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -24,9 +24,10 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './interfaces';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
-import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -44,6 +45,21 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
+
+/**
+ * Recursively checks if an object contains any string values with [*] wildcard syntax.
+ */
+const containsWildcardSyntax = (obj: object): boolean => {
+	for (const value of Object.values(obj)) {
+		if (typeof value === 'string' && isExpression(value) && hasArrayWildcardSyntax(value)) {
+			return true;
+		}
+		if (typeof value === 'object' && value !== null && containsWildcardSyntax(value)) {
+			return true;
+		}
+	}
+	return false;
+};
 
 // Make sure that error get forwarded
 setErrorHandler((error: Error) => {
@@ -662,9 +678,20 @@ export class Expression {
 		// The parameter value is complex so resolve depending on type
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = parameterValue.map((item) =>
-				resolveParameterValue(item as NodeParameterValueType, {}),
-			);
+			// Only flatten when [*] wildcard syntax is used - this ensures backward compatibility
+			const returnData: NodeParameterValueType[] = [];
+			for (const item of parameterValue) {
+				const resolved = resolveParameterValue(item as NodeParameterValueType, {});
+				// Check if item contains [*] syntax and resolved to an array (was expanded)
+				const itemUsesWildcard =
+					typeof item === 'object' && item !== null && containsWildcardSyntax(item);
+				if (itemUsesWildcard && Array.isArray(resolved)) {
+					// Flatten expanded arrays from [*] expressions
+					returnData.push(...resolved);
+				} else {
+					returnData.push(resolved);
+				}
+			}
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 
@@ -678,12 +705,31 @@ export class Expression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
+		let hasWildcardArrayExpansion = false;
 
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(
+			// Only trigger array expansion when [*] wildcard syntax is explicitly used
+			// This ensures backward compatibility - expressions returning arrays without [*]
+			// will not be expanded into multiple objects
+			const usesWildcardSyntax =
+				typeof value === 'string' && isExpression(value) && hasArrayWildcardSyntax(value);
+
+			const resolved = resolveParameterValue(
 				value as NodeParameterValueType,
 				parameterValue as INodeParameters,
 			);
+			returnData[key] = resolved;
+
+			// Track if [*] wildcard was used and resolved to an array
+			if (usesWildcardSyntax && Array.isArray(resolved)) {
+				hasWildcardArrayExpansion = true;
+			}
+		}
+
+		// If object has array values from [*] wildcard expressions, expand into multiple objects
+		// Only expand when [*] syntax was explicitly used (backward compatibility)
+		if (hasWildcardArrayExpansion && hasExpandableArrays(returnData)) {
+			return expandArraysToObjects(returnData);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {

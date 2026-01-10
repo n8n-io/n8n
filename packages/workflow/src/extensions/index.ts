@@ -2,6 +2,7 @@ export {
 	extend,
 	extendOptional,
 	hasExpressionExtension,
+	hasArrayWildcardSyntax,
 	hasNativeMethod,
 	extendTransform,
 	EXTENSION_OBJECTS as ExpressionExtensions,
