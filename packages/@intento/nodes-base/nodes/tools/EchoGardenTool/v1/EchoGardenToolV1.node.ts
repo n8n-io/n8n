@@ -1,4 +1,4 @@
-import { EchogardenSupplier } from 'intento-translation';
+import { EchogardenSupplier } from 'intento-segmentation';
 import type { INodeType, INodeTypeDescription, INodeTypeBaseDescription, ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

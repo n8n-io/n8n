@@ -1,8 +1,9 @@
 import { SupplyResponse } from 'intento-core';
+import type { ISegment } from 'intento-segmentation';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 import type { TranslationRequest } from 'supply/translation-request';
-import type { ISegment, ITranslation } from 'types/*';
+import type { ITranslation } from 'types/*';
 
 export class TranslationResponse extends SupplyResponse {
 	readonly from?: string;
@@ -18,7 +19,10 @@ export class TranslationResponse extends SupplyResponse {
 		this.translations = translations;
 	}
 
-	throwIfInvalid(): void {}
+	throwIfInvalid(): void {
+		if (this.translations.length !== this.segments.length) throw new Error('Number of translations does not match number of segments');
+		super.throwIfInvalid();
+	}
 
 	asLogMetadata(): LogMetadata {
 		return {

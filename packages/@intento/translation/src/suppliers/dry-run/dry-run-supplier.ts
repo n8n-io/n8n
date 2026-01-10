@@ -1,9 +1,10 @@
 import type { SupplyError, IFunctions } from 'intento-core';
 import { ContextFactory, Delay } from 'intento-core';
+import { SplitContext } from 'intento-segmentation';
 import type { IntentoConnectionType } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { DelayContext, SplitContext } from 'context/*';
+import { DelayContext } from 'context/*';
 import { DryRunContext } from 'suppliers/dry-run/dry-run-context';
 import { DryRunDescriptor } from 'suppliers/dry-run/dry-run-descriptor';
 import type { TranslationRequest } from 'supply/*';

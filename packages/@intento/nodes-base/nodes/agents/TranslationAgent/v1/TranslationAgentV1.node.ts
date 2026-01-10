@@ -51,8 +51,8 @@ export class TranslationAgentV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const signal = this.getExecutionCancelSignal();
-		const agent = await TranslationAgent.initializeAgent(this, signal!);
-		return await agent.run(signal!);
+		const signal = this.getExecutionCancelSignal() ?? new AbortController().signal;
+		const agent = await TranslationAgent.initializeAgent(this, signal);
+		return await agent.run(signal);
 	}
 }

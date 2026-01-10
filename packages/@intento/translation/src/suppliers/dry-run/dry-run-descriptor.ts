@@ -1,4 +1,3 @@
-import { SPLIT } from 'context/*';
 import type { ITranslationDescriptor } from 'types/*';
 
 export const DryRunDescriptor: ITranslationDescriptor = {
@@ -8,8 +7,8 @@ export const DryRunDescriptor: ITranslationDescriptor = {
 	tool: 'intentoDryRunTranslationTool',
 	displayName: 'DryRun',
 	description: 'Dry run translation service for testing purposes',
-	batchLimit: SPLIT.BOUNDARIES.BATCH_SIZE.max,
-	segmentLimit: SPLIT.BOUNDARIES.SEGMENT_SIZE.max,
+	batchLimit: Infinity,
+	segmentLimit: Infinity,
 	languageMap: {
 		from: new Map<string, string>(),
 		to: new Map<string, string>(),

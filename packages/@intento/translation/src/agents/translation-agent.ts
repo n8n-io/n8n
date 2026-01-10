@@ -1,13 +1,13 @@
 import type { IFunctions, SupplyResponse } from 'intento-core';
 import { SupplyError, AgentBase, ContextFactory, SupplyFactory } from 'intento-core';
+import type { SegmentsSupplierBase, ISegment } from 'intento-segmentation';
+import { SplitResponse, SplitRequest, MergeResponse, MergeRequest } from 'intento-segmentation';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { TranslationContext } from 'context/*';
-import type { SegmentsSupplierBase, TranslationSupplierBase } from 'supply/*';
-import { SplitRequest, SplitResponse, TranslationRequest, TranslationResponse } from 'supply/*';
-import { MergeRequest } from 'supply/merge-request';
-import { MergeResponse } from 'supply/merge-response';
-import type { ISegment } from 'types/i-segment';
+import { TranslationRequest } from 'supply/translation-request';
+import { TranslationResponse } from 'supply/translation-response';
+import type { TranslationSupplierBase } from 'supply/translation-supplier-base';
 import type { ITranslation } from 'types/i-translation';
 
 export class TranslationAgent extends AgentBase {

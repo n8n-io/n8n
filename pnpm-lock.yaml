@@ -389,6 +389,9 @@ importers:
       intento-core:
         specifier: workspace:*
         version: link:../core
+      intento-segmentation:
+        specifier: workspace:*
+        version: link:../segmentation
       intento-translation:
         specifier: workspace:*
         version: link:../translation
@@ -409,6 +412,25 @@ importers:
         specifier: ^1.16.3
         version: 1.16.3(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
 
+  packages/@intento/segmentation:
+    dependencies:
+      '@echogarden/icu-segmentation-wasm':
+        specifier: ^0.2.2
+        version: 0.2.2
+      '@echogarden/text-segmentation':
+        specifier: ^0.4.1
+        version: 0.4.1(@echogarden/icu-segmentation-wasm@0.2.2)
+      intento-core:
+        specifier: workspace:^
+        version: link:../core
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:^
+        version: link:../../@n8n/typescript-config
+
   packages/@intento/translation:
     dependencies:
       '@echogarden/icu-segmentation-wasm':
@@ -420,6 +442,9 @@ importers:
       intento-core:
         specifier: workspace:^
         version: link:../core
+      intento-segmentation:
+        specifier: workspace:^
+        version: link:../segmentation
       n8n-workflow:
         specifier: workspace:^
         version: link:../../workflow

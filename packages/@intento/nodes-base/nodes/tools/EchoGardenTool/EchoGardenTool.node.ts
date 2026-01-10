@@ -1,4 +1,4 @@
-import { EchoGardenDescriptor } from 'intento-translation';
+import { EchoGardenDescriptor } from 'intento-segmentation';
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 

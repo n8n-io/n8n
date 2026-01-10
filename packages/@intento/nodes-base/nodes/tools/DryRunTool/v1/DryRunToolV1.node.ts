@@ -1,5 +1,6 @@
 import { CONTEXT_EXECUTION } from 'intento-core';
-import { DryRunSupplier, CONTEXT_SPLIT, CONTEXT_DELAY, CONTEXT_DRY_RUN } from 'intento-translation';
+import { CONTEXT_SPLIT } from 'intento-segmentation';
+import { DryRunSupplier, CONTEXT_DELAY, CONTEXT_DRY_RUN } from 'intento-translation';
 import type { INodeType, INodeTypeDescription, INodeTypeBaseDescription, ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

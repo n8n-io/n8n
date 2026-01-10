@@ -1,7 +1,7 @@
 {
-  "name": "intento-translation",
+  "name": "intento-segmentation",
   "version": "1.0.0",
-  "description": "Translation functionality of intento extension for n8n",
+  "description": "Segmentation functionality of intento extension for n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
 
@@ -26,14 +26,12 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:^",
     "n8n-workflow": "workspace:^",
-    "intento-core": "workspace:^",
-    "intento-segmentation": "workspace:^"
+    "intento-core": "workspace:^"
   },
   "dependencies": {
     "@echogarden/icu-segmentation-wasm": "^0.2.2",
     "@echogarden/text-segmentation": "^0.4.1",
     "n8n-workflow": "workspace:^",
-    "intento-core": "workspace:^",
-    "intento-segmentation": "workspace:^"
+    "intento-core": "workspace:^"
   }
 }

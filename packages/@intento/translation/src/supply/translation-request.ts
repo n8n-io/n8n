@@ -1,7 +1,6 @@
 import { SupplyRequest } from 'intento-core';
+import type { ISegment } from 'intento-segmentation';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
-
-import type { ISegment } from 'types/*';
 
 export class TranslationRequest extends SupplyRequest {
 	readonly segments: ISegment[];

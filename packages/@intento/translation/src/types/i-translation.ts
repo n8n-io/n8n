@@ -1,6 +1,5 @@
-export interface ITranslation {
-	readonly textPosition: number;
-	readonly segmentPosition: number;
-	readonly text: string;
+import type { ISegment } from 'intento-segmentation';
+
+export interface ITranslation extends ISegment {
 	readonly detectedLanguage?: string;
 }
