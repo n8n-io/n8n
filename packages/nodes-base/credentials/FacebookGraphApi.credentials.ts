@@ -33,7 +33,7 @@ export class FacebookGraphApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://graph.facebook.com/v8.0',
+			baseURL: 'https://graph.facebook.com/v24.0',
 			url: '/me',
 		},
 	};
