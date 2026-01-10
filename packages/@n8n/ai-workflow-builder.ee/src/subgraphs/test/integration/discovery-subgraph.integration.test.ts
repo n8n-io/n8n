@@ -11,7 +11,7 @@ import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
 import type { WorkflowTechniqueType } from '@/types/categorization';
 
 import techniqueTestData from './techniques.json';
-import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
+import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes';
 
 /**
  * Integration tests for Discovery Subgraph
