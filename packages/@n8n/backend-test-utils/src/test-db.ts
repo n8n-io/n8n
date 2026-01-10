@@ -12,15 +12,14 @@ let isInitialized = false;
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSourceOptions => {
+export const getBootstrapDBOptions = (dbType: 'postgresdb'): DataSourceOptions => {
 	const globalConfig = Container.get(GlobalConfig);
-	const type = dbType === 'postgresdb' ? 'postgres' : 'mysql';
 	return {
-		type,
+		type: 'postgres',
 		...Container.get(DbConnectionOptions).getOverrides(dbType),
-		database: type,
+		database: 'postgres',
 		entityPrefix: globalConfig.database.tablePrefix,
-		schema: dbType === 'postgresdb' ? globalConfig.database.postgresdb.schema : undefined,
+		schema: globalConfig.database.postgresdb.schema,
 	};
 };
 
@@ -42,12 +41,6 @@ export async function init() {
 		await bootstrapPostgres.destroy();
 
 		globalConfig.database.postgresdb.database = testDbName;
-	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
-		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysqldb')).initialize();
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
-		await bootstrapMysql.destroy();
-
-		globalConfig.database.mysqldb.database = testDbName;
 	}
 
 	const dbConnection = Container.get(DbConnection);
@@ -97,44 +90,31 @@ type EntityName =
  */
 export async function truncate(entities: EntityName[]) {
 	const connection = Container.get(Connection);
-	const dbType = connection.options.type;
 
-	// Disable FK checks for MySQL/MariaDB to handle circular dependencies
-	if (dbType === 'mysql' || dbType === 'mariadb') {
-		await connection.query('SET FOREIGN_KEY_CHECKS=0');
+	// Collect junction tables to clean
+	const junctionTablesToClean = new Set<string>();
+
+	// Find all junction tables associated with the entities being truncated
+	for (const name of entities) {
+		try {
+			const metadata = connection.getMetadata(name);
+			for (const relation of metadata.manyToManyRelations) {
+				if (relation.junctionEntityMetadata) {
+					const junctionTableName = relation.junctionEntityMetadata.tablePath;
+					junctionTablesToClean.add(junctionTableName);
+				}
+			}
+		} catch (error) {
+			// Skip
+		}
 	}
 
-	try {
-		// Collect junction tables to clean
-		const junctionTablesToClean = new Set<string>();
+	// Clean junction tables first (since they reference the entities)
+	for (const tableName of junctionTablesToClean) {
+		await connection.query(`DELETE FROM ${tableName}`);
+	}
 
-		// Find all junction tables associated with the entities being truncated
-		for (const name of entities) {
-			try {
-				const metadata = connection.getMetadata(name);
-				for (const relation of metadata.manyToManyRelations) {
-					if (relation.junctionEntityMetadata) {
-						const junctionTableName = relation.junctionEntityMetadata.tablePath;
-						junctionTablesToClean.add(junctionTableName);
-					}
-				}
-			} catch (error) {
-				// Skip
-			}
-		}
-
-		// Clean junction tables first (since they reference the entities)
-		for (const tableName of junctionTablesToClean) {
-			await connection.query(`DELETE FROM ${tableName}`);
-		}
-
-		for (const name of entities) {
-			await connection.getRepository(name).delete({});
-		}
-	} finally {
-		// Re-enable FK checks
-		if (dbType === 'mysql' || dbType === 'mariadb') {
-			await connection.query('SET FOREIGN_KEY_CHECKS=1');
-		}
+	for (const name of entities) {
+		await connection.getRepository(name).delete({});
 	}
 }

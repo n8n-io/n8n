@@ -68,14 +68,6 @@ describe('GlobalConfig', () => {
 				maxQueryExecutionTime: 0,
 				options: 'error',
 			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
-				poolSize: 10,
-			},
 			postgresdb: {
 				database: 'n8n',
 				host: 'localhost',
@@ -451,7 +443,6 @@ describe('GlobalConfig', () => {
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
