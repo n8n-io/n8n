@@ -32,6 +32,7 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$uuid',
 	'$vars',
 	'$workflow',
 	'$nodeVersion',

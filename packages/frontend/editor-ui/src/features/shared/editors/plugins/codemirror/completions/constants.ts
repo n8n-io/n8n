@@ -213,6 +213,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		}),
 	},
 	{
+		label: '$uuid',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$uuid',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$uuid'),
+		}),
+	},
+	{
 		label: '$vars',
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
