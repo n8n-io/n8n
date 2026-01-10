@@ -108,6 +108,7 @@ export function configurePool(credentials: IDataObject) {
 			enableArithAbort: false,
 			tdsVersion: credentials.tdsVersion as string,
 			trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
+			multiSubnetFailover: credentials.agMultiSubnet as boolean,
 		},
 	};
 
