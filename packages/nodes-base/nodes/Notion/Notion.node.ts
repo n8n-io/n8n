@@ -3,6 +3,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { NotionV1 } from './v1/NotionV1.node';
 import { NotionV2 } from './v2/NotionV2.node';
+import { NotionV3 } from './v3/NotionV3.node';
 
 export class Notion extends VersionedNodeType {
 	constructor() {
@@ -13,7 +14,7 @@ export class Notion extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Notion API',
-			defaultVersion: 2.2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -21,6 +22,7 @@ export class Notion extends VersionedNodeType {
 			2: new NotionV2(baseDescription),
 			2.1: new NotionV2(baseDescription),
 			2.2: new NotionV2(baseDescription),
+			3: new NotionV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
