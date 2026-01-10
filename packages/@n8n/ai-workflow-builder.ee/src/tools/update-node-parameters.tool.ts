@@ -1,6 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
-import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
+import {
+	displayParameter,
+	type INode,
+	type INodeTypeDescription,
+	type INodeParameters,
+	type Logger,
+	type INodeProperties,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
@@ -27,6 +34,8 @@ import {
 
 /**
  * Schema for update node parameters input
+ * Note: resource/operation are automatically detected from the node's existing parameters
+ * (set by Builder via initialParameters) for filtering purposes.
  */
 const updateNodeParametersSchema = z.object({
 	nodeId: z.string().describe('The ID of the node to update'),
@@ -37,6 +46,28 @@ const updateNodeParametersSchema = z.object({
 			'Array of natural language changes to apply to the node parameters (e.g., "Set the URL to call the weather API", "Add an API key header")',
 		),
 });
+
+/**
+ * Filter node properties based on the node's current context (version, resource, operation).
+ * Uses the core n8n-workflow displayParameter utility which handles all displayOptions logic
+ * including @version, resource, operation, action, and complex _cnd conditions.
+ *
+ * @param properties - The node's properties array
+ * @param node - The node instance (for typeVersion)
+ * @param nodeType - The node type description
+ * @param currentValues - Current parameter values (resource, operation, etc.)
+ * @returns Filtered array of properties visible in the current context
+ */
+function filterPropertiesForContext(
+	properties: INodeProperties[],
+	node: INode,
+	nodeType: INodeTypeDescription,
+	currentValues: INodeParameters,
+): INodeProperties[] {
+	return properties.filter((property) =>
+		displayParameter(currentValues, property, { typeVersion: node.typeVersion }, nodeType),
+	);
+}
 
 /**
  * Build a success message for the parameter update
@@ -67,8 +98,27 @@ async function processParameterUpdates(
 	// Format inputs for the chain
 	const formattedChanges = formatChangesForPrompt(changes);
 
-	// Get the node's properties definition as JSON
-	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+	// Filter properties based on node's current context (version, resource, operation, etc.)
+	// Uses core n8n-workflow displayParameter which handles all displayOptions logic
+	const currentValues = (node.parameters ?? {}) as INodeParameters;
+	const filteredProperties = filterPropertiesForContext(
+		nodeType.properties || [],
+		node,
+		nodeType,
+		currentValues,
+	);
+
+	const filteredPropertiesJson = JSON.stringify(filteredProperties, null, 2);
+
+	logger?.debug('Filtered node properties for LLM context', {
+		nodeId,
+		nodeType: node.type,
+		nodeVersion: node.typeVersion,
+		resource: currentValues.resource,
+		operation: currentValues.operation,
+		originalCount: nodeType.properties?.length ?? 0,
+		filteredCount: filteredProperties.length,
+	});
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -89,7 +139,7 @@ async function processParameterUpdates(
 		node_name: node.name,
 		node_type: node.type,
 		current_parameters: JSON.stringify(currentParameters, null, 2),
-		node_definition: nodePropertiesJson,
+		node_definition: filteredPropertiesJson, // Use filtered properties for LLM context
 		changes: formattedChanges,
 		instanceUrl: instanceUrl ?? '',
 	})) as INodeParameters;
@@ -184,6 +234,8 @@ export function createUpdateNodeParametersTool(
 				});
 
 				try {
+					// Resource/operation filtering happens automatically inside processParameterUpdates
+					// based on node.parameters (set by Builder via initialParameters)
 					const updatedParameters = await processParameterUpdates(
 						node,
 						nodeType,

@@ -40,7 +40,13 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set URL to https://api.example.com/weather"
 - "Add header Authorization: Bearer token"
 - "Set method to POST"
-- "Add field 'status' with value 'processed'"`;
+- "Add field 'status' with value 'processed'"
+
+NOTE: For nodes with resource/operation patterns (Gmail, Notion, Google Sheets, etc.):
+- The resource and operation are already set by the Builder agent
+- Parameter filtering is automatic based on the node's current resource/operation
+- DO NOT include resource/operation changes in your instructions - focus on other parameters
+- Check the workflow JSON to see which resource/operation is already configured`;
 
 const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
 
