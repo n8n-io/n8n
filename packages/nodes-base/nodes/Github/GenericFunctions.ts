@@ -81,7 +81,7 @@ export async function getFileSha(
 		query.ref = branch;
 	}
 
-	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
 
 	if (responseData.sha === undefined) {
