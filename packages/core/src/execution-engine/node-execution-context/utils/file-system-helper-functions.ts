@@ -37,11 +37,29 @@ const getAllowedPaths = () => {
 };
 
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
+	let pathString = path.toString();
+	
+	// Expand ~ to the default allowed directory (or first allowed path if configured)
+	if (pathString.startsWith('~/') || pathString === '~') {
+		const allowedPaths = getAllowedPaths();
+		const defaultPath = allowedPaths.length > 0 
+			? allowedPaths[0] 
+			: resolve(homedir(), '.n8n-files');
+		
+		if (pathString === '~') {
+			pathString = defaultPath;
+		} else {
+			// Replace ~/ with defaultPath, using path.join for proper path handling
+			const relativePath = pathString.slice(2); // Remove '~/'
+			pathString = resolve(defaultPath, relativePath);
+		}
+	}
+	
 	try {
-		return (await fsRealpath(path)) as ResolvedFilePath; // apply brand, since we know it's resolved now
+		return (await fsRealpath(pathString)) as ResolvedFilePath; // apply brand, since we know it's resolved now
 	} catch (error: unknown) {
 		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-			return resolve(path.toString()) as ResolvedFilePath; // apply brand, since we know it's resolved now
+			return resolve(pathString) as ResolvedFilePath; // apply brand, since we know it's resolved now
 		}
 		throw error;
 	}

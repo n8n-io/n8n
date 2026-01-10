@@ -3,7 +3,8 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { constants, createReadStream } from 'node:fs';
 import { access as fsAccess, realpath as fsRealpath } from 'node:fs/promises';
-import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -262,6 +263,92 @@ describe('isFilePathBlocked', () => {
 		it.each(['/there/is', '/where'])('should not block access to %s', async (path) => {
 			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
 		});
+	});
+});
+
+describe('resolvePath - tilde expansion', () => {
+	const node = { type: 'TestNode' } as INode;
+	const { resolvePath } = getFileSystemHelperFunctions(node);
+
+	beforeEach(() => {
+		// Mock fsRealpath to return the path as-is for non-existent files
+		(fsRealpath as jest.Mock).mockImplementation((path: string) => {
+			// If path doesn't exist, throw ENOENT
+			if (path.includes('non-existent')) {
+				const error = new Error('ENOENT');
+				// @ts-expect-error undefined property
+				error.code = 'ENOENT';
+				throw error;
+			}
+			return path;
+		});
+	});
+
+	it('should expand ~ to ~/.n8n-files when no allowed paths are configured', async () => {
+		securityConfig.restrictFileAccessTo = '';
+		const expectedPath = resolve(homedir(), '.n8n-files');
+		const resolved = await resolvePath('~');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should expand ~/file.txt to ~/.n8n-files/file.txt when no allowed paths are configured', async () => {
+		securityConfig.restrictFileAccessTo = '';
+		const expectedPath = resolve(homedir(), '.n8n-files', 'file.txt');
+		const resolved = await resolvePath('~/file.txt');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should expand ~/subdir/file.txt to ~/.n8n-files/subdir/file.txt', async () => {
+		securityConfig.restrictFileAccessTo = '';
+		const expectedPath = resolve(homedir(), '.n8n-files', 'subdir', 'file.txt');
+		const resolved = await resolvePath('~/subdir/file.txt');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should expand ~ to first allowed path when N8N_RESTRICT_FILE_ACCESS_TO is configured', async () => {
+		securityConfig.restrictFileAccessTo = '/custom/path1;/custom/path2';
+		const resolved = await resolvePath('~');
+		expect(resolved).toBe('/custom/path1');
+	});
+
+	it('should expand ~/file.txt to first allowed path when N8N_RESTRICT_FILE_ACCESS_TO is configured', async () => {
+		securityConfig.restrictFileAccessTo = '/custom/path1;/custom/path2';
+		const expectedPath = resolve('/custom/path1', 'file.txt');
+		const resolved = await resolvePath('~/file.txt');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should expand ~ with tilde in allowed path configuration', async () => {
+		securityConfig.restrictFileAccessTo = '~/custom-files';
+		const expectedPath = resolve(homedir(), 'custom-files');
+		const resolved = await resolvePath('~');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should expand ~/file.txt with tilde in allowed path configuration', async () => {
+		securityConfig.restrictFileAccessTo = '~/custom-files';
+		const expectedPath = resolve(homedir(), 'custom-files', 'file.txt');
+		const resolved = await resolvePath('~/file.txt');
+		expect(resolved).toBe(expectedPath);
+	});
+
+	it('should not expand paths that do not start with ~', async () => {
+		securityConfig.restrictFileAccessTo = '';
+		const testPath = '/absolute/path/file.txt';
+		const resolved = await resolvePath(testPath);
+		expect(resolved).toBe(testPath);
+	});
+
+	it('should handle ~ expansion for non-existent files', async () => {
+		securityConfig.restrictFileAccessTo = '';
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+
+		const expectedPath = resolve(homedir(), '.n8n-files', 'non-existent.txt');
+		const resolved = await resolvePath('~/non-existent.txt');
+		expect(resolved).toBe(expectedPath);
 	});
 });
 

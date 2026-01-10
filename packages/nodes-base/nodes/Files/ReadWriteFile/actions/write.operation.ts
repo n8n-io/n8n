@@ -19,9 +19,9 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		placeholder: 'e.g. /data/example.jpg',
+		placeholder: 'e.g. /data/example.jpg or ~/myfile.txt',
 		description:
-			'Path and name of the file that should be written. Also include the file extension.',
+			'Path and name of the file that should be written. Also include the file extension. The tilde (~) expands to the default allowed directory (~/.n8n-files) or the first configured allowed path.',
 	},
 	{
 		displayName: 'Input Binary Field',
