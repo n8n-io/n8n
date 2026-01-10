@@ -110,4 +110,49 @@ describe('GraphQL Node', () => {
 			credentials,
 		});
 	});
+
+	describe('error output routing with continueOnFail', () => {
+		const baseUrl = 'http://test.example.com';
+
+		// Mock the first request that returns a GraphQL error
+		nock(baseUrl)
+			.post('/graphql', '{"query":"INVALID_QUERY","variables":{},"operationName":null}')
+			.reply(200, {
+				errors: [
+					{
+						message: 'Syntax Error: Invalid query syntax',
+						extensions: {
+							code: 'GRAPHQL_PARSE_FAILED',
+						},
+					},
+				],
+			});
+
+		// Mock the second request that returns successful data
+		nock(baseUrl)
+			.post(
+				'/graphql',
+				'{"query":"query { users { id name email } }","variables":{},"operationName":null}',
+			)
+			.reply(200, {
+				data: {
+					users: [
+						{
+							id: '1',
+							name: 'John Doe',
+							email: 'john@example.com',
+						},
+						{
+							id: '2',
+							name: 'Jane Smith',
+							email: 'jane@example.com',
+						},
+					],
+				},
+			});
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['workflow.error_output_routing.json'],
+		});
+	});
 });
