@@ -796,7 +796,7 @@ describe('detectBinaryEncoding', () => {
 		const asciiBuffer = Buffer.from(Buffer.from('Simple ASCII text 123').toString('ascii'));
 		const encoding = detectBinaryEncoding(asciiBuffer);
 		expect(encoding).toBeDefined();
-		expect(encoding).toBe("ASCII");
+		expect(encoding).toBe('ASCII');
 	});
 
 	it('should detect Windows-1252 encoding', () => {
