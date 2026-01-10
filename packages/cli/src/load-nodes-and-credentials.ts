@@ -16,8 +16,8 @@ import {
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
+	CUSTOM_NODES_PACKAGE_NAME,
 } from 'n8n-core';
-import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core/src/nodes-loader/constants';
 import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,

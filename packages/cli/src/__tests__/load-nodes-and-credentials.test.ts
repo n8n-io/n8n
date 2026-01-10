@@ -3,7 +3,7 @@ import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
-import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core/src/nodes-loader/constants';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

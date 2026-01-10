@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import glob from 'fast-glob';
-import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core/src/nodes-loader/constants';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
 
