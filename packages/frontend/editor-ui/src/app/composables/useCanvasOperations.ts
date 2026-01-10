@@ -2855,7 +2855,10 @@ export function useCanvasOperations() {
 		fitView();
 	}
 
-	async function openWorkflowTemplateFromJSON(workflow: WorkflowDataWithTemplateId) {
+	async function openWorkflowTemplateFromJSON(
+		workflow: WorkflowDataWithTemplateId,
+		options?: { skipCredentialAutoOpen?: boolean },
+	) {
 		if (!workflow.nodes || !workflow.connections) {
 			toast.showError(
 				new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
@@ -2883,6 +2886,12 @@ export function useCanvasOperations() {
 			name: VIEWS.NEW_WORKFLOW,
 			query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
 		});
+
+		// Set skipCredentialAutoOpen BEFORE importTemplate to ensure it's available
+		// when SetupWorkflowCredentialsButton mounts (which happens during importTemplate)
+		if (options?.skipCredentialAutoOpen) {
+			workflowsStore.addToWorkflowMetadata({ skipCredentialAutoOpen: true });
+		}
 
 		await importTemplate({
 			id: templateId,

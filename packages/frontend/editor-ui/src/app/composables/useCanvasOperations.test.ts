@@ -5027,6 +5027,25 @@ describe('useCanvasOperations', () => {
 				},
 			});
 		});
+
+		it('should set skipCredentialAutoOpen in workflow metadata when option is provided', async () => {
+			const template: WorkflowDataWithTemplateId = {
+				id: 'workflow-id',
+				name: 'Template Name',
+				nodes: [],
+				connections: {},
+				meta: { templateId: 'template-id' },
+			};
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
+			await openWorkflowTemplateFromJSON(template, { skipCredentialAutoOpen: true });
+
+			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
+				skipCredentialAutoOpen: true,
+			});
+		});
 	});
 });
 

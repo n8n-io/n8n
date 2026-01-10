@@ -68,7 +68,8 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-	if (isNewTemplatesSetupEnabled.value && showButton.value) {
+	const skipAutoOpen = workflowsStore.workflow?.meta?.skipCredentialAutoOpen;
+	if (isNewTemplatesSetupEnabled.value && showButton.value && !skipAutoOpen) {
 		openSetupModal();
 	}
 });

@@ -7,6 +7,7 @@ export interface WorkflowMetadata {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	skipCredentialAutoOpen?: boolean;
 }
 
 // Simple version of n8n-workflow.Workflow
