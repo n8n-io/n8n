@@ -9,7 +9,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nTooltip, N8nText } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -92,21 +92,77 @@ const lastPublishInfo = computed(() => {
 	return lastPublishedByUser;
 });
 
-const publishedAt = computed(() => {
-	if (!lastPublishInfo.value) {
-		return null;
-	}
-	const { date, time } = formatTimestamp(lastPublishInfo.value.createdAt);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+const versionPublishInfo = computed(() => {
+	const publishInfo = getLastPublishedVersion(props.item.workflowPublishHistory);
+	return publishInfo;
 });
 
-const publishedByUserName = computed(() => {
-	const userId = lastPublishInfo.value?.userId;
+const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
 		return null;
 	}
 	const user = usersStore.usersById[userId];
 	return user?.fullName ?? user?.email ?? null;
+};
+
+const mainTooltipContent = computed(() => {
+	if (props.isGrouped) {
+		return null;
+	}
+
+	if (props.isVersionActive) {
+		return i18n.baseText('workflowHistory.item.publishedBy');
+	}
+
+	if (props.index === 0 && !props.isVersionActive) {
+		return i18n.baseText('workflowHistory.item.currentChanges');
+	}
+
+	if (versionPublishInfo.value) {
+		return `${i18n.baseText('workflowHistory.item.publishedBy')}`;
+	}
+
+	return formattedCreatedAt.value;
+});
+
+const mainTooltipDate = computed(() => {
+	if (props.isGrouped) {
+		return null;
+	}
+
+	if (props.isVersionActive && lastPublishInfo.value) {
+		return lastPublishInfo.value.createdAt;
+	}
+
+	if (versionPublishInfo.value) {
+		return versionPublishInfo.value.createdAt;
+	}
+
+	return null;
+});
+
+const mainTooltipUser = computed(() => {
+	if (props.isGrouped) {
+		return null;
+	}
+
+	if (props.isVersionActive && lastPublishInfo.value) {
+		return getPublishedUserName(lastPublishInfo.value.userId);
+	}
+
+	if (versionPublishInfo.value) {
+		return getPublishedUserName(versionPublishInfo.value.userId);
+	}
+
+	return null;
+});
+
+const mainTooltipFormattedDate = computed(() => {
+	if (!mainTooltipDate.value) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(mainTooltipDate.value);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
 const onAction = (value: string) => {
@@ -140,98 +196,111 @@ onMounted(() => {
 });
 </script>
 <template>
-	<li
-		ref="itemElement"
-		data-test-id="workflow-history-list-item"
-		role="button"
-		:class="{
-			[$style.item]: true,
-			[$style.selected]: props.isSelected,
-			[$style.actionsVisible]: actionsVisible,
-			[$style.grouped]: props.isGrouped,
-		}"
-		@click="onItemClick"
-	>
-		<!-- Timeline column -->
-		<span :class="$style.timelineColumn">
-			<template v-if="!props.isGrouped">
-				<N8nIcon v-if="props.isVersionActive" size="large" icon="circle-check" color="success" />
-				<span v-else :class="$style.timelineMarker" />
-			</template>
-			<span v-else :class="$style.timelineLine" />
-		</span>
+	<N8nTooltip placement="left" :disabled="!mainTooltipContent" :show-after="300">
+		<template #content>
+			<div v-if="props.index === 0 && !props.isVersionActive">
+				{{ mainTooltipContent }}
+			</div>
+			<div v-else>
+				{{ mainTooltipContent }}
+				<template v-if="mainTooltipUser">
+					{{ mainTooltipUser }}
+				</template>
+				<span v-if="mainTooltipFormattedDate">{{ ', ' + mainTooltipFormattedDate }}</span>
+			</div>
+		</template>
+		<li
+			ref="itemElement"
+			data-test-id="workflow-history-list-item"
+			role="button"
+			:class="{
+				[$style.item]: true,
+				[$style.selected]: props.isSelected,
+				[$style.actionsVisible]: actionsVisible,
+				[$style.grouped]: props.isGrouped,
+			}"
+			@click="onItemClick"
+		>
+			<!-- Timeline column -->
+			<span :class="$style.timelineColumn">
+				<template v-if="!props.isGrouped">
+					<span
+						v-if="props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotPublished]"
+					/>
+					<span
+						v-else-if="props.index === 0 && !props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotLatest]"
+					/>
+					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
+				</template>
+				<span v-else :class="$style.timelineLine" />
+			</span>
 
-		<div :class="$style.wrapper">
-			<div :class="$style.content">
-				<!-- Named version: show name + badge on first row, author + time on second -->
-				<template v-if="versionName">
-					<div :class="$style.mainRow">
-						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
-							{{ versionName }}
-						</N8nText>
-						<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
-							<template #content>
-								<div :class="$style.tooltipContent">
-									<N8nText size="small">
-										{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
-										{{ publishedAt }}
-									</N8nText>
-									<N8nText v-if="publishedByUserName" size="small">
-										{{ publishedByUserName }}
-									</N8nText>
-								</div>
-							</template>
-							<N8nBadge size="xsmall" :class="$style.publishedBadge" :show-border="false">
-								{{ i18n.baseText('workflowHistory.item.active') }}
-							</N8nBadge>
-						</N8nTooltip>
-					</div>
-					<div :class="$style.metaRow">
+			<div :class="$style.wrapper">
+				<div :class="$style.content">
+					<!-- Named version: show name on first row, author + time on second -->
+					<template v-if="versionName">
+						<div :class="$style.mainRow">
+							<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
+								{{ versionName }}
+							</N8nText>
+						</div>
+						<div :class="$style.metaRow">
+							<N8nTooltip
+								placement="right-end"
+								:disabled="!isAuthorElementTruncated"
+								:show-after="300"
+							>
+								<template #content>{{ props.item.authors }}</template>
+								<N8nText
+									ref="authorElement"
+									size="small"
+									color="text-base"
+									:class="$style.metaItem"
+								>
+									{{ authors.label }},
+								</N8nText>
+							</N8nTooltip>
+							<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+								{{ formattedCreatedAt }}
+							</N8nText>
+						</div>
+					</template>
+					<!-- Unnamed version: show author and time on single row -->
+					<div v-else :class="$style.unnamedRow">
 						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
 							<template #content>{{ props.item.authors }}</template>
-							<N8nText ref="authorElement" size="small" color="text-base" :class="$style.metaItem">
+							<N8nText
+								ref="authorElement"
+								size="small"
+								color="text-base"
+								:class="$style.unnamedAuthor"
+							>
 								{{ authors.label }},
 							</N8nText>
 						</N8nTooltip>
-						<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+						<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
 							{{ formattedCreatedAt }}
 						</N8nText>
 					</div>
-				</template>
-				<!-- Unnamed version: show author and time on single row -->
-				<div v-else :class="$style.unnamedRow">
-					<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-						<template #content>{{ props.item.authors }}</template>
-						<N8nText
-							ref="authorElement"
-							size="small"
-							color="text-base"
-							:class="$style.unnamedAuthor"
-						>
-							{{ authors.label }},
-						</N8nText>
-					</N8nTooltip>
-					<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
-						{{ formattedCreatedAt }}
-					</N8nText>
 				</div>
+				<N8nActionToggle
+					:class="$style.actions"
+					:actions="props.actions"
+					placement="bottom-end"
+					@action="onAction"
+					@click.stop
+					@visible-change="onVisibleChange"
+				/>
 			</div>
-			<N8nActionToggle
-				:class="$style.actions"
-				:actions="props.actions"
-				placement="bottom-end"
-				@action="onAction"
-				@click.stop
-				@visible-change="onVisibleChange"
-			/>
-		</div>
-	</li>
+		</li>
+	</N8nTooltip>
 </template>
 <style module lang="scss">
 @use './timeline' as *;
 
-$timelineMarkerDiameter: 13px;
-$timelineMarkerBorderWidth: 1.33px;
+$timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
 
 .item {
@@ -281,6 +350,7 @@ $hoverBackground: var(--color--background--light-1);
 	display: flex;
 	flex: 1;
 	align-items: center;
+	min-width: 0;
 }
 
 .timelineColumn {
@@ -294,12 +364,24 @@ $hoverBackground: var(--color--background--light-1);
 	align-self: stretch;
 }
 
-.timelineMarker {
-	position: relative;
-	width: $timelineMarkerDiameter;
-	height: $timelineMarkerDiameter;
+.timelineDot {
+	height: $timelineDotSize;
+	width: $timelineDotSize;
 	border-radius: 50%;
-	border: $timelineMarkerBorderWidth solid var(--color--text--tint-1);
+	display: inline-block;
+}
+
+.timelineDotPublished {
+	background-color: var(--color--mint-600);
+}
+
+.timelineDotLatest {
+	background-color: var(--color--yellow-500);
+}
+
+.timelineDotDefault {
+	border: var(--border);
+	border-color: var(--color--text--tint-2);
 }
 
 .timelineLine {
@@ -369,13 +451,5 @@ $hoverBackground: var(--color--background--light-1);
 .publishedBadge {
 	background-color: var(--color--success);
 	color: var(--color--foreground--tint-2);
-}
-
-.tooltipContent {
-	// Set min width to keep the date on the same line
-	min-width: 200px;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 </style>
