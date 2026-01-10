@@ -81,7 +81,7 @@ describe('AuthRolesService', () => {
 		scopeRepository.find.mockResolvedValue(allScopes);
 		roleRepository.find.mockResolvedValue([]);
 		roleRepository.create.mockImplementation((data) => data as Role);
-		roleRepository.save.mockResolvedValue([]);
+		roleRepository.save.mockImplementation(async (entities) => entities as any);
 	}
 
 	beforeEach(() => {
@@ -93,7 +93,7 @@ describe('AuthRolesService', () => {
 	describe('init - syncScopes', () => {
 		test('should create new scopes that do not exist in database', async () => {
 			scopeRepository.find.mockResolvedValue([]);
-			scopeRepository.save.mockResolvedValue([]);
+			scopeRepository.save.mockImplementation(async (entities) => entities as any);
 			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
@@ -116,7 +116,7 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
-			scopeRepository.save.mockResolvedValue([]);
+			scopeRepository.save.mockImplementation(async (entities) => entities as any);
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
 			roleRepository.find.mockResolvedValue([]);
 
@@ -154,7 +154,7 @@ describe('AuthRolesService', () => {
 			obsoleteScope.description = 'This scope should be deleted';
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope]);
-			scopeRepository.remove.mockResolvedValue([]);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -162,9 +162,9 @@ describe('AuthRolesService', () => {
 			await authRolesService.init();
 
 			expect(scopeRepository.remove).toHaveBeenCalledWith([obsoleteScope]);
-			const removedScopes = scopeRepository.remove.mock.calls[0][0] as Scope[];
+			const removedScopes = scopeRepository.remove.mock.calls[0][0];
 			expect(removedScopes).toHaveLength(1);
-			expect(removedScopes[0].slug).toBe('obsolete:scope');
+			expect((removedScopes as unknown as Scope[])[0].slug).toBe('obsolete:scope');
 			expect(ALL_SCOPES).not.toContain('obsolete:scope');
 		});
 
@@ -178,8 +178,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope, validScope]);
 			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]);
-			roleRepository.save.mockResolvedValue([]);
-			scopeRepository.remove.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -208,8 +208,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope1, obsoleteScope2, validScope]);
 			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]);
-			roleRepository.save.mockResolvedValue([]);
-			scopeRepository.remove.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -227,10 +227,10 @@ describe('AuthRolesService', () => {
 			});
 
 			expect(scopeRepository.remove).toHaveBeenCalledWith([obsoleteScope1, obsoleteScope2]);
-			const removedScopes = scopeRepository.remove.mock.calls[0][0] as Scope[];
+			const removedScopes = scopeRepository.remove.mock.calls[0][0];
 			expect(removedScopes).toHaveLength(2);
-			expect(removedScopes.map((s) => s.slug)).toContain('obsolete:scope1');
-			expect(removedScopes.map((s) => s.slug)).toContain('obsolete:scope2');
+			expect((removedScopes as unknown as Scope[]).map((s) => s.slug)).toContain('obsolete:scope1');
+			expect((removedScopes as unknown as Scope[]).map((s) => s.slug)).toContain('obsolete:scope2');
 		});
 
 		test('should not delete valid scopes that are in ALL_SCOPES', async () => {
@@ -256,7 +256,7 @@ describe('AuthRolesService', () => {
 			const mixedScopes = [validScope1, obsoleteScope1, validScope2, obsoleteScope2];
 
 			scopeRepository.find.mockResolvedValueOnce(mixedScopes);
-			scopeRepository.remove.mockResolvedValue([]);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([validScope1, validScope2]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -264,10 +264,10 @@ describe('AuthRolesService', () => {
 			await authRolesService.init();
 
 			expect(scopeRepository.remove).toHaveBeenCalled();
-			const removedScopes = scopeRepository.remove.mock.calls[0][0] as Scope[];
+			const removedScopes = scopeRepository.remove.mock.calls[0][0];
 
 			expect(removedScopes).toHaveLength(2);
-			const removedSlugs = removedScopes.map((s) => s.slug);
+			const removedSlugs = (removedScopes as unknown as Scope[]).map((s) => s.slug);
 			expect(removedSlugs).toContain('obsolete:one');
 			expect(removedSlugs).toContain('obsolete:two');
 			expect(removedSlugs).not.toContain(validScope1.slug);
@@ -299,7 +299,7 @@ describe('AuthRolesService', () => {
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValueOnce([outdatedRole]);
-			roleRepository.save.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
 
@@ -323,7 +323,7 @@ describe('AuthRolesService', () => {
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValueOnce([existingRole]);
-			roleRepository.save.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
 
@@ -353,7 +353,7 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValue([existingRole]);
-			roleRepository.save.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
 
@@ -404,7 +404,7 @@ describe('AuthRolesService', () => {
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValueOnce(correctRoles);
-			roleRepository.save.mockResolvedValue([]);
+			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
 
@@ -491,7 +491,7 @@ describe('AuthRolesService', () => {
 
 				scopeRepository.find.mockResolvedValue(allScopes);
 				roleRepository.find.mockResolvedValue([existingRole]);
-				roleRepository.save.mockResolvedValue([]);
+				roleRepository.save.mockImplementation(async (entities) => entities as any);
 				settingsRepository.findByKey.mockResolvedValue({ value: 'true' } as any);
 
 				await authRolesService.init();
@@ -526,7 +526,7 @@ describe('AuthRolesService', () => {
 
 				scopeRepository.find.mockResolvedValue(allScopes);
 				roleRepository.find.mockResolvedValue([existingRole]);
-				roleRepository.save.mockResolvedValue([]);
+				roleRepository.save.mockImplementation(async (entities) => entities as any);
 				settingsRepository.findByKey.mockResolvedValue({ value: 'false' } as any);
 
 				await authRolesService.init();
