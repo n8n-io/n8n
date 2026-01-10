@@ -42,7 +42,7 @@ type Props = {
 	value: NodeParameterValueType;
 	label?: IParameterLabel;
 	displayOptions?: boolean;
-	optionsPosition?: 'bottom' | 'top';
+	optionsPosition?: 'bottom' | 'top' | 'top-absolute';
 	hideHint?: boolean;
 	isReadOnly?: boolean;
 	rows?: number;
@@ -50,6 +50,8 @@ type Props = {
 	hideLabel?: boolean;
 	hideIssues?: boolean;
 	entryIndex?: number;
+	showDelete?: boolean;
+	onDelete?: () => void;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -60,6 +62,8 @@ const props = withDefaults(defineProps<Props>(), {
 	hideLabel: false,
 	hideIssues: false,
 	label: () => ({ size: 'small' }),
+	showDelete: false,
+	onDelete: undefined,
 });
 const emit = defineEmits<{
 	blur: [];
@@ -364,6 +368,8 @@ function removeOverride(clearField = false) {
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -427,6 +433,28 @@ function removeOverride(clearField = false) {
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
+				@update:model-value="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
+		<div
+			:class="{
+				[$style.optionsAbove]: true,
+				[$style.visible]: menuExpanded || focused || forceShowExpression,
+			}"
+		>
+			<ParameterOptions
+				v-if="displayOptions && optionsPosition === 'top-absolute'"
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -447,7 +475,8 @@ function removeOverride(clearField = false) {
 	position: relative;
 
 	&:hover {
-		.options {
+		.options,
+		.optionsAbove {
 			opacity: 1;
 		}
 	}
@@ -477,6 +506,22 @@ function removeOverride(clearField = false) {
 	z-index: 1;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+
+.optionsAbove {
+	position: absolute;
+	bottom: 100%;
+	right: 0;
+	z-index: 1;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+	background: var(--ndv--background--color);
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
 
 	&.visible {
 		opacity: 1;

@@ -13,7 +13,13 @@ import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
-import { N8nActionToggle, N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nIcon,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
@@ -25,6 +31,8 @@ interface Props {
 	loading?: boolean;
 	loadingMessage?: string;
 	isContentOverridden?: boolean;
+	showDelete?: boolean;
+	onDelete?: () => void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +43,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
 	isContentOverridden: false,
+	showDelete: false,
+	onDelete: undefined,
 });
 
 const emit = defineEmits<{
@@ -170,35 +180,37 @@ const onViewSelected = (selected: string) => {
 			</N8nText>
 		</div>
 		<div v-else :class="$style.controlsContainer">
-			<N8nTooltip v-if="canBeOpenedInFocusPanel">
-				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
-				<N8nIcon
-					size="medium"
-					:icon="'panel-right'"
-					:class="$style.focusButton"
-					@click="$emit('update:modelValue', 'focus')"
-				/>
-			</N8nTooltip>
-			<div
-				:class="{
-					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
-				}"
-			>
+			<N8nIconButton
+				v-if="canBeOpenedInFocusPanel"
+				type="tertiary"
+				text
+				size="small"
+				icon-size="large"
+				icon="panel-right"
+				:class="$style.focusButton"
+				:title="i18n.baseText('parameterInput.focusParameter')"
+				data-test-id="parameter-focus-button"
+				@click="$emit('update:modelValue', 'focus')"
+			/>
+
+			<div>
 				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="small"
-					color="foreground-xdark"
-					icon-size="small"
+					theme="dark"
+					icon-size="large"
 					:actions="actions"
 					:icon-orientation="iconOrientation"
 					@action="(action: string) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
+
 			<N8nRadioButtons
 				v-if="shouldShowExpressionSelector"
 				size="small"
+				:class="$style.expressionSwitch"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
 				:options="[
@@ -206,6 +218,19 @@ const onViewSelected = (selected: string) => {
 					{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
 				]"
 				@update:model-value="onViewSelected"
+			/>
+
+			<N8nIconButton
+				v-if="showDelete && onDelete"
+				type="tertiary"
+				text
+				size="small"
+				icon-size="large"
+				icon="trash-2"
+				:class="$style.deleteButton"
+				:title="i18n.baseText('parameterInputList.delete')"
+				data-test-id="parameter-delete-button"
+				@click="onDelete"
 			/>
 		</div>
 	</div>
@@ -233,19 +258,23 @@ $container-height: 22px;
 	flex-direction: row;
 }
 
-.noExpressionSelector {
-	span {
-		padding-right: 0 !important;
-	}
+.expressionSwitch {
+	margin-right: var(--spacing--4xs);
 }
 
 .focusButton {
-	outline: none;
-	color: var(--color--text--tint-1);
+	color: var(--color--text--shade-1);
 
 	&:hover {
-		cursor: pointer;
 		color: var(--color--primary);
+	}
+}
+
+.deleteButton {
+	color: var(--color--text--shade-1);
+
+	&:hover {
+		color: var(--color--danger);
 	}
 }
 </style>

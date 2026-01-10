@@ -30,7 +30,7 @@
 
 	// Primary
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--orange-400));
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--primary));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--primary: var(--color-primary, var(--color--orange-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -349,8 +349,8 @@
 	--button--color--text--primary: var(--color--neutral-white);
 	--button--border-color--primary: var(--color--orange-300);
 	--button--color--background--primary: var(--color--orange-300);
-	--button--border-color--primary--hover-active: var(--color--orange-400);
-	--button--color--background--primary--hover-active-focus: var(--color--orange-400);
+	--button--border-color--primary--hover-active: var(--color--primary);
+	--button--color--background--primary--hover-active-focus: var(--color--primary);
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--color--white-alpha-800);
 	--button--border-color--primary--disabled: var(--color--orange-200);
@@ -380,6 +380,19 @@
 	--button--color--text--highlight--disabled: var(--color--neutral-200);
 	--button--border-color--highlight--disabled: transparent;
 	--button--color--background--highlight--disabled: transparent;
+
+	// Button highlight-fill
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
+	--button--border-color--highlight-fill: transparent;
+	--button--color--background--highlight-fill: var(--color--background);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
+	--button--border-color--highlight-fill--hover-active-focus: transparent;
+	--button--color--background--highlight-fill--hover: var(--color--background);
+	--button--color--background--highlight-fill--active-focus: var(--color--background);
+	--button--outline-color--highlight-fill--focus: var(--color--neutral-125);
+	--button--color--text--highlight-fill--disabled: var(--color--neutral-200);
+	--button--border-color--highlight-fill--disabled: transparent;
+	--button--color--background--highlight-fill--disabled: var(--color--background);
 
 	// Button success, warning, danger
 	--button--color--text--success: var(--color--neutral-white);
@@ -712,6 +725,114 @@
 
 	--command-bar-item--color--background--hover: var(--color--background);
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.13), 0 5px 10px 0 hsla(0, 0%, 0%, 0.08);
+
+	// Animation
+	--animation--duration: 0.3s;
+	--animation--duration--snappy: 0.2s;
+	// Spring easing, generated at https://animejs.com/easing-editor/spring/default preset:snappy mode:perceived bounce:0.15
+	--animation--easing: linear(
+		0,
+		0.0088,
+		0.0327,
+		0.068,
+		0.1117,
+		0.1614,
+		0.2149,
+		0.2706,
+		0.327,
+		0.3831,
+		0.4379,
+		0.4907,
+		0.5412,
+		0.5889,
+		0.6336,
+		0.6751,
+		0.7135,
+		0.7487,
+		0.7809,
+		0.81,
+		0.8362,
+		0.8597,
+		0.8807,
+		0.8994,
+		0.9158,
+		0.9302,
+		0.9428,
+		0.9537,
+		0.9632,
+		0.9712,
+		0.9781,
+		0.9839,
+		0.9888,
+		0.9928,
+		0.9961,
+		0.9988,
+		1.001,
+		1.0026,
+		1.0039,
+		1.0049,
+		1.0055,
+		1.006,
+		1.0062,
+		1.0063,
+		1.0062,
+		1.0061,
+		1.0059,
+		1.0056,
+		1.0053,
+		1.005,
+		1.0046,
+		1.0043,
+		1.0039,
+		1.0036,
+		1.0032,
+		1.0029,
+		1.0026,
+		1.0023,
+		1.0021,
+		1.0018,
+		1.0016,
+		1.0014,
+		1.0012,
+		1.0011,
+		1.0009,
+		1.0008,
+		1.0006,
+		1.0005,
+		1.0005,
+		1.0004,
+		1.0003,
+		1.0002,
+		1.0002,
+		1.0001,
+		1.0001,
+		1.0001,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1
+	);
 }
 
 :root {

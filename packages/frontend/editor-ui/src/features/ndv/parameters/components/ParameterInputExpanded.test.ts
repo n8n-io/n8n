@@ -14,43 +14,40 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	}),
 }));
 
-vi.mock('@n8n/i18n', () => ({
-	i18n: {
-		baseText: vi.fn().mockImplementation((key) => key),
-		credText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-		nodeText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-	},
-	i18nInstance: {
-		global: {
-			t: vi.fn().mockImplementation((key) => key),
-		},
-	},
-	useI18n: vi.fn().mockReturnValue({
-		baseText: vi.fn().mockImplementation((key) => key),
-		credText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
-		nodeText: vi.fn().mockReturnValue({
-			inputLabelDisplayName: () => 'Test label',
-			inputLabelDescription: () => 'Test description',
-			hint: () => 'Test hint',
-			placeholder: () => 'Test placeholder',
-		}),
+vi.mock('@/app/composables/useCollectionOverhaul', () => ({
+	useCollectionOverhaul: () => ({
+		isEnabled: { value: true },
 	}),
 }));
+
+vi.mock('@n8n/i18n', () => {
+	const mockNodeText = {
+		inputLabelDisplayName: () => 'Test label',
+		inputLabelDescription: () => 'Test description',
+		hint: () => 'Test hint',
+		placeholder: () => 'Test placeholder',
+		collectionOptionDisplayName: () => 'Test option',
+		addOptionalFieldButtonText: () => 'Add field',
+	};
+
+	return {
+		i18n: {
+			baseText: vi.fn().mockImplementation((key: string) => key),
+			credText: vi.fn().mockReturnValue(mockNodeText),
+			nodeText: vi.fn().mockReturnValue(mockNodeText),
+		},
+		i18nInstance: {
+			global: {
+				t: vi.fn().mockImplementation((key: string) => key),
+			},
+		},
+		useI18n: vi.fn().mockReturnValue({
+			baseText: vi.fn().mockImplementation((key: string) => key),
+			credText: vi.fn().mockReturnValue(mockNodeText),
+			nodeText: vi.fn().mockReturnValue(mockNodeText),
+		}),
+	};
+});
 
 describe('ParameterInputExpanded.vue', () => {
 	const mockPinia = createTestingPinia({
@@ -136,11 +133,11 @@ describe('ParameterInputExpanded.vue', () => {
 			expect(input).toHaveValue('Content-Type');
 		});
 
-		it('should add a new option when the user clicks the add button', async () => {
+		it('should emit update event when the user clicks the add button', async () => {
 			const nodeValues = {
 				headers: { values: [{ name: '', value: '' }] },
 			};
-			const { getByTestId, queryAllByTestId } = renderComponent({
+			const { getByTestId, emitted } = renderComponent({
 				props: {
 					parameter: fixedCollectionParameter,
 					value: nodeValues.headers,
@@ -149,15 +146,21 @@ describe('ParameterInputExpanded.vue', () => {
 			});
 			await vi.dynamicImportSettled();
 
-			const inputsBefore = queryAllByTestId('parameter-input-field');
-			expect(inputsBefore.length).toBe(2);
-
-			const button = getByTestId('fixed-collection-add');
+			const button = getByTestId('fixed-collection-add-top-level-button');
 			await userEvent.click(button);
 			await nextTick();
 
-			const inputsAfter = queryAllByTestId('parameter-input-field');
-			expect(inputsAfter.length).toBe(4);
+			expect(emitted('update')).toEqual([
+				[
+					{
+						name: 'headers.values',
+						value: [
+							{ name: '', value: '' },
+							{ name: '', value: '' },
+						],
+					},
+				],
+			]);
 		});
 
 		describe('ParameterInputWrapper', () => {
