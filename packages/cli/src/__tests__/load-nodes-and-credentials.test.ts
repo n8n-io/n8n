@@ -3,6 +3,7 @@ import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -28,12 +29,32 @@ jest.mock('@/push', () => {
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
+		let instanceCustom: LoadNodesAndCredentials;
+		let instanceCustomWin: LoadNodesAndCredentials;
+
+		const packageName = 'package1';
+		const packageNameCustom = CUSTOM_NODES_PACKAGE_NAME;
+
+		const dir = '/home/user/.n8n/nodes';
+		const dirCustom = '/home/user/.n8n-custom-nodes';
+		const dirCustomWin = 'C:/Users/name/.n8n-custom-nodes';
+
+		const pathPrefix = `/icons/${packageName}`;
+		const pathPrefixCustom = `/icons/${packageNameCustom}`;
+		const pathPrefixAbsolute = `${pathPrefixCustom}/${dirCustom}`;
+		const pathPrefixAbsoluteWin = `${pathPrefixCustom}/${dirCustomWin}`;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-			instance.loaders.package1 = mock<DirectoryLoader>({
-				directory: '/icons/package1',
-			});
+			const mockInstance = (pkg: string, directory: string) => {
+				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+				mi.loaders[pkg] = mock<DirectoryLoader>({
+					directory,
+				});
+				return mi;
+			};
+			instance = mockInstance(packageName, dir);
+			instanceCustom = mockInstance(packageNameCustom, dirCustom);
+			instanceCustomWin = mockInstance(packageNameCustom, dirCustomWin);
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
@@ -47,13 +68,32 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should return the file path if the file is within the loader directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/icon.png');
-			expect(result).toBe('/icons/package1/icon.png');
+			const result = instance.resolveIcon('package1', `${pathPrefix}/icon.png`);
+			expect(result).toBe(`${dir}/icon.png`);
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/../../../etc/passwd');
+			const result = instance.resolveIcon('package1', `${pathPrefix}/../../../etc/passwd`);
 			expect(result).toBeUndefined();
+		});
+
+		describe('N8N_CUSTOM_EXTENSIONS', () => {
+			it('should return file path if url contains "//" with absolute custom file path', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsolute}/icon.png`,
+				);
+				expect(result).toBe(`${dirCustom}/icon.png`);
+			});
+
+			it('should return file path if url contains "C:" with absolute custom windows file path', () => {
+				const winIconPath = `${dirCustomWin}/icon.png`;
+				const result = instanceCustomWin.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsoluteWin}/icon.png`,
+				);
+				expect(result).toBe(winIconPath);
+			});
 		});
 	});
 
@@ -827,7 +867,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		const mockLoader = mock<DirectoryLoader>({
-			packageName: 'CUSTOM',
+			packageName: CUSTOM_NODES_PACKAGE_NAME,
 			directory: '/some/custom/path',
 			isLazyLoaded: false,
 			reset: jest.fn(),
