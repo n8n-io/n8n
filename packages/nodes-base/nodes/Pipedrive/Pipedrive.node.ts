@@ -2231,6 +2231,24 @@ export class Pipedrive implements INodeType {
 						},
 					},
 					{
+						displayName: 'Source Channel',
+						name: 'channel',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadChannels',
+						},
+						default: '',
+						description:
+							'ID of the marketing channel this lead was created from. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Source Channel ID',
+						name: 'channel_id',
+						type: 'string',
+						default: '',
+						description: 'Optional ID to further distinguish the marketing channel',
+					},
+					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'fixedCollection',
@@ -2366,6 +2384,24 @@ export class Pipedrive implements INodeType {
 						default: '',
 						description:
 							'ID of the person to link to this lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Source Channel',
+						name: 'channel',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadChannels',
+						},
+						default: '',
+						description:
+							'ID of the marketing channel this lead was created from. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Source Channel ID',
+						name: 'channel_id',
+						type: 'string',
+						default: '',
+						description: 'Optional ID to further distinguish the marketing channel',
 					},
 					{
 						displayName: 'Value',
@@ -4089,6 +4125,28 @@ export class Pipedrive implements INodeType {
 						value: 'null',
 					});
 				}
+				return returnData;
+			},
+
+			// Get all the lead channels to display them to user so that they can
+			// select them easily
+			async getLeadChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadFields', {});
+				for (const field of data) {
+					if (field.key === 'channel') {
+						if (field.options) {
+							for (const option of field.options) {
+								returnData.push({
+									name: option.label,
+									value: option.id,
+								});
+							}
+						}
+					}
+				}
+
+				sortOptionParameters(returnData);
 				return returnData;
 			},
 		},
