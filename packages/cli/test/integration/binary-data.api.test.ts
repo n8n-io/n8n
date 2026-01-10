@@ -40,7 +40,7 @@ describe('GET /binary-data', () => {
 
 	describe('should reject on missing or invalid binary data ID', () => {
 		test.each([['view'], ['download']])('on request to %s', async (action) => {
-			binaryDataService.getPath.mockReturnValue(binaryFilePath);
+			binaryDataService.getPath.mockResolvedValue(binaryFilePath);
 			fsp.readFile = jest.fn().mockResolvedValue(buffer);
 
 			await authOwnerAgent
