@@ -24,7 +24,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
 	await n8n.workflows.clickNewWorkflowCard();
 	await n8n.canvas.addNode(nodeName, { closeNDV: true });
-	await n8n.canvas.saveWorkflow();
+	await n8n.canvas.waitForSaveWorkflowCompleted();
 
 	// Sign in as member and navigate to the workflow
 	await n8n.api.signin('member', 0);

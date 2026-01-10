@@ -6,7 +6,7 @@ import useEnvironmentsStore from '@/features/settings/environments.ee/environmen
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import InputTriple from '../InputTriple/InputTriple.vue';
 import ParameterInputFull from '../ParameterInputFull.vue';
 import ParameterInputHint from '../ParameterInputHint.vue';
@@ -32,6 +32,13 @@ const props = defineProps<Props>();
 
 const assignment = ref<AssignmentValue>(props.modelValue);
 const valueInputHovered = ref(false);
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		assignment.value = newValue;
+	},
+);
 
 const emit = defineEmits<{
 	'update:model-value': [value: AssignmentValue];
