@@ -49,7 +49,12 @@ export interface N8NInstancesOptions {
 	usePostgres: boolean;
 	baseUrl?: string;
 	allocatedPort?: number;
+	/** Resource quota applied to all n8n containers (main and worker) */
 	resourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota applied only to main instances (overrides resourceQuota for main) */
+	mainResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota applied only to worker instances (overrides resourceQuota for worker) */
+	workerResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
 }
 
@@ -175,22 +180,37 @@ async function createContainer(
 export async function createN8NInstances(
 	options: N8NInstancesOptions,
 ): Promise<N8NInstancesResult> {
-	const { mains, workers, projectName, network, allocatedPort, resourceQuota, filesToMount } =
-		options;
+	const {
+		mains,
+		workers,
+		projectName,
+		network,
+		allocatedPort,
+		resourceQuota,
+		mainResourceQuota,
+		workerResourceQuota,
+		filesToMount,
+	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
 	const environment = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
 
-	const shared: SharedConfig = {
+	// Determine effective quotas (specific overrides general)
+	const effectiveMainQuota = mainResourceQuota ?? resourceQuota;
+	const effectiveWorkerQuota = workerResourceQuota ?? resourceQuota;
+
+	const baseShared: Omit<SharedConfig, 'resourceQuota'> = {
 		projectName,
 		environment,
 		network,
-		resourceQuota,
 		filesToMount,
 	};
 
-	const instances: InstanceConfig[] = [
+	const mainShared: SharedConfig = { ...baseShared, resourceQuota: effectiveMainQuota };
+	const workerShared: SharedConfig = { ...baseShared, resourceQuota: effectiveWorkerQuota };
+
+	const instances: Array<InstanceConfig & { shared: SharedConfig }> = [
 		...Array.from({ length: mains }, (_, i) => {
 			const num = i + 1;
 			const name = mains > 1 ? `${projectName}-n8n-main-${num}` : `${projectName}-n8n`;
@@ -200,19 +220,21 @@ export async function createN8NInstances(
 				instanceNumber: num,
 				networkAlias: name,
 				hostPort: num === 1 ? allocatedPort : undefined,
+				shared: mainShared,
 			};
 		}),
 		...Array.from({ length: workers }, (_, i) => ({
 			name: `${projectName}-n8n-worker-${i + 1}`,
 			isWorker: true,
 			instanceNumber: i + 1,
+			shared: workerShared,
 		})),
 	];
 
 	// Start main 1 first (handles DB migrations/setup)
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
-	containers.push(await createContainer(main1, shared));
+	containers.push(await createContainer(main1, main1.shared));
 	log('main 1 ready');
 
 	// Start remaining instances in parallel
@@ -222,7 +244,7 @@ export async function createN8NInstances(
 			remaining.map(async (instance) => {
 				const type = instance.isWorker ? 'worker' : 'main';
 				log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-				const container = await createContainer(instance, shared);
+				const container = await createContainer(instance, instance.shared);
 				log(`${type} ${instance.instanceNumber} ready`);
 				return container;
 			}),

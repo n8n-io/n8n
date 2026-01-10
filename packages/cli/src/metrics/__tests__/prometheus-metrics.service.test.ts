@@ -569,5 +569,39 @@ describe('PrometheusMetricsService', () => {
 			);
 			expect(hasInstanceRoleMetric).toBe(false);
 		});
+
+		it('should set leader gauge to 1 on leader takeover', async () => {
+			await prometheusMetricsService.init(app);
+
+			const mockSet = jest.fn();
+			// @ts-expect-error private field
+			prometheusMetricsService.gauges.instanceRoleLeader = { set: mockSet };
+
+			prometheusMetricsService.updateOnLeaderTakeover();
+
+			expect(mockSet).toHaveBeenCalledWith(1);
+		});
+
+		it('should set leader gauge to 0 on leader stepdown', async () => {
+			await prometheusMetricsService.init(app);
+
+			const mockSet = jest.fn();
+			// @ts-expect-error private field
+			prometheusMetricsService.gauges.instanceRoleLeader = { set: mockSet };
+
+			prometheusMetricsService.updateOnLeaderStepdown();
+
+			expect(mockSet).toHaveBeenCalledWith(0);
+		});
+
+		it('should handle takeover when gauge not initialized', () => {
+			// Don't call init, gauge should be undefined
+			expect(() => prometheusMetricsService.updateOnLeaderTakeover()).not.toThrow();
+		});
+
+		it('should handle stepdown when gauge not initialized', () => {
+			// Don't call init, gauge should be undefined
+			expect(() => prometheusMetricsService.updateOnLeaderStepdown()).not.toThrow();
+		});
 	});
 });
