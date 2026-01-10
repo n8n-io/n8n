@@ -13,6 +13,7 @@ export const CHAT_SESSIONS_PAGE_SIZE = 18;
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
 	anthropic: 'Anthropic',
+	atlasCloud: 'Atlas Cloud',
 	google: 'Google',
 	azureOpenAi: 'Azure (API Key)',
 	azureEntraId: 'Azure (Entra ID)',
