@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag } from '@n8n/design-system';
+import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -26,6 +26,7 @@ import type {
 	FeatureFlags,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
@@ -421,6 +422,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	binaryMode?: WorkflowSettingsBinaryMode;
 	availableInMCP?: boolean;
 }
 
@@ -810,9 +812,16 @@ export type SchemaType =
 	| 'object'
 	| 'function'
 	| 'null'
-	| 'undefined';
+	| 'undefined'
+	| 'binary';
 
-export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+export type Schema = {
+	type: SchemaType;
+	key?: string;
+	value: string | Schema[];
+	path: string;
+	binaryData?: BinaryMetadata;
+};
 
 export type NodeAuthenticationOption = {
 	name: string;

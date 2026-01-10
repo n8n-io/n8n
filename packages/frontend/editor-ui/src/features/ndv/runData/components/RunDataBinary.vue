@@ -1,16 +1,35 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { N8nButton, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
+import { computed } from 'vue';
 const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
+import { usePostHog } from '@/app/stores/posthog.store';
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 
 const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const posthogStore = usePostHog();
+
+const isV2Enabled = computed(() => {
+	return posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+});
+
+const isLegacyBinaryMode = computed(
+	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
+);
 
 function isViewable(index: number, key: string | number): boolean {
 	const { mimeType } = binaryData[index][key];
@@ -35,10 +54,18 @@ async function downloadBinaryData(index: number, key: string | number) {
 		saveAs(blob, fileName);
 	}
 }
+
+function openWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
 </script>
 
 <template>
 	<div :class="$style.component">
+		<N8nNotice v-if="isLegacyBinaryMode && isV2Enabled" :class="$style.info" theme="info">
+			{{ i18n.baseText('runData.legacyBinaryMode') }}
+			<N8nLink size="small" @click="openWorkflowSettings">settings</N8nLink>.
+		</N8nNotice>
 		<N8nText v-if="binaryData.length === 0" align="center" tag="div">
 			{{ i18n.baseText('runData.noBinaryDataFound') }}
 		</N8nText>
@@ -200,5 +227,9 @@ async function downloadBinaryData(index: number, key: string | number) {
 .binaryValue {
 	white-space: initial;
 	word-wrap: break-word;
+}
+
+.info {
+	margin: var(--spacing--2xs) 0;
 }
 </style>

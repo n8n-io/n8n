@@ -89,6 +89,12 @@ export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXECUTION_LOGIC_V2_EXPERIMENT = {
+	name: 'execution_logic_v2',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const TAMPER_PROOF_INVITE_LINKS = {
 	name: '061_tamper_proof_invite_links',
 	control: 'control',
@@ -106,5 +112,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 ];

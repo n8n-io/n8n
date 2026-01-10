@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
@@ -11,17 +12,20 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
+
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nButton,
 	N8nIcon,
-	N8nIconButton,
 	N8nInput,
+	N8nLink,
+	N8nIconButton,
 	N8nOption,
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { WorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
+import { deepCopy, BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -62,6 +66,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const posthogStore = usePostHog();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -69,14 +74,28 @@ const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
-const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
-	{ key: 'v0', value: 'v0 (legacy)' },
-	{ key: 'v1', value: 'v1 (recommended)' },
+const executionLogicAllOptions = ref<Array<{ key: string; value: string; description: string }>>([
+	{
+		key: 'v0',
+		value: i18n.baseText('workflowSettings.executionLogic.v0.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v0.description'),
+	},
+	{
+		key: 'v1',
+		value: i18n.baseText('workflowSettings.executionLogic.v1.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v1.description'),
+	},
+	{
+		key: 'v2',
+		value: i18n.baseText('workflowSettings.executionLogic.v2.title'),
+		description: i18n.baseText('workflowSettings.executionLogic.v2.description'),
+	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
+const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
 
 const {
 	resolvers: credentialResolvers,
@@ -110,6 +129,13 @@ const defaultValues = ref({
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
+});
+
+const executionLogic = computed(() => {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
+		return 'v2';
+	}
+	return workflowSettings.value.executionOrder || 'v0';
 });
 
 const isMCPEnabled = computed(
@@ -175,6 +201,23 @@ const timeSavedModeOptions = computed(() => [
 		value: 'dynamic' as const,
 	},
 ]);
+
+const executionLogicOptions = computed(() => {
+	if (workflowSettings.value.binaryMode === BINARY_MODE_COMBINED) {
+		return executionLogicAllOptions.value;
+	}
+
+	const isV2Enabled = posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+
+	if (isV2Enabled) {
+		return executionLogicAllOptions.value;
+	}
+
+	return executionLogicAllOptions.value.filter((option) => option.key !== 'v2');
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -497,6 +540,26 @@ const saveSettings = async () => {
 	if (isMCPEnabled.value && workflowSettings.value.availableInMCP) {
 		trackMcpAccessEnabledForWorkflow(workflowId.value);
 	}
+
+	if (workflowSettings.value.binaryMode !== originalBinaryMode.value) {
+		toast.showMessage({
+			title: i18n.baseText('workflowSettings.executionLogic.changed.title'),
+			message: h('span', [
+				i18n.baseText('workflowSettings.executionLogic.changed.description'),
+				h(
+					N8nLink,
+					{
+						to: 'https://docs.n8n.io/data/binary-data/',
+						size: 'small',
+						newWindow: true,
+					},
+					() => i18n.baseText('generic.learnMore'),
+				),
+			]),
+			type: 'warning',
+			duration: 0,
+		});
+	}
 };
 
 const toggleTimeout = () => {
@@ -514,6 +577,18 @@ const updateTimeSavedPerExecution = (value: string) => {
 		: numValue < 0
 			? 0
 			: numValue;
+};
+
+const onExecutionLogicModeChange = (value: string) => {
+	if (value === 'v0' || value === 'v1') {
+		workflowSettings.value.binaryMode = BINARY_MODE_SEPARATE;
+		workflowSettings.value.executionOrder = value;
+	}
+
+	if (value === 'v2') {
+		workflowSettings.value.binaryMode = BINARY_MODE_COMBINED;
+		workflowSettings.value.executionOrder = 'v1';
+	}
 };
 
 onMounted(async () => {
@@ -598,10 +673,14 @@ onMounted(async () => {
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
 	}
+	if (workflowSettingsData.binaryMode === undefined) {
+		workflowSettingsData.binaryMode = BINARY_MODE_SEPARATE;
+	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
 
+	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
@@ -654,24 +733,29 @@ onBeforeUnmount(() => {
 			>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
-						{{ i18n.baseText('workflowSettings.executionOrder') }}
+						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
-							v-model="workflowSettings.executionOrder"
+							v-model="executionLogic"
 							placeholder="Select Execution Order"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-execution-order"
+							@update:model-value="onExecutionLogicModeChange"
 						>
 							<N8nOption
-								v-for="option in executionOrderOptions"
+								v-for="option in executionLogicOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.value }}</div>
+									<div v-n8n-html="option.description" class="option-description"></div>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</ElCol>
@@ -1356,6 +1440,26 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.list-option {
+	margin: 6px 0;
+	white-space: normal;
+	padding-right: 20px;
+
+	.option-headline {
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--md);
+		overflow-wrap: break-word;
+	}
+
+	.option-description {
+		margin-top: 2px;
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--xl);
+		color: $custom-font-very-light;
 	}
 }
 

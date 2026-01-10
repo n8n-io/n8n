@@ -2,12 +2,14 @@ import isObject from 'lodash/isObject';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
+import { isBinaryLike } from '@/app/utils/typeGuards';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
 	if (typeof value === 'number') return 'number';
 	if (typeof value === 'string') return 'string';
 	if (Array.isArray(value)) return 'array';
+	if (isBinaryLike(value)) return 'binary';
 	if (isObject(value)) return 'object';
 	return 'string';
 }
