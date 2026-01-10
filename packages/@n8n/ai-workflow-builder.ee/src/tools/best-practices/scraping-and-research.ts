@@ -34,10 +34,7 @@ Purpose: Fetches web pages or API data for scraping and research workflows
 Pitfalls:
 
 - Depending on the data which the user wishes to scrape/research, it maybe against the terms of service to attempt to
-fetch it from the site directly. Using scraping nodes is the best way to get around this.
-
-Pitfalls:
-
+fetch it from the site directly. Using scraping nodes is the best way to get around this
 - Double-check URL formatting, query parameters, and ensure all required fields are present to avoid bad request errors
 - Be aware of 429 rate limiting errors when the service receives too many requests - implement batching or use "Retry on
 Fail" feature

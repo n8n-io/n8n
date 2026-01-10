@@ -37,7 +37,7 @@ Result: Single workflow handles all channels efficiently with consistent logic
 
 ## Condition Logic & Filtering
 
-Use IF nodes for simple checks without code. For complex conditions (multiple fields, array filtering), use Function nodes to script the logic and filter items that need alerts.
+Use IF nodes for simple checks without code. For complex conditions (multiple fields, array filtering), use Code nodes to script the logic and filter items that need alerts.
 
 Always include empty notification prevention - check that alert-worthy items exist (items.length > 0) before proceeding to notification nodes. Route the false branch to end the workflow or log "no alert needed".
 
