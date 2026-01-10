@@ -297,6 +297,13 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			}
 		}
 
+		function resetSession() {
+			messages.value = [];
+			waitingForResponse.value = false;
+			currentSessionId.value = uuidv4();
+			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
+		}
+
 		const chatStore = {
 			initialMessages,
 			messages,
@@ -304,6 +311,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			waitingForResponse,
 			loadPreviousSession,
 			startNewSession,
+			resetSession,
 			sendMessage,
 		};
 

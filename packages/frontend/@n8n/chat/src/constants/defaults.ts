@@ -14,6 +14,7 @@ export const defaultOptions: ChatOptions = {
 	defaultLanguage: 'en',
 	showWelcomeScreen: false,
 	initialMessages: ['Hi there! 👋', 'My name is Nathan. How can I assist you today?'],
+	starterPrompts: [],
 	i18n: {
 		en: {
 			title: 'Hi there! 👋',
@@ -22,6 +23,7 @@ export const defaultOptions: ChatOptions = {
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
 			closeButtonTooltip: 'Close chat',
+			resetConversation: 'Reset conversation',
 		},
 	},
 	theme: {},
