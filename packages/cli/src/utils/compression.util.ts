@@ -51,21 +51,25 @@ function sanitizePath(fileName: string, outputDir: string): string {
 	// Normalize the path and resolve any relative path components
 	const normalizedPath = path.normalize(fileName);
 
-	// Join with output directory and resolve to get absolute path
-	const resolvedPath = path.resolve(outputDir, normalizedPath);
-	const resolvedOutputDir = path.resolve(outputDir);
+	// Join with output directory
+	// Use path.join instead of path.resolve to avoid calling process.cwd()
+	const joinedPath = path.join(outputDir, normalizedPath);
+	const normalizedOutputDir = path.normalize(outputDir);
+
+	// Ensure both paths are normalized for comparison
+	const normalizedJoinedPath = path.normalize(joinedPath);
 
 	// Check if the resolved path is within the output directory
 	if (
-		!resolvedPath.startsWith(resolvedOutputDir + path.sep) &&
-		resolvedPath !== resolvedOutputDir
+		!normalizedJoinedPath.startsWith(normalizedOutputDir + path.sep) &&
+		normalizedJoinedPath !== normalizedOutputDir
 	) {
 		throw new Error(
 			`Path traversal detected: ${fileName} would be extracted outside the output directory`,
 		);
 	}
 
-	return resolvedPath;
+	return normalizedJoinedPath;
 }
 
 /**

@@ -7,6 +7,7 @@ export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
+export const EXPORT_WORKFLOW_MODAL_KEY = 'exportWorkflow';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';

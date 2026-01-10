@@ -36,6 +36,7 @@ import type {
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type {
 	Connection,
 	Dimensions,
@@ -1748,6 +1749,72 @@ async function onDragAndDrop(position: VueFlowXYPosition, event: DragEvent) {
 		return;
 	}
 
+	// Check if files are being dropped
+	if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+		const file = event.dataTransfer.files[0];
+		const fileName = file.name.toLowerCase();
+
+		// Check if it's a workflow file (JSON or ZIP)
+		if (fileName.endsWith('.json') || fileName.endsWith('.zip')) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			try {
+				const projectId = projectsStore.currentProjectId;
+				if (!projectId) {
+					toast.showError(new Error('No project selected'), 'Cannot import workflow');
+					return;
+				}
+
+				// Import the workflow
+				if (fileName.endsWith('.zip')) {
+					// Handle ZIP import
+					const formData = new FormData();
+					formData.append('file', file);
+					formData.append('projectId', projectId);
+
+					const result = await makeRestApiRequest<{
+						workflowId: string;
+						dataTablesImported: number;
+					}>(rootStore.restApiContext, 'POST', '/workflows/import', formData);
+
+					toast.showMessage({
+						title: 'Workflow imported',
+						message: `Workflow imported successfully with ${result.dataTablesImported} data table(s)`,
+						type: 'success',
+					});
+
+					// Navigate to imported workflow
+					await router.push({
+						name: VIEWS.WORKFLOW,
+						params: { name: result.workflowId },
+					});
+				} else {
+					// Handle JSON import
+					const reader = new FileReader();
+					reader.onload = (e) => {
+						try {
+							const workflowData = JSON.parse(e.target?.result as string);
+							nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+							toast.showMessage({
+								title: 'Workflow imported',
+								message: 'Workflow imported successfully',
+								type: 'success',
+							});
+						} catch (error) {
+							toast.showError(error as Error, 'Failed to import workflow');
+						}
+					};
+					reader.readAsText(file);
+				}
+			} catch (error) {
+				toast.showError(error as Error, 'Failed to import workflow');
+			}
+			return;
+		}
+	}
+
+	// Handle node drag-and-drop (existing behavior)
 	const dropData = jsonParse<AddedNodesAndConnections>(
 		event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
 	);

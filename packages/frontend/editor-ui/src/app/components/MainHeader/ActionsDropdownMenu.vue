@@ -15,6 +15,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
+	EXPORT_WORKFLOW_MODAL_KEY,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -40,6 +41,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -93,29 +95,90 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-function handleFileImport() {
+async function handleFileImport() {
 	const inputRef = importFileRef.value;
 	if (inputRef?.files && inputRef.files.length !== 0) {
-		const reader = new FileReader();
-		reader.onload = () => {
-			let workflowData: WorkflowDataUpdate;
-			try {
-				workflowData = JSON.parse(reader.result as string);
-			} catch (error) {
-				toast.showMessage({
-					title: locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-					message: locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-					type: 'error',
-				});
-				return;
-			} finally {
-				reader.onload = null;
-				inputRef.value = '';
-			}
+		const file = inputRef.files[0];
+		const fileName = file.name.toLowerCase();
 
-			nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
-		};
-		reader.readAsText(inputRef.files[0]);
+		// Check if ZIP file
+		if (fileName.endsWith('.zip')) {
+			await handleZipImport(file);
+			inputRef.value = '';
+		} else if (fileName.endsWith('.json')) {
+			// Handle JSON import (existing behavior)
+			const reader = new FileReader();
+			reader.onload = () => {
+				let workflowData: WorkflowDataUpdate;
+				try {
+					workflowData = JSON.parse(reader.result as string);
+				} catch (error) {
+					toast.showMessage({
+						title: locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
+						message: locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
+						type: 'error',
+					});
+					return;
+				} finally {
+					reader.onload = null;
+					inputRef.value = '';
+				}
+
+				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+			};
+			reader.readAsText(file);
+		} else {
+			toast.showMessage({
+				title: locale.baseText('mainSidebar.showMessage.handleFileImport.invalidType.title'),
+				message: locale.baseText('mainSidebar.showMessage.handleFileImport.invalidType.message'),
+				type: 'error',
+			});
+			inputRef.value = '';
+		}
+	}
+}
+
+async function handleZipImport(file: File) {
+	try {
+		const projectId = projectsStore.currentProjectId;
+		if (!projectId) {
+			throw new Error('No project selected');
+		}
+
+		// Show loading toast
+		toast.showMessage({
+			title: locale.baseText('mainSidebar.showMessage.importingWorkflow.title'),
+			message: locale.baseText('mainSidebar.showMessage.importingWorkflow.message'),
+			type: 'info',
+			duration: 0,
+		});
+
+		// Upload ZIP file using makeRestApiRequest with FormData
+		const formData = new FormData();
+		formData.append('file', file);
+		formData.append('projectId', projectId);
+
+		const result = await makeRestApiRequest<{
+			workflowId: string;
+			dataTablesImported: number;
+		}>(rootStore.restApiContext, 'POST', '/workflows/import', formData);
+
+		// Show success message
+		toast.showMessage({
+			title: locale.baseText('mainSidebar.showMessage.importSuccess.title'),
+			message: locale.baseText('mainSidebar.showMessage.importSuccess.message', {
+				interpolate: { count: result.dataTablesImported?.toString() || '0' },
+			}),
+			type: 'success',
+		});
+
+		// Navigate to imported workflow
+		await router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: result.workflowId },
+		});
+	} catch (error) {
+		toast.showError(error as Error, 'Import failed');
 	}
 }
 
@@ -300,30 +363,42 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-			const workflowData = await workflowHelpers.getWorkflowDataToSave();
-			const { tags, ...data } = workflowData;
-			const exportData: IWorkflowToShare = {
-				...data,
-				meta: {
-					...props.meta,
-					instanceId: rootStore.instanceId,
-				},
-				tags: (tags ?? []).map((tagId) => {
-					const { usageCount, ...tag } = tagsStore.tagsById[tagId];
+			// Check if workflow has data table nodes
+			const workflow = workflowsStore.workflow;
+			const dataTableNodes = workflow.nodes.filter(
+				(node) => node.type === 'n8n-nodes-base.dataTable',
+			);
 
-					return tag;
-				}),
-			};
+			if (dataTableNodes.length > 0) {
+				// Show export modal if data tables exist
+				uiStore.openModal(EXPORT_WORKFLOW_MODAL_KEY);
+			} else {
+				// Export as JSON directly if no data tables
+				const workflowData = await workflowHelpers.getWorkflowDataToSave();
+				const { tags, ...data } = workflowData;
+				const exportData: IWorkflowToShare = {
+					...data,
+					meta: {
+						...props.meta,
+						instanceId: rootStore.instanceId,
+					},
+					tags: (tags ?? []).map((tagId) => {
+						const { usageCount, ...tag } = tagsStore.tagsById[tagId];
 
-			const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-				type: 'application/json;charset=utf-8',
-			});
+						return tag;
+					}),
+				};
 
-			let name = props.name || 'unsaved_workflow';
-			name = sanitizeFilename(name);
+				const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+					type: 'application/json;charset=utf-8',
+				});
 
-			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-			saveAs(blob, name + '.json');
+				let name = props.name || 'unsaved_workflow';
+				name = sanitizeFilename(name);
+
+				telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+				saveAs(blob, name + '.json');
+			}
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {

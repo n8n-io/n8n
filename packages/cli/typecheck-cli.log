@@ -1,0 +1,4 @@
+
+> n8n@2.3.0 typecheck /Users/ricardo/Documents/n8n-io/n8n/packages/cli
+> tsc --noEmit
+

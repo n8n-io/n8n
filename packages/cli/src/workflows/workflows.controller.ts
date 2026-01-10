@@ -1,6 +1,7 @@
 import {
 	ActivateWorkflowDto,
 	CreateWorkflowDto,
+	ExportWorkflowQueryDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
@@ -36,9 +37,13 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
-import express from 'express';
+import express, { type Response } from 'express';
+import { readFile, unlink, writeFile } from 'fs/promises';
+import * as path from 'path';
+import { tmpdir } from 'os';
 import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import multer from 'multer';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -47,6 +52,9 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { DataTableExportService } from '../modules/data-table/data-table-export.service';
+import { DataTableImportService } from '../modules/data-table/data-table-import.service';
+import type { AuthenticatedRequestWithFile } from '../modules/data-table/types';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -68,6 +76,26 @@ import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
+
+// Create multer configuration for workflow imports (JSON and ZIP files)
+const workflowImportUpload = multer({
+	storage: multer.memoryStorage(),
+	limits: {
+		fileSize: 50 * 1024 * 1024, // 50MB limit
+	},
+	fileFilter: (_req, file, done) => {
+		const allowedMimeTypes = [
+			'application/json',
+			'application/zip',
+			'application/x-zip-compressed',
+		];
+		if (allowedMimeTypes.includes(file.mimetype)) {
+			done(null, true);
+		} else {
+			done(new BadRequestError(`Only JSON and ZIP files are allowed. Received: ${file.mimetype}`));
+		}
+	},
+});
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -94,7 +122,13 @@ export class WorkflowsController {
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
-	) {}
+		private readonly dataTableExportService: DataTableExportService,
+		private readonly dataTableImportService: DataTableImportService,
+	) {
+		console.log('=== WorkflowsController initialized ===');
+		console.log('dataTableExportService:', !!this.dataTableExportService);
+		console.log('dataTableImportService:', !!this.dataTableImportService);
+	}
 
 	@Post('/')
 	async create(req: AuthenticatedRequest, _res: unknown, @Body body: CreateWorkflowDto) {
@@ -338,6 +372,136 @@ export class WorkflowsController {
 		return workflowData;
 	}
 
+	@Post('/import', {
+		middlewares: [
+			(req, res, next) => {
+				void workflowImportUpload.single('file')(req, res, (error) => {
+					if (error) {
+						(req as AuthenticatedRequestWithFile).fileUploadError = error;
+					}
+					next();
+				});
+			},
+		],
+	})
+	async importWorkflow(req: AuthenticatedRequestWithFile<{}, {}, { projectId: string }>) {
+		// Handle multer errors
+		if (req.fileUploadError) {
+			throw new BadRequestError(`File upload error: ${req.fileUploadError.message}`);
+		}
+
+		if (!req.file) {
+			throw new BadRequestError('No file uploaded');
+		}
+
+		const projectId = req.body.projectId;
+		if (!projectId) {
+			throw new BadRequestError('Project ID is required');
+		}
+
+		// Check permissions
+		if (
+			!(await this.projectService.getProjectWithScope(req.user, projectId, ['workflow:create']))
+		) {
+			throw new ForbiddenError(
+				"You don't have the permissions to create a workflow in this project.",
+			);
+		}
+
+		// Write buffer to temporary file for processing
+		// Use path.join instead of path.resolve to avoid calling process.cwd()
+		const tempFilePath = path.join(
+			tmpdir(),
+			`n8n-workflow-import-${Date.now()}-${req.file.originalname}`,
+		);
+
+		this.logger.debug('Writing temporary file for import', { tempFilePath });
+
+		try {
+			await writeFile(tempFilePath, req.file.buffer);
+		} catch (error) {
+			this.logger.error('Failed to write temporary file', { tempFilePath, error });
+			throw new InternalServerError('Failed to process uploaded file');
+		}
+
+		try {
+			// Detect file type
+			const fileType = await this.dataTableImportService.detectFileType(tempFilePath);
+
+			if (fileType === 'json') {
+				// Handle JSON import - read file and create workflow
+				const workflowContent = await readFile(tempFilePath, 'utf-8');
+				const workflowData = JSON.parse(workflowContent) as CreateWorkflowDto;
+
+				// Remove ID to generate a new one
+				delete workflowData.id;
+
+				// Add projectId to workflow data
+				workflowData.projectId = projectId;
+
+				// Create workflow using existing create method
+				const workflow = await this.create(req, undefined, workflowData);
+
+				return {
+					workflowId: workflow.id,
+					dataTablesImported: 0,
+				};
+			}
+
+			// Handle ZIP import with data tables
+			const { workflow: workflowData, dataTables } =
+				await this.dataTableImportService.extractWorkflowZip(tempFilePath);
+
+			// Import data tables and build ID mapping
+			const idMapping = new Map<string, { newId: string; name: string }>();
+			for (const [oldId, tableData] of dataTables) {
+				const result = await this.dataTableImportService.importDataTable(tableData, projectId);
+				idMapping.set(oldId, { newId: result.newId, name: result.name });
+			}
+
+			// Update workflow node parameters with new data table IDs
+			this.dataTableImportService.updateWorkflowDataTableReferences(workflowData, idMapping);
+
+			// Add projectId to workflow data
+			const workflowDto = workflowData as unknown as CreateWorkflowDto;
+
+			// Remove ID to generate a new one
+			delete workflowDto.id;
+
+			workflowDto.projectId = projectId;
+
+			// Create workflow using existing create method
+			const workflow = await this.create(req, undefined, workflowDto);
+
+			this.logger.info('Workflow imported with data tables', {
+				workflowId: workflow.id,
+				dataTableCount: dataTables.size,
+			});
+
+			return {
+				workflowId: workflow.id,
+				dataTablesImported: dataTables.size,
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorStack = error instanceof Error ? error.stack : undefined;
+			this.logger.error('Failed to import workflow', {
+				error: errorMessage,
+				stack: errorStack,
+				fileType: req.file.mimetype,
+				fileName: req.file.originalname,
+			});
+			throw new InternalServerError(`Failed to import workflow: ${errorMessage}`);
+		} finally {
+			// Clean up temporary file
+			try {
+				await unlink(tempFilePath);
+			} catch (error) {
+				this.logger.error('Failed to cleanup temporary file', { path: tempFilePath, error });
+			}
+		}
+	}
+
 	@Get('/:workflowId')
 	@ProjectScope('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
@@ -426,6 +590,123 @@ export class WorkflowsController {
 	async exists(req: WorkflowRequest.Get) {
 		const exists = await this.workflowRepository.existsBy({ id: req.params.workflowId });
 		return { exists };
+	}
+
+	@Get('/:workflowId/export')
+	@ProjectScope('workflow:read')
+	async exportWorkflow(
+		req: WorkflowRequest.Get,
+		res: Response,
+		@Query query: ExportWorkflowQueryDto,
+	) {
+		console.log('=== EXPORT WORKFLOW ENDPOINT CALLED ===');
+		const { workflowId } = req.params;
+		const includeDataTables = query.includeDataTables ?? false;
+		console.log('workflowId:', workflowId);
+		console.log('includeDataTables:', includeDataTables);
+
+		// Find the workflow with read permissions
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+			{
+				includeTags: !this.globalConfig.tags.disabled,
+			},
+		);
+
+		if (!workflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+		}
+
+		// Get project for permission checks
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		if (!project) {
+			throw new NotFoundError(`Project for workflow "${workflowId}" not found`);
+		}
+
+		// If not including data tables, return regular JSON export
+		if (!includeDataTables) {
+			return workflow;
+		}
+
+		// Extract data table IDs from workflow
+		const dataTableIds = await this.dataTableExportService.extractDataTableIds(
+			workflow,
+			project.id,
+		);
+
+		// If no data tables found, return regular JSON export
+		if (dataTableIds.length === 0) {
+			return workflow;
+		}
+
+		// Export data tables
+		const dataTableExports = await this.dataTableExportService.exportDataTables(
+			dataTableIds,
+			project.id,
+		);
+
+		// Create temporary ZIP file
+		const tempZipPath = path.join(tmpdir(), `n8n-workflow-${workflowId}-${Date.now()}.zip`);
+
+		try {
+			// Create ZIP with workflow and data tables
+			await this.dataTableExportService.createWorkflowZipExport(
+				workflow,
+				dataTableExports,
+				tempZipPath,
+			);
+
+			// Sanitize workflow name for filename
+			let sanitizedName = workflow.name.replace(/[^a-z0-9_-]/gi, '_');
+			if (!sanitizedName) {
+				sanitizedName = 'workflow';
+			}
+
+			// Use sendFile to properly handle file download
+			// This is the Express-recommended way to send files
+			return await new Promise<void>((resolve, reject) => {
+				res.sendFile(
+					tempZipPath,
+					{
+						headers: {
+							'Content-Type': 'application/zip',
+							'Content-Disposition': `attachment; filename="${sanitizedName}.zip"`,
+						},
+					},
+					async (error) => {
+						// Clean up temp file after sending (whether success or error)
+						try {
+							await unlink(tempZipPath);
+						} catch (cleanupError) {
+							this.logger.error('Failed to cleanup temp ZIP file', {
+								tempZipPath,
+								error: cleanupError,
+							});
+						}
+
+						if (error) {
+							this.logger.error('Error sending ZIP file', { tempZipPath, error });
+							reject(new InternalServerError('Failed to export workflow'));
+						} else {
+							resolve();
+						}
+					},
+				);
+			});
+		} catch (error) {
+			// Clean up temp file on error
+			try {
+				await unlink(tempZipPath);
+			} catch (cleanupError) {
+				this.logger.error('Failed to cleanup temp ZIP file after error', {
+					tempZipPath,
+					error: cleanupError,
+				});
+			}
+			throw error;
+		}
 	}
 
 	@Patch('/:workflowId')

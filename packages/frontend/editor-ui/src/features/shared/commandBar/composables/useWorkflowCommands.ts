@@ -16,6 +16,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXPORT_WORKFLOW_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -376,25 +377,37 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.download'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
-					const workflowData = await workflowHelpers.getWorkflowDataToSave();
-					const { tags, ...data } = workflowData;
-					const exportData: IWorkflowToShare = {
-						...data,
-						meta: {
-							...workflowData.meta,
-							instanceId: rootStore.instanceId,
-						},
-						tags: (tags ?? []).map((tagId) => {
-							return tagsStore.tagsById[tagId];
-						}),
-					};
-					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-						type: 'application/json;charset=utf-8',
-					});
-					let name = editableWorkflow.value.name || 'unsaved_workflow';
-					name = name.replace(/[^a-z0-9]/gi, '_');
-					telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-					saveAs(blob, name + '.json');
+					// Check if workflow has data tables
+					const workflow = workflowsStore.workflow;
+					const dataTableNodes = workflow.nodes.filter(
+						(node) => node.type === 'n8n-nodes-base.dataTable',
+					);
+
+					if (dataTableNodes.length > 0) {
+						// Show export modal to ask user
+						uiStore.openModal(EXPORT_WORKFLOW_MODAL_KEY);
+					} else {
+						// No data tables, export directly as JSON
+						const workflowData = await workflowHelpers.getWorkflowDataToSave();
+						const { tags, ...data } = workflowData;
+						const exportData: IWorkflowToShare = {
+							...data,
+							meta: {
+								...workflowData.meta,
+								instanceId: rootStore.instanceId,
+							},
+							tags: (tags ?? []).map((tagId) => {
+								return tagsStore.tagsById[tagId];
+							}),
+						};
+						const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+							type: 'application/json;charset=utf-8',
+						});
+						let name = editableWorkflow.value.name || 'unsaved_workflow';
+						name = name.replace(/[^a-z0-9]/gi, '_');
+						telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+						saveAs(blob, name + '.json');
+					}
 				},
 				icon: {
 					component: N8nIcon,

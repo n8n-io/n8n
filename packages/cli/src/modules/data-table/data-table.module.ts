@@ -17,6 +17,12 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service');
 		await Container.get(DataTableFileCleanupService).start();
+
+		// Register export and import services (no start method needed)
+		console.log('=== Loading data table export/import services ===');
+		await import('./data-table-export.service');
+		await import('./data-table-import.service');
+		console.log('=== Data table export/import services loaded ===');
 	}
 
 	@OnShutdown()

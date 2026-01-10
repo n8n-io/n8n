@@ -5,6 +5,7 @@ import {
 	CHAT_EMBED_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
+	EXPORT_WORKFLOW_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
@@ -83,6 +84,7 @@ import DeleteFolderModal from '@/features/core/folders/components/DeleteFolderMo
 import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderModal.vue';
 import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
+import ExportWorkflowModal from '@/app/components/ExportWorkflowModal.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
@@ -166,6 +168,10 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXPORT_WORKFLOW_MODAL_KEY">
+			<ExportWorkflowModal />
 		</ModalRoot>
 
 		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
