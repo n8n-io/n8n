@@ -30,6 +30,51 @@ export class Kafka implements ICredentialType {
 			default: true,
 		},
 		{
+			displayName: 'Client SSL Cert',
+			name: 'clientSslCert',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
+			description: 'Client’s public key in PEM format, used for authentication.', 
+		},
+		{
+			displayName: 'Client SSL Key',
+			name: 'clientSslKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
+			description: 'Client’s private key in PEM format, used for authentication.', 
+		},
+		{
+			displayName: 'Client SSL Key Passphrase',
+			name: 'clientSslPassphrase',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
+			description: 'Passphrase used to decrypt the client SSL key.', 
+		},
+		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'boolean',
