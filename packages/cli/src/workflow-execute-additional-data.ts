@@ -452,7 +452,9 @@ export async function getBase({
 	executionTimeoutTimestamp?: number;
 	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
+	const urlService = Container.get(UrlService);
+	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -465,7 +467,7 @@ export async function getBase({
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
-		instanceBaseUrl: urlBaseWebhook,
+		instanceBaseUrl,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
