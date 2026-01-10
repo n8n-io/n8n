@@ -34,7 +34,7 @@ export class SourceControlController {
 		private readonly eventService: EventService,
 	) {}
 
-	@Get('/preferences', { skipAuth: true })
+	@Get('/preferences')
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
