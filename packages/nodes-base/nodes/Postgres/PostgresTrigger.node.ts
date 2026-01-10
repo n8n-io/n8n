@@ -260,7 +260,11 @@ export class PostgresTrigger implements INodeType {
 		const onNotification = async (data: IDataObject) => {
 			if (data.payload) {
 				try {
-					data.payload = JSON.parse(data.payload as string) as IDataObject;
+					const parsed = JSON.parse(data.payload as string) as IDataObject;
+					data.payload = parsed.new;
+					if ('old' in parsed) {
+						data.oldPayload = parsed.old;
+					}
 				} catch (error) {}
 			}
 			this.emit([this.helpers.returnJsonArray([data])]);
