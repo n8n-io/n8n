@@ -5,8 +5,15 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+
+type WorkflowExecutedEvent = RelayEventMap['workflow-executed'];
+type WorkflowExecutedEventWithUser = WorkflowExecutedEvent & { user: UserLike };
+
+function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWithUser {
+	return event.user !== undefined;
+}
 
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
@@ -251,23 +258,48 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowExecuted({
+	private workflowExecutedWithUser({
 		user,
 		workflowId,
 		workflowName,
 		executionId,
 		source,
-	}: RelayEventMap['workflow-executed']) {
+	}: WorkflowExecutedEventWithUser) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.executed',
 			payload: {
-				...(user && { ...user }),
+				...user,
 				workflowId,
 				workflowName,
 				executionId,
 				source,
 			},
 		});
+	}
+
+	private workflowExecutedWithoutUser({
+		workflowId,
+		workflowName,
+		executionId,
+		source,
+	}: WorkflowExecutedEvent) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.executed',
+			payload: {
+				workflowId,
+				workflowName,
+				executionId,
+				source,
+			},
+		});
+	}
+
+	private workflowExecuted(event: WorkflowExecutedEvent) {
+		if (hasUser(event)) {
+			this.workflowExecutedWithUser(event);
+		} else {
+			this.workflowExecutedWithoutUser(event);
+		}
 	}
 
 	// #endregion
