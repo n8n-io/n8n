@@ -15,6 +15,7 @@ import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -63,6 +64,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
+const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
 const isExpression = computed(() => {
 	return isValueExpression(props.parameter, props.modelValue);
@@ -168,7 +170,7 @@ defineExpose({
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<N8nTooltip placement="left" :disabled="!expectsBinaryData">
 			<template #content>
-				{{ ndvStore.binaryDataAccessTooltip }}
+				{{ binaryDataAccessTooltip }}
 			</template>
 			<ParameterInput
 				ref="param"

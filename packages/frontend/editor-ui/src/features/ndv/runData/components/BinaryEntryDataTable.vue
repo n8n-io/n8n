@@ -4,7 +4,7 @@ import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -75,10 +75,6 @@ const containerStyle = computed(() => ({
 	marginLeft: props.depth ? `${props.depth * 15}px` : '0',
 }));
 
-const isDownloadHovered = ref(false);
-
-const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 'text-base'));
-
 const fileIcon = computed(() => {
 	const mimeType = props.value.mimeType;
 	const isTextFile = mimeType?.startsWith('text/') ?? false;
@@ -103,14 +99,9 @@ const fileIcon = computed(() => {
 			<div :class="$style.filename" @click="viewBinaryData">{{ fileName }}</div>
 			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
-		<div
-			:class="$style.download"
-			@click="downloadBinaryData"
-			@mouseenter="isDownloadHovered = true"
-			@mouseleave="isDownloadHovered = false"
-		>
-			<N8nIcon icon="download" size="large" :color="downloadIconColor" />
-		</div>
+		<button :class="$style.download" @click="downloadBinaryData">
+			<N8nIcon icon="download" size="large" />
+		</button>
 	</div>
 </template>
 
@@ -180,6 +171,7 @@ const fileIcon = computed(() => {
 	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--bold);
 	overflow: hidden;
+	max-width: 300px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	cursor: pointer;
@@ -199,9 +191,17 @@ const fileIcon = computed(() => {
 	justify-content: center;
 	width: 48px;
 	height: 48px;
+	padding: 0;
+	border: none;
+	background: none;
 	cursor: pointer;
 	flex-shrink: 0;
 	opacity: 0;
 	transition: opacity 0.2s ease-in-out;
+	color: var(--color--text--base);
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 </style>

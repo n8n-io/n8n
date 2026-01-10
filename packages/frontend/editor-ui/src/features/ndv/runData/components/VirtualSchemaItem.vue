@@ -6,7 +6,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
-import { ref, computed } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
@@ -72,12 +71,6 @@ function viewBinaryData() {
 const emit = defineEmits<{
 	click: [];
 }>();
-
-const isDownloadHovered = ref(false);
-const isViewHovered = ref(false);
-
-const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 'text-base'));
-const viewIconColor = computed(() => (isViewHovered.value ? 'primary' : 'text-base'));
 </script>
 
 <template>
@@ -125,30 +118,26 @@ const viewIconColor = computed(() => (isViewHovered.value ? 'primary' : 'text-ba
 		/>
 		<div v-if="props.binaryData && !preview" class="binary-controls">
 			<div
-				class="pill"
+				class="pill binary-control-pill"
 				:class="{
 					'pill--highlight': highlight,
 					'pill--preview': preview,
 					'pill--locked': locked,
 				}"
 				@click="downloadBinaryData"
-				@mouseenter="isDownloadHovered = true"
-				@mouseleave="isDownloadHovered = false"
 			>
-				<N8nIcon class="type-icon" :icon="'download'" size="small" :color="downloadIconColor" />
+				<N8nIcon class="type-icon" :icon="'download'" size="small" />
 			</div>
 			<div
-				class="pill"
+				class="pill binary-control-pill"
 				:class="{
 					'pill--highlight': highlight,
 					'pill--preview': preview,
 					'pill--locked': locked,
 				}"
 				@click="viewBinaryData"
-				@mouseenter="isViewHovered = true"
-				@mouseleave="isViewHovered = false"
 			>
-				<N8nIcon class="type-icon" :icon="'eye'" size="small" :color="viewIconColor" />
+				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
 			</div>
 		</div>
 	</div>
@@ -283,6 +272,10 @@ const viewIconColor = computed(() => (isViewHovered.value ? 'primary' : 'text-ba
 
 .schema-item:hover .binary-controls {
 	opacity: 1;
+}
+
+.binary-control-pill:hover .type-icon {
+	color: var(--color--primary);
 }
 </style>
 
