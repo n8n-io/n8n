@@ -75,9 +75,13 @@ export const renderFormCompletion = async (
 		res.setHeader('Content-Security-Policy', SANDBOX_CSP);
 	}
 
+	// Process line breaks in completion message: convert \n to <br /> for HTML rendering
+	let processedMessage = completionMessage;
+	processedMessage = (processedMessage || '').replace(/\\n/g, '<br />');
+
 	res.render('form-trigger-completion', {
 		title: completionTitle,
-		message: sanitizeHtml(completionMessage),
+		message: sanitizeHtml(processedMessage),
 		formTitle: title,
 		appendAttribution,
 		responseText,
