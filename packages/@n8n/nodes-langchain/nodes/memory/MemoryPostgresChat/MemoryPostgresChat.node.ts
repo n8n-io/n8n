@@ -115,8 +115,15 @@ export class MemoryPostgresChat implements INodeType {
 			...kOptions,
 		});
 
+		async function closeFunction() {
+			// Release the database client connection back to the pool
+			// This is similar to how PGVectorStore releases its client
+			(pgChatHistory as any).client?.release();
+		}
+
 		return {
 			response: logWrapper(memory, this),
+			closeFunction,
 		};
 	}
 }
