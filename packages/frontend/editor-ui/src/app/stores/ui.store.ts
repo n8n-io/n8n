@@ -271,6 +271,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
@@ -612,6 +613,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const markStateDirty = () => {
+		dirtyStateSetCount.value++;
+		stateIsDirty.value = true;
+	};
+
+	const markStateClean = () => {
+		stateIsDirty.value = false;
+	};
+
 	/**
 	 * Register a modal dynamically
 	 */
@@ -670,7 +680,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
-		stateIsDirty,
+		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
+		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -706,6 +717,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		markStateDirty,
+		markStateClean,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

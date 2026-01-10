@@ -22,6 +22,7 @@ import {
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
+	sanitizeFilename,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -235,9 +236,9 @@ export async function copyBinaryFile(
 	};
 
 	if (fileName) {
-		returnData.fileName = fileName;
+		returnData.fileName = sanitizeFilename(fileName);
 	} else if (filePath) {
-		returnData.fileName = path.parse(filePath).base;
+		returnData.fileName = sanitizeFilename(filePath);
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(

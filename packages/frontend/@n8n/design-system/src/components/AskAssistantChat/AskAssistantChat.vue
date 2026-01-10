@@ -27,6 +27,7 @@ interface Props {
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	loadingMessage?: string;
 	sessionId?: string;
 	inputPlaceholder?: string;
@@ -496,6 +497,7 @@ defineExpose({
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
 								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
 								:credits-quota="creditsQuota"
 								:credits-remaining="creditsRemaining"
@@ -547,6 +549,7 @@ defineExpose({
 				v-model="textInputValue"
 				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
+				:disabled-tooltip="disabledTooltip"
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"

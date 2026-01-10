@@ -38,14 +38,14 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C1');
 			await n8n.ndv.clickBackToCanvasButton();
 
-			// Share W1 with U3 before saving
+			// Share W1 with U3 (this also saves the workflow)
 			await n8n.canvas.openShareModal();
 			await n8n.workflowSharingModal.addUser(MEMBER_1_EMAIL);
 			await n8n.workflowSharingModal.save();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.navigate.toWorkflow('new');
 			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 		});
 
 		test('should create C2, share C2 with U1 and U2, as U3', async ({ n8n }) => {
@@ -79,9 +79,9 @@ test.describe('@isolated', () => {
 			await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.canvas.openNode('Append a block');
 
@@ -90,6 +90,9 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getNodeCredentialsSelect()).toBeDisabled();
 
 			await n8n.ndv.clickBackToCanvasButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should open W1, add node using C2 as U2', async ({ n8n }) => {
@@ -105,9 +108,9 @@ test.describe('@isolated', () => {
 			await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.canvas.openNode('Append a block');
 
@@ -118,6 +121,9 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getNodeCredentialsSelect().locator('input')).toBeEnabled();
 
 			await n8n.ndv.clickBackToCanvasButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should not have access to W2, as U3', async ({ n8n }) => {
@@ -154,6 +160,9 @@ test.describe('@isolated', () => {
 
 			await n8n.workflows.cards.getWorkflow('Workflow W2').click();
 			await n8n.canvas.clickExecuteWorkflowButton();
+
+			// Navigate away to release the collaboration lock
+			await n8n.navigate.toWorkflows();
 		});
 
 		test('should automatically test C2 when opened by U2 sharee', async ({ n8n }) => {
@@ -228,15 +237,15 @@ test.describe('@isolated', () => {
 			await api.setMaxTeamProjectsQuota(-1);
 
 			await n8n.api.signin('owner');
+			const teamProject = await n8n.api.projects.createProject('Development');
+			await n8n.api.workflows.createWorkflow({
+				name: 'Sharing Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
 			await n8n.navigate.toHome();
-
-			await n8n.projectComposer.createProject('Development');
-
-			await n8n.sideBar.clickHomeButton();
-			await n8n.workflows.clickNewWorkflowCard();
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test workflow');
-
-			await n8n.sideBar.clickHomeButton();
 			await n8n.projectTabs.clickCredentialsTab();
 			await n8n.credentials.emptyListCreateCredentialButton.click();
 			await n8n.credentials.selectCredentialType('Notion API');
@@ -244,6 +253,8 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.renameCredential('Notion API');
 			await n8n.credentials.credentialModal.save();
 			await n8n.credentials.credentialModal.close();
+
+			await n8n.navigate.toCredentials();
 
 			await n8n.credentials.cards.getCredential('Notion API').click();
 			await n8n.credentials.credentialModal.changeTab('Sharing');
@@ -253,12 +264,13 @@ test.describe('@isolated', () => {
 			await expect(sharingDropdown.locator('li')).toHaveCount(6);
 			await expect(sharingDropdown.getByText('Development')).toBeVisible();
 
-			await sharingDropdown.getByText('Development').click();
+			await sharingDropdown.getByText(/Development/).click();
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
 
-			await n8n.projectTabs.clickWorkflowsTab();
-			await n8n.workflows.shareWorkflow('Test workflow');
+			await n8n.navigate.toWorkflows();
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
+			await n8n.workflows.shareWorkflow('Sharing Test Workflow');
 
 			await n8n.workflowSharingModal.getUsersSelect().click();
 			const workflowSharingDropdown = n8n.workflowSharingModal.getVisibleDropdown();
@@ -267,9 +279,11 @@ test.describe('@isolated', () => {
 			await workflowSharingDropdown.locator('li').first().click();
 			await n8n.workflowSharingModal.save();
 
-			await n8n.sideBar.getProjectMenuItems().first().click();
-			await n8n.workflows.clickNewWorkflowCard();
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test workflow 2');
+			const teamWorkflow = await n8n.api.workflows.createInProject(teamProject.id, {
+				name: 'Test workflow 2',
+			});
+
+			await n8n.navigate.toWorkflow(teamWorkflow.id);
 
 			// Team project workflow cannot be shared
 			await n8n.canvas.openShareModal();
@@ -277,8 +291,7 @@ test.describe('@isolated', () => {
 
 			await n8n.workflowSharingModal.close();
 
-			await n8n.sideBar.getProjectMenuItems().first().click();
-			await n8n.projectTabs.clickCredentialsTab();
+			await n8n.navigate.toCredentials(teamProject.id);
 			await n8n.credentials.addResource.credential();
 			await n8n.credentials.selectCredentialType('Notion API');
 			await n8n.credentials.credentialModal.fillField('apiKey', TEST_API_KEY);
@@ -294,6 +307,8 @@ test.describe('@isolated', () => {
 			await sharingDropdown2.locator('li').nth(1).click();
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
+
+			await n8n.navigate.toCredentials();
 
 			// One credential labeled "Personal"
 			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(2);
