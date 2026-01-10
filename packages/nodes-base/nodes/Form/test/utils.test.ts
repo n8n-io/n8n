@@ -19,6 +19,7 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	sanitizeCustomCss,
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
@@ -342,6 +343,55 @@ describe('FormTrigger, sanitizeHtml', () => {
 		complexTableCases.forEach(({ html, expected }) => {
 			expect(sanitizeHtml(html)).toBe(expected);
 		});
+	});
+});
+
+describe('sanitizeCustomCss', () => {
+	it('should return undefined for undefined input', () => {
+		expect(sanitizeCustomCss(undefined)).toBeUndefined();
+	});
+
+	it('should return undefined for empty string', () => {
+		expect(sanitizeCustomCss('')).toBeUndefined();
+	});
+
+	it('should preserve CSS child combinator selectors (>)', () => {
+		const css = '#n8n-form > div.form-header > p { text-align: left; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS adjacent sibling selectors (+)', () => {
+		const css = 'h1 + p { margin-top: 0; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS general sibling selectors (~)', () => {
+		const css = 'h1 ~ p { color: gray; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should remove script tags from CSS', () => {
+		const css = '.container { color: red; }<script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should remove style closing tags that could break out of style block', () => {
+		const css = '.container { color: red; }</style><script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should preserve url() in CSS', () => {
+		const css = '.bg { background-image: url(https://example.com/image.png); }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve complex CSS with multiple selectors and properties', () => {
+		const css = `
+			#n8n-form > div.form-header > p { text-align: left; }
+			.form-container > .input-group + .input-group { margin-top: 1rem; }
+			button:hover { background-color: #0056b3; }
+		`;
+		expect(sanitizeCustomCss(css)).toBe(css);
 	});
 });
 
