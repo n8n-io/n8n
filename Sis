@@ -1,0 +1,30 @@
+name: Auto Aprimoramento Manus
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  test_and_merge:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with: { python-version: '3.11' }
+    - run: pip install -r requirements.txt
+    - name: Run tests
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        N8N_RUN_WEBHOOK: ${{ secrets.N8N_RUN_WEBHOOK }}
+      run: python testes_manus.py
+    - name: Auto merge on success
+      if: ${{ success() }}
+      run: |
+        git config --global user.name "Manus AI"
+        git config --global user.email "manus@ia.local"
+        git checkout main || git switch -c main
+        git merge --no-edit dev || echo "merge failed"
+        git push origin mainopenai
+pinecone-client
+requests
