@@ -4,7 +4,7 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
-	getJwtToken,
+	getAuthorizationHeader,
 	getFieldNamesAndIds,
 	toOptions,
 	TableFieldMapper,
@@ -71,23 +71,54 @@ describe('Baserow > GenericFunctions', () => {
 		});
 	});
 
-	describe('getJwtToken', () => {
-		it('should return a token', async () => {
+	describe('getAuthorizationHeader', () => {
+		it('should return JWT token when authType is basic', async () => {
 			mockExecuteFunctions.helpers.request.mockResolvedValue({ token: 'mockToken' });
-			const result = await getJwtToken.call(mockExecuteFunctions, {
+
+			const result = await getAuthorizationHeader.call(mockExecuteFunctions, {
+				authType: 'basic',
 				username: 'nathan@n8n.io',
 				password: 'this-is-a-fake-password',
 				host: 'https://api.baserow.io',
+				token: '',
 			});
-			expect(result).toBe('mockToken');
+
+			expect(result).toBe('JWT mockToken');
 		});
 
-		it('should throw NodeApiError if request fails', async () => {
+		it('should return Token when authType is token', async () => {
+			const result = await getAuthorizationHeader.call(mockExecuteFunctions, {
+				authType: 'token',
+				username: '',
+				password: '',
+				token: 'api_token_123',
+				host: 'https://api.baserow.io',
+			});
+
+			expect(result).toBe('Token api_token_123');
+		});
+
+		it('should throw NodeApiError if basic auth request fails', async () => {
 			mockExecuteFunctions.helpers.request.mockRejectedValue({ error: 'fail' });
+
 			await expect(
-				getJwtToken.call(mockExecuteFunctions, {
+				getAuthorizationHeader.call(mockExecuteFunctions, {
+					authType: 'basic',
 					username: 'nathan@n8n.io',
 					password: 'this-is-a-fake-password',
+					host: 'https://api.baserow.io',
+					token: '',
+				}),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should throw NodeApiError if token is missing for token auth', async () => {
+			await expect(
+				getAuthorizationHeader.call(mockExecuteFunctions, {
+					authType: 'token',
+					username: '',
+					password: '',
+					token: '',
 					host: 'https://api.baserow.io',
 				}),
 			).rejects.toThrow(NodeApiError);
