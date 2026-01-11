@@ -150,6 +150,7 @@ export class HttpRequestV3 implements INodeType {
 			limitPagesFetched: boolean;
 			maxRequests: number;
 			requestInterval: number;
+			maxIdenticalResponses: number;
 		};
 
 		const requests: Array<{
@@ -718,6 +719,10 @@ export class HttpRequestV3 implements INodeType {
 
 					if (pagination.limitPagesFetched) {
 						paginationData.maxRequests = pagination.maxRequests;
+					}
+
+					if (pagination.maxIdenticalResponses !== undefined) {
+						paginationData.maxIdenticalResponses = pagination.maxIdenticalResponses;
 					}
 
 					if (responseFormat === 'file') {

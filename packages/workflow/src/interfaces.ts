@@ -541,6 +541,10 @@ export interface PaginationOptions {
 	request: IRequestOptionsSimplifiedAuth;
 	requestInterval: number;
 	maxRequests?: number;
+	/**
+	 * Maximum number of consecutive identical responses before stopping pagination.
+	 */
+	maxIdenticalResponses?: number;
 }
 
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;

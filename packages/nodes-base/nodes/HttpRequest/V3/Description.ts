@@ -1144,6 +1144,23 @@ export const mainProperties: INodeProperties[] = [
 									minValue: 0,
 								},
 							},
+							{
+								displayName: 'Max Identical Responses',
+								name: 'maxIdenticalResponses',
+								type: 'number',
+								displayOptions: {
+									hide: {
+										paginationMode: ['off'],
+									},
+								},
+								default: 2,
+								description:
+									'Maximum number of consecutive identical responses before stopping pagination',
+								hint: 'Increase this if your API returns identical responses',
+								typeOptions: {
+									minValue: 0,
+								},
+							},
 						],
 					},
 				],
