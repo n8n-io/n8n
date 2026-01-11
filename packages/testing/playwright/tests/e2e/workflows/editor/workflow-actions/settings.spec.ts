@@ -1,7 +1,8 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Settings', () => {
+test.describe('Workflow Settings @fixme', () => {
+	test.fixme();
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -19,8 +20,6 @@ test.skip('Workflow Settings', () => {
 		const workflowsResponse = await workflowsResponsePromise;
 		const responseBody = await workflowsResponse.json();
 		const totalWorkflows = responseBody.count;
-
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.workflowSettingsModal.open();
 		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();

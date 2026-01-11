@@ -36,7 +36,7 @@ jobs:
       - name: Run Container Coverage Tests
         id: coverage-tests
         run: |
-          pnpm --filter n8n-playwright test:container:standard \
+          pnpm --filter n8n-playwright test:container:sqlite \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           BUILD_WITH_COVERAGE: 'true'
