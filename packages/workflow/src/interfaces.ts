@@ -1188,6 +1188,13 @@ export interface ITriggerFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
+	/**
+	 * Save the execution as failed and call the error workflow if defined
+	 */
+	emitExecutionError(error: ExecutionError): void;
+	/**
+	 * Log error, reactivate the workflow, and call the error workflow if defined
+	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
