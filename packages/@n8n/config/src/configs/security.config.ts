@@ -39,7 +39,6 @@ export class SecurityConfig {
 	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
 	 * Working example .env variable -- Add your trusted domain names at the end of this line:
    * N8N_CONTENT_SECURITY_POLICY="{\"default-src\":[\"*\"],\"script-src\":[\"*\",\"'unsafe-inline'\",\"'unsafe-eval'\"],\"style-src\":[\"*\",\"'unsafe-inline'\"],\"frame-ancestors\":[\"'self'\",\"https://myapp.com\",\"https://subdomain.anotherapp.com\"]}"
-
 	 */
 	// TODO: create a new type that parses and validates this string into a strongly-typed object
 	@Env('N8N_CONTENT_SECURITY_POLICY')
