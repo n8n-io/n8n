@@ -277,7 +277,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
 			};
@@ -300,7 +300,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
 			};
@@ -320,14 +320,18 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
 			};
 
 			// Create a fresh instance with workflowRepository returning true (error workflows exist)
 			const workflowRepositoryWithErrorWorkflows = mock<WorkflowRepository>();
-			workflowRepositoryWithErrorWorkflows.hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(true);
+			(
+				workflowRepositoryWithErrorWorkflows as unknown as {
+					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+				}
+			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(true);
 			const settingsRepository = Container.get(SettingsRepository);
 			const statisticsService = new WorkflowStatisticsService(
 				mock(),
@@ -355,7 +359,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'manual', // non-production mode
 				startedAt: new Date(),
 			};
@@ -429,7 +433,9 @@ describe('WorkflowStatisticsService', () => {
 			workflowStatisticsRepository = new WorkflowStatisticsRepository(dataSource, globalConfig);
 			const settingsRepository = mock<SettingsRepository>();
 			const workflowRepository = mock<WorkflowRepository>();
-			workflowRepository.hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+			(
+				workflowRepository as unknown as { hasAnyWorkflowsWithErrorWorkflow: jest.Mock }
+			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			workflowStatisticsService = new WorkflowStatisticsService(
 				mock(),
 				workflowStatisticsRepository,
