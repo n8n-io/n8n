@@ -5,8 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type TestAgent from 'supertest/lib/agent';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
@@ -23,6 +23,7 @@ let logger: Logger;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
+	modules: ['log-streaming'],
 });
 
 afterAll(async () => {

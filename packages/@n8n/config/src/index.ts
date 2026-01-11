@@ -12,7 +12,6 @@ import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
-import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
@@ -91,9 +90,6 @@ export class GlobalConfig {
 
 	@Nested
 	templates: TemplatesConfig;
-
-	@Nested
-	eventBus: EventBusConfig;
 
 	@Nested
 	nodes: NodesConfig;

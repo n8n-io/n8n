@@ -1,20 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { DeleteResult } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-
-import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
+import { EventService } from '@/events/event.service';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import type { MessageEventBusDestination } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination.ee';
 import type { EventMessageTypes } from '../event-message-classes/';
 import {
 	EventMessageAiNode,
@@ -37,9 +33,11 @@ import type { EventMessageRunnerOptions } from '../event-message-classes/event-m
 import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
-import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
-import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
+import { LogStreamingConfig } from '@/modules/log-streaming.ee/log-streaming.config';
+import { MessageEventBusLogWriter } from '@/modules/log-streaming.ee/log-writer/message-event-bus-log-writer';
+
+import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -71,12 +69,13 @@ export class MessageEventBus extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logStreamingConfig: LogStreamingConfig,
+		private readonly eventService: EventService,
 	) {
 		super();
 	}
@@ -97,27 +96,12 @@ export class MessageEventBus extends EventEmitter {
 
 		this.logger.debug('Initializing event bus...');
 
-		const savedEventDestinations = await this.eventDestinationsRepository.find({});
-		if (savedEventDestinations.length > 0) {
-			for (const destinationData of savedEventDestinations) {
-				try {
-					const destination = messageEventBusDestinationFromDb(this, destinationData);
-					if (destination) {
-						await this.addDestination(destination, false);
-					}
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					if (error.message) this.logger.debug(error.message as string);
-				}
-			}
-		}
-
 		this.logger.debug('Initializing event writer');
 		if (options?.workerId || options?.webhookProcessorId) {
 			// only add 'worker' or 'webhook-processor' to log file name since the ID changes on every start and we
 			// would not be able to recover the log files from the previous run not knowing it
 			const logBaseName =
-				this.globalConfig.eventBus.logWriter.logBaseName +
+				this.logStreamingConfig.logWriter.logBaseName +
 				(options.workerId ? '-worker' : '-webhook-processor');
 			this.logWriter = await MessageEventBusLogWriter.getInstance({
 				logBaseName,
@@ -175,7 +159,7 @@ export class MessageEventBus extends EventEmitter {
 					}
 				}
 				const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
-				if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
+				if (recoveryAlreadyAttempted || this.logStreamingConfig.crashRecoveryMode === 'simple') {
 					await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
 					// if we end up here, it means that the previous recovery process did not finish
 					// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
@@ -222,13 +206,13 @@ export class MessageEventBus extends EventEmitter {
 			}
 		}
 		// if configured, run this test every n ms
-		if (this.globalConfig.eventBus.checkUnsentInterval > 0) {
+		if (this.logStreamingConfig.checkUnsentInterval > 0) {
 			if (this.pushIntervalTimer) {
 				clearInterval(this.pushIntervalTimer);
 			}
 			this.pushIntervalTimer = setInterval(async () => {
 				await this.trySendingUnsent();
-			}, this.globalConfig.eventBus.checkUnsentInterval);
+			}, this.logStreamingConfig.checkUnsentInterval);
 		}
 
 		this.logger.debug('MessageEventBus initialized');
@@ -263,12 +247,6 @@ export class MessageEventBus extends EventEmitter {
 		if (notifyWorkers) {
 			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
-	}
-
-	async deleteDestination(id: string): Promise<DeleteResult | undefined> {
-		return await this.eventDestinationsRepository.delete({
-			id,
-		});
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -344,7 +322,8 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit('metrics.eventBus.event', msg);
+		// Emit to EventService so core services can listen (e.g., prometheus metrics)
+		this.eventService.emit('log-streaming.metrics', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!

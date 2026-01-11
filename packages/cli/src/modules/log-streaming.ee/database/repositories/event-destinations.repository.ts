@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { EventDestinations } from '../entities';
+import { EventDestinations } from '../entities/event-destinations.entity';
 
 @Service()
 export class EventDestinationsRepository extends Repository<EventDestinations> {
