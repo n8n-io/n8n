@@ -9,7 +9,7 @@
  */
 
 export { createEngineRequests } from './createEngineRequests';
-export { buildSteps } from './buildSteps';
+export { buildSteps, extractToolResultsBinary } from './buildSteps';
 export { processEventStream } from './processEventStream';
 export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';
 export type {

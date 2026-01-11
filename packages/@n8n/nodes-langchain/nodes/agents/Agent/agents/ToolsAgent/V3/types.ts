@@ -31,4 +31,6 @@ export type AgentOptions = {
 	passthroughBinaryImages?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
+	modelAwareOfToolBinaries?: boolean;
+	includeToolBinariesInOutput?: boolean;
 };

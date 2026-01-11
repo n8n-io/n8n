@@ -476,7 +476,13 @@ const binaryData = computed(() => {
 	}
 
 	return nodeHelpers
-		.getBinaryData(workflowRunData.value, node.value.name, props.runIndex, currentOutputIndex.value)
+		.getBinaryData(
+			workflowRunData.value,
+			node.value.name,
+			props.runIndex,
+			currentOutputIndex.value,
+			connectionType.value,
+		)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
 const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
@@ -1339,6 +1345,7 @@ function displayBinaryData(index: number, key: string | number) {
 		key,
 		data,
 		mimeType,
+		connectionType: connectionType.value,
 	};
 }
 
