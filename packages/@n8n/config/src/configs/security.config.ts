@@ -38,7 +38,7 @@ export class SecurityConfig {
 	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
 	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
 	 * Working example .env variable -- Add your trusted domain names at the end of this line:
-   * N8N_CONTENT_SECURITY_POLICY="{\"default-src\":[\"*\"],\"script-src\":[\"*\",\"'unsafe-inline'\",\"'unsafe-eval'\"],\"style-src\":[\"*\",\"'unsafe-inline'\"],\"frame-ancestors\":[\"'self'\",\"https://myapp.com\",\"https://subdomain.anotherapp.com\"]}"
+   * N8N_CONTENT_SECURITY_POLICY="{\"default-src\":[\"'self'\"],\"script-src\":[\"'self'\"],\"style-src\":[\"'self'\"],\"frame-ancestors\":[\"'self'\",\"https://myapp.com\",\"https://subdomain.anotherapp.com\"]}"
 	 */
 	// TODO: create a new type that parses and validates this string into a strongly-typed object
 	@Env('N8N_CONTENT_SECURITY_POLICY')
