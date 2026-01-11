@@ -11,24 +11,24 @@ import { parse } from 'path';
 import readline from 'readline';
 import { Worker } from 'worker_threads';
 
-import type { EventMessageTypes } from '../event-message-classes';
-import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
-import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
-import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
-import { EventMessageAudit } from '../event-message-classes/event-message-audit';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
+import type { EventMessageTypes } from '@/eventbus/event-message-classes';
+import { isEventMessageOptions } from '@/eventbus/event-message-classes/abstract-event-message';
+import type { AbstractEventMessageOptions } from '@/eventbus/event-message-classes/abstract-event-message-options';
+import type { EventMessageAuditOptions } from '@/eventbus/event-message-classes/event-message-audit';
+import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
+import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
 import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
-} from '../event-message-classes/event-message-confirm';
-import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
-import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
-import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
-import { EventMessageNode } from '../event-message-classes/event-message-node';
-import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
-import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
+} from '@/eventbus/event-message-classes/event-message-confirm';
+import type { EventMessageGenericOptions } from '@/eventbus/event-message-classes/event-message-generic';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import type { EventMessageNodeOptions } from '@/eventbus/event-message-classes/event-message-node';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import type { EventMessageWorkflowOptions } from '@/eventbus/event-message-classes/event-message-workflow';
+import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import { LogStreamingConfig } from '../log-streaming.config';
-import type { EventMessageReturnMode } from '../message-event-bus';
+import type { EventMessageReturnMode } from '@/eventbus/message-event-bus/message-event-bus';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;

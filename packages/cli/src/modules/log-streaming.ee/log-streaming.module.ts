@@ -20,41 +20,12 @@ export class LogStreamingModule implements ModuleInterface {
 		// Import controller to register routes
 		await import('./event-bus.controller');
 
-		// Import and initialize the service (later)
-		// const { MessageEventBus } = await import('./message-event-bus');
-		// const { LogStreamingEventRelay } = await import('./log-streaming.event-relay');
-
-		// const service = Container.get(MessageEventBus);
-		// const relay = Container.get(LogStreamingEventRelay);
-		// const instanceSettings = Container.get(InstanceSettings);
-
-		// // Initialize with appropriate options based on process type
-		// const initOptions: {
-		// 	skipRecoveryPass?: boolean;
-		// 	workerId?: string;
-		// 	webhookProcessorId?: string;
-		// } = {};
-
-		// // Worker processes need workerId
-		// if (instanceSettings.instanceType === 'worker') {
-		// 	initOptions.workerId = instanceSettings.hostId;
-		// }
-
-		// // Webhook processes need webhookProcessorId
-		// if (instanceSettings.instanceType === 'webhook') {
-		// 	initOptions.webhookProcessorId = instanceSettings.hostId;
-		// }
-
-		// // Main process runs recovery pass
-		// if (instanceSettings.instanceType === 'main') {
-		// 	initOptions.skipRecoveryPass = false;
-		// } else {
-		// 	// Worker/webhook skip recovery
-		// 	initOptions.skipRecoveryPass = true;
-		// }
-
-		// await service.initialize(initOptions);
-		// relay.init();
+		// Load destinations from database and add them to the event bus
+		// Note: MessageEventBus.initialize() and LogStreamingEventRelay.init()
+		// are called by the commands (worker, webhook) and server before modules are loaded
+		const { LogStreamingDestinationService } = await import('./log-streaming-destination.service');
+		const destinationService = Container.get(LogStreamingDestinationService);
+		await destinationService.loadDestinationsFromDb();
 	}
 
 	async entities() {

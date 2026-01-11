@@ -22,6 +22,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
@@ -167,6 +168,7 @@ export class E2EController {
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
+		private readonly destinationService: LogStreamingDestinationService,
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -281,8 +283,7 @@ export class E2EController {
 
 	private async resetLogStreaming() {
 		for (const id in this.eventBus.destinations) {
-			await this.eventBus.removeDestination(id, false);
-			await this.eventBus.deleteDestination(id);
+			await this.destinationService.removeDestination(id, false);
 		}
 	}
 

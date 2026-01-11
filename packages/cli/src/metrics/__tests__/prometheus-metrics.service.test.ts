@@ -8,7 +8,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
@@ -25,7 +24,6 @@ jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 describe('PrometheusMetricsService', () => {
 	let globalConfig: GlobalConfig;
 	let app: express.Application;
-	let eventBus: MessageEventBus;
 	let eventService: EventService;
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
@@ -67,7 +65,6 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		app = mock<express.Application>();
-		eventBus = mock<MessageEventBus>();
 		eventService = mock<EventService>();
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
@@ -75,7 +72,6 @@ describe('PrometheusMetricsService', () => {
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
-			eventBus,
 			globalConfig,
 			eventService,
 			instanceSettings,
@@ -98,7 +94,6 @@ describe('PrometheusMetricsService', () => {
 			const customGlobalConfig = { ...globalConfig };
 			customGlobalConfig.endpoints.metrics.includeCacheMetrics = true;
 			const customPrometheusMetricsService = new PrometheusMetricsService(
-				mock(),
 				mock(),
 				customGlobalConfig,
 				mock(),
@@ -207,7 +202,7 @@ describe('PrometheusMetricsService', () => {
 			prometheusMetricsService.enableMetric('logs');
 			await prometheusMetricsService.init(app);
 
-			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
+			expect(eventService.on).toHaveBeenCalledWith('log-streaming.metrics', expect.any(Function));
 		});
 
 		it('should set up queue metrics if enabled', async () => {
@@ -282,11 +277,11 @@ describe('PrometheusMetricsService', () => {
 	describe('when event bus events are sent', () => {
 		// Helper to find the event handler function registered by initEventBusMetrics
 		const getEventHandler = () => {
-			const eventBusOnCall = (eventBus.on as jest.Mock).mock.calls.find(
-				(call) => call[0] === 'metrics.eventBus.event',
+			const eventServiceOnCall = (eventService.on as jest.Mock).mock.calls.find(
+				(call) => call[0] === 'log-streaming.metrics',
 			);
 			// The handler is the second argument in the .on(eventName, handler) call
-			return eventBusOnCall ? eventBusOnCall[1] : undefined;
+			return eventServiceOnCall ? eventServiceOnCall[1] : undefined;
 		};
 
 		it('should create a counter with `credential_type` label for user credentials audit events', async () => {

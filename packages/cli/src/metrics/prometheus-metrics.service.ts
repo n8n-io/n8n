@@ -14,16 +14,14 @@ import semverParse from 'semver/functions/parse';
 import type { Includes, MetricCategory, MetricLabel } from './types';
 
 import { N8N_VERSION } from '@/constants';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { EventMessageTypes } from '@/modules/log-streaming.ee/event-message-classes';
+import type { EventMessageTypes } from '@/eventbus/event-message-classes';
 import { CacheService } from '@/services/cache/cache.service';
 
 @Service()
 export class PrometheusMetricsService {
 	constructor(
 		private readonly cacheService: CacheService,
-		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
@@ -248,7 +246,8 @@ export class PrometheusMetricsService {
 	private initEventBusMetrics() {
 		if (!this.includes.metrics.logs) return;
 
-		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
+		// Listen to log-streaming events through EventService instead of direct dependency
+		this.eventService.on('log-streaming.metrics', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
 

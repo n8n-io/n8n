@@ -17,8 +17,11 @@ import type {
 
 import { CredentialsHelper } from '@/credentials-helper';
 
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus';
-import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
+import type {
+	MessageEventBus,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,

@@ -11,7 +11,7 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { EventMessageGeneric } from '@/modules/log-streaming.ee/event-message-classes/event-message-generic';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
