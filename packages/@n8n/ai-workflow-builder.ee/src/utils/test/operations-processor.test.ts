@@ -593,7 +593,11 @@ describe('operations-processor', () => {
 			messages: [],
 			workflowContext: {},
 			workflowValidation: null,
+			validationHistory: [],
+			techniqueCategories: [],
 			previousSummary: 'EMPTY',
+			templateIds: [],
+			cachedTemplates: [],
 		});
 
 		it('should process operations and clear them', () => {

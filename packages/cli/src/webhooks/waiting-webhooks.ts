@@ -29,9 +29,11 @@ import type {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -70,13 +72,14 @@ export class WaitingWebhooks implements IWebhookManager {
 		);
 	}
 
-	private createWorkflow(workflowData: IWorkflowBase) {
+	// TODO: fix the type here - it should be execution workflowData
+	protected createWorkflow(workflowData: IWorkflowBase) {
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -167,6 +170,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,

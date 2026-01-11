@@ -18,14 +18,17 @@ import {
 	type ActionDropdownItem,
 	type UserAction,
 } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{
 	data: UsersList;
 	actions: Array<UserAction<IUser>>;
 	loading?: boolean;
+	canEditRole: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -98,7 +101,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
-const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
+const roles = computed<Partial<Record<Role, { label: string; desc: string }>>>(() => ({
 	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
 	[ROLE.Admin]: {
 		label: i18n.baseText('auth.roles.admin'),
@@ -108,13 +111,28 @@ const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
 		label: i18n.baseText('auth.roles.member'),
 		desc: i18n.baseText('settings.users.table.row.role.description.member'),
 	},
+	...(settingsStore.isChatFeatureEnabled && {
+		[ROLE.ChatUser]: {
+			label: i18n.baseText('auth.roles.chatUser'),
+			desc: i18n.baseText('settings.users.table.row.role.description.chatUser'),
+		},
+	}),
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
+
 const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 	{
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),
 	},
+	...(settingsStore.isChatFeatureEnabled
+		? [
+				{
+					id: ROLE.ChatUser,
+					label: i18n.baseText('auth.roles.chatUser'),
+				},
+			]
+		: []),
 	{
 		id: ROLE.Admin,
 		label: i18n.baseText('auth.roles.admin'),
@@ -122,7 +140,11 @@ const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 ]);
 
 const canUpdateRole = computed((): boolean => {
-	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+	if (!hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }))
+		return false;
+	if (!props.canEditRole) return false;
+
+	return true;
 });
 
 const filterActions = (user: UsersList['items'][number]) => {
@@ -163,7 +185,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					:actions="roleActions"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default].label }}</N8nText>
+				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default]?.label }}</N8nText>
 			</template>
 			<template #[`item.lastActiveAt`]="{ item }">
 				<SettingsUsersLastActiveCell :data="item" />

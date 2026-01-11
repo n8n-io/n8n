@@ -43,6 +43,7 @@ const displayContent = computed(() =>
 				'data-action-parameter-creatorview',
 			],
 		},
+		allowedTags: ['a', 'ul', 'li'],
 	}),
 );
 
@@ -101,6 +102,15 @@ const onClick = (event: MouseEvent) => {
 	a {
 		font-weight: var(--font-weight--bold);
 	}
+
+	ul {
+		padding-left: var(--spacing--lg);
+		margin: var(--spacing--xs) 0;
+	}
+
+	li {
+		margin-bottom: var(--spacing--4xs);
+	}
 }
 
 .warning {
@@ -109,13 +119,13 @@ const onClick = (event: MouseEvent) => {
 }
 
 .danger {
-	--border-color: var(--color--danger--tint-3);
-	--notice--color--background: var(--color--danger--tint-4);
+	--border-color: var(--callout--border-color--danger);
+	--notice--color--background: var(--callout--color--background--danger);
 }
 
 .success {
-	--border-color: var(--color--success--tint-3);
-	--notice--color--background: var(--color--success--tint-4);
+	--border-color: var(--callout--border-color--success);
+	--notice--color--background: var(--callout--color--background--success);
 }
 
 .info {

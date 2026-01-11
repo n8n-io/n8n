@@ -172,18 +172,8 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-		// Source Control
+		// Variables
 		// ----------------------------------------
-
-		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
-		} catch (error) {
-			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-		}
 
 		try {
 			await import('@/environments.ee/variables/variables.controller.ee');
@@ -200,7 +190,7 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
 		}
 
 		await this.postHogClient.init();
@@ -215,7 +205,7 @@ export class Server extends AbstractServer {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			if (frontendService) {
-				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
 		}
 
@@ -487,7 +477,9 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
-					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
+					return req.user
+						? await frontendService.getSettings()
+						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);
 				}),
 			);
 		}

@@ -9,7 +9,6 @@ import type {
 	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
-	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
@@ -21,7 +20,7 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError } from 'n8n-workflow';
+import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
@@ -122,7 +121,7 @@ export class DynamicNodeParametersService {
 		const mode = 'internal';
 		const runIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData = createEmptyRunExecutionData();
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 

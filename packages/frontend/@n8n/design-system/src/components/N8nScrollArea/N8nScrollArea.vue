@@ -200,12 +200,14 @@ defineExpose({
 	overflow: hidden;
 	width: 100%;
 	height: 100%;
+	contain: layout style;
 }
 
 .viewport {
 	width: 100%;
 	height: 100%;
 	border-radius: inherit;
+	overflow-anchor: none;
 }
 
 .scrollbar {

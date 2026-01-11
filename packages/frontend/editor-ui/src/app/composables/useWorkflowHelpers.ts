@@ -1,8 +1,4 @@
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/app/constants';
+import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import type {
 	IConnections,
@@ -17,7 +13,6 @@ import type {
 	INodeTypes,
 	IPinData,
 	IRunData,
-	IRunExecutionData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
@@ -25,6 +20,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -50,13 +46,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -219,16 +216,7 @@ function resolveParameterImpl<T = IDataObject>(
 		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
 	}
 
-	let runExecutionData: IRunExecutionData;
-	if (!executionData?.data) {
-		runExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
-	} else {
-		runExecutionData = executionData.data;
-	}
+	const runExecutionData = executionData?.data ?? createEmptyRunExecutionData();
 
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
@@ -601,7 +589,8 @@ export function useWorkflowHelpers() {
 		};
 
 		const workflowId = workflowsStore.workflowId;
-		if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Always include workflow ID if it exists
+		if (workflowId) {
 			data.id = workflowId;
 		}
 
@@ -856,15 +845,17 @@ export function useWorkflowHelpers() {
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
-		workflowsStore.setWorkflowVersionId(workflow.versionId);
-
-		if (isCurrentWorkflow) {
-			workflowState.setActive(!!workflow.active);
-			uiStore.stateIsDirty = false;
+		if (!workflow.checksum) {
+			throw new Error('Failed to update workflow');
 		}
 
-		if (workflow.active) {
-			workflowsStore.setWorkflowActive(workflowId);
+		if (isCurrentWorkflow) {
+			workflowState.setActive(workflow.activeVersionId);
+			uiStore.markStateClean();
+		}
+
+		if (workflow.activeVersion) {
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
 		}
@@ -931,10 +922,8 @@ export function useWorkflowHelpers() {
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsStore.workflowsById[workflowId];
 
-		if (
-			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
-			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-		) {
+		// Check if workflow is new (not saved) or belongs to personal project
+		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
 			workflow?.sharedWithProjects?.some(
@@ -947,21 +936,26 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	function initState(workflowData: IWorkflowDb) {
+	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
+		const ws = overrideWorkflowState ?? workflowState;
 		workflowsStore.addWorkflow(workflowData);
-		workflowState.setActive(workflowData.active || false);
+		ws.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
-		workflowState.setWorkflowId(workflowData.id);
-		workflowState.setWorkflowName({
+		ws.setWorkflowId(workflowData.id);
+		ws.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowState.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
+		ws.setWorkflowSettings(workflowData.settings ?? {});
+		ws.setWorkflowPinData(workflowData.pinData ?? {});
+		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
+		ws.setWorkflowMetadata(workflowData.meta);
+		ws.setWorkflowScopes(workflowData.scopes);
+
+		if ('activeVersion' in workflowData) {
+			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
+		}
 
 		if (workflowData.usedCredentials) {
 			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
@@ -975,8 +969,7 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		workflowState.setWorkflowTagIds(tagIds || []);
+		ws.setWorkflowTagIds(convertWorkflowTagsToIds(tags));
 		tagsStore.upsertTags(tags);
 	}
 

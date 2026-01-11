@@ -15,7 +15,7 @@ const props = defineProps<
 				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
+		releaseChannel?: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	}
 >();
 
@@ -40,7 +40,9 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
+	if (!releaseChannel || releaseChannel === 'stable' || !('createObjectURL' in URL)) {
+		return;
+	}
 
 	const logoEl = svg.value!.$el;
 

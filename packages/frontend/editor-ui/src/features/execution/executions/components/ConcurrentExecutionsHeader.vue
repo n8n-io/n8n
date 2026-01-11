@@ -42,7 +42,7 @@ const headerText = computed(() => {
 </script>
 
 <template>
-	<div data-test-id="concurrent-executions-header">
+	<div data-test-id="concurrent-executions-header" :class="$style.concurrentExecutionHeader">
 		<N8nText>{{ headerText }}</N8nText>
 		<N8nTooltip>
 			<template #content>
@@ -78,5 +78,9 @@ const headerText = computed(() => {
 }
 .link {
 	margin-top: var(--spacing--xs);
+}
+.concurrentExecutionHeader {
+	display: flex;
+	align-items: center;
 }
 </style>

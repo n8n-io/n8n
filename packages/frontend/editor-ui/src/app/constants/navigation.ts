@@ -36,7 +36,6 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
-	PROVISIONING_SETTINGS = 'ProvisioningSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
@@ -61,8 +60,10 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
-	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 	OAUTH_CONSENT = 'OAuthConsent',
+	MIGRATION_REPORT = 'MigrationReport',
+	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
+	RESOLVERS = 'Resolvers',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

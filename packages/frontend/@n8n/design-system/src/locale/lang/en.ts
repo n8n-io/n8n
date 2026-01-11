@@ -25,7 +25,7 @@ export default {
 	'formInput.validator.defaultPasswordRequirements':
 		'8+ characters, at least 1 number and 1 capital letter',
 	'sticky.markdownHint':
-		'You can style with <a href="https://docs.n8n.io/workflows/sticky-notes/" target="_blank">Markdown</a>',
+		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
 	'datatable.pageSize': 'Page size',
 	'codeDiff.couldNotReplace': 'Could not replace code',
@@ -51,6 +51,9 @@ export default {
 	'assistantChat.builder.generatedNodes': 'Generated workflow nodes',
 	'assistantChat.builder.toolRunning': 'Tool still running',
 	'assistantChat.builder.toolError': 'Some tool calls have failed. Agent will retry these.',
+	'assistantChat.thinking.workflowGenerated': 'Workflow generated',
+	'assistantChat.thinking.thinking': 'Thinking',
+	'assistantChat.thinking.processing': 'Processing',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'n8n AI',
 	'assistantChat.aiAssistantBetaLabel': 'Beta',
@@ -72,6 +75,7 @@ export default {
 	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'aiAssistant.builder.streamAbortedMessage': 'Task aborted',
+	'collaboration.canvas.editing': '{user} is currently editing',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',
@@ -86,7 +90,19 @@ export default {
 	'promptInput.askAdminToUpgrade': 'Ask your admin to upgrade the instance to get more credits',
 	'promptInput.characterLimitReached': "You've reached the {limit} character limit",
 	'promptInput.remainingCredits': 'Remaining builder AI credits: <b>{count}</b>',
-	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b>',
+	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'aiAssistant.textMessage.restoreVersion': 'Restore version',
+	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
+	'aiAssistant.versionCard.restoreModal.description':
+		'Your current version will be saved in version history for {pruneTime}.',
+	'aiAssistant.versionCard.restoreModal.descriptionNoLimit':
+		'Your current version will be saved in version history.',
+	'aiAssistant.versionCard.restoreModal.hour': '{count} hour',
+	'aiAssistant.versionCard.restoreModal.hours': '{count} hours',
+	'aiAssistant.versionCard.restoreModal.day': '{count} day',
+	'aiAssistant.versionCard.restoreModal.days': '{count} days',
+	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
+	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
 } as N8nLocale;

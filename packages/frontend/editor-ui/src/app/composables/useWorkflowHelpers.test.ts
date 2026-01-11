@@ -16,7 +16,12 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
@@ -40,7 +45,7 @@ describe('useWorkflowHelpers', () => {
 	let workflowState: WorkflowState;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -51,7 +56,7 @@ describe('useWorkflowHelpers', () => {
 
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
-		uiStore = useUIStore();
+		uiStore = mockedStore(useUIStore);
 	});
 
 	afterEach(() => {
@@ -216,7 +221,7 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('initState', () => {
-		it('should initialize workflow state with provided data', () => {
+		it('should initialize workflow state with provided data', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -235,19 +240,19 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
-			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
+			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
-			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
-			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
+			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
+			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith(true);
+			expect(setActiveSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',
@@ -258,7 +263,7 @@ describe('useWorkflowHelpers', () => {
 				timezone: 'DEFAULT',
 			});
 			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('1');
+			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('v1', 'checksum');
 			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
@@ -270,7 +275,7 @@ describe('useWorkflowHelpers', () => {
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 
-		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
+		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -285,13 +290,13 @@ describe('useWorkflowHelpers', () => {
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
 			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
 		});
 
-		it('should handle missing `tags` gracefully', () => {
+		it('should handle missing `tags` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -305,7 +310,7 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
@@ -315,7 +320,7 @@ describe('useWorkflowHelpers', () => {
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
 			} as unknown as IWorkflowDb);
@@ -324,7 +329,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -363,7 +368,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -396,7 +401,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different in chat', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -429,7 +434,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if webhook already exist but workflow id is the same', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -453,16 +458,18 @@ describe('useWorkflowHelpers', () => {
 
 		it('should call getWorkflowDataToSave if state is dirty', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = true;
+			const stateIsDirtySpy = vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
 			} as unknown as WorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			stateIsDirtySpy.mockRestore();
 		});
 
 		it('should return null if no conflicts with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			const uiStore = mockedStore(useUIStore);
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -482,7 +489,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -523,7 +530,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if webhook already exist but workflow id is the same with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -548,7 +555,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return trigger.parameters.path when both trigger.parameters.path and trigger.webhookId are strings', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -573,7 +580,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return trigger.webhookId when trigger.parameters.path is an empty string', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -598,7 +605,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should find conflicting webhook data with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -639,7 +646,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if no conflicts with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -659,7 +666,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -672,7 +678,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
@@ -686,7 +692,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -698,7 +703,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
@@ -1140,7 +1145,7 @@ describe(resolveParameter, () => {
 					workflow: createTestWorkflowObject(workflowData),
 					execution: createTestWorkflowExecutionResponse({
 						workflowData,
-						data: {
+						data: createRunExecutionData({
 							resultData: {
 								runData: {
 									n0: [
@@ -1150,7 +1155,7 @@ describe(resolveParameter, () => {
 									],
 								},
 							},
-						},
+						}),
 					}),
 					nodeName: 'n1',
 					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },

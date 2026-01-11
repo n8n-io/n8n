@@ -83,6 +83,17 @@ const parentNodes = computed(() => {
 	return nodes.filter(({ name }) => name !== node.name);
 });
 
+const rootNode = computed(() => {
+	if (!activeNode.value) return null;
+
+	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+});
+
+const rootNodesParents = computed(() => {
+	if (!rootNode.value) return [];
+	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+});
+
 watch(
 	() => props.dialogVisible,
 	(newValue) => {
@@ -177,9 +188,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					<VirtualSchema
 						:class="$style.schema"
 						:search="appliedSearch"
-						:nodes="parentNodes"
+						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
+						:preview-execution="workflowsStore.lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>

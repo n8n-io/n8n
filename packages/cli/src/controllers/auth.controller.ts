@@ -24,6 +24,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
+	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
 @RestController()
@@ -139,7 +140,17 @@ export class AuthController {
 		_res: Response,
 		@Query payload: ResolveSignupTokenQueryDto,
 	) {
-		const { inviterId, inviteeId } = payload;
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(payload);
+
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {

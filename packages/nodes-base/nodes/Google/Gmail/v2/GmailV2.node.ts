@@ -2,7 +2,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
@@ -38,28 +37,12 @@ import {
 } from '../GenericFunctions';
 import { replyToEmail } from '../utils/replyToEmail';
 
-const preBuiltAgentsCallout: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Sort your Gmail inbox using our pre-built',
-	name: 'preBuiltAgentsCalloutGmail',
-	type: 'callout',
-	typeOptions: {
-		calloutAction: {
-			label: 'Email triage agent',
-			icon: 'bot',
-			type: 'openSampleWorkflowTemplate',
-			templateId: 'email_triage_agent_with_gmail',
-		},
-	},
-	default: '',
-};
-
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
@@ -91,7 +74,6 @@ const versionDescription: INodeTypeDescription = {
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
-		preBuiltAgentsCallout,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
@@ -353,7 +335,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -777,7 +759,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash

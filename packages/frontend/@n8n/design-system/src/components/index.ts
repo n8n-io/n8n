@@ -13,6 +13,7 @@ export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
+export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
@@ -43,7 +44,7 @@ export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPopover } from './N8nPopover';
-export { default as N8nPopoverReka } from './N8nPopoverReka';
+export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
