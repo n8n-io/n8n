@@ -8,7 +8,7 @@ post:
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:
-    description: Optional parameters for to publish the workflow.
+    description: Optional parameters to publish the workflow.
     content:
       application/json:
         schema:
