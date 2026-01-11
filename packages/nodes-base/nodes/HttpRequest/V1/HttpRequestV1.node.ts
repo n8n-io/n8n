@@ -17,11 +17,12 @@ import {
 	removeCircularRefs,
 	NodeConnectionTypes,
 	isDomainAllowed,
+	sanitizeUiMessage,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
-import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
+import { replaceNullValues } from '../GenericFunctions';
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -999,7 +1000,7 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys) as IDataObject);
 			} catch (e) {}
 
 			if (oAuth1Api) {

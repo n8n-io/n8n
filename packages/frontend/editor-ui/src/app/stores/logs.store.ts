@@ -15,6 +15,15 @@ import {
 } from '@/features/execution/logs/logs.constants';
 import type { ChatMessage } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
+import type { LogLevel } from 'n8n-workflow';
+
+export interface ConsoleMessage {
+	id: string;
+	timestamp: number;
+	source: string;
+	messages: unknown[];
+	level: LogLevel;
+}
 
 export const useLogsStore = defineStore('logs', () => {
 	const isOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
@@ -46,6 +55,7 @@ export const useLogsStore = defineStore('logs', () => {
 
 	const chatSessionId = ref<string>(getNewSessionId());
 	const chatSessionMessages = ref<ChatMessage[]>([]);
+	const consoleMessages = ref<Record<string, ConsoleMessage[]>>({});
 
 	function setHeight(value: number) {
 		height.value = value;
@@ -125,6 +135,31 @@ export const useLogsStore = defineStore('logs', () => {
 		chatSessionMessages.value.push(message);
 	}
 
+	function addConsoleMessage(source: string, messages: unknown[], level: LogLevel) {
+		const match = source.match(/\[Node: "([^"]+)"/);
+		if (match) {
+			const nodeName = match[1];
+			if (!consoleMessages.value[nodeName]) {
+				consoleMessages.value[nodeName] = [];
+			}
+			consoleMessages.value[nodeName].push({
+				id: uuid(),
+				timestamp: Date.now(),
+				source,
+				messages,
+				level,
+			});
+		}
+	}
+
+	function clearConsoleMessages() {
+		consoleMessages.value = {};
+	}
+
+	function getConsoleMessagesForNode(nodeName: string) {
+		return consoleMessages.value[nodeName] || [];
+	}
+
 	return {
 		state,
 		isOpen: computed(() => state.value !== LOGS_PANEL_STATE.CLOSED),
@@ -135,7 +170,11 @@ export const useLogsStore = defineStore('logs', () => {
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
 		chatSessionId: computed(() => chatSessionId.value),
 		chatSessionMessages: computed(() => chatSessionMessages.value),
+		consoleMessages: computed(() => consoleMessages.value),
 		addChatMessage,
+		addConsoleMessage,
+		clearConsoleMessages,
+		getConsoleMessagesForNode,
 		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,
