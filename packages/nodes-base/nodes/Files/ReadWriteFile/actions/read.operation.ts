@@ -18,10 +18,10 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		placeholder: 'e.g. /home/user/Pictures/**/*.png',
-		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
+		placeholder: 'e.g. /home/user/Pictures/**/*.png or ~/myfile.txt',
+		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>. Use ~/ to reference files in the default allowed directory (~/.n8n-files).',
 		description:
-			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
+			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows. The tilde (~) expands to the default allowed directory (~/.n8n-files) or the first configured allowed path.",
 	},
 	{
 		displayName: 'Options',
