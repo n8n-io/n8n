@@ -25,10 +25,24 @@ export class Aws implements ICredentialType {
 	properties: INodeProperties[] = [
 		awsRegionProperty,
 		{
+			displayName: 'Authentication Method',
+			name: 'authenticationMethod',
+			type: 'options',
+			options: [
+				{ name: 'Access Keys', value: 'accessKeys' },
+				{ name: 'AWS CLI Profile', value: 'profile' },
+			],
+			default: 'accessKeys',
+			description: 'How to authenticate with AWS',
+		},
+		{
 			displayName: 'Access Key ID',
 			name: 'accessKeyId',
 			type: 'string',
 			default: '',
+			displayOptions: {
+				show: { authenticationMethod: ['accessKeys'] },
+			},
 		},
 		{
 			displayName: 'Secret Access Key',
@@ -38,6 +52,9 @@ export class Aws implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			displayOptions: {
+				show: { authenticationMethod: ['accessKeys'] },
+			},
 		},
 		{
 			displayName: 'Temporary Security Credentials',
@@ -45,6 +62,9 @@ export class Aws implements ICredentialType {
 			description: 'Support for temporary credentials from AWS STS',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				show: { authenticationMethod: ['accessKeys'] },
+			},
 		},
 		{
 			displayName: 'Session Token',
@@ -52,12 +72,24 @@ export class Aws implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
+					authenticationMethod: ['accessKeys'],
 					temporaryCredentials: [true],
 				},
 			},
 			default: '',
 			typeOptions: {
 				password: true,
+			},
+		},
+		{
+			displayName: 'Profile Name',
+			name: 'profileName',
+			type: 'string',
+			default: 'default',
+			description: 'AWS CLI profile name from ~/.aws/credentials',
+			placeholder: 'default',
+			displayOptions: {
+				show: { authenticationMethod: ['profile'] },
 			},
 		},
 		...awsCustomEndpoints,
@@ -87,12 +119,35 @@ export class Aws implements ICredentialType {
 			region,
 		);
 
-		const securityHeaders = {
-			accessKeyId: `${credentials.accessKeyId}`.trim(),
-			secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-			sessionToken: credentials.temporaryCredentials
+		// Resolve credentials based on authentication method
+		let accessKeyId: string;
+		let secretAccessKey: string;
+		let sessionToken: string | undefined;
+
+		if (credentials.authenticationMethod === 'profile') {
+			// For profile auth, resolve credentials from AWS CLI config
+			const { fromIni } = await import('@aws-sdk/credential-providers');
+			const credentialProvider = fromIni({
+				profile: credentials.profileName || 'default',
+				ignoreCache: true,
+			});
+			const resolvedCreds = await credentialProvider();
+			accessKeyId = resolvedCreds.accessKeyId;
+			secretAccessKey = resolvedCreds.secretAccessKey;
+			sessionToken = resolvedCreds.sessionToken;
+		} else {
+			// For access keys, use credentials directly
+			accessKeyId = `${credentials.accessKeyId}`.trim();
+			secretAccessKey = `${credentials.secretAccessKey}`.trim();
+			sessionToken = credentials.temporaryCredentials
 				? `${credentials.sessionToken}`.trim()
-				: undefined,
+				: undefined;
+		}
+
+		const securityHeaders = {
+			accessKeyId,
+			secretAccessKey,
+			sessionToken,
 		};
 
 		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
