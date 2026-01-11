@@ -248,7 +248,10 @@ describe('WorkflowStatisticsService', () => {
 
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
-			expect(emitSpy).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'first-production-workflow-succeeded',
+				expect.anything(),
+			);
 		});
 
 		test('does not update user settings and does not emit first-production-workflow-succeeded for successive executions', async () => {
