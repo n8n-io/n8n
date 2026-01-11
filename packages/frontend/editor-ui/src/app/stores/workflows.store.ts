@@ -71,6 +71,7 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
@@ -934,7 +935,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (targetWorkflowId === workflow.value.id) {
 			if (clearDirtyState) {
-				uiStore.stateIsDirty = false;
+				uiStore.markStateClean();
 			}
 			workflow.value.active = true;
 			workflow.value.activeVersionId = activeVersion.versionId;
@@ -1028,8 +1029,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
+		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
 			...value,
+			...(tags.length > 0 ? { tags } : {}),
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
@@ -1090,7 +1093,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.pinData[nodeName] = storedPinData;
 		workflowObject.value.setPinData(workflow.value.pinData);
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
@@ -1110,7 +1113,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		dataPinningEventBus.emit('unpin-data', {
 			nodeNames: [nodeName],
@@ -1203,7 +1206,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		const connections =
 			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index];
@@ -1229,7 +1232,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
 	): void {
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		// Remove all source connections
 		if (!preserveOutputConnections) {
@@ -1271,7 +1274,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		// If node has any WorkflowResultData rename also that one that the data
 		// does still get displayed also after node got renamed
@@ -1399,7 +1402,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					...workflow.value.nodes.slice(i + 1),
 				];
 				workflowObject.value.setNodes(workflow.value.nodes);
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 				return;
 			}
 		}
