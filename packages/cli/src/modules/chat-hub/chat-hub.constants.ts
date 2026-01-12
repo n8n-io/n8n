@@ -1,6 +1,8 @@
 import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
+import type { ChatTriggerResponseMode } from './chat-hub.types';
+
 export const EXECUTION_POLL_INTERVAL = 1000;
 export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
@@ -8,7 +10,7 @@ export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'crashed',
 	'error',
 	'success',
-];
+] as const satisfies ExecutionStatus[];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
 
@@ -576,3 +578,9 @@ export function getModelMetadata(
 		available: modelOverride.available ?? true,
 	};
 }
+
+export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
+	'streaming',
+	'lastNode',
+	'responseNodes',
+] as const;

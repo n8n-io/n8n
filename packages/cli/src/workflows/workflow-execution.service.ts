@@ -251,17 +251,17 @@ export class WorkflowExecutionService {
 	}
 
 	async executeChatWorkflow(
+		user: User,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
-		user: User,
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		const data: IWorkflowExecutionDataProcess = {
+			userId: user.id,
 			executionMode,
 			workflowData,
-			userId: user.id,
 			executionData,
 			streamingEnabled,
 			httpResponse,

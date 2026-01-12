@@ -10,7 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -266,11 +266,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		type: 'human',
 		name: 'User',
 		content: streaming.promptText,
-		provider: null,
-		model: null,
-		workflowId: null,
 		executionId: null,
-		agentId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -280,6 +276,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		responses: [],
 		alternatives: [],
 		attachments: streaming.attachments,
+		...flattenModel(streaming.agent.model),
 	};
 }
 
@@ -425,7 +422,7 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 type StreamApi<T> = (
 	ctx: IRestApiContext,
 	payload: T,
-	onChunk: (data: EnrichedStructuredChunk) => void,
+	onChunk: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: unknown) => void,
 ) => void;
@@ -499,3 +496,11 @@ export function createFakeAgent(
 		groupIcon: null,
 	};
 }
+
+export const isEditable = (message: ChatMessage): boolean => {
+	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+};
+
+export const isRegenerable = (message: ChatMessage): boolean => {
+	return message.type === 'ai';
+};

@@ -32,8 +32,8 @@ export class WorkflowFinderService {
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, workflowRoles] = await Promise.all([
-				this.roleService.rolesWithScope('project', scopes),
-				this.roleService.rolesWithScope('workflow', scopes),
+				this.roleService.rolesWithScope('project', scopes, options.em),
+				this.roleService.rolesWithScope('workflow', scopes, options.em),
 			]);
 
 			where = {
