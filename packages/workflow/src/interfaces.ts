@@ -2731,7 +2731,7 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
-export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> };
+export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
 	query: AgentRequestQuery;

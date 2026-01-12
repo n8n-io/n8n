@@ -10,6 +10,7 @@ import get from 'lodash/get';
 import type {
 	EngineRequest,
 	EngineResponse,
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -19,6 +20,8 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { executeTool } from './utils/executeTool';
+import { convertValueBySchema } from './utils/convertToSchema';
+import { ZodObject } from 'zod';
 
 export class ToolExecutor implements INodeType {
 	description: INodeTypeDescription = {
@@ -90,8 +93,10 @@ export class ToolExecutor implements INodeType {
 
 		const getQueryData = (name: string) => {
 			// node names in query may have underscores in place of spaces, use it for accessing the query data.
-			return (get(parsedQuery, name, null) ??
-				get(parsedQuery, name.replaceAll(' ', '_'), null)) as Record<string, unknown> | null;
+			return (get(parsedQuery, name, null) ?? get(parsedQuery, name.replaceAll(' ', '_'), null)) as
+				| Record<string, unknown>
+				| string
+				| null;
 		};
 
 		const resultData: INodeExecutionData[] = [];
@@ -113,15 +118,32 @@ export class ToolExecutor implements INodeType {
 
 						if (toolName === toolkitTool.name) {
 							if (hasGatedToolNodeName(toolkitTool.metadata) && node) {
-								const toolInput = {
+								const toolInput: { toolParameters: unknown } = {
 									toolParameters: getQueryData(toolName) ?? {},
 								};
 								const hitlInput = getQueryData(node);
+								if (typeof hitlInput === 'string') {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid hitl input for tool ${toolkitTool.name}`,
+									);
+								}
+
+								// handle code tool which uses a string input, but it should be converted to an object
+								const requiresObjectInput =
+									toolkitTool.metadata.originalSchema &&
+									toolkitTool.metadata.originalSchema instanceof ZodObject;
+								if (typeof toolInput.toolParameters === 'string' && requiresObjectInput) {
+									toolInput.toolParameters = convertValueBySchema(
+										toolInput.toolParameters,
+										toolkitTool.metadata.originalSchema,
+									);
+								}
 
 								const hitlMetadata = extractHitlMetadata(
 									toolkitTool.metadata,
 									toolkitTool.name,
-									toolInput,
+									toolInput as IDataObject,
 								);
 
 								// prepare request for execution engine to execute the HITL node
@@ -131,6 +153,7 @@ export class ToolExecutor implements INodeType {
 										nodeName: node,
 										input: {
 											tool: toolName,
+											// stringify parameters so that they can be accessed with $fromAI method
 											toolParameters: JSON.stringify(toolInput),
 											...hitlInput,
 										},

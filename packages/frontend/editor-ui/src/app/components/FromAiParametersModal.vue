@@ -24,7 +24,7 @@ type Value = string | number | boolean | null | undefined;
 
 type FieldMetadata = {
 	nodeName: string;
-} & ({ type: 'selector' } | { type: 'query'; propertyName: string });
+} & ({ type: 'selector' } | { type: 'query'; propertyName: string; implicitInput?: boolean });
 
 const props = defineProps<{
 	modalName: string;
@@ -156,7 +156,6 @@ const getMCPTools = async (newNode: INode): Promise<IFormInput[]> => {
 					typeof value === 'object' && 'type' in value && typeof value.type === 'string'
 						? value.type
 						: 'text';
-
 				result.push({
 					name: `${getToolNamePrefix(newSelectedTool)}query.${propertyName}`,
 					initialValue: '',
@@ -183,7 +182,6 @@ const getToolParameters = async (
 	omitFallbackField = false,
 ): Promise<{
 	parameters: IFormInput[];
-	error?: Error;
 }> => {
 	const result: IFormInput[] = [];
 	if (!newNode) {
@@ -196,16 +194,8 @@ const getToolParameters = async (
 
 	// Handle MCPClientTool nodes differently
 	if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
-		try {
-			const mcpResult = await getMCPTools(newNode);
-
-			return { parameters: mcpResult };
-		} catch (e: unknown) {
-			return {
-				parameters: result,
-				error: e instanceof Error ? e : new Error('Unknown error occurred'),
-			};
-		}
+		const mcpResult = await getMCPTools(newNode);
+		return { parameters: mcpResult };
 	}
 
 	// Handle regular tool nodes
@@ -331,6 +321,7 @@ const getRegularToolParameters = (toolNode: INode, omitFallbackField = false) =>
 				nodeName: toolNode.name,
 				type: 'query',
 				propertyName: hasImplicitInput ? 'input' : 'query',
+				implicitInput: hasImplicitInput,
 			},
 		});
 	}
@@ -355,12 +346,13 @@ watch(
 	[node, selectedToolMap],
 	async ([newNode]) => {
 		error.value = undefined;
-		const result = await getToolParameters(newNode);
-		if (result.error) {
-			error.value = result.error;
+		try {
+			const result = await getToolParameters(newNode);
+			parameters.value = result.parameters;
+		} catch (e: unknown) {
+			error.value = e instanceof Error ? e : new Error('Unknown error occurred');
 			return;
 		}
-		parameters.value = result.parameters;
 	},
 	{ immediate: true },
 );
@@ -392,8 +384,12 @@ const onExecute = async () => {
 		const inputNode = getToolName(input.metadata.nodeName);
 		const queryKey = input.metadata.propertyName;
 		const queryValue = input.value;
-		agentRequest.query[inputNode] ??= {};
-		agentRequest.query[inputNode][queryKey] = queryValue;
+		if (input.metadata.implicitInput) {
+			agentRequest.query[inputNode] = queryValue as string;
+		} else {
+			agentRequest.query[inputNode] ??= {};
+			(agentRequest.query[inputNode] as Record<string, unknown>)[queryKey] = queryValue as string;
+		}
 	}
 
 	agentRequestStore.setAgentRequestForNode(workflowsStore.workflowId, node.value.id, agentRequest);

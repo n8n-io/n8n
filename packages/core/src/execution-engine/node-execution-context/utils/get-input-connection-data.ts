@@ -78,6 +78,7 @@ export function createHitlToolkit(
 			metadata: {
 				sourceNodeName: hitlNode.name,
 				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+				originalSchema: tool.schema,
 			},
 		});
 	});

@@ -39,9 +39,12 @@ export const useAgentRequestStore = defineStore('agentRequest', () => {
 		workflowId: string,
 		nodeId: string,
 		nodeName: string,
-		paramName: string,
-	): IAgentRequest['query'][string][string] => {
+		paramName?: string,
+	): unknown => {
 		const query = agentRequests.value[workflowId]?.[nodeId]?.query?.[nodeName];
+		if (typeof query === 'string' || !paramName) {
+			return query;
+		}
 		return query?.[paramName];
 	};
 
