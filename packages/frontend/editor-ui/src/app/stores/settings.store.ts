@@ -71,8 +71,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
-	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
-
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
@@ -239,11 +237,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
 		setSettings(fetchedSettings);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+
+		// Set MFA enforced state even for public settings mode
+		// as it is needed to determine if the MFA setup page should be shown
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
-			// that need the full set of auntenticated settings
+			// that need the full set of authenticated settings
 			return;
 		}
 
@@ -255,8 +258,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
@@ -274,7 +275,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
 		if (fetchedSettings.telemetry.enabled) {
@@ -344,7 +344,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		nodeJsVersion,
 		nodeEnv,
 		concurrency,
-		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,

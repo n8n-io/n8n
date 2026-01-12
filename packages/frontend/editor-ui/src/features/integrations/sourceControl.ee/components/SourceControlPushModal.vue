@@ -815,7 +815,7 @@ onMounted(async () => {
 						<button
 							type="button"
 							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
-							data-test-id="source-control-push-modal-tab"
+							:data-test-id="`source-control-push-modal-tab-${tab.value}`"
 							@click="activeTab = tab.value"
 						>
 							<div>{{ tab.label }}</div>
@@ -878,6 +878,7 @@ onMounted(async () => {
 										:active="active"
 										:size-dependencies="[file.name, file.id]"
 										:data-index="index"
+										data-test-id="push-modal-item"
 									>
 										<N8nCheckbox
 											:class="[$style.listItem]"
@@ -953,7 +954,12 @@ onMounted(async () => {
 		</template>
 
 		<template #footer>
-			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
+			<N8nNotice
+				v-if="userNotices.length"
+				:compact="false"
+				class="mt-0"
+				id="source-control-push-modal-notice"
+			>
 				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">

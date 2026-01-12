@@ -229,6 +229,7 @@ watch(
 					hide-label
 					hide-hint
 					hide-issues
+					options-position="top-absolute"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -254,8 +255,8 @@ watch(
 					hide-label
 					hide-hint
 					hide-issues
+					:options-position="breakpoint === 'default' ? 'top-absolute' : 'bottom'"
 					:is-read-only="readOnly"
-					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"
 					:value="condition.rightValue"
 					:path="`${path}.rightValue`"
@@ -314,7 +315,7 @@ watch(
 
 .status {
 	align-self: flex-start;
-	padding-top: 28px;
+	padding-top: var(--spacing--2xs);
 }
 
 .iconButton {
@@ -326,9 +327,9 @@ watch(
 }
 
 .defaultTopPadding {
-	top: var(--spacing--md);
+	top: 0;
 }
 .extraTopPadding {
-	top: calc(14px + var(--spacing--md));
+	top: var(--spacing--sm);
 }
 </style>

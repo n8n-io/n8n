@@ -225,11 +225,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.webhook-url').textContent();
 	}
 
-	getVisiblePoppers() {
-		// Match Reka UI popovers (data-side is unique to Reka UI positioned content)
-		return this.page.locator('[data-state="open"][data-side]');
-	}
-
 	async clearExpressionEditor(parameterName?: string) {
 		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
@@ -276,17 +271,12 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.locator('.param-options').click();
+		await this.page.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
 		await this.selectFromVisibleDropdown(optionName);
-	}
-
-	getVisiblePopper() {
-		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
-		return this.page.locator('.el-popper:visible, [data-state="open"][role="dialog"]');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
@@ -887,6 +877,17 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async addItemToFixedCollection(collectionName: string) {
 		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+	}
+
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
 	}
 
 	async clickParameterItemAction(actionText: string) {
