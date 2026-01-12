@@ -154,7 +154,11 @@ jobs:
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
         run: |
-          curl --location --request PUT \
-            "https://api.currents.dev/v1/runs/${{ env.CURRENTS_CI_BUILD_ID }}/cancel" \
-            --header "Authorization: Bearer ${{ secrets.CURRENTS_API_KEY }}"
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}/cancel" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY"
+          fi
