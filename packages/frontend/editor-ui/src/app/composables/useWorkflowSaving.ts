@@ -231,6 +231,8 @@ export function useWorkflowSaving({
 			// Reset AI Builder edits flag only after successful save
 			builderStore.resetAiBuilderMadeEdits();
 
+			autosaveStore.resetFailures();
+
 			onSaved?.(false); // Update of existing workflow
 			return true;
 		} catch (error) {
@@ -238,6 +240,7 @@ export function useWorkflowSaving({
 
 			uiStore.removeActiveAction('workflowSaving');
 
+			// Handle concurrent edit conflicts
 			if (error.errorCode === 100) {
 				telemetry.track('User attempted to save locked workflow', {
 					workflowId: currentWorkflow,
@@ -268,6 +271,34 @@ export function useWorkflowSaving({
 
 				if (overwrite === MODAL_CONFIRM) {
 					return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
+				} else {
+					// User cancelled - pause autosave to prevent showing the toast again
+					autosaveStore.incrementFailureCount(true);
+				}
+
+				return false;
+			}
+
+			// Track failure for circuit breaker
+			autosaveStore.incrementFailureCount();
+			autosaveStore.setLastError(error.message);
+
+			// Show modal if circuit breaker just activated
+			if (autosaveStore.isPaused) {
+				const action = await message.confirm(
+					i18n.baseText('autosave.failureModal.message', {
+						interpolate: { error: error.message },
+					}),
+					i18n.baseText('autosave.failureModal.title'),
+					{
+						confirmButtonText: i18n.baseText('autosave.failureModal.retry'),
+						cancelButtonText: i18n.baseText('autosave.failureModal.cancel'),
+					},
+				);
+
+				if (action === MODAL_CONFIRM) {
+					autosaveStore.resumeAutosave();
+					return await saveCurrentWorkflow({ id, name, tags }, redirect, forceSave, autosaved);
 				}
 
 				return false;
@@ -459,6 +490,10 @@ export function useWorkflowSaving({
 		() => {
 			// Check if cancelled during debounce period
 			if (autosaveStore.autoSaveState === AutoSaveState.Idle) {
+				return;
+			}
+
+			if (autosaveStore.isPaused) {
 				return;
 			}
 
