@@ -134,6 +134,7 @@ export class ChatHubController {
 		res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	) {
+		let shouldRethrow = false;
 		try {
 			await this.chatService.sendHumanMessage(res, req.user, {
 				...payload,
@@ -146,6 +147,7 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
+					shouldRethrow = true;
 					throw error;
 				}
 
@@ -163,7 +165,7 @@ export class ChatHubController {
 				res.flush();
 			}
 		} finally {
-			if (!res.writableEnded) res.end();
+			if (!shouldRethrow && !res.writableEnded) res.end();
 		}
 	}
 
@@ -176,6 +178,7 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
+		let shouldRethrow = false;
 		try {
 			await this.chatService.editMessage(res, req.user, {
 				...payload,
@@ -190,6 +193,7 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
+					shouldRethrow = true;
 					throw error;
 				}
 
@@ -207,7 +211,7 @@ export class ChatHubController {
 				res.flush();
 			}
 		} finally {
-			if (!res.writableEnded) res.end();
+			if (!shouldRethrow && !res.writableEnded) res.end();
 		}
 	}
 
@@ -220,6 +224,7 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
+		let shouldRethrow = false;
 		try {
 			await this.chatService.regenerateAIMessage(res, req.user, {
 				...payload,
@@ -234,6 +239,7 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
+					shouldRethrow = true;
 					throw error;
 				}
 
@@ -251,7 +257,7 @@ export class ChatHubController {
 				res.flush();
 			}
 		} finally {
-			if (!res.writableEnded) res.end();
+			if (!shouldRethrow && !res.writableEnded) res.end();
 		}
 	}
 
