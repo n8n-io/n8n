@@ -40,6 +40,10 @@ const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 
 const getPlaceholderText = computed(() => {
+	// Hide placeholder once an option is selected
+	if (selectedOption.value !== undefined && selectedOption.value !== null) {
+		return '';
+	}
 	return (
 		i18n.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ??
 		i18n.baseText('collectionParameter.choose')
