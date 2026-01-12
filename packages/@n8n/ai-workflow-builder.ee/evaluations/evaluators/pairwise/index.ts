@@ -39,8 +39,8 @@ async function evaluateSingleGeneration(
 	numJudges: number,
 ): Promise<Feedback[]> {
 	const evalCriteria: EvalCriteria = {
-		dos: ctx?.dos ?? 'Follow the user prompt accurately',
-		donts: ctx?.donts ?? 'Do not add unnecessary complexity',
+		dos: ctx?.dos,
+		donts: ctx?.donts,
 	};
 
 	const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
@@ -117,8 +117,8 @@ async function evaluateMultiGeneration(
 	numGenerations: number,
 ): Promise<Feedback[]> {
 	const evalCriteria: EvalCriteria = {
-		dos: ctx?.dos ?? 'Follow the user prompt accurately',
-		donts: ctx?.donts ?? 'Do not add unnecessary complexity',
+		dos: ctx?.dos,
+		donts: ctx?.donts,
 	};
 
 	// Generate all workflows and evaluate in parallel

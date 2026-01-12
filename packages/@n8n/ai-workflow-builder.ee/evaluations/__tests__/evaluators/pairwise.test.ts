@@ -125,7 +125,7 @@ describe('Pairwise Evaluator', () => {
 			);
 		});
 
-		it('should provide default criteria when context is empty', async () => {
+		it('should pass through empty criteria when context has no dos/donts', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
 			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
@@ -138,8 +138,8 @@ describe('Pairwise Evaluator', () => {
 				mockLlm,
 				workflow,
 				{
-					dos: 'Follow the user prompt accurately',
-					donts: 'Do not add unnecessary complexity',
+					dos: undefined,
+					donts: undefined,
 				},
 				3,
 				expect.any(Object),
@@ -262,7 +262,7 @@ describe('Pairwise Evaluator', () => {
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(
 				mockLlm,
 				workflow,
-				{ dos: 'Use Slack node', donts: 'Do not add unnecessary complexity' },
+				{ dos: 'Use Slack node', donts: undefined },
 				3,
 				expect.any(Object),
 			);
@@ -282,7 +282,7 @@ describe('Pairwise Evaluator', () => {
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(
 				mockLlm,
 				workflow,
-				{ dos: 'Follow the user prompt accurately', donts: 'Do not use HTTP Request node' },
+				{ dos: undefined, donts: 'Do not use HTTP Request node' },
 				3,
 				expect.any(Object),
 			);
