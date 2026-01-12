@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { DeleteResult } from '@n8n/typeorm';
 
-import type { MessageEventBusDestination } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBusDestinationType } from '@/eventbus/message-event-bus/message-event-bus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { EventDestinationsRepository } from './database/repositories/event-destination.repository';
@@ -42,7 +42,7 @@ export class LogStreamingDestinationService {
 	/**
 	 * Save a destination to the database
 	 */
-	async saveDestinationToDb(destination: MessageEventBusDestination) {
+	async saveDestinationToDb(destination: MessageEventBusDestinationType) {
 		const data = {
 			id: destination.getId(),
 			destination: destination.serialize(),
@@ -65,9 +65,9 @@ export class LogStreamingDestinationService {
 	 * Add a destination to the event bus and save to database
 	 */
 	async addDestination(
-		destination: MessageEventBusDestination,
+		destination: MessageEventBusDestinationType,
 		notifyWorkers: boolean = true,
-	): Promise<MessageEventBusDestination> {
+	): Promise<MessageEventBusDestinationType> {
 		const addedDestination = await this.eventBus.addDestination(destination, notifyWorkers);
 		await this.saveDestinationToDb(addedDestination);
 		return addedDestination;

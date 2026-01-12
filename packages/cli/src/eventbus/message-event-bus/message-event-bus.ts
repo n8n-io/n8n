@@ -50,7 +50,9 @@ export interface MessageEventBusInitializeOptions {
 	webhookProcessorId?: string;
 }
 
-export interface MessageEventBusDestination {
+// TODO: remove startListening and potential close method,
+// As it should be the responsibility of the event bus to listen and close destinations
+export interface MessageEventBusDestinationType {
 	getId(): string;
 	hasSubscribedToEvent(msg: EventMessageTypes): boolean;
 	receiveFromEventBus(messageWithCallback: MessageWithCallback): Promise<boolean>;
@@ -68,7 +70,7 @@ export class MessageEventBus extends EventEmitter {
 	logWriter: MessageEventBusLogWriter;
 
 	destinations: {
-		[key: string]: MessageEventBusDestination;
+		[key: string]: MessageEventBusDestinationType;
 	} = {};
 
 	private pushIntervalTimer: NodeJS.Timeout;
@@ -224,7 +226,7 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
+	async addDestination(destination: MessageEventBusDestinationType, notifyWorkers: boolean = true) {
 		await this.removeDestination(destination.getId(), false);
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();

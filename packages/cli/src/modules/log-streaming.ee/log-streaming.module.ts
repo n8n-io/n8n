@@ -17,7 +17,6 @@ import { Container } from '@n8n/di';
 })
 export class LogStreamingModule implements ModuleInterface {
 	async init() {
-		// Import controller to register routes
 		await import('./log-streaming.controller');
 
 		const { LogStreamingDestinationService } = await import('./log-streaming-destination.service');
@@ -28,10 +27,5 @@ export class LogStreamingModule implements ModuleInterface {
 	async entities() {
 		const { EventDestinations } = await import('./database/entities/event-destination.entity');
 		return [EventDestinations];
-	}
-
-	async settings() {
-		const { LogStreamingSettings } = await import('./log-streaming.settings');
-		return Container.get(LogStreamingSettings).settings();
 	}
 }

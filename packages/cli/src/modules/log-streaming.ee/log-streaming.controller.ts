@@ -11,7 +11,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import {
 	MessageEventBus,
-	MessageEventBusDestination,
+	MessageEventBusDestinationType,
 } from '@/eventbus/message-event-bus/message-event-bus';
 
 import {
@@ -74,7 +74,7 @@ export class EventBusController {
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
-		let result: MessageEventBusDestination | undefined;
+		let result: MessageEventBusDestinationType | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
