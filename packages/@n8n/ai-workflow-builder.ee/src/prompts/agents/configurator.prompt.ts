@@ -45,7 +45,7 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 const N8N_DATA_STRUCTURE = `**n8n Data Structure Fundamentals:**
 Data flows between nodes as an array of items. Each item is an object with a \`json\` key (for structured data) or \`binary\` key (for files).
 
-Structure: [{ json: { field1: "value1" } }, { json: { field2: "value2" } }]
+Structure: [{{ json: {{ field1: "value1" }} }}, {{ json: {{ field2: "value2" }} }}]
 
 **Why this matters:**
 - Each item is processed individually by most nodes (auto-iteration)
