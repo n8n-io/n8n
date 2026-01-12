@@ -10,6 +10,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import type { DynamicCredentialEntryRepository } from '../../database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
@@ -19,6 +20,7 @@ describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;
 	let mockLogger: jest.Mocked<Logger>;
 	let mockRepository: jest.Mocked<DynamicCredentialResolverRepository>;
+	let mockEntryRepository: jest.Mocked<DynamicCredentialEntryRepository>;
 	let mockRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
@@ -73,6 +75,10 @@ describe('DynamicCredentialResolverService', () => {
 			remove: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
 
+		mockEntryRepository = {
+			delete: jest.fn(),
+		} as unknown as jest.Mocked<DynamicCredentialEntryRepository>;
+
 		mockRegistry = {
 			getResolverByTypename: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
@@ -89,6 +95,7 @@ describe('DynamicCredentialResolverService', () => {
 		service = new DynamicCredentialResolverService(
 			mockLogger,
 			mockRepository,
+			mockEntryRepository,
 			mockRegistry,
 			mockCipher,
 			mockExpressionService,

@@ -14,6 +14,7 @@ import { DynamicCredentialResolverRegistry } from './credential-resolver-registr
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialEntryRepository } from '../database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 
 export interface CreateResolverParams {
@@ -27,6 +28,7 @@ export interface UpdateResolverParams {
 	name?: string;
 	type?: string;
 	config?: CredentialResolverConfiguration;
+	clearCredentials?: boolean;
 	user: User;
 }
 
@@ -42,6 +44,7 @@ export class DynamicCredentialResolverService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: DynamicCredentialResolverRepository,
+		private readonly entryRepository: DynamicCredentialEntryRepository,
 		private readonly registry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
 		private readonly expressionService: ResolverConfigExpressionService,
@@ -130,6 +133,14 @@ export class DynamicCredentialResolverService {
 
 		if (params.name !== undefined) {
 			existing.name = params.name;
+		}
+
+		if (params.clearCredentials === true) {
+			const deletedCount = await this.entryRepository.delete({ resolverId: id });
+
+			this.logger.debug(
+				`Cleared ${deletedCount.affected ?? 0} dynamic credential entries for resolver "${existing.name}" (${id})`,
+			);
 		}
 
 		const saved = await this.repository.save(existing);
