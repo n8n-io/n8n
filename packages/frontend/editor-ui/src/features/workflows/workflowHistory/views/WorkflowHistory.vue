@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import {
 	VIEWS,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
@@ -33,18 +32,11 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
-
-const enum WorkflowHistoryVersionRestoreModalActions {
-	restore = 'restore',
-	deactivateAndRestore = 'deactivateAndRestore',
-	cancel = 'cancel',
-}
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
@@ -91,8 +83,6 @@ const workflowPermissions = computed(
 const workflowActiveVersionId = computed(() => {
 	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
-
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes
@@ -165,57 +155,6 @@ const openInNewTab = (id: WorkflowVersionId) => {
 	window.open(href, '_blank');
 };
 
-const openRestorationModal = async (
-	isWorkflowActivated: boolean,
-	formattedCreatedAt: string,
-): Promise<WorkflowHistoryVersionRestoreModalActions> => {
-	return await new Promise((resolve, reject) => {
-		const buttons = [
-			{
-				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
-				},
-			},
-		];
-
-		if (isWorkflowActivated && !isDraftPublishEnabled) {
-			buttons.push({
-				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore);
-				},
-			});
-		}
-
-		buttons.push({
-			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
-			type: 'primary',
-			action: () => {
-				resolve(WorkflowHistoryVersionRestoreModalActions.restore);
-			},
-		});
-
-		try {
-			uiStore.openModalWithData({
-				name: WORKFLOW_HISTORY_VERSION_RESTORE,
-				data: {
-					beforeClose: () => {
-						resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
-					},
-					isWorkflowActivated,
-					formattedCreatedAt,
-					buttons,
-				},
-			});
-		} catch (error) {
-			reject(error);
-		}
-	});
-};
-
 const cloneWorkflowVersion = async (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string },
@@ -244,28 +183,11 @@ const cloneWorkflowVersion = async (
 	});
 };
 
-const restoreWorkflowVersion = async (
-	id: WorkflowVersionId,
-	data: { formattedCreatedAt: string },
-) => {
+const restoreWorkflowVersion = async (id: WorkflowVersionId) => {
 	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
-	let deactivateAndRestore = false;
-
-	if (!isDraftPublishEnabled) {
-		const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
-		if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
-			return;
-		}
-		deactivateAndRestore =
-			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
-	}
 
 	const versionIdBeforeRestore = workflow.versionId;
-	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
-		workflowId.value,
-		id,
-		deactivateAndRestore,
-	);
+	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
 
 	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
 		toast.showMessage({
@@ -384,7 +306,7 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User cloned version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await restoreWorkflowVersion(id, data);
+				await restoreWorkflowVersion(id);
 				sendTelemetry('User restored version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
