@@ -47,9 +47,11 @@ jobs:
       - name: Generate branch name
         id: branch
         shell: bash
+        env:
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
         run: |
-          if [ -n "${{ inputs.branch_name }}" ]; then
-            BRANCH="${{ inputs.branch_name }}"
+          if [ -n "$INPUT_BRANCH_NAME" ]; then
+            BRANCH="$INPUT_BRANCH_NAME"
           else
             # Auto-generate branch name from timestamp
             TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -65,12 +67,14 @@ jobs:
       - name: Prepare Claude prompt
         id: prompt
         shell: bash
+        env:
+          INPUT_TASK: ${{ inputs.task }}
         run: |
           # Build the prompt with task and pointer to templates
           {
             echo 'CLAUDE_PROMPT<<EOF'
             echo "# Task"
-            echo "${{ inputs.task }}"
+            echo "$INPUT_TASK"
             echo ""
             echo "# Guidelines"
             echo "Check .github/claude-templates/ for relevant guides before starting."
@@ -104,10 +108,13 @@ jobs:
 
       - name: Push branch
         shell: bash
+        env:
+          INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
         run: |
           # Check if there are any commits to push
-          if git log "origin/${{ inputs.base_branch }}..HEAD" --oneline | grep -q .; then
-            git push -u origin "${{ steps.branch.outputs.name }}"
+          if git log "origin/$INPUT_BASE_BRANCH..HEAD" --oneline | grep -q .; then
+            git push -u origin "$BRANCH_NAME"
             echo "CHANGES_MADE=true" >> "$GITHUB_ENV"
           else
             echo "No commits were made by Claude"
@@ -119,35 +126,37 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TASK: ${{ inputs.task }}
+          INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           # Create PR with task description in body
           gh pr create \
             --title "chore: Claude automated task" \
-            --body "$(cat <<'BODY'
-          ## Summary
+            --body "## Summary
           Automated task completed by Claude.
 
           ### Task Description
-          ${{ inputs.task }}
+          $INPUT_TASK
 
           ---
-          *This PR was created automatically by the Claude Task Runner workflow.*
-
-          BODY
-          )" \
-            --base "${{ inputs.base_branch }}" \
+          *This PR was created automatically by the Claude Task Runner workflow.*" \
+            --base "$INPUT_BASE_BRANCH" \
             --draft
 
       - name: Summary
         shell: bash
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+          INPUT_CREATE_PR: ${{ inputs.create_pr }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
         run: |
           {
             echo "## Claude Task Runner Summary"
             echo ""
-            echo "**Task:** ${{ inputs.task }}"
-            echo "**Branch:** ${{ steps.branch.outputs.name }}"
-            echo "**Changes Made:** ${{ env.CHANGES_MADE }}"
-            if [ "${{ env.CHANGES_MADE }}" == "true" ] && [ "${{ inputs.create_pr }}" == "true" ]; then
+            echo "**Task:** $INPUT_TASK"
+            echo "**Branch:** $BRANCH_NAME"
+            echo "**Changes Made:** $CHANGES_MADE"
+            if [ "$CHANGES_MADE" == "true" ] && [ "$INPUT_CREATE_PR" == "true" ]; then
               echo "**PR Created:** Yes (Draft)"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
