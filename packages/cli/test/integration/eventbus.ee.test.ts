@@ -87,6 +87,7 @@ mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
+	modules: ['log-streaming'],
 });
 
 beforeAll(async () => {
