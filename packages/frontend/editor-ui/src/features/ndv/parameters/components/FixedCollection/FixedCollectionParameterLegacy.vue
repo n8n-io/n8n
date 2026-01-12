@@ -14,7 +14,7 @@ import isEqual from 'lodash/isEqual';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import ParameterInputList from './ParameterInputList.vue';
+import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -31,6 +31,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 
@@ -38,8 +39,9 @@ export type Props = {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values?: Record<string, INodeParameters[]>;
+	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
+	isNested?: boolean;
 	hiddenIssuesInputs?: string[];
 };
 
@@ -64,46 +66,45 @@ const ndvStore = useNDVStore();
 
 const { activeNode } = storeToRefs(ndvStore);
 
+const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
+const selectedOption = ref<string | null | undefined>(null);
+
+const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
+	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;
+	return props.parameter.options.find((option) => option.name === optionName);
+};
+
+const getPropertyPath = (name: string, index?: number): string => {
+	return `${props.path}.${name}${index !== undefined ? `[${index}]` : ''}`;
+};
+
+const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
+const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
+
 const getPlaceholderText = computed(() => {
 	const placeholder = locale
 		.nodeText(activeNode.value?.type)
 		.placeholder(props.parameter, props.path);
-	return placeholder ? placeholder : locale.baseText('fixedCollectionParameter.choose');
+	return placeholder || locale.baseText('fixedCollectionParameter.choose');
 });
-const mutableValues = ref({} as Record<string, INodeParameters[]>);
-const selectedOption = ref<string | null | undefined>(null);
-const propertyNames = computed(() => {
-	return new Set(Object.keys(mutableValues.value || {}));
-});
+
+const propertyNames = computed(() => new Set(Object.keys(mutableValues.value || {})));
+
 const getProperties = computed(() => {
-	const returnProperties = [];
-	let tempProperties;
+	const properties: INodePropertyCollection[] = [];
 	for (const name of propertyNames.value) {
-		tempProperties = getOptionProperties(name);
-		if (tempProperties !== undefined) {
-			returnProperties.push(tempProperties);
-		}
+		const prop = getOptionProperties(name);
+		if (prop) properties.push(prop);
 	}
-	return returnProperties;
+	return properties;
 });
-const multipleValues = computed(() => {
-	return !!props.parameter.typeOptions?.multipleValues;
-});
+
 const addedOptionalValues = ref(new Map<string, Set<string>>());
+
 const parameterOptions = computed(() => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return [];
-
-	if (multipleValues.value) {
-		return props.parameter.options;
-	}
-
-	return (props.parameter.options ?? []).filter((option) => {
-		return !propertyNames.value.has(option.name);
-	});
-});
-
-const sortable = computed(() => {
-	return !!props.parameter.typeOptions?.sortable;
+	if (multipleValues.value) return props.parameter.options;
+	return props.parameter.options.filter((option) => !propertyNames.value.has(option.name));
 });
 
 const hideOptionalFields = computed(() => {
@@ -296,7 +297,7 @@ const toggleOptionalValue = (
 
 watch(
 	() => props.values,
-	(newValues: Record<string, INodeParameters[]>) => {
+	(newValues: Record<string, INodeParameters[] | INodeParameters>) => {
 		mutableValues.value = deepCopy(newValues);
 	},
 	{ deep: true },
@@ -309,95 +310,79 @@ onBeforeMount(() => {
 
 const deleteOption = (optionName: string, index?: number) => {
 	const currentOptionsOfSameType = mutableValues.value[optionName];
-	if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
-		// it's not the only option of this type, so just remove it.
+	const isArray = Array.isArray(currentOptionsOfSameType);
+
+	if (!currentOptionsOfSameType || (isArray && currentOptionsOfSameType.length > 1)) {
 		emit('valueChanged', {
 			name: getPropertyPath(optionName, index),
 			value: undefined,
 		});
 	} else {
-		// it's the only option, so remove the whole type
-		emit('valueChanged', {
-			name: getPropertyPath(optionName),
-			value: undefined,
-		});
-	}
-};
-
-const getPropertyPath = (name: string, index?: number) => {
-	return `${props.path}.${name}` + (index !== undefined ? `[${index}]` : '');
-};
-
-const getOptionProperties = (optionName: string) => {
-	if (isINodePropertyCollectionList(props.parameter.options)) {
-		for (const option of props.parameter.options) {
-			if (option.name === optionName) {
-				return option;
-			}
+		if (!multipleValues.value && props.isNested) {
+			const pathParts = props.path.split('.');
+			const parentPath = pathParts.slice(0, -1).join('.');
+			const parentPropertyName = pathParts[pathParts.length - 1];
+			emit('valueChanged', {
+				name: parentPath ? `${parentPath}.${parentPropertyName}` : parentPropertyName,
+				value: undefined,
+			});
+		} else {
+			emit('valueChanged', {
+				name: getPropertyPath(optionName),
+				value: undefined,
+			});
 		}
 	}
-	return undefined;
 };
 
-const onAddButtonClick = (optionName: string) => {
-	optionSelected(optionName);
+const initializeParameterValue = (optionParameter: INodeProperties): NodeParameterValueType => {
+	const hasMultipleValues = optionParameter.typeOptions?.multipleValues === true;
+
+	if (!hasMultipleValues) {
+		return deepCopy(optionParameter.default);
+	}
+
+	if (optionParameter.type === 'fixedCollection') {
+		return {};
+	}
+
+	const existingArray = get(props.nodeValues, [props.path, optionParameter.name], []);
+	const defaultValue = optionParameter.default;
+
+	const newItems = Array.isArray(defaultValue)
+		? deepCopy(defaultValue)
+		: defaultValue !== '' && typeof defaultValue !== 'object'
+			? [deepCopy(defaultValue)]
+			: [];
+
+	return existingArray.concat(newItems);
+};
+
+const optionSelected = async (optionName: string) => {
+	const option = getOptionProperties(optionName);
+	if (!option) return;
+
+	const name = `${props.path}.${option.name}`;
+
+	const newParameterValue = option.values.reduce<INodeParameters>((acc, optionParameter) => {
+		acc[optionParameter.name] = initializeParameterValue(optionParameter);
+		return acc;
+	}, {});
+
+	const existingValues = get(props.nodeValues, name, []) as INodeParameters[];
+	const newValue: NodeParameterValueType = multipleValues.value
+		? [...existingValues, newParameterValue]
+		: newParameterValue;
+
+	emit('valueChanged', { name, value: newValue });
+	selectedOption.value = undefined;
+};
+
+const onAddButtonClick = async (optionName: string) => {
+	await optionSelected(optionName);
 	if (props.parameter.name === 'workflowInputs') {
 		trackWorkflowInputFieldAdded();
 	}
-};
-
-const optionSelected = (optionName: string) => {
-	const option = getOptionProperties(optionName);
-	if (option === undefined) {
-		return;
-	}
-	const name = `${props.path}.${option.name}`;
-
-	const newParameterValue: INodeParameters = {};
-
-	for (const optionParameter of option.values) {
-		if (
-			optionParameter.type === 'fixedCollection' &&
-			optionParameter.typeOptions !== undefined &&
-			optionParameter.typeOptions.multipleValues === true
-		) {
-			newParameterValue[optionParameter.name] = {};
-		} else if (
-			optionParameter.typeOptions !== undefined &&
-			optionParameter.typeOptions.multipleValues === true
-		) {
-			// Multiple values are allowed so append option to array
-			const multiValue = get(props.nodeValues, [props.path, optionParameter.name], []);
-
-			if (Array.isArray(optionParameter.default)) {
-				multiValue.push(...deepCopy(optionParameter.default));
-			} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-				multiValue.push(deepCopy(optionParameter.default));
-			}
-
-			newParameterValue[optionParameter.name] = multiValue;
-		} else {
-			// Add a new option
-			newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
-		}
-	}
-
-	let newValue: NodeParameterValueType;
-	if (multipleValues.value) {
-		newValue = get(props.nodeValues, name, []) as INodeParameters[];
-
-		newValue.push(newParameterValue);
-	} else {
-		newValue = newParameterValue;
-	}
-
-	const parameterData = {
-		name,
-		value: newValue,
-	};
-
-	emit('valueChanged', parameterData);
-	selectedOption.value = undefined;
 };
 
 const valueChanged = (parameterData: IUpdateInformation) => {
@@ -406,6 +391,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		trackWorkflowInputFieldTypeChange(parameterData);
 	}
 };
+
 const onDragChange = (optionName: string) => {
 	const parameterData: ValueChangedEvent = {
 		name: getPropertyPath(optionName),
@@ -431,18 +417,18 @@ const trackWorkflowInputFieldAdded = () => {
 	});
 };
 
-function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
-	return mutableValues.value[property.name]?.indexOf(item) ?? -1;
+function getItemKey(_item: INodeParameters, index: number) {
+	return index;
 }
 </script>
 
 <template>
 	<div
-		class="fixed-collection-parameter"
+		:class="$style.fixedCollectionParameter"
 		:data-test-id="`fixed-collection-${props.parameter?.name}`"
 		@keydown.stop
 	>
-		<div v-if="getProperties.length === 0" class="no-items-exist">
+		<div v-if="getProperties.length === 0" :class="$style.noItemsExist">
 			<N8nText size="small">{{
 				locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
 			}}</N8nText>
@@ -451,7 +437,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 		<div
 			v-for="property in getProperties"
 			:key="property.name"
-			class="fixed-collection-parameter-property"
+			:class="$style.fixedCollectionParameterProperty"
 		>
 			<N8nInputLabel
 				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
@@ -460,24 +446,21 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 				size="small"
 				color="text-dark"
 			/>
+
 			<div v-if="multipleValues">
 				<Draggable
-					v-model="mutableValues[property.name]"
-					:item-key="(item: INodeParameters) => getItemKey(item, property)"
+					v-model="mutableValues[property.name] as INodeParameters[]"
 					handle=".drag-handle"
-					drag-class="dragging"
-					ghost-class="ghost"
-					chosen-class="chosen"
+					:item-key="getItemKey"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+					:chosen-class="$style.chosen"
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
-						<div :key="property.name + '-' + index" class="parameter-item">
-							<div
-								:class="
-									index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'
-								"
-							>
-								<div v-if="!isReadOnly" class="icon-button default-top-padding">
+						<div :key="property.name + '-' + index" :class="$style.parameterItem">
+							<div :class="[$style.parameterItemWrapper, { [$style.borderTopDashed]: index }]">
+								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.defaultTopPadding]">
 									<N8nIconButton
 										v-if="sortable"
 										type="tertiary"
@@ -488,7 +471,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										class="drag-handle"
 									/>
 								</div>
-								<div v-if="!isReadOnly" class="icon-button extra-top-padding">
+								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.extraTopPadding]">
 									<N8nIconButton
 										type="tertiary"
 										text
@@ -504,15 +487,16 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										:parameters="getVisiblePropertyValues(property, index)"
 										:node-values="nodeValues"
 										:path="getPropertyPath(property.name, index)"
-										:hide-delete="true"
 										:is-read-only="isReadOnly"
+										:is-nested="isNested"
+										:hide-delete="true"
 										:hidden-issues-inputs="hiddenIssuesInputs"
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
 								<div
 									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
-									class="optional-values-picker add-option"
+									:class="$style.addOption"
 									data-test-id="fixed-collection-add-property"
 								>
 									<N8nSelect
@@ -546,9 +530,10 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					</template>
 				</Draggable>
 			</div>
-			<div v-else class="parameter-item">
-				<div class="parameter-item-wrapper">
-					<div v-if="!isReadOnly" class="icon-button">
+
+			<div v-else :class="$style.parameterItem">
+				<div :class="$style.parameterItemWrapper">
+					<div v-if="!isReadOnly" :class="$style.iconButton">
 						<N8nIconButton
 							type="tertiary"
 							text
@@ -564,14 +549,15 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
-						class="parameter-item"
+						:is-nested="isNested"
 						:hide-delete="true"
+						:class="$style.parameterItem"
 						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 					<div
 						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
-						class="optional-values-picker add-option"
+						:class="$style.addOption"
 						data-test-id="fixed-collection-add-property"
 					>
 						<N8nSelect
@@ -602,7 +588,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			</div>
 		</div>
 
-		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
+		<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.controls">
 			<N8nButton
 				v-if="parameter.options && parameter.options.length === 1"
 				type="tertiary"
@@ -611,7 +597,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"
 			/>
-			<div v-else class="add-option">
+			<div v-else :class="$style.addOption">
 				<N8nSelect
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
@@ -633,29 +619,32 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	</div>
 </template>
 
-<style scoped lang="scss">
-.fixed-collection-parameter {
+<style lang="scss" module>
+.fixedCollectionParameter {
 	padding-left: var(--spacing--sm);
 
-	.icon-button {
-		display: flex;
-		flex-direction: column;
+	.ghost,
+	.dragging {
+		border-radius: var(--radius);
+		padding-right: var(--spacing--xs);
 	}
 
-	.optional-values-picker {
-		margin-top: var(--spacing--xs);
-		margin-bottom: var(--spacing--xs);
+	.ghost {
+		background-color: var(--color--background);
+		opacity: 0.5;
 	}
 
-	:global(.optional-value-item) {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		width: 100%;
+	.dragging {
+		background-color: var(--color--background--light-3);
+		opacity: 0.7;
+
+		.parameterItemWrapper {
+			border: none;
+		}
 	}
 
 	.controls {
-		:deep(.button) {
+		:global(.button) {
 			font-weight: var(--font-weight--regular);
 			--button--color--text: var(--color--text--shade-1);
 			--button--border-color: var(--color--foreground);
@@ -682,63 +671,106 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	}
 }
 
-.fixed-collection-parameter-property {
+.fixedCollectionParameterProperty {
 	margin: var(--spacing--xs) 0;
 	margin-bottom: 0;
 }
 
-.parameter-item:hover > .parameter-item-wrapper > .icon-button {
-	opacity: 1;
+.iconButton {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	opacity: 0;
+	top: -3px;
+	left: calc(-0.5 * var(--spacing--xs));
+	transition: opacity 100ms ease-in;
 }
 
-.parameter-item {
+.parameterItem {
 	position: relative;
 	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
 
-	+ .parameter-item {
-		.parameter-item-wrapper {
-			.default-top-padding {
+	&:hover > .parameterItemWrapper > .iconButton {
+		opacity: 1;
+	}
+
+	+ .parameterItem {
+		.parameterItemWrapper {
+			.defaultTopPadding {
 				top: calc(1.2 * var(--spacing--sm));
 			}
-			.extra-top-padding {
+			.extraTopPadding {
 				top: calc(2.2 * var(--spacing--sm));
 			}
 		}
 	}
-}
 
-.parameter-item:first-of-type {
-	.parameter-item-wrapper {
-		.default-top-padding {
-			top: var(--spacing--3xs);
-		}
-		.extra-top-padding {
-			top: var(--spacing--lg);
+	&:first-of-type {
+		.parameterItemWrapper {
+			.defaultTopPadding {
+				top: var(--spacing--3xs);
+			}
+			.extraTopPadding {
+				top: var(--spacing--lg);
+			}
 		}
 	}
 }
 
-.border-top-dashed {
-	border-top: 1px dashed #999;
+.borderTopDashed {
+	border-top: var(--border-width) dashed var(--color--foreground--shade-1);
 }
 
-.no-items-exist {
+.noItemsExist {
 	margin: var(--spacing--xs) 0;
 }
-.ghost,
-.dragging {
-	border-radius: var(--radius);
-	padding-right: var(--spacing--xs);
-}
-.ghost {
-	background-color: var(--color--background);
-	opacity: 0.5;
-}
-.dragging {
-	background-color: var(--color--background--light-3);
-	.parameter-item-wrapper {
+
+.addOption {
+	> * {
 		border: none;
 	}
-	opacity: 0.7;
+
+	:global(.el-select .el-input.is-disabled) {
+		:global(.el-input__icon) {
+			opacity: 1 !important;
+			cursor: not-allowed;
+			color: var(--color--foreground--shade-1);
+		}
+		:global(.el-input__inner),
+		:global(.el-input__inner::placeholder) {
+			opacity: 1;
+			color: var(--color--foreground--shade-1);
+		}
+	}
+	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
+		color: var(--color--text--shade-1);
+	}
+	:global(.el-input .el-input__inner) {
+		text-align: center;
+	}
+	:global(.el-input:not(.is-disabled) .el-input__inner) {
+		&,
+		&:hover,
+		&:focus {
+			padding-left: 35px;
+			border-radius: var(--radius);
+			color: var(--color--text--shade-1);
+			background-color: var(--color--background);
+			border-color: var(--color--foreground);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color--text--shade-1);
+			opacity: 1;
+		}
+	}
+}
+
+:global(.optional-value-item) {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
 }
 </style>
