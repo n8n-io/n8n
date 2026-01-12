@@ -943,7 +943,7 @@ export class ChatHubService {
 	}
 
 	private async resumeChatExecution(
-		execution: IExecutionResponse | undefined,
+		execution: IExecutionResponse,
 		message: string,
 		sessionId: ChatSessionId,
 		messageId: string,
@@ -957,7 +957,7 @@ export class ChatHubService {
 			status: 'success',
 		});
 
-		while (execution && execution.status === 'waiting') {
+		while (true) {
 			await this.resumeExecution(sessionId, execution, message);
 			previousMessageId = messageId;
 			messageId = uuidv4();
@@ -974,24 +974,24 @@ export class ChatHubService {
 
 			await this.waitForExecutionCompletion(execution.id);
 
-			execution = await this.executionRepository.findSingleExecution(execution.id, {
+			const completed = await this.executionRepository.findSingleExecution(execution.id, {
 				includeData: true,
 				unflattenData: true,
 			});
 
-			if (!execution) {
+			if (!completed) {
 				throw new OperationalError(
 					'Chat execution not found after completion - make sure your instance is saving executions.',
 				);
 			}
 
-			if (!['success', 'waiting', 'canceled'].includes(execution.status)) {
-				const message = this.getErrorMessage(execution) ?? 'Failed to generate a response';
+			if (!['success', 'waiting', 'canceled'].includes(completed.status)) {
+				const message = this.getErrorMessage(completed) ?? 'Failed to generate a response';
 				throw new OperationalError(message);
 			}
 
-			const reply = this.getMessage(execution, responseMode);
-			const status = execution?.status === 'waiting' ? 'waiting' : 'success';
+			const reply = this.getMessage(completed, responseMode);
+			const status = completed?.status === 'waiting' ? 'waiting' : 'success';
 
 			await this.endResponse(
 				res,
@@ -1003,11 +1003,11 @@ export class ChatHubService {
 				null,
 			);
 
-			const lastNode = getLastNodeExecuted(execution);
+			const lastNode = getLastNodeExecuted(completed);
 			if (status === 'waiting' && lastNode && shouldResumeImmediately(lastNode)) {
 				// Resuming execution immediately, so mark the last message as successful
 				this.logger.debug(
-					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+					`Resuming execution ${completed.id} immediately after wait in node ${lastNode.name}`,
 				);
 				await this.messageRepository.updateChatMessage(messageId, {
 					status: 'success',
@@ -1015,7 +1015,9 @@ export class ChatHubService {
 
 				// There's no new human input
 				message = '';
+				execution = completed;
 			} else {
+				// Finished or waiting for user input
 				return;
 			}
 		}
