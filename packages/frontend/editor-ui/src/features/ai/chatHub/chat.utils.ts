@@ -266,15 +266,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		type: 'human',
 		name: 'User',
 		content: streaming.promptText,
-		provider: streaming.agent.model.provider,
-		model:
-			streaming.agent.model.provider === 'n8n' || streaming.agent.model.provider === 'custom-agent'
-				? null
-				: streaming.agent.model.model,
-		workflowId: streaming.agent.model.provider === 'n8n' ? streaming.agent.model.workflowId : null,
 		executionId: null,
-		agentId:
-			streaming.agent.model.provider === 'custom-agent' ? streaming.agent.model.agentId : null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -284,6 +276,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		responses: [],
 		alternatives: [],
 		attachments: streaming.attachments,
+		...flattenModel(streaming.agent.model),
 	};
 }
 

@@ -680,7 +680,7 @@ export class ChatHubService {
 		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
 		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(
-				'Chat Trigger node response mode must be set to "Streaming" or "When Last Node Finishes" to use the workflow on Chat',
+				'Chat Trigger node response mode must be set to "When Last Node Finishes", "Using Response Nodes" or "Streaming" to use the workflow on Chat',
 			);
 		}
 
@@ -798,12 +798,6 @@ export class ChatHubService {
 
 		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
-		}
-
-		if (responseMode === 'responseNode') {
-			throw new OperationalError(
-				"Response mode 'Using Respond to Webhook Node' is not supported for chat.",
-			);
 		}
 
 		if (responseMode === 'lastNode' || responseMode === 'responseNodes') {
@@ -1042,6 +1036,7 @@ export class ChatHubService {
 
 	private getNodeOutputs(execution: IExecutionResponse, nodeName: string) {
 		const runData = execution.data.resultData.runData[nodeName];
+		if (!runData || runData.length === 0) return [];
 		const runIndex = runData.length - 1;
 		const data = runData[runIndex]?.data;
 
@@ -1066,7 +1061,7 @@ export class ChatHubService {
 		}
 
 		if (responseMode === 'lastNode') {
-			const response = (entry.json ?? {}) as Record<string, unknown>;
+			const response: Record<string, unknown> = entry.json ?? {};
 			const message = response.output ?? response.text ?? response.message ?? '';
 			return typeof message === 'string' ? message : jsonStringify(message);
 		}
