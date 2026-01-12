@@ -204,9 +204,9 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 
 	it('should preserve statistics after workflow deletion (no FK constraint) and CASCADE after rollback', async () => {
 		// Debug: Check schema BEFORE migration
-		let contextBefore = createTestMigrationContext(dataSource);
+		const contextBefore = createTestMigrationContext(dataSource);
 		const schemaBefore = await contextBefore.queryRunner.query(
-			`SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'`,
+			"SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'",
 		);
 		console.log('Schema BEFORE migration:', JSON.stringify(schemaBefore, null, 2));
 		await contextBefore.queryRunner.release();
@@ -220,7 +220,7 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 
 		// Debug: Check if FK constraint exists
 		const schema = await context.queryRunner.query(
-			`SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'`,
+			"SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'",
 		);
 		console.log('Schema AFTER migration:', JSON.stringify(schema, null, 2));
 

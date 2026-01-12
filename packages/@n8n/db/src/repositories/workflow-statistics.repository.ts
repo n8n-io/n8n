@@ -129,7 +129,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			.innerJoin('workflow_entity', 'we', 'ws.workflowId = we.id')
 			.innerJoin('shared_workflow', 'sw', 'we.id = sw.workflowId')
 			.innerJoin('project_relation', 'pr', 'sw.projectId = pr.projectId')
-			.innerJoin('role', 'r', 'pr.roleId = r.id')
+			.innerJoin('role', 'r', 'pr.role = r.slug')
 			.where('sw.role = :role', { role: 'workflow:owner' })
 			.andWhere('pr.userId = :userId', { userId })
 			.andWhere('r.slug = :slug', { slug: PROJECT_OWNER_ROLE_SLUG })
