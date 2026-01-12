@@ -533,9 +533,9 @@ describe('useWorkflowUpdate', () => {
 				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 					credentials: [{ name: 'httpBasicAuth' }],
 				});
-				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([
-					{ id: 'other-cred', name: 'Other', type: 'httpBasicAuth' },
-				]);
+				credentialsStore.getCredentialsByType = vi
+					.fn()
+					.mockReturnValue([{ id: 'other-cred', name: 'Other', type: 'httpBasicAuth' }]);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
