@@ -99,10 +99,17 @@ const CRITICAL_PARAMETERS = `- HTTP Request: URL, method, headers (if auth neede
 - AI nodes: Prompts, models, configurations
 - Tool nodes: Use $fromAI for dynamic recipient/subject/message fields`;
 
-const DEFAULT_VALUES_WARNING = `Defaults are traps that cause runtime failures. Examples:
-- Document Loader defaults to 'json' but MUST be 'binary' when processing files
-- HTTP Request defaults to GET but APIs often need POST
-- Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)`;
+const DEFAULT_VALUES_GUIDE = `PRINCIPLE: User requests ALWAYS take precedence. When user specifies a model, parameter, or value - use exactly what they requested.
+
+SAFE DEFAULTS - Trust these unless user specifies otherwise:
+- Chat Model nodes (lmChat*): Model defaults are maintained and current by n8n. Only set model parameter when user requests a specific model.
+- Embedding nodes (embeddings*): Model defaults are maintained and current by n8n. Only set model parameter when user requests a specific model.
+- LLM parameters (temperature, topP, maxTokens): Node defaults are sensible. Only configure when user explicitly requests specific values.
+
+UNSAFE DEFAULTS - Always set based on workflow context:
+- Document Loader dataType: Defaults to 'json' but MUST be 'binary' when processing files (PDF, DOCX, images, etc.)
+- HTTP Request method: Defaults to GET. Set the request method based on API requirements.
+- Vector Store mode: Context-dependent. Set explicitly: 'insert' for storing documents, 'retrieve' for querying, 'retrieve-as-tool' when used with AI Agent`;
 
 const SWITCH_NODE_CONFIGURATION = `Switch nodes require configuring rules.values[] array - each entry creates one output:
 
@@ -196,7 +203,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
-		.section('default_values_warning', DEFAULT_VALUES_WARNING)
+		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
 		.section('response_format', RESPONSE_FORMAT)
