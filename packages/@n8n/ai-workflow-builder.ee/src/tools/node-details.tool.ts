@@ -278,7 +278,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?
 				const details = extractNodeDetails(nodeType);
 
 				// Extract resource/operation info for nodes that follow this pattern
-				const resourceOperationInfo = extractResourceOperations(nodeType, nodeVersion);
+				const resourceOperationInfo = extractResourceOperations(nodeType, nodeVersion, logger);
 
 				// Get example configurations (from cache or fetch from templates)
 				const { examples, newTemplates } = await getNodeExamples(

@@ -283,7 +283,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			}
 
 			// Extract resource/operation info
-			const resourceOpInfo = extractResourceOperations(nodeType, node.version);
+			const resourceOpInfo = extractResourceOperations(nodeType, node.version, this.logger);
 
 			if (!resourceOpInfo) {
 				return node;

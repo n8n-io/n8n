@@ -74,16 +74,6 @@ export async function executeSubgraphTools(
 		return {};
 	}
 
-	// DEBUG: Log tool calls being made
-	console.log('=== DEBUG: executeSubgraphTools ===');
-	console.log(`Tool calls count: ${lastMessage.tool_calls.length}`);
-	lastMessage.tool_calls.forEach((tc, idx) => {
-		console.log(`Tool call ${idx + 1}: ${tc.name}`);
-		if (tc.name === 'update_node_parameters') {
-			console.log('  Arguments:', JSON.stringify(tc.args, null, 2));
-		}
-	});
-
 	// Execute all tools in parallel
 	const toolResults = await Promise.all(
 		lastMessage.tool_calls.map(async (toolCall) => {

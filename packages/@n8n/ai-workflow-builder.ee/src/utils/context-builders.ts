@@ -60,9 +60,11 @@ export function buildDiscoveryContextBlock(
 						? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
 						: '';
 				// Include available resources summary for nodes with resource/operation pattern
+				// Format: "resource":"op1"|"op2", "resource2":"op3"|"op4"
+				// Using quotes and pipes to avoid ambiguity if values contain special chars
 				const resourceInfo =
 					availableResources && availableResources.length > 0
-						? ` [Resources: ${availableResources.map((r) => `${r.value}(${r.operations.map((o) => o.value).join(',')})`).join('; ')}]`
+						? ` [Resources: ${availableResources.map((r) => `"${r.value}":${r.operations.map((o) => `"${o.value}"`).join('|')}`).join(', ')}]`
 						: '';
 				parts.push(`- ${nodeName} v${version}: ${reasoning}${params}${resourceInfo}`);
 			},
