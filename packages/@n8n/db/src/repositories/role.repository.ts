@@ -14,8 +14,9 @@ export class RoleRepository extends Repository<Role> {
 		super(Role, dataSource.manager);
 	}
 
-	async findAll() {
-		return await this.find({ relations: ['scopes'] });
+	async findAll(trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		return await em.find(Role, { relations: ['scopes'] });
 	}
 
 	async countUsersWithRole(role: Role): Promise<number> {

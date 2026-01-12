@@ -13,9 +13,8 @@ test.describe('GHC-5776: AI sessions metadata should not cause console errors', 
 		n8n,
 	}) => {
 		await n8n.start.fromBlankCanvas();
-
-		// This is just to trigger the watch on the workflow id, which will trigger the fetch of the sessions metadata
-		await n8n.canvas.getWorkflowSaveButton().click();
+		// This will trigger save and the fetch of sessions metadata
+		await n8n.canvas.setWorkflowName('Test Workflow');
 
 		const consoleMessages = await n8n.page.consoleMessages();
 		const errorMessages = consoleMessages.filter((msg) => msg.type() === 'error');
