@@ -140,16 +140,12 @@ export class DynamicCredentialResolverService {
 				throw new CredentialResolverValidationError(`Unknown resolver type: ${existing.type}`);
 			}
 
-			// Delete secrets from external system (e.g., OAuth tokens)
-			if (
-				'deleteAllSecrets' in resolver &&
-				typeof (
-					resolver as ICredentialResolver & { deleteAllSecrets?: (id: string) => Promise<void> }
-				).deleteAllSecrets === 'function'
-			) {
-				await (
-					resolver as ICredentialResolver & { deleteAllSecrets: (id: string) => Promise<void> }
-				).deleteAllSecrets(id);
+			if ('deleteAllSecrets' in resolver && typeof resolver.deleteAllSecrets === 'function') {
+				await resolver.deleteAllSecrets({
+					resolverId: id,
+					resolverName: resolver.metadata.name,
+					configuration: this.decryptConfig(existing.config),
+				});
 			}
 		}
 

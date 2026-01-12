@@ -79,7 +79,7 @@ export interface ICredentialResolver {
 	 * Optional - not all resolvers support deletion.
 	 * @throws {CredentialResolverError} When deletion operation fails
 	 */
-	deleteAllSecrets?(resolverId: string): Promise<void>;
+	deleteAllSecrets?(handle: CredentialResolverHandle): Promise<void>;
 
 	/**
 	 * Validates resolver configuration before saving.

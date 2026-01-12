@@ -453,7 +453,11 @@ describe('DynamicCredentialResolverService', () => {
 			});
 
 			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('test.resolver');
-			expect(resolverWithDeleteAllSecrets.deleteAllSecrets).toHaveBeenCalledWith('resolver-id-123');
+			expect(resolverWithDeleteAllSecrets.deleteAllSecrets).toHaveBeenCalledWith({
+				resolverId: 'resolver-id-123',
+				resolverName: 'test.resolver',
+				configuration: decryptedConfig,
+			});
 			expect(mockRepository.save).toHaveBeenCalled();
 		});
 

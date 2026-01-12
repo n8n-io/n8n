@@ -182,8 +182,8 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		await this.storage.deleteCredentialData(credentialId, key, handle.resolverId, parsedOptions);
 	}
 
-	async deleteAllSecrets(resolverId: string): Promise<void> {
-		await this.storage.deleteAllCredentialData(resolverId);
+	async deleteAllSecrets(handle: CredentialResolverHandle): Promise<void> {
+		await this.storage.deleteAllCredentialData(handle);
 	}
 
 	private async parseOptions(options: CredentialResolverConfiguration) {
