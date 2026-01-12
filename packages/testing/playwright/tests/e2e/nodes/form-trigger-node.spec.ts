@@ -1,6 +1,7 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
+import { IWorkflowData } from '../../../../../core/dist';
 
 test.describe('Form Trigger', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -213,7 +214,7 @@ test.describe('Form Trigger', () => {
 				},
 			});
 
-			const workflow = {
+			const workflow: Partial<IWorkflowBase> = {
 				nodes: [
 					{
 						parameters: {
