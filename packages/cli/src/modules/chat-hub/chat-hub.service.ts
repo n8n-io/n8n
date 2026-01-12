@@ -83,6 +83,7 @@ import {
 	chatTriggerParamsShape,
 	ChatTriggerResponseMode,
 	NonStreamingResponseMode,
+	PreparedChatWorkflow,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -174,22 +175,12 @@ export class ChatHubService {
 		const credentialId = this.getModelCredential(model, credentials);
 
 		let processedAttachments: IBinaryData[] = [];
-		let executionData: IRunExecutionData;
-		let workflowData: IWorkflowBase;
-		let responseMode: ChatTriggerResponseMode;
-
+		let workflow: PreparedChatWorkflow | undefined;
 		try {
-			let customAgentWorkflow:
-				| {
-						workflowData: IWorkflowBase;
-						executionData: IRunExecutionData;
-						responseMode: ChatTriggerResponseMode;
-				  }
-				| undefined;
 			if (model.provider === 'n8n') {
 				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
 				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
-				customAgentWorkflow = await this.prepareCustomAgentWorkflow(
+				workflow = await this.prepareCustomAgentWorkflow(
 					user,
 					sessionId,
 					model.workflowId,
@@ -198,7 +189,7 @@ export class ChatHubService {
 				);
 			}
 
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
 					user,
@@ -231,11 +222,7 @@ export class ChatHubService {
 					trx,
 				);
 
-				if (customAgentWorkflow) {
-					return customAgentWorkflow;
-				}
-
-				return await this.prepareReplyWorkflow(
+				workflow ??= await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
@@ -248,10 +235,6 @@ export class ChatHubService {
 					trx,
 				);
 			});
-
-			executionData = result.executionData;
-			workflowData = result.workflowData;
-			responseMode = result.responseMode;
 		} catch (error) {
 			if (processedAttachments.length > 0) {
 				try {
@@ -265,10 +248,14 @@ export class ChatHubService {
 			throw error;
 		}
 
+		if (!workflow) {
+			throw new UnexpectedError('Failed to prepare chat workflow.');
+		}
+
 		const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId);
 		if (
 			model.provider === 'n8n' &&
-			responseMode === 'responseNodes' &&
+			workflow.responseMode === 'responseNodes' &&
 			previousMessage?.status === 'waiting' &&
 			previousMessage?.executionId
 		) {
@@ -296,7 +283,7 @@ export class ChatHubService {
 				previousMessage.id,
 				model,
 				res,
-				responseMode,
+				workflow.responseMode,
 			);
 		}
 
@@ -304,12 +291,12 @@ export class ChatHubService {
 			res,
 			user,
 			model,
-			workflowData,
-			executionData,
+			workflow.workflowData,
+			workflow.executionData,
 			sessionId,
 			messageId,
 			null,
-			responseMode,
+			workflow.responseMode,
 		);
 
 		// Generate title for the session on receiving the first human message.
@@ -334,11 +321,11 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		let workflow;
+		let workflow: PreparedChatWorkflow | undefined;
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -347,6 +334,12 @@ export class ChatHubService {
 				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 				if (messageToEdit.type === 'ai') {
+					if (model.provider === 'n8n') {
+						throw new BadRequestError(
+							'Editing AI messages with n8n workflow agents is not supported',
+						);
+					}
+
 					// AI edits just change the original message without revisioning or response generation
 					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
 					return null;
@@ -392,22 +385,38 @@ export class ChatHubService {
 						trx,
 					);
 
-					return await this.prepareReplyWorkflow(
-						user,
-						sessionId,
-						credentials,
-						model,
-						history,
-						message,
-						session.tools,
-						attachments,
-						tz,
-						trx,
-					);
+					if (model.provider !== 'n8n') {
+						workflow = await this.prepareReplyWorkflow(
+							user,
+							sessionId,
+							credentials,
+							model,
+							history,
+							message,
+							session.tools,
+							attachments,
+							tz,
+							trx,
+						);
+					}
+
+					return { attachments };
 				}
 
 				throw new BadRequestError('Only human and AI messages can be edited');
 			});
+
+			if (result && model.provider === 'n8n') {
+				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
+				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
+				workflow = await this.prepareCustomAgentWorkflow(
+					user,
+					sessionId,
+					model.workflowId,
+					message,
+					result.attachments,
+				);
+			}
 		} catch (error) {
 			if (newStoredAttachments.length > 0) {
 				try {
@@ -444,72 +453,91 @@ export class ChatHubService {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		const {
-			workflow: { workflowData, executionData, responseMode },
-			retryOfMessageId,
-			previousMessageId,
-		} = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, trx);
-			if (!session) {
-				throw new NotFoundError('Chat session not found');
-			}
+		let workflow: PreparedChatWorkflow | undefined;
 
-			const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
+		const { retryOfMessageId, previousMessageId, message, attachments } =
+			await this.messageRepository.manager.transaction(async (trx) => {
+				const session = await this.getChatSession(user, sessionId, trx);
+				if (!session) {
+					throw new NotFoundError('Chat session not found');
+				}
 
-			if (messageToRetry.type !== 'ai') {
-				throw new BadRequestError('Can only retry AI messages');
-			}
+				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
 
-			const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-			const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
+				if (messageToRetry.type !== 'ai') {
+					throw new BadRequestError('Can only retry AI messages');
+				}
 
-			const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
-			if (!lastHumanMessage) {
-				throw new BadRequestError('No human message found to base the retry on');
-			}
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
 
-			// Remove any (AI) messages that came after the last human message
-			const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
-			if (lastHumanMessageIndex !== -1) {
-				history.splice(lastHumanMessageIndex + 1);
-			}
+				const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
+				if (!lastHumanMessage) {
+					throw new BadRequestError('No human message found to base the retry on');
+				}
 
-			// Rerun the workflow, replaying the last human message
+				// Remove any (AI) messages that came after the last human message
+				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
+				if (lastHumanMessageIndex !== -1) {
+					history.splice(lastHumanMessageIndex + 1);
+				}
 
-			// If the message being retried is itself a retry, we want to point to the original message
-			const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
-			const message = lastHumanMessage ? lastHumanMessage.content : '';
-			const attachments = lastHumanMessage.attachments ?? [];
-			const workflow = await this.prepareReplyWorkflow(
+				// Rerun the workflow, replaying the last human message
+
+				// If the message being retried is itself a retry, we want to point to the original message
+				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+				const message = lastHumanMessage ? lastHumanMessage.content : '';
+				const attachments = lastHumanMessage.attachments ?? [];
+
+				if (model.provider !== 'n8n') {
+					workflow = await this.prepareReplyWorkflow(
+						user,
+						sessionId,
+						credentials,
+						model,
+						history,
+						message,
+						session.tools,
+						attachments,
+						tz,
+						trx,
+					);
+				}
+
+				return {
+					previousMessageId: lastHumanMessage.id,
+					retryOfMessageId,
+					message,
+					attachments,
+				};
+			});
+
+		if (model.provider === 'n8n') {
+			// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
+			// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
+			workflow = await this.prepareCustomAgentWorkflow(
 				user,
 				sessionId,
-				credentials,
-				model,
-				history,
+				model.workflowId,
 				message,
-				session.tools,
 				attachments,
-				tz,
-				trx,
 			);
+		}
 
-			return {
-				workflow,
-				previousMessageId: lastHumanMessage.id,
-				retryOfMessageId,
-			};
-		});
+		if (!workflow) {
+			throw new UnexpectedError('Failed to prepare chat workflow.');
+		}
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
 			model,
-			workflowData,
-			executionData,
+			workflow.workflowData,
+			workflow.executionData,
 			sessionId,
 			previousMessageId,
 			retryOfMessageId,
-			responseMode,
+			workflow.responseMode,
 		);
 	}
 

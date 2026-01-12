@@ -80,7 +80,11 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
+		<N8nTooltip
+			v-if="message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai')"
+			placement="bottom"
+			:show-after="300"
+		>
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"

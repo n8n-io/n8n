@@ -5,7 +5,7 @@ import type {
 	ChatSessionId,
 	ChatAttachment,
 } from '@n8n/api-types';
-import type { INode, INodeCredentials } from 'n8n-workflow';
+import type { INode, INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -84,3 +84,9 @@ export const chatTriggerParamsShape = z.object({
 		})
 		.optional(),
 });
+
+export type PreparedChatWorkflow = {
+	workflowData: IWorkflowBase;
+	executionData: IRunExecutionData;
+	responseMode: ChatTriggerResponseMode;
+};
