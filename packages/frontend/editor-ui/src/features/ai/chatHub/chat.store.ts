@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { CHAT_STORE } from './constants';
+import { CHAT_STORE, CHAT_SESSIONS_PAGE_SIZE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
@@ -42,6 +42,8 @@ import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
 	type AgentIconOrEmoji,
+	type ChatHubEditMessageRequest,
+	type ChatHubRegenerateMessageRequest,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -54,10 +56,12 @@ import { retry } from '@n8n/utils/retry';
 import {
 	buildUiMessages,
 	createSessionFromStreamingState,
-	isLlmProviderModel,
 	isMatchedAgent,
 	createAiMessageFromStreamingState,
 	flattenModel,
+	createHumanMessageFromStreamingState,
+	promisifyStreamingApi,
+	createFakeAgent,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -123,8 +127,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function isResponding(sessionId: ChatSessionId) {
-		const last = lastMessage(sessionId);
-		return last?.status === 'running';
+		return streaming.value?.sessionId === sessionId;
 	}
 
 	function computeActiveChain(
@@ -137,25 +140,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return chain;
 		}
 
-		let id: ChatMessageId | undefined;
-
 		// Find the most recent descendant message starting from messageId...
-		const stack = [messageId];
-		let latest: ChatMessageId | null = null;
+		let latest: ChatMessageId = messageId;
 
-		while ((id = stack.pop())) {
-			const message: ChatMessage = messages[id];
-			if (!latest || message.createdAt > messages[latest].createdAt) {
-				latest = id;
+		while (true) {
+			const responses: string[] = messages[latest].responses;
+
+			if (responses.length === 0) {
+				break;
 			}
 
-			for (const responseId of message.responses) {
-				stack.push(responseId);
-			}
-		}
-
-		if (!latest) {
-			return chain;
+			// Responses are sorted by create date, so the last item is the latest
+			latest = responses[responses.length - 1];
 		}
 
 		// ...and then walk back to the root following previousMessageId links
@@ -322,7 +318,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
@@ -389,6 +385,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function onBeginMessage() {
 		if (!streaming.value?.messageId) {
 			return;
+		}
+
+		if (!streaming.value.retryOfMessageId) {
+			addMessage(streaming.value.sessionId, createHumanMessageFromStreamingState(streaming.value));
+		}
+
+		if (!sessions.value.byId[streaming.value.sessionId]) {
+			sessions.value.byId[streaming.value.sessionId] = createSessionFromStreamingState(
+				streaming.value,
+			);
+			sessions.value.ids ??= [];
+			sessions.value.ids.unshift(streaming.value.sessionId);
 		}
 
 		const message = createAiMessageFromStreamingState(
@@ -489,7 +497,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
-	async function onStreamError(error: Error) {
+	async function onStreamError(error: unknown) {
 		if (!streaming.value) {
 			return;
 		}
@@ -497,7 +505,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const cause =
 			error instanceof ResponseError
 				? new Error(getErrorMessageByStatusCode(error.httpStatusCode, error.message))
-				: error.message.includes('Failed to fetch')
+				: error instanceof Error && error.message.includes('Failed to fetch')
 					? new Error(i18n.baseText('chatHub.error.noConnection'))
 					: error;
 
@@ -530,43 +538,25 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			data: attachment.data,
 		}));
 
-		addMessage(sessionId, {
-			id: messageId,
+		streaming.value = {
+			promptPreviousMessageId: previousMessageId,
+			promptId: messageId,
+			promptText: message,
 			sessionId,
-			type: 'human',
-			name: 'User',
-			content: message,
-			provider: null,
-			model: isLlmProviderModel(agent.model) ? agent.model.model : null,
-			workflowId: null,
-			executionId: null,
-			agentId: null,
-			status: 'success',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			previousMessageId,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			responses: [],
-			alternatives: [],
-			attachments,
-		});
-
-		streaming.value = {
-			promptId: messageId,
-			sessionId,
-			retryOfMessageId: null,
 			tools,
+			attachments,
 			agent,
 		};
 
-		if (!sessions.value.byId[sessionId]) {
-			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
-			sessions.value.ids ??= [];
-			sessions.value.ids.unshift(sessionId);
-		}
+		telemetry.track('User sent chat hub message', {
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+		});
 
-		sendMessageApi(
+		await promisifyStreamingApi(sendMessageApi)(
 			rootStore.restApiContext,
 			{
 				model: agent.model,
@@ -584,76 +574,65 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
-
-		telemetry.track('User sent chat hub message', {
-			...flattenModel(agent.model),
-			is_custom: agent.model.provider === 'custom-agent',
-			chat_session_id: sessionId,
-		});
 	}
 
-	function editMessage(
+	async function editMessage(
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
 		content: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		keepAttachmentIndices: number[] = [],
+		newFiles: File[] = [],
 	) {
 		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[editId];
 		const previousMessageId = message?.previousMessageId ?? null;
+		const binaryData = await Promise.all(newFiles.map(convertFileToBinaryData));
+		const payload: ChatHubEditMessageRequest = {
+			model: agent.model,
+			messageId: promptId,
+			message: content,
+			credentials,
+			newAttachments: binaryData.map((attachment) => ({
+				fileName: attachment.fileName ?? 'unnamed file',
+				mimeType: attachment.mimeType,
+				data: attachment.data,
+			})),
+			keepAttachmentIndices,
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		};
 
-		if (message?.type === 'human') {
-			addMessage(sessionId, {
-				id: promptId,
-				sessionId,
-				type: 'human',
-				name: message.name ?? 'User',
-				content,
-				provider: null,
-				model: null,
-				workflowId: null,
-				executionId: null,
-				agentId: null,
-				status: 'success',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				previousMessageId,
-				retryOfMessageId: null,
-				revisionOfMessageId: editId,
-				responses: [],
-				alternatives: [],
-				attachments: message.attachments ?? null,
-			});
-		} else if (message?.type === 'ai') {
+		if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
+		// Combine kept existing attachments with new attachments for optimistic UI
+		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
+			const attachment = message?.attachments[index];
+			if (!attachment) return [];
+			return [
+				{
+					fileName: attachment.fileName ?? 'unnamed file',
+					mimeType: attachment.mimeType ?? 'application/octet-stream',
+					data: '', // Binary data not needed for display (accessed via download URL)
+				},
+			];
+		});
+
 		streaming.value = {
+			promptPreviousMessageId: previousMessageId,
 			promptId,
+			promptText: content,
 			sessionId,
 			agent,
 			retryOfMessageId: null,
+			revisionOfMessageId: editId,
 			tools: [],
+			attachments: [...keptExistingAttachments, ...binaryData],
 		};
-
-		editMessageApi(
-			rootStore.restApiContext,
-			sessionId,
-			editId,
-			{
-				model: agent.model,
-				messageId: promptId,
-				message: content,
-				credentials,
-				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			},
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
 
 		telemetry.track('User edited chat hub message', {
 			...flattenModel(agent.model),
@@ -661,9 +640,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			chat_session_id: sessionId,
 			chat_message_id: editId,
 		});
+
+		await promisifyStreamingApi(editMessageApi)(
+			rootStore.restApiContext,
+			{ sessionId, editId, payload },
+			onStreamMessage,
+			onStreamDone,
+			onStreamError,
+		);
 	}
 
-	function regenerateMessage(
+	async function regenerateMessage(
 		sessionId: ChatSessionId,
 		retryId: ChatMessageId,
 		agent: ChatModelDto,
@@ -671,32 +658,27 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	) {
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
+		const payload: ChatHubRegenerateMessageRequest = {
+			model: agent.model,
+			credentials,
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		};
 
 		if (!previousMessageId) {
 			throw new Error('No previous message to base regeneration on');
 		}
 
 		streaming.value = {
+			promptPreviousMessageId: previousMessageId,
 			promptId: retryId,
+			promptText: '',
 			sessionId,
 			agent,
 			retryOfMessageId: retryId,
+			revisionOfMessageId: null,
 			tools: [],
+			attachments: [],
 		};
-
-		regenerateMessageApi(
-			rootStore.restApiContext,
-			sessionId,
-			retryId,
-			{
-				model: agent.model,
-				credentials,
-				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			},
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
 
 		telemetry.track('User regenerated chat hub message', {
 			...flattenModel(agent.model),
@@ -704,6 +686,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			chat_session_id: sessionId,
 			chat_message_id: retryId,
 		});
+
+		await promisifyStreamingApi(regenerateMessageApi)(
+			rootStore.restApiContext,
+			{ sessionId, retryId, payload },
+			onStreamMessage,
+			onStreamDone,
+			onStreamError,
+		);
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
@@ -811,6 +801,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				inputModalities: [],
 				available: true,
 			},
+			groupName: null,
+			groupIcon: null,
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -872,22 +864,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return agent;
 		}
 
-		return {
-			model,
-			name: fallback?.name ?? '',
-			description: null,
-			icon: fallback?.icon ?? null,
-			createdAt: null,
-			updatedAt: null,
-			// Assume file attachment and tools are supported
-			metadata: {
-				inputModalities: ['text', 'file'],
-				capabilities: {
-					functionCalling: true,
-				},
-				available: true,
-			},
-		};
+		return createFakeAgent(model, fallback);
 	}
 
 	async function fetchAllChatSettings() {

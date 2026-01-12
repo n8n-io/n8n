@@ -91,7 +91,7 @@ watch(
 					type="tertiary"
 					:disabled="disabled"
 				>
-					{{ i18n.baseText('generic.connect') }}
+					{{ i18n.baseText('settings.mcp.connectPopover.triggerLabel') }}
 				</N8nButton>
 			</template>
 			<template #content>

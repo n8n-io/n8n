@@ -28,7 +28,9 @@ export const LOG_SCOPES = [
 	'chat-hub',
 	'breaking-changes',
 	'circuit-breaker',
+	'source-control',
 	'dynamic-credentials',
+	'workflow-history-compaction',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
