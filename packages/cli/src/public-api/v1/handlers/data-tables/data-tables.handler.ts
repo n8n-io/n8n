@@ -87,10 +87,10 @@ export = {
 				// Add projectId to filter
 				const providedFilter = payload.data.filter ?? {};
 				const result = await Container.get(DataTableService).getManyAndCount({
-					...payload.data,
 					skip: offset,
 					take: limit,
 					filter: { ...providedFilter, projectId: project.id },
+					sortBy: payload.data.sortBy,
 				});
 
 				return res.json({

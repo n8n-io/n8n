@@ -88,9 +88,11 @@ export = {
 					dataTableId,
 					projectId,
 					{
-						...payload.data,
 						skip: offset,
 						take: limit,
+						filter: payload.data.filter,
+						sortBy: payload.data.sortBy,
+						search: payload.data.search,
 					},
 				);
 
