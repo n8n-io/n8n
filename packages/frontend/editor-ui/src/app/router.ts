@@ -574,9 +574,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'ai',
 				name: VIEWS.AI_SETTINGS,
-				components: {
-					settingsView: SettingsAIView,
-				},
+				component: SettingsAIView,
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
