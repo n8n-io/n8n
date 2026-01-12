@@ -108,13 +108,16 @@ function extractOptions(
 			if (typeof opt !== 'object' || opt === null || !('name' in opt) || !('value' in opt)) {
 				return false;
 			}
+			// Extract after guards pass - TypeScript now knows these exist
+			const optName = opt.name;
+			const optValue = opt.value;
 			// Resource/operation values are always strings in n8n.
 			// Non-string values (number/boolean) are used for other option types.
-			if (typeof opt.value !== 'string') {
+			if (typeof optValue !== 'string') {
 				logger?.debug('Skipping non-string option value in resource/operation extraction', {
 					propertyName: property.name,
-					optionName: (opt as { name: string }).name,
-					valueType: typeof opt.value,
+					optionName: optName,
+					valueType: typeof optValue,
 				});
 				return false;
 			}
