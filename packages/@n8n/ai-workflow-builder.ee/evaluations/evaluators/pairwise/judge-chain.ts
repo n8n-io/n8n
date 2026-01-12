@@ -2,15 +2,13 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
+import type { EvalCriteria } from './judge-panel';
 import { prompt } from '../../../src/prompts/builder';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
 import { createEvaluatorChain, invokeEvaluatorChain } from '../llm-judge/evaluators/base';
 
 export interface PairwiseEvaluationInput {
-	evalCriteria: {
-		dos: string;
-		donts: string;
-	};
+	evalCriteria: EvalCriteria;
 	workflowJSON: SimpleWorkflow;
 }
 
