@@ -221,8 +221,42 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
-		it('should handle 401 expired token error', async () => {
+		it('should handle 401 expired token error with status property', async () => {
 			const expiredTokenError = Object.assign(new Error('Token expired'), { status: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
+		it('should handle 401 expired token error with statusCode property', async () => {
+			const expiredTokenError = Object.assign(new Error('Token expired'), { statusCode: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
+		it('should handle 401 expired token error from message content', async () => {
+			const expiredTokenError = new Error(
+				'401 Expired token Troubleshooting URL: https://docs.langchain.com',
+			);
 
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
