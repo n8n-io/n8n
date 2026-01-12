@@ -25,6 +25,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -47,6 +48,7 @@ export class WorkflowExecutionService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly executionDataService: ExecutionDataService,
+		private readonly eventService: EventService,
 	) {}
 
 	async runWorkflow(
@@ -267,6 +269,14 @@ export class WorkflowExecutionService {
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
 
+		this.eventService.emit('workflow-executed', {
+			user: { id: user.id },
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'chat',
+		});
+
 		return {
 			executionId,
 		};
@@ -419,7 +429,14 @@ export class WorkflowExecutionService {
 				projectId: runningProject.id,
 			};
 
-			await this.workflowRunner.run(runData);
+			const executionId = await this.workflowRunner.run(runData);
+
+			this.eventService.emit('workflow-executed', {
+				workflowId,
+				workflowName: workflowData.name,
+				executionId,
+				source: 'error',
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(

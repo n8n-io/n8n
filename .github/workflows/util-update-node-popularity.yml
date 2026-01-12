@@ -29,6 +29,9 @@ jobs:
         env:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: 'false' # Don't fail if API is down
 
+      - name: Format generated file
+        run: pnpm format packages/frontend/editor-ui/data/node-popularity.json
+
       - name: Check for changes
         id: check-changes
         run: |

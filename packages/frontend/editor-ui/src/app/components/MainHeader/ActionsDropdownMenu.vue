@@ -53,10 +53,6 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 }>();
 
-const emit = defineEmits<{
-	'workflow:saved': [];
-}>();
-
 const importFileRef = ref<HTMLInputElement | undefined>();
 const toast = useToast();
 const locale = useI18n();
@@ -336,8 +332,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
-				emit('workflow:saved');
-
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
 				void router.push({
 					query: {

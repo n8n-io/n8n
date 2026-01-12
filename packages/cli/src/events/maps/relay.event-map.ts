@@ -130,16 +130,16 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
-		source: 'user-manual' | 'user-retry';
-		// TODO: To be added in future PR
-		// | 'webhook'
-		// | 'trigger'
-		// | 'error'
-		// | 'cli'
-		// | 'integrated'
-		// | 'internal'
-		// | 'evaluation'
-		// | 'chat';
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
 	};
 
 	// #endregion
@@ -555,6 +555,10 @@ export type RelayEventMap = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
 	};
 
 	// #endregion
