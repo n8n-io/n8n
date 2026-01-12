@@ -51,6 +51,8 @@ on:
     secrets:
       CURRENTS_RECORD_KEY:
         required: false
+      CURRENTS_API_KEY:
+        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
@@ -73,6 +75,7 @@ env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
   N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
   N8N_SKIP_LICENSES: 'true'
+  CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
   matrix:
@@ -148,3 +151,16 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
           retention-days: 7
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: ${{ cancelled() }}
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
+          fi
