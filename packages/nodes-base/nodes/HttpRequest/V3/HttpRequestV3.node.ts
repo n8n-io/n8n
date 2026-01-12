@@ -459,7 +459,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 
 				// Change the way data get send in case a different content-type than JSON got selected
-				if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
+				if (sendBody && ['PATCH', 'POST', 'PUT', 'GET', 'PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'].includes(requestMethod)) {
 					if (bodyContentType === 'multipart-form-data') {
 						requestOptions.formData = requestOptions.body as IDataObject;
 						delete requestOptions.body;
