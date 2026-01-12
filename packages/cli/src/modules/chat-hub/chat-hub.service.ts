@@ -725,6 +725,12 @@ export class ChatHubService {
 			...workflow,
 			nodes: workflow.activeVersion.nodes,
 			connections: workflow.activeVersion.connections,
+			// Force saving data on successful executions for custom agent workflows
+			// to be able to read the results after execution.
+			settings: {
+				...workflow.settings,
+				saveDataSuccessExecution: 'all',
+			},
 		};
 
 		return {

@@ -101,7 +101,6 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
-				saveDataSuccessExecution: 'all',
 			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
@@ -160,6 +159,8 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				// Ensure chat workflows save data on successful executions regardless of instance settings
+				// This is done to ensure generated title can be read after execution.
 				saveDataSuccessExecution: 'all',
 			};
 
