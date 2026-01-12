@@ -1,3 +1,5 @@
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { access, mkdir } from 'fs/promises';
 import type {
 	IExecuteFunctions,
@@ -23,11 +25,11 @@ import {
 	commitFields,
 	logFields,
 	pushFields,
+	reflogFields,
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { Container } from '@n8n/di';
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { validateGitReference } from './GenericFunctions';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -145,6 +147,12 @@ export class Git implements INodeType {
 						action: 'Push tags to remote repository',
 					},
 					{
+						name: 'Reflog',
+						value: 'reflog',
+						description: 'Return reference log',
+						action: 'Return reference log',
+					},
+					{
 						name: 'Status',
 						value: 'status',
 						description: 'Return status of current repository',
@@ -206,6 +214,7 @@ export class Git implements INodeType {
 			...commitFields,
 			...logFields,
 			...pushFields,
+			...reflogFields,
 			...switchBranchFields,
 			...tagFields,
 			// ...userSetupFields,
@@ -543,6 +552,57 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
+				} else if (operation === 'reflog') {
+					// ----------------------------------
+					//         reflog
+					// ----------------------------------
+
+					const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
+
+					let reference = 'HEAD';
+					if (options.reference !== undefined && options.reference !== '') {
+						assertParamIsString('reference', options.reference, this.getNode());
+						validateGitReference(reference, this.getNode());
+
+						reference = options.reference;
+					}
+
+					const reflogResult = await git.raw(['reflog', reference]);
+
+					const reflogEntries = reflogResult
+						.trim()
+						.split('\n')
+						.filter((line) => line.length > 0)
+						.map((line) => {
+							// reflog format: hash ref@{number}: action: message
+							const match = line.match(/^(\S+)\s+(.+?):\s+(.+?):\s+(.+)$/);
+							if (match) {
+								return {
+									hash: match[1],
+									ref: match[2],
+									action: match[3],
+									message: match[4],
+									raw: line,
+								};
+							}
+							return {
+								raw: line,
+							};
+						});
+
+					const entries = returnAll
+						? reflogEntries
+						: reflogEntries.slice(0, this.getNodeParameter('limit', itemIndex, 100));
+
+					returnItems.push.apply(
+						returnItems,
+						this.helpers.returnJsonArray(entries).map((item) => {
+							return {
+								...item,
+								pairedItem: { item: itemIndex },
+							};
+						}),
+					);
 				} else if (operation === 'listConfig') {
 					// ----------------------------------
 					//         listConfig

@@ -603,15 +603,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'placeholder';
 		  }
 		| {
+				source: 'build_with_ai';
+				task: 'placeholder';
+		  }
+		| {
 				source: 'credential';
 				task: 'credentials';
 		  }
 	)) {
+		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
+			instance_id: rootStore.instanceId,
 			workflow_id: workflowsStore.workflowId,
+			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,

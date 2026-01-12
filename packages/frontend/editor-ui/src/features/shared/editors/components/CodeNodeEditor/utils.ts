@@ -4,7 +4,8 @@ import type { RangeNode } from './types';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import type { Node } from 'estree';
 import type { CodeNodeLanguageOption } from './CodeNodeEditor.vue';
-import type { CodeExecutionMode } from 'n8n-workflow';
+import type { CodeExecutionMode, WorkflowSettingsBinaryMode } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 
 export function walk<T extends RangeNode>(
 	node: Node | esprima.Program,
@@ -84,8 +85,13 @@ const pyodideInsert = (value: string, mode: CodeExecutionMode): string => {
 		.replace(/\$\((.*)\)\.item/, mode === 'runOnceForAllItems' ? '_($1).first()' : '_($1).item');
 };
 
-const jsInsertForAllItems = (value: string): string => {
-	return value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()');
+const jsInsertForAllItems = (value: string, binaryMode?: WorkflowSettingsBinaryMode): string => {
+	const isCombinedBinaryMode = binaryMode === BINARY_MODE_COMBINED;
+
+	const jsonTarget = isCombinedBinaryMode ? '$item' : '$json';
+	const jsonReplacement = isCombinedBinaryMode ? '$input.first()' : '$input.first().json';
+
+	return value.replace(jsonTarget, jsonReplacement).replace(/\$\((.*)\)\.item/, '$($1).first()');
 };
 
 const isPyodide = (language: CodeNodeLanguageOption) => language === 'python';
@@ -95,10 +101,11 @@ export const valueToInsert = (
 	value: string,
 	language: CodeNodeLanguageOption,
 	mode: CodeExecutionMode,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): string => {
 	if (isPython(language)) return pythonInsert(value, mode);
 	if (isPyodide(language)) return pyodideInsert(value, mode);
-	if (mode === 'runOnceForAllItems') return jsInsertForAllItems(value);
+	if (mode === 'runOnceForAllItems') return jsInsertForAllItems(value, binaryMode);
 
 	return value;
 };
