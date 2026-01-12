@@ -1,7 +1,12 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Example } from 'langsmith/schemas';
 
-import type { EvalCriteria } from './judge-panel';
+// ============================================================================
+// Evaluation Criteria
+// ============================================================================
+
+/** Evaluation criteria requiring at least one of dos or donts */
+export type EvalCriteria = { dos: string; donts?: string } | { dos?: string; donts: string };
 
 // ============================================================================
 // Dataset Input/Output Types
@@ -48,7 +53,6 @@ export function isPairwiseExample(example: Example): example is PairwiseExample 
 
 	return (
 		typeof inputs.prompt === 'string' &&
-		typeof evals.dos === 'string' &&
-		typeof evals.donts === 'string'
+		(typeof evals.dos === 'string' || typeof evals.donts === 'string')
 	);
 }

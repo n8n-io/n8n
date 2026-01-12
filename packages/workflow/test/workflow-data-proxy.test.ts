@@ -12,7 +12,9 @@ import {
 	type IRun,
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
+	type WorkflowSettingsBinaryMode,
 } from '../src/interfaces';
+import { BINARY_MODE_COMBINED } from '../src/constants';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
@@ -75,6 +77,7 @@ const getProxyFromFixture = (
 			active: false,
 			nodeTypes: Helpers.NodeTypes(),
 			pinData,
+			settings: workflow.settings,
 		}),
 		run?.data ?? null,
 		opts?.runIndex ?? 0,
@@ -128,6 +131,325 @@ describe('WorkflowDataProxy', () => {
 		test('all(1) should use the output the node is connected to by default', () => {
 			expect(proxy.$('If').all(1)[0].json.code).toEqual(1);
 			expect(proxy.$('If').all(1)[1].json.code).toEqual(2);
+		});
+	});
+
+	describe('Binary Mode: Combined', () => {
+		const createWorkflowWithBinaryData = (
+			binaryMode?: WorkflowSettingsBinaryMode,
+		): IWorkflowBase => ({
+			id: '123',
+			name: 'test workflow with binary',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'ProcessData',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 1,
+					position: [300, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'ProcessData', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			settings: binaryMode ? { binaryMode } : undefined,
+		});
+
+		const createRunWithBinaryData = (): IRun => ({
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Start: [
+							{
+								startTime: 123,
+								executionTime: 10,
+								executionIndex: 0,
+								source: [null],
+								data: {
+									main: [
+										[
+											{
+												json: { id: 1, name: 'Item 1' },
+												binary: {
+													file: {
+														data: Buffer.from('test file content').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test.txt',
+														fileSize: '18B',
+													},
+												},
+												pairedItem: { item: 0 },
+											},
+											{
+												json: { id: 2, name: 'Item 2' },
+												binary: {
+													file: {
+														data: Buffer.from('second file').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test2.txt',
+														fileSize: '11B',
+													},
+												},
+												pairedItem: { item: 1 },
+											},
+										],
+									],
+								},
+							},
+						],
+						ProcessData: [
+							{
+								startTime: 150,
+								executionTime: 10,
+								executionIndex: 0,
+								source: [{ previousNode: 'Start' }],
+								data: {
+									main: [
+										[
+											{
+												json: { id: 1, name: 'Item 1' },
+												binary: {
+													file: {
+														data: Buffer.from('test file content').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test.txt',
+														fileSize: '18B',
+													},
+												},
+												pairedItem: { item: 0 },
+											},
+											{
+												json: { id: 2, name: 'Item 2' },
+												binary: {
+													file: {
+														data: Buffer.from('second file').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test2.txt',
+														fileSize: '11B',
+													},
+												},
+												pairedItem: { item: 1 },
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+		});
+
+		describe('Default behavior (no binaryMode or separate mode)', () => {
+			const workflow = createWorkflowWithBinaryData();
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toBeDefined();
+				expect(item?.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item?.binary).toBeDefined();
+				expect(item?.binary?.file).toBeDefined();
+			});
+
+			test('$input.all() should return full items with json and binary', () => {
+				const items = proxyAtProcessData.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0].json).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].json).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[1].binary).toBeDefined();
+			});
+
+			test('$("Start").first() should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").last() should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$('Start').last();
+				expect(item.json).toEqual({ id: 2, name: 'Item 2' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").all() should return full items with json and binary', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].binary).toBeDefined();
+			});
+
+			test('$json should return json data', () => {
+				expect(proxyAtProcessData.$json).toEqual({ id: 1, name: 'Item 1' });
+			});
+
+			test('$binary should return binary data', () => {
+				expect(proxyAtProcessData.$binary).toBeDefined();
+				expect(proxyAtProcessData.$binary?.file).toBeDefined();
+				expect(proxyAtProcessData.$binary?.file?.fileName).toBe('test.txt');
+			});
+		});
+
+		describe('Combined mode (binaryMode: "combined")', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return only json data (no binary)', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+				expect(item).not.toHaveProperty('pairedItem');
+			});
+
+			test('$input.all() should return only json data for all items', () => {
+				const items = proxyAtProcessData.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[0]).not.toHaveProperty('binary');
+				expect(items[1]).not.toHaveProperty('binary');
+			});
+
+			test('$input.first() should return only json data', () => {
+				const item = proxyAtProcessData.$input.first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$input.last() should return only json data', () => {
+				const item = proxyAtProcessData.$input.last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").first() should return only json data', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").last() should return only json data', () => {
+				const item = proxyAtProcessData.$('Start').last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").all() should return only json data for all items', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[0]).not.toHaveProperty('binary');
+				expect(items[1]).not.toHaveProperty('binary');
+			});
+
+			test('$item should return json data', () => {
+				expect(proxyAtProcessData.$item).toEqual({ id: 1, name: 'Item 1' });
+			});
+		});
+
+		describe('Combined mode with $() resolveFullItem parameter', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$("Start", true).first() should return full item with binary', () => {
+				const item = proxyAtProcessData.$('Start', true).first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start", true).last() should return full item with binary', () => {
+				const item = proxyAtProcessData.$('Start', true).last();
+				expect(item.json).toEqual({ id: 2, name: 'Item 2' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start", true).all() should return full items with binary', () => {
+				const items = proxyAtProcessData.$('Start', true).all();
+				expect(items.length).toBe(2);
+				expect(items[0].json).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].json).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[1].binary).toBeDefined();
+			});
+		});
+
+		describe('Combined mode with $input accessors', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxy = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return only json in combined mode', () => {
+				const item = proxy.$input.item;
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$input.all() should return only json in combined mode', () => {
+				const items = proxy.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+			});
+
+			test('$input.first() should return only json in combined mode', () => {
+				const item = proxy.$input.first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+			});
+
+			test('$input.last() should return only json in combined mode', () => {
+				const item = proxy.$input.last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+			});
+		});
+
+		describe('Backward compatibility: separate mode behaves like default', () => {
+			const workflow = createWorkflowWithBinaryData('separate');
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return full item with binary in separate mode', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toBeDefined();
+				expect(item?.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item?.binary).toBeDefined();
+			});
+
+			test('$("Start").first() should return full item with binary in separate mode', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").all() should return full items with binary in separate mode', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].binary).toBeDefined();
+			});
 		});
 	});
 
