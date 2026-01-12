@@ -47,9 +47,10 @@ function filterByEvalField(
 	const fieldLabel = field === 'dos' ? 'do' : "don't";
 
 	log.warn(`🔍 Filtering by ${fieldLabel} containing: "${search}"`);
-	const filtered = examples.filter((e) =>
-		e.inputs.evals[field].toLowerCase().includes(searchLower),
-	);
+	const filtered = examples.filter((e) => {
+		const fieldValue = e.inputs.evals[field];
+		return fieldValue?.toLowerCase().includes(searchLower) ?? false;
+	});
 
 	if (filtered.length === 0) {
 		throw new Error(`No examples found with ${fieldLabel} containing: "${search}"`);
