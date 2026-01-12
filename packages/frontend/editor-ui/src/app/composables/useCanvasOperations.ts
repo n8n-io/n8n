@@ -2314,7 +2314,7 @@ export function useCanvasOperations() {
 
 						if (node.parameters.path) {
 							node.parameters.path = node.webhookId;
-						} else if ((node.parameters.options as IDataObject).path) {
+						} else if ((node.parameters.options as IDataObject)?.path) {
 							(node.parameters.options as IDataObject).path = node.webhookId;
 						}
 					}
