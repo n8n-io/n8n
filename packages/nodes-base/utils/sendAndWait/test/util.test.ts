@@ -29,8 +29,18 @@ describe('Send and Wait utils tests', () => {
 					default: '',
 				},
 			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
 
-			const result = getSendAndWaitProperties(targetProperties);
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 
 			expect(result).toEqual(
 				expect.arrayContaining([
