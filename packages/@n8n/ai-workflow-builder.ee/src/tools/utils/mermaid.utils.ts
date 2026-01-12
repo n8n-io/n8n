@@ -867,7 +867,7 @@ class MermaidBuilder {
 				nodeNames.includes(nodeName) && !nestedStickyIds.has(sticky.node.id ?? ''),
 		);
 		if (stickySubgraph) {
-			return `sticky:${stickySubgraph.sticky.node.id ?? stickySubgraph.sticky.content}`;
+			return `sticky:${stickySubgraph.sticky.node.id}`;
 		}
 
 		// Check if in an agent subgraph
@@ -876,7 +876,7 @@ class MermaidBuilder {
 				agentNode.name === nodeName || aiConnectedNodeNames.includes(nodeName),
 		);
 		if (agentSubgraph) {
-			return `agent:${agentSubgraph.agentNode.name}`;
+			return `agent:${agentSubgraph.agentNode.id}`;
 		}
 
 		return 'none';
