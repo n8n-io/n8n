@@ -28,7 +28,6 @@ export class TranslationResponse extends SupplyResponseBase {
 			...super.asLogMetadata(),
 			from: this.from,
 			to: this.to,
-			segmentsCount: this.segments.length,
 			translationCount: this.translations.length,
 		};
 	}
@@ -38,7 +37,6 @@ export class TranslationResponse extends SupplyResponseBase {
 			...super.asDataObject(),
 			from: this.from,
 			to: this.to,
-			segments: this.segments,
 			translation: this.translations,
 		};
 	}
