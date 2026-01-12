@@ -2007,6 +2007,7 @@ export type ThemeIconColor =
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
+	| 'file-blue'
 	| 'orange'
 	| 'orange-red'
 	| 'pink-red'
