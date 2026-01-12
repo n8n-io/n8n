@@ -9,14 +9,15 @@ import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mf
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
+import { CacheService } from '@/services/cache/cache.service';
 
+export const MFA_CACHE_KEY = 'mfa:enforce';
 @Service()
 export class MfaService {
-	private enforceMFAValue: boolean = false;
-
 	constructor(
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
+		private cacheService: CacheService,
 		private license: LicenseState,
 		public totp: TOTPService,
 		private cipher: Cipher,
@@ -35,10 +36,15 @@ export class MfaService {
 		return Array.from(Array(n)).map(() => uuid());
 	}
 
+	private async cacheMfaSettings(value: boolean) {
+		if (value) return await this.cacheService.set(MFA_CACHE_KEY, value);
+		await this.cacheService.delete(MFA_CACHE_KEY);
+	}
+
 	private async loadMFASettings() {
 		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 		if (value) {
-			this.enforceMFAValue = value.value === 'true';
+			await this.cacheMfaSettings(value.value === 'true');
 		}
 	}
 
@@ -54,11 +60,14 @@ export class MfaService {
 			},
 			['key'],
 		);
-		this.enforceMFAValue = value;
+		await this.cacheMfaSettings(value);
 	}
 
-	isMFAEnforced() {
-		return this.license.isMFAEnforcementLicensed() && this.enforceMFAValue;
+	async isMFAEnforced() {
+		return (
+			this.license.isMFAEnforcementLicensed() &&
+			(await this.cacheService.get(MFA_CACHE_KEY)) === true
+		);
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {

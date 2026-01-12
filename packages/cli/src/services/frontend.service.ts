@@ -500,7 +500,7 @@ export class FrontendService {
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
-		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
