@@ -10,8 +10,11 @@ import type {
 import { N8N_VERSION } from '@/constants';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
-import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import {
+	MessageEventBus,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,

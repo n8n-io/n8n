@@ -8,19 +8,21 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
-import { eventNamesAll } from './event-message-classes';
-import { MessageEventBus } from './message-event-bus/message-event-bus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
-} from './message-event-bus-destination/message-event-bus-destination-sentry.ee';
+} from './destinations/message-event-bus-destination-sentry.ee';
+import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
-} from './message-event-bus-destination/message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './message-event-bus-destination/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './message-event-bus-destination/message-event-bus-destination.ee';
+} from './destinations/message-event-bus-destination-syslog.ee';
+import {
+	MessageEventBus,
+	MessageEventBusDestination,
+} from '@/eventbus/message-event-bus/message-event-bus';
+import { eventNamesAll } from '@/eventbus/event-message-classes';
+import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 const isWithIdString = (candidate: unknown): candidate is { id: string } => {
 	const o = candidate as { id: string };
@@ -46,7 +48,10 @@ const isMessageEventBusDestinationOptions = (
 
 @RestController('/eventbus')
 export class EventBusController {
-	constructor(private readonly eventBus: MessageEventBus) {}
+	constructor(
+		private readonly eventBus: MessageEventBus,
+		private readonly destinationService: LogStreamingDestinationService,
+	) {}
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
@@ -58,9 +63,9 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
-			return await this.eventBus.findDestination(req.query.id);
+			return await this.destinationService.findDestination(req.query.id);
 		} else {
-			return await this.eventBus.findDestination();
+			return await this.destinationService.findDestination();
 		}
 	}
 
@@ -73,21 +78,21 @@ export class EventBusController {
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
 					if (isMessageEventBusDestinationSentryOptions(req.body)) {
-						result = await this.eventBus.addDestination(
+						result = await this.destinationService.addDestination(
 							new MessageEventBusDestinationSentry(this.eventBus, req.body),
 						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.webhook:
 					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
-						result = await this.eventBus.addDestination(
+						result = await this.destinationService.addDestination(
 							new MessageEventBusDestinationWebhook(this.eventBus, req.body),
 						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.syslog:
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
-						result = await this.eventBus.addDestination(
+						result = await this.destinationService.addDestination(
 							new MessageEventBusDestinationSyslog(this.eventBus, req.body),
 						);
 					}
@@ -98,7 +103,6 @@ export class EventBusController {
 					);
 			}
 			if (result) {
-				await result.saveToDb();
 				return {
 					...result.serialize(),
 					eventBusInstance: undefined,
@@ -114,7 +118,7 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
-			return await this.eventBus.testDestination(req.query.id);
+			return await this.destinationService.testDestination(req.query.id);
 		}
 		return false;
 	}
@@ -124,8 +128,7 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
-			await this.eventBus.removeDestination(req.query.id);
-			return await this.eventBus.deleteDestination(req.query.id);
+			await this.destinationService.removeDestination(req.query.id);
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}

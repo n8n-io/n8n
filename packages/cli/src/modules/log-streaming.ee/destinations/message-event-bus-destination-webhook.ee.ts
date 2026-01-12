@@ -18,14 +18,17 @@ import type {
 import { CredentialsHelper } from '@/credentials-helper';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
-import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
 	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 } from '@n8n/constants';
+import {
+	MessageEventBus,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
