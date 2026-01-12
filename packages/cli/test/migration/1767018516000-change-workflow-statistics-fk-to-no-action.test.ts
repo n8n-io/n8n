@@ -202,17 +202,15 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		]);
 	}
 
-	/**
-	 * Helper function to cleanup orphaned statistics (workflowId = NULL)
-	 */
-	async function cleanupOrphanedStatistics(context: TestMigrationContext): Promise<void> {
-		const tableName = context.escape.tableName('workflow_statistics');
-		const workflowIdColumn = context.escape.columnName('workflowId');
+	it('should preserve statistics after workflow deletion (no FK constraint) and CASCADE after rollback', async () => {
+		// Debug: Check schema BEFORE migration
+		let contextBefore = createTestMigrationContext(dataSource);
+		const schemaBefore = await contextBefore.queryRunner.query(
+			`SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'`,
+		);
+		console.log('Schema BEFORE migration:', JSON.stringify(schemaBefore, null, 2));
+		await contextBefore.queryRunner.release();
 
-		await context.queryRunner.query(`DELETE FROM ${tableName} WHERE ${workflowIdColumn} IS NULL`);
-	}
-
-	it('should use SET NULL after migration and CASCADE after rollback', async () => {
 		// Run the actual migration
 		await runSingleMigration(MIGRATION_NAME);
 
@@ -220,38 +218,49 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		dataSource = Container.get(DataSource);
 		let context = createTestMigrationContext(dataSource);
 
-		// Test SET NULL behavior
-		const setNullWorkflowId = nanoid();
+		// Debug: Check if FK constraint exists
+		const schema = await context.queryRunner.query(
+			`SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'`,
+		);
+		console.log('Schema AFTER migration:', JSON.stringify(schema, null, 2));
+
+		// Test that statistics are preserved when workflow is deleted (no FK constraint behavior)
+		const testWorkflowId = nanoid();
 		const uniqueStatName = `test_stat_${nanoid()}`;
 		const testWorkflowName = 'My Test Workflow';
 
-		await insertTestWorkflow(context, setNullWorkflowId, testWorkflowName);
+		await insertTestWorkflow(context, testWorkflowId, testWorkflowName);
 		await insertWorkflowStatisticsWithName(
 			context,
-			setNullWorkflowId,
+			testWorkflowId,
 			uniqueStatName,
 			3,
 			testWorkflowName,
 		);
 
 		// Verify statistics exist
-		const beforeDelete = await getWorkflowStatistics(context, setNullWorkflowId);
+		const beforeDelete = await getWorkflowStatistics(context, testWorkflowId);
 		expect(beforeDelete).toHaveLength(1);
-		expect(beforeDelete[0].workflowId).toBe(setNullWorkflowId);
+		expect(beforeDelete[0].workflowId).toBe(testWorkflowId);
 
-		// Delete workflow - should SET NULL
-		await deleteWorkflow(context, setNullWorkflowId);
+		// Delete workflow - statistics should remain unchanged (no FK constraint)
+		await deleteWorkflow(context, testWorkflowId);
 
-		// Verify statistics still exist but with NULL workflowId
-		// workflowName should be preserved even after workflow is deleted
+		// Verify statistics still exist with the same workflowId (orphaned reference)
+		// workflowName should be preserved for identifying the deleted workflow
 		const afterDelete = await getWorkflowStatisticsByName(context, uniqueStatName);
 		expect(afterDelete).toHaveLength(1);
-		expect(afterDelete[0].workflowId).toBeNull();
+		expect(afterDelete[0].workflowId).toBe(testWorkflowId); // workflowId is unchanged
 		expect(afterDelete[0].count).toBe(3);
 		expect(afterDelete[0].workflowName).toBe(testWorkflowName);
 
-		// Cleanup orphaned statistics before rollback
-		await cleanupOrphanedStatistics(context);
+		// Cleanup statistics for this test
+		const statsTable = context.escape.tableName('workflow_statistics');
+		const nameCol = context.escape.columnName('name');
+		const placeholder = getParamPlaceholder(context);
+		await context.queryRunner.query(`DELETE FROM ${statsTable} WHERE ${nameCol} = ${placeholder}`, [
+			uniqueStatName,
+		]);
 		await context.queryRunner.release();
 
 		// Rollback the migration
@@ -281,7 +290,7 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		await context.queryRunner.release();
 	});
 
-	it('should allow multiple orphaned statistics with same name after deleting multiple workflows', async () => {
+	it('should preserve statistics with different workflowIds after deleting multiple workflows', async () => {
 		// Run the actual migration
 		await runSingleMigration(MIGRATION_NAME);
 
@@ -324,34 +333,44 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 			workflowName3,
 		);
 
-		// Delete all workflows - should SET NULL for all, creating multiple (NULL, 'manual_success') rows
+		// Delete all workflows - statistics should remain unchanged (no FK constraint)
 		await deleteWorkflow(context, workflowId1);
 		await deleteWorkflow(context, workflowId2);
 		await deleteWorkflow(context, workflowId3);
 
-		// Verify all statistics still exist with NULL workflowId
-		// This tests that the unique index allows multiple NULL values (SQL standard behavior)
+		// Verify all statistics still exist with their original workflowId values (orphaned references)
 		const orphanedStats = await getWorkflowStatisticsByName(context, 'manual_success');
 		expect(orphanedStats.length).toBeGreaterThanOrEqual(3);
 
-		// All should have NULL workflowId
-		const nullStats = orphanedStats.filter((s) => s.workflowId === null);
-		expect(nullStats.length).toBeGreaterThanOrEqual(3);
+		// Find our specific test statistics by workflowId
+		const stat1 = orphanedStats.find((s) => s.workflowId === workflowId1);
+		const stat2 = orphanedStats.find((s) => s.workflowId === workflowId2);
+		const stat3 = orphanedStats.find((s) => s.workflowId === workflowId3);
 
-		// Verify the counts and workflowNames are preserved
-		const counts = nullStats.map((s) => s.count).sort((a, b) => a - b);
-		expect(counts).toContain(10);
-		expect(counts).toContain(20);
-		expect(counts).toContain(30);
+		// Verify workflowIds are preserved (not set to NULL)
+		expect(stat1).toBeDefined();
+		expect(stat1?.workflowId).toBe(workflowId1);
+		expect(stat1?.count).toBe(10);
+		expect(stat1?.workflowName).toBe(workflowName1);
 
-		// Verify workflowNames are preserved for each orphaned statistic
-		const workflowNames = nullStats.map((s) => s.workflowName);
-		expect(workflowNames).toContain(workflowName1);
-		expect(workflowNames).toContain(workflowName2);
-		expect(workflowNames).toContain(workflowName3);
+		expect(stat2).toBeDefined();
+		expect(stat2?.workflowId).toBe(workflowId2);
+		expect(stat2?.count).toBe(20);
+		expect(stat2?.workflowName).toBe(workflowName2);
 
-		// Cleanup
-		await cleanupOrphanedStatistics(context);
+		expect(stat3).toBeDefined();
+		expect(stat3?.workflowId).toBe(workflowId3);
+		expect(stat3?.count).toBe(30);
+		expect(stat3?.workflowName).toBe(workflowName3);
+
+		// Cleanup - delete our test statistics
+		const statsTable = context.escape.tableName('workflow_statistics');
+		const workflowIdCol = context.escape.columnName('workflowId');
+		const placeholder = getParamPlaceholder(context);
+		await context.queryRunner.query(
+			`DELETE FROM ${statsTable} WHERE ${workflowIdCol} IN (${placeholder}, ${getParamPlaceholder(context, 2)}, ${getParamPlaceholder(context, 3)})`,
+			[workflowId1, workflowId2, workflowId3],
+		);
 		await context.queryRunner.release();
 
 		// Rollback for next test

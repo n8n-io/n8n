@@ -4,12 +4,16 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * SQLite does not support ALTER TABLE to modify foreign key constraints or primary keys.
  * We need to recreate the table with the new structure:
  * - Add auto-incrementing id as primary key
- * - Make workflowId nullable for SET NULL to work
+ * - Make workflowId nullable
+ * - Add workflowName to preserve workflow identity after deletion
+ * - Remove foreign key constraint to allow keeping statistics for deleted workflows
  * - Add unique index on (workflowId, name)
  */
 export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements ReversibleMigration {
+	transaction = false as const; // Disable FK checks for table recreation
+
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		// Create new table with id primary key, workflowName column, and SET NULL foreign key
+		// Create new table with id primary key, workflowName column, and no foreign key constraint
 		await queryRunner.query(`
 			CREATE TABLE "${tablePrefix}TMP_workflow_statistics" (
 				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,8 +22,7 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 				"name" VARCHAR(128) NOT NULL,
 				"workflowId" VARCHAR(36),
 				"workflowName" VARCHAR(128),
-				"rootCount" INTEGER DEFAULT 0,
-				FOREIGN KEY("workflowId") REFERENCES "${tablePrefix}workflow_entity"("id") ON DELETE SET NULL
+				"rootCount" INTEGER DEFAULT 0
 			)
 		`);
 

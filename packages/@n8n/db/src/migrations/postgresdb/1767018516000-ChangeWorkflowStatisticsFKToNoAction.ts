@@ -1,5 +1,10 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
+/**
+ * Removes the foreign key constraint from workflow_statistics to allow keeping
+ * statistics for deleted workflows. The workflowId becomes an orphaned reference,
+ * and workflowName preserves the workflow identity.
+ */
 export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Step 1: Drop existing foreign key constraint and primary key
@@ -43,12 +48,7 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 			`CREATE UNIQUE INDEX "IDX_${tablePrefix}workflow_statistics_workflow_name" ON ${tablePrefix}workflow_statistics ("workflowId", "name")`,
 		);
 
-		// Step 7: Add foreign key with SET NULL (keeps statistics when workflow is deleted)
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics ADD CONSTRAINT "fk_${tablePrefix}workflow_statistics_workflow_id" FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE SET NULL`,
-		);
-
-		// Step 8: Change count and rootCount columns to BIGINT for large cumulative values
+		// Step 7: Change count and rootCount columns to BIGINT for large cumulative values
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics ALTER COLUMN "count" TYPE BIGINT`,
 		);
@@ -66,40 +66,35 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 			`ALTER TABLE ${tablePrefix}workflow_statistics ALTER COLUMN "rootCount" TYPE INTEGER`,
 		);
 
-		// Step 2: Drop the SET NULL foreign key constraint
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics DROP CONSTRAINT IF EXISTS "fk_${tablePrefix}workflow_statistics_workflow_id"`,
-		);
-
-		// Step 3: Drop the unique index
+		// Step 2: Drop the unique index
 		await queryRunner.query(
 			`DROP INDEX IF EXISTS "IDX_${tablePrefix}workflow_statistics_workflow_name"`,
 		);
 
-		// Step 4: Delete any orphaned statistics rows (workflowId IS NULL)
+		// Step 3: Delete any orphaned statistics rows (workflowId IS NULL)
 		await queryRunner.query(
 			`DELETE FROM ${tablePrefix}workflow_statistics WHERE "workflowId" IS NULL`,
 		);
 
-		// Step 5: Drop the workflowName column
+		// Step 4: Drop the workflowName column
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics DROP COLUMN "workflowName"`,
 		);
 
-		// Step 6: Restore NOT NULL constraint on workflowId
+		// Step 5: Restore NOT NULL constraint on workflowId
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics ALTER COLUMN "workflowId" SET NOT NULL`,
 		);
 
-		// Step 7: Drop the id column
+		// Step 6: Drop the id column
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_statistics DROP COLUMN "id"`);
 
-		// Step 8: Restore composite primary key
+		// Step 7: Restore composite primary key
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics ADD PRIMARY KEY ("workflowId", "name")`,
 		);
 
-		// Step 9: Restore the CASCADE foreign key constraint
+		// Step 8: Restore the CASCADE foreign key constraint
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics ADD CONSTRAINT "fk_${tablePrefix}workflow_statistics_workflow_id" FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE`,
 		);

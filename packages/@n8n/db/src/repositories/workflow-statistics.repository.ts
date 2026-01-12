@@ -1,14 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import {
-	DataSource,
-	IsNull,
-	MoreThanOrEqual,
-	Not,
-	QueryFailedError,
-	Repository,
-} from '@n8n/typeorm';
+import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 
 import { WorkflowStatistics } from '../entities';
 import type { User } from '../entities';
@@ -131,18 +124,20 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
-		return await this.count({
-			where: {
-				workflow: {
-					shared: {
-						role: 'workflow:owner',
-						project: { projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } } },
-					},
-					activeVersionId: Not(IsNull()),
-				},
-				name: StatisticsNames.productionSuccess,
-				count: MoreThanOrEqual(5),
-			},
-		});
+		const result = await this.createQueryBuilder('ws')
+			.select('COUNT(DISTINCT ws.workflowId)', 'count')
+			.innerJoin('workflow_entity', 'we', 'ws.workflowId = we.id')
+			.innerJoin('shared_workflow', 'sw', 'we.id = sw.workflowId')
+			.innerJoin('project_relation', 'pr', 'sw.projectId = pr.projectId')
+			.innerJoin('role', 'r', 'pr.roleId = r.id')
+			.where('sw.role = :role', { role: 'workflow:owner' })
+			.andWhere('pr.userId = :userId', { userId })
+			.andWhere('r.slug = :slug', { slug: PROJECT_OWNER_ROLE_SLUG })
+			.andWhere('we.activeVersionId IS NOT NULL')
+			.andWhere('ws.name = :name', { name: StatisticsNames.productionSuccess })
+			.andWhere('ws.count >= :minCount', { minCount: 5 })
+			.getRawOne<{ count: string }>();
+
+		return Number(result?.count ?? 0);
 	}
 }
