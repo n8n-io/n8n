@@ -62,6 +62,7 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
+		['N8N_RUNNERS_ENABLED', '1', true],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
@@ -71,7 +72,6 @@ describe('DeprecationService', () => {
 
 		beforeEach(() => {
 			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
 				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
 		});
