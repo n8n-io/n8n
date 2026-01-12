@@ -95,16 +95,6 @@ describe('EditImage Node', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 	let mockNode: INode;
 
-	const createTestImageBuffer = () => {
-		return Buffer.from([
-			0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
-			0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
-			0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00,
-			0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
-			0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
-		]);
-	};
-
 	beforeEach(() => {
 		jest.clearAllMocks();
 		editImageNode = new EditImage();
@@ -124,7 +114,7 @@ describe('EditImage Node', () => {
 
 	describe('dataPropertyName parameter', () => {
 		it('should handle IBinaryData type', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -165,7 +155,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle string type for custom property', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -202,7 +192,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle string type for default "data" property', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -260,7 +250,7 @@ describe('EditImage Node', () => {
 
 	describe('destinationKey option', () => {
 		it('should use destinationKey for output property', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: { id: 1 },
@@ -305,7 +295,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should default output to input property name when destinationKey not specified', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: { id: 1 },
@@ -347,7 +337,7 @@ describe('EditImage Node', () => {
 
 	describe('data preservation', () => {
 		it('should preserve existing binary data when processing', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: { id: 1 },
@@ -398,7 +388,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should preserve JSON data when processing binary', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: { id: 1, name: 'test', metadata: { processed: false } },
@@ -461,7 +451,7 @@ describe('EditImage Node', () => {
 				return {};
 			});
 
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -479,7 +469,7 @@ describe('EditImage Node', () => {
 
 	describe('information operation', () => {
 		it('should return image information', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -515,7 +505,7 @@ describe('EditImage Node', () => {
 
 	describe('multiple items', () => {
 		it('should process multiple items with different binary property names', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: { id: 1 },
@@ -574,7 +564,7 @@ describe('EditImage Node', () => {
 
 	describe('format and quality options', () => {
 		it('should apply format option to output binary data', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -620,7 +610,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should apply custom fileName option', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -727,7 +717,7 @@ describe('EditImage Node', () => {
 
 	describe('operations with IBinaryData', () => {
 		it('should handle information operation with IBinaryData', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -762,7 +752,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle crop operation with IBinaryData', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -806,7 +796,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle text operation with IBinaryData', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -852,7 +842,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should use destinationKey with IBinaryData', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -893,7 +883,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should read from both main and composite binary properties', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -942,7 +932,7 @@ describe('EditImage Node', () => {
 
 	describe('all operations with string and IBinaryData', () => {
 		it('should handle border operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -983,7 +973,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle border operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1023,7 +1013,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle draw operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -1068,7 +1058,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle draw operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1111,7 +1101,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle rotate operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -1151,7 +1141,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle rotate operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1190,7 +1180,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle resize operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -1231,7 +1221,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle resize operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1271,7 +1261,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle shear operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -1311,7 +1301,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle shear operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1350,7 +1340,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle transparent operation with string dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
@@ -1389,7 +1379,7 @@ describe('EditImage Node', () => {
 		});
 
 		it('should handle transparent operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const binaryData = {
 				data: testBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -1429,7 +1419,7 @@ describe('EditImage Node', () => {
 
 	describe('multiStep operation', () => {
 		it('should process multiple operations in sequence', async () => {
-			const testBuffer = createTestImageBuffer();
+			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
 				{
 					json: {},
