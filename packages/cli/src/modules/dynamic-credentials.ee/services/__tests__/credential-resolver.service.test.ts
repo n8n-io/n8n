@@ -10,7 +10,6 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
-import type { DynamicCredentialEntryRepository } from '../../database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
@@ -20,12 +19,11 @@ describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;
 	let mockLogger: jest.Mocked<Logger>;
 	let mockRepository: jest.Mocked<DynamicCredentialResolverRepository>;
-	let mockEntryRepository: jest.Mocked<DynamicCredentialEntryRepository>;
 	let mockRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
 
-	const mockResolverImplementation: jest.Mocked<ICredentialResolver> = {
+	const mockResolverImplementation = {
 		metadata: {
 			name: 'test.resolver',
 			description: 'A test resolver',
@@ -33,7 +31,8 @@ describe('DynamicCredentialResolverService', () => {
 		getSecret: jest.fn(),
 		setSecret: jest.fn(),
 		validateOptions: jest.fn(),
-	};
+		deleteAllSecrets: jest.fn(),
+	} as jest.Mocked<ICredentialResolver>;
 
 	const createMockEntity = (
 		overrides: Partial<DynamicCredentialResolver> = {},
@@ -75,10 +74,6 @@ describe('DynamicCredentialResolverService', () => {
 			remove: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
 
-		mockEntryRepository = {
-			delete: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialEntryRepository>;
-
 		mockRegistry = {
 			getResolverByTypename: jest.fn(),
 		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
@@ -95,7 +90,6 @@ describe('DynamicCredentialResolverService', () => {
 		service = new DynamicCredentialResolverService(
 			mockLogger,
 			mockRepository,
-			mockEntryRepository,
 			mockRegistry,
 			mockCipher,
 			mockExpressionService,
@@ -434,6 +428,111 @@ describe('DynamicCredentialResolverService', () => {
 
 			// Verify expression service was called with canUseExternalSecrets=false
 			expect(mockExpressionService.resolve).toHaveBeenCalledWith(newConfig, false);
+		});
+
+		it('should call deleteAllSecrets when clearCredentials is true', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+			const resolverWithDeleteAllSecrets = {
+				...mockResolverImplementation,
+				deleteAllSecrets: jest.fn().mockResolvedValue(undefined),
+			};
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(
+				resolverWithDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+			);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				clearCredentials: true,
+				user: mockUser,
+			});
+
+			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('test.resolver');
+			expect(resolverWithDeleteAllSecrets.deleteAllSecrets).toHaveBeenCalledWith('resolver-id-123');
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should not call deleteAllSecrets when clearCredentials is false', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				clearCredentials: false,
+				user: mockUser,
+			});
+
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should not call deleteAllSecrets when clearCredentials is undefined', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				name: 'Updated Name',
+				user: mockUser,
+			});
+
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should throw CredentialResolverValidationError when resolver type is unknown and clearCredentials is true', async () => {
+			const entity = createMockEntity();
+			const mockUser = createMockUser();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(undefined);
+
+			await expect(
+				service.update('resolver-id-123', {
+					clearCredentials: true,
+					user: mockUser,
+				}),
+			).rejects.toThrow(CredentialResolverValidationError);
+
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should handle resolver without deleteAllSecrets method gracefully', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+			const resolverWithoutDeleteAllSecrets = {
+				...mockResolverImplementation,
+				deleteAllSecrets: undefined,
+			};
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(
+				resolverWithoutDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+			);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				clearCredentials: true,
+				user: mockUser,
+			});
+
+			expect(mockRepository.save).toHaveBeenCalled();
 		});
 	});
 

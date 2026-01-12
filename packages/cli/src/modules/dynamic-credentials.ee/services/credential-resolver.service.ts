@@ -14,7 +14,6 @@ import { DynamicCredentialResolverRegistry } from './credential-resolver-registr
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { DynamicCredentialEntryRepository } from '../database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 
 export interface CreateResolverParams {
@@ -44,7 +43,6 @@ export class DynamicCredentialResolverService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: DynamicCredentialResolverRepository,
-		private readonly entryRepository: DynamicCredentialEntryRepository,
 		private readonly registry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
 		private readonly expressionService: ResolverConfigExpressionService,
@@ -142,8 +140,16 @@ export class DynamicCredentialResolverService {
 				throw new CredentialResolverValidationError(`Unknown resolver type: ${existing.type}`);
 			}
 
-			if (resolver.deleteAllSecrets) {
-				await resolver.deleteAllSecrets(id);
+			// Delete secrets from external system (e.g., OAuth tokens)
+			if (
+				'deleteAllSecrets' in resolver &&
+				typeof (
+					resolver as ICredentialResolver & { deleteAllSecrets?: (id: string) => Promise<void> }
+				).deleteAllSecrets === 'function'
+			) {
+				await (
+					resolver as ICredentialResolver & { deleteAllSecrets: (id: string) => Promise<void> }
+				).deleteAllSecrets(id);
 			}
 		}
 
