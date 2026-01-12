@@ -586,7 +586,7 @@ export class ChatHubService {
 		timeZone: string,
 		trx: EntityManager,
 	) {
-		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
+		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
 
 		if (!agent) {
 			throw new BadRequestError('Agent not found');
@@ -1629,7 +1629,7 @@ export class ChatHubService {
 		credentialId: string;
 		projectId: string;
 	}> {
-		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
 		}
