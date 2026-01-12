@@ -1,0 +1,552 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { useWorkflowUpdate } from './useWorkflowUpdate';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestNode } from '@/__tests__/mocks';
+import type { INodeUi } from '@/Interface';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
+
+// Mock canvas event bus - using hoisted to ensure proper initialization order
+const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: canvasEventBusEmitMock,
+	},
+}));
+
+// Mock canvas utils
+vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
+	mapLegacyConnectionsToCanvasConnections: vi.fn().mockReturnValue([]),
+}));
+
+// Mock useWorkflowState - using hoisted for proper initialization
+const mockWorkflowState = vi.hoisted(() => ({
+	resetParametersLastUpdatedAt: vi.fn(),
+	setWorkflowName: vi.fn(),
+}));
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	injectWorkflowState: vi.fn(() => mockWorkflowState),
+}));
+
+// Mock useCanvasOperations - using hoisted for proper initialization
+const mockCanvasOperations = vi.hoisted(() => ({
+	deleteNode: vi.fn(),
+	addNodes: vi.fn().mockResolvedValue([]),
+	deleteConnection: vi.fn(),
+	addConnections: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@/app/composables/useCanvasOperations', () => ({
+	useCanvasOperations: vi.fn(() => mockCanvasOperations),
+}));
+
+// Mock nodeTypesUtils
+vi.mock('@/app/utils/nodeTypesUtils', () => ({
+	getMainAuthField: vi.fn(),
+	getAuthTypeForNodeCredential: vi.fn(),
+}));
+
+describe('useWorkflowUpdate', () => {
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		setActivePinia(createTestingPinia());
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		builderStore = mockedStore(useBuilderStore);
+		credentialsStore = mockedStore(useCredentialsStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+
+		// Setup default mocks
+		workflowsStore.allNodes = [];
+		workflowsStore.workflow = {
+			id: 'test-workflow',
+			name: DEFAULT_NEW_WORKFLOW_NAME,
+			nodes: [],
+			connections: {},
+			pinData: {},
+		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
+		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
+			nodes: {},
+			connectionsBySourceNode: {},
+			renameNode: vi.fn(),
+		});
+		workflowsStore.setNodes = vi.fn();
+		workflowsStore.setConnections = vi.fn();
+		workflowsStore.getNodeByName = vi.fn();
+
+		builderStore.setBuilderMadeEdits = vi.fn();
+
+		credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([]);
+		nodeTypesStore.getNodeType = vi.fn();
+	});
+
+	describe('updateWorkflow', () => {
+		it('should return success with empty newNodeIds when no new nodes are added', async () => {
+			const { updateWorkflow } = useWorkflowUpdate();
+
+			const result = await updateWorkflow({
+				nodes: [],
+				connections: {},
+			});
+
+			expect(result).toEqual({ success: true, newNodeIds: [] });
+		});
+
+		it('should call builderStore.setBuilderMadeEdits(true)', async () => {
+			const { updateWorkflow } = useWorkflowUpdate();
+
+			await updateWorkflow({
+				nodes: [],
+				connections: {},
+			});
+
+			expect(builderStore.setBuilderMadeEdits).toHaveBeenCalledWith(true);
+		});
+
+		describe('node categorization', () => {
+			it('should add new nodes that do not exist in current workflow', async () => {
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+				});
+
+				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				const result = await updateWorkflow({
+					nodes: [newNode],
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[expect.objectContaining({ id: 'new-node-1' })],
+					{
+						trackHistory: true,
+						trackBulk: false,
+						forcePosition: true,
+						telemetry: false,
+					},
+				);
+				expect(result.newNodeIds).toEqual(['new-node-1']);
+			});
+
+			it('should remove nodes that are no longer in the update', async () => {
+				const existingNode = createTestNode({
+					id: 'existing-node',
+					name: 'Existing Node',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [], // Empty - existing node should be removed
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.deleteNode).toHaveBeenCalledWith('existing-node', {
+					trackHistory: true,
+					trackBulk: false,
+				});
+			});
+
+			it('should update existing nodes in place', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Old Name',
+					parameters: { url: 'http://old.com' },
+					position: [100, 200],
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'Old Name': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Old Name',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [300, 400], // New position should be ignored
+							parameters: { url: 'http://new.com' },
+						},
+					],
+					connections: {},
+				});
+
+				// Should not add or remove nodes
+				expect(mockCanvasOperations.addNodes).not.toHaveBeenCalled();
+				expect(mockCanvasOperations.deleteNode).not.toHaveBeenCalled();
+
+				// Should sync state back to store
+				expect(workflowsStore.setNodes).toHaveBeenCalled();
+				expect(workflowsStore.setConnections).toHaveBeenCalled();
+			});
+		});
+
+		describe('node renaming', () => {
+			it('should handle node renames via workflow.renameNode()', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Old Name',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockRenameNode = vi.fn();
+				const mockWorkflowObject = {
+					nodes: { 'Old Name': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: mockRenameNode,
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'New Name', // Renamed
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockRenameNode).toHaveBeenCalledWith('Old Name', 'New Name');
+			});
+		});
+
+		describe('parameter change tracking', () => {
+			it('should mark node as dirty when parameters change', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					parameters: { url: 'http://old.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { url: 'http://new.com' }, // Changed
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockWorkflowState.resetParametersLastUpdatedAt).toHaveBeenCalledWith('HTTP Request');
+			});
+
+			it('should not mark node as dirty when parameters are unchanged', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					parameters: { url: 'http://same.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { url: 'http://same.com' }, // Same
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockWorkflowState.resetParametersLastUpdatedAt).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('pinned data preservation', () => {
+			it('should preserve pinned data by node ID across updates', async () => {
+				const pinnedData: INodeExecutionData[] = [{ json: { test: 'data' } }];
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Old Name',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+				workflowsStore.workflow.pinData = { 'Old Name': pinnedData };
+
+				const mockWorkflowObject = {
+					nodes: { 'Old Name': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				// After update, simulate allNodes returning the renamed node
+				let callCount = 0;
+				Object.defineProperty(workflowsStore, 'allNodes', {
+					get: () => {
+						callCount++;
+						if (callCount > 1) {
+							return [{ ...existingNode, name: 'New Name' }];
+						}
+						return [existingNode];
+					},
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'New Name', // Renamed
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				// Pinned data should be restored under the new name
+				expect(workflowsStore.workflow.pinData?.['New Name']).toEqual(pinnedData);
+			});
+		});
+
+		describe('workflow name update', () => {
+			it('should update workflow name on initial generation when name starts with default', async () => {
+				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow(
+					{
+						name: 'My Generated Workflow',
+						nodes: [],
+						connections: {},
+					},
+					{ isInitialGeneration: true },
+				);
+
+				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
+					newName: 'My Generated Workflow',
+					setStateDirty: false,
+				});
+			});
+
+			it('should not update workflow name when not initial generation', async () => {
+				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow(
+					{
+						name: 'My Generated Workflow',
+						nodes: [],
+						connections: {},
+					},
+					{ isInitialGeneration: false },
+				);
+
+				expect(mockWorkflowState.setWorkflowName).not.toHaveBeenCalled();
+			});
+
+			it('should not update workflow name when current name does not start with default', async () => {
+				workflowsStore.workflow.name = 'Custom Workflow Name';
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow(
+					{
+						name: 'My Generated Workflow',
+						nodes: [],
+						connections: {},
+					},
+					{ isInitialGeneration: true },
+				);
+
+				expect(mockWorkflowState.setWorkflowName).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('tidyUp behavior', () => {
+			it('should emit tidyUp event with new node IDs', async () => {
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'New Node',
+				});
+
+				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [newNode],
+					connections: {},
+				});
+
+				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
+					source: 'builder-update',
+					nodeIdsFilter: ['new-node-1'],
+					trackEvents: false,
+					trackHistory: true,
+					trackBulk: false,
+				});
+			});
+
+			it('should combine new node IDs with passed nodeIdsToTidyUp', async () => {
+				const newNode = createTestNode({
+					id: 'new-node-2',
+					name: 'New Node',
+				});
+
+				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow(
+					{
+						nodes: [newNode],
+						connections: {},
+					},
+					{ nodeIdsToTidyUp: ['previous-node-1'] },
+				);
+
+				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
+					source: 'builder-update',
+					nodeIdsFilter: ['new-node-2', 'previous-node-1'],
+					trackEvents: false,
+					trackHistory: true,
+					trackBulk: false,
+				});
+			});
+
+			it('should not emit tidyUp event when there are no node IDs to tidy up', async () => {
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [],
+					connections: {},
+				});
+
+				expect(canvasEventBusEmitMock).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('default credentials', () => {
+			it('should apply default credentials to nodes without credentials', async () => {
+				const nodeWithoutCreds = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					credentials: undefined,
+				});
+
+				const mockCredential = {
+					id: 'cred-1',
+					name: 'My Credential',
+					type: 'httpBasicAuth',
+				};
+
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+					credentials: [{ name: 'httpBasicAuth' }],
+				});
+				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([mockCredential]);
+
+				const existingNodeInStore = { ...nodeWithoutCreds, parameters: {} };
+				workflowsStore.getNodeByName = vi.fn().mockReturnValue(existingNodeInStore);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [nodeWithoutCreds],
+					connections: {},
+				});
+
+				expect(existingNodeInStore.credentials).toEqual({
+					httpBasicAuth: { id: 'cred-1', name: 'My Credential' },
+				});
+			});
+
+			it('should not override existing credentials', async () => {
+				const nodeWithCreds = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					credentials: { httpBasicAuth: { id: 'existing-cred', name: 'Existing' } },
+				});
+
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+					credentials: [{ name: 'httpBasicAuth' }],
+				});
+				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([
+					{ id: 'other-cred', name: 'Other', type: 'httpBasicAuth' },
+				]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [nodeWithCreds],
+					connections: {},
+				});
+
+				// getNodeByName should not be called because node already has credentials
+				expect(workflowsStore.getNodeByName).not.toHaveBeenCalled();
+			});
+		});
+	});
+});

@@ -215,12 +215,10 @@ export function useCanvasOperations() {
 			trackEvents = true,
 			trackHistory = true,
 			trackBulk = true,
-			onComplete,
 		}: {
 			trackEvents?: boolean;
 			trackHistory?: boolean;
 			trackBulk?: boolean;
-			onComplete?: () => void;
 		} = {},
 	) {
 		updateNodesPosition(
@@ -231,8 +229,6 @@ export function useCanvasOperations() {
 		if (trackEvents) {
 			trackTidyUp({ result, source, target });
 		}
-
-		onComplete?.();
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
