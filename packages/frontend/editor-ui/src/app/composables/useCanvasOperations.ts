@@ -82,6 +82,7 @@ import {
 	generateOffsets,
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
+	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
 import type { Connection } from '@vue-flow/core';
 import type {
@@ -111,7 +112,6 @@ import {
 	isCommunityPackageName,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
@@ -130,6 +130,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useClipboard } from '@vueuse/core';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -475,7 +477,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 	}
 
 	function trackDeleteNode(id: string) {
@@ -771,7 +773,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		return addedNodes;
@@ -836,7 +838,7 @@ export function useCanvasOperations() {
 
 		void nextTick(() => {
 			if (!options.keepPristine) {
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
@@ -1195,8 +1197,33 @@ export function useCanvasOperations() {
 					// Compute the y offset for the new node based on the number of main outputs of the source node
 					// and shift the downstream nodes accordingly
 
-					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
+					// Calculate actual node size for the new node being inserted
+					// Configurable nodes (like AI Agent) have non-main inputs and are wider
+					// Use nodeTypeDescription.inputs directly since the node isn't in the workflow yet
+					// If inputs is a string (expression), it's a dynamic node like AI Agent which is configurable
+					let isNewNodeConfigurable = false;
+					if (typeof nodeTypeDescription.inputs === 'string') {
+						// Dynamic inputs (expression string) indicates AI/configurable nodes
+						isNewNodeConfigurable = true;
+					} else if (Array.isArray(nodeTypeDescription.inputs)) {
+						const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeTypeDescription.inputs);
+						isNewNodeConfigurable =
+							nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
+					}
+					const newNodeSize: [number, number] = isNewNodeConfigurable
+						? CONFIGURABLE_NODE_SIZE
+						: DEFAULT_NODE_SIZE;
+					// Calculate shift margin: base offset plus extra width for configurable nodes
+					// For standard nodes: PUSH_NODES_OFFSET (208)
+					// For configurable nodes: PUSH_NODES_OFFSET + (configurable width - default width)
+					const extraWidth = isNewNodeConfigurable
+						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
+						: 0;
+					const shiftMargin = PUSH_NODES_OFFSET + extraWidth;
+
+					shiftDownstreamNodesPosition(lastInteractedWithNode.name, shiftMargin, {
 						trackHistory: true,
+						nodeSize: newNodeSize,
 					});
 				}
 
@@ -1278,6 +1305,14 @@ export function useCanvasOperations() {
 						lastInteractedWithNode.position[0] + pushOffset,
 						lastInteractedWithNode.position[1] + yOffset,
 					];
+
+					// When inserting via edge plus button, adjust Y to fit within overlapping sticky notes
+					if (lastInteractedWithNodeConnection) {
+						const adjustedY = getYPositionForStickyOverlap(position, nodeSize);
+						if (adjustedY !== null) {
+							position = [position[0], adjustedY];
+						}
+					}
 				}
 			}
 		}
@@ -1323,25 +1358,255 @@ export function useCanvasOperations() {
 	}
 
 	/**
-	 * Moves all downstream nodes of a node
+	 * Gets the bounding rectangle of a node including its size
+	 */
+	function getNodeRect(node: INodeUi): { x: number; y: number; width: number; height: number } {
+		if (node.type === STICKY_NODE_TYPE) {
+			return {
+				x: node.position[0],
+				y: node.position[1],
+				width: (node.parameters.width as number) || DEFAULT_NODE_SIZE[0],
+				height: (node.parameters.height as number) || DEFAULT_NODE_SIZE[1],
+			};
+		}
+		return {
+			x: node.position[0],
+			y: node.position[1],
+			width: DEFAULT_NODE_SIZE[0],
+			height: DEFAULT_NODE_SIZE[1],
+		};
+	}
+
+	/**
+	 * Check if there's enough space for a new node at the insertion position.
+	 * Uses a margin to account for nodes that are touching (edge-to-edge)
+	 * which should still be considered as blocking the insertion.
+	 */
+	function hasSpaceForInsertion(
+		insertPosition: XYPosition,
+		nodeSize: [number, number],
+		nodesToCheck: INodeUi[],
+	): boolean {
+		// Add a small margin to detect nodes that are touching (edge-to-edge)
+		const margin = GRID_SIZE;
+		const insertRect = {
+			x: insertPosition[0],
+			y: insertPosition[1],
+			width: nodeSize[0] + margin,
+			height: nodeSize[1],
+		};
+
+		for (const node of nodesToCheck) {
+			if (node.type === STICKY_NODE_TYPE) continue;
+			const nodeRect = getNodeRect(node);
+			if (doRectsOverlap(insertRect, nodeRect)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Gets all nodes that should be shifted when inserting a node.
+	 * Algorithm:
+	 * 1. Find nodes that overlap with or are to the right of insertion area (similar Y)
+	 * 2. Add nodes connected to them (downstream)
+	 * 3. Filter to only include nodes that need to move
+	 */
+	function getNodesToShift(
+		insertPosition: XYPosition,
+		sourceNodeName: string,
+	): { nodesToMove: INodeUi[]; stickiesToStretch: INodeUi[] } {
+		const allNodes = Object.values(workflowsStore.nodesByName);
+		const insertX = insertPosition[0];
+		const insertY = insertPosition[1];
+		const yTolerance = DEFAULT_NODE_SIZE[1] * 2; // Nodes within ~2 node heights are considered "similar Y"
+
+		// Step 1: Find initial candidates - nodes that overlap with or are to the right of insertion
+		// A node overlaps if its right edge extends into the insertion area
+		const initialCandidates = allNodes.filter((node) => {
+			if (node.type === STICKY_NODE_TYPE) return false;
+			if (node.name === sourceNodeName) return false;
+			const isSimilarY = Math.abs(node.position[1] - insertY) <= yTolerance;
+			// Node overlaps or is to the right if its right edge is past the insertion X
+			// or its left edge is at/past the insertion X
+			const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+			const overlapsOrIsToTheRight = nodeRightEdge > insertX || node.position[0] >= insertX;
+			return isSimilarY && overlapsOrIsToTheRight;
+		});
+
+		// Step 2: Add all downstream connected nodes from initial candidates
+		const candidateNames = new Set(initialCandidates.map((n) => n.name));
+		for (const candidate of initialCandidates) {
+			const downstream = workflowHelpers.getConnectedNodes(
+				'downstream',
+				editableWorkflowObject.value,
+				candidate.name,
+			);
+			downstream.forEach((name) => candidateNames.add(name));
+		}
+
+		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
+		const regularNodesToMove = allNodes.filter((node) => {
+			if (node.type === STICKY_NODE_TYPE) return false;
+			return candidateNames.has(node.name);
+		});
+
+		// Step 4: Find sticky notes that need moving or stretching
+		const stickiesToStretch: INodeUi[] = [];
+		const stickiesToMove: INodeUi[] = [];
+		const stickyNodes = allNodes.filter((node) => node.type === STICKY_NODE_TYPE);
+
+		// Calculate the vertical area that will be affected (insertion point + nodes being moved)
+		const affectedMinY = Math.min(insertY, ...regularNodesToMove.map((n) => n.position[1]));
+		const affectedMaxY = Math.max(
+			insertY + DEFAULT_NODE_SIZE[1],
+			...regularNodesToMove.map((n) => n.position[1] + DEFAULT_NODE_SIZE[1]),
+		);
+
+		for (const sticky of stickyNodes) {
+			const stickyRect = getNodeRect(sticky);
+			const stickyLeftEdge = sticky.position[0];
+			const stickyRightEdge = stickyLeftEdge + stickyRect.width;
+			const stickyTop = sticky.position[1];
+			const stickyBottom = stickyTop + stickyRect.height;
+			const overlapsVertically = !(stickyBottom <= affectedMinY || stickyTop >= affectedMaxY);
+
+			// Sticky should be moved if its left edge is at or past the insertion position
+			if (stickyLeftEdge >= insertX && overlapsVertically) {
+				stickiesToMove.push(sticky);
+			}
+			// Sticky should be stretched if:
+			// 1. Its left edge is before the insertion position
+			// 2. Its right edge extends into or past the insertion position
+			// 3. It overlaps vertically with the affected area
+			else if (stickyLeftEdge < insertX && stickyRightEdge >= insertX && overlapsVertically) {
+				stickiesToStretch.push(sticky);
+			}
+		}
+
+		// Combine regular nodes and stickies to move
+		const nodesToMove = [...regularNodesToMove, ...stickiesToMove];
+
+		return { nodesToMove, stickiesToStretch };
+	}
+
+	/**
+	 * Checks if the insertion position overlaps with a sticky note and returns
+	 * an adjusted Y position that fits within the sticky's content area.
+	 * Only adjusts Y if there's enough space for insertion (no downstream nodes blocking).
+	 * Returns null if no adjustment is needed.
+	 */
+	function getYPositionForStickyOverlap(
+		insertPosition: XYPosition,
+		nodeSize: [number, number],
+	): number | null {
+		const allNodes = Object.values(workflowsStore.nodesByName);
+		const stickyNodes = allNodes.filter((node) => node.type === STICKY_NODE_TYPE);
+		const regularNodes = allNodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+
+		// Add a small margin to detect nodes that are touching (edge-to-edge)
+		const margin = GRID_SIZE;
+		const insertRect = {
+			x: insertPosition[0],
+			y: insertPosition[1],
+			width: nodeSize[0] + margin,
+			height: nodeSize[1],
+		};
+
+		// First check if there are any regular nodes blocking the insertion position
+		// If so, downstream nodes will be shifted and we should keep the original Y
+		for (const node of regularNodes) {
+			const nodeRect = getNodeRect(node);
+			if (doRectsOverlap(insertRect, nodeRect)) {
+				// There's a regular node blocking - don't adjust Y, let shift logic handle it
+				return null;
+			}
+		}
+
+		// No regular nodes blocking - check if we need to adjust Y for sticky overlap
+		for (const sticky of stickyNodes) {
+			const stickyRect = getNodeRect(sticky);
+
+			// Check if insertion position overlaps with this sticky
+			if (doRectsOverlap(insertRect, stickyRect)) {
+				// Sticky header takes up approximately 40px (title area)
+				const STICKY_HEADER_HEIGHT = 40;
+				const stickyContentTop = sticky.position[1] + STICKY_HEADER_HEIGHT;
+				const stickyContentBottom = sticky.position[1] + stickyRect.height - GRID_SIZE;
+
+				// Calculate the ideal Y position centered in the sticky's content area
+				const contentHeight = stickyContentBottom - stickyContentTop;
+				const centeredY = stickyContentTop + (contentHeight - nodeSize[1]) / 2;
+
+				// Ensure the position is grid-aligned
+				return Math.round(centeredY / GRID_SIZE) * GRID_SIZE;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Stretches a sticky note by increasing its width
+	 */
+	function stretchStickyNote(
+		sticky: INodeUi,
+		stretchAmount: number,
+		{ trackHistory = false }: { trackHistory?: boolean },
+	) {
+		const currentWidth = (sticky.parameters.width as number) || DEFAULT_NODE_SIZE[0];
+		const newWidth = currentWidth + stretchAmount;
+
+		const newParameters = {
+			...sticky.parameters,
+			width: newWidth,
+		};
+
+		replaceNodeParameters(sticky.id, sticky.parameters as INodeParameters, newParameters, {
+			trackHistory,
+			trackBulk: false,
+		});
+	}
+
+	/**
+	 * Moves downstream nodes when inserting a node between existing nodes.
+	 * Only moves nodes if there isn't enough space for the new node.
+	 * Sticky notes that overlap the insertion area are stretched instead of moved.
 	 */
 	function shiftDownstreamNodesPosition(
 		sourceNodeName: string,
 		margin: number,
-		{ trackHistory = false }: { trackHistory?: boolean },
+		{
+			trackHistory = false,
+			nodeSize = DEFAULT_NODE_SIZE,
+		}: { trackHistory?: boolean; nodeSize?: [number, number] },
 	) {
 		const sourceNode = workflowsStore.nodesByName[sourceNodeName];
-		const checkNodes = workflowHelpers.getConnectedNodes(
-			'downstream',
-			editableWorkflowObject.value,
-			sourceNodeName,
-		);
-		for (const nodeName of checkNodes) {
-			const node = workflowsStore.nodesByName[nodeName];
-			if (!node || !sourceNode || node.position[0] < sourceNode.position[0]) {
-				continue;
-			}
+		if (!sourceNode) return;
 
+		// Calculate insertion position (to the right of source node)
+		// Use PUSH_NODES_OFFSET to match the actual position where nodes are placed
+		const insertPosition: XYPosition = [
+			sourceNode.position[0] + PUSH_NODES_OFFSET,
+			sourceNode.position[1],
+		];
+
+		// Get all nodes except source and stickies
+		const nodesToCheck = Object.values(workflowsStore.nodesByName).filter(
+			(n) => n.name !== sourceNodeName && n.type !== STICKY_NODE_TYPE,
+		);
+
+		// Check if there's enough space - if so, don't move anything
+		if (hasSpaceForInsertion(insertPosition, nodeSize, nodesToCheck)) {
+			return;
+		}
+
+		// Get nodes to shift and stickies to stretch
+		const { nodesToMove, stickiesToStretch } = getNodesToShift(insertPosition, sourceNodeName);
+
+		// Move regular nodes to the right
+		for (const node of nodesToMove) {
 			updateNodePosition(
 				node.id,
 				{
@@ -1350,6 +1615,11 @@ export function useCanvasOperations() {
 				},
 				{ trackHistory },
 			);
+		}
+
+		// Stretch sticky notes instead of moving them
+		for (const sticky of stickiesToStretch) {
+			stretchStickyNote(sticky, margin, { trackHistory });
 		}
 	}
 
@@ -1396,7 +1666,7 @@ export function useCanvasOperations() {
 		});
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1589,6 +1859,25 @@ export function useCanvasOperations() {
 			);
 		};
 
+		const filterConnectionsByType = (
+			connections: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
+			type: NodeConnectionType,
+		) =>
+			connections.filter((connection) => {
+				const connectionType = typeof connection === 'string' ? connection : connection.type;
+				return connectionType === type;
+			});
+
+		const getInputFilter = (
+			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
+		) => {
+			if (connection && typeof connection === 'object' && 'filter' in connection) {
+				return connection.filter;
+			}
+
+			return undefined;
+		};
+
 		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
@@ -1613,13 +1902,11 @@ export function useCanvasOperations() {
 				) || [];
 		}
 
-		const sourceNodeHasOutputConnectionOfType = !!sourceNodeOutputs.find((output) => {
-			const outputType = typeof output === 'string' ? output : output.type;
-			return outputType === sourceConnection.type;
-		});
+		const sourceOutputsOfType = filterConnectionsByType(sourceNodeOutputs, sourceConnection.type);
+		const sourceNodeHasOutputConnectionOfType = sourceOutputsOfType.length > 0;
 
 		const sourceNodeHasOutputConnectionPortOfType =
-			sourceConnection.index < sourceNodeOutputs.length;
+			sourceConnection.index < sourceOutputsOfType.length;
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -1644,31 +1931,33 @@ export function useCanvasOperations() {
 				) || [];
 		}
 
-		const targetNodeHasInputConnectionOfType = !!targetNodeInputs.find((input) => {
-			const inputType = typeof input === 'string' ? input : input.type;
-			if (inputType !== targetConnection.type) return false;
+		const targetInputsOfType = filterConnectionsByType(targetNodeInputs, targetConnection.type);
+		const targetNodeHasInputConnectionOfType = targetInputsOfType.length > 0;
+		const targetNodeHasInputConnectionPortOfType =
+			targetConnection.index < targetInputsOfType.length;
 
-			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
-			if (
-				(filter?.nodes?.length && !filter.nodes?.includes(sourceNode.type)) ||
-				(filter?.excludedNodes?.length && filter.excludedNodes?.includes(sourceNode.type))
-			) {
-				toast.showToast({
-					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
-					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
-						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-					}),
-					type: 'error',
-					duration: 5000,
-				});
+		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
+			? targetInputsOfType[targetConnection.index]
+			: undefined;
+		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
 
-				return false;
-			}
+		if (
+			(targetConnectionFilter?.nodes?.length &&
+				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
+			(targetConnectionFilter?.excludedNodes?.length &&
+				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
+		) {
+			toast.showToast({
+				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
+					interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+				}),
+				type: 'error',
+				duration: 5000,
+			});
 
-			return true;
-		});
-
-		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
+			return false;
+		}
 
 		const isMissingInputConnection =
 			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
@@ -1698,7 +1987,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1727,7 +2016,7 @@ export function useCanvasOperations() {
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		// Reset executions
 		executionsStore.activeExecution = null;
@@ -1737,7 +2026,7 @@ export function useCanvasOperations() {
 	}
 
 	async function initializeWorkspace(data: IWorkflowDb) {
-		await workflowHelpers.initState(data);
+		await workflowHelpers.initState(data, useWorkflowState());
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isUnknownNode =
@@ -1752,6 +2041,8 @@ export function useCanvasOperations() {
 		});
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
+		workflowState.setWorkflowProperty('createdAt', data.createdAt);
+		workflowState.setWorkflowProperty('updatedAt', data.updatedAt);
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
@@ -1789,7 +2080,12 @@ export function useCanvasOperations() {
 
 	async function addImportedNodesToWorkflow(
 		data: WorkflowDataUpdate,
-		{ trackBulk = true, trackHistory = false, viewport = DEFAULT_VIEWPORT_BOUNDARIES } = {},
+		{
+			trackBulk = true,
+			trackHistory = false,
+			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
+			setStateDirty = true,
+		} = {},
 	): Promise<WorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
@@ -1943,20 +2239,25 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = true;
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		} else {
+			uiStore.markStateClean();
+		}
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -1974,6 +2275,7 @@ export function useCanvasOperations() {
 			viewport,
 			regenerateIds = true,
 			trackEvents = true,
+			setStateDirty = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
@@ -1981,6 +2283,7 @@ export function useCanvasOperations() {
 			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
 			trackEvents?: boolean;
+			setStateDirty?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -2093,6 +2396,7 @@ export function useCanvasOperations() {
 				trackBulk,
 				trackHistory,
 				viewport,
+				setStateDirty,
 			});
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
@@ -2100,7 +2404,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty });
 			}
 
 			return workflowData;
@@ -2139,7 +2443,7 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		workflowsStore.addWorkflowTagIds(tagIds);
+		workflowState.addWorkflowTagIds(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
@@ -2313,7 +2617,7 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowsStore.setWorkflowPinData({});
+			workflowState.setWorkflowPinData({});
 		}
 
 		if (nodeId) {
@@ -2328,7 +2632,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		return data;
 	}
@@ -2371,7 +2675,7 @@ export function useCanvasOperations() {
 		}
 		await addNodes(convertedNodes ?? []);
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -2405,7 +2709,7 @@ export function useCanvasOperations() {
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2533,7 +2837,12 @@ export function useCanvasOperations() {
 
 		await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
 
-		uiStore.stateIsDirty = true;
+		// Set the workflow ID from the route params (auto-generated by router)
+		if (typeof route.params.name === 'string') {
+			workflowState.setWorkflowId(route.params.name);
+		}
+
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
@@ -2581,7 +2890,7 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 

@@ -1,11 +1,8 @@
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { runCliEvaluation } from './cli/runner.js';
-import {
-	runLocalPairwiseEvaluation,
-	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
+import { runLocalPairwiseEvaluation, runPairwiseLangsmithEvaluation } from './pairwise/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
 
 // Re-export for external use if needed
@@ -14,9 +11,50 @@ export { runLangsmithEvaluation } from './langsmith/runner.js';
 export {
 	runLocalPairwiseEvaluation,
 	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
+} from './pairwise/runner.js';
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
+
+/** All valid CLI flags */
+const VALID_FLAGS = [
+	'--test-case',
+	'--prompts-csv',
+	'--repetitions',
+	'--notion-id', // Backwards-compatible alias for --filter id:
+	'--technique', // Backwards-compatible alias for --filter technique:
+	'--filter', // Unified filter flag with key:value syntax
+	'--judges',
+	'--generations',
+	'--concurrency',
+	'--max-examples',
+	'--verbose',
+	'-v',
+	'--name',
+	'--output-dir',
+	'--prompt',
+	'--dos',
+	'--donts',
+	'--template-examples',
+	'--multi-agent',
+] as const;
+
+/** Validate that all provided CLI flags are recognized */
+function validateCliArgs(): void {
+	const args = process.argv.slice(2); // Skip node and script path
+
+	for (const arg of args) {
+		// Skip values (non-flag arguments)
+		if (!arg.startsWith('-')) continue;
+
+		// Handle --flag=value format
+		const flagName = arg.includes('=') ? arg.split('=')[0] : arg;
+
+		if (!VALID_FLAGS.includes(flagName as (typeof VALID_FLAGS)[number])) {
+			const validFlagsList = VALID_FLAGS.filter((f) => f.startsWith('--')).join('\n  ');
+			throw new Error(`Unknown flag: ${flagName}\n\nValid flags:\n  ${validFlagsList}`);
+		}
+	}
+}
 
 /** Parse an integer flag with default value */
 function getIntFlag(flag: string, defaultValue: number, max?: number): number {
@@ -27,19 +65,87 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 	return max ? Math.min(parsed, max) : parsed;
 }
 
+interface FilterOptions {
+	doSearch?: string;
+	dontSearch?: string;
+	technique?: string;
+	notionId?: string;
+}
+
+/**
+ * Parse --filter flags with key:value syntax.
+ * Supports multiple --filter flags that are applied progressively.
+ * Also handles backwards-compatible --technique and --notion-id aliases.
+ *
+ * @example
+ * --filter "do:structured output" --filter "technique:data_transformation"
+ * --filter "id:abc123" --filter "dont:hardcoded"
+ */
+function parseFilterFlags(): FilterOptions {
+	const filters: FilterOptions = {};
+
+	// Extract values following --filter flags
+	const filterValues = process.argv
+		.map((arg, i, arr) => (arg === '--filter' ? arr[i + 1] : null))
+		.filter((v): v is string => v !== null);
+
+	// Parse each filter (format: key:value)
+	const filterPattern = /^(\w+):(.+)$/;
+
+	for (const value of filterValues) {
+		const match = value.match(filterPattern);
+		if (!match) {
+			throw new Error('Invalid --filter format. Expected: --filter "key:value"');
+		}
+
+		const [, key, filterValue] = match;
+		switch (key) {
+			case 'do':
+				filters.doSearch = filterValue;
+				break;
+			case 'dont':
+				filters.dontSearch = filterValue;
+				break;
+			case 'technique':
+				filters.technique = filterValue;
+				break;
+			case 'id':
+				filters.notionId = filterValue;
+				break;
+		}
+	}
+
+	// Backwards-compatible aliases (--technique and --notion-id)
+	// These are overridden by --filter if both are specified
+	const techniqueAlias = getFlagValue('--technique');
+	if (techniqueAlias && !filters.technique) {
+		filters.technique = techniqueAlias;
+	}
+
+	const notionIdAlias = getFlagValue('--notion-id');
+	if (notionIdAlias && !filters.notionId) {
+		filters.notionId = notionIdAlias;
+	}
+
+	return filters;
+}
+
 /** Parse all CLI arguments */
 function parseCliArgs() {
+	validateCliArgs();
+
 	return {
 		testCaseId: process.argv.includes('--test-case')
 			? process.argv[process.argv.indexOf('--test-case') + 1]
 			: undefined,
 		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
 		repetitions: getIntFlag('--repetitions', 1),
-		notionId: getFlagValue('--notion-id'),
+		filters: parseFilterFlags(),
 		numJudges: getIntFlag('--judges', 3),
 		numGenerations: getIntFlag('--generations', 1, 10),
 		concurrency: getIntFlag('--concurrency', 5),
-		maxExamples: getIntFlag('--max-examples', 0), // 0 means no limit
+		// Use 0 as sentinel for "no limit", convert to undefined for cleaner API
+		maxExamples: getIntFlag('--max-examples', 0) || undefined,
 		verbose: process.argv.includes('--verbose') || process.argv.includes('-v'),
 		experimentName: getFlagValue('--name'),
 		outputDir: getFlagValue('--output-dir'),
@@ -81,14 +187,13 @@ async function main(): Promise<void> {
 			// LangSmith mode
 			await runPairwiseLangsmithEvaluation({
 				repetitions: args.repetitions,
-				notionId: args.notionId,
+				...args.filters,
 				numJudges: args.numJudges,
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,
 				experimentName: args.experimentName,
-				outputDir: args.outputDir,
 				concurrency: args.concurrency,
-				maxExamples: args.maxExamples || undefined,
+				maxExamples: args.maxExamples,
 				featureFlags,
 			});
 		}

@@ -24,7 +24,7 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 		const { webhookPath, workflowId } =
 			await api.workflows.importWorkflowFromDefinition(workflowDefinition);
 
-		const response = await api.request.get(`/webhook/${webhookPath}`);
+		const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 		const execution = await api.workflows.waitForExecution(workflowId, 5000);
 		expect(execution.status).toBe('success');
@@ -57,11 +57,15 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 		const { webhookPath, workflowId } =
 			await api.workflows.importWorkflowFromDefinition(workflowDefinition);
 
-		const response = await api.request.get(`/webhook/${webhookPath}`);
+		const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
-		// First, wait for the child to finish.
-		const childExecution = await api.workflows.waitForExecution(childWorkflowId, 5000);
+		// First, wait for the child to finish (child runs in 'integrated' mode when called by Execute Workflow node)
+		const childExecution = await api.workflows.waitForExecution(
+			childWorkflowId,
+			10000,
+			'integrated',
+		);
 		expect(childExecution.status).toBe('success');
 
 		// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
@@ -105,7 +109,7 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 		await api.workflows.activate(parentWorkflowId, versionId!);
 
 		// Trigger parent workflow via webhook
-		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(webhookResponse.ok()).toBe(true);
 
 		// Wait for child execution to appear and enter waiting state
@@ -120,7 +124,9 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 		);
 
 		// Trigger the wait webhook to resume child using child execution ID
-		const waitWebhookResponse = await api.request.get(`/webhook-waiting/${childExecution!.id}`);
+		const waitWebhookResponse = await api.webhooks.trigger(
+			`/webhook-waiting/${childExecution!.id}`,
+		);
 		expect(waitWebhookResponse.ok()).toBe(true);
 
 		// Wait for parent to complete
@@ -169,7 +175,7 @@ test.describe('CAT-1929: Parent should not resume until child with multiple wait
 		await api.workflows.activate(parentWorkflowId, versionId!);
 
 		// Trigger parent workflow via webhook
-		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(webhookResponse.ok()).toBe(true);
 
 		// Wait for child execution to appear and enter waiting state (first wait node)
@@ -179,7 +185,7 @@ test.describe('CAT-1929: Parent should not resume until child with multiple wait
 		await api.workflows.waitForWorkflowStatus(parentWorkflowId, 'waiting');
 
 		// Resume first wait node
-		const firstWaitResponse = await api.request.get(`/webhook-waiting/${childExecution.id}`);
+		const firstWaitResponse = await api.webhooks.trigger(`/webhook-waiting/${childExecution.id}`);
 		expect(firstWaitResponse.ok()).toBe(true);
 
 		// Wait for child to reach the second wait node
@@ -193,7 +199,7 @@ test.describe('CAT-1929: Parent should not resume until child with multiple wait
 		expect(parentExecAfterFirstWait.status).toBe('waiting');
 
 		// Resume second wait node
-		const secondWaitResponse = await api.request.get(`/webhook-waiting/${childExecution.id}`);
+		const secondWaitResponse = await api.webhooks.trigger(`/webhook-waiting/${childExecution.id}`);
 		expect(secondWaitResponse.ok()).toBe(true);
 
 		// Now parent should complete

@@ -42,7 +42,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	{
 		title: i18n.baseText('settings.chatHub.providers.table.provider'),
 		key: 'provider',
-		width: 80,
+		width: 120,
 		disableSort: true,
 		value() {
 			return;

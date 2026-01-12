@@ -22,6 +22,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			DynamicCredentialStorageService,
 			DynamicCredentialService,
 		} = await import('./services');
+		await import('./workflow-status.controller');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
 

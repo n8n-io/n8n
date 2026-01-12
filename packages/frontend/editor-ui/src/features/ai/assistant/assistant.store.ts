@@ -1,5 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
-import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
@@ -603,15 +603,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'placeholder';
 		  }
 		| {
+				source: 'build_with_ai';
+				task: 'placeholder';
+		  }
+		| {
 				source: 'credential';
 				task: 'credentials';
 		  }
 	)) {
+		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
+			instance_id: rootStore.instanceId,
 			workflow_id: workflowsStore.workflowId,
+			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,
@@ -747,7 +754,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
 		if (
 			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			!currentSessionWorkflowId.value ||
 			currentSessionWorkflowId.value === activeWorkflowId
 		) {
 			return;

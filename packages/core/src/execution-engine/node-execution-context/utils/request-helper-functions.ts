@@ -14,6 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -145,6 +146,15 @@ function setAxiosAgents(
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }
 
+function applyVendorHeaders(config: AxiosRequestConfig) {
+	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
+		config.headers = {
+			...Container.get(AiConfig).openAiDefaultHeaders,
+			...(config.headers || {}),
+		};
+	}
+}
+
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
@@ -152,6 +162,7 @@ axios.interceptors.request.use((config) => {
 	}
 
 	setAxiosAgents(config);
+	applyVendorHeaders(config);
 
 	return config;
 });
@@ -941,6 +952,7 @@ export async function requestOAuth2(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
 		);
 
 		oauthTokenData = data;
@@ -1022,6 +1034,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1102,6 +1115,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 
 				this.logger.debug(
@@ -1268,6 +1282,7 @@ export async function refreshOAuth2Token(
 		nodeCredentials,
 		credentialsType,
 		credentials as unknown as ICredentialDataDecryptedObject,
+		additionalData,
 	);
 
 	this.logger.debug(

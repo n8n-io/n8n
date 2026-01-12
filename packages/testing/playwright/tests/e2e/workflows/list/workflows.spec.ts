@@ -18,7 +18,8 @@ test.describe('Workflows', () => {
 		const { projectId } = await n8n.projectComposer.createProject();
 		await n8n.page.goto(`projects/${projectId}/workflows`);
 		await n8n.workflows.clickNewWorkflowCard();
-		await expect(n8n.page).toHaveURL(/workflow\/new/);
+		// New workflows redirect to /workflow/<id>?new=true
+		await expect(n8n.page).toHaveURL(/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 	});
 
 	test('should create a new workflow using add workflow button and save successfully', async ({
@@ -31,7 +32,8 @@ test.describe('Workflows', () => {
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;
 		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.canvas.saveWorkflow();
+		await n8n.page.keyboard.press('Enter');
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
@@ -110,8 +112,8 @@ test.describe('Workflows', () => {
 		// Create tagged workflow
 		const uniqueIdForTagged = nanoid(8);
 		await n8n.workflowComposer.createWorkflow(uniqueIdForTagged);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		const tags = await n8n.canvas.addTags();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.goHome();
 		// Create untagged workflow
 		await n8n.workflowComposer.createWorkflow();
@@ -127,8 +129,8 @@ test.describe('Workflows', () => {
 		const uniqueIdForTagged = nanoid(8);
 
 		await n8n.workflowComposer.createWorkflow(`My Tagged Workflow ${uniqueIdForTagged}`);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		const tags = await n8n.canvas.addTags(2);
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await n8n.goHome();
 		await n8n.workflows.search('Tagged');

@@ -86,8 +86,8 @@ test.describe('Execution', () => {
 		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 	});
 
-	// eslint-disable-next-line playwright/no-skipped-test -- Failing/flaky in multi-main
-	test.skip('should test manual workflow stop', async ({ n8n }) => {
+	// Failing/flaky in multi-main
+	test.fixme('should test manual workflow stop @fixme', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 		await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -123,8 +123,7 @@ test.describe('Execution', () => {
 		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode due to webhook registration timing issues
-	test.skip('should test webhook workflow', async ({ n8n }) => {
+	test('should test webhook workflow', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
 		await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -227,8 +226,9 @@ test.describe('Execution', () => {
 	/**
 	 * @TODO New Canvas: Different classes for pinned states on edges and nodes
 	 */
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.describe.skip('connections should be colored differently for pinned data', () => {
+	test.describe('connections should be colored differently for pinned data @fixme', () => {
+		test.fixme();
+
 		test('when executing the workflow', async () => {
 			// Not yet migrated - waiting for New Canvas implementation
 		});

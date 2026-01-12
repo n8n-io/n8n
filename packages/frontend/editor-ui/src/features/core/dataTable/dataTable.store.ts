@@ -29,6 +29,7 @@ import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -64,6 +65,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 		return formattedSizes;
 	});
+
+	const canViewDataTables = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
+	);
 
 	const fetchDataTables = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
@@ -365,5 +370,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		deleteRows,
 		downloadDataTableCsv,
 		projectPermissions,
+		canViewDataTables,
 	};
 });

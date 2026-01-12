@@ -63,7 +63,7 @@ const assertUserClaimedCredits = () => {
 
 	expect(
 		screen.getByText(
-			'gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
+			'gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
 		),
 	).toBeInTheDocument();
 };

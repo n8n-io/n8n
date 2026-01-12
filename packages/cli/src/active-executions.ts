@@ -178,7 +178,14 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
-		this.eventService.emit('execution-cancelled', { executionId });
+
+		const workflowData = execution.executionData.workflowData;
+		this.eventService.emit('execution-cancelled', {
+			executionId,
+			workflowId: workflowData?.id,
+			workflowName: workflowData?.name,
+			reason: cancellationError.reason,
+		});
 		execution.responsePromise?.reject(cancellationError);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
