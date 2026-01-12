@@ -10,7 +10,7 @@ export class Limit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Limit',
 		name: 'limit',
-		icon: 'file:limit.svg',
+		icon: 'icon:node-limit',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

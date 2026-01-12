@@ -29,7 +29,7 @@ export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Information Extractor',
 		name: 'informationExtractor',
-		icon: 'fa:project-diagram',
+		icon: 'icon:node-information-extractor',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],

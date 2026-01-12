@@ -76,7 +76,7 @@ export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
-		icon: 'fa:database',
+		icon: 'icon:node-simple-memory',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],

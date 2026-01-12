@@ -77,7 +77,7 @@ export default defineConfig(
 			'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
 			'n8n-nodes-base/node-class-description-empty-string': 'error',
-			'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
+			'n8n-nodes-base/node-class-description-icon-not-svg': 'off', // Disabled: icon:xxx format is valid for design system icons
 			'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'off',
 			'n8n-nodes-base/node-class-description-outputs-wrong': 'off',
 			'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',

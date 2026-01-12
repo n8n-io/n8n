@@ -9,7 +9,7 @@ export class Filter extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Filter',
 			name: 'filter',
-			icon: 'fa:filter',
+			icon: 'icon:node-filter',
 			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Remove items matching a condition',

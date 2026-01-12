@@ -284,7 +284,6 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node--icon--size: 20px;
 	--node-creator--icon--color: var(--node--icon--color--neutral);
 	margin-right: var(--spacing--sm);
 }

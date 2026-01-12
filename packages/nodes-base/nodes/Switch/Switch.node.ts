@@ -10,7 +10,7 @@ export class Switch extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Switch',
 			name: 'switch',
-			icon: 'fa:map-signs',
+			icon: 'icon:node-switch',
 			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Route items depending on defined expression or rules',

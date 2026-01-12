@@ -260,7 +260,7 @@ export class Wait extends Webhook {
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
 		name: 'wait',
-		icon: 'fa:pause-circle',
+		icon: 'icon:node-wait',
 		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],

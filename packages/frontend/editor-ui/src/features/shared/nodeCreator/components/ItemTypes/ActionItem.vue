@@ -115,7 +115,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 			</div>
 		</template>
 		<template #icon>
-			<NodeIcon :node-type="action" />
+			<NodeIcon :node-type="action" :size="20" />
 		</template>
 	</N8nNodeCreatorNode>
 </template>
@@ -126,7 +126,6 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 	--node-creator--name--font-weight: var(--font-weight--regular);
 	--trigger-icon--color--background: #{$trigger-icon-background-color};
 	--trigger-icon--border-color: #{$trigger-icon-border-color};
-	--node--icon--size: 20px;
 	--node--icon--margin-right: var(--spacing--xs);
 
 	margin-left: var(--spacing--sm);

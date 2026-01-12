@@ -186,6 +186,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon
 				:class="$style.nodeIcon"
 				:node-type="nodeType"
+				:size="20"
 				color-default="var(--color--foreground--shade-2)"
 			/>
 		</template>

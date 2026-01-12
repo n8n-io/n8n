@@ -2016,9 +2016,10 @@ export type ThemeIconColor =
 	| 'dark-green'
 	| 'azure'
 	| 'purple'
-	| 'crimson';
+	| 'crimson'
+	| 'code-orange';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconRef = `fa:${string}` | `node:${string}.${string}` | `icon:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 
