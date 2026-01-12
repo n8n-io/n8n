@@ -1,5 +1,5 @@
 export * from './supply-error';
 export * from './supply-factory';
-export * from './supply-request';
-export * from './supply-response';
+export * from './supply-request-base';
+export * from './supply-response-base';
 export * from './supplier-base';

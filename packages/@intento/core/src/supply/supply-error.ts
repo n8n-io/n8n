@@ -1,27 +1,37 @@
 import type { IDataObject, INode, LogMetadata } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { SupplyRequest } from 'supply/supply-request';
-import type { ITraceable, IDataProvider, IValidatable } from 'types/*';
+import type { SupplyRequestBase } from 'supply/supply-request-base';
+import type { ITraceable, IDataProvider } from 'types/*';
 
-export class SupplyError implements ITraceable, IDataProvider, IValidatable {
+/**
+ * Structured error for supply operations with tracing and retry capability.
+ *
+ * Captures error details with request context for debugging and retry logic.
+ * Use isRetriable flag to indicate whether operation should be retried.
+ */
+export class SupplyError implements ITraceable, IDataProvider {
 	readonly requestId: string;
 	readonly latencyMs: number;
 	readonly code: number;
 	readonly reason: string;
 	readonly isRetriable: boolean;
 
-	constructor(request: SupplyRequest, code: number, reason: string, isRetriable: boolean) {
+	/**
+	 * Creates supply error with request context and error details.
+	 *
+	 * @param request - Original request for tracing and latency calculation
+	 * @param code - Error code for categorization (e.g., HTTP status, custom error codes)
+	 * @param reason - Human-readable error description
+	 * @param isRetriable - Whether operation can be retried (true for transient failures)
+	 */
+	constructor(request: SupplyRequestBase, code: number, reason: string, isRetriable: boolean) {
 		this.requestId = request.requestId;
+		// NOTE: Latency captured immediately to measure time to failure
 		this.latencyMs = Date.now() - request.requestedAt;
 		this.code = code;
 		this.reason = reason;
 		this.isRetriable = isRetriable;
-	}
-
-	throwIfInvalid(): void {
-		if (!this.reason || this.reason.length === 0) throw new Error('Error reason must be provided.');
-		if (this.code < 100 || this.code > 599) throw new Error('Error code must be a valid HTTP status code.');
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -42,6 +52,12 @@ export class SupplyError implements ITraceable, IDataProvider, IValidatable {
 		};
 	}
 
+	/**
+	 * Converts to n8n NodeOperationError for workflow error handling.
+	 *
+	 * @param node - Node where error occurred for error context
+	 * @returns NodeOperationError with reason message for n8n error display
+	 */
 	asError(node: INode): NodeOperationError {
 		return new NodeOperationError(node, this.reason);
 	}

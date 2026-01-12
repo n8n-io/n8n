@@ -1,8 +1,11 @@
 import type { IDescriptor } from 'intento-core';
 
 export interface ITranslationDescriptor extends IDescriptor {
+	credentials?: string;
+
 	batchLimit: number;
 	segmentLimit: number;
+
 	languageMap: {
 		from: Map<string, string>;
 		to: Map<string, string>;

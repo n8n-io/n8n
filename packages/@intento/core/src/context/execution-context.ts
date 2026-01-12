@@ -25,6 +25,12 @@ const EXECUTION = {
 	},
 } as const;
 
+/**
+ * n8n node properties for configuring execution retry and timeout behavior.
+ *
+ * Provides UI controls for max attempts, delays, jitter, and timeouts.
+ * Used by ContextFactory to instantiate ExecutionContext from node parameters.
+ */
 export const CONTEXT_EXECUTION = [
 	{
 		displayName: 'Execution Options',
@@ -81,6 +87,12 @@ export const CONTEXT_EXECUTION = [
 	},
 ] as INodeProperties[];
 
+/**
+ * Configuration for execution retry logic with exponential backoff and timeout handling.
+ *
+ * Immutable after construction (Object.freeze) to prevent accidental modification during execution.
+ * Provides delay calculation with jitter and abort signal creation with timeout.
+ */
 export class ExecutionContext implements IContext {
 	readonly maxAttempts: number;
 	readonly maxDelayMs: number;
@@ -98,6 +110,7 @@ export class ExecutionContext implements IContext {
 		this.maxJitter = maxJitter;
 		this.timeoutMs = timeoutMs;
 
+		// NOTE: Freeze prevents accidental mutation during retry loops
 		Object.freeze(this);
 	}
 
@@ -148,16 +161,37 @@ export class ExecutionContext implements IContext {
 		};
 	}
 
+	/**
+	 * Calculates retry delay using exponential backoff with jitter.
+	 *
+	 * Base delay scaled so exponential growth reaches maxDelayMs at final retry.
+	 * Jitter prevents thundering herd by adding random variance to delay.
+	 *
+	 * @param attempt - Zero-based retry attempt number (0 returns 0 delay)
+	 * @returns Delay in milliseconds, clamped to maxDelayMs
+	 * @throws RangeError if attempt < 0 or >= maxAttempts
+	 */
 	calculateDelay(attempt: number): number {
 		if (attempt === 0) return 0;
 		if (attempt < 0) throw new RangeError(`Execution attempt must be non-negative, but got ${attempt}`);
 		if (attempt >= this.maxAttempts) throw new RangeError(`Execution attempt must be less than ${this.maxAttempts}, but got ${attempt}`);
 
+		// NOTE: Base delay scaled so exponential growth reaches maxDelayMs at final retry
 		const baseDelay = this.maxDelayMs / 2 ** (this.maxAttempts - 1);
+		// NOTE: Jitter uses uniform random variance to prevent thundering herd
 		const jitter = this.maxJitter * (Math.random() - 0.5) * 2 * baseDelay;
 		return Math.min(this.maxDelayMs, baseDelay * 2 ** attempt + jitter);
 	}
 
+	/**
+	 * Creates abort signal with timeout, optionally chained to parent signal.
+	 *
+	 * Combines timeout-based abort with optional parent cancellation signal.
+	 * Either timeout expiration or parent abort will trigger cancellation.
+	 *
+	 * @param parent - Optional parent signal for cancellation chain
+	 * @returns Combined abort signal that fires on timeout or parent abort
+	 */
 	createAbortSignal(parent?: AbortSignal): AbortSignal {
 		const timeout = AbortSignal.timeout(this.timeoutMs);
 		if (!parent) return timeout;

@@ -18,7 +18,8 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 		signal?.throwIfAborted();
 		const from = !request.from || request.from === '' ? 'auto' : request.from.toLowerCase();
 		const to = request.to.toLowerCase();
-		this.tracer.debug(`🚚 [${this.descriptor.name}] Translating ${request.segments.length} segment(s) from '${from}' to '${to}'...`);
+		let message = `${this.descriptor.symbol} Translating ${request.segments.length} segment(s) from '${from}' to '${to}'...`;
+		this.tracer.debug(message, request.asLogMetadata());
 		// check if translation is needed
 		if (request.segments.length === 0) return this.nothingToTranslate(request);
 		if (from === to) return this.sameLanguage(request, from);
@@ -29,17 +30,20 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 		if (toNeedCheck && !this.descriptor.knownLanguages.to.has(to)) return this.unknownLanguage(request, 'to');
 		// Proceed with translation
 		const result = await this.translate(request, signal);
-		this.tracer.info(`🚚 [${this.descriptor.name}] Translated ${request.segments.length} segments from ${from} to ${to}.`);
+		message = `${this.descriptor.symbol} ${request.segments.length} segments have been translated from ${from} to ${to}.`;
+		this.tracer.info(message, result.asLogMetadata());
 		return result;
 	}
 
 	private nothingToTranslate(request: TranslationRequest): TranslationResponse {
-		this.tracer.warn(`🚚 [${this.descriptor.name}] No segments to translate. Returning empty response.`);
+		const message = `${this.descriptor.symbol} No segments to translate. Returning empty response.`;
+		this.tracer.warn(message, request.asLogMetadata());
 		return new TranslationResponse(request, []);
 	}
 
 	private sameLanguage(request: TranslationRequest, from: string): TranslationResponse {
-		this.tracer.warn(`🚚 [${this.descriptor.name}] Source and target languages are the same ('${from}'). Skipping translation.`);
+		const message = `${this.descriptor.symbol} Source and target languages are the same ('${from}'). Skipping translation.`;
+		this.tracer.warn(message, request.asLogMetadata());
 		const translations = request.segments.map((segment) => ({
 			textPosition: segment.textPosition,
 			segmentPosition: segment.segmentPosition,
@@ -51,8 +55,8 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 
 	private unknownLanguage(request: TranslationRequest, sources: 'from' | 'to'): SupplyError {
 		const lang = sources === 'from' ? request.from : request.to;
-		const reason = `🚚 [${this.descriptor.name}] Unknown '${sources}' language code '${lang}'. Cannot proceed with translation.`;
-		this.tracer.error(reason);
+		const reason = `${this.descriptor.symbol} Unknown '${sources}' language code '${lang}'. Cannot proceed with translation.`;
+		this.tracer.error(reason, request.asLogMetadata());
 		return new SupplyError(request, 400, reason, false);
 	}
 
@@ -61,34 +65,15 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 	protected onError(request: TranslationRequest, error: Error): SupplyError {
 		if (error instanceof NodeApiError) {
 			const code = Number.parseInt(error.httpCode ?? '0');
-			const reason = `🔌 [API] Supplier '${this.descriptor.name}' has failed to supply because of an API error: ${error.httpCode} - ${error.message || 'Unknown API error'}`;
-			const isRetriable = code >= 500 || code === 429;
-			const result = new SupplyError(request, code, reason, isRetriable);
-			const meta = {
-				result: result.asLogMetadata(),
-				error: {
-					code: error.httpCode,
-					description: error.description,
-					response: error.errorResponse,
-				},
-				source: error,
-			};
-			this.tracer.info(reason, meta);
+			const reason = `${this.descriptor.symbol} Failed to supply because of an API error: ${error.httpCode} - ${error.message || 'Unknown API error'}`;
+			const result = new SupplyError(request, code, reason, code >= 500 || code === 429);
+			this.tracer.info(reason, { result: result.asLogMetadata(), error });
 			return result;
 		}
 		if (error instanceof NodeOperationError) {
-			const reason = `⚙️ [Configuration] Supplier '${this.descriptor.name}' encountered an operational error: ${error.message || 'Unknown node error'}. Please check your node configuration.`;
+			const reason = `${this.descriptor.symbol} Encountered an operational error: ${error.message || 'Unknown node error'}. Please check your node configuration.`;
 			const result = new SupplyError(request, 404, reason, false);
-			const meta = {
-				result: result.asLogMetadata(),
-				error: {
-					cause: error.cause,
-					description: error.description,
-					response: error.errorResponse,
-				},
-				source: error,
-			};
-			this.tracer.warn(reason, meta);
+			this.tracer.warn(reason, { result: result.asLogMetadata(), error });
 			return result;
 		}
 		return super.onError(request, error);

@@ -2,6 +2,7 @@ import type { ITranslationDescriptor } from 'types/*';
 
 export const DryRunDescriptor: ITranslationDescriptor = {
 	name: 'ai.text.translate.dry-run',
+	symbol: '🚚 [Intento DryRun]',
 	credentials: 'intento-credentials.dry-run',
 	node: 'intentoDryRunTranslationNode',
 	tool: 'intentoDryRunTranslationTool',

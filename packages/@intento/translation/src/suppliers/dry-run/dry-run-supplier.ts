@@ -47,21 +47,25 @@ export class DryRunSupplier extends TranslationSupplierBase {
 	}
 
 	private passTranslation(request: TranslationRequest): TranslationResponse {
-		this.tracer.debug(`🧪 [${this.descriptor.name}] Passing through original text without translation.`);
+		this.tracer.debug(`${this.descriptor.symbol} Passing through original text without translation.`, request.asLogMetadata());
 		const translations: ITranslation[] = request.segments.map((segment) => ({
 			segmentPosition: segment.segmentPosition,
 			textPosition: segment.textPosition,
 			text: segment.text,
 			detectedLanguage: request.from,
 		}));
-		this.tracer.info(`🧪 [${this.descriptor.name}] Passed through ${translations.length} segment(s) without translation.`);
-		return new TranslationResponse(request, translations);
+		const response = new TranslationResponse(request, translations);
+		this.tracer.info(
+			`${this.descriptor.symbol} Passed through ${translations.length} segment(s) without translation.`,
+			response.asLogMetadata(),
+		);
+		return response;
 	}
 
 	private replaceTranslation(request: TranslationRequest): TranslationResponse {
 		const replaceBy = this.dryRunContext.replacePattern!;
 		const replaceTo = this.dryRunContext.replaceTo!;
-		this.tracer.debug(`🧪 [${this.descriptor.name}] Replacing text using pattern ${replaceBy} to ${replaceTo}.`);
+		this.tracer.debug(`${this.descriptor.symbol} Replacing text using pattern ${replaceBy} to ${replaceTo}.`, request.asLogMetadata());
 
 		const match = replaceBy.match(/^\/(.+)\/([gimusy]*)$/);
 		const pattern = new RegExp(match![1], match![2]);
@@ -76,12 +80,13 @@ export class DryRunSupplier extends TranslationSupplierBase {
 			};
 		});
 
-		this.tracer.info(`🧪 [${this.descriptor.name}] Replaced text in ${translations.length} segment(s).`);
-		return new TranslationResponse(request, translations);
+		const response = new TranslationResponse(request, translations);
+		this.tracer.info(`${this.descriptor.symbol} Replaced text in ${translations.length} segment(s).`, response.asLogMetadata());
+		return response;
 	}
 
 	private overrideTranslation(request: TranslationRequest): TranslationResponse {
-		this.tracer.debug(`🧪 [${this.descriptor.name}] Overriding translation with predefined text.`);
+		this.tracer.debug(`${this.descriptor.symbol} Overriding translation with predefined text.`, request.asLogMetadata());
 		const override = this.dryRunContext.override!;
 
 		const translations: ITranslation[] = request.segments.map((segment) => ({
@@ -91,15 +96,21 @@ export class DryRunSupplier extends TranslationSupplierBase {
 			detectedLanguage: request.from,
 		}));
 
-		this.tracer.info(`🧪 [${this.descriptor.name}] Overrode translation in ${translations.length} segment(s).`);
-		return new TranslationResponse(request, translations);
+		const response = new TranslationResponse(request, translations);
+		this.tracer.info(
+			`${this.descriptor.symbol} Translation has been overridden in ${translations.length} segment(s).`,
+			response.asLogMetadata(),
+		);
+		return response;
 	}
 
 	private failTranslation(): never {
-		this.tracer.info(`🧪 [${this.descriptor.name}] Failed translation with predefined error.`);
-		throw new NodeApiError(this.functions.getNode(), {
+		this.tracer.debug(`${this.descriptor.symbol} Failing translation with predefined error...`);
+		const error = new NodeApiError(this.functions.getNode(), {
 			httpCode: this.dryRunContext.errorCode!,
-			message: `🧪 [${this.descriptor.name}] Simulated translation failure: ${this.dryRunContext.errorMessage}`,
+			message: `${this.descriptor.symbol} Simulated translation failure: ${this.dryRunContext.errorMessage}`,
 		});
+		this.tracer.info(`${this.descriptor.symbol} Translation has been failed as expected with simulated error.`, { error });
+		throw error;
 	}
 }

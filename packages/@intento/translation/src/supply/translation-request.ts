@@ -1,8 +1,8 @@
-import { SupplyRequest } from 'intento-core';
+import { SupplyRequestBase } from 'intento-core';
 import type { ISegment } from 'intento-segmentation';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
-export class TranslationRequest extends SupplyRequest {
+export class TranslationRequest extends SupplyRequestBase {
 	readonly segments: ISegment[];
 	readonly to: string;
 	readonly from?: string;
@@ -19,7 +19,6 @@ export class TranslationRequest extends SupplyRequest {
 
 	throwIfInvalid(): void {
 		if (!this.to || this.to.trim() === '') throw new Error('targetLanguage is required');
-		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {

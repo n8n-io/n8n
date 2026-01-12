@@ -1,24 +1,29 @@
-import type { IFunctions, SupplyResponse } from 'intento-core';
+import type { SupplyResponseBase } from 'intento-core';
 import { SupplyError, AgentBase, ContextFactory, SupplyFactory } from 'intento-core';
 import type { SegmentsSupplierBase, ISegment } from 'intento-segmentation';
 import { SplitResponse, SplitRequest, MergeResponse, MergeRequest } from 'intento-segmentation';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { TranslationAgentDescriptor } from 'agents/translation-agent-descriptor';
 import { TranslationContext } from 'context/*';
-import { TranslationRequest } from 'supply/translation-request';
-import { TranslationResponse } from 'supply/translation-response';
+import { TranslationRequest, TranslationResponse } from 'supply/*';
 import type { TranslationSupplierBase } from 'supply/translation-supplier-base';
-import type { ITranslation } from 'types/i-translation';
+import type { ITranslation } from 'types/*';
 
 export class TranslationAgent extends AgentBase {
-	private context?: TranslationContext;
+	private context: TranslationContext;
 	private translation?: TranslationSupplierBase[];
 	private segmentation?: SegmentsSupplierBase;
 
-	//#region Initialization
+	constructor(functions: IExecuteFunctions) {
+		super(TranslationAgentDescriptor, functions);
+
+		this.context = ContextFactory.read<TranslationContext>(TranslationContext, this.functions, this.tracer);
+	}
+
 	protected async initialize(signal: AbortSignal): Promise<void> {
 		signal.throwIfAborted();
-		this.context = ContextFactory.read<TranslationContext>(TranslationContext, this.functions, this.tracer);
 		await this.initSegmentation(signal);
 		await this.initTranslation(signal);
 	}
@@ -36,9 +41,8 @@ export class TranslationAgent extends AgentBase {
 		const suppliers = await SupplyFactory.getSuppliers<TranslationSupplierBase>(this.functions, connection, this.tracer);
 		this.translation = suppliers;
 	}
-	//#endregion
 
-	protected async execute(signal: AbortSignal): Promise<SupplyResponse | SupplyError> {
+	protected async execute(signal: AbortSignal): Promise<SupplyResponseBase | SupplyError> {
 		signal.throwIfAborted();
 		if (!this.context) throw new Error('Translation context is not initialized.');
 		if (!this.segmentation) throw new Error('Segmentation supplier is not initialized.');
@@ -68,7 +72,7 @@ export class TranslationAgent extends AgentBase {
 
 	private async splitText(signal: AbortSignal): Promise<SplitResponse | SupplyError> {
 		const limit = this.translation?.map((supplier) => supplier.descriptor.segmentLimit).reduce((a, b) => Math.min(a, b));
-		const request = new SplitRequest(this.context!.text, limit!, this.context!.from);
+		const request = new SplitRequest(this.context.text, limit!, this.context.from);
 		const result = await this.segmentation!.supply(request, signal);
 		if (result instanceof SupplyError || result instanceof SplitResponse) return result;
 		throw new Error('Segmentation supplier returned MergeResponse instead of SplitResponse.');
@@ -80,7 +84,7 @@ export class TranslationAgent extends AgentBase {
 		const requests: TranslationRequest[] = [];
 		for (let i = 0; i < segments.length; i += limit!) {
 			const batch = segments.slice(i, i + limit!);
-			requests.push(new TranslationRequest(batch, this.context!.to, this.context!.from));
+			requests.push(new TranslationRequest(batch, this.context.to, this.context.from));
 		}
 		return requests;
 	}
@@ -89,7 +93,7 @@ export class TranslationAgent extends AgentBase {
 		for (let i = 0; i < this.translation!.length; i++) {
 			signal.throwIfAborted();
 			const supplier = this.translation![i];
-			const result = await supplier.supply(request, signal);
+			const result = await supplier.supplyWithRetries(request, signal);
 			if (result instanceof TranslationResponse) return result;
 			if (i >= this.translation!.length - 1) return result;
 		}
@@ -104,7 +108,7 @@ export class TranslationAgent extends AgentBase {
 		throw new Error('Segmentation supplier returned SplitResponse instead of MergeResponse.');
 	}
 
-	static async initializeAgent(functions: IFunctions, signal: AbortSignal): Promise<TranslationAgent> {
+	static async initializeAgent(functions: IExecuteFunctions, signal: AbortSignal): Promise<TranslationAgent> {
 		const agent = new TranslationAgent(functions);
 		await agent.initialize(signal);
 		return agent;
