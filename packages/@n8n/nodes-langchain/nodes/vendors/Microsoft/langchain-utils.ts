@@ -19,15 +19,6 @@ import { type N8nOutputParser } from '../../../utils/output_parsers/N8nOutputPar
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { ToolInputSchemaBase } from '@langchain/core/dist/tools/types';
 
-const MICROSOFT_MCP_TOOLS_USE_SYSTEM_MESSAGE = `
-
-You will have access to mcp tools that interact with Microsoft services.
-When users ask you to send messages or emails, always:
-1. Use complete email addresses in the recipient fields
-2. Clearly separate subject from body content
-3. For Microsoft Graph API tools requiring search, use format "propertyName:value" (e.g., "displayName:Michael" not just "Michael")
-`;
-
 export async function invokeAgent(
 	nodeContext: IWebhookFunctions,
 	input: string,
@@ -86,10 +77,7 @@ export async function invokeAgent(
 		fallbackModel,
 	);
 
-	const baseSystemMessage = options.systemMessage ?? SYSTEM_MESSAGE;
-	const system_message = microsoftMcpTools?.length
-		? `${baseSystemMessage}\n${MICROSOFT_MCP_TOOLS_USE_SYSTEM_MESSAGE}`
-		: baseSystemMessage;
+	const system_message = options.systemMessage ?? SYSTEM_MESSAGE;
 
 	const invokeParams = {
 		input,

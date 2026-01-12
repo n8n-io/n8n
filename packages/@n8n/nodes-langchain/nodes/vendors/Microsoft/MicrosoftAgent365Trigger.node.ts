@@ -13,12 +13,8 @@ import {
 	configureAdapterProcessCallback,
 	createMicrosoftAgentApplication,
 	type MicrosoftAgent365Credentials,
+	microsoftMcpServers,
 } from './microsoft-utils';
-
-// TODO : remove after resolved ====================================
-const processedMessages = new Map<string, number>();
-const MESSAGE_CACHE_TTL = 60000;
-//==================================================================
 
 export class MicrosoftAgent365Trigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -141,6 +137,49 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Enable Microsoft MCP Tools',
+				name: 'useMcpTools',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the agent to use Microsoft MCP tools like Calendar, Email, and OneDrive to assist in completing tasks. Requires appropriate permissions in your Microsoft account.',
+			},
+			{
+				displayName: 'Tools to Include',
+				name: 'include',
+				type: 'options',
+				default: 'all',
+				displayOptions: {
+					show: {
+						useMcpTools: [true],
+					},
+				},
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Selected',
+						value: 'selected',
+					},
+				],
+			},
+			{
+				displayName: 'Tools to Include',
+				name: 'includeTools',
+				type: 'multiOptions',
+				default: [],
+				noDataExpression: true,
+				options: microsoftMcpServers,
+				displayOptions: {
+					show: {
+						useMcpTools: [true],
+						include: ['selected'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -170,24 +209,6 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				noWebhookResponse: true,
 			};
 		}
-
-		// TODO: remove after resolved =================================================
-		const messageId = req.body?.id;
-
-		if (messageId && processedMessages.has(messageId)) {
-			res.status(200).end();
-			return { noWebhookResponse: true };
-		}
-
-		if (messageId) {
-			processedMessages.set(messageId, Date.now());
-			for (const [id, timestamp] of processedMessages.entries()) {
-				if (Date.now() - timestamp > MESSAGE_CACHE_TTL) {
-					processedMessages.delete(id);
-				}
-			}
-		}
-		//================================================================================
 
 		try {
 			const credentials = (await this.getCredentials(

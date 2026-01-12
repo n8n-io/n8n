@@ -7,7 +7,11 @@ import type {
 } from '@microsoft/agents-hosting';
 
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
-import { NodeOperationError, type IWebhookFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IWebhookFunctions,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
 
 import {
 	ExecutionType,
@@ -45,6 +49,17 @@ export type ActivityCapture = {
 	output: string[];
 };
 
+export const microsoftMcpServers: INodePropertyOptions[] = [
+	{ name: 'Calendar', value: 'mcp_CalendarTools' },
+	{ name: 'Mail', value: 'mcp_MailTools' },
+	{ name: 'Me', value: 'mcp_MeServer' },
+	{ name: 'OneDrive & SharePoint', value: 'mcp_ODSPRemoteServer' },
+	{ name: 'SharePoint Lists', value: 'mcp_SharePointListsTools' },
+	{ name: 'Teams', value: 'mcp_TeamsServer' },
+	{ name: 'Teams Canary', value: 'mcp_TeamsCanaryServer' },
+	{ name: 'Word', value: 'mcp_WordServer' },
+];
+
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
 
 function isMicrosoftObservabilityEnabled(): boolean {
@@ -74,15 +89,23 @@ export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Cr
 	return agent;
 }
 
-async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: string) {
+async function getMicrosoftMcpTools(
+	turnContext: TurnContext,
+	mcpAuthToken: string,
+	selectedTools: string[] | undefined,
+) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
 	Utility.ValidateAuthToken(mcpAuthToken);
 
 	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
-	const servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
+	let servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
 
 	if (servers.length === 0) return undefined;
+
+	if (selectedTools?.length) {
+		servers = servers.filter((server) => selectedTools.includes(server.mcpServerName));
+	}
 
 	const tenantId =
 		turnContext.activity.recipient?.tenantId || turnContext.activity?.channelData?.tenant?.id;
@@ -186,9 +209,28 @@ const configureActivityCallback = (
 				let mcpClient = undefined;
 				if (mcpTokenRef.token) {
 					try {
-						const result = await getMicrosoftMcpTools(turnContext, mcpTokenRef.token);
-						mcpClient = result?.client;
-						microsoftMcpTools = result?.tools;
+						const useMcpTools = nodeContext.getNodeParameter('useMcpTools', false) as boolean;
+
+						if (useMcpTools) {
+							let selectedTools: string[] | undefined = undefined;
+							const include = nodeContext.getNodeParameter('include', 'all') as 'all' | 'selected';
+
+							if (include === 'selected') {
+								const selected = nodeContext.getNodeParameter('includeTools', []) as string[];
+								selectedTools = microsoftMcpServers
+									.filter((server) => selected.includes(server.value as string))
+									.map((server) => server.value as string);
+							}
+
+							const result = await getMicrosoftMcpTools(
+								turnContext,
+								mcpTokenRef.token,
+								selectedTools,
+							);
+
+							mcpClient = result?.client;
+							microsoftMcpTools = result?.tools;
+						}
 					} catch (error) {
 						console.log('Error retrieving MCP tools');
 					}
