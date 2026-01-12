@@ -33,8 +33,7 @@ export class LogStreamingDestinationService {
 						await this.eventBus.addDestination(destination, false);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					if (error.message) this.logger.debug(error.message as string);
+					this.logger.debug('Failed to load destination from database', { error });
 				}
 			}
 		}

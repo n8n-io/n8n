@@ -92,7 +92,7 @@ export class MessageEventBusDestinationSentry
 				sendResult = true;
 			}
 		} catch (error) {
-			if (error.message) this.logger.debug(error.message as string);
+			this.logger.debug(`Failed to send message to Sentry destination: ${this.label}`, { error });
 			throw error;
 		}
 		return sendResult;
