@@ -114,7 +114,7 @@ export class WorkflowIndexService {
 
 				await this.indexVersion(
 					workflow.id,
-					workflow.versionCounter,
+					workflow.activeVersionId,
 					publishedVersion.nodes,
 					'published',
 				);

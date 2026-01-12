@@ -116,13 +116,14 @@ describe('WorkflowIndexService Integration', () => {
 				expect(dependencies[0]).toMatchObject({
 					workflowId,
 					workflowVersionId: 1,
+					versionType: 'draft',
 					dependencyType: 'nodeType',
 					dependencyKey: 'n8n-nodes-base.httpRequest',
 					dependencyInfo: {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: 1,
+					indexVersionId: 2,
 				});
 			});
 		});

@@ -22,13 +22,24 @@ export class AddVersionTypeToWorkflowDependency1766200000000 implements Reversib
 		);
 	}
 
-	async down({ runQuery, escape }: MigrationContext) {
+	async down({ runQuery, escape, isMysql }: MigrationContext) {
 		const tableName = escape.tableName('workflow_dependency');
 		const versionType = escape.columnName('versionType');
 
 		// Drop indexes first
-		await runQuery(`DROP INDEX ${escape.indexName('workflow_dependency_version_type')}`);
-		await runQuery(`DROP INDEX ${escape.indexName('workflow_dependency_workflow_version_type')}`);
+		const versionTypeIndex = escape.indexName('workflow_dependency_version_type');
+		const workflowVersionTypeIndex = escape.indexName('workflow_dependency_workflow_version_type');
+
+		await runQuery(
+			isMysql
+				? `ALTER TABLE ${tableName} DROP INDEX ${versionTypeIndex}`
+				: `DROP INDEX ${versionTypeIndex}`,
+		);
+		await runQuery(
+			isMysql
+				? `ALTER TABLE ${tableName} DROP INDEX ${workflowVersionTypeIndex}`
+				: `DROP INDEX ${workflowVersionTypeIndex}`,
+		);
 
 		// Drop column
 		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${versionType}`);

@@ -48,7 +48,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 	}
 
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {
-		return (prev: WorkflowHistory, _next: WorkflowHistory): boolean =>
+		return (prev: WorkflowHistory, _next: WorkflowHistory, _diff: unknown): boolean =>
 			prev.name !== null || prev.description !== null || activeVersions.has(prev.versionId);
 	}
 
@@ -76,8 +76,8 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		workflowId: string,
 		startDate: Date,
 		endDate: Date,
-		rules: DiffRule[] = [],
-		skipRules: DiffRule[] = [],
+		rules: Array<DiffRule<WorkflowHistory>> = [],
+		skipRules: Array<DiffRule<WorkflowHistory>> = [],
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
@@ -94,11 +94,15 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
-		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
-			this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
-			SKIP_RULES.skipDifferentUsers,
-			...skipRules,
-		]);
+		const grouped = groupWorkflows(
+			workflows as never[],
+			rules as never[],
+			[
+				this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
+				SKIP_RULES.skipDifferentUsers,
+				...skipRules,
+			] as never[],
+		) as unknown as { removed: WorkflowHistory[]; remaining: WorkflowHistory[] };
 
 		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
 		return { seen: workflows.length, deleted: grouped.removed.length };
