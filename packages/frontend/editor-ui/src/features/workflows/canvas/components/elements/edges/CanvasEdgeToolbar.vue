@@ -6,7 +6,7 @@ import { isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nIconButton } from '@n8n/design-system';
 import type { GraphNode } from '@vue-flow/core';
-import { AGENT_NODE_TYPE } from '@/app/constants';
+import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 
 const emit = defineEmits<{
 	add: [];
@@ -31,7 +31,8 @@ const isAddButtonVisible = computed(() => {
 	const isMainConnection = props.type === NodeConnectionTypes.Main;
 	const isToolConnectionToAgent =
 		props.type === NodeConnectionTypes.AiTool &&
-		props.targetNode.data.type === AGENT_NODE_TYPE &&
+		(props.targetNode.data.type === AGENT_NODE_TYPE ||
+			props.targetNode.data.type === AGENT_TOOL_NODE_TYPE) &&
 		!isHitlToolType(props.sourceNode.data.type);
 	return isMainConnection || isToolConnectionToAgent;
 });

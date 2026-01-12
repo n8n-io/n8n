@@ -1,4 +1,4 @@
-import { AGENT_NODE_TYPE } from '@/app/constants';
+import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { NodeConnectionType, INodeInputConfiguration, Workflow } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionTypes, isHitlToolType } from 'n8n-workflow';
@@ -43,7 +43,8 @@ export function useGetNodeCreatorFilter() {
 		}
 
 		if (outputType === NodeConnectionTypes.AiTool) {
-			const isConnectionToAgent = sourceNode.type === AGENT_NODE_TYPE;
+			const isConnectionToAgent =
+				sourceNode.type === AGENT_NODE_TYPE || sourceNode.type === AGENT_TOOL_NODE_TYPE;
 			// show HITL tools only for agent node
 			// HITL tools are not compatible with other nodes
 			const conditions: NodeCreatorFilter['conditions'] = [

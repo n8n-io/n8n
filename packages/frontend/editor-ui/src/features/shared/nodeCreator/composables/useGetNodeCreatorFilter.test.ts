@@ -7,7 +7,7 @@ import {
 	type INodeInputConfiguration,
 	type Workflow,
 } from 'n8n-workflow';
-import { AGENT_NODE_TYPE } from '@/app/constants';
+import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, INodeCreateElement } from '@/Interface';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -201,41 +201,44 @@ describe('useGetNodeCreatorFilter', () => {
 	});
 
 	describe('when outputType is AiTool', () => {
-		it('should add HITL tool conditions when sourceNode is agent node', () => {
-			const workflowNode = { type: 'test-node', typeVersion: 1 } as INodeUi;
-			const nodeType = mockNodeTypeDescription({
-				name: 'test-node',
-				inputs: [],
-			});
-			const filter = { nodes: ['node1'] };
-			const inputConfig: INodeInputConfiguration = {
-				type: NodeConnectionTypes.AiTool,
-				filter,
-			};
-			const sourceNode = mockNode({ name: 'agent', type: AGENT_NODE_TYPE });
+		it.each([AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE])(
+			'should add HITL tool conditions when sourceNode is %s node',
+			(sourceNodeType) => {
+				const workflowNode = { type: 'test-node', typeVersion: 1 } as INodeUi;
+				const nodeType = mockNodeTypeDescription({
+					name: 'test-node',
+					inputs: [],
+				});
+				const filter = { nodes: ['node1'] };
+				const inputConfig: INodeInputConfiguration = {
+					type: NodeConnectionTypes.AiTool,
+					filter,
+				};
+				const sourceNode = mockNode({ name: 'agent', type: sourceNodeType });
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
-			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
-			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
+				vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+				mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
+				vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
-			const result = getNodeCreatorFilter('test-node', NodeConnectionTypes.AiTool, sourceNode);
+				const result = getNodeCreatorFilter('test-node', NodeConnectionTypes.AiTool, sourceNode);
 
-			expect(result).toEqual({
-				...filter,
-				conditions: expect.any(Array),
-			});
-			expect(result?.conditions).toHaveLength(1);
+				expect(result).toEqual({
+					...filter,
+					conditions: expect.any(Array),
+				});
+				expect(result?.conditions).toHaveLength(1);
 
-			// Test that the condition allows HITL tools for agent nodes
-			const condition = result?.conditions?.[0];
-			expect(condition).toBeDefined();
-			if (condition) {
-				const hitlNode: INodeCreateElement = { key: 'CustomHitlTool' } as INodeCreateElement;
-				const regularNode: INodeCreateElement = { key: 'RegularTool' } as INodeCreateElement;
-				expect(condition(hitlNode)).toBe(true);
-				expect(condition(regularNode)).toBe(true);
-			}
-		});
+				// Test that the condition allows HITL tools for agent nodes
+				const condition = result?.conditions?.[0];
+				expect(condition).toBeDefined();
+				if (condition) {
+					const hitlNode: INodeCreateElement = { key: 'CustomHitlTool' } as INodeCreateElement;
+					const regularNode: INodeCreateElement = { key: 'RegularTool' } as INodeCreateElement;
+					expect(condition(hitlNode)).toBe(true);
+					expect(condition(regularNode)).toBe(true);
+				}
+			},
+		);
 
 		it('should add HITL tool conditions when sourceNode is not agent node', () => {
 			const workflowNode = { type: 'test-node', typeVersion: 1 } as INodeUi;
