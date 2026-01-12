@@ -2015,6 +2015,7 @@ export type ThemeIconColor =
 	| 'green'
 	| 'dark-green'
 	| 'azure'
+	| 'cyan'
 	| 'purple'
 	| 'crimson'
 	| 'code-orange';
