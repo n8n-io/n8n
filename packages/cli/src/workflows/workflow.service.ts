@@ -265,6 +265,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot update an archived workflow.');
+		}
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
