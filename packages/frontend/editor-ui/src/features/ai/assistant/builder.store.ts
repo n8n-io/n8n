@@ -293,7 +293,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			body: locale.baseText(bodyKey, {
 				interpolate: { workflowName },
 			}),
-			icon: '/static/native-notification-icon.png',
+			icon: '/favicon.ico',
 			tag: `workflow-build-${workflowsStore.workflowId}`,
 			requireInteraction: false,
 		});

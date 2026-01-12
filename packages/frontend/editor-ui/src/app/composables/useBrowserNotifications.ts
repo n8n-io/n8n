@@ -20,6 +20,18 @@ export interface UseBrowserNotificationsOptions {
 
 const DEFAULT_MAX_DISMISSALS = 3;
 
+const permissionState = ref<NotificationPermission>(
+	typeof Notification !== 'undefined' ? Notification.permission : 'denied',
+);
+
+/**
+ * Reset shared permission state. Only for testing purposes.
+ * @internal
+ */
+export function __resetpermissionState(): void {
+	permissionState.value = typeof Notification !== 'undefined' ? Notification.permission : 'denied';
+}
+
 /**
  * Composable for managing browser notification permissions.
  *
@@ -44,10 +56,6 @@ const DEFAULT_MAX_DISMISSALS = 3;
  */
 export function useBrowserNotifications(options: UseBrowserNotificationsOptions = {}) {
 	const { cooldownMs = SEVEN_DAYS_IN_MILLIS, maxDismissals = DEFAULT_MAX_DISMISSALS } = options;
-
-	const permissionState = ref<NotificationPermission>(
-		typeof Notification !== 'undefined' ? Notification.permission : 'denied',
-	);
 
 	const metadata = useLocalStorage<BrowserNotificationMetadata>(
 		LOCAL_STORAGE_BROWSER_NOTIFICATION_METADATA,
