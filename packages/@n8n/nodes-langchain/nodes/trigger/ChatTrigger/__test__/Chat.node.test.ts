@@ -1,7 +1,12 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
-import { CHAT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	FREE_TEXT_CHAT_RESPONSE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 
 import { Chat } from '../Chat.node';
 
@@ -141,6 +146,138 @@ describe('Test Chat Node', () => {
 			const result = await chat.onMessage(mockExecuteFunctions, data);
 
 			expect(result).toEqual([[data]]);
+		});
+	});
+
+	describe('v1.1', () => {
+		const chatNode = mock<INode>({
+			name: 'Chat',
+			type: CHAT_NODE_TYPE,
+			parameters: {},
+			typeVersion: 1.1,
+		});
+
+		it('should process onMessage without waiting for reply', async () => {
+			const data = { json: { chatInput: 'user message' } };
+			mockExecuteFunctions.getInputData.mockReturnValue([data]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return 'send';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, data);
+
+			expect(result).toEqual([[data]]);
+		});
+
+		it('should process onMessage with waiting for reply and free text response type', async () => {
+			const data = { json: { chatInput: 'user message' } };
+			mockExecuteFunctions.getInputData.mockReturnValue([data]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return SEND_AND_WAIT_OPERATION;
+					case 'responseType':
+						return FREE_TEXT_CHAT_RESPONSE_TYPE;
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, data);
+
+			expect(result).toEqual([
+				[
+					{
+						...data,
+						json: {
+							data: {
+								...data.json,
+							},
+						},
+					},
+				],
+			]);
+		});
+
+		it('should process onMessage with waiting for reply and approval response type', async () => {
+			const data = { json: { chatInput: 'user message' } };
+			mockExecuteFunctions.getInputData.mockReturnValue([data]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return SEND_AND_WAIT_OPERATION;
+					case 'responseType':
+						return 'approval';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, data);
+
+			expect(result).toEqual([
+				[
+					{
+						...data,
+						json: {
+							data: {
+								...data.json,
+								approved: false,
+							},
+						},
+					},
+				],
+			]);
+		});
+
+		it('should add user message to memory', async () => {
+			const data = { json: { chatInput: 'user message' } };
+			const memory = { chatHistory: { addUserMessage: jest.fn() } };
+			mockExecuteFunctions.getInputData.mockReturnValue([data]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getInputConnectionData.mockResolvedValue(memory);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return SEND_AND_WAIT_OPERATION;
+					case 'responseType':
+						return FREE_TEXT_CHAT_RESPONSE_TYPE;
+					case 'options':
+						return { memoryConnection: true };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, data);
+
+			expect(result).toEqual([
+				[
+					{
+						...data,
+						json: {
+							data: {
+								...data.json,
+							},
+						},
+					},
+				],
+			]);
+			expect(memory.chatHistory.addUserMessage).toHaveBeenCalledWith('user message');
 		});
 	});
 });
