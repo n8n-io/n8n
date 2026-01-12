@@ -39,6 +39,7 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -4179,6 +4180,66 @@ describe('useCanvasOperations', () => {
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
 		});
+
+		it.each([WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'should regenerate webhook ids for node type "%s"',
+			async (type) => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+
+				// This mock is needed for addImportedNodesToWorkflow to work
+				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				});
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							options: {},
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+					pinData: {
+						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+					},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				// This should not throw even when nodes can't be added due to maxNodes limit
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+				console.log(workflow);
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+			},
+		);
 	});
 
 	describe('duplicateNodes', () => {
