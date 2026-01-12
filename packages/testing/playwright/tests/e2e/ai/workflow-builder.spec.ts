@@ -92,7 +92,7 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 
 	test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
-		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
+		await openBuilderAndClickSuggestion(n8n, 'Daily weather report');
 
 		await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
 

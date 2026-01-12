@@ -63,37 +63,37 @@
 		"statusCode": 200,
 		"reasonPhrase": "OK",
 		"headers": {
-			"x-envoy-upstream-service-time": ["3452"],
+			"x-envoy-upstream-service-time": ["2843"],
 			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
-			"request-id": ["req_011CWwgLSutZ5RppKsHwnMmk"],
+			"request-id": ["req_011CX3pLt4SQ9iEyt7WZJ7mo"],
 			"cf-cache-status": ["DYNAMIC"],
-			"anthropic-ratelimit-tokens-reset": ["2026-01-09T10:53:13Z"],
-			"anthropic-ratelimit-tokens-remaining": ["23249000"],
-			"anthropic-ratelimit-tokens-limit": ["23250000"],
-			"anthropic-ratelimit-output-tokens-reset": ["2026-01-09T10:53:14Z"],
-			"anthropic-ratelimit-output-tokens-remaining": ["750000"],
-			"anthropic-ratelimit-output-tokens-limit": ["750000"],
-			"anthropic-ratelimit-input-tokens-reset": ["2026-01-09T10:53:13Z"],
-			"anthropic-ratelimit-input-tokens-remaining": ["22499000"],
-			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:47Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:48Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:47Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14999000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
 			"X-Robots-Tag": ["none"],
 			"Server": ["cloudflare"],
-			"Date": ["Fri, 09 Jan 2026 10:53:15 GMT"],
+			"Date": ["Mon, 12 Jan 2026 16:41:48 GMT"],
 			"Content-Type": ["application/json"],
-			"CF-RAY": ["9bb363b2afb02790-PRG"]
+			"CF-RAY": ["9bce1a6d5c25f971-PRG"]
 		},
 		"body": {
 			"contentType": "application/json",
 			"type": "JSON",
 			"json": {
 				"model": "claude-sonnet-4-5-20250929",
-				"id": "msg_015ZiaGypH7NX7MPccpi4Jik",
+				"id": "msg_014nQU1xG4xPk35B7mLso9tf",
 				"type": "message",
 				"role": "assistant",
 				"content": [
 					{
 						"type": "tool_use",
-						"id": "toolu_01JXaDfJPLCAMeNDGmFRCUs2",
+						"id": "toolu_01WuNQTJkBWqtWv9tmZ7YWXr",
 						"name": "routing_decision",
 						"input": {
 							"reasoning": "The user is requesting to build a new workflow with specific node types (n8n chat trigger, YouTube nodes, Anthropic Claude, respond to chat), which requires discovering the appropriate nodes first.",
@@ -115,10 +115,14 @@
 					"service_tier": "standard"
 				}
 			},
-			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDE1WmlhR3lwSDdOWDdNUGNjcGk0SmlrIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUpYYURmSlBMQ0FNZU5ER21GUkNVczIiLCJuYW1lIjoicm91dGluZ19kZWNpc2lvbiIsImlucHV0Ijp7InJlYXNvbmluZyI6IlRoZSB1c2VyIGlzIHJlcXVlc3RpbmcgdG8gYnVpbGQgYSBuZXcgd29ya2Zsb3cgd2l0aCBzcGVjaWZpYyBub2RlIHR5cGVzIChuOG4gY2hhdCB0cmlnZ2VyLCBZb3VUdWJlIG5vZGVzLCBBbnRocm9waWMgQ2xhdWRlLCByZXNwb25kIHRvIGNoYXQpLCB3aGljaCByZXF1aXJlcyBkaXNjb3ZlcmluZyB0aGUgYXBwcm9wcmlhdGUgbm9kZXMgZmlyc3QuIiwibmV4dCI6ImRpc2NvdmVyeSJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzMTMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo4OCwic2VydmljZV90aWVyIjoic3RhbmRhcmQifX0="
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDE0blFVMXhHNHhQazM1QjdtTHNvOXRmIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMVd1TlFUSmtCV3F0V3Y5dG1aN1lXWHIiLCJuYW1lIjoicm91dGluZ19kZWNpc2lvbiIsImlucHV0Ijp7InJlYXNvbmluZyI6IlRoZSB1c2VyIGlzIHJlcXVlc3RpbmcgdG8gYnVpbGQgYSBuZXcgd29ya2Zsb3cgd2l0aCBzcGVjaWZpYyBub2RlIHR5cGVzIChuOG4gY2hhdCB0cmlnZ2VyLCBZb3VUdWJlIG5vZGVzLCBBbnRocm9waWMgQ2xhdWRlLCByZXNwb25kIHRvIGNoYXQpLCB3aGljaCByZXF1aXJlcyBkaXNjb3ZlcmluZyB0aGUgYXBwcm9wcmlhdGUgbm9kZXMgZmlyc3QuIiwibmV4dCI6ImRpc2NvdmVyeSJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzMTMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo4OCwic2VydmljZV90aWVyIjoic3RhbmRhcmQifX0="
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 4000
 		}
 	},
-	"id": "1767956001903-unknown-host-POST-_v1_messages-2bb8783c.json",
+	"id": "1768236115212-unknown-host-POST-_v1_messages-2bb8783c.json",
 	"priority": 0,
 	"timeToLive": {
 		"unlimited": true

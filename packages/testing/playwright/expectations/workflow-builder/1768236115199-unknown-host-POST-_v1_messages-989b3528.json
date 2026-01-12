@@ -51,40 +51,40 @@
 		"statusCode": 200,
 		"reasonPhrase": "OK",
 		"headers": {
-			"x-envoy-upstream-service-time": ["2491"],
+			"x-envoy-upstream-service-time": ["1916"],
 			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
-			"request-id": ["req_011CWwgLKDY7TFPFNxvxbw1N"],
+			"request-id": ["req_011CX3pLit37ZZq59Hb2askd"],
 			"cf-cache-status": ["DYNAMIC"],
-			"anthropic-ratelimit-tokens-reset": ["2026-01-09T10:53:11Z"],
-			"anthropic-ratelimit-tokens-remaining": ["23250000"],
-			"anthropic-ratelimit-tokens-limit": ["23250000"],
-			"anthropic-ratelimit-output-tokens-reset": ["2026-01-09T10:53:12Z"],
-			"anthropic-ratelimit-output-tokens-remaining": ["750000"],
-			"anthropic-ratelimit-output-tokens-limit": ["750000"],
-			"anthropic-ratelimit-input-tokens-reset": ["2026-01-09T10:53:11Z"],
-			"anthropic-ratelimit-input-tokens-remaining": ["22500000"],
-			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["499000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
 			"X-Robots-Tag": ["none"],
 			"Server": ["cloudflare"],
-			"Date": ["Fri, 09 Jan 2026 10:53:12 GMT"],
+			"Date": ["Mon, 12 Jan 2026 16:41:45 GMT"],
 			"Content-Type": ["application/json"],
-			"CF-RAY": ["9bb363a769f0b718-PRG"]
+			"CF-RAY": ["9bce1a5fe8342790-PRG"]
 		},
 		"body": {
 			"contentType": "application/json",
 			"type": "JSON",
 			"json": {
 				"model": "claude-sonnet-4-5-20250929",
-				"id": "msg_01Ghvm6X2Lc1GNxSFmu74oCf",
+				"id": "msg_01Nu38ya6N9u9FSX7FQR1T4E",
 				"type": "message",
 				"role": "assistant",
 				"content": [
 					{
 						"type": "tool_use",
-						"id": "toolu_01CTxHVutyNDLsbs2QxaPbAq",
+						"id": "toolu_01Bo6nfKaFCWVf9y8iVqtyR3",
 						"name": "extract",
 						"input": {
-							"name": "YouTube Chapter Timestamp Generator from Video Captions"
+							"name": "YouTube Video Chapter Generator from Captions with AI"
 						}
 					}
 				],
@@ -102,10 +102,14 @@
 					"service_tier": "standard"
 				}
 			},
-			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFHaHZtNlgyTGMxR054U0ZtdTc0b0NmIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUNUeEhWdXR5TkRMc2JzMlF4YVBiQXEiLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7Im5hbWUiOiJZb3VUdWJlIENoYXB0ZXIgVGltZXN0YW1wIEdlbmVyYXRvciBmcm9tIFZpZGVvIENhcHRpb25zIn19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6OTUwLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NDIsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFOdTM4eWE2Tjl1OUZTWDdGUVIxVDRFIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUJvNm5mS2FGQ1dWZjl5OGlWcXR5UjMiLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7Im5hbWUiOiJZb3VUdWJlIFZpZGVvIENoYXB0ZXIgR2VuZXJhdG9yIGZyb20gQ2FwdGlvbnMgd2l0aCBBSSJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjk1MCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQyLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 4000
 		}
 	},
-	"id": "1767956003243-unknown-host-POST-_v1_messages-989b3528.json",
+	"id": "1768236115199-unknown-host-POST-_v1_messages-989b3528.json",
 	"priority": 0,
 	"timeToLive": {
 		"unlimited": true
