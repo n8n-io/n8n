@@ -15,7 +15,7 @@ import {
 
 import { ensureSyntaxTree } from '@codemirror/language';
 import type { IDataObject } from 'n8n-workflow';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, hasArrayWildcardSyntax } from 'n8n-workflow';
 
 import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
@@ -50,6 +50,8 @@ import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
+
+const ARRAY_WILDCARD_REGEX = /\[\s*\*\s*\]/g;
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -335,6 +337,74 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
+	// Helper: Resolve an expression string using the appropriate context
+	function resolveExpressionValue(resolvable: string, target: TargetItem | null): unknown {
+		if (expressionLocalResolveContext.value) {
+			return workflowHelpers.resolveExpression('=' + resolvable, undefined, {
+				...expressionLocalResolveContext.value,
+				additionalKeys: toValue(additionalData),
+			});
+		}
+
+		if (!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined) {
+			// e.g. credential modal
+			return Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
+		}
+
+		let opts: ResolveParameterOptions = {
+			additionalKeys: toValue(additionalData),
+			contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
+		};
+		if (toValue(targetNodeParameterContext) === undefined && ndvStore.isInputParentOfActiveNode) {
+			opts = {
+				targetItem: target ?? undefined,
+				inputNodeName: ndvStore.ndvInputNodeName,
+				inputRunIndex: ndvStore.ndvInputRunIndex,
+				inputBranchIndex: ndvStore.ndvInputBranchIndex,
+			};
+		}
+		return workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
+	}
+
+	// Helper: Count [*] wildcards in expression
+	function countArrayWildcards(expression: string): number {
+		const matches = expression.match(ARRAY_WILDCARD_REGEX);
+		return matches?.length ?? 0;
+	}
+
+	// Helper: Validate [*] wildcard expression by testing with first item
+	function validateWildcardExpression(
+		resolvable: string,
+		target: TargetItem | null,
+	): { resolved: string; error: boolean } {
+		// Only one [*] wildcard allowed per expression
+		if (countArrayWildcards(resolvable) > 1) {
+			return {
+				resolved: `[${i18n.baseText('expressionModalInput.multipleArrayWildcards')}]`,
+				error: true,
+			};
+		}
+
+		// Test by replacing [*] with [0] to check if property exists
+		const testExpression = resolvable.replace(ARRAY_WILDCARD_REGEX, '[0]');
+		try {
+			const testResult = resolveExpressionValue(testExpression, target);
+			if (testResult !== undefined) {
+				return {
+					resolved: `[${i18n.baseText('expressionModalInput.dynamicArrayExpansion')}]`,
+					error: false,
+				};
+			}
+		} catch {
+			// Test expression threw - treat as invalid
+		}
+
+		return {
+			resolved: i18n.baseText('expressionModalInput.undefined'),
+			error: true,
+		};
+	}
+
 	function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
@@ -343,32 +413,7 @@ export const useExpressionEditor = ({
 		};
 
 		try {
-			if (expressionLocalResolveContext.value) {
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, {
-					...expressionLocalResolveContext.value,
-					additionalKeys: toValue(additionalData),
-				});
-			} else if (!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined) {
-				// e.g. credential modal
-				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
-			} else {
-				let opts: ResolveParameterOptions = {
-					additionalKeys: toValue(additionalData),
-					contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
-				};
-				if (
-					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.isInputParentOfActiveNode
-				) {
-					opts = {
-						targetItem: target ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-					};
-				}
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
-			}
+			result.resolved = resolveExpressionValue(resolvable, target);
 		} catch (error) {
 			const hasRunData =
 				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
@@ -379,12 +424,18 @@ export const useExpressionEditor = ({
 			result.fullError = error;
 		}
 
+		console.log('result', result);
 		if (result.resolved === undefined) {
-			result.resolved = isUncalledExpressionExtension(resolvable)
-				? i18n.baseText('expressionEditor.uncalledFunction')
-				: i18n.baseText('expressionModalInput.undefined');
-
-			result.error = true;
+			if (hasArrayWildcardSyntax(resolvable)) {
+				const validation = validateWildcardExpression(resolvable, target);
+				result.resolved = validation.resolved;
+				result.error = validation.error;
+			} else {
+				result.resolved = isUncalledExpressionExtension(resolvable)
+					? i18n.baseText('expressionEditor.uncalledFunction')
+					: i18n.baseText('expressionModalInput.undefined');
+				result.error = true;
+			}
 		}
 
 		return result;

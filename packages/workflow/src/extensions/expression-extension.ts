@@ -60,10 +60,25 @@ const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
 
+// Regex to detect [*] array mapping syntax (e.g., items[*].field)
+// Note: No 'g' flag here - used with .test() which has stateful behavior with global regexes
+const ARRAY_WILDCARD_REGEX = /\[\s*\*\s*\]/;
+
+// Placeholder used to make [*] parseable by esprima
+const ARRAY_WILDCARD_PLACEHOLDER = '__n8n_array_wildcard__';
+
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_REGEX.test(str);
+
+export const hasArrayWildcardSyntax = (str: string): boolean => ARRAY_WILDCARD_REGEX.test(str);
+
+/**
+ * Replaces all [*] occurrences with the placeholder for parsing
+ */
+const replaceArrayWildcards = (str: string): string =>
+	str.replace(/\[\s*\*\s*\]/g, `["${ARRAY_WILDCARD_PLACEHOLDER}"]`);
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
@@ -107,6 +122,93 @@ function parseWithEsprimaNext(source: string, options?: any): any {
 }
 
 /**
+ * Checks if a MemberExpression node represents array wildcard access [*]
+ * After preprocessing, [*] becomes ["__n8n_array_wildcard__"]
+ */
+function isArrayWildcardAccess(node: types.namedTypes.MemberExpression): boolean {
+	return (
+		node.computed === true &&
+		node.property.type === 'Literal' &&
+		node.property.value === ARRAY_WILDCARD_PLACEHOLDER
+	);
+}
+
+/**
+ * Checks if a node contains an array wildcard [*] access anywhere in its chain
+ */
+function containsArrayWildcard(node: ExpressionKind): boolean {
+	if (node.type === 'MemberExpression') {
+		if (isArrayWildcardAccess(node)) {
+			return true;
+		}
+		return containsArrayWildcard(node.object);
+	}
+	return false;
+}
+
+/**
+ * Collects the JMESPath query string from member expressions following [*]
+ * Returns the path string like ".field" or ".address.city"
+ *
+ * For expression like: $json.orders[*].customer.name
+ * - baseObject = $json.orders
+ * - jmesPath = "[*].customer.name"
+ */
+function collectJmesPathFromChain(
+	node: types.namedTypes.MemberExpression,
+): { baseObject: ExpressionKind; jmesPath: string } | null {
+	// First, check if this is the topmost expression containing [*]
+	// by verifying that node contains [*] but is not itself inside another [*] chain
+	if (!containsArrayWildcard(node)) {
+		return null;
+	}
+
+	const pathParts: string[] = [];
+	let baseObject: ExpressionKind | null = null;
+
+	// Walk down the member expression chain to find [*] and collect all paths after it
+	const collectPath = (n: ExpressionKind): 'before_wildcard' | 'after_wildcard' => {
+		if (n.type === 'MemberExpression') {
+			const memberNode = n;
+
+			// Check if this is the [*] node
+			if (isArrayWildcardAccess(memberNode)) {
+				baseObject = memberNode.object;
+				return 'after_wildcard';
+			}
+
+			// Recurse into the object (go deeper first)
+			const result = collectPath(memberNode.object);
+
+			if (result === 'after_wildcard') {
+				// We're past the [*], collect this property
+				if (memberNode.property.type === 'Identifier') {
+					pathParts.push(memberNode.property.name);
+				} else if (memberNode.property.type === 'Literal') {
+					// Handle computed properties like ['field']
+					pathParts.push(String(memberNode.property.value));
+				}
+				return 'after_wildcard';
+			}
+
+			return 'before_wildcard';
+		}
+		return 'before_wildcard';
+	};
+
+	collectPath(node);
+
+	if (!baseObject || pathParts.length === 0) {
+		return null;
+	}
+
+	// Build JMESPath query: [*].field1.field2
+	const jmesPath = '[*].' + pathParts.join('.');
+
+	return { baseObject, jmesPath };
+}
+
+/**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
  *
@@ -118,13 +220,60 @@ function parseWithEsprimaNext(source: string, options?: any): any {
  *
  * 'a'.first('x').second('y') // becomes
  * extend(extend('a', 'first', ['x']), 'second', ['y']));
+ *
+ * // Array wildcard syntax:
+ * items[*].field // becomes
+ * $jmesPath(items, '[*].field')
  * ```
  */
 export const extendTransform = (expression: string): { code: string } | undefined => {
 	try {
-		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } }) as types.ASTNode;
+		// Preprocess: Replace [*] with ["__n8n_array_wildcard__"] to make it parseable
+		// JavaScript doesn't allow [*] as it interprets * as multiplication operator
+		const preprocessedExpression = replaceArrayWildcards(expression);
+
+		const ast = parse(preprocessedExpression, {
+			parser: { parse: parseWithEsprimaNext },
+		}) as types.ASTNode;
 
 		let currentChain = 1;
+
+		// Transform array wildcard [*] syntax to $jmesPath calls
+		// e.g., $json.items[*].title -> $jmesPath($json.items, '[*].title')
+		visit(ast, {
+			visitMemberExpression(path) {
+				// First traverse children to handle nested expressions
+				this.traverse(path);
+
+				const node = path.node;
+
+				// Skip if this node is part of a larger MemberExpression chain
+				// We only want to process the topmost expression containing [*]
+				const parentNode = path.parent?.node as types.namedTypes.Node | undefined;
+				if (
+					parentNode &&
+					parentNode.type === 'MemberExpression' &&
+					(parentNode as types.namedTypes.MemberExpression).object === node
+				) {
+					// This node is the `object` of a parent MemberExpression,
+					// so we should skip it and let the parent handle the full chain
+					return;
+				}
+
+				// Check if this expression contains [*]
+				const result = collectJmesPathFromChain(node);
+
+				if (result) {
+					// Create $jmesPath(baseObject, '[*].path')
+					const jmesPathCall = types.builders.callExpression(
+						types.builders.identifier('$jmesPath'),
+						[result.baseObject, types.builders.literal(result.jmesPath)],
+					);
+
+					path.replace(jmesPathCall);
+				}
+			},
+		});
 
 		// Polyfill optional chaining
 		visit(ast, {
@@ -572,10 +721,13 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 		.filter((c) => c.type === 'code')
 		.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
 
-	if (
-		(!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression)) &&
-		!forceExtend
-	) {
+	// Check if expression needs transformation:
+	// - Has extension methods (e.g., .isEmpty())
+	// - Has array wildcard syntax (e.g., [*])
+	const needsExtension =
+		codeChunks.some(hasExpressionExtension) || codeChunks.some(hasArrayWildcardSyntax);
+
+	if ((!needsExtension || hasNativeMethod(bracketedExpression)) && !forceExtend) {
 		return bracketedExpression;
 	}
 
