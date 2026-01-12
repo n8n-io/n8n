@@ -660,7 +660,7 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 }
 
 function getPlaceholder(): string {
-	if (props.parameter.placeholder) {
+	if (props.parameter.placeholder != undefined) {
 		return props.parameter.placeholder;
 	}
 	return props.isForCredential
