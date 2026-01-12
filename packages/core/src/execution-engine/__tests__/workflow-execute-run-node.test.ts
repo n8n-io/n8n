@@ -55,6 +55,10 @@ jest.mock('@/node-execute-functions', () => ({
 	getExecuteTriggerFunctions: jest.fn(),
 }));
 
+jest.mock('../../utils/convert-binary-data.ts', () => ({
+	convertBinaryData: jest.fn(),
+}));
+
 // Now import the real classes
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
@@ -48,6 +48,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
+const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -200,7 +201,7 @@ const onValueDrop = (droppedExpression: string) => {
 				<template v-if="!hideType" #middle>
 					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
 						<template #content>
-							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+							{{ binaryDataAccessTooltip }}
 						</template>
 						<TypeSelect
 							:class="$style.select"

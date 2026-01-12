@@ -19,6 +19,7 @@ import {
 	WorkflowConfigurationError,
 	jsonParse,
 	tryToParseUrl,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -394,6 +395,7 @@ export async function prepareFormReturnItem(
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
+	const { binaryMode } = context.getWorkflowSettings();
 
 	const returnItem: INodeExecutionData = {
 		json: {},
@@ -408,19 +410,25 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map((file) => ({
-				filename: file.originalFilename,
-				mimetype: file.mimetype,
-				size: file.size,
-			}));
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? []
+					: filesInput.map((file) => ({
+							filename: file.originalFilename,
+							mimetype: file.mimetype,
+							size: file.size,
+						}));
 			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
-			bodyData[key] = {
-				filename: filesInput.originalFilename,
-				mimetype: filesInput.mimetype,
-				size: filesInput.size,
-			};
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? {}
+					: {
+							filename: filesInput.originalFilename,
+							mimetype: filesInput.mimetype,
+							size: filesInput.size,
+						};
 			processFiles.push(filesInput);
 		}
 
@@ -430,17 +438,27 @@ export async function prepareFormReturnItem(
 
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
-
-			if (multiFile) {
-				binaryPropertyName += `_${fileCount++}`;
-			}
-
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
 				file.filepath,
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			if (binaryMode === BINARY_MODE_COMBINED) {
+				if (Array.isArray(bodyData[key])) {
+					(bodyData[key] as IDataObject[]).push(binaryData);
+				} else {
+					bodyData[key] = binaryData;
+				}
+			} else {
+				let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+				if (multiFile) {
+					binaryPropertyName += `_${fileCount++}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = binaryData;
+			}
 
 			// Delete original file to prevent tmp directory from growing too large
 			await rm(file.filepath, { force: true });

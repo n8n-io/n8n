@@ -44,6 +44,9 @@ const createMockExecuteFunction = (
 		getNode() {
 			return node;
 		},
+		getWorkflowSettings() {
+			return {};
+		},
 		helpers: { constructExecutionMetaData },
 		continueOnFail: () => continueOnFail,
 	} as unknown as IExecuteFunctions;

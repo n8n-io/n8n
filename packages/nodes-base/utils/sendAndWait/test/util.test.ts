@@ -1,5 +1,10 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { configureWaitTillDate } from '../configureWaitTillDate.util';
@@ -17,6 +22,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	describe('getSendAndWaitProperties', () => {

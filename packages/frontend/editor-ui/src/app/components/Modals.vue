@@ -29,6 +29,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -86,6 +87,7 @@ import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vu
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
+import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
@@ -423,6 +425,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<BinaryDataViewModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_DESCRIPTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowDescriptionModal :modal-name="modalName" :data="data" />
@@ -446,6 +454,7 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>
