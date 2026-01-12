@@ -418,6 +418,56 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(response.body.message).toBe('Invalid sort direction');
 	});
 
+	test('should sort by system column (id)', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Charlie' }, { name: 'Alice' }, { name: 'Bob' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'id:asc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		// IDs are auto-incrementing, so ascending order means first inserted comes first
+		expect(response.body.data[0].name).toBe('Charlie');
+		expect(response.body.data[1].name).toBe('Alice');
+		expect(response.body.data[2].name).toBe('Bob');
+	});
+
+	test('should sort by system column (createdAt)', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Charlie' }, { name: 'Alice' }, { name: 'Bob' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'createdAt:desc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		// Just verify that sorting by createdAt works without error
+		// (all rows may have same/similar timestamp if inserted quickly)
+		expect(response.body.data[0]).toHaveProperty('createdAt');
+		expect(response.body.data[0]).toHaveProperty('name');
+	});
+
+	test('should reject column names with invalid characters', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'user-name:asc' }); // hyphen not allowed
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('alphabetical characters');
+	});
+
 	test('should paginate with cursor and limit', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [

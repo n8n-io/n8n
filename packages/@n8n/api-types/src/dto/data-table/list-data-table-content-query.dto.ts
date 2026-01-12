@@ -52,11 +52,13 @@ const sortByValidator = z
 
 		try {
 			column = dataTableColumnNameSchema.parse(column);
-		} catch {
+		} catch (e) {
+			const errorMessage =
+				e instanceof z.ZodError ? e.errors[0]?.message : 'Invalid sort columnName';
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: 'Invalid sort columnName',
-				path: ['sort'],
+				message: errorMessage,
+				path: ['sortBy'],
 			});
 			return z.NEVER;
 		}
