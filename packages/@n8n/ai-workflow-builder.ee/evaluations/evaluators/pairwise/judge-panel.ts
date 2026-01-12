@@ -9,10 +9,8 @@ import type { EvaluationContext } from '../../harness/harness-types';
 // Types
 // ============================================================================
 
-export interface EvalCriteria {
-	dos: string;
-	donts: string;
-}
+/** Evaluation criteria requiring at least one of dos or donts */
+export type EvalCriteria = { dos: string; donts?: string } | { dos?: string; donts: string };
 
 export interface JudgePanelTiming {
 	/** Total time for all judges in milliseconds */
