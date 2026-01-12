@@ -42,11 +42,24 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set method to POST"
 - "Add field 'status' with value 'processed'"`;
 
+const N8N_DATA_STRUCTURE = `**n8n Data Structure Fundamentals:**
+Data flows between nodes as an array of items. Each item is an object with a \`json\` key (for structured data) or \`binary\` key (for files).
+
+Structure: [{ json: { field1: "value1" } }, { json: { field2: "value2" } }]
+
+**Why this matters:**
+- Each item is processed individually by most nodes (auto-iteration)
+- When external APIs return data not matching this structure, use transformation nodes (Split Out, Aggregate) to reshape it
+- Binary data (files, images, PDFs) uses the \`binary\` key, not \`json\`
+- A node receiving 5 items will typically execute its operation 5 times, once per item`;
+
 const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
 
 Within a node, data from previous nodes is commonly referenced using the following:
-- $json: the current JSON data of the previous node
+- $json: the current JSON data of the previous node (shorthand for current item's json)
 - $('<node_name>').item.json: the JSON data of the matching item of any preceding node
+- $binary: access binary data (files) from the previous node
+- $('<node_name>').item.binary: binary data from a specific node
 
 Prefer $('<node_name>').item to $('<node_name>').first() or $('<node_name>').last() unless it is explicitly required to fix an error.
 
@@ -55,7 +68,40 @@ Examples in parameter configuration:
 - "Set value to ={{ $('Previous Node').item.json.value }}"
 - "Set message to ={{ $('HTTP Request').item.json.message }}"`;
 
-const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods
+const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods plus n8n-specific helper methods.
+
+**n8n convenience functions (use these for cleaner expressions):**
+- $ifEmpty(value, default): ={{ $ifEmpty($json.name, 'Unknown') }}
+- $if(condition, trueVal, falseVal): ={{ $if($json.age > 18, 'Adult', 'Minor') }}
+- $min(...numbers): ={{ $min($json.a, $json.b, 100) }}
+- $max(...numbers): ={{ $max($json.values) }}
+
+**n8n string methods (call on any string):**
+- .isEmpty() / .isNotEmpty(): ={{ $json.email.isNotEmpty() }}
+- .isEmail() / .isUrl() / .isDomain(): ={{ $json.input.isEmail() }}
+- .extractEmail() / .extractUrl() / .extractDomain(): ={{ $json.text.extractEmail() }}
+- .parseJson(): ={{ $json.jsonString.parseJson() }}
+- .toInt() / .toFloat(): ={{ $json.price.toFloat() }}
+- .toDateTime(): ={{ $json.dateStr.toDateTime() }}
+- .base64Encode() / .base64Decode(): ={{ $json.data.base64Encode() }}
+- .hash('sha256'): ={{ $json.password.hash('sha256') }}
+- .removeMarkdown() / .removeTags(): ={{ $json.html.removeTags() }}
+- .urlEncode() / .urlDecode(): ={{ $json.query.urlEncode() }}
+
+**n8n array methods (call on any array):**
+- .first() / .last(): ={{ $json.items.first() }}
+- .isEmpty() / .isNotEmpty(): ={{ $json.results.isEmpty() }}
+- .compact(): ={{ $json.items.compact() }} (removes empty values)
+- .unique() / .removeDuplicates('key'): ={{ $json.items.unique('id') }}
+- .pluck('field1', 'field2'): ={{ $json.users.pluck('name', 'email') }}
+- .chunk(size): ={{ $json.items.chunk(10) }}
+- .sum() / .average() / .min() / .max(): ={{ $json.prices.sum() }}
+
+**n8n object methods:**
+- .isEmpty() / .hasField('key'): ={{ $json.data.hasField('email') }}
+- .removeField('key'): ={{ $json.user.removeField('password') }}
+- .compact(): ={{ $json.data.compact() }} (removes empty values)
+- .keys() / .values(): ={{ Object.keys($json.data) }}
 
 Regex operations:
 - Test pattern: ={{ /pattern/.test($json.text) }}
@@ -63,12 +109,12 @@ Regex operations:
 - Replace text: ={{ $json.text.replace(/pattern/, 'replacement') }}
 - Split by pattern: ={{ $json.text.split(/pattern/) }}
 
-String operations:
+Standard JavaScript string operations:
 - Uppercase: ={{ $json.text.toUpperCase() }}
 - Trim whitespace: ={{ $json.text.trim() }}
 - Substring: ={{ $json.text.substring(0, 10) }}
 
-Array operations:
+Standard JavaScript array operations:
 - First item: ={{ $json.items[0] }}
 - Filter: ={{ $json.items.filter(i => i.active) }}
 - Map: ={{ $json.items.map(i => i.name) }}
@@ -77,7 +123,16 @@ Array operations:
 Generating items from expressions (use with Split Out node):
 - Create array from comma string: ={{ $json.text.split(',') }}
 - Generate range: ={{ Array.from({{length: 5}}, (_, i) => i + 1) }}
-- Use with Split Out node to create multiple output items from a single input`;
+- Use with Split Out node to create multiple output items from a single input
+
+**Loop Over Items context expressions:**
+- Check if loop is done: ={{ $("Loop Over Items").context["noItemsLeft"] }}
+- Get current iteration index: ={{ $("Loop Over Items").context["currentRunIndex"] }}
+
+**HTTP Request pagination variables (when pagination is enabled):**
+- $pageCount: Number of pages fetched so far
+- $request: The request object being sent
+- $response: The response object (body, headers, statusCode)`;
 
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
@@ -110,6 +165,22 @@ UNSAFE DEFAULTS - Always set based on workflow context:
 - Document Loader dataType: Defaults to 'json' but MUST be 'binary' when processing files (PDF, DOCX, images, etc.)
 - HTTP Request method: Defaults to GET. Set the request method based on API requirements.
 - Vector Store mode: Context-dependent. Set explicitly: 'insert' for storing documents, 'retrieve' for querying, 'retrieve-as-tool' when used with AI Agent`;
+
+const WEBHOOK_CONFIGURATION = `**Webhook Node Response Modes (critical for API behavior):**
+
+- **Immediately**: Returns generic "Workflow got started" message right away. Use for fire-and-forget triggers where caller doesn't need response data.
+- **When Last Node Finishes**: Waits for workflow to complete, returns final node's output. Use for synchronous APIs that need to return processed data.
+- **Using 'Respond to Webhook' Node**: Custom response at any point in workflow. Use when you need control over response timing, status codes, or content.
+
+**Test URL vs Production URL:**
+- Test URL: Only works when "Listen for Test Event" is active in editor. For development/testing.
+- Production URL: Only works when workflow is published/active. For actual integrations.
+
+**Other important Webhook settings:**
+- responseCode: Set appropriate HTTP status (200, 201, 400, etc.)
+- responseData: "All Entries" (array), "First Entry JSON" (single object), "First Entry Binary" (file download), "No Response Body"
+- httpMethod: Match what the calling service expects (GET, POST, PUT, DELETE, etc.)
+- path: Custom path segment for the webhook URL (supports parameters like /:id)`;
 
 const SWITCH_NODE_CONFIGURATION = `Switch nodes require configuring rules.values[] array - each entry creates one output:
 
@@ -199,10 +270,12 @@ export function buildConfiguratorPrompt(): string {
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
+		.section('n8n_data_structure', N8N_DATA_STRUCTURE)
 		.section('data_referencing', DATA_REFERENCING)
 		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
+		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
