@@ -247,6 +247,46 @@ describe('Pairwise Evaluator', () => {
 				'Judge panel failed',
 			);
 		});
+
+		it('should accept criteria with only dos (no donts)', async () => {
+			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm);
+
+			const workflow = createMockWorkflow();
+			const context = { prompt: 'Test prompt', dos: 'Use Slack node' };
+
+			await evaluator.evaluate(workflow, context);
+
+			expect(mockRunJudgePanel).toHaveBeenCalledWith(
+				mockLlm,
+				workflow,
+				{ dos: 'Use Slack node', donts: 'Do not add unnecessary complexity' },
+				3,
+				expect.any(Object),
+			);
+		});
+
+		it('should accept criteria with only donts (no dos)', async () => {
+			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
+
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const evaluator = createPairwiseEvaluator(mockLlm);
+
+			const workflow = createMockWorkflow();
+			const context = { prompt: 'Test prompt', donts: 'Do not use HTTP Request node' };
+
+			await evaluator.evaluate(workflow, context);
+
+			expect(mockRunJudgePanel).toHaveBeenCalledWith(
+				mockLlm,
+				workflow,
+				{ dos: 'Follow the user prompt accurately', donts: 'Do not use HTTP Request node' },
+				3,
+				expect.any(Object),
+			);
+		});
 	});
 
 	describe('createPairwiseEvaluator() multi-gen', () => {
