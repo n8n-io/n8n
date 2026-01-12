@@ -582,4 +582,42 @@ describe('ThisSanitizer', () => {
 			expect(result).toBe('test-value');
 		});
 	});
+
+	describe('this access via arrow functions', () => {
+		it('should replace this with safe context in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {} });
+		});
+
+		it('should block process.env access via this in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this?.process)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+			expect(result).not.toHaveProperty('env');
+		});
+
+		it('should block this access in nested arrow functions', () => {
+			const result = tournament.execute('{{ (() => (() => this)())() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {} });
+		});
+
+		it('should block this?.process?.env access pattern', () => {
+			const result = tournament.execute('{{ (() => this?.process?.env)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should still work with this in regular function expressions', () => {
+			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+		});
+	});
 });

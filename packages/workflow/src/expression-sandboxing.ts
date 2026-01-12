@@ -14,6 +14,8 @@ const EMPTY_CONTEXT = b.objectExpression([
 
 const SAFE_GLOBAL = b.objectExpression([]);
 
+const SAFE_THIS = b.sequenceExpression([b.literal(0), EMPTY_CONTEXT]);
+
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
  * Returns true for obj.$ or obj.nested.$ but false for bare $ or other expression contexts.
@@ -132,6 +134,28 @@ export const ThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 
 				if (!isPropertyName) path.replace(SAFE_GLOBAL);
 			}
+		},
+
+		visitThisExpression(path) {
+			this.traverse(path);
+
+			/**
+			 * Replace `this` with a safe context object.
+			 * This prevents arrow functions from accessing the real global context:
+			 *
+			 * ```js
+			 * (() => this?.process)()  // becomes (() => (0, { process: {} })?.process)()
+			 * ```
+			 *
+			 * Arrow functions don't have their own `this` binding - they inherit from
+			 * the outer lexical scope. Without this fix, `this` inside an arrow function
+			 * would resolve to the Node.js global object, exposing process.env and other
+			 * sensitive data.
+			 *
+			 * We use SAFE_THIS (a sequence expression) instead of EMPTY_CONTEXT directly
+			 * to ensure the object literal is unambiguously parsed as an expression.
+			 */
+			path.replace(SAFE_THIS);
 		},
 	});
 };
