@@ -22,6 +22,7 @@ import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	createFormDataObject,
+	getRequestHelperFunctions,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -1089,6 +1090,243 @@ describe('Request Helper Functions', () => {
 			expect(
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Pagination - maxIdenticalResponses logic', () => {
+		const baseUrl = 'https://api.example.com';
+		let requestCount: number;
+
+		// Helper to create a workflow mock with expression resolver
+		const createWorkflowMock = () => {
+			return mock<Workflow>({
+				id: 'test-workflow',
+				expression: {
+					getParameterValue: jest.fn(
+						(
+							paramValue,
+							_runExecutionData,
+							_runIndex,
+							_itemIndex,
+							_nodeName,
+							_connectionInputData,
+							_mode,
+							additionalKeys,
+						) => {
+							// If it's an object (like pagination.request), return as-is
+							if (typeof paramValue === 'object' && paramValue !== null) {
+								return paramValue;
+							}
+							// For expressions
+							if (typeof paramValue === 'string' && paramValue.startsWith('={{')) {
+								const expr = paramValue.slice(3, -2).trim();
+								const pageCount = additionalKeys?.$pageCount ?? 0;
+
+								// Evaluate expressions
+								if (expr === '$pageCount < 6') {
+									return pageCount < 6;
+								}
+								// Default: return true (continue)
+								return true;
+							}
+							// For non-expressions, return as-is
+							return paramValue;
+						},
+					),
+				},
+			});
+		};
+
+		beforeEach(() => {
+			nock.cleanAll();
+			requestCount = 0;
+		});
+
+		test('should throw error after 3 identical responses with default threshold (2)', async () => {
+			const workflow = createWorkflowMock();
+			const hooks = mock<ExecutionLifecycleHooks>();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+			const node = mock<INode>({ name: 'Test Node', typeVersion: 1 });
+
+			// Mock API to return identical response every time
+			const identicalResponse = { data: 'same', timestamp: '2024-01-01' };
+			let callCount = 0;
+			const scope = nock(baseUrl)
+				.persist()
+				.get('/data')
+				.reply(
+					200,
+					() => {
+						callCount++;
+						return identicalResponse;
+					},
+					{ 'content-type': 'application/json' },
+				);
+
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: `${baseUrl}/data`,
+				json: true,
+			};
+
+			const paginationOptions: PaginationOptions = {
+				continue: true, // Never stop naturally
+				request: { url: `${baseUrl}/data` },
+				requestInterval: 0,
+				// maxIdenticalResponses NOT provided - should default to 2
+			};
+
+			const helperFunctions = getRequestHelperFunctions(workflow, node, additionalData);
+
+			const mockThis = {
+				getNode: () => node,
+				helpers: {
+					request: async (opts: IHttpRequestOptions) =>
+						await proxyRequestToAxios(workflow, additionalData, node, opts),
+				},
+			} as unknown as IAllExecuteFunctions;
+
+			// Should throw after 3 identical responses (threshold is 2)
+			await expect(
+				helperFunctions.requestWithAuthenticationPaginated.call(
+					mockThis,
+					requestOptions,
+					0,
+					paginationOptions,
+				),
+			).rejects.toThrow(/identical.*so requests got stopped/i);
+
+			scope.persist(false);
+
+			// Verify we made at least 3 requests
+			expect(callCount).toBeGreaterThanOrEqual(3);
+		});
+
+		test('should allow more identical responses when maxIdenticalResponses is increased', async () => {
+			const workflow = createWorkflowMock();
+			const hooks = mock<ExecutionLifecycleHooks>();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+			const node = mock<INode>({ name: 'Test Node', typeVersion: 1 });
+
+			// Mock API to return identical response 5 times, then stop naturally
+			const identicalResponse = { data: 'same', timestamp: '2024-01-01' };
+
+			requestCount = 0;
+			const scope = nock(baseUrl)
+				.persist()
+				.get('/data')
+				.reply(
+					200,
+					() => {
+						requestCount++;
+						return identicalResponse;
+					},
+					{ 'content-type': 'application/json' },
+				);
+
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: `${baseUrl}/data`,
+				json: true,
+			};
+
+			const paginationOptions: PaginationOptions = {
+				continue: '={{ $pageCount < 6 }}', // Stop after 6 requests
+				request: { url: `${baseUrl}/data` },
+				requestInterval: 0,
+				maxIdenticalResponses: 5, // Allow 5 identical (6 total same responses)
+			};
+
+			const helperFunctions = getRequestHelperFunctions(workflow, node, additionalData);
+
+			const mockThis = {
+				getNode: () => node,
+				helpers: {
+					request: async (opts: IHttpRequestOptions) =>
+						await proxyRequestToAxios(workflow, additionalData, node, opts),
+				},
+			} as unknown as IAllExecuteFunctions;
+
+			// Should succeed - 6 identical responses with threshold of 5 should work
+			const result = await helperFunctions.requestWithAuthenticationPaginated.call(
+				mockThis,
+				requestOptions,
+				0,
+				paginationOptions,
+			);
+
+			scope.persist(false);
+
+			// Should have made 6 requests (all identical but threshold allows it)
+			expect(requestCount).toBe(6);
+			expect(result).toBeDefined();
+			expect(Array.isArray(result)).toBe(true);
+			expect(result.length).toBe(6);
+		});
+
+		test('should actually count and compare response hashes, not just pass through', async () => {
+			const workflow = createWorkflowMock();
+			const hooks = mock<ExecutionLifecycleHooks>();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+			const node = mock<INode>({ name: 'Test Node', typeVersion: 1 });
+
+			// Mock: 2 identical, 1 different, 3 more identical (should fail on default threshold)
+			const response1 = { id: 1, data: 'first' };
+			const response2 = { id: 2, data: 'different' };
+
+			requestCount = 0;
+			const scope = nock(baseUrl)
+				.persist()
+				.get('/data')
+				.reply(
+					200,
+					() => {
+						requestCount++;
+						// 2 identical, 1 different, then 3 more identical
+						if (requestCount <= 2) return response1;
+						if (requestCount === 3) return response2; // Resets counter
+						return response1; // Would fail on 6th or 7th request (3rd or 4th identical after reset)
+					},
+					{ 'content-type': 'application/json' },
+				);
+
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: `${baseUrl}/data`,
+				json: true,
+			};
+
+			const paginationOptions: PaginationOptions = {
+				continue: true,
+				request: { url: `${baseUrl}/data` },
+				requestInterval: 0,
+				// maxIdenticalResponses not provided - should use default of 2
+			};
+
+			const helperFunctions = getRequestHelperFunctions(workflow, node, additionalData);
+
+			const mockThis = {
+				getNode: () => node,
+				helpers: {
+					request: async (opts: IHttpRequestOptions) =>
+						await proxyRequestToAxios(workflow, additionalData, node, opts),
+				},
+			} as unknown as IAllExecuteFunctions;
+
+			// Should throw after seeing 3 consecutive identical responses after reset
+			await expect(
+				helperFunctions.requestWithAuthenticationPaginated.call(
+					mockThis,
+					requestOptions,
+					0,
+					paginationOptions,
+				),
+			).rejects.toThrow(/identical.*so requests got stopped/i);
+
+			scope.persist(false);
+
+			// Should have made at least 6 requests
+			expect(requestCount).toBeGreaterThanOrEqual(6);
 		});
 	});
 });
