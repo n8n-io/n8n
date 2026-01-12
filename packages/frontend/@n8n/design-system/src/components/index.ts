@@ -17,13 +17,17 @@ export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
+export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
+export { default as N8nDropdown } from './N8nDropdown';
+export type { N8nDropdownOption } from './N8nDropdown';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
+export { default as N8nHeaderAction } from './N8nHeaderAction';
 export { default as N8nIcon } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
@@ -42,6 +46,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
