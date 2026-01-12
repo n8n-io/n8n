@@ -8,20 +8,21 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import {
-	isMessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSentry,
-} from './destinations/message-event-bus-destination-sentry.ee';
-import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
-import {
-	isMessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationSyslog,
-} from './destinations/message-event-bus-destination-syslog.ee';
+import { eventNamesAll } from '@/eventbus/event-message-classes';
 import {
 	MessageEventBus,
 	MessageEventBusDestination,
 } from '@/eventbus/message-event-bus/message-event-bus';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
+
+import {
+	isMessageEventBusDestinationSentryOptions,
+	MessageEventBusDestinationSentry,
+} from './destinations/message-event-bus-destination-sentry.ee';
+import {
+	isMessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationSyslog,
+} from './destinations/message-event-bus-destination-syslog.ee';
+import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 const isWithIdString = (candidate: unknown): candidate is { id: string } => {

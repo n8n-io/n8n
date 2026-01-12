@@ -11,15 +11,16 @@ import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-wo
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { License } from '@/license';
-import { CircuitBreaker } from '@/utils/circuit-breaker';
-import {
+import type { EventMessageTypes } from '@/eventbus';
+import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
+import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
+import type {
 	MessageEventBus,
 	MessageWithCallback,
 } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventMessageTypes } from '@/eventbus';
-import { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
-import { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
+import { License } from '@/license';
+import { CircuitBreaker } from '@/utils/circuit-breaker';
+
 import { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
