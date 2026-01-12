@@ -505,7 +505,7 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
-			return await this.prepareCustomAgentWorkflow(
+			return await this.prepareWorkflowAgentWorkflow(
 				user,
 				sessionId,
 				model.workflowId,
@@ -633,7 +633,7 @@ export class ChatHubService {
 		);
 	}
 
-	private async prepareCustomAgentWorkflow(
+	private async prepareWorkflowAgentWorkflow(
 		user: User,
 		sessionId: ChatSessionId,
 		workflowId: string,
