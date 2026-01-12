@@ -4,6 +4,7 @@ import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
+import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -279,7 +280,33 @@ export function useWorkflowSaving({
 				return false;
 			}
 
-			// Track failure for circuit breaker
+			// Handle network errors with exponential backoff
+			if (error.errorCode === NO_NETWORK_ERROR_CODE) {
+				autosaveStore.incrementNetworkRetry();
+
+				toast.showMessage({
+					title: i18n.baseText('workflowHelpers.showMessage.title'),
+					message: error.message,
+					type: 'error',
+				});
+
+				// Schedule retry with exponential backoff
+				if (autosaved) {
+					const retryDelay = autosaveStore.getNetworkRetryDelay();
+					autosaveStore.setNetworkRetrying(true);
+
+					setTimeout(() => {
+						autosaveStore.setNetworkRetrying(false);
+						// Trigger autosave again if workflow is still dirty
+						if (uiStore.stateIsDirty) {
+							autosaveStore.scheduleNetworkRetry();
+						}
+					}, retryDelay);
+				}
+
+				return false;
+			}
+
 			autosaveStore.incrementFailureCount();
 			autosaveStore.setLastError(error.message);
 
@@ -493,7 +520,13 @@ export function useWorkflowSaving({
 				return;
 			}
 
+			// Circuit breaker is active (backend errors)
 			if (autosaveStore.isPaused) {
+				return;
+			}
+
+			// Network retry in progress - wait for backoff timer
+			if (autosaveStore.isNetworkRetrying) {
 				return;
 			}
 
@@ -536,6 +569,9 @@ export function useWorkflowSaving({
 		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Register callback for network retry scheduling
+	autosaveStore.setScheduleAutoSaveCallback(scheduleAutoSave);
 
 	return {
 		promptSaveUnsavedWorkflowChanges,
