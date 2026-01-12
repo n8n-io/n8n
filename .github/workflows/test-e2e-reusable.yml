@@ -159,6 +159,8 @@ jobs:
         run: |
           if [ -n "$CURRENTS_API_KEY" ]; then
             curl --location --request PUT \
-              "https://api.currents.dev/v1/runs/${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}/cancel" \
-              --header "Authorization: Bearer $CURRENTS_API_KEY"
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
           fi
