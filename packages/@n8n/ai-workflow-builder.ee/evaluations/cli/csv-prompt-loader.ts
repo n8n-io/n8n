@@ -118,9 +118,7 @@ let cachedDefaultTestCases: TestCase[] | null = null;
  * Results are cached after first load.
  */
 export function loadDefaultTestCases(): TestCase[] {
-	if (cachedDefaultTestCases === null) {
-		cachedDefaultTestCases = loadTestCasesFromCsv(DEFAULT_PROMPTS_PATH);
-	}
+	cachedDefaultTestCases ??= loadTestCasesFromCsv(DEFAULT_PROMPTS_PATH);
 	return cachedDefaultTestCases;
 }
 
