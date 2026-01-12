@@ -150,7 +150,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -791,7 +791,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -837,7 +837,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1008,7 +1008,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1096,7 +1096,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1175,7 +1175,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1256,7 +1256,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1335,7 +1335,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
@@ -1412,7 +1412,7 @@ describe('EditImage Node', () => {
 			const result = await editImageNode.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('image');
+			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 	});

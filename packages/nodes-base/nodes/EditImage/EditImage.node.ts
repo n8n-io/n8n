@@ -1018,7 +1018,7 @@ export class EditImage implements INodeType {
 
 				let binaryPropertyName = options.destinationKey;
 				if (!binaryPropertyName) {
-					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'image';
+					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
 				}
 
 				const cleanupFunctions: Array<() => void> = [];
