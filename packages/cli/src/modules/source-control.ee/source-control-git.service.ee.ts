@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
 import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
+import proxyFromEnv from 'proxy-from-env';
 import type {
 	CommitResult,
 	DiffResult,
@@ -133,6 +134,15 @@ export class SourceControlGitService {
 					'credential.useHttpPath=true',
 				],
 			};
+
+			// Add proxy configuration if proxy environment variables are set
+			const repositoryUrl = preferences.repositoryUrl;
+			const proxyUrl = proxyFromEnv.getProxyForUrl(repositoryUrl);
+			if (proxyUrl) {
+				// Git uses http.proxy for both HTTP and HTTPS URLs
+				this.logger.debug('Proxy configuration added', { proxyUrl });
+				httpsGitOptions.config.push(`http.proxy=${proxyUrl}`);
+			}
 
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
 		} else if (preferences.connectionType === 'ssh') {
