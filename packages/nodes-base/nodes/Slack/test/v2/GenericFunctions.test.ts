@@ -1048,7 +1048,7 @@ describe('Slack V2 > GenericFunctions', () => {
 			};
 			const result = processThreadOptions(threadOptions);
 			expect(result).toEqual({
-				thread_ts: 1709203825.689579,
+				thread_ts: '1709203825.689579',
 			});
 		});
 
@@ -1065,7 +1065,7 @@ describe('Slack V2 > GenericFunctions', () => {
 			};
 			const result = processThreadOptions(threadOptions);
 			expect(result).toEqual({
-				thread_ts: 1709203825.689579,
+				thread_ts: '1709203825.689579',
 				reply_broadcast: true,
 			});
 		});

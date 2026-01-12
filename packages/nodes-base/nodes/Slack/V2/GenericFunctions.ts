@@ -449,8 +449,8 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 		],
 	};
 
-	const otherOptions = context.getNodeParameter('options', 0);
-	const threadParams = processThreadOptions(otherOptions.thread_ts as IDataObject);
+	const otherOptions = context.getNodeParameter('options', 0, {});
+	const threadParams = processThreadOptions(otherOptions?.thread_ts as IDataObject);
 	Object.assign(body, threadParams);
 
 	if (config.appendAttribution) {
