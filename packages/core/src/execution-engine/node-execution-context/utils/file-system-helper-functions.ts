@@ -4,11 +4,12 @@ import { Container } from '@n8n/di';
 import { NodeOperationError } from 'n8n-workflow';
 import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
-import { constants, createReadStream } from 'node:fs';
+import { constants } from 'node:fs';
 import {
 	access as fsAccess,
-	writeFile as fsWriteFile,
 	realpath as fsRealpath,
+	stat as fsStat,
+	open as fsOpen,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve, posix } from 'node:path';
@@ -90,6 +91,9 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(resolvedFilePath) {
+		// Get the device and inode number of the path we're checking.
+		const pathIdentity = await fsStat(resolvedFilePath);
+		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
@@ -111,27 +115,42 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				: error;
 		}
 
-		// Use O_NOFOLLOW to prevent createReadStream from following symlinks. We require that the path
-		// already be resolved beforehand.
-		const stream = createReadStream(resolvedFilePath, {
-			flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
-		});
+		// Open a file handle.
+		let fileHandle;
+		try {
+			fileHandle = await fsOpen(resolvedFilePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+		} catch (error) {
+			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
+				throw new NodeOperationError(node, error instanceof Error ? error : '', {
+					message: 'Symlinks are not allowed.',
+					level: 'warning',
+				});
+			} else {
+				throw error;
+			}
+		}
 
-		return await new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
-			stream.once('error', (error) => {
-				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
-					reject(
-						new NodeOperationError(node, error, {
-							level: 'warning',
-							description: 'Symlinks are not allowed.',
-						}),
-					);
-				} else {
-					reject(error);
-				}
-			});
-			stream.once('open', () => resolve(stream));
-		});
+		try {
+			// Verify that the handle we've opened is the same as the path we checked earlier.
+			// This ensures nothing has changed between checking and reading.
+			const fileHandleIdentity = await fileHandle.stat();
+			if (
+				fileHandleIdentity.dev !== pathIdentity.dev ||
+				fileHandleIdentity.ino !== pathIdentity.ino
+			) {
+				throw new NodeOperationError(node, 'The file has changed and cannot be accessed.', {
+					level: 'warning',
+				});
+			}
+
+			// The file handle we opened matches the path we checked, and the path is allowed,
+			// so we can go ahead and read the file.
+			return fileHandle.createReadStream();
+		} catch (error) {
+			// Ensure the file handle is closed if verification fails or an error occurs.
+			await fileHandle.close();
+			throw error;
+		}
 	},
 
 	getStoragePath() {
@@ -139,6 +158,24 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 
 	async writeContentToFile(resolvedFilePath, content, flag) {
+		// Get the device and inode number of the path we're checking, if it exists.
+		// This establishes the file's identity before we open it.
+		let pathIdentity;
+		let fileExists = true;
+		try {
+			pathIdentity = await fsStat(resolvedFilePath);
+		} catch (error) {
+			// NOTE: for some reason instanceof Error does not work here in tests,
+			// so we just look for the code to catch ENOENT.
+			if ('code' in error && (error as unknown as { code: string }).code === 'ENOENT') {
+				// It's possible the file does not exist yet. In this case we'll create it later.
+				fileExists = false;
+			} else {
+				throw error;
+			}
+		}
+
+		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
 			throw new NodeOperationError(
 				node,
@@ -148,10 +185,91 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				},
 			);
 		}
-		return await fsWriteFile(resolvedFilePath, content, {
-			encoding: 'binary',
-			flag: (flag ?? 0) | constants.O_NOFOLLOW,
-		});
+
+		const shouldTruncate = flag === undefined || (flag & constants.O_TRUNC) === constants.O_TRUNC;
+		// We intentionally remove O_TRUNC to avoid destructive operations before verification.
+		// If we should truncate the file instead we will do it after verification.
+		const userFlags = flag ?? 0;
+		const openFlags =
+			constants.O_WRONLY |
+			constants.O_CREAT |
+			constants.O_NOFOLLOW |
+			(userFlags & ~constants.O_TRUNC); // Strip O_TRUNC if present
+
+		let fileHandle;
+		try {
+			fileHandle = await fsOpen(resolvedFilePath, openFlags);
+		} catch (error) {
+			if ('code' in error && (error as unknown as { code: string }).code === 'ELOOP') {
+				throw new NodeOperationError(node, error instanceof Error ? error : '', {
+					message: 'Symlinks are not allowed.',
+					level: 'warning',
+				});
+			} else {
+				throw error;
+			}
+		}
+
+		try {
+			// Verify that the handle we've opened is the same as the path we checked earlier.
+			// This ensures nothing has changed between checking and opening (TOCTOU protection).
+			const fileHandleIdentity = await fileHandle.stat();
+
+			if (fileExists && pathIdentity) {
+				if (
+					fileHandleIdentity.dev !== pathIdentity.dev ||
+					fileHandleIdentity.ino !== pathIdentity.ino
+				) {
+					throw new NodeOperationError(node, 'The file has changed and cannot be written.', {
+						level: 'warning',
+					});
+				}
+			} else {
+				// If the file did not exist before, ensure that we opened the path we expected.
+				pathIdentity = await fsStat(resolvedFilePath);
+				if (
+					fileHandleIdentity.dev !== pathIdentity.dev ||
+					fileHandleIdentity.ino !== pathIdentity.ino
+				) {
+					throw new NodeOperationError(
+						node,
+						'The file was created but its identity does not match and cannot be written.',
+						{
+							level: 'warning',
+						},
+					);
+				}
+			}
+
+			// Verify that the opened file is a regular file, not a directory or special file
+			if (!fileHandleIdentity.isFile()) {
+				throw new NodeOperationError(node, 'The path is not a regular file.', {
+					level: 'warning',
+				});
+			}
+
+			// The file handle we opened matches the path we checked (or the file was newly created),
+			// and the path is allowed, so we can now safely truncate and write.
+			if (shouldTruncate) {
+				await fileHandle.truncate(0);
+			} // Otherwise we'll append.
+
+			// Handle different content types
+			if (typeof content === 'string' || Buffer.isBuffer(content)) {
+				// FileHandle.writeFile supports string and Buffer
+				await fileHandle.writeFile(content, { encoding: 'binary' });
+			} else {
+				// Content is a Readable stream
+				const writeStream = fileHandle.createWriteStream({ encoding: 'binary' });
+				await new Promise<void>((resolve, reject) => {
+					content.pipe(writeStream);
+					writeStream.on('finish', resolve);
+					writeStream.on('error', reject);
+				});
+			}
+		} finally {
+			await fileHandle.close();
+		}
 	},
 	resolvePath,
 	isFilePathBlocked,
