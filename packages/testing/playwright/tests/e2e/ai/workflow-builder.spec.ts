@@ -22,8 +22,8 @@ async function openBuilderAndClickSuggestion(n8n: n8nPage, suggestionText: strin
 
 // Enable proxy server for recording/replaying Anthropic API calls
 test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
+	capability: {
+		services: ['proxy'],
 		env: {
 			N8N_AI_ANTHROPIC_KEY: 'sk-ant-test-key-for-mocked-tests',
 		},
@@ -58,8 +58,7 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('should build workflow from suggested prompt', async ({ n8n }) => {
+	test.fixme('should build workflow from suggested prompt @fixme', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
 		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 

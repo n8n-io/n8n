@@ -27,7 +27,7 @@ export interface IChatHubSession {
 	updatedAt: Date;
 	title: string;
 	ownerId: string;
-	lastMessageAt: Date | null;
+	lastMessageAt: Date;
 	credentialId: string | null;
 	provider: ChatHubProvider | null;
 	model: string | null;
@@ -66,8 +66,8 @@ export class ChatHubSession extends WithTimestamps {
 	 * Timestamp of the last active message in the session.
 	 * Used to sort chat sessions by recent activity.
 	 */
-	@DateTimeColumn({ nullable: true })
-	lastMessageAt: Date | null;
+	@DateTimeColumn()
+	lastMessageAt: Date;
 
 	/*
 	 * ID of the selected credential to use by default with the selected LLM provider (if applicable).

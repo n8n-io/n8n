@@ -1,6 +1,6 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionError } from './errors';
+import { ExpressionDestructuringError, ExpressionError } from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
@@ -210,8 +210,7 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 						`Cannot access "${node.property.value as string}" due to security concerns`,
 					);
 				}
-			} else if (!node.property.type.endsWith('Literal')) {
-				// This isn't a literal value, so we need to wrap it
+			} else {
 				path.replace(
 					b.memberExpression(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
@@ -226,12 +225,34 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				);
 			}
 		},
+
+		visitObjectPattern(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const prop of node.properties) {
+				if (prop.type === 'Property') {
+					let keyName: string | undefined;
+
+					if (prop.key.type === 'Identifier') {
+						keyName = prop.key.name;
+					} else if (prop.key.type === 'StringLiteral' || prop.key.type === 'Literal') {
+						keyName = String(prop.key.value);
+					}
+
+					if (keyName !== undefined && !isSafeObjectProperty(keyName)) {
+						throw new ExpressionDestructuringError(keyName);
+					}
+				}
+			}
+		},
 	});
 };
 
 export const sanitizer = (value: unknown): unknown => {
-	if (!isSafeObjectProperty(value as string)) {
-		throw new ExpressionError(`Cannot access "${value as string}" due to security concerns`);
+	const propertyKey = String(value);
+	if (!isSafeObjectProperty(propertyKey)) {
+		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
 	return value;
 };

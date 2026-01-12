@@ -627,6 +627,16 @@ describe('copyBinaryFile', () => {
 			filePath,
 		);
 	});
+
+	it('should sanitize filenames', async () => {
+		await copyBinaryFile(workflowId, executionId, filePath, '../../../etc/passwd');
+
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			{ type: 'execution', workflowId, executionId },
+			expect.objectContaining({ fileName: 'passwd' }),
+			filePath,
+		);
+	});
 });
 
 describe('prepareBinaryData', () => {
@@ -657,6 +667,18 @@ describe('prepareBinaryData', () => {
 				mimeType: 'text/plain',
 			},
 		);
+	});
+
+	it('correctly determines video mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp4');
+
+		expect(result.mimeType).toEqual('video/mp4');
+	});
+
+	it('correctly determines audio mime type based on file name', async () => {
+		const result = await prepareBinaryData(buffer, executionId, workflowId, 'some-file.mp3');
+
+		expect(result.mimeType).toEqual('audio/mpeg');
 	});
 
 	it('handles IncomingMessage with responseUrl', async () => {

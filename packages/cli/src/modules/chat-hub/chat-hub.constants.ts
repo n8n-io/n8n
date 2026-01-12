@@ -2,6 +2,7 @@ import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
 export const EXECUTION_POLL_INTERVAL = 1000;
+export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'canceled',
 	'crashed',
@@ -25,7 +26,7 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		version: 1.2,
 	},
 	ollama: {
-		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		name: '@n8n/n8n-nodes-langchain.lmChatOllama',
 		version: 1,
 	},
 	azureOpenAi: {

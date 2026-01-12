@@ -26,17 +26,11 @@ export type CreateDataTableOptions = Pick<DataTable, 'name'> & {
 
 export type UpdateDataTableOptions = { name: string };
 
+export type ListDataTableOptionsSortByKey = 'name' | 'createdAt' | 'updatedAt' | 'sizeBytes';
+
 export type ListDataTableOptions = {
 	filter?: Record<string, string | string[]>;
-	sortBy?:
-		| 'name:asc'
-		| 'name:desc'
-		| 'createdAt:asc'
-		| 'createdAt:desc'
-		| 'updatedAt:asc'
-		| 'updatedAt:desc'
-		| 'sizeBytes:asc'
-		| 'sizeBytes:desc';
+	sortBy?: `${ListDataTableOptionsSortByKey}:asc` | `${ListDataTableOptionsSortByKey}:desc`;
 	take?: number;
 	skip?: number;
 };

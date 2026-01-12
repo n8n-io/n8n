@@ -112,7 +112,6 @@ import {
 	isCommunityPackageName,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
@@ -132,6 +131,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useClipboard } from '@vueuse/core';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -477,7 +477,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 	}
 
 	function trackDeleteNode(id: string) {
@@ -773,7 +773,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		return addedNodes;
@@ -838,7 +838,7 @@ export function useCanvasOperations() {
 
 		void nextTick(() => {
 			if (!options.keepPristine) {
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
@@ -1666,7 +1666,7 @@ export function useCanvasOperations() {
 		});
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1987,7 +1987,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -2016,7 +2016,7 @@ export function useCanvasOperations() {
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		// Reset executions
 		executionsStore.activeExecution = null;
@@ -2041,6 +2041,8 @@ export function useCanvasOperations() {
 		});
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
+		workflowState.setWorkflowProperty('createdAt', data.createdAt);
+		workflowState.setWorkflowProperty('updatedAt', data.updatedAt);
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
@@ -2078,7 +2080,12 @@ export function useCanvasOperations() {
 
 	async function addImportedNodesToWorkflow(
 		data: WorkflowDataUpdate,
-		{ trackBulk = true, trackHistory = false, viewport = DEFAULT_VIEWPORT_BOUNDARIES } = {},
+		{
+			trackBulk = true,
+			trackHistory = false,
+			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
+			setStateDirty = true,
+		} = {},
 	): Promise<WorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
@@ -2232,20 +2239,25 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = true;
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		} else {
+			uiStore.markStateClean();
+		}
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -2263,6 +2275,7 @@ export function useCanvasOperations() {
 			viewport,
 			regenerateIds = true,
 			trackEvents = true,
+			setStateDirty = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
@@ -2270,6 +2283,7 @@ export function useCanvasOperations() {
 			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
 			trackEvents?: boolean;
+			setStateDirty?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -2382,6 +2396,7 @@ export function useCanvasOperations() {
 				trackBulk,
 				trackHistory,
 				viewport,
+				setStateDirty,
 			});
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
@@ -2389,7 +2404,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty });
 			}
 
 			return workflowData;
@@ -2428,7 +2443,7 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		workflowsStore.addWorkflowTagIds(tagIds);
+		workflowState.addWorkflowTagIds(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
@@ -2602,7 +2617,7 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowsStore.setWorkflowPinData({});
+			workflowState.setWorkflowPinData({});
 		}
 
 		if (nodeId) {
@@ -2617,7 +2632,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		return data;
 	}
@@ -2660,7 +2675,7 @@ export function useCanvasOperations() {
 		}
 		await addNodes(convertedNodes ?? []);
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -2694,7 +2709,7 @@ export function useCanvasOperations() {
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2822,7 +2837,12 @@ export function useCanvasOperations() {
 
 		await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
 
-		uiStore.stateIsDirty = true;
+		// Set the workflow ID from the route params (auto-generated by router)
+		if (typeof route.params.name === 'string') {
+			workflowState.setWorkflowId(route.params.name);
+		}
+
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
@@ -2870,7 +2890,7 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
