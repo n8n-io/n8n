@@ -10,7 +10,7 @@ export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'crashed',
 	'error',
 	'success',
-] as const;
+] as const satisfies ExecutionStatus[];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
 

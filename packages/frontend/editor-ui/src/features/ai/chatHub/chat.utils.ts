@@ -473,3 +473,11 @@ export function promisifyStreamingApi<T>(
 		return await promise;
 	};
 }
+
+export const isEditable = (message: ChatMessage): boolean => {
+	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+};
+
+export const isRegenerable = (message: ChatMessage): boolean => {
+	return message.type === 'ai';
+};
