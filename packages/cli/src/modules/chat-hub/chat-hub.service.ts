@@ -19,8 +19,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
@@ -175,21 +175,9 @@ export class ChatHubService {
 		const credentialId = this.getModelCredential(model, credentials);
 
 		let processedAttachments: IBinaryData[] = [];
-		let workflow: PreparedChatWorkflow | undefined;
+		let workflow: PreparedChatWorkflow;
 		try {
-			if (model.provider === 'n8n') {
-				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
-				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
-				workflow = await this.prepareCustomAgentWorkflow(
-					user,
-					sessionId,
-					model.workflowId,
-					message,
-					attachments,
-				);
-			}
-
-			await this.messageRepository.manager.transaction(async (trx) => {
+			workflow = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
 					user,
@@ -222,7 +210,7 @@ export class ChatHubService {
 					trx,
 				);
 
-				workflow ??= await this.prepareReplyWorkflow(
+				return await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
@@ -321,11 +309,11 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		let workflow: PreparedChatWorkflow | undefined;
+		let workflow: PreparedChatWorkflow | null = null;
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			workflow = await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -385,38 +373,22 @@ export class ChatHubService {
 						trx,
 					);
 
-					if (model.provider !== 'n8n') {
-						workflow = await this.prepareReplyWorkflow(
-							user,
-							sessionId,
-							credentials,
-							model,
-							history,
-							message,
-							session.tools,
-							attachments,
-							tz,
-							trx,
-						);
-					}
-
-					return { attachments };
+					return await this.prepareReplyWorkflow(
+						user,
+						sessionId,
+						credentials,
+						model,
+						history,
+						message,
+						session.tools,
+						attachments,
+						tz,
+						trx,
+					);
 				}
 
 				throw new BadRequestError('Only human and AI messages can be edited');
 			});
-
-			if (result && model.provider === 'n8n') {
-				// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
-				// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
-				workflow = await this.prepareCustomAgentWorkflow(
-					user,
-					sessionId,
-					model.workflowId,
-					message,
-					result.attachments,
-				);
-			}
 		} catch (error) {
 			if (newStoredAttachments.length > 0) {
 				try {
@@ -453,9 +425,7 @@ export class ChatHubService {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		let workflow: PreparedChatWorkflow | undefined;
-
-		const { retryOfMessageId, previousMessageId, message, attachments } =
+		const { retryOfMessageId, previousMessageId, workflow } =
 			await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
@@ -489,44 +459,25 @@ export class ChatHubService {
 				const message = lastHumanMessage ? lastHumanMessage.content : '';
 				const attachments = lastHumanMessage.attachments ?? [];
 
-				if (model.provider !== 'n8n') {
-					workflow = await this.prepareReplyWorkflow(
-						user,
-						sessionId,
-						credentials,
-						model,
-						history,
-						message,
-						session.tools,
-						attachments,
-						tz,
-						trx,
-					);
-				}
+				const workflow = await this.prepareReplyWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					session.tools,
+					attachments,
+					tz,
+					trx,
+				);
 
 				return {
 					previousMessageId: lastHumanMessage.id,
 					retryOfMessageId,
-					message,
-					attachments,
+					workflow,
 				};
 			});
-
-		if (model.provider === 'n8n') {
-			// Validate and prepare n8n workflow outside the transaction to avoid deadlocks on Postgres
-			// with pool size 1 (findWorkflowForUser calls role service which may hit DB without using the transaction)
-			workflow = await this.prepareCustomAgentWorkflow(
-				user,
-				sessionId,
-				model.workflowId,
-				message,
-				attachments,
-			);
-		}
-
-		if (!workflow) {
-			throw new UnexpectedError('Failed to prepare chat workflow.');
-		}
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
@@ -554,7 +505,14 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
-			throw new UnexpectedError('n8n provider workflow should be prepared outside transaction');
+			return await this.prepareCustomAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				message,
+				attachments,
+				trx,
+			);
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -681,12 +639,13 @@ export class ChatHubService {
 		workflowId: string,
 		message: string,
 		attachments: IBinaryData[],
+		trx: EntityManager,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
 			['workflow:execute-chat'],
-			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
 		);
 
 		if (!workflow?.activeVersion) {
@@ -1811,11 +1770,7 @@ export class ChatHubService {
 		agentName?: string,
 		trx?: EntityManager,
 	) {
-		// Skip validation on n8n provider as it is already done outside the transaction
-		// at prepareCustomAgentWorkflow to avoid deadlocks
-		if (model.provider !== 'n8n') {
-			await this.ensureValidModel(user, model);
-		}
+		await this.ensureValidModel(user, model, trx);
 
 		return await this.sessionRepository.createChatSession(
 			{
@@ -2004,10 +1959,10 @@ export class ChatHubService {
 		});
 	}
 
-	private async ensureValidModel(user: User, model: ChatHubConversationModel) {
+	private async ensureValidModel(user: User, model: ChatHubConversationModel, trx?: EntityManager) {
 		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
-			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
 			if (!agent) {
 				throw new BadRequestError('Agent not found for chat session initialization');
 			}
@@ -2019,7 +1974,7 @@ export class ChatHubService {
 				model.workflowId,
 				user,
 				['workflow:execute-chat'],
-				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
 			);
 
 			if (!workflowEntity?.activeVersion) {
