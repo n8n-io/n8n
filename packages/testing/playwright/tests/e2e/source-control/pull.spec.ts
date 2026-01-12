@@ -13,7 +13,9 @@ async function expectPullSuccess(n8n: n8nPage) {
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe.skip('Pull resources from Git @capability:source-control', () => {
+test.describe('Pull resources from Git @capability:source-control @fixme', () => {
+	test.fixme();
+
 	let gitRepo: GitRepoHelper;
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
@@ -105,7 +107,7 @@ test.describe.skip('Pull resources from Git @capability:source-control', () => {
 		// modify workflow
 		await n8n.navigate.toWorkflow(workflow.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// add new workflow
 		await n8n.api.workflows.createInProject(project.id, {

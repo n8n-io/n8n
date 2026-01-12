@@ -138,9 +138,11 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
-import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -171,7 +173,12 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({ router });
+const workflowSaving = useWorkflowSaving({
+	router,
+	onSaved: (isFirstSave) => {
+		canvasEventBus.emit('saved:workflow', { isFirstSave });
+	},
+});
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
@@ -201,8 +208,12 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const collaborationStore = useCollaborationStore();
 
 const workflowState = useWorkflowState();
+
+// Initialize activity detection for collaboration
+useActivityDetection();
 provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -301,6 +312,7 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
+		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
 		builderStore.streaming
@@ -534,7 +546,12 @@ function updateNodesIssues() {
 
 async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
-	documentTitle.setDocumentTitle(data.name, 'IDLE');
+	// Show AI_BUILDING status if builder is actively streaming, otherwise IDLE
+	if (builderStore.streaming) {
+		documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
+	} else {
+		documentTitle.setDocumentTitle(data.name, 'IDLE');
+	}
 
 	await initializeWorkspace(data);
 
@@ -752,42 +769,17 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 	toggleNodesPinned(ids, source);
 }
 
-async function onSaveWorkflow() {
-	const workflowIsSaved =
-		!uiStore.stateIsDirty && workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
-	const workflowIsArchived = workflowsStore.workflow.isArchived;
-
-	if (workflowIsSaved || workflowIsArchived) {
-		return;
-	}
-	const saved = await workflowSaving.saveCurrentWorkflow();
-	if (saved) {
-		canvasEventBus.emit('saved:workflow');
-	}
-}
-
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	canvasRef.value?.executeContextMenuAction(action, nodeIds);
 }
 
 function addWorkflowSavedEventBindings() {
 	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
 }
 
 function removeWorkflowSavedEventBindings() {
 	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-}
-
-async function onSaveFromWithinNDV() {
-	if (ndvStore.activeNodeName) {
-		toast.showMessage({
-			title: i18n.baseText('generic.workflowSaved'),
-			type: 'success',
-		});
-	}
 }
 
 async function onCreateWorkflow() {
@@ -839,29 +831,10 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
-		let shouldSaveAfterRename = false;
-
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// Stop propagation for space key to prevent VueFlow from intercepting it
-			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
-			if (e.key === ' ') {
-				e.stopPropagation();
-			}
-			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-				e.preventDefault();
-				shouldSaveAfterRename = true;
-				nameInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-			}
-		};
-		nameInput?.addEventListener('keydown', handleKeyDown);
-
 		const promptResponse = await promptResponsePromise;
-
-		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
-			if (shouldSaveAfterRename) await onSaveWorkflow();
 		}
 	} catch (e) {}
 }
@@ -1504,7 +1477,6 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 				await openWorkflow(workflowData);
 			}
 		}
@@ -1641,6 +1613,10 @@ function checkIfEditingIsAllowed(): boolean {
 		return false;
 	}
 
+	if (collaborationStore.shouldBeReadOnly) {
+		return false;
+	}
+
 	if (isReadOnlyRoute.value || isReadOnlyEnvironment.value) {
 		const messageContext = isReadOnlyRoute.value ? 'executions' : 'workflows';
 		readOnlyNotification.value = toast.showMessage({
@@ -1670,7 +1646,7 @@ function checkIfRouteIsAllowed() {
 	) {
 		void nextTick(async () => {
 			resetWorkspace();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			await router.replace({ name: VIEWS.HOMEPAGE });
 		});
@@ -1908,6 +1884,36 @@ watch(
 	},
 );
 
+// Acquire write access when user makes first edit, and trigger auto-save
+watch(
+	() => uiStore.dirtyStateSetCount,
+	(dirtyStateSetCount) => {
+		if (dirtyStateSetCount > 0) {
+			collaborationStore.requestWriteAccess();
+
+			// Trigger auto-save (debounced) for writers only
+			// Skip auto-save when AI Builder is streaming to keep version history clean
+			if (!builderStore.streaming) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
+// Trigger auto-save when AI Builder streaming ends with unsaved changes
+watch(
+	() => builderStore.streaming,
+	(isStreaming, wasStreaming) => {
+		// Only trigger when streaming just ended (was streaming, now not)
+		if (wasStreaming && !isStreaming) {
+			// Trigger auto-save if there are unsaved changes
+			if (uiStore.stateIsDirty && !collaborationStore.shouldBeReadOnly) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
 onBeforeRouteLeave(async (to, from, next) => {
 	// Close the focus panel when leaving the workflow view
 	if (focusPanelStore.focusPanelActive) {
@@ -1969,6 +1975,12 @@ onMounted(() => {
 
 	documentTitle.reset();
 	resetWorkspace();
+
+	// Register callback for collaboration store to refresh canvas when workflow updates arrive
+	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
+		// Refresh the canvas with updated workflow
+		await initializeWorkspace(workflow);
+	});
 
 	void initializeData().then(() => {
 		void initializeRoute()
@@ -2089,7 +2101,6 @@ onBeforeUnmount(() => {
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
-			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
@@ -2157,9 +2168,16 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<N8nCanvasCollaborationPill
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				:first-name="collaborationStore.currentWriter.user.firstName"
+				:last-name="collaborationStore.currentWriter.user.lastName"
+				:class="$style.canvasCenterPill"
+			/>
+
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
-				:class="$style.thinkingPill"
+				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
 			/>
@@ -2186,7 +2204,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 			<Suspense>
@@ -2199,7 +2216,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 		</WorkflowCanvas>
@@ -2208,7 +2224,6 @@ onBeforeUnmount(() => {
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
 			"
 			:is-canvas-read-only="isCanvasReadOnly"
-			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"
 		/>
 	</div>
@@ -2276,7 +2291,7 @@ onBeforeUnmount(() => {
 	transform: translateX(-50%);
 }
 
-.thinkingPill {
+.canvasCenterPill {
 	position: absolute;
 	left: 50%;
 	top: 50%;
