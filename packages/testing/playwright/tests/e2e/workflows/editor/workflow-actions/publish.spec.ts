@@ -5,7 +5,6 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
 test.describe('Workflow Publish', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
@@ -31,10 +30,8 @@ test.describe('Workflow Publish', () => {
 	test('should not be able to publish workflow when nodes have errors', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-		await expect(n8n.canvas.getOpenPublishModalButton()).toBeDisabled();
+		await expect(n8n.canvas.getPublishButton()).toBeDisabled();
 	});
 
 	test('should be able to publish workflow when nodes with errors are disabled', async ({
@@ -42,9 +39,7 @@ test.describe('Workflow Publish', () => {
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getOpenPublishModalButton()).toBeDisabled();
 
 		const nodeName = await n8n.canvas.getCanvasNodes().last().getAttribute('data-node-name');

@@ -97,6 +97,7 @@ import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
 import IconLucideDot from '~icons/lucide/dot';
+import IconLucideDownload from '~icons/lucide/download';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
@@ -546,6 +547,7 @@ export const updatedIconSet = {
 	database: IconLucideDatabase,
 	'door-open': IconLucideDoorOpen,
 	dot: IconLucideDot,
+	download: IconLucideDownload,
 	earth: IconLucideEarth,
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,

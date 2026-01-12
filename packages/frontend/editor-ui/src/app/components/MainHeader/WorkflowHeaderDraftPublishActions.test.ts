@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -62,7 +61,7 @@ const defaultWorkflowProps = {
 
 const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishActions, {
 	props: defaultWorkflowProps,
-	pinia: createTestingPinia({ initialState }),
+	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
 		stubs: {
 			ActionsMenu: {
@@ -124,7 +123,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			connections: {},
 		};
 		workflowsStore.workflowTriggerNodes = [];
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 		uiStore.isActionActive = { workflowSaving: false };
 
 		mockSaveCurrentWorkflow.mockClear();
@@ -210,6 +209,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
+					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						publish: false,
@@ -221,22 +221,60 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 
-		it('should be hidden when workflow is archived', () => {
+		it('should be visible but disabled when user has only workflow:update permission', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should be hidden when user has only workflow:publish permission', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					isArchived: true,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: false,
+						publish: true,
+					},
 				},
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+
+		it('should be visible when user has both workflow:update and workflow:publish permissions', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: true,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
 		});
 	});
 
 	describe('Publish button behavior', () => {
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			setupEnabledPublishButton({
 				workflow: {
 					...workflowsStore.workflow,
@@ -258,7 +296,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when dirty then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent();
@@ -274,7 +312,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when isNewWorkflow is true then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent({
@@ -295,7 +333,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should not open publish modal if save fails', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			mockSaveCurrentWorkflow.mockResolvedValue(false);
 			setupEnabledPublishButton();
 
@@ -307,8 +345,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(openModalSpy).not.toHaveBeenCalled();
 		});
 
-		it('should be disabled when user lacks workflow:publish permission', () => {
-			const { queryByTestId } = renderComponent({
+		it('should be visible but disabled when user lacks workflow:publish permission', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					workflowPermissions: {
@@ -319,7 +357,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 	});
 
@@ -328,7 +367,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { queryByTestId } = renderComponent();
 
@@ -339,7 +378,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [{ ...triggerNode, disabled: true }];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { getByTestId } = renderComponent();
 
@@ -350,7 +389,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { getByTestId } = renderComponent();
 
@@ -361,7 +400,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 
 			const { getByTestId } = renderComponent();
 
@@ -372,7 +411,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { queryByTestId } = renderComponent();
 
@@ -383,7 +422,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = null;
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			const { getByTestId } = renderComponent();
 
@@ -391,104 +430,17 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('Save button state', () => {
-		it('should show "Saved" label when workflow is saved', () => {
-			uiStore.stateIsDirty = false;
-
-			const { getByText } = renderComponent();
-
-			expect(getByText('Saved')).toBeInTheDocument();
-		});
-
-		it('should show save button when workflow has unsaved changes', () => {
-			uiStore.stateIsDirty = true;
-
-			const { queryByText, getByTestId } = renderComponent();
-
-			expect(queryByText('Saved')).not.toBeInTheDocument();
-			expect(getByTestId('workflow-save-button')).toBeInTheDocument();
-		});
-
-		it('should emit workflow:saved event when save button is clicked', async () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId, emitted } = renderComponent();
-
-			await userEvent.click(getByTestId('workflow-save-button'));
-
-			expect(emitted('workflow:saved')).toBeTruthy();
-		});
-
-		it('should contain disabled save button when update permission is missing', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, update: false },
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButton).toBeDisabled();
-		});
-
-		it('should contain disabled save button when workflow is saving', () => {
-			uiStore.stateIsDirty = true;
-			uiStore.isActionActive.workflowSaving = true;
-
-			const { getByTestId } = renderComponent();
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButton).toBeDisabled();
-		});
-	});
-
 	describe('Read-only mode', () => {
-		it('should render save button when not read-only and has update permission', () => {
-			uiStore.stateIsDirty = true;
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					readOnly: false,
-					workflowPermissions: { update: true },
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).not.toBeDisabled();
-		});
-
-		it('should render disabled save button when read-only', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
+		it('should not render publish button when read-only', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					readOnly: true,
 				},
 			});
 
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).toBeDisabled();
-		});
-
-		it('should render publish button when read-only', () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					readOnly: true,
-				},
-			});
-
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeInTheDocument();
+			const publishButton = queryByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeInTheDocument();
 		});
 	});
 
@@ -497,27 +449,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
+					readOnly: false,
 					isArchived: true,
 				},
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
-		});
-
-		it('should render disabled save button when workflow is archived', () => {
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					isArchived: true,
-				},
-			});
-
-			const saveButtonContainer = getByTestId('workflow-save-button');
-			const saveButton = within(saveButtonContainer).getByRole('button');
-			expect(saveButtonContainer).toBeInTheDocument();
-			expect(saveButton).toBeDisabled();
 		});
 	});
 });

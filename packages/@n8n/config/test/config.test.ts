@@ -279,7 +279,6 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: true,
 		},
 		sentry: {
 			backendDsn: '',
@@ -412,6 +411,14 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 100,
+			compactingMinimumAgeHours: 3,
+			compactingTimeWindowHours: 2,
+			compactOnStartUp: false,
+			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
@@ -519,7 +526,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 

@@ -1,10 +1,10 @@
 import { evaluate } from 'langsmith/evaluation';
-import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
 import { createPairwiseTarget, generateWorkflow } from './generator';
 import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
 import { pairwiseLangsmithEvaluator } from './metrics-builder';
+import { isPairwiseExample, type PairwiseExample } from './types';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
@@ -25,35 +25,126 @@ function getNotionId(metadata: unknown): string | undefined {
 	return undefined;
 }
 
-/** Filter examples by notion_id or limit count */
+/** Extract categories from metadata if present */
+function getCategories(metadata: unknown): string[] | undefined {
+	if (typeof metadata === 'object' && metadata !== null && 'categories' in metadata) {
+		const categories = (metadata as { categories: unknown }).categories;
+		return Array.isArray(categories)
+			? categories.filter((c): c is string => typeof c === 'string')
+			: undefined;
+	}
+	return undefined;
+}
+
+/** Filter examples by a search string in a specific eval field (do or don't) */
+function filterByEvalField(
+	examples: PairwiseExample[],
+	field: 'dos' | 'donts',
+	search: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	const searchLower = search.toLowerCase();
+	const fieldLabel = field === 'dos' ? 'do' : "don't";
+
+	log.warn(`🔍 Filtering by ${fieldLabel} containing: "${search}"`);
+	const filtered = examples.filter((e) => {
+		const fieldValue = e.inputs.evals[field];
+		return fieldValue?.toLowerCase().includes(searchLower) ?? false;
+	});
+
+	if (filtered.length === 0) {
+		throw new Error(`No examples found with ${fieldLabel} containing: "${search}"`);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) matching "${search}" in ${fieldLabel}`);
+	return filtered;
+}
+
+/** Filter examples by notion_id */
+function filterByNotionId(
+	examples: PairwiseExample[],
+	notionId: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	log.warn(`🔍 Filtering by notion_id: ${notionId}`);
+	const filtered = examples.filter((e) => getNotionId(e.metadata) === notionId);
+
+	if (filtered.length === 0) {
+		const availableIds = examples.map((e) => getNotionId(e.metadata)).filter(Boolean);
+		throw new Error(
+			`No example found with notion_id: ${notionId}. Available: ${availableIds.join(', ')}`,
+		);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) with notion_id "${notionId}"`);
+	return filtered;
+}
+
+/** Filter examples by technique/category */
+function filterByTechnique(
+	examples: PairwiseExample[],
+	technique: string,
+	log: EvalLogger,
+): PairwiseExample[] {
+	log.warn(`🔍 Filtering by technique: ${technique}`);
+	const filtered = examples.filter((e) => {
+		const categories = getCategories(e.metadata);
+		return categories?.includes(technique);
+	});
+
+	if (filtered.length === 0) {
+		const availableTechniques = new Set<string>();
+		for (const example of examples) {
+			const categories = getCategories(example.metadata);
+			if (categories) {
+				for (const category of categories) {
+					availableTechniques.add(category);
+				}
+			}
+		}
+		throw new Error(
+			`No examples found with technique: ${technique}. Available techniques: ${Array.from(availableTechniques).sort().join(', ')}`,
+		);
+	}
+
+	log.success(`✅ Found ${filtered.length} example(s) with technique "${technique}"`);
+	return filtered;
+}
+
+/** Filter examples by all provided criteria progressively */
 function filterExamples(
-	allExamples: Example[],
+	allExamples: PairwiseExample[],
 	notionId: string | undefined,
+	technique: string | undefined,
+	doSearch: string | undefined,
+	dontSearch: string | undefined,
 	maxExamples: number | undefined,
 	log: EvalLogger,
-): Example[] {
+): PairwiseExample[] {
+	let filtered = allExamples;
+
 	if (notionId) {
-		log.warn(`🔍 Filtering by notion_id: ${notionId}`);
-		const filtered = allExamples.filter((e) => getNotionId(e.metadata) === notionId);
+		filtered = filterByNotionId(filtered, notionId, log);
+	}
 
-		if (filtered.length === 0) {
-			const availableIds = allExamples.map((e) => getNotionId(e.metadata)).filter(Boolean);
-			throw new Error(
-				`No example found with notion_id: ${notionId}. Available: ${availableIds.join(', ')}`,
-			);
-		}
+	if (technique) {
+		filtered = filterByTechnique(filtered, technique, log);
+	}
 
-		log.success(`✅ Found ${filtered.length} example(s)`);
-		log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
-		return filtered;
+	if (doSearch) {
+		filtered = filterByEvalField(filtered, 'dos', doSearch, log);
+	}
+
+	if (dontSearch) {
+		filtered = filterByEvalField(filtered, 'donts', dontSearch, log);
 	}
 
 	if (maxExamples && maxExamples > 0) {
 		log.warn(`➔ Limiting to ${maxExamples} example(s)`);
-		return allExamples.slice(0, maxExamples);
+		filtered = filtered.slice(0, maxExamples);
 	}
 
-	return allExamples;
+	return filtered;
 }
 
 /** Log enabled feature flags */
@@ -100,6 +191,45 @@ function validatePairwiseInputs(numJudges: number, numGenerations: number): void
 	if (numGenerations < 1) {
 		throw new Error('numGenerations must be at least 1');
 	}
+}
+
+/** Determine run type and filter value for metadata */
+function determineRunType(options: {
+	notionId?: string;
+	technique?: string;
+	doSearch?: string;
+	dontSearch?: string;
+}): { runType: string; filterValue: string | undefined } {
+	const { notionId, technique, doSearch, dontSearch } = options;
+
+	const filters: string[] = [];
+	const values: string[] = [];
+
+	if (notionId) {
+		filters.push('id');
+		values.push(`id:${notionId}`);
+	}
+	if (technique) {
+		filters.push('category');
+		values.push(`category:${technique}`);
+	}
+	if (doSearch) {
+		filters.push('do');
+		values.push(`do:${doSearch}`);
+	}
+	if (dontSearch) {
+		filters.push('dont');
+		values.push(`dont:${dontSearch}`);
+	}
+
+	if (filters.length === 0) {
+		return { runType: 'full', filterValue: undefined };
+	}
+
+	return {
+		runType: `by-${filters.join('-and-')}`,
+		filterValue: values.join(' '),
+	};
 }
 
 /** Display results for local pairwise evaluation */
@@ -183,6 +313,11 @@ function displayLocalResults(
 export interface PairwiseEvaluationOptions {
 	repetitions?: number;
 	notionId?: string;
+	technique?: string;
+	/** Case-insensitive search string to filter examples by dos content */
+	doSearch?: string;
+	/** Case-insensitive search string to filter examples by donts content */
+	dontSearch?: string;
 	numJudges?: number;
 	numGenerations?: number;
 	verbose?: boolean;
@@ -202,6 +337,9 @@ export async function runPairwiseLangsmithEvaluation(
 	const {
 		repetitions = DEFAULTS.REPETITIONS,
 		notionId,
+		technique,
+		doSearch,
+		dontSearch,
 		numJudges = DEFAULTS.NUM_JUDGES,
 		numGenerations = DEFAULTS.NUM_GENERATIONS,
 		verbose = false,
@@ -249,14 +387,26 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 
 		// Fetch and filter examples
-		const allExamples: Example[] = [];
+		const allExamples: PairwiseExample[] = [];
 		log.verbose('➔ Fetching examples from dataset...');
 		for await (const example of lsClient.listExamples({ datasetId })) {
-			allExamples.push(example);
+			if (isPairwiseExample(example)) {
+				allExamples.push(example);
+			} else {
+				log.verbose(`⚠️ Skipping invalid example: ${example.id}`);
+			}
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		const data = filterExamples(allExamples, notionId, maxExamples, log);
+		const data = filterExamples(
+			allExamples,
+			notionId,
+			technique,
+			doSearch,
+			dontSearch,
+			maxExamples,
+			log,
+		);
 		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
@@ -272,6 +422,14 @@ export async function runPairwiseLangsmithEvaluation(
 
 		const evalStartTime = Date.now();
 
+		// Determine run type for metadata
+		const { runType, filterValue } = determineRunType({
+			notionId,
+			technique,
+			doSearch,
+			dontSearch,
+		});
+
 		// Run evaluation using LangSmith's built-in features
 		await evaluate(target, {
 			data,
@@ -285,6 +443,8 @@ export async function runPairwiseLangsmithEvaluation(
 				repetitions,
 				concurrency,
 				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
+				runType,
+				...(filterValue && { filterValue }),
 			},
 		});
 

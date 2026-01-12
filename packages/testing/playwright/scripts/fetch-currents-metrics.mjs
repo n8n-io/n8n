@@ -20,7 +20,7 @@ const PLAYWRIGHT_DIR = path.join(ROOT_DIR, 'packages', 'testing', 'playwright');
 const OUTPUT_PATH = path.join(ROOT_DIR, '.github', 'test-metrics', 'playwright.json');
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
-const DEFAULT_DURATION = 30000;
+const DEFAULT_DURATION = 60000; // 1 minute default for new specs (accounts for container startup)
 
 const PROJECT_ID = process.argv.find((a) => a.startsWith('--project='))?.split('=')[1];
 if (!PROJECT_ID) {
@@ -33,14 +33,14 @@ async function fetchAllTests(apiKey) {
 	let page = 0;
 	let hasMore = true;
 
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	const sevenDaysAgo = new Date();
+	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
 	while (hasMore && page < 200) {
 		const url = new URL(`${CURRENTS_API}/tests/${PROJECT_ID}`);
 		url.searchParams.set('limit', '50');
 		url.searchParams.set('page', page.toString());
-		url.searchParams.set('date_start', thirtyDaysAgo.toISOString());
+		url.searchParams.set('date_start', sevenDaysAgo.toISOString());
 		url.searchParams.set('date_end', new Date().toISOString());
 
 		const res = await fetch(url, {
@@ -85,7 +85,7 @@ function aggregateBySpec(tests) {
 function getPlaywrightSpecs() {
 	console.log('Getting specs from Playwright...');
 	try {
-		const output = execSync('pnpm playwright test --list --project="standard:e2e"', {
+		const output = execSync('pnpm playwright test --list --project="multi-main:e2e"', {
 			cwd: PLAYWRIGHT_DIR,
 			encoding: 'utf-8',
 			stdio: ['pipe', 'pipe', 'pipe'],
