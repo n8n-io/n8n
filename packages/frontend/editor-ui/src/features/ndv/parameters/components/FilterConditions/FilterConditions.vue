@@ -31,9 +31,15 @@ interface Props {
 	path: string;
 	node: INode | null;
 	readOnly?: boolean;
+	removeFirstMargin?: boolean;
+	removeLastMargin?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { readOnly: false });
+const props = withDefaults(defineProps<Props>(), {
+	readOnly: false,
+	removeFirstMargin: false,
+	removeLastMargin: false,
+});
 
 const emit = defineEmits<{
 	valueChanged: [
@@ -168,7 +174,12 @@ function getIssues(index: number): string[] {
 
 <template>
 	<div
-		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
+		:class="{
+			[$style.filter]: true,
+			[$style.single]: singleCondition,
+			[$style.noTopMargin]: removeFirstMargin,
+			[$style.noBottomMargin]: removeLastMargin,
+		}"
 		:data-test-id="`filter-${parameter.name}`"
 	>
 		<N8nInputLabel
@@ -221,9 +232,8 @@ function getIssues(index: number): string[] {
 			</div>
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<N8nButton
-					type="tertiary"
-					block
-					:class="$style.addCondition"
+					type="highlightFill"
+					icon="plus"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 					:disabled="maxConditionsReached"
@@ -240,6 +250,18 @@ function getIssues(index: number): string[] {
 	display: flex;
 	flex-direction: column;
 	margin: var(--spacing--xs) 0;
+
+	&.noTopMargin {
+		margin-top: 0;
+	}
+
+	&.noBottomMargin {
+		margin-bottom: 0;
+	}
+}
+
+.filter:not(.single) .content {
+	margin-top: var(--spacing--xs);
 }
 
 .conditions {
@@ -247,58 +269,28 @@ function getIssues(index: number): string[] {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 }
+
 .combinator {
 	position: relative;
 	z-index: 1;
 	margin-top: var(--spacing--2xs);
-	margin-bottom: calc(var(--spacing--2xs) * -1);
+	margin-bottom: var(--spacing--2xs);
 	margin-left: var(--spacing--lg);
 }
 
 .condition {
 	padding-left: var(--spacing--lg);
-	padding-bottom: var(--spacing--xs);
 }
 
 .single {
 	.condition {
 		padding-left: 0;
 	}
-
-	.content {
-		margin-top: calc(var(--spacing--xs) * -1);
-	}
 }
 
 .addConditionWrapper {
-	margin-top: var(--spacing--lg);
+	margin-top: var(--spacing--xs);
 	margin-left: var(--spacing--lg);
-}
-
-.addCondition {
-	// Styling to match collection button (should move to standard button in future)
-	font-weight: var(--font-weight--regular);
-	--button--color--text: var(--color--text--shade-1);
-	--button--border-color: var(--color--foreground);
-	--button--color--background: var(--color--background);
-
-	--button--color--text--hover: var(--color--text--shade-1);
-	--button--border-color--hover: var(--color--foreground);
-	--button--color--background--hover: var(--color--background);
-
-	--button--color--text--active: var(--color--text--shade-1);
-	--button--border-color--active: var(--color--foreground);
-	--button--color--background--active: var(--color--background);
-
-	--button--color--text--focus: var(--color--text--shade-1);
-	--button--border-color--focus: var(--color--foreground);
-	--button--color--background--focus: var(--color--background);
-
-	&:hover,
-	&:focus,
-	&:active {
-		outline: none;
-	}
 }
 .ghost,
 .dragging {
