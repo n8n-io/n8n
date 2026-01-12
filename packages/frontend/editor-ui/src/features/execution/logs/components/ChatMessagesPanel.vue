@@ -311,7 +311,7 @@ async function copySessionId() {
 	--chat--button--color--primary: var(--button--color--text--primary);
 	--chat--button--background--primary: var(--button--color--background--primary);
 	--chat--button--border--primary: none;
-	--chat--button--color--primary--hover: var(--button--color--text--primary--hover-active-focus);
+	--chat--button--color--primary--hover: var(--button--color--text--primary);
 	--chat--button--background--primary--hover: var(
 		--button--color--background--primary--hover-active-focus
 	);
