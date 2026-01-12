@@ -62,7 +62,7 @@ describe('No completions', () => {
 describe('Top-level completions', () => {
 	test('should return dollar completions for blank position: {{ | }}', () => {
 		const result = completions('{{ | }}');
-		expect(result).toHaveLength(18);
+		expect(result).toHaveLength(19);
 
 		expect(result?.[0]).toEqual(
 			expect.objectContaining({
@@ -109,7 +109,7 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return dollar completions for: {{ $| }}', () => {
-		expect(completions('{{ $| }}')).toHaveLength(18);
+		expect(completions('{{ $| }}')).toHaveLength(19);
 	});
 
 	test('should return node selector completions for: {{ $(| }}', () => {
