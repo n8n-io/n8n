@@ -162,7 +162,8 @@ test.describe('Data Mapping', () => {
 		const valueParameter = n8n.ndv.getParameterInput('value');
 		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'center');
 
-		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible();
+		// Wait for expression editor to appear after drop
+		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible({ timeout: 15000 });
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{ $json.timestamp }}');
 
 		await n8n.page.keyboard.press('Escape');

@@ -87,7 +87,8 @@ return
 			await expect(firstLintError).toBeVisible();
 			await firstLintError.hover({ force: true });
 
-			await expect(n8n.ndv.getLintTooltip()).toBeVisible();
+			// Wait for lint tooltip to appear after hover
+			await expect(n8n.ndv.getLintTooltip()).toBeVisible({ timeout: 5000 });
 			await expect(n8n.ndv.getLintTooltip()).toContainText(
 				'`.itemMatching()` expects an item index to be passed in as its argument.',
 			);
