@@ -273,8 +273,7 @@ test.describe('Workflow Executions', () => {
 			await expect(n8n.executions.getExecutionsEmptyList()).toBeVisible();
 			await expect(n8n.page.getByTestId('workflow-execution-no-content')).toBeVisible();
 
-			await expect(n8n.canvas.saveWorkflowButton()).toBeEnabled();
-			await n8n.canvas.saveWorkflowButton().click();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.page.waitForURL(/\/workflow\/.+\/executions$/);
 		});
 	});

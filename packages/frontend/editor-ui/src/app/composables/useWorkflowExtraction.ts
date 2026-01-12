@@ -400,7 +400,7 @@ export function useWorkflowExtraction() {
 			);
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 		historyStore.stopRecordingUndo();
 	}
 

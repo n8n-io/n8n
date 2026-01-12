@@ -864,13 +864,19 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		const streamClosePromise = Promise.race([
-			resolveOnStreamClosed,
-			sleep(STREAM_CLOSE_TIMEOUT).then(() => {
+		let timeoutId: ReturnType<typeof setTimeout>;
+		const resolveOnTimeout = new Promise<void>((resolve) => {
+			timeoutId = setTimeout(() => {
 				this.logger.warn(
 					`Stream did not close within timeout (${STREAM_CLOSE_TIMEOUT}ms) for execution ${executionId}`,
 				);
-			}),
+				resolve();
+			}, STREAM_CLOSE_TIMEOUT);
+		});
+
+		const streamClosePromise = Promise.race([
+			resolveOnStreamClosed.finally(() => clearTimeout(timeoutId)),
+			resolveOnTimeout,
 		]);
 
 		await Promise.all([
