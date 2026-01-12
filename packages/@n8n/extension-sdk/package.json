@@ -27,6 +27,11 @@
       "import": "./dist/frontend/index.mjs",
       "require": "./dist/frontend/index.cjs"
     },
+    "./cloud": {
+      "types": "./dist/cloud/index.d.mts",
+      "import": "./dist/cloud/index.mjs",
+      "require": "./dist/cloud/index.cjs"
+    },
     "./*": "./*"
   },
   "scripts": {

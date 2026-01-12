@@ -27,6 +27,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	const dynamicExperiments: Ref<Set<string>> = ref(new Set());
 
 	const reset = () => {
 		window.posthog?.reset?.();
@@ -110,8 +111,21 @@ export const usePostHog = defineStore('posthog', () => {
 		trackedDemoExp.value[name] = variant;
 	};
 
+	const registerExperiment = (experimentName: string) => {
+		if (!dynamicExperiments.value.has(experimentName)) {
+			dynamicExperiments.value.add(experimentName);
+			// If feature flags are already loaded, track this experiment now
+			if (featureFlags.value) {
+				trackExperiment(featureFlags.value, experimentName);
+			}
+		}
+	};
+
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
+
+		// Also track dynamically registered experiments
+		dynamicExperiments.value.forEach((name) => trackExperiment(featFlags, name));
 	};
 	const trackExperimentsDebounced = debounce(trackExperiments, {
 		debounceTime: 2000,
@@ -196,5 +210,6 @@ export const usePostHog = defineStore('posthog', () => {
 		setMetadata,
 		capture,
 		overrides,
+		registerExperiment,
 	};
 });

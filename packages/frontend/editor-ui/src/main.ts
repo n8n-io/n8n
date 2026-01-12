@@ -27,6 +27,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { registerExtensionRoutes, activateExtensions } from '@/app/plugins/extension-loader/loader';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
@@ -40,6 +41,8 @@ app.use(SentryPlugin);
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
 
+registerExtensionRoutes(router);
+
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
@@ -48,6 +51,8 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+await activateExtensions();
 
 if (import.meta.env.VUE_SCAN) {
 	const { default: VueScan } = await import('z-vue-scan');

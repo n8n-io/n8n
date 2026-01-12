@@ -2012,6 +2012,28 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.9.2)
 
+  packages/cloud-extensions/test-extension:
+    dependencies:
+      '@n8n/extension-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/extension-sdk
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../@n8n/utils
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.26(typescript@5.9.2))
+      vite:
+        specifier: 'catalog:'
+        version: rolldown-vite@7.3.0(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@5.9.2)
+
   packages/core:
     dependencies:
       '@aws-sdk/client-s3':
@@ -2748,6 +2770,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
+      '@n8n/extension-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/extension-sdk
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../@n8n/i18n
