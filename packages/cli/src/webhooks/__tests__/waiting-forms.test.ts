@@ -601,7 +601,7 @@ describe('WaitingForms', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should skip signature validation when validateSignature is false/undefined', async () => {
+		it('should skip signature validation when validateSignature is false', async () => {
 			const execution = mock<IExecutionResponse>({
 				finished: true,
 				status: 'success',
@@ -644,6 +644,60 @@ describe('WaitingForms', () => {
 					suffix: undefined,
 				},
 				query: {}, // No signature, but validation is disabled
+			});
+
+			const res = mock<express.Response>();
+
+			// Should not throw or return 401 - should proceed to render completion page
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should skip signature validation when validateSignature is undefined', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined,
+					},
+					// validateSignature is undefined (not set)
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				query: {}, // No signature, but validation is disabled by default
 			});
 
 			const res = mock<express.Response>();

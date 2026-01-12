@@ -634,6 +634,10 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		if (responseMode === 'formPage' && !didSendResponse) {
+			runExecutionData.validateSignature = true;
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
@@ -651,8 +655,6 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			runExecutionData.validateSignature = true;
-
 			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
 			const urlForSigning = prepareUrlForSigning(formUrl);
 			const instanceSettings = Container.get(InstanceSettings);

@@ -35,6 +35,20 @@ export function signUrl(urlString: string, secret: string): string {
 	}
 }
 
+function timingSafeEqual(actual: string, expected: string): boolean {
+	if (actual.length !== expected.length) {
+		const normalized = actual.padEnd(expected.length, '*').slice(0, expected.length);
+
+		// Still perform comparison to prevent timing attacks
+		crypto.timingSafeEqual(Buffer.from(normalized), Buffer.from(expected));
+
+		// Always false if lengths don't match
+		return false;
+	}
+
+	return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
+
 /**
  * Validate a signed URL's signature using timing-safe comparison.
  * Returns true if the signature is valid, false otherwise.
@@ -52,7 +66,7 @@ export function validateUrlSignature(url: URL, host: string, secret: string): bo
 
 		const expectedToken = generateUrlSignature(urlString, secret);
 
-		return crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
+		return timingSafeEqual(actualToken, expectedToken);
 	} catch {
 		return false;
 	}
