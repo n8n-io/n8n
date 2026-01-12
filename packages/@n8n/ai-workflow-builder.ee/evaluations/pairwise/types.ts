@@ -48,7 +48,6 @@ export function isPairwiseExample(example: Example): example is PairwiseExample 
 
 	return (
 		typeof inputs.prompt === 'string' &&
-		typeof evals.dos === 'string' &&
-		typeof evals.donts === 'string'
+		(typeof evals.dos === 'string' || typeof evals.donts === 'string')
 	);
 }
