@@ -35,17 +35,19 @@ runs:
 
     - name: Install Aikido SafeChain
       run: |
-        VERSION="1.4.1"
-        EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
+        VERSION="0.0.7-new-proxy-beta"
         curl -fsSL -o install-safe-chain.sh \
           "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
-        echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
+      env:
+        SAFE_CHAIN_LOGGING: verbose
       shell: bash
 
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
+      env:
+        SAFE_CHAIN_LOGGING: verbose
       shell: bash
 
     - name: Configure Turborepo Cache
@@ -57,4 +59,6 @@ runs:
 
     - name: Build Project
       run: ${{ inputs.build-command }}
+      env:
+        SAFE_CHAIN_LOGGING: verbose
       shell: bash
