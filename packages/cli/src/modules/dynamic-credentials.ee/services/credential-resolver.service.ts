@@ -136,11 +136,15 @@ export class DynamicCredentialResolverService {
 		}
 
 		if (params.clearCredentials === true) {
-			const deletedCount = await this.entryRepository.delete({ resolverId: id });
+			const resolver = this.registry.getResolverByTypename(existing.type);
 
-			this.logger.debug(
-				`Cleared ${deletedCount.affected ?? 0} dynamic credential entries for resolver "${existing.name}" (${id})`,
-			);
+			if (!resolver) {
+				throw new CredentialResolverValidationError(`Unknown resolver type: ${existing.type}`);
+			}
+
+			if (resolver.deleteAllSecrets) {
+				await resolver.deleteAllSecrets(id);
+			}
 		}
 
 		const saved = await this.repository.save(existing);

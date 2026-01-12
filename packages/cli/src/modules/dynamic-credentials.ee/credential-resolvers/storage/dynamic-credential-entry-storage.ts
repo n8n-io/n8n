@@ -61,4 +61,8 @@ export class DynamicCredentialEntryStorage implements ICredentialEntriesStorage 
 			resolverId,
 		});
 	}
+
+	async deleteAllCredentialData(resolverId: string): Promise<void> {
+		await this.dynamicCredentialEntryRepository.delete({ resolverId });
+	}
 }
