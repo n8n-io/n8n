@@ -5028,6 +5028,44 @@ describe('useCanvasOperations', () => {
 			});
 		});
 	});
+
+	describe('getNodesToShift', () => {
+		it('should not shift downstream nodes unless they are to the right of the insertion point', () => {
+			// Create nodes: Start -> Loop -> End -> Start (cycle)
+			const nodeA = createTestNode({ id: 'A', name: 'Start', position: [0, 0] });
+			const nodeB = createTestNode({ id: 'B', name: 'Loop', position: [104, 0] });
+			const nodeC = createTestNode({ id: 'C', name: 'End', position: [208, 0] });
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [nodeA, nodeB, nodeC],
+							connections: {
+								[nodeA.name]: {
+									main: [[{ node: nodeB.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+								[nodeB.name]: {
+									main: [[{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+								[nodeC.name]: {
+									main: [[{ node: nodeA.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+
+			const { nodesToMove } = getNodesToShift([50, 0], 'Start');
+
+			expect(nodesToMove).toHaveLength(2);
+			expect(nodesToMove.find((n) => n.name === 'Start')).toBeUndefined();
+		});
+	});
 });
 
 function buildImportNodes() {
