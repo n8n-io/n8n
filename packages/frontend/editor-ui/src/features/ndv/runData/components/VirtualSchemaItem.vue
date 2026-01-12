@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { saveAs } from 'file-saver';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
+import type { BinaryMetadata } from '@n8n/design-system';
+import { useToast } from '@/app/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -23,9 +30,43 @@ type Props = {
 	locked?: boolean;
 	lockedTooltip?: string;
 	runIndex?: number;
+	binaryData?: BinaryMetadata;
 };
 
 const props = defineProps<Props>();
+
+const i18n = useI18n();
+
+async function downloadBinaryData() {
+	if (!props.binaryData) return;
+	try {
+		const { id, fileName, mimeType, fileExtension } = props.binaryData;
+		const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
+		let name = fileName ?? 'file';
+		if (!name.includes('.') && fileExtension) {
+			name = [name, fileExtension].join('.');
+		}
+		const response = await fetch(url);
+		if (!response.ok) throw new Error('Error downloading file');
+		const blob = await response.blob();
+		saveAs(blob, name);
+	} catch (error) {
+		useToast().showMessage({
+			title: i18n.baseText('runData.downloadBinaryData.error.title'),
+			message: i18n.baseText('runData.downloadBinaryData.error.message'),
+			type: 'error',
+		});
+	}
+}
+
+function viewBinaryData() {
+	useUIStore().openModalWithData({
+		name: BINARY_DATA_VIEW_MODAL_KEY,
+		data: {
+			binaryData: props.binaryData,
+		},
+	});
+}
 
 const emit = defineEmits<{
 	click: [];
@@ -75,6 +116,30 @@ const emit = defineEmits<{
 			:content="value"
 			:search="props.search"
 		/>
+		<div v-if="props.binaryData && !preview" class="binary-controls">
+			<div
+				class="pill binary-control-pill"
+				:class="{
+					'pill--highlight': highlight,
+					'pill--preview': preview,
+					'pill--locked': locked,
+				}"
+				@click="downloadBinaryData"
+			>
+				<N8nIcon class="type-icon" :icon="'download'" size="small" />
+			</div>
+			<div
+				class="pill binary-control-pill"
+				:class="{
+					'pill--highlight': highlight,
+					'pill--preview': preview,
+					'pill--locked': locked,
+				}"
+				@click="viewBinaryData"
+			>
+				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -195,6 +260,22 @@ const emit = defineEmits<{
 
 .tooltip {
 	max-width: 260px;
+}
+
+.binary-controls {
+	display: inline-flex;
+	gap: var(--spacing--3xs);
+	opacity: 0;
+	transition: all 0.2s ease-in-out;
+	cursor: pointer;
+}
+
+.schema-item:hover .binary-controls {
+	opacity: 1;
+}
+
+.binary-control-pill:hover .type-icon {
+	color: var(--color--primary);
 }
 </style>
 
