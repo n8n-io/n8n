@@ -64,9 +64,9 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
-			return await this.eventBus.findDestination(req.query.id);
+			return await this.destinationService.findDestination(req.query.id);
 		} else {
-			return await this.eventBus.findDestination();
+			return await this.destinationService.findDestination();
 		}
 	}
 
@@ -119,7 +119,7 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
-			return await this.eventBus.testDestination(req.query.id);
+			return await this.destinationService.testDestination(req.query.id);
 		}
 		return false;
 	}

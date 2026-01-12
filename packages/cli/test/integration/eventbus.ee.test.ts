@@ -23,6 +23,7 @@ import { ExecutionRecoveryService } from '@/executions/execution-recovery.servic
 import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee';
 import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { createUser } from './shared/db/users';
@@ -70,6 +71,7 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 };
 
 let eventBus: MessageEventBus;
+let destinationService: LogStreamingDestinationService;
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
@@ -96,6 +98,9 @@ beforeAll(async () => {
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
+
+	destinationService = Container.get(LogStreamingDestinationService);
+	await destinationService.initialize();
 });
 
 afterAll(async () => {
@@ -140,7 +145,7 @@ describe('GET /eventbus/destination', () => {
 
 		for (let index = 0; index < data.length; index++) {
 			const destination = data[index];
-			const foundDestinations = await eventBus.findDestination(destination.id);
+			const foundDestinations = await destinationService.findDestination(destination.id);
 			expect(Array.isArray(foundDestinations)).toBeTruthy();
 			expect(foundDestinations.length).toBe(1);
 			expect(foundDestinations[0].label).toBe(destination.label);
@@ -177,7 +182,7 @@ test('should anonymize audit message to syslog ', async () => {
 		id: uuid(),
 	});
 
-	const syslogDestination = eventBus.destinations[
+	const syslogDestination = destinationService['destinations'][
 		testSyslogDestination.id!
 	] as MessageEventBusDestinationSyslog;
 
@@ -237,7 +242,7 @@ test('should send message to webhook ', async () => {
 		id: uuid(),
 	});
 
-	const webhookDestination = eventBus.destinations[
+	const webhookDestination = destinationService['destinations'][
 		testWebhookDestination.id!
 	] as MessageEventBusDestinationWebhook;
 
@@ -271,7 +276,7 @@ test('should send message to sentry ', async () => {
 		id: uuid(),
 	});
 
-	const sentryDestination = eventBus.destinations[
+	const sentryDestination = destinationService['destinations'][
 		testSentryDestination.id!
 	] as MessageEventBusDestinationSentry;
 
@@ -306,7 +311,10 @@ test('should send message to sentry ', async () => {
 });
 
 test('DELETE /eventbus/destination delete all destinations by id', async () => {
-	const existingDestinationIds = [...Object.keys(eventBus.destinations)];
+	const existingDestinations = await destinationService.findDestination();
+	const existingDestinationIds = existingDestinations
+		.map((d) => d.id)
+		.filter((id): id is string => !!id);
 
 	await Promise.all(
 		existingDestinationIds.map(async (id) => {
@@ -315,5 +323,6 @@ test('DELETE /eventbus/destination delete all destinations by id', async () => {
 		}),
 	);
 
-	expect(Object.keys(eventBus.destinations).length).toBe(0);
+	const remainingDestinations = await destinationService.findDestination();
+	expect(remainingDestinations.length).toBe(0);
 });
