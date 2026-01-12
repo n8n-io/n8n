@@ -119,6 +119,7 @@ export class CredentialResolversController {
 					type: dto.type,
 					name: dto.name,
 					config: dto.config,
+					clearCredentials: dto.clearCredentials,
 					user: req.user,
 				}),
 			);
