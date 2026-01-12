@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import { prepareMultiPartForm } from '../utils';
 
 describe('Discord V2 Utils', () => {
@@ -221,6 +221,35 @@ describe('Discord V2 Utils', () => {
 			);
 
 			expect(result).toBeDefined();
+
+			const payloadJsonField = result
+				.getBuffer()
+				.toString()
+				.match(
+					/Content-Disposition: form-data; name="payload_json"[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/,
+				);
+			expect(payloadJsonField).not.toBeNull();
+
+			const payloadJson = jsonParse<{
+				content: string;
+				attachments: Array<{ id: number; filename: string }>;
+			}>(payloadJsonField![1]);
+
+			expect(payloadJson.content).toBe('Test with attachments');
+
+			expect(payloadJson.attachments).toBeDefined();
+			expect(Array.isArray(payloadJson.attachments)).toBe(true);
+			expect(payloadJson.attachments).toHaveLength(2);
+
+			expect(payloadJson.attachments[0]).toEqual({
+				id: 0,
+				filename: 'image1.png',
+			});
+
+			expect(payloadJson.attachments[1]).toEqual({
+				id: 1,
+				filename: 'text.txt',
+			});
 		});
 
 		it('should handle empty files array', async () => {
