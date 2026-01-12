@@ -1,13 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { DeleteResult } from '@n8n/typeorm';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import type { MessageEventBusDestination } from '@/eventbus/message-event-bus/message-event-bus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';
 import { EventDestinationsRepository } from './database/repositories/event-destination.repository';
+import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';
 
 /**
  * Service to handle all database operations for log streaming destinations.
@@ -64,13 +63,6 @@ export class LogStreamingDestinationService {
 	}
 
 	/**
-	 * Find destinations - returns serialized options from in-memory destinations
-	 */
-	async findDestination(id?: string): Promise<MessageEventBusDestinationOptions[]> {
-		return await this.eventBus.findDestination(id);
-	}
-
-	/**
 	 * Add a destination to the event bus and save to database
 	 */
 	async addDestination(
@@ -88,12 +80,5 @@ export class LogStreamingDestinationService {
 	async removeDestination(id: string, notifyWorkers: boolean = true): Promise<DeleteResult> {
 		await this.eventBus.removeDestination(id, notifyWorkers);
 		return await this.deleteDestinationFromDb(id);
-	}
-
-	/**
-	 * Test a destination by sending a test message
-	 */
-	async testDestination(id: string): Promise<boolean> {
-		return await this.eventBus.testDestination(id);
 	}
 }
