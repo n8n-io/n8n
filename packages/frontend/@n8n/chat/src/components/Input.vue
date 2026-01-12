@@ -188,6 +188,7 @@ function setupWebsocketConnection(executionId: string) {
 				chatStore.ws = null;
 				waitingForChatResponse.value = false;
 				chatStore.waitingForResponse.value = false;
+				chatStore.blockUserInput.value = false;
 			};
 		} catch (error) {
 			// do not throw error here as it should work with n8n versions that do not support websockets

@@ -215,6 +215,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				ws.value.onclose = () => {
 					setLoadingState(false);
 					ws.value = null;
+					chatConfig.blockUserInput.value = false;
 				};
 			}
 
