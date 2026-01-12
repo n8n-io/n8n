@@ -29,6 +29,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	CredentialInformation,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 
@@ -217,7 +218,7 @@ const loadResolver = async () => {
 		// Store original values for change detection
 		originalResolverName.value = resolver.name;
 		originalResolverType.value = resolver.type;
-		originalResolverConfig.value = JSON.parse(JSON.stringify(resolver.decryptedConfig || {}));
+		originalResolverConfig.value = deepCopy(resolver.decryptedConfig || {});
 
 		// Reset the flag when loading a resolver
 		hasEverMadeNonNameChange.value = false;
