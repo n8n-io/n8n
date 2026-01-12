@@ -3,7 +3,13 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 
-import { WorkflowStatistics } from '../entities';
+import {
+	ProjectRelation,
+	Role,
+	SharedWorkflow,
+	WorkflowEntity,
+	WorkflowStatistics,
+} from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
 
@@ -126,10 +132,10 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
 		const result = await this.createQueryBuilder('ws')
 			.select('COUNT(DISTINCT ws.workflowId)', 'count')
-			.innerJoin('workflow_entity', 'we', 'ws.workflowId = we.id')
-			.innerJoin('shared_workflow', 'sw', 'we.id = sw.workflowId')
-			.innerJoin('project_relation', 'pr', 'sw.projectId = pr.projectId')
-			.innerJoin('role', 'r', 'pr.role = r.slug')
+			.innerJoin(WorkflowEntity, 'we', 'ws.workflowId = we.id')
+			.innerJoin(SharedWorkflow, 'sw', 'we.id = sw.workflowId')
+			.innerJoin(ProjectRelation, 'pr', 'sw.projectId = pr.projectId')
+			.innerJoin(Role, 'r', 'pr.role = r.slug')
 			.where('sw.role = :role', { role: 'workflow:owner' })
 			.andWhere('pr.userId = :userId', { userId })
 			.andWhere('r.slug = :slug', { slug: PROJECT_OWNER_ROLE_SLUG })
