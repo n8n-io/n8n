@@ -33,7 +33,7 @@ tags:
   - name: Variables
     description: Operations about variables
   - name: DataTable
-    description: Operations about data table rows
+    description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
 
@@ -84,6 +84,10 @@ paths:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:
     $ref: './handlers/variables/spec/paths/variables.id.yml'
+  /data-tables:
+    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
+  /data-tables/{dataTableId}:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
   /data-tables/{dataTableId}/rows:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
   /data-tables/{dataTableId}/rows/update:

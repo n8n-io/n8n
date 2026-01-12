@@ -67,6 +67,236 @@ const testWithAPIKey =
 		expect(response.statusCode).toBe(401);
 	};
 
+describe('GET /data-tables', () => {
+	test('should fail due to missing API Key', testWithAPIKey('get', '/data-tables', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('get', '/data-tables', 'abcXYZ'));
+
+	test('should list data tables', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'table1',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'table2',
+			columns: [{ name: 'age', type: 'number' }],
+		});
+
+		const response = await authOwnerAgent.get('/data-tables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('data');
+		expect(response.body).toHaveProperty('nextCursor');
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data[0]).toHaveProperty('id');
+		expect(response.body.data[0]).toHaveProperty('name');
+		expect(response.body.data[0]).toHaveProperty('columns');
+	});
+
+	test('should paginate data tables', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'table1',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'table2',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'table3',
+			columns: [{ name: 'col3', type: 'string' }],
+		});
+
+		// First page
+		const response1 = await authOwnerAgent.get('/data-tables').query({ limit: 2 });
+
+		expect(response1.statusCode).toBe(200);
+		expect(response1.body.data).toHaveLength(2);
+		expect(response1.body.nextCursor).toBeTruthy();
+
+		// Second page using cursor
+		const response2 = await authOwnerAgent
+			.get('/data-tables')
+			.query({ cursor: response1.body.nextCursor });
+
+		expect(response2.statusCode).toBe(200);
+		expect(response2.body.data).toHaveLength(1);
+		expect(response2.body.nextCursor).toBeNull();
+	});
+});
+
+describe('POST /data-tables', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/data-tables', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('post', '/data-tables', 'abcXYZ'));
+
+	test('should create a data table', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'my-table',
+			columns: [
+				{ name: 'email', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('id');
+		expect(response.body).toHaveProperty('name', 'my-table');
+		expect(response.body).toHaveProperty('columns');
+		expect(response.body.columns).toHaveLength(2);
+		expect(response.body).toHaveProperty('projectId', ownerPersonalProject.id);
+	});
+
+	test('should fail with duplicate name', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'existing-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'existing-table',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should fail with invalid data', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: '',
+			columns: [],
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+});
+
+describe('GET /data-tables/:dataTableId', () => {
+	test('should fail due to missing API Key', testWithAPIKey('get', '/data-tables/123', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('get', '/data-tables/123', 'abcXYZ'));
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent.get(`/data-tables/${nonExistentId}`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
+	test('should get a data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'test-table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+
+		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', dataTable.id);
+		expect(response.body).toHaveProperty('name', 'test-table');
+		expect(response.body).toHaveProperty('columns');
+		expect(response.body.columns).toHaveLength(2);
+	});
+});
+
+describe('PATCH /data-tables/:dataTableId', () => {
+	test('should fail due to missing API Key', testWithAPIKey('patch', '/data-tables/123', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('patch', '/data-tables/123', 'abcXYZ'));
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent.patch(`/data-tables/${nonExistentId}`).send({
+			name: 'new-name',
+		});
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
+	test('should update a data table name', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'old-name',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}`).send({
+			name: 'new-name',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', dataTable.id);
+		expect(response.body).toHaveProperty('name', 'new-name');
+	});
+
+	test('should fail with duplicate name', async () => {
+		const dataTable1 = await createDataTable(ownerPersonalProject, {
+			name: 'table1',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'table2',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable1.id}`).send({
+			name: 'table2',
+		});
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toHaveProperty('message');
+	});
+});
+
+describe('DELETE /data-tables/:dataTableId', () => {
+	test('should fail due to missing API Key', testWithAPIKey('delete', '/data-tables/123', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('delete', '/data-tables/123', 'abcXYZ'),
+	);
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent.delete(`/data-tables/${nonExistentId}`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
+	test('should delete a data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'table-to-delete',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.delete(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(204);
+		expect(response.body).toEqual({});
+
+		// Verify it's deleted
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+		expect(getResponse.statusCode).toBe(404);
+	});
+});
+
 describe('GET /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/data-tables/123/rows', null));
 
@@ -102,7 +332,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2);
-		expect(response.body.count).toBe(2);
+		expect(response.body.nextCursor).toBeNull();
 
 		const row = response.body.data[0];
 		expect(row).toHaveProperty('id');
@@ -188,7 +418,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(response.body.message).toBe('Invalid sort direction');
 	});
 
-	test('should paginate with skip and take', async () => {
+	test('should paginate with cursor and limit', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
 				{ name: 'name', type: 'string' },
@@ -203,34 +433,37 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			],
 		});
 
-		// Test skip
+		// Test first page with limit
 		const response1 = await authOwnerAgent
 			.get(`/data-tables/${dataTable.id}/rows`)
-			.query({ skip: 2, sortBy: 'position:asc' });
+			.query({ limit: 2, sortBy: 'position:asc' });
 
 		expect(response1.statusCode).toBe(200);
-		expect(response1.body.data).toHaveLength(3);
-		expect(response1.body.data[0].name).toBe('Charlie');
+		expect(response1.body.data).toHaveLength(2);
+		expect(response1.body.data[0].name).toBe('Alice');
+		expect(response1.body.data[1].name).toBe('Bob');
+		expect(response1.body.nextCursor).toBeTruthy();
 
-		// Test take
+		// Test second page using cursor
 		const response2 = await authOwnerAgent
 			.get(`/data-tables/${dataTable.id}/rows`)
-			.query({ take: 2, sortBy: 'position:asc' });
+			.query({ cursor: response1.body.nextCursor, sortBy: 'position:asc' });
 
 		expect(response2.statusCode).toBe(200);
 		expect(response2.body.data).toHaveLength(2);
-		expect(response2.body.data[0].name).toBe('Alice');
-		expect(response2.body.data[1].name).toBe('Bob');
+		expect(response2.body.data[0].name).toBe('Charlie');
+		expect(response2.body.data[1].name).toBe('David');
+		expect(response2.body.nextCursor).toBeTruthy();
 
-		// Test skip + take
+		// Test third page using cursor
 		const response3 = await authOwnerAgent
 			.get(`/data-tables/${dataTable.id}/rows`)
-			.query({ skip: 1, take: 2, sortBy: 'position:asc' });
+			.query({ cursor: response2.body.nextCursor, sortBy: 'position:asc' });
 
 		expect(response3.statusCode).toBe(200);
-		expect(response3.body.data).toHaveLength(2);
-		expect(response3.body.data[0].name).toBe('Bob');
-		expect(response3.body.data[1].name).toBe('Charlie');
+		expect(response3.body.data).toHaveLength(1);
+		expect(response3.body.data[0].name).toBe('Eve');
+		expect(response3.body.nextCursor).toBeNull();
 	});
 
 	test('should search across columns', async () => {
@@ -251,7 +484,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ search: 'example' });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.count).toBe(2);
+		expect(response.body.data.length).toBe(2);
 		expect(response.body.data.map((r: any) => r.name).sort()).toEqual(['Alice', 'Charlie']);
 	});
 });
@@ -613,7 +846,7 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 		// Verify data was not actually deleted
 		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
-		expect(getResponse.body.count).toBe(3);
+		expect(getResponse.body.data.length).toBe(3);
 	});
 
 	test('should return 400 when filter is missing', async () => {
@@ -664,7 +897,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(3);
+			expect(response.body.data.length).toBe(3);
 			expect(response.body.data.every((row: any) => row.status === 'active')).toBe(true);
 		});
 
@@ -679,7 +912,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2);
+			expect(response.body.data.length).toBe(2);
 			expect(response.body.data.every((row: any) => row.status !== 'active')).toBe(true);
 		});
 
@@ -694,7 +927,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2);
+			expect(response.body.data.length).toBe(2);
 			expect(response.body.data.every((row: any) => row.score > 85)).toBe(true);
 		});
 
@@ -709,7 +942,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(3);
+			expect(response.body.data.length).toBe(3);
 			expect(response.body.data.every((row: any) => row.score >= 85)).toBe(true);
 		});
 
@@ -724,7 +957,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2);
+			expect(response.body.data.length).toBe(2);
 			expect(response.body.data.every((row: any) => row.score < 85)).toBe(true);
 		});
 
@@ -739,7 +972,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(3);
+			expect(response.body.data.length).toBe(3);
 			expect(response.body.data.every((row: any) => row.score <= 85)).toBe(true);
 		});
 
@@ -754,7 +987,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2); // Alice and Charlie
+			expect(response.body.data.length).toBe(2); // Alice and Charlie
 		});
 
 		test('should filter with ilike (case-insensitive like) condition', async () => {
@@ -769,7 +1002,7 @@ describe('Filter Parameter Validation', () => {
 
 			expect(response.statusCode).toBe(200);
 			// Note: SQLite LIKE is case-insensitive by default, so ilike behaves the same
-			expect(response.body.count).toBe(1); // Only Alice contains 'ALI'
+			expect(response.body.data.length).toBe(1); // Only Alice contains 'ALI'
 		});
 	});
 
@@ -788,7 +1021,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2); // Alice (95) and Charlie (85)
+			expect(response.body.data.length).toBe(2); // Alice (95) and Charlie (85)
 			expect(
 				response.body.data.every((row: any) => row.status === 'active' && row.score >= 85),
 			).toBe(true);
@@ -808,7 +1041,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2); // Diana (pending) and Alice (score 95)
+			expect(response.body.data.length).toBe(2); // Diana (pending) and Alice (score 95)
 		});
 	});
 
@@ -824,7 +1057,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(3);
+			expect(response.body.data.length).toBe(3);
 			expect(response.body.data.every((row: any) => row.active === true)).toBe(true);
 		});
 
@@ -839,7 +1072,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(2);
+			expect(response.body.data.length).toBe(2);
 			expect(response.body.data.every((row: any) => row.active === false)).toBe(true);
 		});
 	});
@@ -864,7 +1097,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(1);
+			expect(response.body.data.length).toBe(1);
 			expect(response.body.data[0].status).toBeNull();
 		});
 
@@ -879,7 +1112,7 @@ describe('Filter Parameter Validation', () => {
 				.query({ filter });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.count).toBe(5);
+			expect(response.body.data.length).toBe(5);
 			expect(response.body.data.every((row: any) => row.status !== null)).toBe(true);
 		});
 	});
@@ -944,7 +1177,7 @@ describe('Filter Parameter Validation', () => {
 				}),
 			});
 
-			expect(getResponse.body.count).toBe(2); // Charlie (85) and Eve (80)
+			expect(getResponse.body.data.length).toBe(2); // Charlie (85) and Eve (80)
 		});
 	});
 
@@ -964,7 +1197,7 @@ describe('Filter Parameter Validation', () => {
 			// Verify remaining rows
 			const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
 
-			expect(getResponse.body.count).toBe(4); // Bob (75) should be deleted
+			expect(getResponse.body.data.length).toBe(4); // Bob (75) should be deleted
 		});
 	});
 });

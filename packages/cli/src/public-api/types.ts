@@ -2,7 +2,10 @@ import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
 	AddDataTableRowsDto,
+	CreateDataTableDto,
 	ListDataTableContentQueryDto,
+	ListDataTableQueryDto,
+	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
@@ -204,6 +207,16 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
+	type List = AuthenticatedRequest<{}, {}, {}, Partial<ListDataTableQueryDto>>;
+
+	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+
+	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
+
+	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},

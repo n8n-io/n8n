@@ -1,6 +1,6 @@
 delete:
   x-eov-operation-id: deleteDataTableRows
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
   summary: Delete rows from a data table

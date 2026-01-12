@@ -1,6 +1,6 @@
 patch:
   x-eov-operation-id: updateDataTableRows
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
   summary: Update rows in a data table

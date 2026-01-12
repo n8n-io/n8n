@@ -4,10 +4,8 @@ properties:
     type: array
     items:
       $ref: './dataTableRow.yml'
-    description: Array of data table rows
-  count:
-    type: integer
-    description: Total number of rows matching the query
-required:
-  - data
-  - count
+  nextCursor:
+    type: string
+    description: Paginate through rows by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+    nullable: true
+    example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA

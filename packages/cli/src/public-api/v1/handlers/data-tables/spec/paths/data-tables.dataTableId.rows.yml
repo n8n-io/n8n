@@ -1,6 +1,6 @@
 get:
   x-eov-operation-id: getDataTableRows
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
   summary: Retrieve rows from a data table
@@ -8,21 +8,8 @@ get:
   operationId: get-data-table-rows
   parameters:
     - $ref: '../schemas/parameters/dataTableId.yml'
-    - name: skip
-      in: query
-      description: Number of rows to skip for pagination
-      schema:
-        type: integer
-        minimum: 0
-        default: 0
-    - name: take
-      in: query
-      description: Number of rows to return
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 1000
-        default: 100
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
     - name: filter
       in: query
       description: JSON string of filter conditions
@@ -59,7 +46,7 @@ get:
 
 post:
   x-eov-operation-id: insertDataTableRows
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
   summary: Insert rows into a data table

@@ -1,6 +1,6 @@
 post:
   x-eov-operation-id: upsertDataTableRow
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
   summary: Upsert a row in a data table
