@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Router } from 'express';
+import type { ErrorRequestHandler, Router } from 'express';
 import express from 'express';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
@@ -52,18 +52,21 @@ async function createApiRouter(
 
 	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
 
+	// Error handler specifically for JSON parsing - must come immediately after express.json()
+	const jsonParseErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+		if (error instanceof SyntaxError && 'body' in error) {
+			res.status(400).json({
+				message: 'Invalid JSON in request body',
+			});
+			return;
+		}
+		next(error);
+	};
+
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		// Error handler specifically for JSON parsing - must come immediately after express.json()
-		(error: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (error instanceof SyntaxError && 'body' in error) {
-				return res.status(400).json({
-					message: 'Invalid JSON in request body',
-				});
-			}
-			next(error);
-		},
+		jsonParseErrorHandler,
 		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,

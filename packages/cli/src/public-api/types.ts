@@ -207,7 +207,18 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<{}, {}, {}, Partial<ListDataTableQueryDto>>;
+	type List = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+		}
+	>;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
 
@@ -221,7 +232,14 @@ export declare namespace DataTableRequest {
 		{ dataTableId: string },
 		{},
 		{},
-		Partial<ListDataTableContentQueryDto>
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+			search?: string;
+		}
 	>;
 
 	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
