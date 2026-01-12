@@ -10,9 +10,6 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
-
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
 import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
 import type { UpdateNodeParametersOutput } from '../types/tools';
@@ -31,6 +28,9 @@ import {
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
+
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 /**
  * Schema for update node parameters input
@@ -99,8 +99,7 @@ async function processParameterUpdates(
 	const formattedChanges = formatChangesForPrompt(changes);
 
 	// Filter properties based on node's current context (version, resource, operation, etc.)
-	// Uses core n8n-workflow displayParameter which handles all displayOptions logic
-	const currentValues = (node.parameters ?? {}) as INodeParameters;
+	const currentValues = node.parameters ?? {};
 	const filteredProperties = filterPropertiesForContext(
 		nodeType.properties || [],
 		node,
