@@ -16,12 +16,15 @@ import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abst
 import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
 import type {
 	MessageEventBus,
+	MessageEventBusDestinationType,
 	MessageWithCallback,
 } from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
 
-export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
+export abstract class MessageEventBusDestination
+	implements MessageEventBusDestinationOptions, MessageEventBusDestinationType
+{
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
