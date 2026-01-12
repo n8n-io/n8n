@@ -534,6 +534,11 @@ onBeforeMount(() => {
 			display: flex;
 			justify-content: flex-end;
 			height: 32px;
+			pointer-events: none;
+
+			& > * {
+				pointer-events: auto;
+			}
 		}
 
 		& .codeBlockActions ~ code {
