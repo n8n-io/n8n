@@ -25,6 +25,7 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 import { retryUntil } from '@test-integration/retry-until';
 import { SettingsRepository } from '@n8n/db';
+import { STREAM_CLOSE_TIMEOUT } from '../chat-hub.constants';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
@@ -1179,5 +1180,168 @@ describe('chatHub', () => {
 			expect(errorChunk.metadata.previousMessageId).toBe(messageId);
 			expect(errorChunk.metadata.executionId).toEqual(expect.any(Number));
 		});
+
+		it('should clear stream timeout when stream closes normally', async () => {
+			const loggerWarnSpy = jest.spyOn(Container.get(ChatHubService)['logger'], 'warn');
+
+			// Spy on clearTimeout to verify it's called
+			let capturedTimeoutId: NodeJS.Timeout | null = null;
+			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+			const originalSetTimeout = global.setTimeout;
+			const setTimeoutSpy = jest
+				.spyOn(global, 'setTimeout')
+				.mockImplementation((callbackFn, delay?: number, ...args) => {
+					// Capture the stream close timeout ID
+					if (delay === STREAM_CLOSE_TIMEOUT) {
+						capturedTimeoutId = {
+							unref: () => {},
+							ref: () => {},
+							hasRef: () => true,
+						} as NodeJS.Timeout;
+						return capturedTimeoutId;
+					}
+					// For all other timeouts, use the real setTimeout
+					return originalSetTimeout(callbackFn, delay, ...args);
+				});
+
+			// First call: main message execution with stream that closes quickly
+			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'chat',
+					status: 'running',
+					workflowId: workflowData.id,
+					data,
+					workflowData,
+				});
+
+				setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'), 10);
+				setTimeout(() => stream!.write('{"type":"item","content":"Response","metadata":{}}\n'), 20);
+				setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'), 30);
+				setTimeout(() => stream!.end(), 40);
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+				}, 50);
+				setTimeout(() => finishRun({} as IRun), 60);
+
+				return { executionId };
+			});
+
+			// Second call: title generation (don't care in this test)
+			spyExecute.mockRejectedValue(Error());
+
+			await chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+				credentials: {
+					anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			// Verify clearTimeout was called with the captured timeout ID
+			expect(capturedTimeoutId).not.toBeNull();
+			expect(clearTimeoutSpy).toHaveBeenCalledWith(capturedTimeoutId);
+
+			// Also verify no timeout warning was logged
+			const timeoutWarnings = loggerWarnSpy.mock.calls.filter((call) =>
+				call[0]?.includes('Stream did not close within timeout'),
+			);
+			expect(timeoutWarnings).toHaveLength(0);
+
+			loggerWarnSpy.mockRestore();
+			clearTimeoutSpy.mockRestore();
+			setTimeoutSpy.mockRestore();
+		});
+
+		it('should log warning when stream does not close within timeout', async () => {
+			const loggerWarnSpy = jest.spyOn(Container.get(ChatHubService)['logger'], 'warn');
+
+			// Keep track of the setTimeout for the timeout warning
+			let timeoutCallback: (() => void) | null = null;
+			const originalSetTimeout = global.setTimeout;
+			const setTimeoutSpy = jest
+				.spyOn(global, 'setTimeout')
+				.mockImplementation((callbackFn, delay?: number, ...args) => {
+					// Capture the stream close timeout ID
+					if (delay === STREAM_CLOSE_TIMEOUT) {
+						timeoutCallback = callbackFn;
+						// Return a fake timer id
+						return { unref: () => {}, ref: () => {}, hasRef: () => true } as NodeJS.Timeout;
+					}
+					// For all other timeouts, use the real setTimeout
+					return originalSetTimeout(callbackFn, delay, ...args);
+				});
+
+			// First call: main message execution with stream that never closes
+			spyExecute.mockImplementationOnce(async (workflowData, data, _u, stream) => {
+				const executionId = await executionRepository.createNewExecution({
+					finished: false,
+					mode: 'chat',
+					status: 'running',
+					workflowId: workflowData.id,
+					data,
+					workflowData,
+				});
+
+				setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'), 10);
+				// Stream never closes - simulating a hanging stream
+
+				// Eventually finish the execution
+				setTimeout(async () => {
+					await executionRepository.updateExistingExecution(executionId, {
+						status: 'success',
+					});
+					finishRun({} as IRun);
+				}, 100);
+
+				// Close the stream later (after we manually trigger the timeout)
+				setTimeout(() => stream!.end(), 500);
+
+				return { executionId };
+			});
+
+			// Second call: title generation (don't care in this test)
+			spyExecute.mockRejectedValue(Error());
+
+			const messagePromise = chatHubService.sendHumanMessage(mockResponse, member, {
+				userId: member.id,
+				sessionId,
+				messageId,
+				message: 'Test message',
+				model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+				credentials: {
+					anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				},
+				previousMessageId: null,
+				tools: [],
+				attachments: [],
+			});
+
+			// Wait for the execution to be set up
+			await new Promise((resolve) => originalSetTimeout(resolve, 150));
+
+			// Manually trigger the timeout callback
+			if (timeoutCallback) {
+				(timeoutCallback as () => void)();
+			}
+
+			await messagePromise;
+
+			// Verify timeout warning was logged
+			const timeoutWarnings = loggerWarnSpy.mock.calls.filter((call) =>
+				call[0]?.includes('Stream did not close within timeout'),
+			);
+			expect(timeoutWarnings).toHaveLength(1);
+			expect(timeoutWarnings[0][0]).toContain('300000ms'); // STREAM_CLOSE_TIMEOUT
+
+			loggerWarnSpy.mockRestore();
+			setTimeoutSpy.mockRestore();
+		}, 5000);
 	});
 });

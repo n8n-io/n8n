@@ -64,7 +64,6 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 
 			await n8n.ndv.close();
-			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
 
 			await expect(n8n.ndv.outputPanel.getTableHeaders().first()).toContainText('test');
@@ -94,7 +93,6 @@ test.describe('Data pinning', () => {
 			await n8n.ndv.close();
 
 			await n8n.canvas.duplicateNode('Edit Fields');
-			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode('Edit Fields1');
 
 			await expect(n8n.ndv.outputPanel.getTableHeader(0)).toContainText('test');
@@ -204,7 +202,6 @@ test.describe('Data pinning', () => {
 			'should not use pin data in production webhook executions @fixme',
 			async ({ n8n, setupRequirements }) => {
 				await setupRequirements(webhookTestRequirements);
-				await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 				await n8n.canvas.publishWorkflow();
 				const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
 				const response = await n8n.ndv.makeWebhookRequest(webhookUrl);

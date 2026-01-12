@@ -5,7 +5,7 @@ import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { ensureError, sleep } from 'n8n-workflow';
+import { DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 /**
@@ -31,6 +31,8 @@ export class WorkflowHistoryCompactionService {
 	private compactingInterval: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
+
+	private isCompactingRecentHistories = false;
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
@@ -63,7 +65,7 @@ export class WorkflowHistoryCompactionService {
 
 		if (this.config.compactOnStartUp) {
 			this.logger.debug('Compacting on start up');
-			void this.compactHistories();
+			void this.compactRecentHistories();
 		}
 	}
 
@@ -82,7 +84,7 @@ export class WorkflowHistoryCompactionService {
 		// for restarts and other small gaps, e.g. caused by the next internal needing to wait
 		// for computing resources if the instance is busy
 		const rateMs = (this.config.compactingTimeWindowHours / 2) * Time.hours.toMilliseconds;
-		this.compactingInterval = setInterval(async () => await this.compactHistories(), rateMs);
+		this.compactingInterval = setInterval(async () => await this.compactRecentHistories(), rateMs);
 
 		this.logger.debug(
 			`Compacting histories every ${this.config.compactingTimeWindowHours / 2.0} hour(s)`,
@@ -95,17 +97,40 @@ export class WorkflowHistoryCompactionService {
 		this.stopCompacting();
 	}
 
-	private async compactHistories(): Promise<void> {
+	private async compactRecentHistories(): Promise<void> {
+		if (this.isCompactingRecentHistories) {
+			this.logger.warn('Skipping recent compaction as there is already a running iteration');
+			return;
+		}
+		this.isCompactingRecentHistories = true;
+
+		const startDelta =
+			(this.config.compactingMinimumAgeHours + this.config.compactingTimeWindowHours) *
+			Time.hours.toMilliseconds;
+		const endDelta = this.config.compactingMinimumAgeHours * Time.hours.toMilliseconds;
+
+		try {
+			await this.compactHistories(
+				startDelta,
+				endDelta,
+				[RULES.mergeAdditiveChanges],
+				[SKIP_RULES.makeSkipTimeDifference(this.config.minimumTimeBetweenSessionsMs)],
+			);
+		} finally {
+			this.isCompactingRecentHistories = false;
+		}
+	}
+
+	private async compactHistories(
+		startDeltaMs: number,
+		endDeltaMs: number,
+		rules: DiffRule[],
+		skipRules: DiffRule[],
+	): Promise<void> {
 		const compactionStartTime = Date.now();
 
-		const startDate = new Date(
-			compactionStartTime -
-				(this.config.compactingMinimumAgeHours + this.config.compactingTimeWindowHours) *
-					Time.hours.toMilliseconds,
-		);
-		const endDate = new Date(
-			compactionStartTime - this.config.compactingMinimumAgeHours * Time.hours.toMilliseconds,
-		);
+		const startDate = new Date(compactionStartTime - startDeltaMs);
+		const endDate = new Date(compactionStartTime - endDeltaMs);
 
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();
@@ -134,7 +159,8 @@ export class WorkflowHistoryCompactionService {
 					workflowId,
 					startDate,
 					endDate,
-					this.config.minimumTimeBetweenSessionsMs,
+					rules,
+					skipRules,
 				);
 				batchSum += seen;
 				totalVersionsSeen += seen;
@@ -154,10 +180,10 @@ export class WorkflowHistoryCompactionService {
 			}
 
 			if (batchSum > this.config.batchSize) {
-				this.logger.warn(
+				this.logger.debug(
 					`Encountered more than ${this.config.batchSize} workflow versions, waiting ${this.config.batchDelayMs * Time.milliseconds.toSeconds} second(s) before continuing.`,
 				);
-				this.logger.warn(
+				this.logger.debug(
 					`Compacted ${index} of ${workflowIds.length} workflows with versions between ${startIso} and ${endIso}`,
 				);
 				await sleep(this.config.batchDelayMs);

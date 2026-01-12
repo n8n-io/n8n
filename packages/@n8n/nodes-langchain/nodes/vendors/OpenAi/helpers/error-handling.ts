@@ -16,7 +16,31 @@ export function isOpenAiError(error: any): error is OpenAIError {
 	return error instanceof OpenAIError;
 }
 
-export const openAiFailedAttemptHandler = (error: any) => {
+function isNonChatModelError(error: unknown): boolean {
+	if (typeof error !== 'object' || error === null) {
+		return false;
+	}
+	return (
+		'status' in error &&
+		error.status === 404 &&
+		'type' in error &&
+		error.type === 'invalid_request_error' &&
+		'param' in error &&
+		error.param === 'model' &&
+		'message' in error &&
+		typeof error.message === 'string' &&
+		error.message.includes('not a chat model')
+	);
+}
+
+export const openAiFailedAttemptHandler = (error: unknown) => {
+	if (isNonChatModelError(error)) {
+		throw new OperationalError(
+			'This model requires the Responses API. Enable "Use Responses API" in the OpenAI Chat Model node options to use this model.',
+			{ cause: error },
+		);
+	}
+
 	if (error instanceof RateLimitError) {
 		// If the error is a rate limit error, we want to handle it differently
 		// because OpenAI has multiple different rate limit errors
