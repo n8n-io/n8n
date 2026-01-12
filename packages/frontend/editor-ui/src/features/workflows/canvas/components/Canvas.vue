@@ -109,7 +109,6 @@ const emit = defineEmits<{
 	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 	'run:workflow': [];
-	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [
@@ -362,7 +361,8 @@ const keyMap = computed(() => {
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
+		// override the default cmd+s which saves the page html as file
+		ctrl_s: () => {},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),

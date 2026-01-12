@@ -901,7 +901,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', async () => {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
@@ -946,7 +946,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not set current workflow as active when it is not the target', () => {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 
@@ -1050,7 +1050,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should set stateIsDirty to true', async () => {
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			const node = { name: 'TestNode' } as INodeUi;
 			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
 			workflowsStore.pinData({ node, data });

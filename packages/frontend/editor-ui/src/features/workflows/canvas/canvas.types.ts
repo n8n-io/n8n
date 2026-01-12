@@ -177,7 +177,7 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
-	'saved:workflow': never;
+	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:selectAll': never;

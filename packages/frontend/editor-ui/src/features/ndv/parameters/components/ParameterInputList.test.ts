@@ -835,30 +835,6 @@ describe('ParameterInputList', () => {
 
 			expect(getByText('AI Agent Starter Callout')).toBeInTheDocument();
 		});
-
-		it('should handle preBuiltAgentsCallout visibility', () => {
-			const preBuiltCalloutParameters: INodeProperties[] = [
-				{
-					displayName: 'Pre-built Agents Callout',
-					name: 'preBuiltAgentsCallout_test',
-					type: 'callout',
-					default: '',
-				},
-			];
-
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { container, getByTestId } = renderComponent({
-				props: {
-					parameters: preBuiltCalloutParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-
-			// Callout with preBuiltAgentsCallout name pattern visibility is controlled by isPreBuiltAgentsCalloutVisible
-			// which depends on store state not mocked here, so it may or may not be visible
-			expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
-			expect(getByTestId('parameter-item')).toBeInTheDocument();
-		});
 	});
 
 	/**

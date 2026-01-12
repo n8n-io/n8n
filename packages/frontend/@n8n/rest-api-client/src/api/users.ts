@@ -115,7 +115,7 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { inviterId: string; inviteeId: string },
+	params: { token?: string } | { inviterId?: string; inviteeId?: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
