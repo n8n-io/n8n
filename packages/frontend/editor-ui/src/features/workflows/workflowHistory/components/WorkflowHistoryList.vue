@@ -24,7 +24,7 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
-	evaluatedPruneDays: number;
+	evaluatedPruneTimeInHours: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 	activeVersionId?: string;
@@ -115,6 +115,21 @@ const onItemMounted = ({
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 };
+
+const pruneTimeDisplay = computed(() => {
+	const timeInHours = props.evaluatedPruneTimeInHours;
+
+	if (timeInHours < 24) {
+		const key = timeInHours === 1 ? 'workflowHistory.limitHour' : 'workflowHistory.limitHours';
+		return i18n.baseText(key, {
+			interpolate: { hours: String(timeInHours) },
+		});
+	} else {
+		const days = Math.round(timeInHours / 24);
+		const key = days === 1 ? 'workflowHistory.limitDay' : 'workflowHistory.limitDays';
+		return i18n.baseText(key, { interpolate: { days: String(days) } });
+	}
+});
 </script>
 
 <template>
@@ -196,12 +211,8 @@ const onItemMounted = ({
 			<N8nLoading :rows="3" class="mb-xs" />
 		</li>
 		<li v-if="props.shouldUpgrade" :class="$style.retention">
-			<span>
-				{{
-					i18n.baseText('workflowHistory.limit', {
-						interpolate: { days: String(props.evaluatedPruneDays) },
-					})
-				}}
+			<span data-test-id="prune-time-display">
+				{{ pruneTimeDisplay }}
 			</span>
 			<I18nT keypath="workflowHistory.upgrade" tag="span" scope="global">
 				<template #link>

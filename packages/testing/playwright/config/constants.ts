@@ -30,6 +30,7 @@ export const AI_TOOL_WIKIPEDIA_NODE_NAME = 'Wikipedia';
 export const AI_TOOL_HTTP_NODE_NAME = 'HTTP Request Tool';
 export const AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME = 'OpenAI Chat Model';
 export const AI_MEMORY_POSTGRES_NODE_NAME = 'Postgres Chat Memory';
+export const AI_MEMORY_REDIS_CHAT_NODE_NAME = 'Redis Chat Memory';
 export const AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME = 'Auto-fixing Output Parser';
 export const WEBHOOK_NODE_NAME = 'Webhook';
 export const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Workflow';

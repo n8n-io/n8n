@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "added": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

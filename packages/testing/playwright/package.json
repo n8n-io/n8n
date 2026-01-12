@@ -35,13 +35,13 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@currents/playwright": "^1.15.3",
+    "@currents/playwright": "catalog:e2e",
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
-    "@playwright/test": "1.56.0",
+    "@playwright/test": "catalog:e2e",
     "@types/lodash": "catalog:",
-    "eslint-plugin-playwright": "2.2.2",
+    "eslint-plugin-playwright": "catalog:e2e",
     "flatted": "catalog:",
     "generate-schema": "2.6.0",
     "mockserver-client": "^5.15.0",
