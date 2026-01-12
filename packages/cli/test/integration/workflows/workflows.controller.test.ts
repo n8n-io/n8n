@@ -45,6 +45,7 @@ import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
@@ -68,6 +69,7 @@ const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
+const collaborationService = mockInstance(CollaborationService);
 
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
@@ -2918,6 +2920,20 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(newVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			name: 'name updated',
+		};
+
+		await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
+	});
+
 	test('should not create workflow history version on other changes', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
@@ -3425,6 +3441,19 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(emitSpy).toHaveBeenCalledWith('workflow-activated', expect.anything());
 	});
 
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
+	});
+
 	test('should return 400 when versionId is missing', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -3739,6 +3768,17 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
 	});
 
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
+	});
+
 	test('should handle deactivating already inactive workflow', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
@@ -3878,6 +3918,17 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
 
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send();
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
+	});
+
 	test('should not archive workflow that is already archived', async () => {
 		const workflow = await createWorkflow({ isArchived: true }, owner);
 		const response = await authOwnerAgent
@@ -3989,6 +4040,17 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(false);
+	});
+
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, owner);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).send();
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
 	});
 
 	test('should not unarchive workflow that is already not archived', async () => {

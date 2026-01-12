@@ -8,15 +8,16 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			isInputDisabled?: boolean;
+			disabledTooltip?: string;
 		};
 	};
 }
 
-// Mock workflow saving first before any other imports
-const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
+// Mock workflow saving (component no longer calls save directly, but mock is still needed)
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
-		saveCurrentWorkflow: saveCurrentWorkflowMock,
+		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
@@ -46,6 +47,7 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 			'creditsQuota',
 			'creditsRemaining',
 			'showAskOwnerTooltip',
+			'disabled',
 		],
 		emits: ['message', 'feedback', 'stop', 'upgrade-click'],
 		setup(props, { emit, expose, slots }) {
@@ -109,6 +111,9 @@ import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { AutoSaveState } from '@/app/constants';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -182,6 +187,7 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let collaborationStore: ReturnType<typeof mockedStore<typeof useCollaborationStore>>;
 
 	beforeAll(() => {
 		Element.prototype.scrollTo = vi.fn(() => {});
@@ -211,12 +217,23 @@ describe('AskAssistantBuild', () => {
 					},
 					isInstanceOwner: true,
 				},
+				[STORES.COLLABORATION]: {
+					shouldBeReadOnly: false,
+				},
+				workflowAutosave: {
+					autoSaveState: AutoSaveState.Idle,
+					pendingAutoSave: null,
+				},
 			},
 		});
 
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		collaborationStore = mockedStore(useCollaborationStore);
+
+		// Mock collaboration store methods
+		collaborationStore.requestWriteAccess = vi.fn();
 
 		// Mock action implementations
 		builderStore.sendChatMessage = vi.fn();
@@ -274,6 +291,118 @@ describe('AskAssistantBuild', () => {
 
 			expect(showAskOwnerTooltip).toBe(false);
 		});
+
+		it('should disable input when autosave is scheduled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should disable input when autosave is in progress', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should not disable input when autosave is idle', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(false);
+		});
+
+		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const isInputDisabled = vm?.setupState?.isInputDisabled;
+
+			expect(isInputDisabled).toBe(true);
+		});
+
+		it('should show autosaving tooltip when autosave is scheduled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show autosaving tooltip when autosave is in progress', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.readOnly');
+		});
+
+		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			// Autosaving tooltip takes priority over read-only tooltip
+			expect(disabledTooltip).toBe('aiAssistant.builder.disabledTooltip.autosaving');
+		});
+
+		it('should not show any tooltip when input is not disabled', () => {
+			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const disabledTooltip = vm?.setupState?.disabledTooltip;
+
+			expect(disabledTooltip).toBeUndefined();
+		});
 	});
 
 	describe('user message handling', () => {
@@ -297,6 +426,23 @@ describe('AskAssistantBuild', () => {
 				initialGeneration: true,
 				text: testMessage,
 			});
+		});
+
+		it('should request write access when sending a message', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+
+			const { container } = renderComponent();
+			const testMessage = 'Create a workflow';
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
+
+			await flushPromises();
+
+			expect(collaborationStore.requestWriteAccess).toHaveBeenCalled();
 		});
 	});
 
@@ -470,441 +616,16 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
-	describe('workflow saving after generation', () => {
-		it('should save workflow after initial generation when workflow was empty', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message to start generation
-			const testMessage = 'Create a workflow to send emails';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
-				initialGeneration: true,
-				text: testMessage,
-			});
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true, initialGeneration: true });
-
-			await flushPromises();
-
-			// Simulate workflow update with nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Add successful message to chat to indicate successful generation
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Workflow created successfully' },
-				],
-			});
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
-		});
-
-		it('should NOT save workflow after generation when workflow already had nodes', async () => {
-			// Setup: workflow with existing nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'existing',
-							name: 'Existing',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// Send message to modify existing workflow
-			const testMessage = 'Add an HTTP node';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
-				initialGeneration: false,
-				text: testMessage,
-			});
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Simulate workflow update with additional nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'existing',
-							name: 'Existing',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-						{
-							id: 'node2',
-							name: 'HTTP',
-							type: 'n8n-nodes-base.httpRequest',
-							position: [100, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was NOT saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(0);
-		});
-
-		it('should NOT save workflow when generation ends with error', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Simulate workflow update with nodes BEFORE error occurs
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Simulate error message added to chat
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{ id: '2', role: 'assistant', type: 'error', content: 'An error occurred' },
-				],
-			});
-
-			// Simulate streaming ends with error
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was NOT saved despite having nodes because of the error
-			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-		});
-
-		it('should NOT save workflow when generation is cancelled', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Simulate workflow update with nodes BEFORE cancellation
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// User cancels generation - this adds an aborted message
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{
-						id: '2',
-						role: 'assistant',
-						type: 'text',
-						content: 'Task aborted',
-						aborted: true,
-					},
-				],
-			});
-
-			// Simulate streaming ends after cancellation
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was NOT saved despite having nodes because generation was cancelled
-			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-		});
-
-		it('should work when opening existing AI builder session', async () => {
-			// Setup: existing workflow with AI session
-			workflowsStore.workflowId = 'existing-id';
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			// Simulate existing AI session messages
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'Previous message' },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Previous response' },
-				],
-			});
-
-			const wrapper = renderComponent();
-
-			// Send new message in existing session
-			const testMessage = 'Add email nodes';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true, initialGeneration: true });
-			await flushPromises();
-
-			// Add nodes to workflow
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Email',
-							type: 'n8n-nodes-base.emailSend',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Add successful message to chat (building on existing session messages)
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'Previous message' },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Previous response' },
-					{ id: '3', role: 'user', type: 'text', content: testMessage },
-					{ id: '4', role: 'assistant', type: 'text', content: 'Added email nodes successfully' },
-				],
-			});
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
-		});
-
-		it('should save workflow when user deletes all nodes then regenerates', async () => {
-			// Setup: workflow with existing nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'existing',
-							name: 'Existing',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// User manually deletes all nodes (simulated by clearing workflow)
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			await flushPromises();
-
-			// Send message to generate new workflow
-			const testMessage = 'Create a new workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
-				initialGeneration: true,
-				text: testMessage,
-			});
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true, initialGeneration: true });
-			await flushPromises();
-
-			// Add new nodes to workflow
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'new-node',
-							name: 'New Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Add successful message to chat
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: testMessage },
-					{
-						id: '2',
-						role: 'assistant',
-						type: 'text',
-						content: 'New workflow created successfully',
-					},
-				],
-			});
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was saved after regeneration
-			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
-		});
-
-		it('should NOT save if workflow is still empty after generation ends', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			const wrapper = renderComponent();
-
-			// Send message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Workflow remains empty (maybe AI couldn't generate anything)
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was NOT saved
-			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('canvas-initiated generation', () => {
-		it('should save workflow after initial generation from canvas', async () => {
+	describe('initialGeneration flag reset', () => {
+		it('should reset initialGeneration flag when streaming ends and workflow has nodes', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
-			// Simulate canvas-initiated generation with initialGeneration flag
-			builderStore.initialGeneration = true;
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
+			// Simulate initial generation streaming starts
+			builderStore.$patch({ streaming: true, initialGeneration: true });
 			await flushPromises();
 
 			// Simulate workflow update with nodes
@@ -924,209 +645,37 @@ describe('AskAssistantBuild', () => {
 				},
 			});
 
-			// Add successful message to chat
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Workflow created successfully' },
-				],
-			});
+			// Verify initialGeneration is true before streaming ends
+			expect(builderStore.initialGeneration).toBe(true);
 
 			// Simulate streaming ends
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			// Verify workflow was saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
 			// Verify initialGeneration flag was reset
 			expect(builderStore.initialGeneration).toBe(false);
 		});
 
-		it('should NOT save workflow from canvas when generation fails', async () => {
+		it('should NOT reset initialGeneration flag when workflow is still empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
-			// Simulate canvas-initiated generation with initialGeneration flag
-			builderStore.initialGeneration = true;
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
+			// Simulate initial generation streaming starts
+			builderStore.$patch({ streaming: true, initialGeneration: true });
 			await flushPromises();
 
-			// Simulate workflow update with nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Add error message to chat
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
-					{ id: '2', role: 'assistant', type: 'error', content: 'Generation failed' },
-				],
-			});
+			// Workflow remains empty (AI couldn't generate anything)
+			// Do NOT add nodes
 
 			// Simulate streaming ends
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			// Verify workflow was NOT saved
-			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-			// Verify initialGeneration flag was reset
-			expect(builderStore.initialGeneration).toBe(false);
-		});
-
-		it('should NOT save workflow from canvas when generation is cancelled', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			renderComponent();
-
-			// Simulate canvas-initiated generation with initialGeneration flag
-			builderStore.initialGeneration = true;
-
-			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Simulate workflow update with nodes
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			// Add cancellation message to chat
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
-					{
-						id: '2',
-						role: 'assistant',
-						type: 'text',
-						content: 'Task aborted',
-						aborted: true,
-					},
-				],
-			});
-
-			// Simulate streaming ends
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify workflow was NOT saved
-			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-			// Verify initialGeneration flag was reset
-			expect(builderStore.initialGeneration).toBe(false);
-		});
-
-		it('should handle multiple canvas generations correctly', async () => {
-			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
-
-			renderComponent();
-
-			// First canvas generation
-			builderStore.initialGeneration = true;
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'First generation' },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Success' },
-				],
-			});
-
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify first generation saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(1);
-			expect(builderStore.initialGeneration).toBe(false);
-
-			// User clears workflow manually
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			// Second canvas generation
-			builderStore.initialGeneration = true;
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node2',
-							name: 'HTTP',
-							type: 'n8n-nodes-base.httpRequest',
-							position: [100, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			builderStore.$patch({
-				chatMessages: [
-					{ id: '1', role: 'user', type: 'text', content: 'First generation' },
-					{ id: '2', role: 'assistant', type: 'text', content: 'Success' },
-					{ id: '3', role: 'user', type: 'text', content: 'Second generation' },
-					{ id: '4', role: 'assistant', type: 'text', content: 'Success again' },
-				],
-			});
-
-			builderStore.$patch({ streaming: false });
-			await flushPromises();
-
-			// Verify second generation also saved
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(2);
-			expect(builderStore.initialGeneration).toBe(false);
+			// Verify initialGeneration flag was NOT reset since workflow is still empty
+			expect(builderStore.initialGeneration).toBe(true);
 		});
 	});
 

@@ -31,7 +31,6 @@ test.describe('Workflow Publish @fixme', () => {
 	test('should not be able to publish workflow when nodes have errors', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.getOpenPublishModalButton().click();
 
@@ -45,7 +44,6 @@ test.describe('Workflow Publish @fixme', () => {
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 

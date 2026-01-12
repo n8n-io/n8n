@@ -355,6 +355,7 @@ function onSelectTools() {
 							:credentials="agentMergedCredentials"
 							:agents="agents"
 							:is-loading="isLoadingAgents"
+							:class="$style.modelSelector"
 							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
@@ -362,7 +363,7 @@ function onSelectTools() {
 					</N8nInputLabel>
 
 					<N8nInputLabel
-						input-name="agent-model"
+						input-name="agent-tool"
 						:class="$style.input"
 						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
 						:required="false"
@@ -430,6 +431,10 @@ function onSelectTools() {
 	display: flex;
 	flex-direction: row;
 	gap: var(--spacing--sm);
+}
+
+.modelSelector {
+	width: fit-content;
 }
 
 .footer {
