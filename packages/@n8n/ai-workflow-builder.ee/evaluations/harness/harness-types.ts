@@ -138,6 +138,8 @@ export interface LangsmithOptions {
 	filters?: LangsmithExampleFilters;
 	/** Enable trace filtering to reduce payload sizes (default: true) */
 	enableTraceFiltering?: boolean;
+	/** Arbitrary metadata passed to LangSmith experiment (e.g., numJudges, scoringMethod) */
+	experimentMetadata?: Record<string, unknown>;
 }
 
 export interface LangsmithExampleFilters {

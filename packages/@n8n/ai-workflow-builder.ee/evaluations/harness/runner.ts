@@ -637,6 +637,40 @@ function applyRepetitions(data: string | Example[], repetitions: number): string
 	return Array.from({ length: repetitions }, () => data).flat();
 }
 
+function computeFilterMetadata(filters?: LangsmithExampleFilters): {
+	runType: string;
+	filterValue?: string;
+} {
+	if (!filters) return { runType: 'full' };
+
+	const parts: string[] = [];
+	const values: string[] = [];
+
+	if (filters.notionId) {
+		parts.push('id');
+		values.push(`id:${filters.notionId}`);
+	}
+	if (filters.technique) {
+		parts.push('category');
+		values.push(`category:${filters.technique}`);
+	}
+	if (filters.doSearch) {
+		parts.push('do');
+		values.push(`do:${filters.doSearch}`);
+	}
+	if (filters.dontSearch) {
+		parts.push('dont');
+		values.push(`dont:${filters.dontSearch}`);
+	}
+
+	if (parts.length === 0) return { runType: 'full' };
+
+	return {
+		runType: `by-${parts.join('-and-')}`,
+		filterValue: values.join(' '),
+	};
+}
+
 function logLangsmithInputsSummary(logger: EvalLogger, effectiveData: string | Example[]): void {
 	if (!Array.isArray(effectiveData)) {
 		logger.verbose('Data source: dataset (streaming)');
@@ -676,6 +710,9 @@ async function runLangsmithEvaluateAndFlush(params: {
 	logger.info(
 		`Starting LangSmith evaluate() with ${exampleCount} examples, ${langsmithOptions.repetitions} repetitions, concurrency ${langsmithOptions.concurrency}...`,
 	);
+
+	const { runType, filterValue } = computeFilterMetadata(langsmithOptions.filters);
+
 	const evalStartTime = Date.now();
 	await evaluate(target, {
 		data: effectiveData,
@@ -687,6 +724,13 @@ async function runLangsmithEvaluateAndFlush(params: {
 			langsmithOptions.repetitions > 1 && { numRepetitions: langsmithOptions.repetitions }),
 		maxConcurrency: langsmithOptions.concurrency,
 		client: lsClient,
+		metadata: {
+			repetitions: langsmithOptions.repetitions,
+			concurrency: langsmithOptions.concurrency,
+			runType,
+			...(filterValue && { filterValue }),
+			...langsmithOptions.experimentMetadata,
+		},
 	});
 	logger.info(
 		`Evaluation completed in ${((Date.now() - evalStartTime) / 1000).toFixed(1)}s (target called ${targetCallCount()} times)`,

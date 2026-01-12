@@ -206,6 +206,15 @@ export async function runV2Evaluation(): Promise<void> {
 						concurrency: args.concurrency,
 						maxExamples: args.maxExamples,
 						filters: args.filters,
+						experimentMetadata:
+							args.suite === 'pairwise'
+								? {
+										numJudges: args.numJudges,
+										numGenerations: args.numGenerations,
+										scoringMethod:
+											args.numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
+									}
+								: undefined,
 					},
 				}
 			: {
