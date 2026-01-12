@@ -1,18 +1,26 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
-import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
-import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
+import {
+	BuilderFeatureFlags,
+	WorkflowBuilderAgent,
+	type ChatPayload,
+} from '@/workflow-builder-agent';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
+
+type OnTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => void;
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -23,8 +31,11 @@ export class AiWorkflowBuilderService {
 		parsedNodeTypes: INodeTypeDescription[],
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
+		private readonly instanceId?: string,
 		private readonly instanceUrl?: string,
+		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
+		private readonly onTelemetryEvent?: OnTelemetryEvent,
 	) {
 		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
@@ -44,41 +55,37 @@ export class AiWorkflowBuilderService {
 			apiKey,
 			headers: {
 				...authHeaders,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				'anthropic-beta': 'prompt-caching-2024-07-31',
 			},
 		});
 	}
 
-	private async getApiProxyAuthHeaders(user: IUser, useDeprecatedCredentials = false) {
+	private async getApiProxyAuthHeaders(user: IUser, userMessageId: string) {
 		assert(this.client);
 
-		let authHeaders: { Authorization: string };
-
-		if (useDeprecatedCredentials) {
-			const authResponse = await this.client.generateApiProxyCredentials(user);
-			authHeaders = { Authorization: authResponse.apiKey };
-		} else {
-			const authResponse = await this.client.getBuilderApiProxyToken(user);
-			authHeaders = {
-				Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
-			};
-		}
+		const authResponse = await this.client.getBuilderApiProxyToken(user, { userMessageId });
+		const authHeaders = {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+		};
 
 		return authHeaders;
 	}
 
 	private async setupModels(
 		user: IUser,
-		useDeprecatedCredentials = false,
+		userMessageId: string,
 	): Promise<{
 		anthropicClaude: ChatAnthropic;
 		tracingClient?: TracingClient;
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		authHeaders?: { Authorization: string };
 	}> {
 		try {
 			// If client is provided, use it for API proxy
 			if (this.client) {
-				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
+				const authHeaders = await this.getApiProxyAuthHeaders(user, userMessageId);
 
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
@@ -154,10 +161,10 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
+	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
 		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
 			user,
-			useDeprecatedCredentials,
+			userMessageId,
 		);
 
 		const agent = new WorkflowBuilderAgent({
@@ -172,9 +179,11 @@ export class AiWorkflowBuilderService {
 				: undefined,
 			instanceUrl: this.instanceUrl,
 			onGenerationSuccess: async () => {
-				if (!useDeprecatedCredentials) {
-					await this.onGenerationSuccess(user, authHeaders);
-				}
+				await this.onGenerationSuccess(user, authHeaders);
+			},
+			runMetadata: {
+				n8nVersion: this.n8nVersion,
+				featureFlags: featureFlags ?? {},
 			},
 		});
 
@@ -183,6 +192,7 @@ export class AiWorkflowBuilderService {
 
 	private async onGenerationSuccess(
 		user?: IUser,
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		authHeaders?: { Authorization: string },
 	): Promise<void> {
 		try {
@@ -204,11 +214,73 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
+		const agent = await this.getAgent(user, payload.id, payload.featureFlags);
+		const userId = user?.id?.toString();
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
-		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
+		for await (const output of agent.chat(payload, userId, abortSignal)) {
 			yield output;
 		}
+
+		// After the stream completes, track telemetry
+		if (this.onTelemetryEvent && userId) {
+			try {
+				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
+			} catch (error) {
+				this.logger?.error('Failed to track builder reply telemetry', { error });
+			}
+		}
+	}
+
+	private async trackBuilderReplyTelemetry(
+		agent: WorkflowBuilderAgent,
+		workflowId: string | undefined,
+		userId: string,
+		userMessageId: string,
+	): Promise<void> {
+		if (!this.onTelemetryEvent) return;
+
+		const state = await agent.getState(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
+		// extract the last message that was sent to the user for telemetry
+		const lastAiMessage = state.values.messages.findLast(
+			(m: BaseMessage): m is AIMessage => m instanceof AIMessage,
+		);
+		const messageAi =
+			typeof lastAiMessage?.content === 'string'
+				? lastAiMessage.content
+				: JSON.stringify(lastAiMessage?.content ?? '');
+
+		const toolMessages = state.values.messages.filter(
+			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage,
+		);
+		const toolsCalled = [
+			...new Set(
+				toolMessages
+					.map((m: ToolMessage) => m.name)
+					.filter((name: string | undefined): name is string => name !== undefined),
+			),
+		];
+
+		// Build telemetry properties
+		const properties: ITelemetryTrackProperties = {
+			user_id: userId,
+			instance_id: this.instanceId,
+			workflow_id: workflowId,
+			sequence_id: threadId,
+			message_ai: messageAi,
+			tools_called: toolsCalled,
+			techniques_categories: state.values.techniqueCategories,
+			validations: state.values.validationHistory,
+			// Only include templates_selected when templates were actually used
+			...(state.values.templateIds.length > 0 && {
+				templates_selected: state.values.templateIds,
+			}),
+			user_message_id: userMessageId,
+		};
+
+		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
 	async getSessions(workflowId: string | undefined, user?: IUser) {
@@ -228,5 +300,17 @@ export class AiWorkflowBuilderService {
 			creditsQuota: -1,
 			creditsClaimed: 0,
 		};
+	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified messageId
+	 * Used when restoring to a previous version
+	 */
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		messageId: string,
+	): Promise<boolean> {
+		return await this.sessionManager.truncateMessagesAfter(workflowId, user.id, messageId);
 	}
 }

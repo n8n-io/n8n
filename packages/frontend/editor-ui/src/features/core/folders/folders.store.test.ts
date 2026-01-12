@@ -8,7 +8,7 @@ import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-vi.mock('@/utils/apiUtils', () => ({
+vi.mock('@/app/utils/apiUtils', () => ({
 	makeRestApiRequest: vi.fn(),
 }));
 

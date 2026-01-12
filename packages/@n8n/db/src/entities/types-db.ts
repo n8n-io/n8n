@@ -26,6 +26,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -79,12 +80,16 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -173,10 +178,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -189,6 +194,11 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 	}>;
+
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
 
 	type AccessFields = {
 		accessibleWorkflowIds?: string[];
@@ -217,7 +227,15 @@ export namespace ListQueryDb {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+		type OptionalBaseFields =
+			| 'name'
+			| 'active'
+			| 'versionId'
+			| 'activeVersionId'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'tags'
+			| 'description';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
@@ -373,6 +391,8 @@ export type APIRequest<
 
 export type AuthenticationInformation = {
 	usedMfa: boolean;
+	// Indicates the user is logged in but hasn't completed required MFA enrollment
+	mfaEnrollmentRequired?: boolean;
 };
 
 export type AuthenticatedRequest<
@@ -400,3 +420,8 @@ export interface ISimplifiedPinData {
 		pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	}>;
 }
+
+export type WorkflowHistoryUpdate = Omit<
+	Partial<WorkflowHistory>,
+	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
+>;

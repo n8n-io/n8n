@@ -34,7 +34,7 @@ import {
 	type ViewUpdate,
 } from '@codemirror/view';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import { html } from 'codemirror-lang-html-n8n';
+import { html } from '@n8n/codemirror-lang-html';
 import { jsonParse, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import {
@@ -52,10 +52,10 @@ import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
-import { ignoreUpdateAnnotation } from '@/utils/forceParse';
+import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 import type { CodeNodeLanguageOption } from '../components/CodeNodeEditor/CodeNodeEditor.vue';
-import { isEventTargetContainedBy } from '@/utils/htmlUtils';
+import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};

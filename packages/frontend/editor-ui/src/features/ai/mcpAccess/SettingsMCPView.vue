@@ -1,121 +1,137 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useToast } from '@/composables/useToast';
-import type { UserAction, WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import type { WorkflowListItem } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
-import { VIEWS } from '@/constants';
-import router from '@/router';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import MCPConnectionInstructions from '@/features/ai/mcpAccess/components/MCPConnectionInstructions.vue';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
-
-import { ElSwitch } from 'element-plus';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
-	N8nActionBox,
-	N8nActionToggle,
-	N8nDataTableServer,
-	N8nHeading,
-	N8nIcon,
-	N8nLink,
-	N8nLoading,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import { useMcp } from './composables/useMcp';
+	LOADING_INDICATOR_TIMEOUT,
+	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+	MCP_DOCS_PAGE_URL,
+} from '@/features/ai/mcpAccess/mcp.constants';
+import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
+import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
+import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
+import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
+import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+
+type MCPTabs = 'workflows' | 'oauth';
+
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
+const telemetry = useTelemetry();
 
-const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
-const rootStore = useRootStore();
+const uiStore = useUIStore();
+
+const mcpStatusLoading = ref(false);
+const selectedTab = ref<MCPTabs>('workflows');
+
+const tabs = ref<Array<TabOptions<MCPTabs>>>([
+	{
+		label: i18n.baseText('settings.mcp.tabs.workflows'),
+		value: 'workflows',
+	},
+	{
+		label: i18n.baseText('settings.mcp.tabs.oauth'),
+		value: 'oauth',
+	},
+]);
 
 const workflowsLoading = ref(false);
-const mcpStatusLoading = ref(false);
-const mcpKeyLoading = ref(false);
-
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
-const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
-	{
-		title: i18n.baseText('generic.name'),
-		key: 'name',
-		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
-		title: i18n.baseText('generic.folder'),
-		key: 'parentFolder',
-		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
-		title: i18n.baseText('generic.project'),
-		key: 'homeProject',
-		width: 200,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
-		title: '',
-		key: 'actions',
-		align: 'end',
-		width: 50,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-]);
-
-const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
-	{
-		label: i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess'),
-		value: 'removeFromMCP',
-	},
-]);
-
-const apiKey = computed(() => mcpStore.currentUserMCPKey);
+const oAuthClientsLoading = ref(false);
+const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
-const getProjectIcon = (workflow: WorkflowListItem): IconOrEmoji => {
-	if (workflow.homeProject?.type === 'personal') {
-		return { type: 'icon', value: 'user' };
-	} else if (workflow.homeProject?.name) {
-		return isIconOrEmoji(workflow.homeProject.icon)
-			? workflow.homeProject.icon
-			: { type: 'icon', value: 'layers' };
-	} else {
-		return { type: 'icon', value: 'house' };
+const showConnectWorkflowsButton = computed(() => {
+	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
+});
+
+const onTabSelected = async (tab: MCPTabs) => {
+	selectedTab.value = tab;
+	if (tab === 'workflows' && availableWorkflows.value.length === 0) {
+		await fetchAvailableWorkflows();
+	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
+		await fetchoAuthCLients();
+		telemetry.track('User clicked connected clients tab');
 	}
 };
 
-const getProjectName = (workflow: WorkflowListItem): string => {
-	if (workflow.homeProject?.type === 'personal') {
-		return i18n.baseText('projects.menu.personal');
+const onToggleMCPAccess = async (enabled: boolean) => {
+	try {
+		mcpStatusLoading.value = true;
+		const updated = await mcpStore.setMcpAccessEnabled(enabled);
+		if (updated) {
+			await fetchAvailableWorkflows();
+			await fetchoAuthCLients();
+		} else {
+			workflowsLoading.value = false;
+		}
+		mcp.trackUserToggledMcpAccess(enabled);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
+	} finally {
+		mcpStatusLoading.value = false;
+		workflowsLoading.value = false;
 	}
-	return workflow.homeProject?.name ?? '';
+};
+
+const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
+	try {
+		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
+		if (isEnabled) {
+			await fetchAvailableWorkflows();
+		} else {
+			availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflowId);
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+		throw error;
+	}
+};
+
+const onUpdateDescription = (workflow: WorkflowListItem) => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId: workflow.id,
+			workflowDescription: workflow.description ?? '',
+			onSave: (updatedDescription: string | null) => {
+				const index = availableWorkflows.value.findIndex((w) => w.id === workflow.id);
+				if (index !== -1) {
+					availableWorkflows.value[index] = {
+						...availableWorkflows.value[index],
+						description: updatedDescription ?? undefined,
+					};
+				}
+			},
+		},
+	});
+};
+
+const onTableRefresh = async () => {
+	if (selectedTab.value === 'workflows') {
+		await fetchAvailableWorkflows();
+	} else if (selectedTab.value === 'oauth') {
+		await fetchoAuthCLients();
+	}
 };
 
 const fetchAvailableWorkflows = async () => {
@@ -126,69 +142,56 @@ const fetchAvailableWorkflows = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
-		workflowsLoading.value = false;
-	}
-};
-
-const onUpdateMCPEnabled = async (value: string | number | boolean) => {
-	try {
-		mcpStatusLoading.value = true;
-		const boolValue = typeof value === 'boolean' ? value : Boolean(value);
-		const updated = await mcpStore.setMcpAccessEnabled(boolValue);
-		if (updated) {
-			await fetchAvailableWorkflows();
-			await fetchApiKey();
-		} else {
+		setTimeout(() => {
 			workflowsLoading.value = false;
-		}
-		mcp.trackUserToggledMcpAccess(boolValue);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
-	} finally {
-		mcpStatusLoading.value = false;
-		workflowsLoading.value = false;
-	}
-};
-
-const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
-	switch (action) {
-		case 'removeFromMCP':
-			try {
-				await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-				availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
-			} catch (error) {
-				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
-			}
-			break;
-		default:
-			break;
-	}
-};
-
-const fetchApiKey = async () => {
-	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.getOrCreateApiKey();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
-	} finally {
-		setTimeout(() => {
-			mcpKeyLoading.value = false;
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
 
-const rotateKey = async () => {
+const onRefreshWorkflows = async () => {
+	await fetchAvailableWorkflows();
+};
+
+const fetchoAuthCLients = async () => {
 	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.generateNewApiKey();
+		oAuthClientsLoading.value = true;
+		const clients = await mcpStore.getAllOAuthClients();
+		connectedOAuthClients.value = clients;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
 		setTimeout(() => {
-			mcpKeyLoading.value = false;
+			oAuthClientsLoading.value = false;
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
+};
+
+const revokeClientAccess = async (client: OAuthClientResponseDto) => {
+	try {
+		await mcpStore.removeOAuthClient(client.id);
+		connectedOAuthClients.value = connectedOAuthClients.value.filter((c) => c.id !== client.id);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
+			message: i18n.baseText('settings.mcp.oAuthClients.revoke.success.message', {
+				interpolate: { name: client.name },
+			}),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
+	}
+};
+
+const openConnectWorkflowsModal = () => {
+	uiStore.openModalWithData({
+		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+		data: {
+			onEnableMcpAccess: async (workflowId: string) => {
+				await onToggleWorkflowMCPAccess(workflowId, true);
+			},
+		},
+	});
+	telemetry.track('User clicked connect workflows from mcp settings');
 };
 
 onMounted(async () => {
@@ -197,181 +200,89 @@ onMounted(async () => {
 		return;
 	}
 	await fetchAvailableWorkflows();
-	await fetchApiKey();
 });
 </script>
 <template>
 	<div :class="$style.container">
-		<div :class="$style.headingContainer">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-		</div>
-		<div :class="$style.mainToggleContainer">
-			<div :class="$style.mainToggleInfo">
-				<N8nText :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.mcp.toggle.description') }}
-				</N8nText>
+		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
+			<div :class="$style.headings">
+				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.mcp.description') }}.
+					</N8nText>
+					<N8nLink
+						:href="MCP_DOCS_PAGE_URL"
+						target="_blank"
+						rel="noopener noreferrer"
+						size="small"
+						data-test-id="mcp-docs-link"
+					>
+						{{ i18n.baseText('generic.learnMore') }}
+					</N8nLink>
+				</div>
 			</div>
-			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
-				<N8nTooltip
-					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-					:disabled="canToggleMCP"
-					placement="top"
-				>
-					<ElSwitch
-						size="large"
-						data-test-id="mcp-access-toggle"
-						:model-value="mcpStore.mcpAccessEnabled"
-						:disabled="!canToggleMCP"
-						:loading="mcpStatusLoading"
-						@update:model-value="onUpdateMCPEnabled"
-					/>
-				</N8nTooltip>
-			</div>
-		</div>
+			<MCpHeaderActions
+				:access-enabled="mcpStore.mcpAccessEnabled"
+				:toggle-disabled="!canToggleMCP"
+				:loading="mcpStatusLoading"
+				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
+			/>
+		</header>
+		<MCPEmptyState
+			v-if="!mcpStore.mcpAccessEnabled"
+			:disabled="!canToggleMCP"
+			:loading="mcpStatusLoading"
+			@turn-on-mcp="onToggleMCPAccess(true)"
+		/>
 		<div
 			v-if="mcpStore.mcpAccessEnabled"
 			:class="$style.container"
 			data-test-id="mcp-enabled-section"
 		>
-			<div>
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
-				</N8nHeading>
-				<MCPConnectionInstructions
-					v-if="apiKey"
-					:loading-api-key="mcpKeyLoading"
-					:base-url="rootStore.urlBaseEditor"
-					:api-key="apiKey"
-					@rotate-key="rotateKey"
+			<header :class="$style['tabs-header']">
+				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
+				<div :class="$style.actions">
+					<N8nButton
+						v-if="showConnectWorkflowsButton"
+						:label="i18n.baseText('settings.mcp.connectWorkflows')"
+						data-test-id="mcp-connect-workflows-header-button"
+						size="small"
+						type="primary"
+						@click="openConnectWorkflowsModal"
+					/>
+					<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+						<N8nButton
+							data-test-id="mcp-workflows-refresh-button"
+							size="small"
+							type="tertiary"
+							icon="refresh-cw"
+							:square="true"
+							@click="onTableRefresh"
+						/>
+					</N8nTooltip>
+				</div>
+			</header>
+			<main>
+				<WorkflowsTable
+					v-if="selectedTab === 'workflows'"
+					:data-test-id="'mcp-workflow-table'"
+					:workflows="availableWorkflows"
+					:loading="workflowsLoading"
+					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
+					@connect-workflows="openConnectWorkflowsModal"
+					@update-description="onUpdateDescription"
+					@refresh="onRefreshWorkflows"
 				/>
-			</div>
-			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
-				<div v-if="workflowsLoading">
-					<N8nLoading
-						v-if="workflowsLoading"
-						:loading="workflowsLoading"
-						variant="h1"
-						class="mb-l"
-					/>
-					<N8nLoading
-						v-if="workflowsLoading"
-						:loading="workflowsLoading"
-						variant="p"
-						:rows="5"
-						:shrink-last="false"
-					/>
-				</div>
-				<div v-else class="mt-s mb-xl">
-					<div :class="[$style.header, 'mb-s']">
-						<N8nHeading size="medium" :bold="true">
-							{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
-						</N8nHeading>
-					</div>
-					<N8nActionBox
-						v-if="availableWorkflows.length === 0"
-						data-test-id="empty-workflow-list-box"
-						:heading="i18n.baseText('settings.mcp.empty.title')"
-						:description="i18n.baseText('settings.mcp.empty.description')"
-					/>
-					<N8nDataTableServer
-						v-else
-						:class="$style['workflow-table']"
-						data-test-id="mcp-workflow-table"
-						:headers="tableHeaders"
-						:items="availableWorkflows"
-						:items-length="availableWorkflows.length"
-					>
-						<template #[`item.name`]="{ item }">
-							<N8nLink
-								:new-window="true"
-								:to="
-									router.resolve({
-										name: VIEWS.WORKFLOW,
-										params: { name: item.id },
-									}).fullPath
-								"
-								:theme="'text'"
-								:class="$style['table-link']"
-							>
-								<N8nText data-test-id="mcp-workflow-name">{{ item.name }}</N8nText>
-								<N8nIcon
-									icon="external-link"
-									:class="$style['link-icon']"
-									color="text-light"
-								></N8nIcon>
-							</N8nLink>
-						</template>
-						<template #[`item.parentFolder`]="{ item }">
-							<span v-if="item.parentFolder" :class="$style['folder-cell']">
-								<N8nLink
-									v-if="item.homeProject"
-									data-test-id="mcp-workflow-folder-link"
-									:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
-									:theme="'text'"
-									:class="$style['table-link']"
-									:new-window="true"
-								>
-									<N8nText data-test-id="mcp-workflow-folder-name">
-										{{ item.parentFolder.name }}
-									</N8nText>
-									<N8nIcon
-										icon="external-link"
-										:class="$style['link-icon']"
-										color="text-light"
-									></N8nIcon>
-								</N8nLink>
-								<span v-else>
-									<N8nIcon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-									<N8nText data-test-id="mcp-workflow-folder-name">
-										{{ item.parentFolder.name }}
-									</N8nText>
-								</span>
-							</span>
-							<N8nText v-else data-test-id="mcp-workflow-no-folder">-</N8nText>
-						</template>
-						<template #[`item.homeProject`]="{ item }">
-							<span v-if="item.homeProject" :class="$style['folder-cell']">
-								<N8nLink
-									data-test-id="mcp-workflow-project-link"
-									:to="
-										router.resolve({
-											name: VIEWS.PROJECTS_WORKFLOWS,
-											params: { projectId: item.homeProject.id },
-										}).fullPath
-									"
-									:theme="'text'"
-									:class="[$style['table-link'], $style['project-link']]"
-									:new-window="true"
-								>
-									<ProjectIcon
-										v-if="item.homeProject"
-										:icon="getProjectIcon(item)"
-										:border-less="true"
-									/>
-									<N8nText data-test-id="mcp-workflow-project-name">
-										{{ getProjectName(item) }}
-									</N8nText>
-									<N8nIcon
-										icon="external-link"
-										:class="$style['link-icon']"
-										color="text-light"
-									></N8nIcon>
-								</N8nLink>
-							</span>
-							<N8nText v-else data-test-id="mcp-workflow-no-project">-</N8nText>
-						</template>
-						<template #[`item.actions`]="{ item }">
-							<N8nActionToggle
-								placement="bottom"
-								:actions="tableActions"
-								theme="dark"
-								@action="onWorkflowAction($event, item)"
-							/>
-						</template>
-					</N8nDataTableServer>
-				</div>
-			</div>
+				<OAuthClientsTable
+					v-else-if="selectedTab === 'oauth'"
+					:data-test-id="'mcp-oauth-clients-table'"
+					:clients="connectedOAuthClients"
+					:loading="oAuthClientsLoading"
+					@revoke-client="revokeClientAccess"
+					@refresh="onTableRefresh"
+				/>
+			</main>
 		</div>
 	</div>
 </template>
@@ -380,86 +291,34 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+}
 
-	:global(.table-pagination) {
-		display: none;
+.main-header {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--xl);
+
+	@media (max-width: 820px) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
 	}
 }
 
-.headingContainer {
-	margin-bottom: var(--spacing--xs);
-}
-
-.mainToggleContainer {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.mainToggleInfo {
+.headings {
 	display: flex;
 	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
+	min-height: 60px;
 }
 
-.mainTooggle {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
-}
-
-.header {
+.tabs-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 }
 
-.workflow-table {
-	tr:last-child {
-		border-bottom: none !important;
-	}
-}
-
-.table-link {
-	color: var(--color--text);
-
-	:global(.n8n-text) {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--3xs);
-
-		.link-icon {
-			display: none;
-		}
-
-		&:hover {
-			.link-icon {
-				display: inline-flex;
-			}
-		}
-	}
-
-	&.project-link {
-		:global(.n8n-text) {
-			gap: 0;
-		}
-		.link-icon {
-			margin-left: var(--spacing--3xs);
-		}
-	}
-}
-
-.folder-cell {
+.actions {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 }
 </style>

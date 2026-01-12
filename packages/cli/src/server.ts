@@ -1,7 +1,7 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { SecurityConfig } from '@n8n/config';
+import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { APIRequest } from '@n8n/db';
+import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -59,7 +59,7 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
-import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
+import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
@@ -172,18 +172,8 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-		// Source Control
+		// Variables
 		// ----------------------------------------
-
-		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
-		} catch (error) {
-			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-		}
 
 		try {
 			await import('@/environments.ee/variables/variables.controller.ee');
@@ -200,7 +190,7 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
 		}
 
 		await this.postHogClient.init();
@@ -215,7 +205,7 @@ export class Server extends AbstractServer {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			if (frontendService) {
-				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
 		}
 
@@ -269,17 +259,7 @@ export class Server extends AbstractServer {
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
-		// ----------------------------------------
-		// Settings
-		// ----------------------------------------
-
-		if (frontendService) {
-			// Returns the current settings for the UI
-			this.app.get(
-				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(async () => frontendService.getSettings()),
-			);
-		}
+		this.configureSettingsRoute();
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -287,6 +267,11 @@ export class Server extends AbstractServer {
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
+
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		await this.initializeWorkflowIndexing();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -480,6 +465,39 @@ export class Server extends AbstractServer {
 		}
 
 		installGlobalProxyAgent();
+	}
+
+	private configureSettingsRoute() {
+		const { frontendService } = this;
+		const authService = Container.get(AuthService);
+
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
+				ResponseHelper.send(async (req: AuthenticatedRequest) => {
+					return req.user
+						? await frontendService.getSettings()
+						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);
+				}),
+			);
+		}
+	}
+
+	private async initializeWorkflowIndexing() {
+		if (Container.get(WorkflowsConfig).indexingEnabled) {
+			if (Container.get(DatabaseConfig).isLegacySqlite) {
+				this.logger.warn(
+					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
+				);
+				return;
+			}
+			const { WorkflowIndexService } = await import(
+				'@/modules/workflow-index/workflow-index.service'
+			);
+			Container.get(WorkflowIndexService).init();
+		}
 	}
 
 	protected setupPushServer(): void {

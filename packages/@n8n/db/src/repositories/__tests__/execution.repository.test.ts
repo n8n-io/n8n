@@ -12,7 +12,6 @@ const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
 /**
  * TODO: add tests for all the other methods
- * TODO: getExecutionsForPublicApi -> add test cases for the `includeData` toggle
  */
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -40,7 +39,6 @@ describe('ExecutionRepository', () => {
 			where: {},
 			order: { id: 'DESC' },
 			take: defaultLimit,
-			relations: ['executionData'],
 		};
 
 		test('should get executions matching all filter parameters', async () => {
@@ -167,6 +165,54 @@ describe('ExecutionRepository', () => {
 					expect(result[0].id).toEqual(mockEntities[0].id);
 				},
 			);
+		});
+
+		describe('with includeData parameter', () => {
+			test('should not fetch executionData and metadata relations when includeData is false', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: false,
+				};
+				const mockEntities = [{ id: '1' }, { id: '2' }];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
+
+			test('should fetch executionData and metadata relations when includeData is true', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: true,
+				};
+				const mockEntities = [
+					{
+						id: '1',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+					{
+						id: '2',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+				];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+					relations: ['executionData', 'metadata'],
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
 		});
 	});
 

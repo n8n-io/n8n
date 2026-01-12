@@ -12,7 +12,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { escapeMappingString } from '@/utils/mappingUtils';
+import { escapeMappingString } from '@/app/utils/mappingUtils';
 import {
 	METADATA_SECTION,
 	PREVIOUS_NODES_SECTION,

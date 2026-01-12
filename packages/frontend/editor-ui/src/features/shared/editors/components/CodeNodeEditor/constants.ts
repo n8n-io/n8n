@@ -1,4 +1,4 @@
-import { STICKY_NODE_TYPE } from '@/constants';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import type { Diagnostic } from '@codemirror/lint';
 import type { CodeExecutionMode } from 'n8n-workflow';
 import type { CodeNodeLanguageOption } from './CodeNodeEditor.vue';
@@ -52,17 +52,6 @@ return $input.all();`.trim(),
 $input.item.json.myNewField = 1;
 
 return $input.item;`.trim(),
-	},
-	python: {
-		runOnceForAllItems: `
-# Loop over input items and add a new field called 'myNewField' to the JSON of each one
-for item in _input.all():
-  item.json.myNewField = 1
-return _input.all()`.trim(),
-		runOnceForEachItem: `
-# Add a new field called 'myNewField' to the JSON of the item
-_input.item.json.myNewField = 1
-return _input.item`.trim(),
 	},
 	pythonNative: {
 		runOnceForAllItems: `

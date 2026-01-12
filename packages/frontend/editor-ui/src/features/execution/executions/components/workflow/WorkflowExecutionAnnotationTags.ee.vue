@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useExecutionsStore } from '../../executions.store';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';

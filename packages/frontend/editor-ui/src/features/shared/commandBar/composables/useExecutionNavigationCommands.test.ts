@@ -3,7 +3,8 @@ import { useExecutionNavigationCommands } from './useExecutionNavigationCommands
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const routerPushMock = vi.fn();
 let mockRouteParams = { projectId: 'personal-1' };
@@ -28,11 +29,17 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 describe('useExecutionNavigationCommands', () => {
 	let mockProjectsStore: ReturnType<typeof useProjectsStore>;
+	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 
 		mockProjectsStore = useProjectsStore();
+		mockWorkflowsStore = useWorkflowsStore();
+
+		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
+			value: true,
+		});
 
 		mockProjectsStore.myProjects = [
 			{

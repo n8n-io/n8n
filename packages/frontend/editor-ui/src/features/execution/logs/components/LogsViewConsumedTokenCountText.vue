@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { type LlmTokenUsageData } from '@/Interface';
-import { formatTokenUsageCount } from '@/utils/aiUtils';
+import { formatTokenUsageCount } from '@/app/utils/aiUtils';
 import { N8nTooltip } from '@n8n/design-system';
-import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
+import ConsumedTokensDetails from '@/app/components/ConsumedTokensDetails.vue';
 const { consumedTokens } = defineProps<{ consumedTokens: LlmTokenUsageData }>();
 const locale = useI18n();
 </script>

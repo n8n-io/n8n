@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { CanvasNodeHandleKey } from '@/constants';
+import { CanvasNodeHandleKey } from '@/app/constants';
 import { computed, inject } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { CanvasConnectionMode } from '../canvas.types';

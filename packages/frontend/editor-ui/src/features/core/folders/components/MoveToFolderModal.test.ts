@@ -13,9 +13,9 @@ import {
 	mockedStore,
 	type MockedStore,
 } from '@/__tests__/utils';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import type {
@@ -24,7 +24,7 @@ import type {
 } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
@@ -84,6 +84,7 @@ const homeProject = createProjectSharingData();
 const enableSharing = {
 	enterprise: {
 		sharing: true,
+		projects: { team: { limit: -1 } },
 	},
 } as FrontendSettings;
 
@@ -152,7 +153,9 @@ describe('MoveToFolderModal', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings = {
-			enterprise: {},
+			enterprise: {
+				projects: { team: { limit: -1 } },
+			},
 		} as FrontendSettings;
 
 		credentialsStore = mockedStore(useCredentialsStore);

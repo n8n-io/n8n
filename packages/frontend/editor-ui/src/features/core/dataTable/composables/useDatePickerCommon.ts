@@ -1,6 +1,6 @@
 import { ref, nextTick, useTemplateRef } from 'vue';
 import { parseLooseDateInput } from '@/features/core/dataTable/utils/typeUtils';
-import { isFocusableEl } from '@/utils/typesUtils';
+import { isFocusableEl } from '@/app/utils/typesUtils';
 
 export interface DatePickerCallbacks {
 	onCommit?: () => void;

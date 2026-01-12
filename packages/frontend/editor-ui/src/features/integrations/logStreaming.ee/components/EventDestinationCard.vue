@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
-import { MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import { useLogStreamingStore } from '../logStreaming.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';

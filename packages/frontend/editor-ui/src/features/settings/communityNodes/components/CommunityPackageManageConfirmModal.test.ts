@@ -1,8 +1,8 @@
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
@@ -10,7 +10,7 @@ import { STORES } from '@n8n/stores';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		fetchWorkflowsWithNodesIncluded,
 	})),

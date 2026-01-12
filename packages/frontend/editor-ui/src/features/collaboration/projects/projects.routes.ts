@@ -1,10 +1,13 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { hasRole } from '@/app/utils/rbac/checks';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
+const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
 	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
@@ -23,10 +26,7 @@ const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
 		path: 'workflows',
-		components: {
-			default: WorkflowsView,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowsView,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -37,10 +37,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 	{
 		path: 'credentials/:credentialId?',
 		props: true,
-		components: {
-			default: CredentialsView,
-			sidebar: MainSidebar,
-		},
+		component: CredentialsView,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -50,10 +47,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 	},
 	{
 		path: 'executions',
-		components: {
-			default: ExecutionsView,
-			sidebar: MainSidebar,
-		},
+		component: ExecutionsView,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -63,10 +57,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 	},
 	{
 		path: 'folders/:folderId?/workflows',
-		components: {
-			default: WorkflowsView,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowsView,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -76,10 +67,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 	},
 	{
 		path: 'variables',
-		components: {
-			default: ProjectVariables,
-			sidebar: MainSidebar,
-		},
+		component: ProjectVariables,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -151,10 +139,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 						{
 							path: 'settings',
 							name: VIEWS.PROJECT_SETTINGS,
-							components: {
-								default: ProjectSettings,
-								sidebar: MainSidebar,
-							},
+							component: ProjectSettings,
 							meta: {
 								middleware: ['authenticated', 'custom'],
 								middlewareOptions: {
@@ -178,9 +163,25 @@ export const projectsRoutes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		redirect: '/home/workflows',
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.isChatFeatureEnabled && hasRole(['global:chatUser'])) {
+				// Prevent Chat users from accessing the home view
+				return next({ name: CHAT_VIEW });
+			}
+
+			const insightsStore = useInsightsStore();
+			if (insightsStore.isSummaryEnabled) {
+				// refresh the weekly summary when entering the home route
+				void insightsStore.weeklySummary.execute();
+			}
+
+			next();
+		},
 		children: commonChildRoutes.map((route, idx) => ({
 			...route,
 			name: commonChildRouteExtensions.home[idx].name,
+			middleware: ['authenticated'],
 		})),
 	},
 	{
@@ -194,10 +195,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 			{
 				path: 'workflows',
 				name: VIEWS.SHARED_WORKFLOWS,
-				components: {
-					default: WorkflowsView,
-					sidebar: MainSidebar,
-				},
+				component: WorkflowsView,
 				meta: {
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
@@ -209,10 +207,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				path: 'credentials/:credentialId?',
 				props: true,
 				name: VIEWS.SHARED_CREDENTIALS,
-				components: {
-					default: CredentialsView,
-					sidebar: MainSidebar,
-				},
+				component: CredentialsView,
 				meta: {
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {

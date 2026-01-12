@@ -1,7 +1,7 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -9,17 +9,14 @@ import { UserError } from 'n8n-workflow';
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
-import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
 
 @Service()
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly compactionService: InsightsCompactionService,
-		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
@@ -28,19 +25,26 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	settings() {
-		return {
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			/**
-			 * @deprecated the frontend should not rely on this anymore since users can select custom ranges
-			 */
-			dateRanges: this.getAvailableDateRanges(),
-		};
+	private async toggleCollectionService(enable: boolean) {
+		if (
+			this.instanceSettings.instanceType !== 'main' &&
+			this.instanceSettings.instanceType !== 'webhook'
+		) {
+			this.logger.debug('Instance is not main or webhook, skipping collection');
+			return;
+		}
+
+		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const collectionService = Container.get(InsightsCollectionService);
+		if (enable) {
+			collectionService.init();
+		} else {
+			await collectionService.shutdown();
+		}
 	}
 
-	startTimers() {
-		this.collectionService.startFlushingTimer();
+	async init() {
+		await this.toggleCollectionService(true);
 
 		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
@@ -60,7 +64,7 @@ export class InsightsService {
 	}
 
 	async shutdown() {
-		await this.collectionService.shutdown();
+		await this.toggleCollectionService(false);
 		this.stopCompactionAndPruningTimers();
 	}
 
@@ -285,30 +289,4 @@ export class InsightsService {
 
 		return 'week';
 	}
-
-	/**
-	 * @deprecated Users can now select custom date ranges
-	 * Returns the available date ranges with their license authorization and time granularity
-	 * when grouped by time.
-	 */
-	getAvailableDateRanges(): DateRange[] {
-		const maxHistoryInDays =
-			this.licenseState.getInsightsMaxHistory() === -1
-				? Number.MAX_SAFE_INTEGER
-				: this.licenseState.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
-
-		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
-			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
-		}));
-	}
 }
-
-type DateRange = {
-	key: 'day' | 'week' | '2weeks' | 'month' | 'quarter' | '6months' | 'year';
-	licensed: boolean;
-	granularity: 'hour' | 'day' | 'week';
-};

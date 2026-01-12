@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import useEnvironmentsStore from '../environments.store';
 import type { EnvironmentVariable } from '../environments.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -368,8 +368,9 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			// Just change the value, not the key
+			await userEvent.click(valueInput);
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 
 			// Should not show duplicate error for own key
 			expect(saveButton).toBeEnabled();
@@ -488,7 +489,7 @@ describe('VariableModal', () => {
 			if (!keyInput || !valueInput) throw new Error('Inputs not found');
 
 			await userEvent.type(keyInput, 'NEW_VAR');
-			await userEvent.type(valueInput, 'value');
+			await userEvent.type(valueInput, 'value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete
@@ -525,7 +526,7 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete

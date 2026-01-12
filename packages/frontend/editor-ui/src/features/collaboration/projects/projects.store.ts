@@ -4,14 +4,14 @@ import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import * as projectsApi from './projects.api';
-import * as workflowsApi from '@/api/workflows';
-import * as workflowsEEApi from '@/api/workflows.ee';
+import * as workflowsApi from '@/app/api/workflows';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
-import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
@@ -19,6 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -77,6 +78,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
+	);
+	const canViewProjects = computed(
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
 
 	const projectNavActiveId = computed<string | string[] | null>({
@@ -310,6 +314,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		teamProjectsLimit,
 		hasUnlimitedProjects,
 		canCreateProjects,
+		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
 		projectNavActiveId,

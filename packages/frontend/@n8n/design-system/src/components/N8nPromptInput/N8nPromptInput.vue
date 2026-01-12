@@ -10,6 +10,10 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
@@ -18,10 +22,12 @@ export interface N8nPromptInputProps {
 	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	creditsQuota?: number;
 	creditsRemaining?: number;
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
+	autofocus?: boolean;
 }
 
 const INFINITE_CREDITS = -1;
@@ -30,14 +36,16 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
 	maxLength: 5000,
-	maxLinesBeforeScroll: 6,
+	maxLinesBeforeScroll: 10,
 	minLines: 1,
 	streaming: false,
 	disabled: false,
+	disabledTooltip: undefined,
 	creditsQuota: undefined,
 	creditsRemaining: undefined,
 	showAskOwnerTooltip: false,
 	refocusAfterSend: false,
+	autofocus: false,
 });
 
 const emit = defineEmits<{
@@ -53,6 +61,7 @@ const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 const singleLineHeight = 24;
@@ -136,9 +145,8 @@ const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => 
 		return {};
 	}
 
-	const height = Math.min(textareaHeight.value, textAreaMaxHeight.value);
 	return {
-		height: `${height}px`,
+		height: `${textareaHeight.value}px`,
 		overflowY: 'hidden',
 	};
 });
@@ -168,26 +176,49 @@ function adjustHeight() {
 		return;
 	}
 
-	// Measure the natural height
 	if (!textareaRef.value) return;
-	textareaRef.value.style.height = '0';
+
+	// Save scroll position BEFORE any measurements or height changes
+	// Only save if we're in multiline mode and have a scroll area
+	let viewportEl: HTMLElement | null = null;
+	let savedScrollTop = 0;
+
+	if (wasMultiline && scrollAreaRef.value) {
+		const scrollAreaElement = scrollAreaRef.value.$el as HTMLElement | undefined;
+		viewportEl = scrollAreaElement?.querySelector(
+			'[data-reka-scroll-area-viewport]',
+		) as HTMLElement | null;
+		if (viewportEl) {
+			savedScrollTop = viewportEl.scrollTop;
+		}
+	}
+
+	// Measure required height using 'auto' instead of '0' to minimize visual disruption
+	const currentHeight = textareaRef.value.style.height;
+	textareaRef.value.style.height = 'auto';
 	const scrollHeight = textareaRef.value.scrollHeight;
+	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
 
 	// Check if we need multiline mode
-	// Switch to multiline when text would wrap, when there's actual line breaks, or when minLines > 1
 	const shouldBeMultiline =
 		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
-	// Update height tracking - use at least the minimum height
-	textareaHeight.value = Math.max(scrollHeight, minHeight);
+	// Update height tracking
+	const newHeight = Math.max(scrollHeight, minHeight);
+	textareaHeight.value = newHeight;
 	isMultiline.value = shouldBeMultiline;
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
-		// For multiline, set at least minHeight
-		textareaRef.value.style.height = `${Math.max(scrollHeight, minHeight)}px`;
+		textareaRef.value.style.height = `${newHeight}px`;
+
+		// Restore scroll position immediately after setting height
+		// This needs to happen before browser recalculates layout
+		if (viewportEl && wasMultiline && savedScrollTop > 0) {
+			viewportEl.scrollTop = savedScrollTop;
+		}
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
@@ -291,6 +322,10 @@ function focusInput() {
 onMounted(() => {
 	// Adjust height on mount to respect minLines or initial content
 	void nextTick(() => adjustHeight());
+
+	if (props.autofocus) {
+		focusInput();
+	}
 });
 
 defineExpose({
@@ -299,122 +334,128 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.wrapper">
-		<div
-			ref="containerRef"
-			:class="[
-				$style.container,
-				{
-					[$style.focused]: isFocused,
-					[$style.multiline]: isMultiline,
-					[$style.disabled]: disabled || hasNoCredits,
-					[$style.withBottomBorder]: !!showCredits,
-				},
-			]"
-			:style="containerStyle"
-		>
-			<!-- Warning banner when character limit is reached -->
-			<N8nCallout
-				v-if="showWarningBanner"
-				slim
-				icon="info"
-				theme="warning"
-				:class="$style.warningCallout"
+	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
+		<div v-bind="$attrs" :class="$style.wrapper">
+			<div
+				ref="containerRef"
+				:class="[
+					$style.container,
+					{
+						[$style.focused]: isFocused,
+						[$style.multiline]: isMultiline,
+						[$style.disabled]: disabled || hasNoCredits,
+						[$style.withBottomBorder]: !!showCredits,
+					},
+				]"
+				:style="containerStyle"
 			>
-				{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
-			</N8nCallout>
-
-			<!-- Single line mode: input and button side by side -->
-			<div v-if="!isMultiline" :class="$style.singleLineWrapper">
-				<textarea
-					ref="textareaRef"
-					v-model="textValue"
-					:class="[
-						$style.singleLineTextarea,
-						'ignore-key-press-node-creator',
-						'ignore-key-press-canvas',
-					]"
-					:placeholder="hasNoCredits ? '' : placeholder"
-					:disabled="disabled || hasNoCredits"
-					:maxlength="maxLength"
-					rows="1"
-					@keydown="handleKeyDown"
-					@focus="handleFocus"
-					@blur="handleBlur"
-					@input="adjustHeight"
-				/>
-				<div :class="$style.inlineActions">
-					<N8nSendStopButton
-						data-test-id="send-message-button"
-						:streaming="streaming"
-						:disabled="sendDisabled"
-						@send="handleSubmit"
-						@stop="handleStop"
-					/>
-				</div>
-			</div>
-
-			<!-- Multiline mode: textarea full width with button below -->
-			<template v-else>
-				<!-- Use ScrollArea when content exceeds max height -->
-				<N8nScrollArea
-					:class="$style.scrollAreaWrapper"
-					:max-height="`${textAreaMaxHeight}px`"
-					type="auto"
+				<!-- Warning banner when character limit is reached -->
+				<N8nCallout
+					v-if="showWarningBanner"
+					slim
+					icon="info"
+					theme="warning"
+					:class="$style.warningCallout"
 				>
+					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
+				</N8nCallout>
+
+				<!-- Single line mode: input and button side by side -->
+				<div v-if="!isMultiline" :class="$style.singleLineWrapper">
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
 						:class="[
-							$style.multilineTextarea,
+							$style.singleLineTextarea,
 							'ignore-key-press-node-creator',
 							'ignore-key-press-canvas',
 						]"
-						:style="textareaStyle"
 						:placeholder="hasNoCredits ? '' : placeholder"
 						:disabled="disabled || hasNoCredits"
 						:maxlength="maxLength"
+						rows="1"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
 						@input="adjustHeight"
 					/>
-				</N8nScrollArea>
-				<div :class="$style.bottomActions">
-					<N8nSendStopButton
-						data-test-id="send-message-button"
-						:streaming="streaming"
-						:disabled="sendDisabled"
-						@send="handleSubmit"
-						@stop="handleStop"
-					/>
+					<div :class="$style.inlineActions">
+						<N8nSendStopButton
+							data-test-id="send-message-button"
+							:streaming="streaming"
+							:disabled="sendDisabled"
+							@send="handleSubmit"
+							@stop="handleStop"
+						/>
+					</div>
 				</div>
-			</template>
-		</div>
 
-		<!-- Credits bar below input -->
-		<div v-if="showCredits" :class="$style.creditsBar">
-			<div :class="$style.creditsInfoWrapper">
-				<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+				<!-- Multiline mode: textarea full width with button below -->
+				<template v-else>
+					<!-- Use ScrollArea when content exceeds max height -->
+					<N8nScrollArea
+						ref="scrollAreaRef"
+						:class="$style.scrollAreaWrapper"
+						:max-height="`${textAreaMaxHeight}px`"
+						type="auto"
+					>
+						<textarea
+							ref="textareaRef"
+							v-model="textValue"
+							:class="[
+								$style.multilineTextarea,
+								'ignore-key-press-node-creator',
+								'ignore-key-press-canvas',
+							]"
+							:style="textareaStyle"
+							:placeholder="hasNoCredits ? '' : placeholder"
+							:disabled="disabled || hasNoCredits"
+							:maxlength="maxLength"
+							@keydown="handleKeyDown"
+							@focus="handleFocus"
+							@blur="handleBlur"
+							@input="adjustHeight"
+						/>
+					</N8nScrollArea>
+					<div :class="$style.bottomActions">
+						<N8nSendStopButton
+							data-test-id="send-message-button"
+							:streaming="streaming"
+							:disabled="sendDisabled"
+							@send="handleSubmit"
+							@stop="handleStop"
+						/>
+					</div>
+				</template>
+			</div>
+
+			<!-- Credits bar below input -->
+			<div v-if="showCredits" :class="$style.creditsBar">
+				<div :class="$style.creditsInfoWrapper">
+					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+					<N8nTooltip
+						:content="creditsTooltipContent"
+						:popper-class="$style.infoPopper"
+						:show-after="300"
+						placement="top"
+					>
+						<N8nIcon icon="info" size="small" />
+					</N8nTooltip>
+				</div>
 				<N8nTooltip
-					:content="creditsTooltipContent"
-					:popper-class="$style.infoPopper"
+					:disabled="!showAskOwnerTooltip"
+					:content="t('promptInput.askAdminToUpgrade')"
 					placement="top"
+					:show-after="300"
+					:enterable="false"
 				>
-					<N8nIcon icon="info" size="small" />
+					<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
+						{{ t('promptInput.getMore') }}
+					</N8nLink>
 				</N8nTooltip>
 			</div>
-			<N8nTooltip
-				:disabled="!showAskOwnerTooltip"
-				:content="t('promptInput.askAdminToUpgrade')"
-				placement="top"
-			>
-				<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
-					{{ t('promptInput.getMore') }}
-				</N8nLink>
-			</N8nTooltip>
 		</div>
-	</div>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
@@ -482,7 +523,7 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: 24px;
 	color: var(--color--text--shade-1);
 	padding: 0 var(--spacing--2xs);
@@ -515,7 +556,7 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: 18px;
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--3xs);

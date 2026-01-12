@@ -1,9 +1,10 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, isAIMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import type { MemorySaver } from '@langchain/langgraph';
+import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
 import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
@@ -18,15 +19,18 @@ import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
+	MAX_MULTI_AGENT_STREAM_ITERATIONS,
+	MAX_SINGLE_AGENT_STREAM_ITERATIONS,
 } from '@/constants';
+import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
+import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
-import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
 import {
 	applyCacheControlMarkers,
@@ -35,10 +39,103 @@ import {
 } from './utils/cache-control/helpers';
 import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
+import {
+	createStreamProcessor,
+	type BuilderTool,
+	type StreamEvent,
+} from './utils/stream-processor';
 import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+
+/**
+ * Type for the state snapshot with properly typed values
+ */
+export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
+	values: typeof WorkflowState.State;
+};
+
+/**
+ * Determines which node to execute next based on the current state.
+ * This function decides if the workflow should:
+ * - Compact messages (manual or auto)
+ * - Delete messages
+ * - Create a workflow name
+ * - Continue to agent
+ */
+export function shouldModifyState(
+	state: typeof WorkflowState.State,
+	autoCompactThresholdTokens: number,
+):
+	| 'compact_messages'
+	| 'delete_messages'
+	| 'create_workflow_name'
+	| 'auto_compact_messages'
+	| 'agent' {
+	const { messages, workflowContext } = state;
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
+
+	if (lastHumanMessage.content === '/compact') {
+		return 'compact_messages';
+	}
+
+	if (lastHumanMessage.content === '/clear') {
+		return 'delete_messages';
+	}
+
+	// If the workflow is empty (no nodes) and the name is using the default pattern
+	// (e.g., "My workflow" or "My workflow 1"), we consider it initial generation request
+	// and auto-generate a name for the workflow.
+	const workflowName = workflowContext?.currentWorkflow?.name;
+	const nodesLength = workflowContext?.currentWorkflow?.nodes?.length ?? 0;
+	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
+	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
+		return 'create_workflow_name';
+	}
+
+	const workflowContextToAppend = getWorkflowContext(state);
+
+	// Check if we should auto-compact based on token count
+	const estimatedTokens = estimateTokenCountFromMessages([
+		...messages,
+		// appended later to last message
+		new HumanMessage(workflowContextToAppend),
+	]);
+	if (estimatedTokens > autoCompactThresholdTokens) {
+		return 'auto_compact_messages';
+	}
+
+	return 'agent';
+}
+
+const PROMPT_IS_TOO_LARGE_ERROR =
+	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';
+
+function getWorkflowContext(state: typeof WorkflowState.State) {
+	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+	const executionData = state.workflowContext?.executionData ?? {};
+	const executionSchema = state.workflowContext?.executionSchema ?? [];
+	const workflowContext = [
+		'',
+		'<current_workflow_json>',
+		JSON.stringify(trimmedWorkflow),
+		'</current_workflow_json>',
+		'<trimmed_workflow_json_note>',
+		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+		'Use get_node_parameter tool to get full details when needed.',
+		'</trimmed_workflow_json_note>',
+		'',
+		'<current_simplified_execution_data>',
+		JSON.stringify(executionData),
+		'</current_simplified_execution_data>',
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	].join('\n');
+
+	return workflowContext;
+}
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -50,6 +147,10 @@ export interface WorkflowBuilderAgentConfig {
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
 	onGenerationSuccess?: () => Promise<void>;
+	/** Metadata to include in LangSmith traces */
+	runMetadata?: Record<string, unknown>;
+	/** Feature flags for enabling/disabling features */
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export interface ExpressionValue {
@@ -58,7 +159,13 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+export interface BuilderFeatureFlags {
+	templateExamples?: boolean;
+	multiAgent?: boolean;
+}
+
 export interface ChatPayload {
+	id: string;
 	message: string;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
@@ -66,12 +173,9 @@ export interface ChatPayload {
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
-	/**
-	 * Calls AI Assistant Service using deprecated credentials and endpoints
-	 * These credentials/endpoints will soon be removed
-	 * As new implementation is rolled out and builder experiment is released
-	 */
-	useDeprecatedCredentials?: boolean;
+	featureFlags?: BuilderFeatureFlags;
+	/** Version ID to store in message metadata for restore functionality */
+	versionId?: string;
 }
 
 export class WorkflowBuilderAgent {
@@ -84,6 +188,7 @@ export class WorkflowBuilderAgent {
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
+	private runMetadata?: Record<string, unknown>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -96,25 +201,52 @@ export class WorkflowBuilderAgent {
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
+		this.runMetadata = config.runMetadata;
 	}
 
-	private getBuilderTools(): BuilderTool[] {
+	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
 		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
 			instanceUrl: this.instanceUrl,
 			llmComplexTask: this.llmComplexTask,
 			logger: this.logger,
+			featureFlags,
 		});
 	}
 
-	private createWorkflow() {
-		const builderTools = this.getBuilderTools();
+	/**
+	 * Create the multi-agent workflow graph
+	 * Uses supervisor pattern with specialized agents
+	 */
+	private createMultiAgentGraph(featureFlags?: BuilderFeatureFlags) {
+		return createMultiAgentWorkflowWithSubgraphs({
+			parsedNodeTypes: this.parsedNodeTypes,
+			llmSimpleTask: this.llmSimpleTask,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+			instanceUrl: this.instanceUrl,
+			checkpointer: this.checkpointer,
+			featureFlags,
+			onGenerationSuccess: this.onGenerationSuccess,
+		});
+	}
+
+	/**
+	 * Create the legacy single-agent workflow graph
+	 */
+	private createLegacyWorkflow(featureFlags?: BuilderFeatureFlags) {
+		const builderTools = this.getBuilderTools(featureFlags);
 
 		// Extract just the tools for LLM binding
 		const tools = builderTools.map((bt) => bt.tool);
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
+
+		// Create the prompt with feature flag options
+		const mainAgentPrompt = createMainAgentPrompt({
+			includeExamplesPhase: featureFlags?.templateExamples === true,
+		});
 
 		const callModel = async (state: typeof WorkflowState.State) => {
 			if (!this.llmSimpleTask) {
@@ -137,28 +269,8 @@ export class WorkflowBuilderAgent {
 				instanceUrl: this.instanceUrl,
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
-			const workflowContext = [
-				'',
-				'<current_workflow_json>',
-				JSON.stringify(trimmedWorkflow, null, 2),
-				'</current_workflow_json>',
-				'<trimmed_workflow_json_note>',
-				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-				'Use get_node_parameter tool to get full details when needed.',
-				'</trimmed_workflow_json_note>',
-				'',
-				'<current_simplified_execution_data>',
-				JSON.stringify(executionData, null, 2),
-				'</current_simplified_execution_data>',
-				'',
-				'<current_execution_nodes_schemas>',
-				JSON.stringify(executionSchema, null, 2),
-				'</current_execution_nodes_schemas>',
-			].join('\n');
+			const workflowContext = getWorkflowContext(state);
 
 			// Optimize prompts for Anthropic's caching by:
 			// 1. Finding all user/tool message positions (cache breakpoints)
@@ -171,9 +283,7 @@ export class WorkflowBuilderAgent {
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
-				throw new WorkflowStateError(
-					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
-				);
+				throw new WorkflowStateError(PROMPT_IS_TOO_LARGE_ERROR);
 			}
 
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
@@ -181,44 +291,15 @@ export class WorkflowBuilderAgent {
 			return { messages: [response] };
 		};
 
-		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			// Estimate the current conversation size by counting tokens in all messages
-			// This is more accurate than using the last API call's token usage,
-			// because the conversation may have grown since the last call
-			const estimatedTokens = estimateTokenCountFromMessages(messages);
-
-			const shouldCompact = estimatedTokens > this.autoCompactThresholdTokens;
-
-			return shouldCompact;
-		};
-
-		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages, workflowContext } = state;
-			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
-
-			if (lastHumanMessage.content === '/compact') {
-				return 'compact_messages';
-			}
-
-			if (lastHumanMessage.content === '/clear') {
-				return 'delete_messages';
-			}
-
-			// If the workflow is empty (no nodes),
-			// we consider it initial generation request and auto-generate a name for the workflow.
-			if (workflowContext?.currentWorkflow?.nodes?.length === 0 && messages.length === 1) {
-				return 'create_workflow_name';
-			}
-
-			if (shouldAutoCompact(state)) {
-				return 'auto_compact_messages';
-			}
-
-			return 'agent';
+		const shouldModifyStateInternal = (state: typeof WorkflowState.State) => {
+			return shouldModifyState(state, this.autoCompactThresholdTokens);
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage: AIMessage = messages[messages.length - 1];
+			const lastMessage = messages[messages.length - 1];
+			if (!lastMessage || !isAIMessage(lastMessage)) {
+				throw new WorkflowStateError('Expected last message to be generated by the AI agent');
+			}
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
@@ -265,7 +346,7 @@ export class WorkflowBuilderAgent {
 			}
 
 			const { messages, previousSummary } = state;
-			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
+			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
 			const compactedMessages = await conversationCompactChain(
@@ -352,7 +433,7 @@ export class WorkflowBuilderAgent {
 			.addNode('create_workflow_name', createWorkflowName)
 			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
 			.addEdge('__start__', 'cleanup_dangling_tool_calls')
-			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyState)
+			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyStateInternal)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
@@ -361,15 +442,31 @@ export class WorkflowBuilderAgent {
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
 
-		return workflow;
+		return workflow.compile({ checkpointer: this.checkpointer });
 	}
 
-	async getState(workflowId: string, userId?: string) {
+	/**
+	 * Create the workflow graph based on configuration
+	 * Controlled by feature flag only
+	 */
+	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
+		const useMultiAgent = featureFlags?.multiAgent ?? false;
+
+		if (useMultiAgent) {
+			this.logger?.debug('Using multi-agent supervisor architecture');
+			return this.createMultiAgentGraph(featureFlags);
+		}
+
+		this.logger?.debug('Using legacy single-agent architecture');
+		return this.createLegacyWorkflow(featureFlags);
+	}
+
+	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
-		const agent = workflow.compile({ checkpointer: this.checkpointer });
-		return await agent.getState({
-			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
-		});
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		return (await workflow.getState({
+			configurable: { thread_id: threadId },
+		})) as TypedStateSnapshot;
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
@@ -381,13 +478,19 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	async *chat(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
 		this.validateMessageLength(payload.message);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
 			userId,
 			abortSignal,
+			externalCallbacks,
 		);
 
 		try {
@@ -411,8 +514,13 @@ export class WorkflowBuilderAgent {
 		}
 	}
 
-	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
+	private setupAgentAndConfigs(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
+		const agent = this.createWorkflow(payload.featureFlags);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
@@ -424,10 +532,17 @@ export class WorkflowBuilderAgent {
 		};
 		const streamConfig = {
 			...threadConfig,
-			streamMode: ['updates', 'custom'],
-			recursionLimit: 50,
+			streamMode: ['updates', 'custom'] as const,
+			recursionLimit: payload.featureFlags?.multiAgent
+				? MAX_MULTI_AGENT_STREAM_ITERATIONS
+				: MAX_SINGLE_AGENT_STREAM_ITERATIONS,
 			signal: abortSignal,
-			callbacks: this.tracer ? [this.tracer] : undefined,
+			// Use external callbacks if provided (e.g., from LangSmith traceable context),
+			// otherwise fall back to the instance tracer
+			callbacks: externalCallbacks ?? (this.tracer ? [this.tracer] : undefined),
+			metadata: this.runMetadata,
+			// Enable subgraph streaming when using multi-agent architecture
+			subgraphs: payload.featureFlags?.multiAgent ?? false,
 		};
 
 		return { agent, threadConfig, streamConfig };
@@ -436,17 +551,30 @@ export class WorkflowBuilderAgent {
 	private async createAgentStream(
 		payload: ChatPayload,
 		streamConfig: RunnableConfig,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
-	) {
-		return await agent.stream(
+		agent: ReturnType<typeof this.createWorkflow>,
+	): Promise<AsyncIterable<StreamEvent>> {
+		const humanMessage = new HumanMessage({
+			content: payload.message,
+			additional_kwargs: {
+				...(payload.versionId && { versionId: payload.versionId }),
+				...(payload.id && { messageId: payload.id }),
+			},
+		});
+		const stream = await agent.stream(
 			{
-				messages: [new HumanMessage({ content: payload.message })],
+				messages: [humanMessage],
 				workflowJSON: this.getDefaultWorkflowJSON(payload),
 				workflowOperations: [],
 				workflowContext: payload.workflowContext,
 			},
 			streamConfig,
 		);
+		// LangGraph's stream has a complex type that doesn't match our StreamEvent definition,
+		// but at runtime it produces the correct shape based on streamMode configuration.
+		// With streamMode: ['updates', 'custom'] and subgraphs enabled, events are:
+		// - Subgraph events: [namespace[], streamMode, data]
+		// - Parent events: [streamMode, data]
+		return stream as AsyncIterable<StreamEvent>;
 	}
 
 	private handleStreamError(error: unknown): never {
@@ -459,8 +587,8 @@ export class WorkflowBuilderAgent {
 	}
 
 	private async *processAgentStream(
-		stream: AsyncGenerator<[string, unknown], void, unknown>,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		stream: Awaited<ReturnType<typeof this.createAgentStream>>,
+		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
 	) {
 		try {
@@ -475,7 +603,7 @@ export class WorkflowBuilderAgent {
 
 	private async handleAgentStreamError(
 		error: unknown,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
 	): Promise<void> {
 		if (
@@ -528,6 +656,11 @@ export class WorkflowBuilderAgent {
 					'message' in errorDetails &&
 					typeof errorDetails.message === 'string'
 				) {
+					// Override original error message from model provider for prompt size issues
+					if (errorDetails.message.toLocaleLowerCase().includes('prompt is too long')) {
+						return PROMPT_IS_TOO_LARGE_ERROR;
+					}
+
 					return errorDetails.message;
 				}
 			}

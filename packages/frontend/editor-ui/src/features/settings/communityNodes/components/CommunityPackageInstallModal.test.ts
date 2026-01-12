@@ -10,7 +10,7 @@ import { ref } from 'vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 
 vi.mock('../composables/useInstallNode');
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
 		pageEventQueue: [],

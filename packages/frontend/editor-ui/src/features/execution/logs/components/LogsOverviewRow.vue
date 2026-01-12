@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/execution/logs/components/LogsViewConsumedTokenCountText.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import upperFirst from 'lodash/upperFirst';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
+import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
@@ -16,7 +16,7 @@ import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
-import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
+import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;
@@ -100,7 +100,15 @@ watch(
 	(isSelected) => {
 		void nextTick(() => {
 			if (isSelected) {
-				container.value?.focus();
+				// Don't steal focus if the chat input is currently focused
+				const activeElement = document.activeElement;
+				const isChatInputFocused =
+					activeElement?.getAttribute('data-test-id') === 'chat-input' ||
+					activeElement?.closest('[data-test-id="canvas-chat"]') !== null;
+
+				if (!isChatInputFocused) {
+					container.value?.focus();
+				}
 			}
 		});
 	},
@@ -253,8 +261,10 @@ watch(
 
 .background {
 	position: absolute;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	left: calc(var(--indent-depth) * 32px);
 	top: 0;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	width: calc(100% - var(--indent-depth) * 32px);
 	height: 100%;
 	border-radius: var(--radius);
@@ -304,6 +314,7 @@ watch(
 }
 
 .icon {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;

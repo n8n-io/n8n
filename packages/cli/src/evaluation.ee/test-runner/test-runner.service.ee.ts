@@ -12,6 +12,7 @@ import {
 	metricRequiresModelConnection,
 	DEFAULT_EVALUATION_METRIC,
 	ManualExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -21,12 +22,12 @@ import type {
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
-	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 import { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
@@ -70,6 +71,7 @@ export class TestRunnerService {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -262,10 +264,10 @@ export class TestRunnerService {
 		// When in queue mode, we need to pass additional data to the execution
 		// the same way as it would be passed in manual mode
 		if (this.executionsConfig.mode === 'queue') {
-			data.executionData = {
+			data.executionData = createRunExecutionData({
+				executionData: null,
 				resultData: {
 					pinData,
-					runData: {},
 				},
 				manualData: {
 					userId: metadata.userId,
@@ -273,12 +275,20 @@ export class TestRunnerService {
 						name: triggerNode.name,
 					},
 				},
-			};
+			});
 		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
+
+		this.eventService.emit('workflow-executed', {
+			user: metadata.userId ? { id: metadata.userId } : undefined,
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			source: 'evaluation',
+		});
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
@@ -318,7 +328,7 @@ export class TestRunnerService {
 		};
 
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode: triggerNode.name,
+			destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 			executionMode: 'manual',
 			runData: {},
 			workflowData: {
@@ -332,12 +342,9 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			executionData: {
+			executionData: createRunExecutionData({
 				startData: {
-					destinationNode: triggerNode.name,
-				},
-				resultData: {
-					runData: {},
+					destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 				},
 				manualData: {
 					userId: metadata.userId,
@@ -345,37 +352,28 @@ export class TestRunnerService {
 						name: triggerNode.name,
 					},
 				},
-			},
+				executionData: {
+					nodeExecutionStack: [
+						{ node: triggerNode, data: { main: [[{ json: {} }]] }, source: null },
+					],
+				},
+			}),
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
 		};
 
-		if (
-			!(
-				this.executionsConfig.mode === 'queue' &&
-				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-			) &&
-			data.executionData
-		) {
-			const nodeExecutionStack: IExecuteData[] = [];
-			nodeExecutionStack.push({
-				node: triggerNode,
-				data: {
-					main: [[{ json: {} }]],
-				},
-				source: null,
-			});
+		const offloadingManualExecutionsInQueueMode =
+			this.executionsConfig.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 
-			data.executionData.executionData = {
-				contextData: {},
-				metadata: {},
-				// workflow does not evaluate correctly if this is passed in queue mode with offload manual executions
-				// but this is expected otherwise in regular execution mode
-				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			};
+		if (offloadingManualExecutionsInQueueMode) {
+			// In regular mode we need executionData.executionData to be passed, but when
+			// offloading manual execution to workers the workflow evaluation fails if
+			// executionData.executionData is present, so we remove it in this case.
+			// We keep executionData itself (with startData, manualData) intact.
+			// @ts-expect-error - Removing nested executionData property for queue mode
+			delete data.executionData.executionData;
 		}
 
 		// Trigger the workflow under test with mocked data

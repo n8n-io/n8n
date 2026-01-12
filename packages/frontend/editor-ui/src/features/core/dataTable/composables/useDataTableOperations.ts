@@ -1,6 +1,6 @@
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type {
 	AddColumnResponse,
 	DataTableColumn,
@@ -17,7 +17,7 @@ import type {
 	GridApi,
 } from 'ag-grid-community';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
@@ -47,6 +47,7 @@ export type UseDataTableOperationsParams = {
 	currentSortBy: Ref<string>;
 	currentSortOrder: Ref<string | null>;
 	currentFilterJSON?: Ref<string | undefined>;
+	searchQuery?: Ref<string | undefined>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataTableRow>) => Promise<void>;
@@ -73,6 +74,7 @@ export const useDataTableOperations = ({
 	currentSortBy,
 	currentSortOrder,
 	currentFilterJSON,
+	searchQuery,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -85,7 +87,7 @@ export const useDataTableOperations = ({
 	const telemetry = useTelemetry();
 	const dataTableTypes = useDataTableTypes();
 
-	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+	const parseColumnOperationError = (error: unknown): { httpStatus: number; message: string } => {
 		const DEFAULT_HTTP_STATUS = 500;
 		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
 
@@ -149,6 +151,55 @@ export const useDataTableOperations = ({
 		}
 	}
 
+	async function onRenameColumn(columnId: string, newName: string): Promise<void> {
+		const columnToRename = colDefs.value.find((col) => col.colId === columnId);
+		if (!columnToRename) return;
+
+		const oldName = columnToRename.headerName;
+		const oldField = columnToRename.field;
+		if (!oldField) return;
+
+		columnToRename.headerName = newName;
+		setGridData({ colDefs: colDefs.value });
+
+		try {
+			toggleSave(true);
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			columnToRename.field = newName;
+			if (oldField !== newName) {
+				rowData.value = rowData.value.map((row) => {
+					const newRow: DataTableRow = { ...row };
+					newRow[newName] = newRow[oldField];
+					delete newRow[oldField];
+					return newRow;
+				});
+			}
+			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
+
+			telemetry.track('User renamed data table column', {
+				column_id: columnId,
+				column_type: columnToRename.cellDataType,
+				data_table_id: dataTableId,
+			});
+		} catch (error) {
+			columnToRename.headerName = oldName;
+			setGridData({ colDefs: colDefs.value });
+
+			const errorDetails = parseColumnOperationError(error);
+			if (errorDetails.httpStatus === 409) {
+				toast.showError(
+					new Error(errorDetails.message),
+					i18n.baseText('dataTable.column.alreadyExistsError'),
+				);
+			} else {
+				toast.showError(error, i18n.baseText('dataTable.renameColumn.error'));
+			}
+		} finally {
+			toggleSave(false);
+		}
+	}
+
 	async function onAddColumn(column: DataTableColumnCreatePayload): Promise<AddColumnResponse> {
 		try {
 			const newColumn = await dataTableStore.addDataTableColumn(dataTableId, projectId, column);
@@ -164,7 +215,7 @@ export const useDataTableOperations = ({
 			});
 			return { success: true, httpStatus: 200 };
 		} catch (error) {
-			const addColumnError = getAddColumnError(error);
+			const addColumnError = parseColumnOperationError(error);
 			return {
 				success: false,
 				httpStatus: addColumnError.httpStatus,
@@ -279,6 +330,7 @@ export const useDataTableOperations = ({
 				pageSize.value,
 				`${currentSortBy.value}:${currentSortOrder.value}`,
 				currentFilterJSON?.value,
+				searchQuery?.value,
 			);
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);
@@ -359,6 +411,7 @@ export const useDataTableOperations = ({
 
 	return {
 		onDeleteColumn,
+		onRenameColumn,
 		onAddColumn,
 		onColumnMoved,
 		onAddRowClick,

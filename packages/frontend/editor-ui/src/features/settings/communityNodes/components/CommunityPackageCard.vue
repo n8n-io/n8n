@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { IUser, PublicInstalledPackage } from 'n8n-workflow';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
-import { NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, ref, watch } from 'vue';
 import semver from 'semver';
 

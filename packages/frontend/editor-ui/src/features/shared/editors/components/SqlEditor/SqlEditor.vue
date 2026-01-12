@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import InlineExpressionEditorOutput from '../InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { n8nCompletionSources } from '../../plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
@@ -249,9 +249,9 @@ defineExpose({
 
 .codemirror.droppable {
 	:global(.cm-editor) {
-		border-color: var(--ndv--droppable-parameter--color);
-		border-style: dashed;
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
 	}
 }
 
@@ -261,6 +261,7 @@ defineExpose({
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
+		outline: none;
 	}
 }
 </style>

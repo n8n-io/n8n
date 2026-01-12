@@ -1,21 +1,39 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { VIEWS } from '@/constants';
+import { computed, ref, watch } from 'vue';
+import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { I18nT } from 'vue-i18n';
-
-import { N8nIconButton, N8nLink, N8nTooltip } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 const locale = useI18n();
 
 const props = defineProps<{
 	workflowId: string;
 	isNewWorkflow: boolean;
-	isFeatureEnabled: boolean;
 }>();
 
-const emit = defineEmits<{
-	upgrade: [];
-}>();
+const uiStore = useUIStore();
+const isWorkflowSaving = ref(false);
+const { debounce } = useDebounce();
+
+const debouncedRemoveSaveIndicator = debounce(
+	() => {
+		isWorkflowSaving.value = false;
+	},
+	{ debounceTime: LOADING_ANIMATION_MIN_DURATION, trailing: true },
+);
+
+watch(
+	() => uiStore.isActionActive.workflowSaving,
+	(value) => {
+		if (value) {
+			isWorkflowSaving.value = true;
+		} else {
+			debouncedRemoveSaveIndicator();
+		}
+	},
+);
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => ({
 	name: VIEWS.WORKFLOW_HISTORY,
@@ -26,10 +44,11 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 </script>
 
 <template>
-	<N8nTooltip placement="bottom">
+	<N8nTooltip v-if="workflowId" placement="bottom" :show-after="300">
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
-				:disabled="isNewWorkflow || !isFeatureEnabled"
+				:disabled="isNewWorkflow"
+				:loading="isWorkflowSaving"
 				data-test-id="workflow-history-button"
 				type="highlight"
 				icon="history"
@@ -37,19 +56,10 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 			/>
 		</RouterLink>
 		<template #content>
-			<span v-if="isFeatureEnabled && isNewWorkflow">
+			<span v-if="isNewWorkflow">
 				{{ locale.baseText('workflowHistory.button.tooltip.empty') }}
 			</span>
-			<span v-else-if="isFeatureEnabled">{{
-				locale.baseText('workflowHistory.button.tooltip.enabled')
-			}}</span>
-			<I18nT v-else keypath="workflowHistory.button.tooltip.disabled" scope="global">
-				<template #link>
-					<N8nLink size="small" @click="emit('upgrade')">
-						{{ locale.baseText('workflowHistory.button.tooltip.disabled.link') }}
-					</N8nLink>
-				</template>
-			</I18nT>
+			<span v-else>{{ locale.baseText('workflowHistory.button.tooltip') }}</span>
 		</template>
 	</N8nTooltip>
 </template>

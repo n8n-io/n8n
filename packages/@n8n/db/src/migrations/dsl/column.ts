@@ -12,7 +12,8 @@ export class Column {
 		| 'uuid'
 		| 'double'
 		| 'bigint'
-		| 'smallint';
+		| 'smallint'
+		| 'binary';
 
 	private isGenerated = false;
 
@@ -96,6 +97,11 @@ export class Column {
 
 	get uuid() {
 		this.type = 'uuid';
+		return this;
+	}
+
+	get binary() {
+		this.type = 'binary';
 		return this;
 	}
 
@@ -190,6 +196,14 @@ export class Column {
 			}
 		} else if (type === 'bigint') {
 			options.type = 'bigint';
+		} else if (type === 'binary') {
+			if (isPostgres) {
+				options.type = 'bytea';
+			} else if (isMysql) {
+				options.type = 'longblob';
+			} else if (isSqlite) {
+				options.type = 'blob';
+			}
 		}
 
 		if (

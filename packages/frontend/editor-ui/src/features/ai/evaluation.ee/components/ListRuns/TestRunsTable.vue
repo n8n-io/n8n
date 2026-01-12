@@ -8,7 +8,7 @@ import TestTableBase from '../shared/TestTableBase.vue';
 import { statusDictionary, getErrorBaseKey } from '../../evaluation.constants';
 import { I18nT } from 'vue-i18n';
 import { N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
+import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const emit = defineEmits<{
 	rowClick: [run: TestRunRecord & { index: number }];
 }>();

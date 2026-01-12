@@ -46,12 +46,19 @@ const PROPERTY_VOCABULARY = new Set([
 	'margin-bottom',
 	'max-height',
 	'max-width',
+	'min-height',
+	'min-width',
 	'z',
 	'duration',
 	'easing',
+	'offset',
 	'outline-color',
 	'outline-width',
 	'width',
+	'top',
+	'bottom',
+	'left',
+	'right',
 ]);
 
 // Properties that can be used as standalone single-group variables (without a value)
@@ -87,7 +94,7 @@ const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
 // Ignore issues related to these namespaces
-const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka']);
+const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag', 'chat']);
 
 // Allowed namespaces
 const NAMESPACES = new Set(['n8n', 'p', ...DISABLE_CHECK_FOR_NAMESPACES]);

@@ -1,5 +1,5 @@
 import { fireEvent } from '@testing-library/vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';

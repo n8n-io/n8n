@@ -2,13 +2,13 @@
 import { ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { Validatable, IValidator } from '@n8n/design-system';
-import { VALID_EMAIL_REGEX } from '@/constants';
+import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { COMMUNITY_PLUS_DOCS_URL } from '../usage.constants';
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useUsageStore } from '../usage.store';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
@@ -101,31 +101,24 @@ const confirm = async () => {
 				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
 				<ul :class="$style.features">
 					<li>
-						<i>🕰️</i>
-						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.first.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.first.description') }}
-						</N8nText>
-					</li>
-					<li>
 						<i>🐞</i>
 						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.second.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.second.description') }}
+							<strong>{{ i18n.baseText('communityPlusModal.features.debugging.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.debugging.description') }}
 						</N8nText>
 					</li>
 					<li>
 						<i>🔎</i>
 						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.third.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.third.description') }}
+							<strong>{{ i18n.baseText('communityPlusModal.features.execution.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.execution.description') }}
 						</N8nText>
 					</li>
 					<li>
 						<i> 📁</i>
 						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.fourth.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.fourth.description') }}
+							<strong>{{ i18n.baseText('communityPlusModal.features.folders.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.folders.description') }}
 						</N8nText>
 					</li>
 				</ul>

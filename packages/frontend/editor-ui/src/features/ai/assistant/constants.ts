@@ -1,4 +1,4 @@
-import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/constants';
+import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/app/constants';
 
 /**
  * Views where the Assistant chat panel can be shown

@@ -4,15 +4,15 @@ import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
-import { Telemetry } from '@/plugins/telemetry';
-import type { NodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { Telemetry } from '@/app/plugins/telemetry';
+import type { NodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from './templateActions';
-import { nodeTypeTelegram } from '@/utils/testData/nodeTypeTestData';
+import { nodeTypeTelegram } from '@/app/utils/testData/nodeTypeTestData';
 
 const testTemplate1 = mock<ITemplatesWorkflowFull>({
 	id: 1,

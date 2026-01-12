@@ -7,8 +7,8 @@ import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/composables/useToast';
-import { telemetry } from '@/plugins/telemetry';
+import { useToast } from '@/app/composables/useToast';
+import { telemetry } from '@/app/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
@@ -118,7 +118,6 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:max-length="30"
 					:read-only="false"
 					:disabled="false"
 					@update:model-value="onNameSubmit"

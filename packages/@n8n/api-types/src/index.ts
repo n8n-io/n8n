@@ -8,19 +8,35 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export {
 	chatHubConversationModelSchema,
+	type ChatModelDto,
+	type ChatModelMetadataDto,
+	type ChatHubInputModality,
+	type ChatHubOpenAIModel,
+	type ChatHubAnthropicModel,
+	type ChatHubGoogleModel,
+	type ChatHubBaseLLMModel,
+	type ChatHubN8nModel,
+	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
+	type ChatHubModuleSettings,
 	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
 	type ChatHubProvider,
+	type ChatHubLLMProvider,
 	type ChatHubMessageType,
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	chatModelsRequestSchema,
+	emptyChatModelsResponse,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
+	chatAttachmentSchema,
+	type ChatAttachment,
 	ChatHubSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
-	ChatHubChangeConversationTitleRequest,
+	ChatHubUpdateConversationRequest,
+	ChatHubConversationsRequest,
 	type ChatMessageId,
 	type ChatSessionId,
 	type ChatHubMessageDto,
@@ -28,6 +44,15 @@ export {
 	type ChatHubConversationDto,
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
+	type ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	type AgentIconOrEmoji,
+	agentIconOrEmojiSchema,
+	type EnrichedStructuredChunk,
+	type ChatHubAgentTool,
+	UpdateChatSettingsRequest,
+	type ChatProviderSettingsDto,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
@@ -38,6 +63,18 @@ export type { SendWorkerStatusMessage } from './push/worker';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
+export {
+	credentialResolverSchema,
+	credentialResolversSchema,
+	credentialResolverTypeSchema,
+	credentialResolverTypesSchema,
+	type CredentialResolver,
+	type CredentialResolverType,
+} from './schemas/credential-resolver.schema';
+export {
+	WORKFLOW_VERSION_NAME_MAX_LENGTH,
+	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+} from './schemas/workflow-version.schema';
 
 export type {
 	ProjectType,
@@ -46,6 +83,8 @@ export type {
 } from './schemas/project.schema';
 
 export {
+	isSourceControlledFileStatus,
+	type SourceControlledFileStatus,
 	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
@@ -98,4 +137,22 @@ export type {
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
 
+export {
+	WorkflowExecutionStatusSchema,
+	type WorkflowExecutionStatus,
+} from './schemas/workflow-execution-status.schema';
+
 export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+} from './schemas/breaking-changes.schema';

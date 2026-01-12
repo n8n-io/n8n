@@ -6,9 +6,9 @@ import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
-import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
-import type { PinDataSource } from '@/composables/usePinnedData';
-import { CanvasKey } from '@/constants';
+import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
+import type { PinDataSource } from '@/app/composables/usePinnedData';
+import { CanvasKey } from '@/app/constants';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
@@ -19,9 +19,13 @@ import type {
 	ConnectStartEvent,
 } from '../canvas.types';
 import { CanvasNodeRenderType } from '../canvas.types';
-import { isOutsideSelected } from '@/utils/htmlUtils';
-import { getMousePosition, GRID_SIZE, updateViewportToContainNodes } from '@/utils/nodeViewUtils';
-import { isPresent } from '@/utils/typesUtils';
+import { isOutsideSelected } from '@/app/utils/htmlUtils';
+import {
+	getMousePosition,
+	GRID_SIZE,
+	updateViewportToContainNodes,
+} from '@/app/utils/nodeViewUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -81,6 +85,8 @@ const emit = defineEmits<{
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
+	'copy:production:url': [id: string];
+	'copy:test:url': [id: string];
 	'delete:node': [id: string];
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -103,7 +109,6 @@ const emit = defineEmits<{
 	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 	'run:workflow': [];
-	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent, { trackEvents?: boolean }];
@@ -348,11 +353,14 @@ const keyMap = computed(() => {
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
+		// override the default cmd+s which saves the page html as file
+		ctrl_s: () => {},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
+		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 	};
 	return fullKeymap;
 });
@@ -746,6 +754,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':
 			return emit('run:node', nodeIds[0]);
+		case 'copy_production_url':
+			return emit('copy:production:url', nodeIds[0]);
+		case 'copy_test_url':
+			return emit('copy:test:url', nodeIds[0]);
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':
@@ -1076,19 +1088,8 @@ defineExpose({
 		opacity: 1;
 	}
 
-	:global(.vue-flow__pane) {
-		cursor: grab;
-
-		&:global(.selection) {
-			cursor: default;
-		}
-
-		&:global(.dragging) {
-			cursor: grabbing;
-		}
-	}
-
 	&.isExperimentalNdvActive {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
 	}
 }

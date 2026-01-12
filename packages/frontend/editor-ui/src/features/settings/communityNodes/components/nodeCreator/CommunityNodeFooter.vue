@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { captureException } from '@sentry/vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';

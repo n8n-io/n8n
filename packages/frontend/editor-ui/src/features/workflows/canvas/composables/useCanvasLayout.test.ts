@@ -6,8 +6,8 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
-import { STICKY_NODE_TYPE } from '@/constants';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { STICKY_NODE_TYPE } from '@/app/constants';
+import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
 

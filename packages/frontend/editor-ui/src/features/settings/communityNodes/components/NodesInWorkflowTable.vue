@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import type { RouteLocationRaw } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { WorkflowResource } from '@/Interface';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import { useI18n } from '@n8n/i18n';

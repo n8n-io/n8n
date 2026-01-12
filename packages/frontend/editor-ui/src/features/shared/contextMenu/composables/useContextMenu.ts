@@ -1,7 +1,7 @@
 import type { XYPosition } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { computed, ref, watch } from 'vue';
-import { getMousePosition } from '@/utils/nodeViewUtils';
+import { getMousePosition } from '@/app/utils/nodeViewUtils';
 import { useContextMenuItems, type ContextMenuAction } from './useContextMenuItems';
 
 export type ContextMenuTarget =

@@ -72,6 +72,8 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
@@ -225,7 +227,7 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace LicenseRequest {
-	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
 }
 
 // ----------------------------------

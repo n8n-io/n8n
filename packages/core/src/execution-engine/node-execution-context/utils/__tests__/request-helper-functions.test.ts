@@ -1,7 +1,10 @@
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
-import { mock } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import type {
+	IAllExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -23,6 +26,7 @@ import {
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
+	refreshOAuth2Token,
 	removeEmptyBody,
 } from '../request-helper-functions';
 
@@ -229,6 +233,22 @@ describe('Request Helper Functions', () => {
 				},
 				{ sendImmediately: false },
 			);
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await invokeAxios({
+				url: 'https://api.openai.com/chat',
+			});
 
 			expect(response.status).toBe(200);
 			expect(response.data).toEqual({ success: true });
@@ -864,6 +884,211 @@ describe('Request Helper Functions', () => {
 
 			expect(response).toEqual({ success: true });
 			scope.done();
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			const scope = nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: 'https://api.openai.com/chat',
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+	});
+
+	describe('refreshOAuth2Token', () => {
+		const baseUrl = 'https://example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		const mockCredentialData = {
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'authorizationCode',
+			authUrl: 'https://example.com/auth',
+			accessTokenUrl: 'https://example.com/token',
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'old-token',
+				refresh_token: 'old-refresh-token',
+			},
+		};
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node-name';
+			mockNode.credentials = {
+				'test-credentials-type': {
+					id: 'test-credentials-id',
+					name: 'test-credentials-name',
+				},
+			};
+		});
+
+		test('should refresh the OAuth2 token with pkce grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				clientSecret: undefined,
+				grantType: 'pkce',
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should refresh the OAuth2 token with client credentials grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should refresh the OAuth2 token with authorization code grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should throw an error if the OAuth2 token is not connected', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: undefined,
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('OAuth credentials not connected');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if node does not have credentials', async () => {
+			mockNode.credentials!['test-credentials-type'] = undefined!;
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('Node does not have credential type');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
 		});
 	});
 });

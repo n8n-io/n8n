@@ -1,4 +1,4 @@
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INode, IRunExecutionData } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
@@ -21,8 +21,6 @@ export function useExecutionData({ node }: { node: ComputedRef<INode | undefined
 	});
 
 	const hasNodeRun = computed(() => {
-		if (workflowsStore.subWorkflowExecutionError) return true;
-
 		return Boolean(
 			node.value &&
 				workflowRunData.value &&

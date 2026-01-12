@@ -18,27 +18,36 @@ import { type ProvisioningConfigDto } from '@n8n/api-types';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
+import { type InstanceSettings } from 'n8n-core';
+import { type EventService } from '@/events/event.service';
+import { type UserService } from '@/services/user.service';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
 const userRepository = mock<UserRepository>();
+const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
 const projectService = mock<ProjectService>();
+const eventService = mock<EventService>();
 
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
+const instanceSettings = mock<InstanceSettings>();
 
 const provisioningService = new ProvisioningService(
+	eventService,
 	globalConfig,
 	settingsRepository,
 	projectRepository,
 	projectService,
 	roleRepository,
 	userRepository,
+	userService,
 	logger,
 	publisher,
+	instanceSettings,
 );
 
 describe('ProvisioningService', () => {
@@ -53,7 +62,6 @@ describe('ProvisioningService', () => {
 	const provisioningConfigDto: ProvisioningConfigDto = {
 		scopesProvisionInstanceRole: true,
 		scopesProvisionProjectRoles: true,
-		scopesProvisioningFrequency: 'every_login',
 		scopesName: 'n8n_test_scope',
 		scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 		scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
@@ -140,7 +148,6 @@ describe('ProvisioningService', () => {
 			const overriddenConfig = {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n_test_scope_overridden',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role_overridden',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles_overridden',
@@ -170,6 +177,8 @@ describe('ProvisioningService', () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 123;
 
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -185,6 +194,8 @@ describe('ProvisioningService', () => {
 			const thrownError = new Error('Role not found');
 
 			roleRepository.findOneOrFail.mockRejectedValue(thrownError);
+
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
@@ -204,6 +215,8 @@ describe('ProvisioningService', () => {
 				mock<Role>({ slug: 'global:member', roleType: 'global' }),
 			);
 
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -220,105 +233,135 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:member', roleType: 'global' }),
 			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should provision the instance role for the user', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
 		});
 
 		it('should do nothing if the role has not changed', async () => {
 			const user = mock<User>({ role: { slug: 'global:owner' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).not.toHaveBeenCalled();
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if the role is not a global role', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'project' }),
 			);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).not.toHaveBeenCalled();
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
 				{ userId: user.id, roleSlug: 'global:owner' },
 			);
 		});
+
+		it('sends telemetry event', async () => {
+			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: roleSlug,
+			});
+		});
 	});
 
 	describe('provisionProjectRolesForUser', () => {
-		it('should do nothing if the projectIdToRole is not a string', async () => {
+		it('should do nothing if the projectIdToRole is not an array', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = { not: 'a string' };
+			const projectIdToRole = { not: 'an array' };
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning. Invalid projectIdToRole type: expected string, received object',
-				{ userId, projectIdToRole },
+				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received object',
+				{ userId, projectIdToRoles: projectIdToRole },
 			);
 		});
 
-		it('should do nothing if projectIdToRole is not a valid JSON string', async () => {
+		it('should do nothing if projectIdToRole is not an array', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = 'invalid-json-string';
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning. Failed to parse project to role mapping.',
-				{ userId, projectIdToRole },
+				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received string',
+				{ userId, projectIdToRoles: projectIdToRole },
 			);
 		});
 
 		it('should filter out entries where key:value is not a string', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({ project_1: { nested: 'object' } }); // invalid value type
+			const projectIdToRole = [{ projectId: 'project-1', role: 'viewer' }]; // invalid value type
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role mapping for project_1:[object Object]. Invalid types: expected both key and value to be strings.',
-				{ userId },
+				'Skipping invalid project role mapping entry. Expected string, received object.',
+				{ userId, entry: projectIdToRole[0] },
 			);
 		});
 
 		it('should do nothing if the project does not exist', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				'non-existent-project': 'project:viewer',
-			});
+			const projectIdToRole = ['non-existent-project:viewer'];
 			projectRepository.find.mockResolvedValue([]);
 			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -327,11 +370,11 @@ describe('ProvisioningService', () => {
 
 		it('should do nothing if the provided role does not exist', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				'project-1': 'project:non-existent-role',
-			});
+			const projectIdToRole = ['project-1:non-existent-role'];
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project-1' })]);
 			roleRepository.find.mockResolvedValue([]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -340,44 +383,45 @@ describe('ProvisioningService', () => {
 
 		it('should do nothing if no valid project to role mappings are found', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = {
-				nonExistentProject: 'non-existent-role',
-				anotherNonExistentProject: 'project:viewer',
-			};
+			const projectIdToRole = [
+				'nonExistentProject:non-existent-role',
+				'anotherNonExistentProject:viewer',
+			];
 			// Mock that no projects exist
 			projectRepository.find.mockResolvedValueOnce([]);
 			// Mock that roles exist but projects don't
-			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+			]);
 
-			await provisioningService.provisionProjectRolesForUser(
-				userId,
-				JSON.stringify(projectIdToRole),
-			);
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				'Skipped provisioning project role for project with ID nonExistentProject, because project does not exist or is a personal project.',
 				{
 					userId,
-					projectRoleMap: projectIdToRole,
+					projectId: 'nonExistentProject',
+					roleSlug: 'project:non-existent-role',
 				},
 			);
 		});
 
 		it('should skip projectIds that reference a personal project', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				personalProject1: 'project:viewer',
-				teamProject1: 'project:editor',
-			});
+			const projectIdToRole = ['personalProject1:viewer', 'teamProject1:editor'];
 			// Mocks query to find existing projects
 			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'teamProject1' })]);
 			// Mocks query to find currently accessible projects
 			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
-				mock<Role>({ slug: 'project:viewer' }),
-				mock<Role>({ slug: 'project:editor' }),
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -388,17 +432,14 @@ describe('ProvisioningService', () => {
 				entityManager,
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning. Project with ID personalProject1 not found.',
+				'Skipped provisioning project role for project with ID personalProject1, because project does not exist or is a personal project.',
 				{ userId, projectId: 'personalProject1', roleSlug: 'project:viewer' },
 			);
 		});
 
 		it('should provision project roles for the user', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				'project-1': 'project:viewer',
-				'project-2': 'project:editor',
-			});
+			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
 			// Mocks query to find existing projects
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
@@ -407,9 +448,11 @@ describe('ProvisioningService', () => {
 			// Mocks query to find currently accessible projects
 			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
-				mock<Role>({ slug: 'project:viewer' }),
-				mock<Role>({ slug: 'project:editor' }),
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -427,26 +470,24 @@ describe('ProvisioningService', () => {
 		});
 		it('should filter out non-project roles', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				project1: 'global:admin',
-			});
+			const projectIdToRole = ['project1:admin'];
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project1' })]);
 			roleRepository.find.mockResolvedValue([]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping project role provisioning. Role with slug global:admin not found or is not a project role.',
-				{ userId, projectId: 'project1', roleSlug: 'global:admin' },
+				'Skipping project role provisioning for role with slug project:admin, because role does not exist or is not specific to projects.',
+				{ userId, projectId: 'project1', roleSlug: 'project:admin' },
 			);
 		});
 
 		it('removes existing access to non-personal projects that are no longer present in the provided mapping', async () => {
 			const userId = 'user-id-123';
-			const projectIdToRole = JSON.stringify({
-				'project-1': 'project:viewer',
-			});
+			const projectIdToRole = ['project-1:viewer'];
 			// Mocks query to find existing projects
 			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'project-1' })]);
 			// Mocks query to find currently accessible projects
@@ -454,7 +495,11 @@ describe('ProvisioningService', () => {
 				mock<Project>({ id: 'project-1', type: 'team' }),
 				mock<Project>({ id: 'project-2', type: 'team' }),
 			]);
-			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -468,6 +513,33 @@ describe('ProvisioningService', () => {
 				{ userId, role: 'project:viewer' },
 				entityManager,
 			);
+		});
+
+		it('sends telemetry event', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-1' }),
+				mock<Project>({ id: 'project-2' }),
+			]);
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-3', type: 'team' }),
+			]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 2,
+				projectsRemoved: 1,
+				userId,
+			});
 		});
 	});
 
@@ -485,7 +557,8 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('patchConfig', () => {
-		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload', async () => {
+		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload in multi-main setup', async () => {
+			(instanceSettings as any).isMultiMain = true;
 			const originStateLoadConfig = provisioningService.loadConfig;
 			const originStateGetConfig = provisioningService.getConfig;
 
@@ -501,13 +574,45 @@ describe('ProvisioningService', () => {
 			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
 			expect(provisioningService.loadConfig).toHaveBeenCalledTimes(1);
 			expect(provisioningService.getConfig).toHaveBeenCalledTimes(2);
-			expect(settingsRepository.update).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
 			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-sso-provisioning-configuration',
 			});
 
 			provisioningService.loadConfig = originStateLoadConfig;
+			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
+
+	describe('isProvisioningEnabled', () => {
+		it('should return true if the provisioning config is enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: true,
+				scopesProvisionProjectRoles: true,
+			};
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
+			expect(isProvisioningEnabled).toBe(true);
+
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
+		it('should return false if the provisioning config is not enabled', async () => {
+			const originStateGetConfig = provisioningService.getConfig;
+
+			const provisioningConfig = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+			};
+			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
+			expect(isProvisioningEnabled).toBe(false);
+
 			provisioningService.getConfig = originStateGetConfig;
 		});
 	});

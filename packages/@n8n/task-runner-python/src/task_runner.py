@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import time
-from typing import Any, Callable, Awaitable
+from typing import Callable, Awaitable
 from dataclasses import dataclass
 from urllib.parse import urlparse
 import websockets
+from websockets.exceptions import InvalidStatus
+from websockets.asyncio.client import ClientConnection
 import random
 from src.errors import TaskCancelledError
 
@@ -77,7 +79,7 @@ class TaskRunner:
         self.name = RUNNER_NAME
         self.config = config
 
-        self.websocket_connection: Any | None = None
+        self.websocket_connection: ClientConnection | None = None
         self.can_send_offers = False
 
         self.open_offers: dict[str, TaskOffer] = {}
@@ -90,6 +92,7 @@ class TaskRunner:
             stdlib_allow=config.stdlib_allow,
             external_allow=config.external_allow,
             builtins_deny=config.builtins_deny,
+            runner_env_deny=config.env_deny,
         )
         self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)
@@ -125,8 +128,15 @@ class TaskRunner:
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()
 
-            except Exception:
-                raise WebsocketConnectionError(self.task_broker_uri)
+            except InvalidStatus as e:
+                if e.response.status_code == 403:
+                    self.logger.error(
+                        f"Authentication failed with status {e.response.status_code}: {e}"
+                    )
+                    raise
+                self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
+            except Exception as e:
+                self.logger.warning(f"Failed to connect to broker: {e} - retrying...")
 
             if not self.is_shutting_down:
                 self.websocket_connection = None
@@ -206,6 +216,8 @@ class TaskRunner:
 
         async for raw_message in self.websocket_connection:
             try:
+                if isinstance(raw_message, bytes):
+                    raw_message = raw_message.decode("utf-8")
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
             except websockets.ConnectionClosedOK:
@@ -300,11 +312,12 @@ class TaskRunner:
 
             self.analyzer.validate(task_settings.code)
 
-            process, queue = self.executor.create_process(
+            process, read_conn, write_conn = self.executor.create_process(
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
                 security_config=self.security_config,
+                query=task_settings.query,
             )
 
             task_state.process = process
@@ -312,7 +325,8 @@ class TaskRunner:
             result, print_args, result_size_bytes = await asyncio.to_thread(
                 self.executor.execute_process,
                 process=process,
-                queue=queue,
+                read_conn=read_conn,
+                write_conn=write_conn,
                 task_timeout=self.config.task_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )

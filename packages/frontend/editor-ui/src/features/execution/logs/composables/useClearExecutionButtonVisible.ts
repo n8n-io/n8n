@@ -1,10 +1,9 @@
-import { START_NODE_TYPE } from '@/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useRoute } from 'vue-router';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export function useClearExecutionButtonVisible() {
 	const route = useRoute();
@@ -18,7 +17,7 @@ export function useClearExecutionButtonVisible() {
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>
 		editableWorkflow.value.nodes
-			.filter((node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type))
+			.filter((node) => nodeTypesStore.isTriggerNode(node.type))
 			.every((node) => node.disabled),
 	);
 

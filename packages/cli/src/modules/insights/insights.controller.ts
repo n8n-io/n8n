@@ -15,7 +15,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
-import { keyRangeToDays } from './insights.constants';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
@@ -27,7 +26,7 @@ export class InsightsController {
 	async getInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
+		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
 
@@ -101,12 +100,6 @@ export class InsightsController {
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		// For backward compatibility, skip validation
-		// when dateRange is provided the new `startDate` and `endDate` query are ignored
-		if (query.dateRange) {
-			return;
-		}
-
 		const inThePast = (date?: Date) => !date || date <= new Date();
 		const dateInThePastSchema = z.coerce
 			.date()
@@ -156,18 +149,6 @@ export class InsightsController {
 		endDate: Date;
 	} {
 		const today = new Date();
-
-		// For backward compatibility, if dateRange is provided it will take precedence over startDate and endDate
-		if (query.dateRange) {
-			const maxAgeInDays = keyRangeToDays[query.dateRange];
-			return {
-				startDate:
-					maxAgeInDays === 1
-						? DateTime.now().startOf('day').toJSDate()
-						: DateTime.now().minus({ days: maxAgeInDays }).toJSDate(),
-				endDate: today,
-			};
-		}
 
 		if (!query.startDate) {
 			return {

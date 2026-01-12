@@ -1,6 +1,6 @@
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	type Dimensions,
 	type FitView,
@@ -11,8 +11,8 @@ import {
 	type ZoomTo,
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
-import { usePostHog } from '@/stores/posthog.store';
-import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/app/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();

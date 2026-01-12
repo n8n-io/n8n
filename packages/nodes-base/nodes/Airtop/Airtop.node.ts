@@ -1,6 +1,7 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
+import * as agent from './actions/agent/Agent.resource';
 import * as extraction from './actions/extraction/Extraction.resource';
 import * as file from './actions/file/File.resource';
 import * as interaction from './actions/interaction/Interaction.resource';
@@ -15,7 +16,7 @@ export class Airtop implements INodeType {
 		icon: 'file:airtop.svg',
 		group: ['transform'],
 		defaultVersion: 1,
-		version: [1],
+		version: [1, 1.1],
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Scrape and control any site with Airtop',
 		usableAsTool: true,
@@ -37,6 +38,10 @@ export class Airtop implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'Agent',
+						value: 'agent',
+					},
 					{
 						name: 'Extraction',
 						value: 'extraction',
@@ -60,6 +65,7 @@ export class Airtop implements INodeType {
 				],
 				default: 'session',
 			},
+			...agent.description,
 			...session.description,
 			...window.description,
 			...file.description,

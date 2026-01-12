@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 
 const workflowsStore = useWorkflowsStore();

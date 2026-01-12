@@ -1,6 +1,8 @@
+import type { User } from '@n8n/api-types';
 import { customAlphabet } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
+import { TestError } from '../Types';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
 
@@ -37,7 +39,7 @@ export class UserApiHelper {
 			data: [{ email: user.email, role: user.role }],
 		});
 		if (!inviteResponse.ok()) {
-			throw new Error(`Failed to invite user: ${inviteResponse.status()}`);
+			throw new TestError(`Failed to invite user: ${inviteResponse.status()}`);
 		}
 		const inviteData = await inviteResponse.json();
 		const { id, inviteAcceptUrl } = inviteData.data[0].user;
@@ -56,7 +58,7 @@ export class UserApiHelper {
 			},
 		});
 		if (!acceptResponse.ok()) {
-			throw new Error(`Failed to accept invitation: ${acceptResponse.status()}`);
+			throw new TestError(`Failed to accept invitation: ${acceptResponse.status()}`);
 		}
 
 		return { id, ...user };
@@ -67,5 +69,35 @@ export class UserApiHelper {
 	 */
 	async delete(userId: string): Promise<void> {
 		await this.api.request.delete(`/rest/users/${userId}`);
+	}
+
+	/**
+	 * Get all users, with optional filtering by email, firstName, lastName, or fullText search
+	 */
+	async getUsers(options?: {
+		filter?: { email?: string; firstName?: string; lastName?: string; fullText?: string };
+	}): Promise<User[]> {
+		const params = new URLSearchParams();
+		if (options?.filter) {
+			params.set('filter', JSON.stringify(options.filter));
+		}
+
+		const response = await this.api.request.get('/rest/users', { params });
+		if (!response.ok()) {
+			throw new TestError(`Failed to get users: ${response.status()}`);
+		}
+		const json = await response.json();
+		// API returns { data: { count, items: [...users] } }
+		return json.data?.items ?? [];
+	}
+
+	/**
+	 * Get a single user by email address
+	 * @param email - The email address to search for
+	 * @returns User object if found, null if no user exists with that email
+	 */
+	async getUserByEmail(email: string): Promise<User | null> {
+		const users = await this.getUsers({ filter: { email } });
+		return users[0] ?? null;
 	}
 }

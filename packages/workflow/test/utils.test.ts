@@ -15,6 +15,7 @@ import {
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
+	sanitizeFilename,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -108,6 +109,184 @@ describe('jsonParse', () => {
 
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+
+	describe('acceptJSObject', () => {
+		const options: Parameters<typeof jsonParse>[1] = {
+			acceptJSObject: true,
+		};
+
+		it('should handle string values', () => {
+			const result = jsonParse('{name: \'John\', surname: "Doe"}', options);
+			expect(result).toEqual({ name: 'John', surname: 'Doe' });
+		});
+
+		it('should handle positive numbers', () => {
+			const result = jsonParse(
+				'{int: 12345, float1: 444.111, float2: .123, float3: +.12, oct: 0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: 12345,
+				float1: 444.111,
+				float2: 0.123,
+				float3: 0.12,
+				oct: 16,
+			});
+		});
+
+		it('should handle negative numbers', () => {
+			const result = jsonParse(
+				'{int: -12345, float1: -444.111, float2: -.123, float3: -.12, oct: -0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: -12345,
+				float1: -444.111,
+				float2: -0.123,
+				float3: -0.12,
+				oct: -16,
+			});
+		});
+
+		it('should handle mixed values', () => {
+			const result = jsonParse('{int: -12345, float: 12.35, text: "hello world"}', options);
+			expect(result).toEqual({
+				int: -12345,
+				float: 12.35,
+				text: 'hello world',
+			});
+		});
+	});
+
+	describe('JSON repair', () => {
+		describe('Recovery edge cases', () => {
+			it('should handle simple object with single quotes', () => {
+				const result = jsonParse("{name: 'John', age: 30}", { repairJSON: true });
+				expect(result).toEqual({ name: 'John', age: 30 });
+			});
+
+			it('should handle nested objects with single quotes', () => {
+				const result = jsonParse("{user: {name: 'John', active: true},}", { repairJSON: true });
+				expect(result).toEqual({ user: { name: 'John', active: true } });
+			});
+
+			it('should handle empty string values', () => {
+				const result = jsonParse("{key: ''}", { repairJSON: true });
+				expect(result).toEqual({ key: '' });
+			});
+
+			it('should handle numeric string values', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should handle multiple keys with trailing comma', () => {
+				const result = jsonParse("{a: '1', b: '2', c: '3',}", { repairJSON: true });
+				expect(result).toEqual({ a: '1', b: '2', c: '3' });
+			});
+
+			it('should recover single quotes around strings', () => {
+				const result = jsonParse("{key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover unquoted keys', () => {
+				const result = jsonParse("{myKey: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ myKey: 'value' });
+			});
+
+			it('should recover trailing commas in objects', () => {
+				const result = jsonParse("{key: 'value',}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover trailing commas in nested objects', () => {
+				const result = jsonParse("{outer: {inner: 'value',},}", { repairJSON: true });
+				expect(result).toEqual({ outer: { inner: 'value' } });
+			});
+
+			it('should recover multiple issues at once', () => {
+				const result = jsonParse("{key1: 'value1', key2: 'value2',}", { repairJSON: true });
+				expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+			});
+
+			it('should recover numeric values with single quotes', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should recover boolean values with single quotes', () => {
+				const result = jsonParse("{key: 'true'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'true' });
+			});
+
+			it('should handle urls', () => {
+				const result = jsonParse('{"key": "https://example.com",}', { repairJSON: true });
+				expect(result).toEqual({ key: 'https://example.com' });
+			});
+
+			it('should handle ipv6 addresses', () => {
+				const result = jsonParse('{"key": "2a01:c50e:3544:bd00:4df0:7609:251a:f6d0",}', {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: '2a01:c50e:3544:bd00:4df0:7609:251a:f6d0' });
+			});
+
+			it('should handle single quotes containing double quotes', () => {
+				const result = jsonParse('{key: \'value with "quotes" inside\'}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value with "quotes" inside' });
+			});
+
+			it('should handle escaped single quotes', () => {
+				const result = jsonParse("{key: 'it\\'s escaped'}", { repairJSON: true });
+				expect(result).toEqual({ key: "it's escaped" });
+			});
+
+			it('should handle keys containing hyphens', () => {
+				const result = jsonParse("{key-with-dash: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key-with-dash': 'value' });
+			});
+
+			it('should handle keys containing dots', () => {
+				const result = jsonParse("{key.name: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key.name': 'value' });
+			});
+
+			it('should handle unquoted string values', () => {
+				const result = jsonParse('{key: value}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should handle unquoted multi-word values', () => {
+				const result = jsonParse('{key: some text}', { repairJSON: true });
+				expect(result).toEqual({ key: 'some text' });
+			});
+
+			it('should handle input with double quotes mixed with single quotes', () => {
+				const result = jsonParse('{key: "value with \'single\' quotes"}', { repairJSON: true });
+				expect(result).toEqual({ key: "value with 'single' quotes" });
+			});
+
+			it('should handle keys starting with numbers', () => {
+				const result = jsonParse("{123key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ '123key': 'value' });
+			});
+
+			it('should handle nested objects containing quotes', () => {
+				const result = jsonParse("{outer: {inner: 'value with \"quotes\"', other: 'test'},}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ outer: { inner: 'value with "quotes"', other: 'test' } });
+			});
+
+			it('should handle complex nested quote conflicts', () => {
+				const result = jsonParse("{key: 'value with \"quotes\" inside', nested: {inner: 'test'}}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: 'value with "quotes" inside', nested: { inner: 'test' } });
+			});
+		});
 	});
 });
 
@@ -379,6 +558,9 @@ describe('isSafeObjectProperty', () => {
 		['prototype', false],
 		['constructor', false],
 		['getPrototypeOf', false],
+		['mainModule', false],
+		['binding', false],
+		['_load', false],
 		['safeKey', true],
 		['anotherKey', true],
 		['toString', true],
@@ -526,6 +708,14 @@ describe('isDomainAllowed', () => {
 			).toBe(true);
 		});
 
+		it('should block correctly for wildcards', () => {
+			expect(
+				isDomainAllowed('https://domain-test.com', {
+					allowedDomains: '*.test.com,example.com',
+				}),
+			).toBe(false);
+		});
+
 		it('should allow nested subdomains with wildcards', () => {
 			expect(
 				isDomainAllowed('https://deep.nested.example.com', {
@@ -538,6 +728,43 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.org', {
 					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should block domains that share suffix but are not subdomains', () => {
+			expect(
+				isDomainAllowed('https://malicious-example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should not allow base domain with wildcard alone', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should allow base domain when explicitly specified alongside wildcard', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://sub.example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty wildcard suffix', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.',
 				}),
 			).toBe(false);
 		});
@@ -587,6 +814,45 @@ describe('isDomainAllowed', () => {
 		it('should handle empty URLs', () => {
 			expect(
 				isDomainAllowed('', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should be case-insensitive for domains', () => {
+			expect(
+				isDomainAllowed('https://EXAMPLE.COM', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'EXAMPLE.COM',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://Example.Com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle trailing dots in hostnames', () => {
+			expect(
+				isDomainAllowed('https://example.com.', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com.',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty hostnames', () => {
+			expect(
+				isDomainAllowed('http://', {
 					allowedDomains: 'example.com',
 				}),
 			).toBe(false);
@@ -645,5 +911,55 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('sanitizeFilename', () => {
+	it('should return normal filenames unchanged', () => {
+		expect(sanitizeFilename('normalfile')).toBe('normalfile');
+		expect(sanitizeFilename('my-file_v2')).toBe('my-file_v2');
+		expect(sanitizeFilename('test.txt')).toBe('test.txt');
+	});
+
+	it('should handle empty and invalid inputs', () => {
+		expect(sanitizeFilename('')).toBe('untitled');
+	});
+
+	it('should handle edge cases', () => {
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
+	});
+
+	it('should prevent path traversal attacks', () => {
+		// Basic path traversal attempts - extracts just the filename
+		expect(sanitizeFilename('../../../etc/passwd')).toBe('passwd');
+		expect(sanitizeFilename('..\\..\\..\\windows\\system32')).toBe('system32');
+
+		// Path traversal with file extension
+		expect(sanitizeFilename('../file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('../../secret.json')).toBe('secret.json');
+
+		// Nested path separators - extracts just the final component
+		expect(sanitizeFilename('path/to/file')).toBe('file');
+		expect(sanitizeFilename('path\\to\\file')).toBe('file');
+
+		// Hidden files and nested directories
+		expect(sanitizeFilename('../../../.ssh/authorized_keys')).toBe('authorized_keys');
+		expect(sanitizeFilename('../../../etc/cron.d/backdoor')).toBe('backdoor');
+	});
+
+	it('should extract filename from full file paths', () => {
+		// Unix paths
+		expect(sanitizeFilename('/tmp/n8n-upload-xyz/original.pdf')).toBe('original.pdf');
+		expect(sanitizeFilename('/home/user/documents/report.docx')).toBe('report.docx');
+
+		// Windows paths
+		expect(sanitizeFilename('C:\\Users\\Admin\\file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('D:\\temp\\upload\\image.png')).toBe('image.png');
+	});
+
+	it('should remove null bytes', () => {
+		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
+		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });

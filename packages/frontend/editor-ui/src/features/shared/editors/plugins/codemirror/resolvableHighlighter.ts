@@ -10,7 +10,7 @@ import type {
 	Plaintext,
 	Resolvable,
 	ResolvableState,
-} from '@/types/expressions';
+} from '@/app/types/expressions';
 
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',

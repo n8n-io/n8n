@@ -1,134 +1,293 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
-import { type ComponentProps } from 'vue-component-type-helpers';
-import {
-	type ChatHubConversationModel,
-	type ChatHubProvider,
-	chatHubProviderSchema,
-	type ChatModelsResponse,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
+import { computed, ref, useTemplateRef } from 'vue';
+import { N8nDropdownMenu, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import type {
+	ChatHubProvider,
+	ChatHubLLMProvider,
+	ChatModelDto,
+	ChatHubConversationModel,
+	ChatModelsResponse,
 } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { onClickOutside } from '@vueuse/core';
+import {
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	MAX_AGENT_NAME_CHARS,
+	NEW_AGENT_MENU_ID,
+} from '@/features/ai/chatHub/constants';
+import { useI18n } from '@n8n/i18n';
 
-const props = defineProps<{
-	models: ChatModelsResponse | null;
-	selectedModel: ChatHubConversationModel | null;
-	credentialsName?: string;
+import type { CredentialsMap } from '../chat.types';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import {
+	flattenModel,
+	fromStringToModel,
+	isLlmProviderModel,
+} from '@/features/ai/chatHub/chat.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { truncateBeforeLast } from '@n8n/utils';
+import ChatProviderAvatar from './ChatProviderAvatar.vue';
+import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
+
+const {
+	selectedAgent,
+	includeCustomAgents = true,
+	credentials,
+	text,
+	warnMissingCredentials = false,
+	agents,
+	isLoading,
+} = defineProps<{
+	selectedAgent: ChatModelDto | null;
+	includeCustomAgents?: boolean;
+	credentials: CredentialsMap | null;
+	text?: boolean;
+	warnMissingCredentials?: boolean;
+	agents: ChatModelsResponse;
+	isLoading: boolean;
 }>();
 
 const emit = defineEmits<{
 	change: [ChatHubConversationModel];
-	configure: [ChatHubProvider];
+	createCustomAgent: [];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 }>();
 
+function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
+	emit('selectCredential', provider, id);
+}
+
+function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
+	emit('change', { provider, model: modelId });
+}
+
+const i18n = useI18n();
 const dropdownRef = useTemplateRef('dropdownRef');
+const uiStore = useUIStore();
+const settingStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
+const projectStore = useProjectsStore();
+const telemetry = useTelemetry();
+
+const searchQuery = ref('');
+
+const credentialsName = computed(() =>
+	selectedAgent
+		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
+		: undefined,
+);
+
+const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
+	() =>
+		warnMissingCredentials &&
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
+);
 
 const menu = computed(() =>
-	chatHubProviderSchema.options.map((provider) => {
-		const models = props.models?.[provider].models ?? [];
-		const error = props.models?.[provider].error;
-
-		const modelOptions =
-			models.length > 0
-				? models.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((model) => ({
-						id: `${provider}::${model.name}`,
-						title: model.name,
-						disabled: false,
-					}))
-				: error
-					? [{ id: `${provider}::error`, disabled: true, title: error }]
-					: [];
-
-		return {
-			id: provider,
-			title: providerDisplayNames[provider],
-			submenu: modelOptions.concat([
-				...(modelOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-				{
-					id: `${provider}::configure`,
-					icon: 'settings',
-					title: 'Configure credentials...',
-					disabled: false,
-				},
-			]),
-		};
+	buildModelSelectorMenuItems(agents, {
+		includeCustomAgents,
+		isLoading,
+		i18n,
+		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
 	}),
 );
 
-const selectedLabel = computed(() => {
-	if (!props.selectedModel) return 'Select model';
-	return props.selectedModel.model;
+const filteredMenu = computed(() => applySearch(menu.value, searchQuery.value, i18n));
+
+const selectedLabel = computed(
+	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
+);
+
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
 });
 
-function onSelect(id: string) {
-	// Format is "provider::model"
-	const [provider, model] = id.split('::');
-	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
+function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
 
-	if (!parsedProvider) {
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
+		uiStore.openNewCredential(credentialType);
 		return;
 	}
 
-	if (model === 'configure') {
-		emit('configure', parsedProvider);
-		return;
-	}
-
-	emit('change', { provider: parsedProvider, model, workflowId: null });
+	uiStore.openModalWithData({
+		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: credentials?.[provider] ?? null,
+			onSelect: handleSelectCredentials,
+		},
+	});
 }
 
-onClickOutside(
-	computed(() => dropdownRef.value?.$el),
-	() => dropdownRef.value?.close(),
-);
+function openModelByIdSelector(provider: ChatHubLLMProvider) {
+	uiStore.openModalWithData({
+		name: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: null,
+			onSelect: handleSelectModelById,
+		},
+	});
+}
+
+function onSelect(id: string) {
+	if (id === NEW_AGENT_MENU_ID) {
+		emit('createCustomAgent');
+		return;
+	}
+
+	const [, identifier] = id.split('::');
+	const parsedModel = fromStringToModel(id);
+
+	if (!parsedModel) {
+		return;
+	}
+
+	if (identifier === 'configure' && isLlmProviderModel(parsedModel)) {
+		openCredentialsSelectorOrCreate(parsedModel.provider);
+		return;
+	}
+
+	if (identifier === 'add-model' && isLlmProviderModel(parsedModel)) {
+		openModelByIdSelector(parsedModel.provider);
+		return;
+	}
+
+	telemetry.track('User selected model or agent', {
+		...flattenModel(parsedModel),
+		is_custom: parsedModel.provider === 'custom-agent',
+	});
+
+	emit('change', parsedModel);
+}
+
+function handleSearch(query: string) {
+	searchQuery.value = query.toLowerCase();
+}
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		openCredentialsSelectorOrCreate(provider),
 });
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
-		<template #item-icon="{ item }">
-			<CredentialIcon
-				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubProvider]"
-				:size="16"
+	<N8nDropdownMenu
+		ref="dropdownRef"
+		:items="filteredMenu"
+		teleported
+		placement="bottom-start"
+		:extra-popper-class="[$style.component, searchQuery ? $style.searching : ''].join(' ')"
+		searchable
+		:emptyText="searchQuery ? i18n.baseText('chatHub.models.selector.noMatch') : undefined"
+		@search="handleSearch"
+		@select="onSelect"
+	>
+		<template #trigger>
+			<N8nButton
+				:class="$style.dropdownButton"
+				type="secondary"
+				:text="text"
+				data-test-id="chat-model-selector"
+			>
+				<ChatAgentAvatar
+					:agent="selectedAgent"
+					:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
+					:class="$style.icon"
+				/>
+				<div :class="$style.selected">
+					<div>
+						{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
+					</div>
+					<N8nText v-if="credentialsName" size="xsmall" color="text-light">
+						{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
+					</N8nText>
+					<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+						<N8nIcon
+							icon="node-validation-error"
+							size="xsmall"
+							:class="$style.credentialsMissingIcon"
+						/>
+						{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
+					</N8nText>
+				</div>
+				<N8nIcon icon="chevron-down" size="medium" />
+			</N8nButton>
+		</template>
+
+		<template #item-leading="{ item }">
+			<ChatProviderAvatar
+				v-if="item.data?.provider"
+				:provider="item.data?.provider"
+				:icon="item.icon"
 				:class="$style.menuIcon"
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary" text>
-			<CredentialIcon
-				v-if="selectedModel"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.provider]"
-				:size="credentialsName ? 20 : 16"
-				:class="$style.icon"
-			/>
-			<div :class="$style.selected">
-				<div>
-					{{ selectedLabel }}
+		<template #item-label="{ item, ui }">
+			<template v-if="item.data?.parts">
+				<div :class="[$style.flattenedLabel, ui.class]">
+					<template v-for="(part, index) in item.data.parts" :key="index">
+						<N8nText v-if="index > 0" color="text-light" :class="$style.separator">
+							<N8nIcon icon="chevron-right" size="small" />
+						</N8nText>
+						<N8nText
+							size="medium"
+							:color="index === item.data.parts.length - 1 ? 'text-dark' : 'text-base'"
+						>
+							{{ part }}
+						</N8nText>
+					</template>
 				</div>
-				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ credentialsName }}
-				</N8nText>
-			</div>
-			<N8nIcon icon="chevron-down" size="medium" />
-		</N8nButton>
-	</N8nNavigationDropdown>
+			</template>
+			<N8nText v-else :class="ui.class" size="medium" color="text-dark">
+				{{ item.label }}
+			</N8nText>
+		</template>
+
+		<template #item-trailing="{ item, ui }">
+			<N8nTooltip
+				v-if="item.data?.description"
+				:content="truncateBeforeLast(item.data.description, 200, 0)"
+				:class="ui.class"
+				:popper-class="$style.tooltip"
+			>
+				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
+			</N8nTooltip>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
+.component {
+	z-index: var(--floating-ui--z);
+	width: auto !important;
+}
+
 .dropdownButton {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	width: fit-content;
 
 	/* disable underline */
 	text-decoration: none !important;
+}
+
+.credentialsMissingIcon {
+	display: inline-block;
+	margin-bottom: -1px;
 }
 
 .selected {
@@ -136,13 +295,6 @@ defineExpose({
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
-	max-width: 200px;
-
-	& > div {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .icon {
@@ -150,7 +302,36 @@ defineExpose({
 	margin-block: -4px;
 }
 
+.infoIcon,
 .menuIcon {
 	flex-shrink: 0;
+}
+
+.infoIcon {
+	margin-inline: var(--spacing--5xs);
+}
+
+.avatarIcon {
+	margin-right: var(--spacing--2xs);
+}
+
+.tooltip {
+	/* higher than dropdown submenu */
+	z-index: calc(999999 + 1000) !important;
+}
+
+.flattenedLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	overflow: hidden;
+	flex-grow: 1;
+	white-space: nowrap;
+}
+
+.separator {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
 }
 </style>

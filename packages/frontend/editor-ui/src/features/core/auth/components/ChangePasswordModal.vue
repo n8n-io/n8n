@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useToast } from '@/composables/useToast';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
-import Modal from '@/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/app/constants';
+import Modal from '@/app/components/Modal.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';

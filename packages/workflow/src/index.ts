@@ -9,8 +9,11 @@ export * from './common';
 export * from './cron';
 export * from './data-table.types';
 export * from './deferred-promise';
+export * from './execution-context';
+export * from './execution-context-establishment-hooks';
 export * from './global-state';
 export * from './interfaces';
+export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
 export * from './expression';
@@ -21,11 +24,15 @@ export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
+export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
+export * from './workflow-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
+export * from './schemas';
+export * from './run-execution-data/run-execution-data';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
@@ -46,6 +53,8 @@ export {
 	setSafeObjectProperty,
 	isDomainAllowed,
 	isCommunityPackageName,
+	dedupe,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
@@ -67,13 +76,15 @@ export {
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList as AdjacencyList,
 } from './graph/graph-utils';
-export { ExpressionExtensions } from './extensions';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
+export * from './workflow-diff';
 
 export type {
 	DocMetadata,

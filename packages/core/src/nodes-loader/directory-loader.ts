@@ -16,7 +16,7 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, isSubNodeType, UnexpectedError } from 'n8n-workflow';
+import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -28,6 +28,7 @@ import {
 	commonDeclarativeNodeOptionParameters,
 	commonPollingParameters,
 	CUSTOM_NODES_CATEGORY,
+	CUSTOM_NODES_PACKAGE_NAME,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
@@ -113,6 +114,13 @@ export abstract class DirectoryLoader {
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
+	}
+
+	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([pkg]) => pkg === packageName)
+			.map(([_, nodeType]) => nodeType);
 	}
 
 	private loadClass<T>(sourcePath: string) {
@@ -333,7 +341,7 @@ export abstract class DirectoryLoader {
 	 * to a node description `codex` property.
 	 */
 	private addCodex(node: INodeType | IVersionedNodeType, filePath: string) {
-		const isCustom = this.packageName === 'CUSTOM';
+		const isCustom = this.packageName === CUSTOM_NODES_PACKAGE_NAME;
 		try {
 			let codex;
 
@@ -406,16 +414,30 @@ export abstract class DirectoryLoader {
 		const { icon } = obj;
 		if (!icon) return;
 
+		const hasExpression =
+			typeof icon === 'string'
+				? isExpression(icon)
+				: isExpression(icon.light) || isExpression(icon.dark);
+
+		if (hasExpression) {
+			obj.iconBasePath = `icons/${this.packageName}/${path.dirname(filePath)}`;
+			return;
+		}
+
+		const processIconPath = (iconValue: string) =>
+			iconValue.startsWith('file:') ? this.getIconPath(iconValue, filePath) : null;
+
+		let iconUrl;
 		if (typeof icon === 'string') {
-			if (icon.startsWith('file:')) {
-				obj.iconUrl = this.getIconPath(icon, filePath);
-				obj.icon = undefined;
-			}
-		} else if (icon.light.startsWith('file:') && icon.dark.startsWith('file:')) {
-			obj.iconUrl = {
-				light: this.getIconPath(icon.light, filePath),
-				dark: this.getIconPath(icon.dark, filePath),
-			};
+			iconUrl = processIconPath(icon);
+		} else {
+			const light = processIconPath(icon.light);
+			const dark = processIconPath(icon.dark);
+			iconUrl = light && dark ? { light, dark } : null;
+		}
+
+		if (iconUrl) {
+			obj.iconUrl = iconUrl;
 			obj.icon = undefined;
 		}
 	}

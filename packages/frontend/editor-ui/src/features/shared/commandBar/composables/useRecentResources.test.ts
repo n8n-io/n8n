@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useRecentResources } from './useRecentResources';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -28,7 +28,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const mockSetNodeActive = vi.fn();
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		setNodeActive: mockSetNodeActive,
 	}),
@@ -123,6 +123,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -138,11 +139,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -161,6 +164,7 @@ describe('useRecentResources', () => {
 				const route = {
 					name: VIEWS.WORKFLOW,
 					params: { name: 'workflow-1', nodeId: `node-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 				trackResourceOpened(route);
@@ -177,11 +181,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -201,6 +207,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -215,6 +222,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -225,38 +233,27 @@ describe('useRecentResources', () => {
 			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
 		});
 
-		it('should not register workflow when id is "new"', () => {
+		it('should not register workflow when query.new is "true"', () => {
+			const { trackResourceOpened } = useRecentResources();
+
+			const route = {
+				name: VIEWS.WORKFLOW,
+				params: { name: 'workflow-1' },
+				query: { new: 'true' },
+			} as unknown as Parameters<typeof trackResourceOpened>[0];
+
+			trackResourceOpened(route);
+
+			expect(recentWorkflowsRef.value).toHaveLength(0);
+		});
+
+		it('should not register workflow when creating new workflow', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'new' },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsRef.value).toHaveLength(0);
-		});
-
-		it('should not register workflow when id is PLACEHOLDER_EMPTY_WORKFLOW_ID', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { name: PLACEHOLDER_EMPTY_WORKFLOW_ID },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsRef.value).toHaveLength(0);
-		});
-
-		it('should not register workflow when id is NEW_WORKFLOW_ID', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { name: NEW_WORKFLOW_ID },
+				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -270,6 +267,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: 'OTHER_VIEW',
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -292,11 +290,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -308,7 +308,7 @@ describe('useRecentResources', () => {
 			expect(nodeItems).toHaveLength(2);
 			// node-2 is most recent since it was tracked last
 			expect(nodeItems[0].id).toBe('recent-node-workflow-1-node-2');
-			expect(nodeItems[0].title).toBe('Test Node 2');
+			expect(nodeItems[0].title).toBe('generic.openResource');
 			expect(nodeItems[1].id).toBe('recent-node-workflow-1-node-1');
 			expect(nodeItems[0].section).toBe('commandBar.sections.recent');
 		});
@@ -319,11 +319,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'nonexistent-node' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -342,6 +344,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -362,11 +365,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -374,9 +379,9 @@ describe('useRecentResources', () => {
 
 			expect(workflowItems).toHaveLength(2);
 			expect(workflowItems[0].id).toBe('recent-workflow-workflow-2');
-			expect(workflowItems[0].title).toBe('Workflow 2');
+			expect(workflowItems[0].title).toBe('generic.openResource');
 			expect(workflowItems[1].id).toBe('recent-workflow-workflow-1');
-			expect(workflowItems[1].title).toBe('Workflow 1');
+			expect(workflowItems[1].title).toBe('generic.openResource');
 		});
 
 		it('should limit workflow items to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3)', () => {
@@ -387,6 +392,7 @@ describe('useRecentResources', () => {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
 					params: { name: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
@@ -403,11 +409,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'nonexistent-workflow' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -432,12 +440,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-unnamed' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
 			const workflowItem = items.find((item) => item.id === 'recent-workflow-workflow-unnamed');
 
-			expect(workflowItem?.title).toBe('commandBar.workflows.unnamed');
+			expect(workflowItem?.title).toBe('generic.openResource');
 		});
 
 		it('should navigate using window.location.href when workflow item handler is executed', () => {
@@ -446,6 +455,7 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -467,6 +477,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -488,6 +499,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -523,16 +535,19 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-4' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();
@@ -554,6 +569,7 @@ describe('useRecentResources', () => {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
 					params: { name: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
@@ -577,6 +593,7 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			// Should not throw
@@ -589,11 +606,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();

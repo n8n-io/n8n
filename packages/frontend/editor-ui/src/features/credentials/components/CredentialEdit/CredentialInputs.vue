@@ -5,7 +5,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
-import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
+import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { computed } from 'vue';
 
 import { N8nNotice } from '@n8n/design-system';
@@ -27,12 +27,7 @@ const emit = defineEmits<{
 }>();
 
 function valueChanged(parameterData: IUpdateInformation) {
-	const name = parameterData.name.split('.').pop() ?? parameterData.name;
-
-	emit('update', {
-		name,
-		value: parameterData.value,
-	});
+	emit('update', parameterData);
 }
 </script>
 
@@ -51,6 +46,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				v-else
 				:parameter="parameter"
 				:value="credentialDataValues[parameter.name]"
+				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: 'medium' }"

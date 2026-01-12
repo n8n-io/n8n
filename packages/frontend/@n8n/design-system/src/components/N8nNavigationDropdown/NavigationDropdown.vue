@@ -3,18 +3,24 @@ import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-
 import { ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
+import type { IconSize } from '@n8n/design-system/types';
+
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 type BaseItem = {
 	id: string;
 	title: string;
 	disabled?: boolean;
 	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
+	iconSize?: IconSize;
+	iconMargin?: boolean;
 	route?: RouteLocationRaw;
 	isDivider?: false;
+	description?: string;
 };
 
 type Divider = { isDivider: true; id: string };
@@ -29,6 +35,7 @@ defineProps<{
 	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
+	submenuClass?: string;
 }>();
 
 const menuRef = ref<typeof ElMenu | null>(null);
@@ -87,7 +94,7 @@ defineExpose({
 			:index="ROOT_MENU_INDEX"
 			:class="$style.trigger"
 			:popper-offset="-10"
-			:popper-class="$style.submenu"
+			:popper-class="[$style.submenu, submenuClass ?? ''].join(' ')"
 			:disabled
 			:teleported="teleport"
 		>
@@ -111,10 +118,14 @@ defineExpose({
 									<template v-if="item.icon">
 										<N8nIcon
 											v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
-											:class="$style.submenu__icon"
+											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
 											:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+											:size="item.iconSize"
 										/>
-										<N8nText v-else-if="item.icon.type === 'emoji'" :class="$style.submenu__icon">
+										<N8nText
+											v-else-if="item.icon.type === 'emoji'"
+											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
+										>
 											{{ item.icon.value }}
 										</N8nText>
 									</template>
@@ -136,19 +147,28 @@ defineExpose({
 										<template v-if="subitem.icon">
 											<N8nIcon
 												v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
-												:class="$style.submenu__icon"
+												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
 												:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
+												:size="subitem.iconSize"
 											/>
 											<N8nText
 												v-else-if="subitem.icon.type === 'emoji'"
-												:class="$style.submenu__icon"
+												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
 											>
 												{{ subitem.icon.value }}
 											</N8nText>
 										</template>
 									</slot>
 
-									{{ subitem.title }}
+									<span :class="$style.menuItemTitle">{{ subitem.title }}</span>
+									<N8nTooltip
+										v-if="subitem.description"
+										:content="subitem.description"
+										placement="right"
+										:class="$style.infoTooltip"
+									>
+										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
+									</N8nTooltip>
 									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
 								</ElMenuItem>
 							</ConditionalRouterLink>
@@ -192,12 +212,6 @@ defineExpose({
 			}
 		}
 	}
-
-	& hr {
-		border-top: none;
-		border-bottom: var(--border);
-		margin-block: var(--spacing--4xs);
-	}
 }
 
 .nestedSubmenu {
@@ -239,6 +253,12 @@ defineExpose({
 	:global(.el-sub-menu__icon-arrow svg) {
 		margin-top: auto;
 	}
+
+	& hr {
+		border-top: none;
+		border-bottom: var(--border);
+		margin-block: var(--spacing--4xs);
+	}
 }
 
 .subMenuTitle {
@@ -250,5 +270,26 @@ defineExpose({
 .submenu__icon {
 	margin-right: var(--spacing--2xs);
 	color: var(--color--text);
+}
+
+.menuItemTitle {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+
+.infoTooltip {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	padding-left: var(--spacing--xs);
+}
+
+.infoIcon {
+	color: var(--color--text--tint-1);
+	outline: none;
+	margin-left: var(--spacing--2xs);
 }
 </style>

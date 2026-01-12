@@ -48,7 +48,12 @@ function concatenateMessageContent(messages: BaseMessage[]): string {
 			return (
 				acc +
 				message.content.reduce((innerAcc: string, item) => {
-					if (typeof item === 'object' && item !== null && 'text' in item) {
+					if (
+						typeof item === 'object' &&
+						item !== null &&
+						'text' in item &&
+						typeof item.text === 'string'
+					) {
 						return innerAcc + item.text;
 					}
 					return innerAcc;

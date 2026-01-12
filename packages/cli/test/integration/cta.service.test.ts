@@ -1,4 +1,4 @@
-import { createManyWorkflows, testDb } from '@n8n/backend-test-utils';
+import { createManyActiveWorkflows, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,7 +36,7 @@ describe('CtaService', () => {
 		])(
 			'should return %p if user has %d active workflows with %d successful production executions',
 			async (expected, numWorkflows, numExecutions) => {
-				const workflows = await createManyWorkflows(numWorkflows, { active: true }, user);
+				const workflows = await createManyActiveWorkflows(numWorkflows, {}, user);
 
 				await Promise.all(
 					workflows.map(

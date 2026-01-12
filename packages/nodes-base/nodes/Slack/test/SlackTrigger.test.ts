@@ -386,19 +386,29 @@ describe('SlackTrigger Node', () => {
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+
+			let resolveIds = false;
 			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'trigger':
 						return ['team_join'];
+					case 'options':
+						return resolveIds ? { resolveIds: true } : {};
 					default:
 						return {};
 				}
 			});
 
-			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+			resolveIds = false;
+			const resultNoResolve = await slackTrigger.webhook!.call(mockWebhookFunctions);
+			expect(resultNoResolve.workflowData).toBeDefined();
+			expect(resultNoResolve.workflowData![0][0].json).toEqual(mockRequest.body.event);
 
-			expect(result.workflowData).toBeDefined();
-			expect(result.workflowData![0][0].json).toEqual(mockRequest.body.event);
+			resolveIds = true;
+			const resultResolve = await slackTrigger.webhook!.call(mockWebhookFunctions);
+			expect(resultResolve.workflowData).toBeDefined();
+			const out = resultResolve.workflowData![0][0].json as { user_resolved?: string };
+			expect(out.user_resolved).toBe(mockRequest.body.event.user.name);
 		});
 
 		it('should handle url_verification challenge', async () => {

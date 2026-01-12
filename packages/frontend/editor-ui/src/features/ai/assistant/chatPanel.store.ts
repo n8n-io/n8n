@@ -1,15 +1,15 @@
 import { computed, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/constants';
-import type { VIEWS } from '@/constants';
+import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
 
@@ -68,10 +68,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
-			builderStore.chatMessages = [];
-			// Load credits and sessions in the background without blocking panel opening
-			void builderStore.fetchBuilderCredits();
-			void builderStore.loadSessions();
+			if (!builderStore.streaming && builderStore.chatMessages.length === 0) {
+				void builderStore.fetchBuilderCredits();
+				void builderStore.loadSessions();
+			}
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -103,8 +103,9 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				assistantStore.resetAssistantChat();
 			}
 
-			// Always reset builder
-			builderStore.resetBuilderChat();
+			if (!builderStore.streaming) {
+				builderStore.resetBuilderChat();
+			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
@@ -164,10 +165,25 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	watch(
 		() => route?.name,
 		(newRoute) => {
-			if (!chatPanelStateStore.isOpen || !newRoute) {
+			if (!newRoute) {
 				return;
 			}
+
 			const builderStore = useBuilderStore();
+
+			// Re-open panel if streaming and entering a builder view
+			if (
+				!chatPanelStateStore.isOpen &&
+				builderStore.streaming &&
+				isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)
+			) {
+				void open({ mode: 'builder' });
+				return;
+			}
+
+			if (!chatPanelStateStore.isOpen) {
+				return;
+			}
 
 			const enabledViews =
 				chatPanelStateStore.activeMode === 'assistant'
@@ -176,8 +192,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
-			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)) {
-				// If entering an editable canvas view with builder mode active, refresh state
+			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS) && !builderStore.streaming) {
 				builderStore.resetBuilderChat();
 			}
 		},

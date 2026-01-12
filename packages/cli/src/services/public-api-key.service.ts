@@ -1,6 +1,6 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
@@ -71,6 +71,18 @@ export class PublicApiKeyService {
 
 	async deleteApiKeyForUser(user: User, apiKeyId: string) {
 		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
+	}
+
+	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
+			const userApiKeys = await em.find(ApiKey, {
+				where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			});
+
+			return await Promise.all(
+				userApiKeys.map(async (apiKey) => await em.delete(ApiKey, { id: apiKey.id })),
+			);
+		});
 	}
 
 	async updateApiKeyForUser(

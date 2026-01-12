@@ -1,3 +1,4 @@
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
@@ -13,18 +14,20 @@ import {
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { transportSelect } from './descriptions';
 import { getTools } from './loadOptions';
-import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
+import type { McpToolIncludeMode } from './types';
+import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } from './utils';
+import { credentials, transportSelect } from '../shared/descriptions';
+import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	connectMcpClient,
-	createCallTool,
 	getAllTools,
 	getAuthHeaders,
-	getSelectedTools,
-	McpToolkit,
-	mcpToolToDynamicTool,
-} from './utils';
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../shared/utils';
+import type { JSONSchema7 } from 'json-schema';
+import pick from 'lodash/pick';
 
 /**
  * Get node parameters for MCP client configuration
@@ -89,6 +92,8 @@ async function connectAndGetTools(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		onUnauthorized: async (headers) =>
+			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
 	});
 
 	if (!client.ok) {
@@ -136,27 +141,7 @@ export class McpClientTool implements INodeType {
 		},
 		inputs: [],
 		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
-		credentials: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'httpBearerAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['bearerAuth'],
-					},
-				},
-			},
-			{
-				name: 'httpHeaderAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['headerAuth'],
-					},
-				},
-			},
-		],
+		credentials,
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
@@ -223,6 +208,45 @@ export class McpClientTool implements INodeType {
 				],
 				default: 'none',
 				description: 'The way to authenticate with your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Bearer Auth',
+						value: 'bearerAuth',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
+						name: 'Multiple Headers Auth',
+						value: 'multipleHeadersAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate with your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Credentials',
@@ -231,7 +255,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api', 'multipleHeadersAuth'],
 					},
 				},
 			},
@@ -325,8 +349,7 @@ export class McpClientTool implements INodeType {
 		const node = this.getNode();
 		const config = getNodeConfig(this, itemIndex);
 
-		const setError = (message: string, description?: string): SupplyData => {
-			const error = new NodeOperationError(node, message, { itemIndex, description });
+		const setError = (error: NodeOperationError): SupplyData => {
 			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 			throw error;
 		};
@@ -335,22 +358,18 @@ export class McpClientTool implements INodeType {
 
 		if (error) {
 			this.logger.error('McpClientTool: Failed to connect to MCP Server', { error });
-
-			switch (error.type) {
-				case 'invalid_url':
-					return setError('Could not connect to your MCP server. The provided URL is invalid.');
-				case 'connection':
-				default:
-					return setError('Could not connect to your MCP server');
-			}
+			return setError(mapToNodeOperationError(node, error));
 		}
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
-		if (!mcpTools || !mcpTools.length) {
+		if (!mcpTools?.length) {
 			return setError(
-				'MCP Server returned no tools',
-				'Connected successfully to your MCP server but it returned an empty list of tools.',
+				new NodeOperationError(node, 'MCP Server returned no tools', {
+					itemIndex,
+					description:
+						'Connected successfully to your MCP server but it returned an empty list of tools.',
+				}),
 			);
 		}
 
@@ -407,14 +426,24 @@ export class McpClientTool implements INodeType {
 				if (toolName === tool.name) {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
+					const schema: JSONSchema7 = tool.inputSchema;
+					// When additionalProperties is explicitly false, filter to schema-defined properties.
+					// Otherwise (true or omitted), pass all arguments through
+					const sanitizedToolArguments: IDataObject =
+						schema.additionalProperties === false
+							? pick(toolArguments, Object.keys(schema.properties ?? {}))
+							: toolArguments;
+
 					const params: {
 						name: string;
 						arguments: IDataObject;
 					} = {
 						name: tool.name,
-						arguments: toolArguments,
+						arguments: sanitizedToolArguments,
 					};
-					const result = await client.callTool(params);
+					const result = await client.callTool(params, CallToolResultSchema, {
+						timeout: config.timeout,
+					});
 					returnData.push({
 						json: {
 							response: result.content as IDataObject,

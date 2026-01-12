@@ -8,20 +8,22 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
-import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
-import { useRolesStore } from '@/stores/roles.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
-import { isProjectRole } from '@/utils/typeGuards';
+import { isProjectRole } from '@/app/utils/typeGuards';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
+import { N8nAlert } from '@n8n/design-system';
 
 import {
 	N8nButton,
@@ -45,6 +47,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -167,6 +170,7 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Role
 	try {
 		suppressNextSync.value = true;
 		await projectsStore.updateMemberRole(projectsStore.currentProject.id, userId, role);
+		void rolesStore.fetchRoles();
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.memberRole.updated.title'),
@@ -474,9 +478,15 @@ onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
 
-onMounted(() => {
+const isProjectRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
+);
+
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
+
+	await userRoleProvisioningStore.getProvisioningConfig();
 });
 </script>
 
@@ -566,6 +576,7 @@ onMounted(() => {
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
 						@update:model-value="onAddMember"
+						:disabled="isProjectRoleProvisioningEnabled"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -585,6 +596,14 @@ onMounted(() => {
 						</template>
 					</N8nInput>
 				</div>
+				<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
+					<N8nAlert
+						type="info"
+						:title="
+							i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
+						"
+					/>
+				</div>
 				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
 					<ProjectMembersTable
 						v-model:table-options="membersTableState"
@@ -593,6 +612,7 @@ onMounted(() => {
 						:current-user-id="usersStore.currentUser?.id"
 						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
+						:can-edit-role="!isProjectRoleProvisioningEnabled"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"
@@ -632,7 +652,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .projectSettings {
-	--project-field-width: 560px;
+	--project-field--width: 560px;
 
 	display: grid;
 	width: 100%;
@@ -641,7 +661,7 @@ onMounted(() => {
 
 	form {
 		width: 100%;
-		max-width: var(--content-container-width);
+		max-width: var(--content-container--width);
 		padding: 0 var(--spacing--2xl);
 
 		fieldset {
@@ -664,7 +684,7 @@ onMounted(() => {
 
 .header {
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) var(--spacing--2xl) 0;
 }
 
@@ -705,7 +725,7 @@ onMounted(() => {
 .projectName {
 	display: flex;
 	gap: var(--spacing--2xs);
-	max-width: var(--project-field-width);
+	max-width: var(--project-field--width);
 
 	.projectNameInput {
 		flex: 1;
@@ -714,7 +734,7 @@ onMounted(() => {
 
 .projectDescriptionInput,
 .userSelect {
-	max-width: var(--project-field-width);
+	max-width: var(--project-field--width);
 	width: 100%;
 }
 

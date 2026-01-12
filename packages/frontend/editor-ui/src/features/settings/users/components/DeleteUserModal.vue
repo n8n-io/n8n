@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onBeforeMount } from 'vue';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '../users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';

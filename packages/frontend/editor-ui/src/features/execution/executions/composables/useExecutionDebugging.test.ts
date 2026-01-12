@@ -1,18 +1,18 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
+} from '@/app/composables/useWorkflowState';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
 import type { Workflow } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
-vi.mock('@/composables/useToast', () => {
+vi.mock('@/app/composables/useToast', () => {
 	const showToast = vi.fn();
 	return {
 		useToast: () => ({
@@ -21,8 +21,8 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),

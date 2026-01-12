@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRequireCompletions } from '@/features/shared/editors/components/CodeNodeEditor/completions/require.completions';
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES_JS } from '@/features/shared/editors/components/CodeNodeEditor/constants';
 import * as utils from '@/features/shared/editors/plugins/codemirror/completions/utils';

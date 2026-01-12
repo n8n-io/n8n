@@ -6,17 +6,19 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionFilterType } from '../../executions.types';
-import { isComponentPublicInstance } from '@/utils/typeGuards';
+import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
@@ -35,6 +37,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'execution:stopMany': [];
 }>();
 
 const route = useRoute();
@@ -45,15 +48,19 @@ const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const mountedItems = ref<string[]>([]);
 const autoScrollDeps = ref<AutoScrollDeps>({
 	activeExecutionSet: false,
 	cardsMounted: false,
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
-const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
+
+const { observe: observeForLoadMore } = useIntersectionObserver({
+	root: executionListRef,
+	threshold: 0.01,
+	onIntersect: () => emit('loadMore', 20),
+});
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -102,14 +109,17 @@ function addCurrentWorkflowExecutionsCardRef(
 }
 
 function onItemMounted(id: string): void {
-	mountedItems.value.push(id);
-	if (mountedItems.value.length === props.executions.length) {
-		autoScrollDeps.value.cardsMounted = true;
-		checkListSize();
-	}
+	const index = props.executions.findIndex((execution) => execution.id === id);
 
 	if (executionsStore.activeExecution?.id === id) {
 		autoScrollDeps.value.activeExecutionSet = true;
+		autoScrollDeps.value.cardsMounted = true;
+	}
+
+	// Observe the last item to trigger loading more executions
+	if (index === props.executions.length - 1 && !props.loading && !props.loadingMore) {
+		const cardElement = currentWorkflowExecutionsCardRefs.value[id]?.$el;
+		observeForLoadMore(cardElement);
 	}
 }
 
@@ -132,30 +142,14 @@ function onRetryExecution(payload: { execution: ExecutionSummary; command: strin
 
 function onFilterChanged(filter: ExecutionFilterType) {
 	autoScrollDeps.value.activeExecutionSet = false;
+	autoScrollDeps.value.cardsMounted = false;
 	autoScrollDeps.value.scroll = true;
-	mountedItems.value = [];
 	emit('filterUpdated', filter);
 }
 
 function onAutoRefreshChange(enabled: string | number | boolean) {
 	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
 	emit('update:autoRefresh', boolValue);
-}
-
-function checkListSize(): void {
-	// Find out how many execution card can fit into list
-	// and load more if needed
-	const cards = Object.values(currentWorkflowExecutionsCardRefs.value);
-	if (sidebarContainerRef.value && cards.length) {
-		const cardElement = cards[0].$el as HTMLElement;
-		const listCapacity = Math.ceil(
-			sidebarContainerRef.value.clientHeight / cardElement.clientHeight,
-		);
-
-		if (listCapacity > props.executions.length) {
-			emit('loadMore', listCapacity - props.executions.length);
-		}
-	}
 }
 
 function scrollToActiveCard(): void {
@@ -184,11 +178,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div
-		ref="sidebarContainerRef"
-		:class="['executions-sidebar', $style.container]"
-		data-test-id="executions-sidebar"
-	>
+	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
 			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
@@ -201,6 +191,7 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
+			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
 			<ElCheckbox
@@ -210,7 +201,11 @@ const goToUpgrade = () => {
 			>
 				{{ i18n.baseText('executionsList.autoRefresh') }}
 			</ElCheckbox>
-			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
+			<ExecutionsFilter
+				popover-side="right"
+				popover-align="start"
+				@filter-changed="onFilterChanged"
+			/>
 		</div>
 		<div
 			ref="executionListRef"
@@ -277,15 +272,15 @@ const goToUpgrade = () => {
 .heading {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-	padding-right: var(--spacing--lg);
+	align-items: center;
+	padding-right: var(--spacing--md);
 }
 
 .controls {
-	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
 
 	button {

@@ -1,5 +1,5 @@
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { ICredentialsResponse } from '../credentials.types';
 import { useCredentialsStore } from '../credentials.store';
@@ -7,7 +7,7 @@ import {
 	getAllNodeCredentialForAuthType,
 	getMainAuthField,
 	isRequiredCredential,
-} from '@/utils/nodeTypesUtils';
+} from '@/app/utils/nodeTypesUtils';
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	type INodeCredentialDescription,

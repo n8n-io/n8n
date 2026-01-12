@@ -14,6 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -145,6 +146,15 @@ function setAxiosAgents(
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }
 
+function applyVendorHeaders(config: AxiosRequestConfig) {
+	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
+		config.headers = {
+			...Container.get(AiConfig).openAiDefaultHeaders,
+			...(config.headers || {}),
+		};
+	}
+}
+
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
@@ -152,6 +162,7 @@ axios.interceptors.request.use((config) => {
 	}
 
 	setAxiosAgents(config);
+	applyVendorHeaders(config);
 
 	return config;
 });
@@ -882,7 +893,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope as string).split(' '),
+		scopes: (credentials.scope ?? '').split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -941,6 +952,7 @@ export async function requestOAuth2(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
 		);
 
 		oauthTokenData = data;
@@ -1022,6 +1034,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1102,6 +1115,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 
 				this.logger.debug(
@@ -1197,6 +1211,85 @@ export async function requestOAuth1(
 			// Unknown error so simply throw it
 			throw error;
 		});
+}
+
+export async function refreshOAuth2Token(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	oAuth2Options?: IOAuth2Options,
+) {
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as unknown as OAuth2CredentialData;
+	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
+		throw new ApplicationError('OAuth credentials not connected');
+	}
+
+	const oAuthClient = createOAuth2Client(credentials);
+	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	const accessToken =
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
+	const refreshToken = oauthTokenData.refreshToken;
+	const token = oAuthClient.createToken(
+		{
+			...oauthTokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
+		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	);
+	const tokenRefreshOptions: IDataObject = {};
+	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+		const body: IDataObject = {
+			client_id: credentials.clientId,
+			...(credentials.grantType === 'authorizationCode' && {
+				client_secret: credentials.clientSecret as string,
+			}),
+		};
+		tokenRefreshOptions.body = body;
+		tokenRefreshOptions.headers = {
+			Authorization: '',
+		};
+	}
+
+	this.logger.debug(
+		`Refreshing the OAuth2 token for "${credentialsType}" used by node "${node.name}".`,
+	);
+
+	let newToken;
+	// If it's OAuth2 with client credentials grant type, get a new token instead of refreshing it.
+	if (credentials.grantType === 'clientCredentials') {
+		newToken = await token.client.credentials.getToken();
+	} else {
+		newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+	}
+
+	this.logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+	);
+
+	credentials.oauthTokenData = newToken.data;
+	if (!node.credentials?.[credentialsType]) {
+		throw new ApplicationError('Node does not have credential type', {
+			extra: { nodeName: node.name, credentialType: credentialsType },
+		});
+	}
+
+	const nodeCredentials = node.credentials[credentialsType];
+	await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+		nodeCredentials,
+		credentialsType,
+		credentials as unknown as ICredentialDataDecryptedObject,
+		additionalData,
+	);
+
+	this.logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
+	);
+
+	return newToken.data;
 }
 
 export async function httpRequestWithAuthentication(
@@ -1690,6 +1783,20 @@ export const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+			);
+		},
+
+		async refreshOAuth2Token(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			oAuth2Options?: IOAuth2Options,
+		) {
+			return await refreshOAuth2Token.call(
+				this,
+				credentialsType,
+				node,
+				additionalData,
+				oAuth2Options,
 			);
 		},
 

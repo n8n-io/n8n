@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import type { CommandGroup } from '../types';
 
 export function useTemplateCommands(): CommandGroup {
@@ -18,7 +18,7 @@ export function useTemplateCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.templates.importWithPrefix', {
 					interpolate: { templateName: name },
 				}),
-				section: i18n.baseText('commandBar.sections.templates'),
+				section: i18n.baseText('generic.templates'),
 				handler: async () => {
 					await openWorkflowTemplate(id.toString());
 				},
@@ -32,7 +32,7 @@ export function useTemplateCommands(): CommandGroup {
 				id: 'import-template',
 				title: i18n.baseText('commandBar.templates.import'),
 				children: [...importTemplateCommands.value],
-				section: i18n.baseText('commandBar.sections.templates'),
+				section: i18n.baseText('generic.templates'),
 			},
 		];
 	});

@@ -5,12 +5,12 @@ import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_FORM,
-} from '@/constants';
+} from '@/app/constants';
 import { mfaEventBus } from '../auth.eventBus';
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------

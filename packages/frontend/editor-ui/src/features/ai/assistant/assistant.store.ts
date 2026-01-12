@@ -1,5 +1,5 @@
-import { chatWithAssistant, replaceCode } from '@/api/ai';
-import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
+import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
@@ -11,24 +11,25 @@ import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { codeNodeEditorEventBus } from '@/event-bus';
-import { ndvEventBus } from '@/features/ndv/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { codeNodeEditorEventBus } from '@/app/event-bus';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
-import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import AiUpdatedCodeMessage from '@/app/components/AiUpdatedCodeMessage.vue';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
-import type { WorkflowState } from '@/composables/useWorkflowState';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { v4 as uuid } from 'uuid';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -555,6 +556,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				rootStore.restApiContext,
 				{
 					payload: {
+						id: uuid(),
 						role: 'user',
 						type: 'message',
 						text: chatMessage.text,
@@ -601,15 +603,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'placeholder';
 		  }
 		| {
+				source: 'build_with_ai';
+				task: 'placeholder';
+		  }
+		| {
 				source: 'credential';
 				task: 'credentials';
 		  }
 	)) {
+		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
+			instance_id: rootStore.instanceId,
 			workflow_id: workflowsStore.workflowId,
+			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,
@@ -745,7 +754,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
 		if (
 			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			!currentSessionWorkflowId.value ||
 			currentSessionWorkflowId.value === activeWorkflowId
 		) {
 			return;

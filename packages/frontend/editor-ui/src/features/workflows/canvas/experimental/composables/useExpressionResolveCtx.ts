@@ -1,7 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { Workflow } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
