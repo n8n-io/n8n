@@ -12,7 +12,7 @@ import {
 	open as fsOpen,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, posix, dirname, basename, join } from 'node:path';
+import { posix, dirname, basename, join } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
