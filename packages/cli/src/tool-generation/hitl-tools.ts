@@ -189,7 +189,7 @@ export function convertNodeToHitlTool<
 		];
 		item.description.outputs = [
 			{
-				displayName: 'Human Review',
+				displayName: 'Human review',
 				type: NodeConnectionTypes.AiTool,
 				filter: {
 					nodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.agentTool'],

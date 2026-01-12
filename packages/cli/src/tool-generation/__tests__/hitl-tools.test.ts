@@ -165,10 +165,10 @@ describe('hitl-tools', () => {
 			]);
 			expect(result.description.outputs).toEqual([
 				{
-					displayName: 'Human Review',
+					displayName: 'Human review',
 					type: NodeConnectionTypes.AiTool,
 					filter: {
-						nodes: ['@n8n/n8n-nodes-langchain.agent'],
+						nodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.agentTool'],
 					},
 				},
 			]);
@@ -427,10 +427,10 @@ describe('hitl-tools', () => {
 			]);
 			expect(types.nodes[1].outputs).toEqual([
 				{
-					displayName: 'Human Review',
+					displayName: 'Human review',
 					type: NodeConnectionTypes.AiTool,
 					filter: {
-						nodes: ['@n8n/n8n-nodes-langchain.agent'],
+						nodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.agentTool'],
 					},
 				},
 			]);
