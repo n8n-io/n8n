@@ -5,7 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -82,18 +82,16 @@ describe('SetupWorkflowCredentialsButton', () => {
 					name: 'OpenAI Model',
 					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 					typeVersion: 1,
-					position: [0, 0],
+					position: [0, 0] as [number, number],
 					parameters: {},
 				},
 			],
 		};
 		workflowsStore.workflow = readyToRunWorkflow;
-		workflowsStore.getNodes.mockReturnValue(readyToRunWorkflow.nodes);
+		workflowsStore.getNodes.mockReturnValue(readyToRunWorkflow.nodes as never);
 
-		// Enable the feature flag
 		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
 
-		// Mock the ready-to-run check to return true
 		readyToRunStore.isReadyToRunTemplateId.mockReturnValue(true);
 
 		renderComponent();
