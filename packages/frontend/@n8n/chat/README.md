@@ -300,10 +300,10 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--input--left--panel--width: 2rem;
 
 	/* Button Styles */
-	--chat--button--padding: calc(var(--chat--spacing) * 1 / 2) var(--chat--spacing);
+	--chat--button--padding: calc(var(--chat--spacing) * 5 / 8) var(--chat--spacing);
 	--chat--button--border-radius: var(--chat--border-radius);
 	--chat--button--font-size: 1rem;
-	--chat--button--line-height: 1.5;
+	--chat--button--line-height: 1;
 	--chat--button--color--primary: var(--chat--color-light);
 	--chat--button--background--primary: var(--chat--color--secondary);
 	--chat--button--border--primary: none;
