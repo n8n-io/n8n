@@ -1666,7 +1666,7 @@ describe('chatHub', () => {
 					tools: [],
 					attachments: [],
 				}),
-			).rejects.toThrow("Response mode 'Using Respond to Webhook Node' is not supported for chat.");
+			).rejects.toThrow('Chat Trigger node response mode must be set to');
 		});
 
 		it('should respond with responseNodes response mode and resume immediately when waitUserReply is false', async () => {
