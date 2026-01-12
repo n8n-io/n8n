@@ -98,6 +98,21 @@ catalogs:
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
+  storybook:
+    '@chromatic-com/storybook': ^4.1.3
+    '@storybook/addon-a11y': ^10.1.11
+    '@storybook/addon-docs': ^10.1.11
+    '@storybook/addon-themes': ^10.1.11
+    '@storybook/addon-vitest': ^10.1.11
+    '@storybook/vue3-vite': ^10.1.11
+    eslint-plugin-storybook: ^10.1.11
+    storybook: ^10.1.11
+  e2e:
+    '@playwright/test': 1.57.0
+    '@currents/playwright': ^1.15.3
+    eslint-plugin-playwright: 2.2.2
+    playwright: 1.57.0
+    playwright-core: 1.57.0
 
 minimumReleaseAge: 4320
 
