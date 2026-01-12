@@ -139,6 +139,10 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await providerInstance.update();
 		this.broadcastReload();
 		this.logger.debug(`Updated provider ${provider}`);
+
+		this.eventService.emit('external-secrets-provider-reloaded', {
+			vaultType: provider,
+		});
 	}
 
 	// ========================================

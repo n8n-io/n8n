@@ -29,6 +29,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -56,6 +57,7 @@ const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
@@ -116,7 +118,9 @@ const isMCPEnabled = computed(
 const isCredentialResolverEnabled = computed(() =>
 	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
 );
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const readOnlyEnv = computed(
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
