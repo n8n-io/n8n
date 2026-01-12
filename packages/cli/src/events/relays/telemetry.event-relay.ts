@@ -65,8 +65,10 @@ export class TelemetryEventRelay extends EventRelay {
 			'license-community-plus-registered': (event) => this.licenseCommunityPlusRegistered(event),
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
+			'variable-deleted': (event) => this.variableDeleted(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
+			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
@@ -276,15 +278,24 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Variable
 
-	private variableCreated(event: RelayEventMap['variable-created']) {
+	private variableCreated({ user, projectId }: RelayEventMap['variable-created']) {
 		this.telemetry.track('User created variable', {
-			project_id: event.projectId,
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
-	private variableUpdated(event: RelayEventMap['variable-updated']) {
+	private variableUpdated({ user, projectId }: RelayEventMap['variable-updated']) {
 		this.telemetry.track('User updated variable', {
-			project_id: event.projectId,
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
+		});
+	}
+
+	private variableDeleted({ user, projectId }: RelayEventMap['variable-deleted']) {
+		this.telemetry.track('User deleted variable', {
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
@@ -305,6 +316,14 @@ export class TelemetryEventRelay extends EventRelay {
 			is_valid: isValid,
 			is_new: isNew,
 			error_message: errorMessage,
+		});
+	}
+
+	private externalSecretsProviderReloaded({
+		vaultType,
+	}: RelayEventMap['external-secrets-provider-reloaded']) {
+		this.telemetry.track('User reloaded external secrets', {
+			vault_type: vaultType,
 		});
 	}
 

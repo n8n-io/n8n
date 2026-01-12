@@ -95,6 +95,7 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
+	beta: true,
 }));
 
 async function onSourceControlPull() {
