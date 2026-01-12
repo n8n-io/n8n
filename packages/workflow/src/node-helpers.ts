@@ -875,6 +875,9 @@ export function getNodeParameters(
 				return deepCopy(nodeValues);
 			}
 
+			// Track if any visible fields were processed across all collection items
+			let hadAnyVisibleFields = false;
+
 			// Iterate over all collections
 			for (const itemName of Object.keys(propertyValues || {})) {
 				if (
@@ -925,6 +928,7 @@ export function getNodeParameters(
 				} else {
 					// Only one can be set so is an object of objects
 					tempNodeParameters = {};
+					let hadVisibleFields = false;
 
 					// Get the options of the current item
 
@@ -934,9 +938,12 @@ export function getNodeParameters(
 
 					if (nodePropertyOptions !== undefined) {
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
+						const itemNodeValues = (nodeValues[nodeProperties.name] as INodeParameters)[
+							itemName
+						] as INodeParameters;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
-							(nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters,
+							itemNodeValues,
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
@@ -950,10 +957,43 @@ export function getNodeParameters(
 						);
 						if (tempValue !== null) {
 							Object.assign(tempNodeParameters, tempValue);
+							if (Object.keys(tempValue).length > 0) {
+								// tempValue has content, so fields are visible
+								hadVisibleFields = true;
+								hadAnyVisibleFields = true;
+							} else {
+								// tempValue is empty. Check if user provided non-default values that got filtered
+								const hasNonDefaultValues =
+									itemNodeValues &&
+									Object.keys(itemNodeValues).some((key) => {
+										const field = tempNodePropertiesArray.find((f) => f.name === key);
+										return field && !isEqual(itemNodeValues[key], field.default);
+									});
+
+								if (!hasNonDefaultValues) {
+									// All values are defaults, so the collection is explicitly added with default values
+									// We should preserve this (GitHub case)
+									hadVisibleFields = true;
+									hadAnyVisibleFields = true;
+								}
+								// If hasNonDefaultValues is true, values were filtered by displayOptions (test case)
+								// So we don't set hadVisibleFields
+							}
 						}
 					}
 
 					if (Object.keys(tempNodeParameters).length !== 0) {
+						collectionValues[itemName] = tempNodeParameters;
+					} else if (
+						!returnDefaults &&
+						hadVisibleFields &&
+						propertyValues &&
+						(propertyValues as INodeParameters)[itemName] !== undefined
+					) {
+						// Preserve explicitly set empty collections when the user added an option
+						// that contains only default values. Only preserve if there were visible fields
+						// (hadVisibleFields), otherwise the collection is empty because all fields
+						// are hidden by displayOptions.
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
@@ -961,6 +1001,7 @@ export function getNodeParameters(
 
 			if (
 				!returnDefaults &&
+				hadAnyVisibleFields &&
 				nodeProperties.typeOptions?.multipleValues === false &&
 				collectionValues &&
 				Object.keys(collectionValues).length === 0 &&
@@ -970,7 +1011,8 @@ export function getNodeParameters(
 			) {
 				// For fixedCollections, which only allow one value, it is important to still return
 				// the object with an empty collection property which indicates that a value got added
-				// which contains all default values. If that is not done, the value would get lost.
+				// which contains all default values. Only preserve if there were visible fields,
+				// otherwise the collection is empty because all fields are hidden by displayOptions.
 				const returnValue = {} as INodeParameters;
 				Object.keys(propertyValues || {}).forEach((value) => {
 					returnValue[value] = {};

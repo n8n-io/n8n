@@ -58,6 +58,7 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -634,6 +635,13 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		Container.get(EventService).emit('workflow-executed', {
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'webhook',
+		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
