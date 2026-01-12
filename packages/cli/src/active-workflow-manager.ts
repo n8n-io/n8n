@@ -48,11 +48,10 @@ import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import { ScheduleValidationService } from 'n8n-core';
-import type { ScheduleInterval } from 'n8n-nodes-base/dist/nodes/Schedule/SchedulerInterface';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -94,7 +93,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
-		private readonly scheduleValidationService: ScheduleValidationService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -363,6 +362,15 @@ export class ActiveWorkflowManager {
 					responsePromise,
 				);
 
+				void executePromise.then((executionId) => {
+					this.eventService.emit('workflow-executed', {
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+						executionId,
+						source: 'trigger',
+					});
+				});
+
 				if (donePromise) {
 					void executePromise.then((executionId) => {
 						this.activeExecutions
@@ -630,9 +638,6 @@ export class ActiveWorkflowManager {
 					{ level: 'warning' },
 				);
 			}
-
-			// Validate schedule triggers before activation
-			this.validateScheduleTriggers(workflow);
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
@@ -999,34 +1004,5 @@ export class ActiveWorkflowManager {
 	 */
 	shouldAddTriggersAndPollers() {
 		return this.instanceSettings.isLeader;
-	}
-
-	/**
-	 * Validates schedule triggers against minimum interval requirements
-	 */
-	private validateScheduleTriggers(workflow: Workflow): void {
-		const scheduleNodes = Object.values(workflow.nodes).filter(
-			(node: INode) => node.type === 'n8n-nodes-base.scheduleTrigger',
-		);
-
-		if (scheduleNodes.length === 0) return;
-
-		for (const node of scheduleNodes) {
-			const rule = node.parameters.rule;
-			if (!rule || typeof rule !== 'object') continue;
-
-			// Type guard: check if rule has interval property that is an array
-			if (!('interval' in rule) || !Array.isArray(rule.interval)) continue;
-
-			for (const interval of rule.interval) {
-				if (!interval || typeof interval !== 'object' || !('field' in interval)) continue;
-
-				if (interval.field === 'cronExpression' && 'expression' in interval) {
-					this.scheduleValidationService.validateCronExpression(interval.expression as string);
-				} else {
-					this.scheduleValidationService.validateScheduleInterval(interval as ScheduleInterval);
-				}
-			}
-		}
 	}
 }
