@@ -89,7 +89,7 @@ export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Cr
 	return agent;
 }
 
-async function getMicrosoftMcpTools(
+export async function getMicrosoftMcpTools(
 	turnContext: TurnContext,
 	mcpAuthToken: string,
 	selectedTools: string[] | undefined,
@@ -163,7 +163,7 @@ async function getMicrosoftMcpTools(
 	};
 }
 
-const configureActivityCallback = (
+export const configureActivityCallback = (
 	nodeContext: IWebhookFunctions,
 	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
