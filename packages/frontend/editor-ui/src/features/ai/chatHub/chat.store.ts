@@ -574,6 +574,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
+
+		return streaming.value;
 	}
 
 	async function editMessage(
@@ -656,22 +658,35 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
-		const conversation = ensureConversation(sessionId);
-		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
+		let prompt: ChatMessage | undefined = undefined;
+		let isRetryIdSeen = false;
+
+		for (const m of getActiveMessages(sessionId).toReversed()) {
+			if (m.id === retryId) {
+				isRetryIdSeen = true;
+				continue;
+			}
+
+			if (isRetryIdSeen && m.type === 'human') {
+				prompt = m;
+				break;
+			}
+		}
+
 		const payload: ChatHubRegenerateMessageRequest = {
 			model: agent.model,
 			credentials,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
-		if (!previousMessageId) {
+		if (!prompt) {
 			throw new Error('No previous message to base regeneration on');
 		}
 
 		streaming.value = {
-			promptPreviousMessageId: previousMessageId,
-			promptId: retryId,
-			promptText: '',
+			promptPreviousMessageId: prompt.previousMessageId,
+			promptId: prompt.id,
+			promptText: prompt.content,
 			sessionId,
 			agent,
 			retryOfMessageId: retryId,

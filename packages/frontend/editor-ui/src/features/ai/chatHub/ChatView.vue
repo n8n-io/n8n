@@ -134,8 +134,6 @@ const defaultTools = useLocalStorage<INode[] | null>(
 	},
 );
 
-const shouldSkipNextScrollTrigger = ref(false);
-
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
@@ -269,7 +267,12 @@ const messagingState = computed<MessagingState>(() => {
 
 const editingMessageId = ref<string>();
 const messageElementsRef = useTemplateRef('messages');
-const didSubmitInCurrentSession = ref(false);
+const sessionOpenedAt = ref(Date.now());
+const didSubmitInCurrentSession = computed(() => {
+	const lastCreatedAt = chatMessages.value[chatMessages.value.length - 1]?.createdAt;
+
+	return +new Date(lastCreatedAt ?? 0) > sessionOpenedAt.value;
+});
 
 const canAcceptFiles = computed(() => {
 	const baseCondition =
@@ -302,29 +305,11 @@ function scrollToMessage(messageId: ChatMessageId) {
 	});
 }
 
-// Scroll to the bottom when a new message is added
+// Prevent "scroll to bottom" button from appearing when not necessary
 watch(
 	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
-			return;
-		}
-
-		if (shouldSkipNextScrollTrigger.value) {
-			shouldSkipNextScrollTrigger.value = false;
-			return;
-		}
-
-		// Prevent "scroll to bottom" button from appearing when not necessary
+	() => {
 		void nextTick(measure);
-
-		if (chatStore.streaming?.sessionId === sessionId.value) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(chatStore.streaming.promptId);
-			return;
-		}
-
-		scrollToBottom(false);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -350,7 +335,7 @@ watch(
 watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
-		didSubmitInCurrentSession.value = false;
+		sessionOpenedAt.value = Date.now();
 		editingMessageId.value = undefined;
 
 		if (!isNew && !chatStore.getConversation(id)) {
@@ -359,7 +344,10 @@ watch(
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
+				return;
 			}
+
+			scrollToBottom(false);
 		}
 	},
 	{ immediate: true },
@@ -370,6 +358,17 @@ watch(
 	[inputRef, sessionId],
 	([input]) => {
 		input?.focus();
+	},
+	{ immediate: true },
+);
+
+// Focus prompt when streaming is completed
+watch(
+	isResponding,
+	(responding, wasResponding) => {
+		if (!responding && wasResponding) {
+			inputRef.value?.focus();
+		}
 	},
 	{ immediate: true },
 );
@@ -430,10 +429,9 @@ async function onSubmit(message: string, attachments: File[]) {
 		return;
 	}
 
-	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	await chatStore.sendMessage(
+	const streaming = await chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value,
@@ -443,6 +441,7 @@ async function onSubmit(message: string, attachments: File[]) {
 	);
 
 	inputRef.value?.reset();
+	scrollToMessage(streaming.promptId);
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -540,7 +539,6 @@ async function handleSelectAgent(selection: ChatModelDto) {
 }
 
 function handleSwitchAlternative(messageId: string) {
-	shouldSkipNextScrollTrigger.value = true;
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
