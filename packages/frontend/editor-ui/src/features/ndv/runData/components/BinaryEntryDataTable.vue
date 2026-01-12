@@ -197,7 +197,7 @@ const fileIcon = computed(() => {
 	cursor: pointer;
 	flex-shrink: 0;
 	opacity: 0;
-	transition: opacity 0.2s ease-in-out;
+	transition: all 0.2s ease-in-out;
 	color: var(--color--text--base);
 
 	&:hover {

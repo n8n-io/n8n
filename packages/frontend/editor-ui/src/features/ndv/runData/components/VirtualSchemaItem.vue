@@ -266,7 +266,7 @@ const emit = defineEmits<{
 	display: inline-flex;
 	gap: var(--spacing--3xs);
 	opacity: 0;
-	transition: opacity 0.2s ease-in-out;
+	transition: all 0.2s ease-in-out;
 	cursor: pointer;
 }
 
