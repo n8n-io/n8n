@@ -36,6 +36,8 @@ export function createMockAgent(overrides: Partial<ChatModelDto> = {}): ChatMode
 			},
 			available: true,
 		},
+		groupName: null,
+		groupIcon: null,
 		...overrides,
 	};
 }

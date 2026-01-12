@@ -61,6 +61,7 @@ import {
 	flattenModel,
 	createHumanMessageFromStreamingState,
 	promisifyStreamingApi,
+	createFakeAgent,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -801,6 +802,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				inputModalities: [],
 				available: true,
 			},
+			groupName: null,
+			groupIcon: null,
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -862,22 +865,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return agent;
 		}
 
-		return {
-			model,
-			name: fallback?.name ?? '',
-			description: null,
-			icon: fallback?.icon ?? null,
-			createdAt: null,
-			updatedAt: null,
-			// Assume file attachment and tools are supported
-			metadata: {
-				inputModalities: ['text', 'file'],
-				capabilities: {
-					functionCalling: true,
-				},
-				available: true,
-			},
-		};
+		return createFakeAgent(model, fallback);
 	}
 
 	async function fetchAllChatSettings() {

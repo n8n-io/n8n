@@ -243,6 +243,8 @@ export interface ChatModelDto {
 	updatedAt: string | null;
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
+	groupName: string | null;
+	groupIcon: AgentIconOrEmoji | null;
 }
 
 /**
