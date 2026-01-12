@@ -4,8 +4,6 @@ import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge
 import type { EvalCriteria } from './types';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
-export type { EvalCriteria };
-
 // ============================================================================
 // Types
 // ============================================================================
