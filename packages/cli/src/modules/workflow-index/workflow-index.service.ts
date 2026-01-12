@@ -5,6 +5,7 @@ import { ErrorReporter } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
@@ -28,6 +29,7 @@ export class WorkflowIndexService {
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly batchSize = 100,
 	) {}
 
@@ -44,6 +46,12 @@ export class WorkflowIndexService {
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+		});
+		this.eventService.on('workflow-activated', async ({ workflow }) => {
+			await this.updateIndexFor(workflow);
+		});
+		this.eventService.on('workflow-deactivated', async ({ workflowId }) => {
+			await this.dependencyRepository.removePublishedDependenciesForWorkflow(workflowId);
 		});
 	}
 
@@ -86,17 +94,90 @@ export class WorkflowIndexService {
 
 	/**
 	 * Update the dependency index for a given workflow.
+	 * Indexes both draft and published versions separately.
 	 *
 	 * NOTE: this should generally be handled via events, rather than called directly.
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
 	 */
 	async updateIndexFor(workflow: IWorkflowBase) {
-		// TODO: input validation.
-		// Generate the dependency updates for the given workflow.
-		const dependencyUpdates = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+		// Index draft version
+		await this.indexVersion(workflow.id, workflow.versionCounter, workflow.nodes, 'draft');
 
-		workflow.nodes.forEach((node) => {
+		// Index published version if it exists
+		if (workflow.activeVersionId) {
+			try {
+				const publishedVersion = await this.workflowHistoryService.getVersionInternal(
+					workflow.id,
+					workflow.activeVersionId,
+				);
+
+				await this.indexVersion(
+					workflow.id,
+					workflow.versionCounter,
+					publishedVersion.nodes,
+					'published',
+				);
+			} catch (e) {
+				const error = ensureError(e);
+				this.logger.error(
+					`Failed to index published version for workflow ${workflow.id}: ${error.message}`,
+				);
+				this.errorReporter.error(error);
+				// Continue - draft is indexed, published will be retried later
+			}
+		} else {
+			// No active version - ensure published deps are removed
+			try {
+				await this.dependencyRepository.removePublishedDependenciesForWorkflow(workflow.id);
+			} catch (e) {
+				const error = ensureError(e);
+				this.logger.error(
+					`Failed to remove published dependencies for workflow ${workflow.id}: ${error.message}`,
+				);
+				this.errorReporter.error(error);
+			}
+		}
+	}
+
+	/**
+	 * Index a specific version (draft or published) of a workflow.
+	 */
+	private async indexVersion(
+		workflowId: string,
+		workflowVersionId: number | undefined,
+		nodes: INode[],
+		versionType: 'draft' | 'published',
+	): Promise<void> {
+		const dependencyUpdates = new WorkflowDependencies(workflowId, workflowVersionId, versionType);
+
+		this.extractDependenciesFromNodes(nodes, dependencyUpdates);
+
+		try {
+			const updated = await this.dependencyRepository.updateDependenciesForWorkflow(
+				workflowId,
+				dependencyUpdates,
+			);
+			this.logger.debug(
+				`Workflow dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflowId} (${versionType})`,
+			);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(
+				`Failed to update workflow dependency index for workflow ${workflowId} (${versionType}): ${error.message}`,
+			);
+			this.errorReporter.error(error);
+		}
+	}
+
+	/**
+	 * Extract dependencies from workflow nodes.
+	 */
+	private extractDependenciesFromNodes(
+		nodes: INode[],
+		dependencyUpdates: WorkflowDependencies,
+	): void {
+		nodes.forEach((node) => {
 			this.addNodeTypeDependencies(node, dependencyUpdates);
 			this.addCredentialDependencies(node, dependencyUpdates);
 			this.addWorkflowCallDependencies(node, dependencyUpdates);
@@ -111,24 +192,6 @@ export class WorkflowIndexService {
 				dependencyInfo: null,
 			});
 		}
-
-		let updated: boolean;
-		try {
-			updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-				workflow.id,
-				dependencyUpdates,
-			);
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(
-				`Failed to update workflow dependency index for workflow ${workflow.id}: ${error.message}`,
-			);
-			this.errorReporter.error(error);
-			return;
-		}
-		this.logger.debug(
-			`Workflow dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
-		);
 	}
 
 	private addNodeTypeDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {

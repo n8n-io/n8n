@@ -18,7 +18,10 @@ export type DependencyType =
 	| 'workflowCall'
 	| 'workflowIndexed';
 
+export type VersionType = 'draft' | 'published';
+
 @Entity({ name: 'workflow_dependency' })
+@Index(['workflowId', 'versionType'])
 export class WorkflowDependency extends WithCreatedAt {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -29,6 +32,13 @@ export class WorkflowDependency extends WithCreatedAt {
 	@Column({ length: 36 })
 	@Index()
 	workflowId: string;
+
+	/**
+	 * The type of version: draft or published.
+	 */
+	@Column({ length: 16 })
+	@Index()
+	versionType: VersionType;
 
 	/**
 	 * The version ID of the workflow the dependency belongs to.

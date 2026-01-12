@@ -12,6 +12,7 @@ import { createOwner } from '../shared/db/users';
 
 import { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 let workflowIndexService: WorkflowIndexService;
 let eventService: EventService;
@@ -33,6 +34,7 @@ beforeAll(async () => {
 		eventService,
 		Container.get(Logger),
 		Container.get(ErrorReporter),
+		Container.get(WorkflowHistoryService),
 	);
 
 	// Initialize the service to register event listeners

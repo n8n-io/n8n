@@ -87,6 +87,29 @@ export class WorkflowHistoryService {
 	}
 
 	/**
+	 * Get a workflow version without permission checks.
+	 * For internal use only (e.g., workflow dependency indexing).
+	 *
+	 * @param workflowId The ID of the workflow
+	 * @param versionId The version ID to fetch
+	 * @returns The workflow history version
+	 */
+	async getVersionInternal(workflowId: string, versionId: string): Promise<WorkflowHistory> {
+		const hist = await this.workflowHistoryRepository.findOne({
+			where: {
+				workflowId,
+				versionId,
+			},
+		});
+
+		if (!hist) {
+			throw new UnexpectedError(`Version ${versionId} not found for workflow ${workflowId}`);
+		}
+
+		return hist;
+	}
+
+	/**
 	 * Find a workflow history version without permission checks.
 	 */
 	async findVersion(workflowId: string, versionId: string): Promise<WorkflowHistory | null> {

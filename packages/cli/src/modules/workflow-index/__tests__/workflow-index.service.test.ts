@@ -8,6 +8,7 @@ import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { WorkflowIndexService } from '../workflow-index.service';
 import { EventService } from '@/events/event.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -16,6 +17,7 @@ describe('WorkflowIndexService', () => {
 	const mockLogger = mockInstance(Logger);
 	const mockErrorReporter = mockInstance(ErrorReporter);
 	const mockEventService = mockInstance(EventService);
+	const mockWorkflowHistoryService = mockInstance(WorkflowHistoryService);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -26,6 +28,7 @@ describe('WorkflowIndexService', () => {
 			mockEventService,
 			mockLogger,
 			mockErrorReporter,
+			mockWorkflowHistoryService,
 		);
 	});
 
@@ -151,6 +154,9 @@ describe('WorkflowIndexService', () => {
 		it('should handle repository errors gracefully', async () => {
 			const error = new Error('Database error');
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockRejectedValue(error);
+			mockWorkflowDependencyRepository.removePublishedDependenciesForWorkflow.mockResolvedValue(
+				false,
+			);
 
 			const workflow = createWorkflow([
 				createNode({
@@ -162,7 +168,7 @@ describe('WorkflowIndexService', () => {
 			await service.updateIndexFor(workflow);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to update workflow dependency index for workflow workflow-123: Database error',
+				'Failed to update workflow dependency index for workflow workflow-123 (draft): Database error',
 			);
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
 		});
@@ -421,11 +427,16 @@ describe('WorkflowIndexService', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(4);
+			expect(mockEventService.on).toHaveBeenCalledTimes(6);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith(
+				'workflow-deactivated',
+				expect.any(Function),
+			);
 		});
 	});
 
@@ -474,6 +485,7 @@ describe('WorkflowIndexService', () => {
 				mockEventService,
 				mockLogger,
 				mockErrorReporter,
+				mockWorkflowHistoryService,
 				batchSize,
 			);
 
