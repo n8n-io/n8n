@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { LoggerProxy } from 'n8n-workflow';
 
 import { WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
@@ -22,11 +23,16 @@ export function prepareUrlForSigning(url: URL) {
  * Adds a signature query parameter to prevent URL guessing attacks.
  */
 export function signUrl(urlString: string, secret: string): string {
-	const url = new URL(urlString);
-	const urlForSigning = prepareUrlForSigning(url);
-	const token = generateUrlSignature(urlForSigning, secret);
-	url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
-	return url.toString();
+	try {
+		const url = new URL(urlString);
+		const urlForSigning = prepareUrlForSigning(url);
+		const token = generateUrlSignature(urlForSigning, secret);
+		url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		return url.toString();
+	} catch (error) {
+		LoggerProxy.warn('Failed to sign URL', { urlString, error });
+		return urlString;
+	}
 }
 
 /**
