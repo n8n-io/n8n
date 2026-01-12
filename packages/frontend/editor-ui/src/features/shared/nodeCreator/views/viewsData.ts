@@ -72,7 +72,7 @@ import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
+import { getAiTemplatesCallout } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -175,7 +175,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
-	const calloutHelpers = useCalloutHelpers();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
@@ -194,9 +193,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
 	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
-	const callouts: NodeViewItem[] = !calloutHelpers.isPreBuiltAgentsCalloutVisible.value
-		? [getAiTemplatesCallout(aiTemplatesURL)]
-		: [getPreBuiltAgentsCalloutWithDivider()];
+	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,

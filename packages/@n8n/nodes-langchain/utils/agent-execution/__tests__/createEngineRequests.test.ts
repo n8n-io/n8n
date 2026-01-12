@@ -75,7 +75,6 @@ describe('createEngineRequests', () => {
 			});
 			expect(result[0].input).toEqual({
 				toolParameters: '{"query":"test"}',
-				hitlParameters: { param: 'test' },
 				param: 'test',
 				tool: 'hitl_tool',
 			});

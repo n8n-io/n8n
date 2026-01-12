@@ -1,5 +1,6 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import isObject from 'lodash/isObject';
+import omit from 'lodash/omit';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -110,7 +111,8 @@ export async function createEngineRequests(
 			if (hitlMetadata) {
 				// This input will be used as HITL node input
 				input = {
-					...input,
+					// omit hitlParameters, because they are destructured into the input instead
+					...omit(input, 'hitlParameters'),
 					...(input.hitlParameters as IDataObject),
 					// stringify parameters so that they can be accessed with $fromAI method
 					toolParameters: JSON.stringify(input.toolParameters),

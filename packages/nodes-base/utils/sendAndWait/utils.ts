@@ -27,6 +27,7 @@ import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	prepareFormData,
+	prepareFormFields,
 	prepareFormReturnItem,
 	resolveRawData,
 } from '../../nodes/Form/utils/utils';
@@ -83,6 +84,7 @@ export function getSendAndWaitProperties(
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		extraOptions?: INodeProperties[];
 	},
 ) {
 	const buttonStyle: INodeProperties = {
@@ -249,7 +251,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption, appendAttributionOption],
+			options: [limitWaitTimeOption, appendAttributionOption, ...(options?.extraOptions ?? [])],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -302,6 +304,7 @@ export function getSendAndWaitProperties(
 				},
 				limitWaitTimeOption,
 				appendAttributionOption,
+				...(options?.extraOptions ?? []),
 			],
 			displayOptions: {
 				show: {
@@ -431,6 +434,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		if (method === 'GET') {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
+
+			fields = prepareFormFields(this, fields);
 
 			const data = prepareFormData({
 				formTitle,

@@ -103,6 +103,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 	INodeParameters,
+	INodeFilter,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -479,7 +480,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 	}
 
 	function trackDeleteNode(id: string) {
@@ -775,7 +776,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		return addedNodes;
@@ -839,7 +840,7 @@ export function useCanvasOperations() {
 
 		void nextTick(() => {
 			if (!options.keepPristine) {
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
@@ -1751,7 +1752,7 @@ export function useCanvasOperations() {
 		});
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1953,7 +1954,7 @@ export function useCanvasOperations() {
 				return connectionType === type;
 			});
 
-		const getInputFilter = (
+		const getConnectionFilter = (
 			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
 		) => {
 			if (connection && typeof connection === 'object' && 'filter' in connection) {
@@ -1992,6 +1993,10 @@ export function useCanvasOperations() {
 
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceOutputsOfType.length;
+		const sourceConnectionDefinition = sourceNodeHasOutputConnectionPortOfType
+			? sourceOutputsOfType[sourceConnection.index]
+			: undefined;
+		const sourceConnectionFilter = getConnectionFilter(sourceConnectionDefinition);
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -2024,14 +2029,18 @@ export function useCanvasOperations() {
 		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
 			? targetInputsOfType[targetConnection.index]
 			: undefined;
-		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
+		const targetConnectionFilter = getConnectionFilter(targetConnectionDefinition);
 
-		if (
-			(targetConnectionFilter?.nodes?.length &&
-				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
-			(targetConnectionFilter?.excludedNodes?.length &&
-				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
-		) {
+		function isConnectionFiltered(filter: INodeFilter | undefined, nodeType: string): boolean {
+			const isNotIncluded = !!filter?.nodes?.length && !filter.nodes.includes(nodeType);
+			const isExcluded = !!filter?.excludedNodes?.length && filter.excludedNodes.includes(nodeType);
+			return isNotIncluded || isExcluded;
+		}
+
+		const isFilteredByTarget = isConnectionFiltered(targetConnectionFilter, sourceNode.type);
+		const isFilteredBySource = isConnectionFiltered(sourceConnectionFilter, targetNode.type);
+
+		if (isFilteredByTarget || isFilteredBySource) {
 			toast.showToast({
 				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
@@ -2072,7 +2081,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -2101,7 +2110,7 @@ export function useCanvasOperations() {
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		// Reset executions
 		executionsStore.activeExecution = null;
@@ -2324,20 +2333,25 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = setStateDirty;
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		} else {
+			uiStore.markStateClean();
+		}
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -2523,7 +2537,7 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		workflowsStore.addWorkflowTagIds(tagIds);
+		workflowState.addWorkflowTagIds(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
@@ -2697,7 +2711,7 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowsStore.setWorkflowPinData({});
+			workflowState.setWorkflowPinData({});
 		}
 
 		if (nodeId) {
@@ -2712,7 +2726,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		return data;
 	}
@@ -2755,7 +2769,7 @@ export function useCanvasOperations() {
 		}
 		await addNodes(convertedNodes ?? []);
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -2789,7 +2803,7 @@ export function useCanvasOperations() {
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2922,7 +2936,7 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
@@ -2970,7 +2984,7 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 

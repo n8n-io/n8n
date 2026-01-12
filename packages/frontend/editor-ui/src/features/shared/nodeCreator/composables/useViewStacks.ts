@@ -49,7 +49,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
+import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -70,6 +70,9 @@ import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
 
+export type NodeCreatorFilter = INodeFilter & {
+	conditions?: Array<(item: INodeCreateElement) => boolean>;
+};
 export interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -121,7 +124,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		if (stack.search && searchBaseItems.value) {
 			let searchBase: INodeCreateElement[] = searchBaseItems.value;
 			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
-
 			if (searchBaseItems.value.length === 0) {
 				searchBase = flattenCreateElements(stack.baselineItems ?? []);
 			}
@@ -141,14 +143,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					popularity: nodePopularityMap,
 				}),
 			);
-			const groupedNodes = groupIfAiNodes(searchResults, stack.title, false) ?? searchResults;
+
+			const groupedNodes = groupIfAiNodes(searchResults, stack, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
 			// as the first item is collapsable
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;
 		}
-		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack.title, true));
+		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -209,7 +212,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		);
 
 		if (isAiRootView(stack)) {
-			globalSearchResult = groupIfAiNodes(globalSearchResult, stack.title, false);
+			globalSearchResult = groupIfAiNodes(globalSearchResult, stack, false);
 		}
 
 		const filteredItems = globalSearchResult.filter((item) => {
@@ -273,13 +276,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// it groups them into collapsible sections
 	function groupIfAiNodes(
 		items: INodeCreateElement[],
-		stackCategory: string | undefined,
+		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
-		const isVectorStoresCategory = stackCategory === AI_CATEGORY_VECTOR_STORES;
-		const isToolsCategory = stackCategory === AI_CATEGORY_TOOLS;
+		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
+		const isToolsCategory = stack?.title === AI_CATEGORY_TOOLS;
 		if (
 			aiNodes.length > 0 &&
 			(canvasHasAINodes || isAiRootView(getLastActiveStack()) || isVectorStoresCategory)
@@ -294,7 +297,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				if (section) {
 					// Don't show sub sections for Vector Stores if we're currently viewing a 'Tools' stack
 					const subSection =
-						section === AI_CATEGORY_VECTOR_STORES && stackCategory === AI_CATEGORY_TOOLS
+						section === AI_CATEGORY_VECTOR_STORES && stack?.title === AI_CATEGORY_TOOLS
 							? undefined
 							: subcategories[section]?.[0];
 
@@ -325,9 +328,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			// Convert sectionsMap to array of sections
 			const sections = Array.from(sectionsMap.values());
 			// For tools view we group them into subcategories instead of sections
-			// subcategory navigates user to a new separate panel
-			// section is an accordion that can be collapsed and expanded
-			if (isToolsCategory) {
+			// don't group if we're searching, show all the nodes at the top level
+			if (isToolsCategory && !stack?.search) {
 				const actionsFilter = createActionFilter.value(NodeConnectionTypes.AiTool);
 				const subcategories = sections
 					.map((section): SubcategoryCreateElement | SectionCreateElement => {
@@ -401,7 +403,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
 		isOutput?: boolean,
-		filter?: INodeInputFilter,
+		filter?: NodeCreatorFilter,
 	) {
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: { properties: NodeViewItem['properties'] } | undefined;
@@ -456,11 +458,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					//       input connections. However, it does not work for output connections.
 					//       For that reason does it currently display nodes that are maybe not compatible
 					//       but then errors once it got selected by the user.
-					if (displayNode && filter?.nodes?.length) {
-						return filter.nodes.includes(i.key);
-					}
-					if (displayNode && filter?.excludedNodes?.length) {
-						return !filter.excludedNodes.includes(i.key);
+					if (displayNode) {
+						const isIncluded = filter?.nodes?.length ? filter?.nodes?.includes(i.key) : true;
+						const isExcluded = filter?.excludedNodes?.length
+							? filter?.excludedNodes?.includes(i.key)
+							: false;
+						const isConditionMet = filter?.conditions?.length
+							? filter?.conditions?.every((condition) => condition(i))
+							: true;
+						return isIncluded && !isExcluded && isConditionMet;
 					}
 
 					return displayNode;

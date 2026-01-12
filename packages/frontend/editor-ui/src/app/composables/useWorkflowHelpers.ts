@@ -46,6 +46,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -122,6 +123,7 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$tool: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -850,7 +852,7 @@ export function useWorkflowHelpers() {
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 		}
 
 		if (workflow.activeVersion) {
@@ -947,10 +949,10 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
+		ws.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
-		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
+		ws.setWorkflowMetadata(workflowData.meta);
+		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
@@ -968,8 +970,7 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		ws.setWorkflowTagIds(tagIds || []);
+		ws.setWorkflowTagIds(convertWorkflowTagsToIds(tags));
 		tagsStore.upsertTags(tags);
 	}
 

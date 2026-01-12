@@ -477,6 +477,18 @@ describe('TelemetryEventRelay', () => {
 				error_message: undefined,
 			});
 		});
+
+		it('should track on `external-secrets-provider-reloaded` event', () => {
+			const event: RelayEventMap['external-secrets-provider-reloaded'] = {
+				vaultType: 'aws',
+			};
+
+			eventService.emit('external-secrets-provider-reloaded', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User reloaded external secrets', {
+				vault_type: 'aws',
+			});
+		});
 	});
 
 	describe('public API events', () => {

@@ -1439,18 +1439,12 @@ export interface CalloutActionBase {
 	icon?: string;
 }
 
-export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
-	type: 'openPreBuiltAgentsCollection';
-}
-
 export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
 	type: 'openSampleWorkflowTemplate';
 	templateId: string;
 }
 
-export type CalloutAction =
-	| CalloutActionOpenPreBuiltAgentsCollection
-	| CalloutActionOpenSampleWorkflowTemplate;
+export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1474,6 +1468,9 @@ export interface INodePropertyTypeOptions {
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
 	numberPrecision?: number; // Supported by: number
+	fixedCollection?: {
+		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -2192,7 +2189,7 @@ export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnec
 
 export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
-export interface INodeInputFilter {
+export interface INodeFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
@@ -2200,12 +2197,17 @@ export interface INodeInputFilter {
 	excludedNodes?: string[];
 }
 
+/**
+ * @deprecated Use INodeFilter instead
+ */
+export type INodeInputFilter = INodeFilter;
+
 export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: NodeConnectionType;
-	filter?: INodeInputFilter;
+	filter?: INodeFilter;
 	maxConnections?: number;
 }
 
@@ -2215,6 +2217,7 @@ export interface INodeOutputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	type: NodeConnectionType;
+	filter?: INodeFilter;
 }
 
 export type ExpressionString = `={{${string}}}`;

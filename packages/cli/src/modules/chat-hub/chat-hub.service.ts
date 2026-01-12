@@ -40,6 +40,7 @@ import {
 	createRunExecutionData,
 	WorkflowExecuteMode,
 	AGENT_LANGCHAIN_NODE_TYPE,
+	sleep,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -62,6 +63,7 @@ import {
 	JSONL_STREAM_HEADERS,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
+	STREAM_CLOSE_TIMEOUT,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -758,7 +760,7 @@ export class ChatHubService {
 					retryOfMessageId,
 				});
 			},
-			onItem: (_message, _chunk) => {
+			onItem: async (_message, _chunk) => {
 				// We could save partial messages to DB here if we wanted to,
 				// but they would be very frequent updates.
 			},
@@ -802,7 +804,7 @@ export class ChatHubService {
 			},
 		});
 
-		const transform = (text: string) => {
+		const transform = async (text: string) => {
 			const trimmed = text.trim();
 			if (!trimmed) return text;
 
@@ -813,7 +815,13 @@ export class ChatHubService {
 				return text;
 			}
 
-			const message = aggregator.ingest(chunk);
+			if (chunk.type === 'error' && !chunk.content) {
+				chunk.content = executionId
+					? await this.waitForErrorDetails(executionId, workflowData.id)
+					: 'Request was not processed';
+			}
+
+			const message = await aggregator.ingest(chunk);
 			const enriched: EnrichedStructuredChunk = {
 				...chunk,
 				metadata: {
@@ -829,9 +837,14 @@ export class ChatHubService {
 		};
 
 		const stream = interceptResponseWrites(res, transform);
+		let onStreamClosed = () => {};
+		const resolveOnStreamClosed = new Promise<void>((r) => {
+			onStreamClosed = r;
+		});
 
 		stream.on('finish', aggregator.finalizeAll);
 		stream.on('close', aggregator.finalizeAll);
+		stream.on('close', onStreamClosed);
 
 		stream.writeHead(200, JSONL_STREAM_HEADERS);
 		stream.flushHeaders();
@@ -851,7 +864,25 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		await this.waitForExecutionCompletion(executionId);
+		let timeoutId: ReturnType<typeof setTimeout>;
+		const resolveOnTimeout = new Promise<void>((resolve) => {
+			timeoutId = setTimeout(() => {
+				this.logger.warn(
+					`Stream did not close within timeout (${STREAM_CLOSE_TIMEOUT}ms) for execution ${executionId}`,
+				);
+				resolve();
+			}, STREAM_CLOSE_TIMEOUT);
+		});
+
+		const streamClosePromise = Promise.race([
+			resolveOnStreamClosed.finally(() => clearTimeout(timeoutId)),
+			resolveOnTimeout,
+		]);
+
+		await Promise.all([
+			streamClosePromise, // To prevent premature workflow/execution deletion, wait for stream to close
+			this.waitForExecutionCompletion(executionId),
+		]);
 	}
 
 	private async waitForExecutionCompletion(executionId: string): Promise<void> {
@@ -1545,5 +1576,47 @@ export class ChatHubService {
 			updatedAt: session.updatedAt.toISOString(),
 			tools: session.tools,
 		};
+	}
+
+	/**
+	 * Wait for error details to be available in execution DB using exponential backoff
+	 * @param executionId - The execution ID to fetch error details from
+	 * @param workflowId - The workflow ID for the execution
+	 * @returns The error message if found, undefined otherwise
+	 */
+	private async waitForErrorDetails(
+		executionId: string,
+		workflowId: string,
+	): Promise<string | undefined> {
+		const maxRetries = 5;
+		let retries = 0;
+		let errorText: string | undefined;
+
+		while (!errorText) {
+			try {
+				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+					errorText = this.getErrorMessage(execution);
+					break;
+				}
+			} catch (error) {
+				this.logger.debug(
+					`Failed to fetch execution ${executionId} for error extraction: ${String(error)}`,
+				);
+			}
+
+			retries++;
+
+			if (maxRetries <= retries) {
+				break;
+			}
+
+			// Wait with exponential backoff (double wait time, cap at 2 second)
+			await sleep(Math.min(500 * Math.pow(2, retries), 2000));
+		}
+
+		return errorText;
 	}
 }
