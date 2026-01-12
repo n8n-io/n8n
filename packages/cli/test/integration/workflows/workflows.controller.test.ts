@@ -81,6 +81,7 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'Folder',
+		'WebhookEntity',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',

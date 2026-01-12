@@ -225,6 +225,38 @@ describe('activateWorkflow()', () => {
 		});
 	});
 
+	test('should throw an error when webhook conflicts were found', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		webhookServiceMock.findWebhookConflicts.mockResolvedValue([
+			{
+				trigger: {
+					id: '',
+					name: '',
+					typeVersion: 0,
+					type: '',
+					position: [1, 2],
+					parameters: {},
+				},
+				conflict: {
+					webhookId: 'some-id',
+					webhookPath: 'some-path',
+					workflowId: 'workflow-123',
+					method: 'GET',
+				},
+			},
+		]);
+
+		await expect(
+			workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: newVersionId,
+			}),
+		).rejects.toThrow('There is a conflict with one of the webhooks.');
+	});
+
 	test('should not activate workflow if validation fails and keep old active version', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);

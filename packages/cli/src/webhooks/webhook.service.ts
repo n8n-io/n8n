@@ -314,47 +314,44 @@ export class WebhookService {
 			conflict: Partial<WebhookEntity>;
 		}> = [];
 
-		while (checkEntries.length > 0) {
-			const { node, webhooks } = checkEntries.pop()!;
+		// store processed webhooks in a map -> O(1) remaining webhooks local conflict checks
+		const processedWebhooks: Map<string, IWebhookData> = new Map();
+		const webhookToKey = (webhook: IWebhookData) =>
+			`${webhook.httpMethod} ${this.getWebhookPath(webhook)}`;
 
-			// check if conflicts within the same workflow exist
-			const localConflict = checkEntries.find(
-				({ node: checkNode, webhooks: checkWebhooks }) =>
-					node.id !== checkNode.id &&
-					webhooks.some((webhook) =>
-						checkWebhooks.some(
-							(checkWebhook) =>
-								this.getWebhookPath(checkWebhook) === this.getWebhookPath(webhook) &&
-								checkWebhook.httpMethod === webhook.httpMethod,
-						),
-					),
-			);
-			if (localConflict) {
-				const firstConflict = localConflict.webhooks[0];
-				conflicts.push({
-					trigger: node,
-					conflict: {
-						workflowId: workflow.id,
-						webhookPath: firstConflict.path,
-						method: firstConflict.httpMethod,
-						node: node.id,
-						webhookId: firstConflict.webhookId,
-					},
-				});
-			} else {
-				// check if conflict with a published workflow exists
-				for (const webhook of webhooks) {
-					const path = this.getWebhookPath(webhook);
-					const potentialConflict = await this.findWebhook(webhook.httpMethod, path);
-
-					if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
-						conflicts.push({
-							trigger: node,
-							conflict: potentialConflict,
-						});
-						break;
-					}
+		for (const { node, webhooks } of checkEntries) {
+			for (const webhook of webhooks) {
+				const webhookKey = webhookToKey(webhook);
+				if (processedWebhooks.has(webhookKey)) {
+					// another node with the same webhook was already processed
+					const conflict = processedWebhooks.get(webhookKey)!;
+					conflicts.push({
+						trigger: node,
+						conflict: {
+							workflowId: workflow.id,
+							webhookPath: conflict.path,
+							method: conflict.httpMethod,
+							node: node.id,
+							webhookId: conflict.webhookId,
+						},
+					});
+					continue;
 				}
+
+				const potentialConflict = await this.findWebhook(
+					webhook.httpMethod,
+					this.getWebhookPath(webhook),
+				);
+
+				if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
+					conflicts.push({
+						trigger: node,
+						conflict: potentialConflict,
+					});
+					continue;
+				}
+
+				processedWebhooks.set(webhookKey, webhook);
 			}
 		}
 
