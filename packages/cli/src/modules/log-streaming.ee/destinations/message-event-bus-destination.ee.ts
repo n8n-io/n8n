@@ -21,8 +21,6 @@ import type {
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
 
-import { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
-
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
@@ -132,27 +130,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			}
 		}
 		return false;
-	}
-
-	async saveToDb() {
-		const data = {
-			id: this.getId(),
-			destination: this.serialize(),
-		};
-		const dbResult = await Container.get(EventDestinationsRepository).upsert(data, {
-			skipUpdateIfNoValuesChanged: true,
-			conflictPaths: ['id'],
-		});
-		return dbResult;
-	}
-
-	async deleteFromDb() {
-		return await MessageEventBusDestination.deleteFromDb(this.getId());
-	}
-
-	static async deleteFromDb(id: string) {
-		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
-		return dbResult;
 	}
 
 	serialize(): MessageEventBusDestinationOptions {
