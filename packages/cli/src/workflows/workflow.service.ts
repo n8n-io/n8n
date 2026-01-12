@@ -533,6 +533,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot activate an archived workflow.');
+		}
+
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const wasActive = workflow.activeVersionId !== null;
 

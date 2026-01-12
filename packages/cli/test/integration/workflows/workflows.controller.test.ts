@@ -3805,6 +3805,23 @@ describe('POST /workflows/:workflowId/activate', () => {
 			workflowId: workflow.id,
 		});
 	});
+
+	test('should not activate an archived workflow', async () => {
+		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(400);
+
+		expect(response.body.message).toBe('Cannot activate an archived workflow.');
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.active).toBe(false);
+		expect(updatedWorkflow!.activeVersionId).toBeNull();
+	});
 });
 
 describe('POST /workflows/:workflowId/deactivate', () => {
