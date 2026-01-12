@@ -1172,12 +1172,13 @@ export const mainProperties: INodeProperties[] = [
 										paginationMode: ['off'],
 									},
 								},
-								default: 2,
+								default: 3,
 								description:
 									'Maximum number of consecutive identical responses before stopping pagination',
 								hint: 'Increase this if your API returns identical responses',
 								typeOptions: {
-									minValue: 0,
+									minValue: 1,
+									maxValue: 50,
 								},
 							},
 						],

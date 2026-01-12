@@ -1673,11 +1673,11 @@ export const getRequestHelperFunctions = (
 						hash = crypto.createHash('md5').update(contentBody).digest('base64');
 					}
 
-					const maxIdenticalResponses = paginationOptions.maxIdenticalResponses ?? 2;
+					const maxIdenticalResponses = paginationOptions.maxIdenticalResponses ?? 3;
 
 					if (hashData.previousHash === hash) {
 						hashData.identicalCount += 1;
-						if (hashData.identicalCount > maxIdenticalResponses) {
+						if (hashData.identicalCount >= maxIdenticalResponses) {
 							throw new NodeOperationError(
 								node,
 								`The returned response was identical ${hashData.identicalCount + 1}x, so requests got stopped`,
