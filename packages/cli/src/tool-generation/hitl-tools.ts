@@ -88,11 +88,11 @@ function filterHitlToolProperties(
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		default: '=The agent wants to call {{ $fromAI("tool") }}',
+		default: '=The agent wants to call {{ $tool }}',
 		required: true,
 		typeOptions: { rows: 3 },
 		description:
-			'Message to send for approval. Use expressions to include tool details: {{ $fromAI("tool") }}, {{ $json.toolCallId }}, {{ $json.toolParameters }}',
+			'Message to send for approval. Use expressions to include tool details: {{ $tool }}, {{ $json.toolCallId }}, {{ $json.toolParameters }}',
 	});
 
 	for (const prop of properties) {
@@ -191,6 +191,9 @@ export function convertNodeToHitlTool<
 			{
 				displayName: 'Human Review',
 				type: NodeConnectionTypes.AiTool,
+				filter: {
+					nodes: ['@n8n/n8n-nodes-langchain.agent'],
+				},
 			},
 		];
 
