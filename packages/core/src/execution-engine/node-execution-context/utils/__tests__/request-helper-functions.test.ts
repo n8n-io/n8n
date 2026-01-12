@@ -1142,7 +1142,7 @@ describe('Request Helper Functions', () => {
 			requestCount = 0;
 		});
 
-		test('should throw error after 3 identical responses with default threshold (2)', async () => {
+		test('should throw error after 4 identical responses with default threshold (3)', async () => {
 			const workflow = createWorkflowMock();
 			const hooks = mock<ExecutionLifecycleHooks>();
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
@@ -1173,7 +1173,7 @@ describe('Request Helper Functions', () => {
 				continue: true, // Never stop naturally
 				request: { url: `${baseUrl}/data` },
 				requestInterval: 0,
-				// maxIdenticalResponses NOT provided - should default to 2
+				// maxIdenticalResponses NOT provided - should default to 3
 			};
 
 			const helperFunctions = getRequestHelperFunctions(workflow, node, additionalData);
@@ -1186,7 +1186,7 @@ describe('Request Helper Functions', () => {
 				},
 			} as unknown as IAllExecuteFunctions;
 
-			// Should throw after 3 identical responses (threshold is 2)
+			// Should throw on 4th request (after 3 consecutive identical responses)
 			await expect(
 				helperFunctions.requestWithAuthenticationPaginated.call(
 					mockThis,
@@ -1198,8 +1198,8 @@ describe('Request Helper Functions', () => {
 
 			scope.persist(false);
 
-			// Verify we made at least 3 requests
-			expect(callCount).toBeGreaterThanOrEqual(3);
+			// Should make exactly 4 requests: initial + 3 identical = threshold reached on 4th
+			expect(callCount).toBe(4);
 		});
 
 		test('should allow more identical responses when maxIdenticalResponses is increased', async () => {
@@ -1234,7 +1234,7 @@ describe('Request Helper Functions', () => {
 				continue: '={{ $pageCount < 6 }}', // Stop after 6 requests
 				request: { url: `${baseUrl}/data` },
 				requestInterval: 0,
-				maxIdenticalResponses: 5, // Allow 5 identical (6 total same responses)
+				maxIdenticalResponses: 10,
 			};
 
 			const helperFunctions = getRequestHelperFunctions(workflow, node, additionalData);
@@ -1247,7 +1247,7 @@ describe('Request Helper Functions', () => {
 				},
 			} as unknown as IAllExecuteFunctions;
 
-			// Should succeed - 6 identical responses with threshold of 5 should work
+			// Should succeed - stops naturally after 6 requests, well before hitting threshold of 10
 			const result = await helperFunctions.requestWithAuthenticationPaginated.call(
 				mockThis,
 				requestOptions,

@@ -304,7 +304,7 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Pagination with maxIdenticalResponses', () => {
-		it('Should throw error after 3 identical responses with default threshold', async () => {
+		it('Should throw error after 4 identical responses with default threshold (3)', async () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 
 			const paginationConfig = {
@@ -317,7 +317,7 @@ describe('HttpRequestV3', () => {
 				limitPagesFetched: false,
 				maxRequests: 10,
 				requestInterval: 0,
-				// maxIdenticalResponses not provided - should use default of 2
+				// maxIdenticalResponses not provided - should use default of 3
 			};
 
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
@@ -338,6 +338,7 @@ describe('HttpRequestV3', () => {
 			});
 
 			// Mock the pagination helper to throw the expected error
+			// With default threshold of 3, should stop on 4th identical response
 			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockRejectedValue(
 				new Error('The returned response was identical 4x, so requests got stopped'),
 			);
@@ -361,7 +362,7 @@ describe('HttpRequestV3', () => {
 				limitPagesFetched: true,
 				maxRequests: 4,
 				requestInterval: 0,
-				maxIdenticalResponses: 3, // Allow up to 3 identical responses (4 total)
+				maxIdenticalResponses: 3, // Stop on 4th identical response
 			};
 
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
@@ -381,7 +382,7 @@ describe('HttpRequestV3', () => {
 				}
 			});
 
-			// Mock successful pagination without error (simulating 4 identical responses being allowed)
+			// Mock successful pagination without error
 			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
 				{
 					body: Buffer.from(JSON.stringify({ data: 'same data' })),
