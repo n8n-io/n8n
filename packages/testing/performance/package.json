@@ -4,12 +4,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"bench": "vitest bench",
-		"bench:expression": "vitest bench benchmarks/expression-engine",
+		"bench": "vitest bench --run",
 		"bench:baseline": "node scripts/save-baseline.mjs",
-		"bench:run": "vitest bench --run --outputJson ./profiles/benchmark-results.json",
-		"bench:check": "node scripts/check-regression.mjs",
-		"bench:ci": "pnpm bench:run && pnpm bench:check"
+		"bench:ci": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
 	},
 	"devDependencies": {
 		"vitest": "catalog:",
