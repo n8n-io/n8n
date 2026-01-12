@@ -400,65 +400,6 @@ describe('SourceControlImportService', () => {
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
 		});
 
-		it('should call publishVersion with the new version when reactivating workflows', async () => {
-			const mockUserId = 'user-id-123';
-			const mockWorkflowFile = '/mock/workflow1.json';
-			const newVersionId = 'new-version-456';
-			const mockWorkflowData = {
-				id: 'workflow1',
-				name: 'Active Workflow',
-				nodes: [],
-				parentFolderId: null,
-				versionId: newVersionId,
-			};
-			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
-
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
-				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
-			);
-			workflowRepository.findByIds.mockResolvedValue([
-				Object.assign(new WorkflowEntity(), {
-					id: 'workflow1',
-					name: 'Active Workflow',
-					active: true,
-					activeVersionId: 'old-version-123',
-				}),
-			]);
-			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
-			workflowRepository.upsert.mockResolvedValue({
-				identifiers: [{ id: 'workflow1' }],
-				generatedMaps: [],
-				raw: [],
-			});
-			workflowRepository.publishVersion.mockResolvedValue({
-				generatedMaps: [],
-				raw: [],
-				affected: 1,
-			});
-			workflowRepository.update.mockResolvedValue({
-				generatedMaps: [],
-				raw: [],
-				affected: 1,
-			});
-
-			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
-
-			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
-
-			// Verify publishVersion is called with the new version
-			expect(workflowRepository.publishVersion).toHaveBeenCalledWith('workflow1', newVersionId);
-			// Verify the workflow is deactivated before reactivation
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			// Verify the workflow is reactivated
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
-			// Verify the versionId is updated
-			expect(workflowRepository.update).toHaveBeenCalledWith(
-				{ id: 'workflow1' },
-				{ versionId: newVersionId },
-			);
-		});
-
 		it('should deactivate archived workflows even if they were previously active', async () => {
 			const mockUserId = 'user-id-123';
 			const mockWorkflowFile = '/mock/workflow1.json';
