@@ -108,6 +108,7 @@ export function useResolvedExpression({
 		[
 			expressionLocalResolveCtx,
 			toRef(expression),
+			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
 			() => workflowsStore.workflow.name,
