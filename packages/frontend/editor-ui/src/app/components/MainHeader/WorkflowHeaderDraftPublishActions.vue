@@ -236,7 +236,7 @@ const publishButtonConfig = computed(() => {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: true,
-			indicatorClass: 'error',
+			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: true,
 		},
