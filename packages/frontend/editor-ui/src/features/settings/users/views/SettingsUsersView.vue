@@ -105,7 +105,8 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 				isTamperProofInviteLinksEnabled.value &&
 				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
 				usersStore.usersLimitNotReached &&
-				user.id !== usersStore.currentUserId,
+				user.id !== usersStore.currentUserId &&
+				!user.firstName,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
