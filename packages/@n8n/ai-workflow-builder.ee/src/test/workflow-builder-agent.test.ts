@@ -221,8 +221,12 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
-		it('should handle 401 expired token error with status property', async () => {
-			const expiredTokenError = Object.assign(new Error('Token expired'), { status: 401 });
+		it('should handle 401 expired token error from LangChain MODEL_AUTHENTICATION', async () => {
+			// This matches the actual error structure from LangChain when the AI assistant proxy token expires
+			const expiredTokenError = Object.assign(new Error('Expired token'), {
+				status: 401,
+				lc_error_code: 'MODEL_AUTHENTICATION',
+			});
 
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
@@ -237,38 +241,21 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
-		it('should handle 401 expired token error with statusCode property', async () => {
-			const expiredTokenError = Object.assign(new Error('Token expired'), { statusCode: 401 });
+		it('should not treat generic 401 errors as expired token errors', async () => {
+			// A generic 401 without lc_error_code should be rethrown as-is, not converted to ApplicationError
+			const generic401Error = Object.assign(new Error('Unauthorized'), { status: 401 });
 
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
 				return (async function* () {
-					throw expiredTokenError;
+					throw generic401Error;
 				})();
 			});
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
-		});
-
-		it('should handle 401 expired token error from message content', async () => {
-			const expiredTokenError = new Error(
-				'401 Expired token Troubleshooting URL: https://docs.langchain.com',
-			);
-
-			mockCreateStreamProcessor.mockImplementation(() => {
-				// eslint-disable-next-line require-yield
-				return (async function* () {
-					throw expiredTokenError;
-				})();
-			});
-
-			await expect(async () => {
-				const generator = agent.chat(mockPayload);
-				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(generic401Error);
 		});
 
 		it('should handle invalid request errors', async () => {
@@ -281,12 +268,18 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
+			// Mock the stream processor to throw the invalid request error
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw invalidRequestError;
+				})();
+			});
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(ValidationError);
 		});
 
 		it('should rethrow unknown errors', async () => {

@@ -647,31 +647,24 @@ export class WorkflowBuilderAgent {
 	}
 
 	/**
-	 * Checks if the error is a 401 expired token error from the LLM provider.
-	 * This typically occurs during very long-running workflow generations.
+	 * Checks if the error is a 401 expired token error from the LLM provider proxy.
+	 * This typically occurs during very long-running workflow generations when
+	 * the AI assistant service proxy token expires.
+	 *
+	 * We specifically check for LangChain's MODEL_AUTHENTICATION error code to ensure
+	 * we only catch authentication errors from the LLM provider, not unrelated 401s.
 	 */
 	private isTokenExpiredError(error: unknown): boolean {
-		if (!error || typeof error !== 'object') {
-			return false;
-		}
+		const LC_MODEL_AUTHENTICATION_ERROR = 'MODEL_AUTHENTICATION';
 
-		// Check for status/statusCode property being 401
-		if (
-			('status' in error && error.status === 401) ||
-			('statusCode' in error && error.statusCode === 401)
-		) {
-			return true;
-		}
-
-		// Check for error message containing 401 and expired token indicators
-		if ('message' in error && typeof error.message === 'string') {
-			const message = error.message.toLowerCase();
-			if (message.includes('401') && message.includes('expired')) {
-				return true;
-			}
-		}
-
-		return false;
+		return (
+			!!error &&
+			typeof error === 'object' &&
+			'lc_error_code' in error &&
+			error.lc_error_code === LC_MODEL_AUTHENTICATION_ERROR &&
+			'status' in error &&
+			error.status === 401
+		);
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {
