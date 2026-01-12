@@ -10,6 +10,7 @@ import type {
 	ThinkingMetadata,
 	HitlMetadata,
 } from './types';
+import omit from 'lodash/omit';
 
 function hasGatedToolNodeName(
 	metadata: ToolMetadata,
@@ -106,7 +107,8 @@ export async function createEngineRequests(
 			if (hitlMetadata) {
 				// This input will be used as HITL node input
 				input = {
-					...input,
+					// omit hitlParameters, because they are destructured into the input instead
+					...omit(input, 'hitlParameters'),
 					...(input.hitlParameters as IDataObject),
 					// stringify parameters so that they can be accessed with $fromAI method
 					toolParameters: JSON.stringify(input.toolParameters),
