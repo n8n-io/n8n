@@ -66,7 +66,6 @@ export {
 	isResourceMapperValue,
 	isResourceLocatorValue,
 	isFilterValue,
-	isAssignmentCollectionValue,
 	isNodeConnectionType,
 } from './type-guards';
 
