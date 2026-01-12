@@ -77,15 +77,8 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Welcome Message',
-				name: 'welcomeMessage',
-				type: 'string',
-				placeholder: "e.g. Hello! I'm here to help you!",
-				default: '',
-			},
-			{
-				displayName: 'Agent Description',
-				name: 'agentDescription',
+				displayName: 'System Prompt',
+				name: 'systemPrompt',
 				type: 'string',
 				placeholder:
 					'e.g. You are a friendly assistant that helps people find a weather forecast for a given time and place.',
@@ -93,13 +86,6 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				typeOptions: {
 					rows: 4,
 				},
-			},
-			{
-				displayName: 'Require Specific Output Format',
-				name: 'hasOutputParser',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
 			},
 			{
 				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
@@ -180,6 +166,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Require Specific Output Format',
+				name: 'hasOutputParser',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -192,6 +185,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 						type: 'number',
 						default: 10,
 						description: 'The maximum number of iterations the agent will run before stopping',
+					},
+					{
+						displayName: 'Welcome Message',
+						name: 'welcomeMessage',
+						type: 'string',
+						placeholder: "e.g. Hello! I'm here to help you!",
+						default: '',
 					},
 				],
 			},

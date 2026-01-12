@@ -195,8 +195,8 @@ describe('microsoft-utils', () => {
 			};
 
 			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
-				if (param === 'welcomeMessage') return 'Welcome to the agent!';
-				if (param === 'agentDescription') return 'Test agent';
+				if (param === 'options.welcomeMessage') return 'Welcome to the agent!';
+				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
 			});
 
@@ -228,8 +228,8 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Test agent response');
 			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
-				if (param === 'welcomeMessage') return 'Welcome!';
-				if (param === 'agentDescription') return 'Test agent';
+				if (param === 'options.welcomeMessage') return 'Welcome!';
+				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
 			});
 
@@ -264,8 +264,8 @@ describe('microsoft-utils', () => {
 			agent.run = jest.fn().mockRejectedValue(mockError);
 
 			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
-				if (param === 'welcomeMessage') return 'Welcome!';
-				if (param === 'agentDescription') return 'Test agent';
+				if (param === 'options.welcomeMessage') return 'Welcome!';
+				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
 			});
 
@@ -295,8 +295,8 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Test response');
 			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
-				if (param === 'welcomeMessage') return 'Welcome!';
-				if (param === 'agentDescription') return 'Test agent';
+				if (param === 'options.welcomeMessage') return 'Welcome!';
+				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
 			});
 
@@ -328,8 +328,8 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Test response');
 			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
-				if (param === 'welcomeMessage') return 'Welcome!';
-				if (param === 'agentDescription') return 'Test agent';
+				if (param === 'options.welcomeMessage') return 'Welcome!';
+				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
 			});
 

@@ -168,7 +168,7 @@ const configureActivityCallback = (
 	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
 ) => {
-	const agentDescription = nodeContext.getNodeParameter('agentDescription') as string;
+	const systemPrompt = nodeContext.getNodeParameter('systemPrompt') as string;
 	const { clientId, tenantId } = credentials;
 
 	return async (turnContext: TurnContext) => {
@@ -240,7 +240,7 @@ const configureActivityCallback = (
 					const response = await invokeAgent(
 						nodeContext,
 						inputText,
-						agentDescription,
+						systemPrompt,
 						{
 							configurable: { thread_id: turnContext.activity.conversation!.id },
 						},
@@ -311,7 +311,7 @@ export function configureAdapterProcessCallback(
 			turnContext.sendActivity = sendActivityWrapper;
 
 			const welcomeMessage = nodeContext.getNodeParameter(
-				'welcomeMessage',
+				'options.welcomeMessage',
 				"Hello! I'm here to help you!",
 			) as string;
 
