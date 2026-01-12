@@ -317,7 +317,7 @@
 		},
 		"delay": {
 			"timeUnit": "MILLISECONDS",
-			"value": 4000
+			"value": 2000
 		}
 	},
 	"id": "1768236114980-unknown-host-POST-_v1_messages-630e8fa0.json",
