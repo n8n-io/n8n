@@ -31,6 +31,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await n8n.navigate.toHome();
 	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
 	await n8n.workflows.cards.getWorkflows().first().click();
+	await expect(n8n.canvas.canvasPane()).toBeVisible();
 	await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
@@ -112,10 +113,8 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 
 		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
 
-		const finalPosition = await node.boundingBox();
-
 		// Position SHOULD change
-		expect(finalPosition?.x).not.toBe(initialPosition?.x);
+		await expect.poll(async () => (await node.boundingBox())?.x).not.toBe(initialPosition?.x);
 
 		// Copy and paste should work
 		await n8n.canvasComposer.selectAllAndCopy();
