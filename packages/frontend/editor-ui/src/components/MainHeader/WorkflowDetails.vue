@@ -20,6 +20,7 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_IMPORT_MAPPING_MODAL_KEY,
 } from '@/constants';
 import { ResourceType } from '@/utils/projects.utils';
 
@@ -428,7 +429,11 @@ async function handleFileImport(): Promise<void> {
 				inputRef.value = '';
 			}
 
-			nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+			// Open the enhanced import mapping modal
+			uiStore.openModalWithData({
+				name: WORKFLOW_IMPORT_MAPPING_MODAL_KEY,
+				data: { workflowData },
+			});
 		};
 		reader.readAsText(inputRef.files[0]);
 	}

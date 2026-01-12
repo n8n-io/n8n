@@ -1,0 +1,82 @@
+{
+  "name": "Workflow Analyzer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "id": "n8n-node",
+      "name": "n8n",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "q83PqJI7mWoHjU40",
+          "name": "n8n-internal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.all();\nreturn workflows.map(w => {\n  const json = w.json;\n  const nodes = json.nodes || [];\n  const usesN8nNode = nodes.some(n => n.type === \"n8n-nodes-base.n8n\");\n  const usesCredentials = nodes.some(n => n.credentials && Object.keys(n.credentials).length > 0);\n  return {\n    json: {\n      name: json.name,\n      id: json.id,\n      usesN8nNode,\n      usesCredentials\n    }\n  };\n});"
+      },
+      "id": "code-node",
+      "name": "Analyze Workflows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [
+        [
+          {
+            "node": "n8n",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n": {
+      "main": [
+        [
+          {
+            "node": "Analyze Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "beda5f30-2a2a-4e74-b5b6-937eaa36d76e",
+  "meta": {
+    "instanceId": "a0ac07f61a07f5a4b59b67e91b7c4ab490b4174d130e4a776fcddda08cf95c32"
+  },
+  "id": "xM756sGoBlfAe4Jg",
+  "tags": []
+}

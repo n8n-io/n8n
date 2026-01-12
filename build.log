@@ -1,0 +1,1122 @@
+
+> n8n-monorepo@1.113.0 build /Users/mick/Projects/bitovi/n8n
+> turbo run build
+
+turbo 2.5.4
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-cypress, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running build in 45 packages
+• Remote caching disabled
+n8n-editor-ui:popularity-cache-marker: cache bypass, force executing ac09a98ab253a74b
+@n8n/stylelint-config:build: cache miss, executing 016bb8d4a04e52c3
+@n8n/extension-sdk:build: cache miss, executing 4676adab12365a4e
+@n8n/di:build: cache miss, executing 102c8554d2a1a48f
+@n8n/constants:build: cache miss, executing 2b5b23c4705b8fcc
+@n8n/vitest-config:build: cache miss, executing a6eb3242aff1dbdb
+@n8n/errors:build: cache miss, executing 063f41c33890518b
+@n8n/permissions:build: cache miss, executing 8050b2f441c88561
+@n8n/json-schema-to-zod:build: cache miss, executing e75cd711468d4531
+@n8n/client-oauth2:build: cache miss, executing 310166c09e343569
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.7.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsup && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.113.0 popularity-cache-marker /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > mkdir -p .build && date +%G-W%V > .build/cache-marker
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.12.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.29.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.36.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
+@n8n/codemirror-lang:build: cache miss, executing 691d65c01460daa5
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /Users/mick/Projects/bitovi/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
+@n8n/json-schema-to-zod:build: 
+@n8n/n8n-benchmark:build: cache miss, executing 2044363b03d97611
+n8n-editor-ui:fetch-popularity: cache miss, executing 583e96b11c6c3fdf
+@n8n/codemirror-lang-sql:build: cache miss, executing a1ae9c81b5d72ca0
+@n8n/n8n-benchmark:build: 
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.23.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/n8n-benchmark:build: 
+@n8n/config:build: cache miss, executing 160b5a1390330ce5
+@n8n/node-cli:build: cache miss, executing be38c7c2eb4fd445
+@n8n/imap:build: cache miss, executing 02dffc0aee582531
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.113.0 fetch-popularity /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.1.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.56.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.15.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.9.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/eslint-config:build: cache miss, executing 879095bb74768351
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.7.0 clean /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
+n8n-workflow:build: cache miss, executing 62a7ab3eae2b9cbb
+n8n-editor-ui:fetch-popularity: Successfully fetched popularity data for 1000 nodes
+n8n-editor-ui:fetch-popularity: Saved popularity data to /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 1000 nodes
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.110.0 build /Users/mick/Projects/bitovi/n8n/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /Users/mick/Projects/bitovi/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/extension-sdk:build: CLI Building entry: src/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.frontend.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Building entry: src/backend/define.ts, src/backend/index.ts, src/backend/types.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.backend.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Building entry: src/index.ts, src/schema.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.common.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Target: es2021
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: CLI Target: es2021
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: CLI Target: esnext
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-LTKOPDVC.js     175.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/index.js              136.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/types.js              33.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/define.js             137.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-LTKOPDVC.js.map 315.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/types.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/define.js.map         71.00 B
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 84ms
+@n8n/extension-sdk:build: CJS dist/frontend/types.cjs      801.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/index.cjs      1.20 KB
+@n8n/extension-sdk:build: CJS dist/frontend/define.cjs     1.18 KB
+@n8n/extension-sdk:build: CJS dist/frontend/types.cjs.map  569.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/index.cjs.map  452.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/define.cjs.map 359.00 B
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 85ms
+@n8n/extension-sdk:build: CJS dist/backend/define.cjs     1.17 KB
+@n8n/extension-sdk:build: CJS dist/backend/index.cjs      1.19 KB
+@n8n/extension-sdk:build: CJS dist/backend/types.cjs      800.00 B
+@n8n/extension-sdk:build: CJS dist/backend/define.cjs.map 354.00 B
+@n8n/extension-sdk:build: CJS dist/backend/types.cjs.map  346.00 B
+@n8n/extension-sdk:build: CJS dist/backend/index.cjs.map  446.00 B
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 89ms
+@n8n/extension-sdk:build: CJS dist/index.cjs      3.04 KB
+@n8n/extension-sdk:build: CJS dist/schema.cjs     3.02 KB
+@n8n/extension-sdk:build: CJS dist/index.cjs.map  2.99 KB
+@n8n/extension-sdk:build: CJS dist/schema.cjs.map 2.94 KB
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 87ms
+@n8n/extension-sdk:build: ESM dist/backend/index.js              134.00 B
+@n8n/extension-sdk:build: ESM dist/backend/types.js              33.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-B7CLIGBD.js     172.00 B
+@n8n/extension-sdk:build: ESM dist/backend/define.js             135.00 B
+@n8n/extension-sdk:build: ESM dist/backend/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/backend/types.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-B7CLIGBD.js.map 310.00 B
+@n8n/extension-sdk:build: ESM dist/backend/define.js.map         71.00 B
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 90ms
+@n8n/extension-sdk:build: ESM dist/chunk-4ERGEAXV.js     1.76 KB
+@n8n/extension-sdk:build: ESM dist/index.js              136.00 B
+@n8n/extension-sdk:build: ESM dist/schema.js             137.00 B
+@n8n/extension-sdk:build: ESM dist/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/schema.js.map         71.00 B
+@n8n/extension-sdk:build: ESM dist/chunk-4ERGEAXV.js.map 2.90 KB
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 89ms
+@n8n/composables:build: cache miss, executing 75bb3cdcedbb63c6
+@n8n/utils:build: cache miss, executing f134b585be17946d
+@n8n/extension-sdk:build: DTS Build start
+@n8n/extension-sdk:build: DTS Build start
+@n8n/extension-sdk:build: DTS Build start
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.9.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsup
+@n8n/composables:build: 
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.16.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/utils
+@n8n/utils:build: > tsup
+@n8n/utils:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.9.0 copy-templates /Users/mick/Projects/bitovi/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/composables:build: CLI Building entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts
+@n8n/composables:build: CLI Using tsconfig: tsconfig.json
+@n8n/composables:build: CLI tsup v8.5.0
+@n8n/composables:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/composables/tsup.config.ts
+@n8n/composables:build: CLI Target: esnext
+@n8n/composables:build: CLI Cleaning output folder
+@n8n/composables:build: CJS Build start
+@n8n/composables:build: ESM Build start
+@n8n/composables:build: ESM dist/useDeviceSupport.js     1.14 KB
+@n8n/composables:build: ESM dist/useShortKeyPress.js     658.00 B
+@n8n/composables:build: ESM dist/useDeviceSupport.js.map 2.47 KB
+@n8n/composables:build: ESM dist/useShortKeyPress.js.map 1.37 KB
+@n8n/composables:build: ESM ⚡️ Build success in 82ms
+@n8n/composables:build: CJS dist/useDeviceSupport.cjs     1.35 KB
+@n8n/composables:build: CJS dist/useShortKeyPress.cjs     819.00 B
+@n8n/composables:build: CJS dist/useDeviceSupport.cjs.map 3.16 KB
+@n8n/composables:build: CJS dist/useShortKeyPress.cjs.map 1.84 KB
+@n8n/composables:build: CJS ⚡️ Build success in 83ms
+@n8n/utils:build: CLI Building entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/string/truncate.ts
+@n8n/utils:build: CLI Using tsconfig: tsconfig.json
+@n8n/utils:build: CLI tsup v8.5.0
+@n8n/utils:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/@n8n/utils/tsup.config.ts
+@n8n/utils:build: CLI Target: esnext
+@n8n/utils:build: CLI Cleaning output folder
+@n8n/utils:build: CJS Build start
+@n8n/utils:build: ESM Build start
+@n8n/composables:build: DTS Build start
+@n8n/utils:build: ESM dist/number/smartDecimal.js            324.00 B
+@n8n/utils:build: ESM dist/assert.js                         188.00 B
+@n8n/utils:build: ESM dist/search/reRankSearchResults.js     607.00 B
+@n8n/utils:build: ESM dist/event-bus.js                      932.00 B
+@n8n/utils:build: ESM dist/event-queue.js                    680.00 B
+@n8n/utils:build: ESM dist/sort/sortByProperty.js            357.00 B
+@n8n/utils:build: ESM dist/retry.js                          840.00 B
+@n8n/utils:build: ESM dist/search/sublimeSearch.js           5.63 KB
+@n8n/utils:build: ESM dist/string/truncate.js                1.16 KB
+@n8n/utils:build: ESM dist/number/smartDecimal.js.map        650.00 B
+@n8n/utils:build: ESM dist/assert.js.map                     456.00 B
+@n8n/utils:build: ESM dist/search/reRankSearchResults.js.map 1.32 KB
+@n8n/utils:build: ESM dist/event-bus.js.map                  2.96 KB
+@n8n/utils:build: ESM dist/event-queue.js.map                1.73 KB
+@n8n/utils:build: ESM dist/sort/sortByProperty.js.map        683.00 B
+@n8n/utils:build: ESM dist/retry.js.map                      2.36 KB
+@n8n/utils:build: ESM dist/search/sublimeSearch.js.map       12.06 KB
+@n8n/utils:build: ESM dist/string/truncate.js.map            2.32 KB
+@n8n/utils:build: ESM ⚡️ Build success in 165ms
+@n8n/utils:build: CJS dist/string/truncate.cjs                1.27 KB
+@n8n/utils:build: CJS dist/event-queue.cjs                    770.00 B
+@n8n/utils:build: CJS dist/sort/sortByProperty.cjs            445.00 B
+@n8n/utils:build: CJS dist/search/reRankSearchResults.cjs     700.00 B
+@n8n/utils:build: CJS dist/search/sublimeSearch.cjs           5.74 KB
+@n8n/utils:build: CJS dist/number/smartDecimal.cjs            410.00 B
+@n8n/utils:build: CJS dist/event-bus.cjs                      1020.00 B
+@n8n/utils:build: CJS dist/assert.cjs                         393.00 B
+@n8n/utils:build: CJS dist/retry.cjs                          919.00 B
+@n8n/utils:build: CJS dist/string/truncate.cjs.map            3.11 KB
+@n8n/utils:build: CJS dist/event-queue.cjs.map                2.22 KB
+@n8n/utils:build: CJS dist/search/reRankSearchResults.cjs.map 1.77 KB
+@n8n/utils:build: CJS dist/sort/sortByProperty.cjs.map        1.02 KB
+@n8n/utils:build: CJS dist/event-bus.cjs.map                  3.61 KB
+@n8n/utils:build: CJS dist/number/smartDecimal.cjs.map        1002.00 B
+@n8n/utils:build: CJS dist/assert.cjs.map                     683.00 B
+@n8n/utils:build: CJS dist/search/sublimeSearch.cjs.map       14.93 KB
+@n8n/utils:build: CJS dist/retry.cjs.map                      2.94 KB
+@n8n/utils:build: CJS ⚡️ Build success in 167ms
+@n8n/utils:build: DTS Build start
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 1769ms
+@n8n/extension-sdk:build: DTS dist/frontend/types.d.cts  490.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/define.d.cts 213.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/index.d.cts  192.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/types.d.ts   490.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/define.d.ts  212.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/index.d.ts   190.00 B
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /Users/mick/Projects/bitovi/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 3359ms
+@n8n/extension-sdk:build: DTS dist/backend/types.d.cts  276.00 B
+@n8n/extension-sdk:build: DTS dist/backend/define.d.cts 173.00 B
+@n8n/extension-sdk:build: DTS dist/backend/index.d.cts  153.00 B
+@n8n/extension-sdk:build: DTS dist/backend/types.d.ts   276.00 B
+@n8n/extension-sdk:build: DTS dist/backend/define.d.ts  172.00 B
+@n8n/extension-sdk:build: DTS dist/backend/index.d.ts   151.00 B
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 3581ms
+@n8n/extension-sdk:build: DTS dist/schema.d.cts 2.61 KB
+@n8n/extension-sdk:build: DTS dist/index.d.cts  89.00 B
+@n8n/extension-sdk:build: DTS dist/schema.d.ts  2.61 KB
+@n8n/extension-sdk:build: DTS dist/index.d.ts   88.00 B
+@n8n/composables:build: DTS ⚡️ Build success in 2465ms
+@n8n/composables:build: DTS dist/useDeviceSupport.d.cts 314.00 B
+@n8n/composables:build: DTS dist/useShortKeyPress.d.cts 313.00 B
+@n8n/composables:build: DTS dist/useDeviceSupport.d.ts  314.00 B
+@n8n/composables:build: DTS dist/useShortKeyPress.d.ts  313.00 B
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.7.0 create-json-schema /Users/mick/Projects/bitovi/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
+@n8n/extension-sdk:build: 
+@n8n/decorators:build: cache miss, executing d80e7930a871056a
+@n8n/i18n:build: cache miss, executing 322a574bb4ec1223
+@n8n/stores:build: cache miss, executing 09bed63cafe7129b
+@n8n/api-types:build: cache miss, executing 792b62a5b1da043a
+@n8n/n8n-extension-insights:build: cache miss, executing 32bc58a13541e7f8
+@n8n/i18n:build: 
+@n8n/i18n:build: > @n8n/i18n@1.17.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > tsup
+@n8n/i18n:build: 
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.20.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsup
+@n8n/stores:build: 
+@n8n/api-types:build: 
+@n8n/api-types:build: > @n8n/api-types@0.47.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/api-types
+@n8n/api-types:build: > tsc -p tsconfig.build.json
+@n8n/api-types:build: 
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.23.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.7.0 build /Users/mick/Projects/bitovi/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > pnpm cleanup && pnpm run "/^build:.*/"
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.7.0 cleanup /Users/mick/Projects/bitovi/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > rimraf dist
+@n8n/n8n-extension-insights:build: 
+@n8n/i18n:build: CLI Building entry: src/index.ts, src/types.ts, src/utils.ts
+@n8n/i18n:build: CLI Using tsconfig: tsconfig.json
+@n8n/i18n:build: CLI tsup v8.5.0
+@n8n/i18n:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/i18n/tsup.config.ts
+@n8n/i18n:build: CLI Target: esnext
+@n8n/i18n:build: CLI Cleaning output folder
+@n8n/i18n:build: CJS Build start
+@n8n/i18n:build: ESM Build start
+@n8n/stores:build: CLI Building entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
+@n8n/stores:build: CLI Using tsconfig: tsconfig.json
+@n8n/stores:build: CLI tsup v8.5.0
+@n8n/stores:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/stores/tsup.config.ts
+@n8n/stores:build: CLI Target: esnext
+@n8n/stores:build: CLI Cleaning output folder
+@n8n/stores:build: CJS Build start
+@n8n/stores:build: ESM Build start
+@n8n/utils:build: DTS ⚡️ Build success in 4224ms
+@n8n/utils:build: DTS dist/assert.d.cts                     102.00 B
+@n8n/utils:build: DTS dist/event-bus.d.cts                  919.00 B
+@n8n/utils:build: DTS dist/event-queue.d.cts                149.00 B
+@n8n/utils:build: DTS dist/retry.d.cts                      206.00 B
+@n8n/utils:build: DTS dist/number/smartDecimal.d.cts        100.00 B
+@n8n/utils:build: DTS dist/sort/sortByProperty.d.cts        123.00 B
+@n8n/utils:build: DTS dist/search/reRankSearchResults.d.cts 265.00 B
+@n8n/utils:build: DTS dist/search/sublimeSearch.d.cts       299.00 B
+@n8n/utils:build: DTS dist/string/truncate.d.cts            187.00 B
+@n8n/utils:build: DTS dist/assert.d.ts                      102.00 B
+@n8n/utils:build: DTS dist/event-bus.d.ts                   919.00 B
+@n8n/utils:build: DTS dist/event-queue.d.ts                 149.00 B
+@n8n/utils:build: DTS dist/retry.d.ts                       206.00 B
+@n8n/utils:build: DTS dist/number/smartDecimal.d.ts         100.00 B
+@n8n/utils:build: DTS dist/sort/sortByProperty.d.ts         123.00 B
+@n8n/utils:build: DTS dist/search/reRankSearchResults.d.ts  265.00 B
+@n8n/utils:build: DTS dist/search/sublimeSearch.d.ts        299.00 B
+@n8n/utils:build: DTS dist/string/truncate.d.ts             187.00 B
+@n8n/stores:build: ESM dist/metaTagConfig.js            202.00 B
+@n8n/stores:build: ESM dist/index.js                    102.00 B
+@n8n/stores:build: ESM dist/constants.js                106.00 B
+@n8n/stores:build: ESM dist/useAgentRequestStore.js     1.96 KB
+@n8n/stores:build: ESM dist/chunk-MFIRIEND.js           1017.00 B
+@n8n/stores:build: ESM dist/chunk-P5E2M35E.js           1.18 KB
+@n8n/stores:build: ESM dist/useRootStore.js             5.53 KB
+@n8n/stores:build: ESM dist/metaTagConfig.js.map        71.00 B
+@n8n/stores:build: ESM dist/constants.js.map            71.00 B
+@n8n/stores:build: ESM dist/index.js.map                71.00 B
+@n8n/stores:build: ESM dist/useAgentRequestStore.js.map 4.01 KB
+@n8n/stores:build: ESM dist/chunk-P5E2M35E.js.map       1.83 KB
+@n8n/stores:build: ESM dist/chunk-MFIRIEND.js.map       1.89 KB
+@n8n/stores:build: ESM dist/useRootStore.js.map         10.60 KB
+@n8n/stores:build: ESM ⚡️ Build success in 101ms
+@n8n/stores:build: CJS dist/index.cjs                    211.00 B
+@n8n/stores:build: CJS dist/useAgentRequestStore.cjs     2.92 KB
+@n8n/stores:build: CJS dist/useRootStore.cjs             6.24 KB
+@n8n/stores:build: CJS dist/chunk-TI4WVUCB.cjs           1.12 KB
+@n8n/stores:build: CJS dist/constants.cjs                215.00 B
+@n8n/stores:build: CJS dist/chunk-LL25Q6HO.cjs           1.26 KB
+@n8n/stores:build: CJS dist/metaTagConfig.cjs            336.00 B
+@n8n/stores:build: CJS dist/useRootStore.cjs.map         9.68 KB
+@n8n/stores:build: CJS dist/chunk-TI4WVUCB.cjs.map       1.87 KB
+@n8n/stores:build: CJS dist/constants.cjs.map            266.00 B
+@n8n/stores:build: CJS dist/index.cjs.map                258.00 B
+@n8n/stores:build: CJS dist/metaTagConfig.cjs.map        284.00 B
+@n8n/stores:build: CJS dist/chunk-LL25Q6HO.cjs.map       2.42 KB
+@n8n/stores:build: CJS dist/useAgentRequestStore.cjs.map 5.05 KB
+@n8n/stores:build: CJS ⚡️ Build success in 109ms
+@n8n/i18n:build: DTS Build start
+@n8n/i18n:build: ESM dist/index.js              287.75 KB
+@n8n/i18n:build: ESM dist/utils.js              254.00 B
+@n8n/i18n:build: ESM dist/types.js              33.00 B
+@n8n/i18n:build: ESM dist/chunk-NITZKE2M.js     1.38 KB
+@n8n/i18n:build: ESM dist/utils.js.map          71.00 B
+@n8n/i18n:build: ESM dist/index.js.map          375.86 KB
+@n8n/i18n:build: ESM dist/types.js.map          71.00 B
+@n8n/i18n:build: ESM dist/chunk-NITZKE2M.js.map 3.41 KB
+@n8n/i18n:build: ESM ⚡️ Build success in 235ms
+@n8n/i18n:build: CJS dist/utils.cjs              438.00 B
+@n8n/i18n:build: CJS dist/types.cjs              47.00 B
+@n8n/i18n:build: CJS dist/index.cjs              289.41 KB
+@n8n/i18n:build: CJS dist/chunk-MOPMPZJO.cjs     1.55 KB
+@n8n/i18n:build: CJS dist/utils.cjs.map          284.00 B
+@n8n/i18n:build: CJS dist/types.cjs.map          215.00 B
+@n8n/i18n:build: CJS dist/index.cjs.map          409.65 KB
+@n8n/i18n:build: CJS dist/chunk-MOPMPZJO.cjs.map 4.28 KB
+@n8n/i18n:build: CJS ⚡️ Build success in 243ms
+@n8n/design-system:build: cache miss, executing b0c58df92bc06943
+@n8n/stores:build: DTS Build start
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.100.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/backend-common:build: cache miss, executing 45c525c8368adac5
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.23.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/design-system:build: vite v6.3.5 building for production...
+@n8n/design-system:build: transforming...
+@n8n/stores:build: DTS ⚡️ Build success in 3038ms
+@n8n/stores:build: DTS dist/metaTagConfig.d.cts        218.00 B
+@n8n/stores:build: DTS dist/useAgentRequestStore.d.cts 2.41 KB
+@n8n/stores:build: DTS dist/useRootStore.d.cts         7.42 KB
+@n8n/stores:build: DTS dist/constants.d.cts            1.52 KB
+@n8n/stores:build: DTS dist/index.d.cts                42.00 B
+@n8n/stores:build: DTS dist/metaTagConfig.d.ts         218.00 B
+@n8n/stores:build: DTS dist/useAgentRequestStore.d.ts  2.41 KB
+@n8n/stores:build: DTS dist/useRootStore.d.ts          7.42 KB
+@n8n/stores:build: DTS dist/constants.d.ts             1.52 KB
+@n8n/stores:build: DTS dist/index.d.ts                 41.00 B
+n8n-core:build: cache miss, executing f7e5904cb9a5b8a9
+@n8n/ai-workflow-builder:build: cache miss, executing 03726d8c7667ce0b
+n8n-core:build: 
+n8n-core:build: > n8n-core@1.112.0 build /Users/mick/Projects/bitovi/n8n/packages/core
+n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+n8n-core:build: 
+@n8n/ai-workflow-builder:build: 
+@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.23.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/ai-workflow-builder:build: 
+@n8n/design-system:build: Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+@n8n/design-system:build:   npx update-browserslist-db@latest
+@n8n/design-system:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+@n8n/db:build: cache miss, executing 6b2bab96cc545194
+n8n-nodes-base:build: cache miss, executing 1c4b6a286fc444ff
+@n8n/task-runner:build: cache miss, executing 58891179aee1fef7
+n8n-node-dev:build: cache miss, executing 60a49aadc4a42f5b
+n8n-node-dev:build: 
+n8n-node-dev:build: > n8n-node-dev@1.111.0 build /Users/mick/Projects/bitovi/n8n/packages/node-dev
+n8n-node-dev:build: > tsc --noEmit
+n8n-node-dev:build: 
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.111.0 build /Users/mick/Projects/bitovi/n8n/packages/nodes-base
+n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+n8n-nodes-base:build: 
+@n8n/db:build: 
+@n8n/db:build: > @n8n/db@0.24.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/db
+@n8n/db:build: > tsc -p tsconfig.build.json
+@n8n/db:build: 
+@n8n/task-runner:build: 
+@n8n/task-runner:build: > @n8n/task-runner@1.49.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/task-runner
+@n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/task-runner:build: 
+@n8n/design-system:build: ✓ 2671 modules transformed.
+@n8n/backend-test-utils:build: cache miss, executing 905087983767b635
+@n8n/backend-test-utils:build: 
+@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.16.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
+@n8n/backend-test-utils:build: 
+@n8n/design-system:build: [plugin vite:reporter] 
+@n8n/design-system:build: (!) /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/design-system:build: 
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: dist/design-system.css          105.77 kB │ gzip:  14.96 kB
+@n8n/design-system:build: dist/n8n-design-system.es.js  1,495.53 kB │ gzip: 392.63 kB
+@n8n/design-system:build: dist/design-system.css           105.77 kB │ gzip:  14.96 kB
+@n8n/design-system:build: dist/n8n-design-system.umd.js  1,106.11 kB │ gzip: 332.06 kB
+@n8n/design-system:build: ✓ built in 10.28s
+@n8n/chat:build: cache miss, executing d5dbd0a17b8982d8
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.58.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.58.0 build:vite /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/chat:build: vite v6.3.5 building for production...
+@n8n/i18n:build: DTS ⚡️ Build success in 13377ms
+@n8n/i18n:build: DTS dist/index.d.cts 192.04 KB
+@n8n/i18n:build: DTS dist/types.d.cts 272.59 KB
+@n8n/i18n:build: DTS dist/utils.d.cts 393.00 B
+@n8n/i18n:build: DTS dist/index.d.ts  192.03 KB
+@n8n/i18n:build: DTS dist/types.d.ts  272.59 KB
+@n8n/i18n:build: DTS dist/utils.d.ts  393.00 B
+@n8n/rest-api-client:build: cache miss, executing 2de175f9d4b2175a
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.16.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsup
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: CLI Building entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
+@n8n/rest-api-client:build: CLI Using tsconfig: tsconfig.json
+@n8n/rest-api-client:build: CLI tsup v8.5.0
+@n8n/rest-api-client:build: CLI Using tsup config: /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/rest-api-client/tsup.config.ts
+@n8n/rest-api-client:build: CLI Target: esnext
+@n8n/rest-api-client:build: CLI Cleaning output folder
+@n8n/rest-api-client:build: CJS Build start
+@n8n/rest-api-client:build: ESM Build start
+@n8n/rest-api-client:build: ESM dist/index.js                        5.49 KB
+@n8n/rest-api-client:build: ESM dist/chunk-QGI6VJ64.js               332.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-G754AW6V.js               3.02 KB
+@n8n/rest-api-client:build: ESM dist/chunk-54IORXZH.js               42.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-CNMQ7SBK.js               662.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-5WLGK635.js               340.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QBXXTACM.js               301.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-UGZNYI5O.js               247.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-Z3MR4DYO.js               594.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-DF4BVDPB.js               277.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-YRSZGEY2.js               257.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-VOYJTRVH.js               275.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-XTYCPRC6.js               1.65 KB
+@n8n/rest-api-client:build: ESM dist/api/cloudPlans.js               335.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-5FX7YWDX.js               331.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-EUNMFLT6.js               606.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-NXNKIFZJ.js               1.39 KB
+@n8n/rest-api-client:build: ESM dist/chunk-2SKC47YZ.js               814.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-7UYTDOT2.js               1.36 KB
+@n8n/rest-api-client:build: ESM dist/chunk-ZAUV75AT.js               796.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-WHNF366H.js               938.00 B
+@n8n/rest-api-client:build: ESM dist/api/eventbus.ee.js              440.00 B
+@n8n/rest-api-client:build: ESM dist/types.js                        33.00 B
+@n8n/rest-api-client:build: ESM dist/api/api-keys.js                 279.00 B
+@n8n/rest-api-client:build: ESM dist/api/ctas.js                     159.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-GDYGMQZG.js               279.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-TEZ2GX74.js               1.20 KB
+@n8n/rest-api-client:build: ESM dist/chunk-CTVC4ZIX.js               879.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-NTAW2A35.js               6.53 KB
+@n8n/rest-api-client:build: ESM dist/chunk-ZF3NQSOQ.js               2.47 KB
+@n8n/rest-api-client:build: ESM dist/utils.js                        438.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-FC2VBZ34.js               1.17 KB
+@n8n/rest-api-client:build: ESM dist/api/communityNodes.js           373.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QSM5AFBE.js               283.00 B
+@n8n/rest-api-client:build: ESM dist/api/versions.js                 199.00 B
+@n8n/rest-api-client:build: ESM dist/api/users.js                    874.00 B
+@n8n/rest-api-client:build: ESM dist/api/third-party-licenses.js     179.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflows.js                37.00 B
+@n8n/rest-api-client:build: ESM dist/api/webhooks.js                 147.00 B
+@n8n/rest-api-client:build: ESM dist/api/ui.js                       167.00 B
+@n8n/rest-api-client:build: ESM dist/api/orchestration.js            168.00 B
+@n8n/rest-api-client:build: ESM dist/api/prompts.js                  194.00 B
+@n8n/rest-api-client:build: ESM dist/api/npsSurvey.js                166.00 B
+@n8n/rest-api-client:build: ESM dist/api/settings.js                 147.00 B
+@n8n/rest-api-client:build: ESM dist/api/sso.js                      422.00 B
+@n8n/rest-api-client:build: ESM dist/api/roles.js                    138.00 B
+@n8n/rest-api-client:build: ESM dist/api/execution.js                37.00 B
+@n8n/rest-api-client:build: ESM dist/api/tags.js                     32.00 B
+@n8n/rest-api-client:build: ESM dist/api/templates.js                390.00 B
+@n8n/rest-api-client:build: ESM dist/api/events.js                   151.00 B
+@n8n/rest-api-client:build: ESM dist/api/ldap.js                     315.00 B
+@n8n/rest-api-client:build: ESM dist/api/mfa.js                      296.00 B
+@n8n/rest-api-client:build: ESM dist/api/index.js                    5.16 KB
+@n8n/rest-api-client:build: ESM dist/api/externalSecrets.ee.js       485.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflowHistory.js          212.00 B
+@n8n/rest-api-client:build: ESM dist/api/nodeTypes.js                666.00 B
+@n8n/rest-api-client:build: ESM dist/api/module-settings.js          166.00 B
+@n8n/rest-api-client:build: ESM dist/index.js.map                    71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QGI6VJ64.js.map           537.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-54IORXZH.js.map           71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-G754AW6V.js.map           8.54 KB
+@n8n/rest-api-client:build: ESM dist/chunk-5WLGK635.js.map           517.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QBXXTACM.js.map           515.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-VOYJTRVH.js.map           431.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-Z3MR4DYO.js.map           1.61 KB
+@n8n/rest-api-client:build: ESM dist/chunk-YRSZGEY2.js.map           485.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-XTYCPRC6.js.map           6.24 KB
+@n8n/rest-api-client:build: ESM dist/chunk-5FX7YWDX.js.map           641.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-NXNKIFZJ.js.map           2.77 KB
+@n8n/rest-api-client:build: ESM dist/chunk-EUNMFLT6.js.map           1.16 KB
+@n8n/rest-api-client:build: ESM dist/chunk-2SKC47YZ.js.map           1.70 KB
+@n8n/rest-api-client:build: ESM dist/chunk-ZAUV75AT.js.map           2.24 KB
+@n8n/rest-api-client:build: ESM dist/chunk-7UYTDOT2.js.map           2.57 KB
+@n8n/rest-api-client:build: ESM dist/api/cloudPlans.js.map           71.00 B
+@n8n/rest-api-client:build: ESM dist/types.js.map                    71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-WHNF366H.js.map           1.83 KB
+@n8n/rest-api-client:build: ESM dist/chunk-DF4BVDPB.js.map           695.00 B
+@n8n/rest-api-client:build: ESM dist/api/ctas.js.map                 71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-CNMQ7SBK.js.map           2.03 KB
+@n8n/rest-api-client:build: ESM dist/chunk-CTVC4ZIX.js.map           2.54 KB
+@n8n/rest-api-client:build: ESM dist/api/eventbus.ee.js.map          71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-NTAW2A35.js.map           12.54 KB
+@n8n/rest-api-client:build: ESM dist/chunk-GDYGMQZG.js.map           451.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-TEZ2GX74.js.map           2.31 KB
+@n8n/rest-api-client:build: ESM dist/chunk-UGZNYI5O.js.map           476.00 B
+@n8n/rest-api-client:build: ESM dist/utils.js.map                    71.00 B
+@n8n/rest-api-client:build: ESM dist/api/api-keys.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-ZF3NQSOQ.js.map           4.72 KB
+@n8n/rest-api-client:build: ESM dist/chunk-FC2VBZ34.js.map           2.06 KB
+@n8n/rest-api-client:build: ESM dist/api/communityNodes.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QSM5AFBE.js.map           521.00 B
+@n8n/rest-api-client:build: ESM dist/api/versions.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/api/users.js.map                71.00 B
+@n8n/rest-api-client:build: ESM dist/api/third-party-licenses.js.map 71.00 B
+@n8n/rest-api-client:build: ESM dist/api/ui.js.map                   71.00 B
+@n8n/rest-api-client:build: ESM dist/api/webhooks.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/api/orchestration.js.map        71.00 B
+@n8n/rest-api-client:build: ESM dist/api/npsSurvey.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/settings.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/api/prompts.js.map              71.00 B
+@n8n/rest-api-client:build: ESM dist/api/sso.js.map                  71.00 B
+@n8n/rest-api-client:build: ESM dist/api/roles.js.map                71.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflows.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/execution.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/tags.js.map                 71.00 B
+@n8n/rest-api-client:build: ESM dist/api/externalSecrets.ee.js.map   71.00 B
+@n8n/rest-api-client:build: ESM dist/api/events.js.map               71.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflowHistory.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/api/nodeTypes.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/index.js.map                71.00 B
+@n8n/rest-api-client:build: ESM dist/api/templates.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/ldap.js.map                 71.00 B
+@n8n/rest-api-client:build: ESM dist/api/mfa.js.map                  71.00 B
+@n8n/rest-api-client:build: ESM dist/api/module-settings.js.map      71.00 B
+@n8n/rest-api-client:build: ESM ⚡️ Build success in 109ms
+@n8n/rest-api-client:build: CJS dist/api/users.cjs                    1.40 KB
+@n8n/rest-api-client:build: CJS dist/api/versions.cjs                 336.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflows.cjs                51.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflowHistory.cjs          349.00 B
+@n8n/rest-api-client:build: CJS dist/api/npsSurvey.cjs                278.00 B
+@n8n/rest-api-client:build: CJS dist/api/ui.cjs                       279.00 B
+@n8n/rest-api-client:build: CJS dist/api/orchestration.cjs            280.00 B
+@n8n/rest-api-client:build: CJS dist/api/prompts.cjs                  331.00 B
+@n8n/rest-api-client:build: CJS dist/api/roles.cjs                    250.00 B
+@n8n/rest-api-client:build: CJS dist/api/settings.cjs                 259.00 B
+@n8n/rest-api-client:build: CJS dist/api/sso.cjs                      734.00 B
+@n8n/rest-api-client:build: CJS dist/api/webhooks.cjs                 259.00 B
+@n8n/rest-api-client:build: CJS dist/api/templates.cjs                652.00 B
+@n8n/rest-api-client:build: CJS dist/api/execution.cjs                51.00 B
+@n8n/rest-api-client:build: CJS dist/api/events.cjs                   263.00 B
+@n8n/rest-api-client:build: CJS dist/api/index.cjs                    8.13 KB
+@n8n/rest-api-client:build: CJS dist/api/ldap.cjs                     527.00 B
+@n8n/rest-api-client:build: CJS dist/api/externalSecrets.ee.cjs       747.00 B
+@n8n/rest-api-client:build: CJS dist/api/mfa.cjs                      533.00 B
+@n8n/rest-api-client:build: CJS dist/api/module-settings.cjs          278.00 B
+@n8n/rest-api-client:build: CJS dist/index.cjs                        8.75 KB
+@n8n/rest-api-client:build: CJS dist/chunk-UJOGK5LF.cjs               56.00 B
+@n8n/rest-api-client:build: CJS dist/api/nodeTypes.cjs                1003.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-ENT4JJQZ.cjs               468.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LPNDZTUA.cjs               459.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HZTJD4WD.cjs               4.14 KB
+@n8n/rest-api-client:build: CJS dist/chunk-6EOXPQPA.cjs               392.00 B
+@n8n/rest-api-client:build: CJS dist/api/tags.cjs                     46.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-BWR373PP.cjs               790.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LJBEN4XS.cjs               463.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UUMSEI6O.cjs               425.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-2MKCR5R2.cjs               359.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TKGDZLC6.cjs               806.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-YLVJV4AT.cjs               372.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HVYFFT5M.cjs               1.85 KB
+@n8n/rest-api-client:build: CJS dist/chunk-HVKVUYHG.cjs               1.92 KB
+@n8n/rest-api-client:build: CJS dist/chunk-FQANWCTG.cjs               1.20 KB
+@n8n/rest-api-client:build: CJS dist/chunk-E7DC7LJE.cjs               2.11 KB
+@n8n/rest-api-client:build: CJS dist/chunk-VFQIXX6C.cjs               393.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-6ZTX4I3G.cjs               1.28 KB
+@n8n/rest-api-client:build: CJS dist/chunk-ICKNSBDI.cjs               3.31 KB
+@n8n/rest-api-client:build: CJS dist/chunk-U3YVBLF7.cjs               404.00 B
+@n8n/rest-api-client:build: CJS dist/types.cjs                        47.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CG7MWVBX.cjs               854.00 B
+@n8n/rest-api-client:build: CJS dist/api/communityNodes.cjs           585.00 B
+@n8n/rest-api-client:build: CJS dist/api/cloudPlans.cjs               547.00 B
+@n8n/rest-api-client:build: CJS dist/api/api-keys.cjs                 491.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CK22VKYY.cjs               1.12 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TG35HP5C.cjs               417.00 B
+@n8n/rest-api-client:build: CJS dist/utils.cjs                        797.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJI6HACT.cjs               1.51 KB
+@n8n/rest-api-client:build: CJS dist/api/eventbus.ee.cjs              677.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TWENYPGK.cjs               1.60 KB
+@n8n/rest-api-client:build: CJS dist/api/ctas.cjs                     271.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-3IH3LKGT.cjs               1.13 KB
+@n8n/rest-api-client:build: CJS dist/chunk-76QO7IXK.cjs               8.01 KB
+@n8n/rest-api-client:build: CJS dist/api/third-party-licenses.cjs     291.00 B
+@n8n/rest-api-client:build: CJS dist/api/users.cjs.map                478.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflowHistory.cjs.map      327.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflows.cjs.map            253.00 B
+@n8n/rest-api-client:build: CJS dist/api/prompts.cjs.map              311.00 B
+@n8n/rest-api-client:build: CJS dist/api/npsSurvey.cjs.map            305.00 B
+@n8n/rest-api-client:build: CJS dist/api/ui.cjs.map                   291.00 B
+@n8n/rest-api-client:build: CJS dist/api/orchestration.cjs.map        313.00 B
+@n8n/rest-api-client:build: CJS dist/api/templates.cjs.map            365.00 B
+@n8n/rest-api-client:build: CJS dist/api/webhooks.cjs.map             303.00 B
+@n8n/rest-api-client:build: CJS dist/api/settings.cjs.map             303.00 B
+@n8n/rest-api-client:build: CJS dist/api/versions.cjs.map             313.00 B
+@n8n/rest-api-client:build: CJS dist/api/roles.cjs.map                297.00 B
+@n8n/rest-api-client:build: CJS dist/api/index.cjs.map                1.67 KB
+@n8n/rest-api-client:build: CJS dist/api/execution.cjs.map            253.00 B
+@n8n/rest-api-client:build: CJS dist/api/events.cjs.map               299.00 B
+@n8n/rest-api-client:build: CJS dist/api/sso.cjs.map                  374.00 B
+@n8n/rest-api-client:build: CJS dist/api/externalSecrets.ee.cjs.map   384.00 B
+@n8n/rest-api-client:build: CJS dist/api/ldap.cjs.map                 335.00 B
+@n8n/rest-api-client:build: CJS dist/index.cjs.map                    1.78 KB
+@n8n/rest-api-client:build: CJS dist/api/module-settings.cjs.map      317.00 B
+@n8n/rest-api-client:build: CJS dist/api/mfa.cjs.map                  343.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HZTJD4WD.cjs.map           8.34 KB
+@n8n/rest-api-client:build: CJS dist/chunk-LJBEN4XS.cjs.map           832.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-6EOXPQPA.cjs.map           1009.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJOGK5LF.cjs.map           255.00 B
+@n8n/rest-api-client:build: CJS dist/api/tags.cjs.map                 243.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LPNDZTUA.cjs.map           955.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-BWR373PP.cjs.map           1.86 KB
+@n8n/rest-api-client:build: CJS dist/chunk-HVYFFT5M.cjs.map           2.70 KB
+@n8n/rest-api-client:build: CJS dist/chunk-2MKCR5R2.cjs.map           780.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UUMSEI6O.cjs.map           819.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HVKVUYHG.cjs.map           2.68 KB
+@n8n/rest-api-client:build: CJS dist/chunk-YLVJV4AT.cjs.map           779.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-E7DC7LJE.cjs.map           6.79 KB
+@n8n/rest-api-client:build: CJS dist/chunk-ENT4JJQZ.cjs.map           852.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-6ZTX4I3G.cjs.map           2.35 KB
+@n8n/rest-api-client:build: CJS dist/chunk-VFQIXX6C.cjs.map           725.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-U3YVBLF7.cjs.map           815.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-FQANWCTG.cjs.map           3.02 KB
+@n8n/rest-api-client:build: CJS dist/api/api-keys.cjs.map             343.00 B
+@n8n/rest-api-client:build: CJS dist/types.cjs.map                    237.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CG7MWVBX.cjs.map           2.42 KB
+@n8n/rest-api-client:build: CJS dist/api/communityNodes.cjs.map       355.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJI6HACT.cjs.map           2.63 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TG35HP5C.cjs.map           761.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-ICKNSBDI.cjs.map           5.04 KB
+@n8n/rest-api-client:build: CJS dist/api/ctas.cjs.map                 295.00 B
+@n8n/rest-api-client:build: CJS dist/utils.cjs.map                    377.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CK22VKYY.cjs.map           2.06 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TWENYPGK.cjs.map           2.59 KB
+@n8n/rest-api-client:build: CJS dist/api/cloudPlans.cjs.map           347.00 B
+@n8n/rest-api-client:build: CJS dist/api/eventbus.ee.cjs.map          359.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-76QO7IXK.cjs.map           11.65 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TKGDZLC6.cjs.map           1.55 KB
+@n8n/rest-api-client:build: CJS dist/api/nodeTypes.cjs.map            396.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-3IH3LKGT.cjs.map           2.69 KB
+@n8n/rest-api-client:build: CJS dist/api/third-party-licenses.cjs.map 327.00 B
+@n8n/rest-api-client:build: CJS ⚡️ Build success in 111ms
+@n8n/rest-api-client:build: DTS Build start
+@n8n/rest-api-client:build: DTS ⚡️ Build success in 2897ms
+@n8n/rest-api-client:build: DTS dist/index.d.cts                    4.12 KB
+@n8n/rest-api-client:build: DTS dist/api/execution.d.cts            13.00 B
+@n8n/rest-api-client:build: DTS dist/api/index.d.cts                3.82 KB
+@n8n/rest-api-client:build: DTS dist/utils.d.cts                    1.99 KB
+@n8n/rest-api-client:build: DTS dist/api/api-keys.d.cts             809.00 B
+@n8n/rest-api-client:build: DTS dist/api/cloudPlans.d.cts           1.56 KB
+@n8n/rest-api-client:build: DTS dist/api/communityNodes.d.cts       785.00 B
+@n8n/rest-api-client:build: DTS dist/api/ctas.d.cts                 164.00 B
+@n8n/rest-api-client:build: DTS dist/api/eventbus.ee.d.cts          1.15 KB
+@n8n/rest-api-client:build: DTS dist/api/events.d.cts               151.00 B
+@n8n/rest-api-client:build: DTS dist/api/externalSecrets.ee.d.cts   1.13 KB
+@n8n/rest-api-client:build: DTS dist/api/ldap.d.cts                 1.64 KB
+@n8n/rest-api-client:build: DTS dist/api/mfa.d.cts                  850.00 B
+@n8n/rest-api-client:build: DTS dist/api/module-settings.d.cts      232.00 B
+@n8n/rest-api-client:build: DTS dist/api/nodeTypes.d.cts            1.87 KB
+@n8n/rest-api-client:build: DTS dist/api/npsSurvey.d.cts            233.00 B
+@n8n/rest-api-client:build: DTS dist/api/orchestration.d.cts        162.00 B
+@n8n/rest-api-client:build: DTS dist/api/prompts.d.cts              447.00 B
+@n8n/rest-api-client:build: DTS dist/api/roles.d.cts                195.00 B
+@n8n/rest-api-client:build: DTS dist/api/settings.d.cts             208.00 B
+@n8n/rest-api-client:build: DTS dist/api/sso.d.cts                  1.23 KB
+@n8n/rest-api-client:build: DTS dist/api/templates.d.cts            4.22 KB
+@n8n/rest-api-client:build: DTS dist/api/third-party-licenses.d.cts 167.00 B
+@n8n/rest-api-client:build: DTS dist/api/ui.d.cts                   287.00 B
+@n8n/rest-api-client:build: DTS dist/api/users.d.cts                5.32 KB
+@n8n/rest-api-client:build: DTS dist/api/versions.d.cts             1.26 KB
+@n8n/rest-api-client:build: DTS dist/api/webhooks.d.cts             385.00 B
+@n8n/rest-api-client:build: DTS dist/api/workflowHistory.d.cts      1021.00 B
+@n8n/rest-api-client:build: DTS dist/types.d.cts                    106.00 B
+@n8n/rest-api-client:build: DTS dist/api/workflows.d.cts            1.02 KB
+@n8n/rest-api-client:build: DTS dist/api/tags.d.cts                 149.00 B
+@n8n/rest-api-client:build: DTS dist/index.d.ts                     4.10 KB
+@n8n/rest-api-client:build: DTS dist/api/execution.d.ts             13.00 B
+@n8n/rest-api-client:build: DTS dist/api/index.d.ts                 3.79 KB
+@n8n/rest-api-client:build: DTS dist/utils.d.ts                     1.99 KB
+@n8n/rest-api-client:build: DTS dist/api/api-keys.d.ts              808.00 B
+@n8n/rest-api-client:build: DTS dist/api/cloudPlans.d.ts            1.56 KB
+@n8n/rest-api-client:build: DTS dist/api/communityNodes.d.ts        784.00 B
+@n8n/rest-api-client:build: DTS dist/api/ctas.d.ts                  163.00 B
+@n8n/rest-api-client:build: DTS dist/api/eventbus.ee.d.ts           1.14 KB
+@n8n/rest-api-client:build: DTS dist/api/events.d.ts                150.00 B
+@n8n/rest-api-client:build: DTS dist/api/externalSecrets.ee.d.ts    1.13 KB
+@n8n/rest-api-client:build: DTS dist/api/ldap.d.ts                  1.64 KB
+@n8n/rest-api-client:build: DTS dist/api/mfa.d.ts                   849.00 B
+@n8n/rest-api-client:build: DTS dist/api/module-settings.d.ts       231.00 B
+@n8n/rest-api-client:build: DTS dist/api/nodeTypes.d.ts             1.87 KB
+@n8n/rest-api-client:build: DTS dist/api/npsSurvey.d.ts             232.00 B
+@n8n/rest-api-client:build: DTS dist/api/orchestration.d.ts         161.00 B
+@n8n/rest-api-client:build: DTS dist/api/prompts.d.ts               447.00 B
+@n8n/rest-api-client:build: DTS dist/api/roles.d.ts                 194.00 B
+@n8n/rest-api-client:build: DTS dist/api/settings.d.ts              207.00 B
+@n8n/rest-api-client:build: DTS dist/api/sso.d.ts                   1.23 KB
+@n8n/rest-api-client:build: DTS dist/api/templates.d.ts             4.22 KB
+@n8n/rest-api-client:build: DTS dist/api/third-party-licenses.d.ts  166.00 B
+@n8n/rest-api-client:build: DTS dist/api/ui.d.ts                    286.00 B
+@n8n/rest-api-client:build: DTS dist/api/users.d.ts                 5.32 KB
+@n8n/rest-api-client:build: DTS dist/api/versions.d.ts              1.26 KB
+@n8n/rest-api-client:build: DTS dist/api/webhooks.d.ts              384.00 B
+@n8n/rest-api-client:build: DTS dist/api/workflowHistory.d.ts       1020.00 B
+@n8n/rest-api-client:build: DTS dist/types.d.ts                     106.00 B
+@n8n/rest-api-client:build: DTS dist/api/workflows.d.ts             1.02 KB
+@n8n/rest-api-client:build: DTS dist/api/tags.d.ts                  149.00 B
+@n8n/chat:build: transforming...
+@n8n/chat:build: ✓ 2772 modules transformed.
+@n8n/chat:build: [plugin vite:reporter] 
+@n8n/chat:build: (!) /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [vite:dts] Declaration files built in 7965ms.
+@n8n/chat:build: 
+@n8n/chat:build: dist/chat.css     61.94 kB │ gzip:   9.94 kB
+@n8n/chat:build: dist/chat.es.js  898.69 kB │ gzip: 243.12 kB
+@n8n/chat:build: dist/chat.css      61.94 kB │ gzip:   9.94 kB
+@n8n/chat:build: dist/chat.umd.js  649.39 kB │ gzip: 198.77 kB
+@n8n/chat:build: ✓ built in 15.31s
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.58.0 build:bundle /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.111.0 copy-nodes-json /Users/mick/Projects/bitovi/n8n/packages/nodes-base
+n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: 
+@n8n/chat:build: vite v6.3.5 building for production...
+n8n-nodes-base:build: Default locale set to: [35men[0m
+n8n-nodes-base:build: No translation required - Skipping translations build...
+n8n-nodes-base:build: (node:81174) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n-nodes-base:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@n8n/n8n-nodes-langchain:build: cache miss, executing f8a6b984fa712e50
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.112.0 build /Users/mick/Projects/bitovi/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.112.0 copy-nodes-json /Users/mick/Projects/bitovi/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.112.0 copy-tokenizer-json /Users/mick/Projects/bitovi/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+@n8n/chat:build: transforming...
+@n8n/n8n-nodes-langchain:build: (node:81322) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+@n8n/n8n-nodes-langchain:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+@n8n/chat:build: ✓ 2775 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [vite:dts] Declaration files built in 7752ms.
+@n8n/chat:build: 
+@n8n/chat:build: dist/chat.css            55.51 kB │ gzip:   8.83 kB
+@n8n/chat:build: dist/chat.bundle.es.js  863.00 kB │ gzip: 235.05 kB
+@n8n/chat:build: dist/chat.css             55.51 kB │ gzip:   8.83 kB
+@n8n/chat:build: dist/chat.bundle.umd.js  585.50 kB │ gzip: 191.59 kB
+@n8n/chat:build: ✓ built in 14.06s
+n8n-editor-ui:build: cache miss, executing 4311ec3ee2a46525
+n8n-editor-ui:build: 
+n8n-editor-ui:build: > n8n-editor-ui@1.113.0 build /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui
+n8n-editor-ui:build: > cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
+n8n-editor-ui:build: 
+n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+n8n-editor-ui:build:   npx update-browserslist-db@latest
+n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-editor-ui:build: vite v6.3.5 building for production...
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/base-path.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/posthog.init.js"> in "/index.html" can't be bundled without type="module" attribute
+n8n-editor-ui:build: 
+n8n-editor-ui:build: /{{BASE_PATH}}/static/prefers-color-scheme.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+n8n-editor-ui:build: transforming...
+n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+n8n-editor-ui:build:   npx update-browserslist-db@latest
+n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-editor-ui:build: [plugin vite:resolve] Module "os" has been externalized for browser compatibility, imported by "/Users/mick/Projects/bitovi/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+n8n-editor-ui:build: ✓ 6236 modules transformed.
+n8n-editor-ui:build: ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js (1195:36): Use of eval in "../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build: ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js (1221:38): Use of eval in "../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build: rendering chunks...
+n8n-editor-ui:build: [plugin vite:reporter] 
+n8n-editor-ui:build: (!) /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [plugin vite:reporter] 
+n8n-editor-ui:build: (!) /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/VirtualSchema.vue is dynamically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/RunData.vue?vue&type=script&setup=true&lang.ts but also statically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/ExpressionEditModal.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [plugin vite:reporter] 
+n8n-editor-ui:build: (!) /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/RunDataHtml.vue is dynamically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/RunData.vue?vue&type=script&setup=true&lang.ts but also statically imported by /Users/mick/Projects/bitovi/n8n/packages/frontend/editor-ui/src/components/BinaryDataDisplayEmbed.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
+n8n-editor-ui:build: 
+n8n-editor-ui:build: computing gzip size...
+n8n-editor-ui:build: [vite-plugin-static-copy] Copied 2 items.
+n8n-editor-ui:build: dist/index.html                                                                               1.08 kB │ gzip:     0.55 kB
+n8n-editor-ui:build: dist/assets/sqlite3-opfs-async-proxy-CYRFPDln.js                                             18.56 kB
+n8n-editor-ui:build: dist/assets/element-icons-B-tDfklg.woff                                                      28.20 kB
+n8n-editor-ui:build: dist/assets/element-icons-_lZGOqcG.ttf                                                       55.96 kB
+n8n-editor-ui:build: dist/assets/CommitMonoVariable-ytizKI8U.woff2                                                86.77 kB
+n8n-editor-ui:build: dist/assets/doppler-B__k0MeW.webp                                                           315.06 kB
+n8n-editor-ui:build: dist/assets/InterVariable-DiVDrmQJ.woff2                                                    352.24 kB
+n8n-editor-ui:build: dist/assets/InterVariable-Italic-FCBEiFp6.woff2                                             387.98 kB
+n8n-editor-ui:build: dist/assets/sqlite3-worker1-bundler-friendly-DF3WqBKq.js                                    433.40 kB
+n8n-editor-ui:build: dist/assets/worker-DZxlyUFA.js                                                              449.27 kB
+n8n-editor-ui:build: dist/assets/sqlite3-DBpDb1lf.wasm                                                           856.45 kB │ gzip:   392.20 kB
+n8n-editor-ui:build: dist/assets/typescript.worker-BcoVIdo9.js                                                10,169.75 kB
+n8n-editor-ui:build: dist/assets/EntityNotFound-DvXhVSfv.css                                                       0.19 kB │ gzip:     0.16 kB
+n8n-editor-ui:build: dist/assets/EntityUnAuthorised-BwDthxJU.css                                                   0.20 kB │ gzip:     0.16 kB
+n8n-editor-ui:build: dist/assets/AnimatedSpinner-ChSRgyeI.css                                                      0.57 kB │ gzip:     0.19 kB
+n8n-editor-ui:build: dist/assets/RunDataJsonActions-B2jW3_UG.css                                                   2.65 kB │ gzip:     0.53 kB
+n8n-editor-ui:build: dist/assets/InsightsPaywall-CE5W3W4m.css                                                      2.71 kB │ gzip:     0.57 kB
+n8n-editor-ui:build: dist/assets/AddDataStoreModal-B7jBhCjt.css                                                    2.74 kB │ gzip:     0.56 kB
+n8n-editor-ui:build: dist/assets/PageViewLayout-CJlzbuVj.css                                                       2.90 kB │ gzip:     0.63 kB
+n8n-editor-ui:build: dist/assets/NodeCreation-C4gQlPqI.css                                                         2.93 kB │ gzip:     0.66 kB
+n8n-editor-ui:build: dist/assets/ErrorView-DPS9icAS.css                                                            2.93 kB │ gzip:     0.63 kB
+n8n-editor-ui:build: dist/assets/SelectedItemsInfo-Dl4uynXs.css                                                    2.96 kB │ gzip:     0.65 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsLandingPage-Bm_hJMl4.css                                        2.97 kB │ gzip:     0.64 kB
+n8n-editor-ui:build: dist/assets/Tags-CCemj7t9.css                                                                 3.06 kB │ gzip:     0.68 kB
+n8n-editor-ui:build: dist/assets/SigninView-D57wRRHz.css                                                           3.06 kB │ gzip:     0.69 kB
+n8n-editor-ui:build: dist/assets/TemplatesCollectionView-2q1rzsOG.css                                              3.06 kB │ gzip:     0.67 kB
+n8n-editor-ui:build: dist/assets/SetupWorkflowFromTemplateView-ZPJL_m2F.css                                        3.09 kB │ gzip:     0.69 kB
+n8n-editor-ui:build: dist/assets/SettingsExternalSecrets-BAX9ENm9.css                                              3.10 kB │ gzip:     0.67 kB
+n8n-editor-ui:build: dist/assets/WorkflowPreview-CIOAVgxK.css                                                      3.18 kB │ gzip:     0.72 kB
+n8n-editor-ui:build: dist/assets/Logo-DaegEk2m.css                                                                 3.23 kB │ gzip:     0.70 kB
+n8n-editor-ui:build: dist/assets/SettingsLdapView-D0SUO3ai.css                                                     3.25 kB │ gzip:     0.71 kB
+n8n-editor-ui:build: dist/assets/DataStoreView-BqQv7QeU.css                                                        3.29 kB │ gzip:     0.80 kB
+n8n-editor-ui:build: dist/assets/TemplatesWorkflowView-DpIiJjJp.css                                                3.30 kB │ gzip:     0.75 kB
+n8n-editor-ui:build: dist/assets/RunDataSearch-2eEalFoi.css                                                        3.30 kB │ gzip:     0.73 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsInfoAccordion-53bC-IXN.css                                      3.32 kB │ gzip:     0.76 kB
+n8n-editor-ui:build: dist/assets/InsightsTableWorkflows-BTHSCwX8.css                                               3.35 kB │ gzip:     0.78 kB
+n8n-editor-ui:build: dist/assets/PrebuiltAgentTemplatesView-COxu7Iih.css                                           3.39 kB │ gzip:     0.76 kB
+n8n-editor-ui:build: dist/assets/SettingsSso-D4HKPLvV.css                                                          3.39 kB │ gzip:     0.71 kB
+n8n-editor-ui:build: dist/assets/SettingsPersonalView-Bt8bL5tJ.css                                                 3.57 kB │ gzip:     0.84 kB
+n8n-editor-ui:build: dist/assets/InfoAccordion-dxudNqVC.css                                                        3.73 kB │ gzip:     0.80 kB
+n8n-editor-ui:build: dist/assets/TableBase-Bf42_9Yp.css                                                            3.96 kB │ gzip:     0.84 kB
+n8n-editor-ui:build: dist/assets/RunDataParsedAiContent-wfIiKsq7.css                                               3.98 kB │ gzip:     0.77 kB
+n8n-editor-ui:build: dist/assets/InsightsDashboard-Bo0U18-6.css                                                    4.53 kB │ gzip:     1.11 kB
+n8n-editor-ui:build: dist/assets/FixedCollectionParameter-Dg7ZadcB.css                                             5.08 kB │ gzip:     0.97 kB
+n8n-editor-ui:build: dist/assets/TemplateDetails-DyUqVhf2.css                                                      5.40 kB │ gzip:     0.66 kB
+n8n-editor-ui:build: dist/assets/SettingsView-4yzof_Pb.css                                                         5.86 kB │ gzip:     0.81 kB
+n8n-editor-ui:build: dist/assets/InsightsSummary-DTFIhBF3.css                                                      5.86 kB │ gzip:     1.29 kB
+n8n-editor-ui:build: dist/assets/TemplatesView-Cyu28Dlo.css                                                        5.92 kB │ gzip:     0.84 kB
+n8n-editor-ui:build: dist/assets/CredentialsView-BAqjGrNq.css                                                      6.00 kB │ gzip:     0.90 kB
+n8n-editor-ui:build: dist/assets/SettingsLogStreamingView-CflEMmu9.css                                             6.01 kB │ gzip:     0.91 kB
+n8n-editor-ui:build: dist/assets/ProjectHeader-B5uv4DKo.css                                                        6.45 kB │ gzip:     1.02 kB
+n8n-editor-ui:build: dist/assets/SettingsCommunityNodesView-CAggjsaT.css                                           6.49 kB │ gzip:     0.98 kB
+n8n-editor-ui:build: dist/assets/SettingsApiView-k1hALKCX.css                                                      6.62 kB │ gzip:     1.06 kB
+n8n-editor-ui:build: dist/assets/SettingsSourceControl-BBxJXbFC.css                                                6.91 kB │ gzip:     1.05 kB
+n8n-editor-ui:build: dist/assets/SettingsUsageAndPlan-CfFJy6fo.css                                                 7.18 kB │ gzip:     1.15 kB
+n8n-editor-ui:build: dist/assets/RunDataJson-BH9HLoGC.css                                                          7.24 kB │ gzip:     1.11 kB
+n8n-editor-ui:build: dist/assets/WorkflowActivator-jI4sUqXL.css                                                    8.04 kB │ gzip:     0.79 kB
+n8n-editor-ui:build: dist/assets/NodeDetailsViewV2-J_3cfdea.css                                                    8.10 kB │ gzip:     1.40 kB
+n8n-editor-ui:build: dist/assets/VariablesView-BHcrNXsw.css                                                        8.37 kB │ gzip:     0.89 kB
+n8n-editor-ui:build: dist/assets/SettingsUsersView-BG7JdfYz.css                                                    9.31 kB │ gzip:     1.16 kB
+n8n-editor-ui:build: dist/assets/AuthView-CWVio_MZ.css                                                             9.45 kB │ gzip:     1.11 kB
+n8n-editor-ui:build: dist/assets/ExecutionsTime-etWexlXm.css                                                       9.93 kB │ gzip:     1.26 kB
+n8n-editor-ui:build: dist/assets/TemplateList-XNW-2Ugr.css                                                        10.08 kB │ gzip:     1.22 kB
+n8n-editor-ui:build: dist/assets/RunDataTable-BZzteeuj.css                                                        10.37 kB │ gzip:     1.79 kB
+n8n-editor-ui:build: dist/assets/ProjectBreadcrumb-B1Hnf5da.css                                                   10.57 kB │ gzip:     1.54 kB
+n8n-editor-ui:build: dist/assets/ExecutionsView-B5yiPX6U.css                                                      11.05 kB │ gzip:     1.06 kB
+n8n-editor-ui:build: dist/assets/EvaluationsView-BTyYfInB.css                                                     12.05 kB │ gzip:     1.29 kB
+n8n-editor-ui:build: dist/assets/EvaluationsRootView-B5AhHo41.css                                                 12.30 kB │ gzip:     1.29 kB
+n8n-editor-ui:build: dist/assets/ResourcesListLayout-vTwRIDRz.css                                                 13.55 kB │ gzip:     1.52 kB
+n8n-editor-ui:build: dist/assets/NodeDetailsView-CBYV4Rrz.css                                                     13.87 kB │ gzip:     1.64 kB
+n8n-editor-ui:build: dist/assets/WorkflowHistory-7Ad0Va7M.css                                                     14.46 kB │ gzip:     1.60 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsPreview-Bk3NJMZf.css                                           15.42 kB │ gzip:     1.93 kB
+n8n-editor-ui:build: dist/assets/ProjectSettings-B5z1mrGW.css                                                     15.71 kB │ gzip:     1.58 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsView-DqWqyiNg.css                                              16.48 kB │ gzip:     1.84 kB
+n8n-editor-ui:build: dist/assets/TemplatesSearchView-DETaMpDt.css                                                 19.73 kB │ gzip:     1.97 kB
+n8n-editor-ui:build: dist/assets/WorkerView-BrSoYcbf.css                                                          20.13 kB │ gzip:     1.39 kB
+n8n-editor-ui:build: dist/assets/MainSidebar-a73tcV9E.css                                                         25.16 kB │ gzip:     2.45 kB
+n8n-editor-ui:build: dist/assets/NodeView-Chs2u0U9.css                                                            26.01 kB │ gzip:     2.70 kB
+n8n-editor-ui:build: dist/assets/MainHeader-6lIHYgJG.css                                                          28.60 kB │ gzip:     2.56 kB
+n8n-editor-ui:build: dist/assets/DataStoreDetailsView-Bc-J9ZrW.css                                                29.66 kB │ gzip:     2.67 kB
+n8n-editor-ui:build: dist/assets/WorkflowsView-MF9XcT0u.css                                                       30.24 kB │ gzip:     2.56 kB
+n8n-editor-ui:build: dist/assets/TriggerPanel-DiD8pi0I.css                                                        34.36 kB │ gzip:     3.23 kB
+n8n-editor-ui:build: dist/assets/NodeCreator-COTYfPaK.css                                                         35.57 kB │ gzip:     3.12 kB
+n8n-editor-ui:build: dist/assets/LogsPanel-CUsQIBpC.css                                                           87.77 kB │ gzip:     6.86 kB
+n8n-editor-ui:build: dist/assets/index-CpPc1kM8.css                                                            1,460.19 kB │ gzip:   120.41 kB
+n8n-editor-ui:build: dist/assets/CollectionParameter-C_GmtY-Q.js                                                   0.09 kB │ gzip:     0.10 kB
+n8n-editor-ui:build: dist/assets/canvas-CMJ7N9OV.js                                                                0.14 kB │ gzip:     0.12 kB
+n8n-editor-ui:build: dist/assets/global-link-actions-D-bLP3Vo.js                                                   0.16 kB │ gzip:     0.13 kB
+n8n-editor-ui:build: dist/assets/_commonjs-dynamic-modules-TGKdzP3c.js                                             0.29 kB │ gzip:     0.21 kB
+n8n-editor-ui:build: dist/assets/useProjectPages-JRxJcOLU.js                                                       0.62 kB │ gzip:     0.31 kB
+n8n-editor-ui:build: dist/assets/PageViewLayout-kGA-IzQk.js                                                        0.84 kB │ gzip:     0.43 kB
+n8n-editor-ui:build: dist/assets/DemoFooter-CmFK5aWV.js                                                            0.86 kB │ gzip:     0.48 kB
+n8n-editor-ui:build: dist/assets/SignoutView-BuVgvAJ8.js                                                           0.86 kB │ gzip:     0.46 kB
+n8n-editor-ui:build: dist/assets/TableBase-DCTkwVcc.js                                                             0.86 kB │ gzip:     0.41 kB
+n8n-editor-ui:build: dist/assets/pickBy-DwpOMGkC.js                                                                0.97 kB │ gzip:     0.42 kB
+n8n-editor-ui:build: dist/assets/useBeforeUnload-D9k6laKn.js                                                       1.29 kB │ gzip:     0.53 kB
+n8n-editor-ui:build: dist/assets/EmptySharedSectionActionBox.vue_vue_type_script_setup_true_lang-BGqFsA06.js       1.41 kB │ gzip:     0.69 kB
+n8n-editor-ui:build: dist/assets/AnimatedSpinner-CwEIHxAk.js                                                       1.53 kB │ gzip:     0.57 kB
+n8n-editor-ui:build: dist/assets/ConsumedTokensDetails.vue_vue_type_script_setup_true_lang-BS_poVRp.js             1.68 kB │ gzip:     0.58 kB
+n8n-editor-ui:build: dist/assets/InsightsChartFailed-C-OLHgoZ.js                                                   1.82 kB │ gzip:     0.81 kB
+n8n-editor-ui:build: dist/assets/PushConnectionTracker.vue_vue_type_script_setup_true_lang-BpousjwI.js             1.91 kB │ gzip:     0.78 kB
+n8n-editor-ui:build: dist/assets/InsightsChartTotal-C0SRGbhr.js                                                    1.93 kB │ gzip:     0.81 kB
+n8n-editor-ui:build: dist/assets/InsightsChartFailureRate-CxcPZbl-.js                                              1.99 kB │ gzip:     0.88 kB
+n8n-editor-ui:build: dist/assets/SamlOnboarding-Cl-idc1M.js                                                        2.13 kB │ gzip:     0.85 kB
+n8n-editor-ui:build: dist/assets/AnnotationTagsDropdown.ee.vue_vue_type_script_setup_true_lang-1C07oJVr.js         2.14 kB │ gzip:     0.84 kB
+n8n-editor-ui:build: dist/assets/InsightsPaywall-DQPJrfIo.js                                                       2.17 kB │ gzip:     0.77 kB
+n8n-editor-ui:build: dist/assets/WorkflowOnboardingView-BjaxtLWX.js                                                2.17 kB │ gzip:     0.78 kB
+n8n-editor-ui:build: dist/assets/InsightsChartAverageRuntime-C5B2bSWa.js                                           2.20 kB │ gzip:     0.96 kB
+n8n-editor-ui:build: dist/assets/SetupWorkflowCredentialsButton-Cp10orY4.js                                        2.33 kB │ gzip:     0.90 kB
+n8n-editor-ui:build: dist/assets/SelectedItemsInfo-B8R8u9mR.js                                                     2.34 kB │ gzip:     0.85 kB
+n8n-editor-ui:build: dist/assets/InsightsChartTimeSaved-JZc3rhNJ.js                                                2.43 kB │ gzip:     1.03 kB
+n8n-editor-ui:build: dist/assets/Tags-T9TcBw-T.js                                                                  2.54 kB │ gzip:     1.04 kB
+n8n-editor-ui:build: dist/assets/ErrorView-BpX8gADb.js                                                             2.67 kB │ gzip:     0.96 kB
+n8n-editor-ui:build: dist/assets/TemplatesView-C_UCVAZ1.js                                                         2.84 kB │ gzip:     0.95 kB
+n8n-editor-ui:build: dist/assets/EntityUnAuthorised-Dnadxv5W.js                                                    3.05 kB │ gzip:     1.07 kB
+n8n-editor-ui:build: dist/assets/DataStoreActions.vue_vue_type_script_setup_true_lang-BpVVYiaa.js                  3.09 kB │ gzip:     1.07 kB
+n8n-editor-ui:build: dist/assets/templateActions-kAujYJ39.js                                                       3.14 kB │ gzip:     1.02 kB
+n8n-editor-ui:build: dist/assets/ForgotMyPasswordView-B1D6BYMa.js                                                  3.20 kB │ gzip:     1.13 kB
+n8n-editor-ui:build: dist/assets/SetupView-DtyT549t.js                                                             3.22 kB │ gzip:     1.04 kB
+n8n-editor-ui:build: dist/assets/EntityNotFound-DSdfNt9v.js                                                        3.41 kB │ gzip:     0.98 kB
+n8n-editor-ui:build: dist/assets/useWorkflowActivate-CUH4wVtl.js                                                   4.05 kB │ gzip:     1.17 kB
+n8n-editor-ui:build: dist/assets/RunDataSearch-CdX4WSnJ.js                                                         4.05 kB │ gzip:     1.43 kB
+n8n-editor-ui:build: dist/assets/SignupView-DdqIFDX5.js                                                            4.33 kB │ gzip:     1.36 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsLandingPage-DaTbmO9a.js                                         4.46 kB │ gzip:     1.29 kB
+n8n-editor-ui:build: dist/assets/AddDataStoreModal-oOwQTQRY.js                                                     4.97 kB │ gzip:     1.54 kB
+n8n-editor-ui:build: dist/assets/useExecutionDebugging-CONZYo6L.js                                                 5.04 kB │ gzip:     1.65 kB
+n8n-editor-ui:build: dist/assets/ChangePasswordView-B6BXPA8O.js                                                    5.04 kB │ gzip:     1.51 kB
+n8n-editor-ui:build: dist/assets/Logo-B1F6CVzG.js                                                                  5.06 kB │ gzip:     1.97 kB
+n8n-editor-ui:build: dist/assets/index-sVfs8TAL.js                                                                 5.11 kB │ gzip:     1.53 kB
+n8n-editor-ui:build: dist/assets/chartjs.utils-BMMaI3RI.js                                                         5.29 kB │ gzip:     1.01 kB
+n8n-editor-ui:build: dist/assets/InfoAccordion-BdFKRveI.js                                                         5.56 kB │ gzip:     1.55 kB
+n8n-editor-ui:build: dist/assets/TemplateDetails-BZ5LQRWW.js                                                       7.08 kB │ gzip:     1.78 kB
+n8n-editor-ui:build: dist/assets/NodeCreation-D-rh77xr.js                                                          7.49 kB │ gzip:     2.15 kB
+n8n-editor-ui:build: dist/assets/WorkflowPreview-CxkytCbE.js                                                       8.06 kB │ gzip:     2.08 kB
+n8n-editor-ui:build: dist/assets/TemplatesWorkflowView-DjOCIEso.js                                                 8.20 kB │ gzip:     2.14 kB
+n8n-editor-ui:build: dist/assets/TemplatesCollectionView-0NcathZw.js                                               8.38 kB │ gzip:     2.27 kB
+n8n-editor-ui:build: dist/assets/RunDataJson-B1VDbkS7.js                                                           8.53 kB │ gzip:     2.53 kB
+n8n-editor-ui:build: dist/assets/PrebuiltAgentTemplatesView-DQfWjISD.js                                            8.53 kB │ gzip:     1.70 kB
+n8n-editor-ui:build: dist/assets/AuthView-DLRgxG6R.js                                                              8.72 kB │ gzip:     2.18 kB
+n8n-editor-ui:build: dist/assets/SettingsView-BGi4N38s.js                                                          9.18 kB │ gzip:     2.27 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsInfoAccordion-pRFT27Xh.js                                       9.21 kB │ gzip:     2.26 kB
+n8n-editor-ui:build: dist/assets/InsightsTableWorkflows-BwtqYpdc.js                                                9.46 kB │ gzip:     2.60 kB
+n8n-editor-ui:build: dist/assets/InsightsSummary-BpvHAVvU.js                                                       9.87 kB │ gzip:     2.49 kB
+n8n-editor-ui:build: dist/assets/RunDataParsedAiContent-UHRZ1yTq.js                                               11.99 kB │ gzip:     3.55 kB
+n8n-editor-ui:build: dist/assets/SettingsExternalSecrets-zupYp6_8.js                                              12.31 kB │ gzip:     2.98 kB
+n8n-editor-ui:build: dist/assets/SetupWorkflowFromTemplateView-0zzHp2Hf.js                                        12.87 kB │ gzip:     3.16 kB
+n8n-editor-ui:build: dist/assets/DataStoreView-DNK5mvFB.js                                                        13.43 kB │ gzip:     3.22 kB
+n8n-editor-ui:build: dist/assets/TemplateList-yCRJjK0y.js                                                         14.06 kB │ gzip:     3.20 kB
+n8n-editor-ui:build: dist/assets/ProjectBreadcrumb-DXv_Ikcr.js                                                    14.84 kB │ gzip:     3.52 kB
+n8n-editor-ui:build: dist/assets/FixedCollectionParameter-mOkphvl_.js                                             14.99 kB │ gzip:     3.36 kB
+n8n-editor-ui:build: dist/assets/SigninView-DUT-4bvB.js                                                           15.38 kB │ gzip:     3.81 kB
+n8n-editor-ui:build: dist/assets/SettingsApiView-CHzRLmeW.js                                                      15.60 kB │ gzip:     3.74 kB
+n8n-editor-ui:build: dist/assets/SettingsUsageAndPlan-rEwfXV_r.js                                                 15.99 kB │ gzip:     3.52 kB
+n8n-editor-ui:build: dist/assets/InsightsDashboard-LJe8BvwO.js                                                    18.23 kB │ gzip:     4.55 kB
+n8n-editor-ui:build: dist/assets/SettingsCommunityNodesView-B8Tn7u_D.js                                           18.59 kB │ gzip:     3.99 kB
+n8n-editor-ui:build: dist/assets/WorkflowActivator-JjvpPVHX.js                                                    18.61 kB │ gzip:     4.56 kB
+n8n-editor-ui:build: dist/assets/readyToRunWorkflowsV2.store-lJMDtpK_.js                                          18.72 kB │ gzip:     3.75 kB
+n8n-editor-ui:build: dist/assets/SettingsPersonalView-de0Eb41z.js                                                 19.28 kB │ gzip:     3.98 kB
+n8n-editor-ui:build: dist/assets/SettingsLogStreamingView-gPU25SAt.js                                             19.85 kB │ gzip:     4.40 kB
+n8n-editor-ui:build: dist/assets/EvaluationsView-DCs2i5-n.js                                                      20.80 kB │ gzip:     4.89 kB
+n8n-editor-ui:build: dist/assets/VariablesView-DRMWRN7r.js                                                        22.07 kB │ gzip:     5.20 kB
+n8n-editor-ui:build: dist/assets/SettingsSourceControl-CyYqkR2d.js                                                22.23 kB │ gzip:     4.09 kB
+n8n-editor-ui:build: dist/assets/CredentialsView-BN4VUQCq.js                                                      22.34 kB │ gzip:     5.56 kB
+n8n-editor-ui:build: dist/assets/usePushConnection-QvTgRW0t.js                                                    23.27 kB │ gzip:     5.27 kB
+n8n-editor-ui:build: dist/assets/ProjectHeader-CkS2BoXf.js                                                        23.47 kB │ gzip:     5.29 kB
+n8n-editor-ui:build: dist/assets/WorkerView-DElKwOwF.js                                                           24.92 kB │ gzip:     5.46 kB
+n8n-editor-ui:build: dist/assets/SettingsSso-BHnsWha8.js                                                          25.13 kB │ gzip:     4.65 kB
+n8n-editor-ui:build: dist/assets/buttons.esm-BOkmSohe.js                                                          25.99 kB │ gzip:     7.57 kB
+n8n-editor-ui:build: dist/assets/EvaluationsRootView-B5D7Yp2j.js                                                  27.52 kB │ gzip:     4.88 kB
+n8n-editor-ui:build: dist/assets/ExecutionsTime.vue_vue_type_script_setup_true_lang-CijIY8P_.js                   27.87 kB │ gzip:     5.01 kB
+n8n-editor-ui:build: dist/assets/WorkflowHistory-BSNfmhFm.js                                                      33.13 kB │ gzip:     7.06 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsPreview-CbtD7l6s.js                                            33.32 kB │ gzip:     6.32 kB
+n8n-editor-ui:build: dist/assets/SettingsUsersView-C36WerbY.js                                                    35.79 kB │ gzip:     7.10 kB
+n8n-editor-ui:build: dist/assets/RunDataTable-RQ5c5ryc.js                                                         37.49 kB │ gzip:     7.48 kB
+n8n-editor-ui:build: dist/assets/WorkflowExecutionsView-Ci4OlHPw.js                                               37.54 kB │ gzip:     7.62 kB
+n8n-editor-ui:build: dist/assets/ExecutionsView-BgssH5kx.js                                                       40.24 kB │ gzip:     7.81 kB
+n8n-editor-ui:build: dist/assets/NodeDetailsViewV2-CYex5LhN.js                                                    43.03 kB │ gzip:     9.59 kB
+n8n-editor-ui:build: dist/assets/NodeDetailsView-CTeGj1-J.js                                                      47.86 kB │ gzip:    10.10 kB
+n8n-editor-ui:build: dist/assets/core-DuUmZrGj.js                                                                 48.90 kB │ gzip:    12.84 kB
+n8n-editor-ui:build: dist/assets/ResourcesListLayout-tZds6AqM.js                                                  50.42 kB │ gzip:    10.36 kB
+n8n-editor-ui:build: dist/assets/TemplatesSearchView-DOVvvmCf.js                                                  51.94 kB │ gzip:    11.16 kB
+n8n-editor-ui:build: dist/assets/ProjectSettings-BnneIMQ-.js                                                      57.65 kB │ gzip:    11.96 kB
+n8n-editor-ui:build: dist/assets/MainSidebar-BybhSdSu.js                                                          62.99 kB │ gzip:    12.34 kB
+n8n-editor-ui:build: dist/assets/TriggerPanel-BWETQ_UP.js                                                         69.22 kB │ gzip:    13.39 kB
+n8n-editor-ui:build: dist/assets/readyToRunWorkflows.store-90rjX1X_.js                                            71.72 kB │ gzip:    15.08 kB
+n8n-editor-ui:build: dist/assets/NodeCreator-C8Bn1Ejw.js                                                          72.98 kB │ gzip:    14.96 kB
+n8n-editor-ui:build: dist/assets/SettingsLdapView-BKx1LtQt.js                                                     82.77 kB │ gzip:    14.11 kB
+n8n-editor-ui:build: dist/assets/MainHeader-2VcLxnSx.js                                                           85.79 kB │ gzip:    18.02 kB
+n8n-editor-ui:build: dist/assets/NodeView-BdHikDil.js                                                            126.31 kB │ gzip:    25.43 kB
+n8n-editor-ui:build: dist/assets/WorkflowsView-BI2VoutN.js                                                       141.78 kB │ gzip:    23.86 kB
+n8n-editor-ui:build: dist/assets/LogsPanel-B0mYoRQc.js                                                           198.57 kB │ gzip:    42.08 kB
+n8n-editor-ui:build: dist/assets/polyfills-BhZQ1FDI.js                                                           220.58 kB │ gzip:    45.01 kB
+n8n-editor-ui:build: dist/assets/RunDataJsonActions-DSTkXf3S.js                                                  222.47 kB │ gzip:    39.73 kB
+n8n-editor-ui:build: dist/assets/useImportCurlCommand-B8sqzpUX.js                                                352.46 kB │ gzip:    65.69 kB
+n8n-editor-ui:build: dist/assets/DataStoreDetailsView-BO7LxQnC.js                                              1,810.39 kB │ gzip:   391.34 kB
+n8n-editor-ui:build: dist/assets/index-CjQCWUSO.js                                                            15,792.35 kB │ gzip: 3,378.19 kB
+n8n-editor-ui:build: ✓ built in 1m 29s
+n8n:build: cache miss, executing 5487de0968e5f361
+n8n:build: 
+n8n:build: > n8n@1.113.0 build /Users/mick/Projects/bitovi/n8n/packages/cli
+n8n:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+n8n:build: 
+n8n:build: 
+n8n:build: > n8n@1.113.0 build:data /Users/mick/Projects/bitovi/n8n/packages/cli
+n8n:build: > node scripts/build.mjs
+n8n:build: 
+n8n:build: (node:82033) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+n8n:build: (node:82069) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+n8n:build: (node:82084) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+n8n:build: (node:82101) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+n8n:build: (node:82118) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n:build: (Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Tasks:    40 successful, 40 total
+Cached:    0 cached, 40 total
+  Time:    2m37.406s 
+

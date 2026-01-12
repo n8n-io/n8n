@@ -68,6 +68,7 @@ import {
 	VIEWS,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_IMPORT_MAPPING_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -845,6 +846,16 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	}
 
 	if (!workflowData) {
+		return;
+	}
+
+	// If workflow is empty, show the import mapping modal for review
+	const isWorkflowEmpty = editableWorkflow.value.nodes.length === 0;
+	if (isWorkflowEmpty && workflowData.nodes && workflowData.nodes.length > 0) {
+		uiStore.openModalWithData({
+			name: WORKFLOW_IMPORT_MAPPING_MODAL_KEY,
+			data: { workflowData },
+		});
 		return;
 	}
 

@@ -1,0 +1,163 @@
+{
+  "name": "Workflow Analyzer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b7d56769-a8aa-4acf-af91-14408dffbf9e",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "id": "8c4386cb-bb90-4480-9ad0-9048a4d70d6f",
+      "name": "n8n",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -96
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "q83PqJI7mWoHjU40",
+          "name": "n8n-internal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $input.all();\nreturn workflows.map(w => {\n  const json = w.json;\n  const nodes = json.nodes || [];\n  const usesN8nNode = nodes.some(n => n.type === \"n8n-nodes-base.n8n\");\n  const usesCredentials = nodes.some(n => n.credentials && Object.keys(n.credentials).length > 0);\n  return {\n    json: {\n      name: json.name,\n      id: json.id,\n      usesN8nNode,\n      usesCredentials\n    }\n  };\n});"
+      },
+      "id": "a29a49dc-9458-4010-9e6d-da3e7a8dece5",
+      "name": "Analyze Workflows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "IgLojmEV4eNz6N2H",
+          "mode": "list",
+          "cachedResultName": "sub flow",
+          "cachedResultUrl": "/workflow/IgLojmEV4eNz6N2H"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "test"
+          },
+          "matchingColumns": [
+            "query"
+          ],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        -96
+      ],
+      "id": "436de097-5851-4b16-90cb-aac372220bf3",
+      "name": "Call 'sub flow'"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -96
+      ],
+      "id": "0c577786-1f23-4096-82ea-c5576a176531",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [
+        [
+          {
+            "node": "n8n",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n": {
+      "main": [
+        [
+          {
+            "node": "Analyze Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Workflows": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Call 'sub flow'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "85c28383-3d6e-4dc3-9b8f-7bebc6f46afc",
+  "meta": {
+    "instanceId": "a0ac07f61a07f5a4b59b67e91b7c4ab490b4174d130e4a776fcddda08cf95c32"
+  },
+  "id": "Bu8PKZHEmKsqPrOf",
+  "tags": []
+}

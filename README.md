@@ -1,8 +1,24 @@
-![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+# n8n - Bitovi Fork
+
+> [!NOTE]
+> This is a Bitovi-maintained fork of n8n. We use this for internal development, testing new features, and contributing back to the n8n community.
+
+## 🚀 Antigravity-First Startup Guide
+
+If you're use Google's Antigravity, you can get up and running in seconds.
+
+1. **Download Antigravity**: Ensure you have Antigravity installed and configured.
+2. **Open the Repo**: Open this repository in your IDE with Antigravity enabled.
+3. **Start the App**: Just tell Antigravity: `/n8n: Start Development Mode`.
+4. **Setup**: Access http://localhost:5678. You will be prompted to create an owner account on your first run.
+5. **speak Features into Existence**: Once running, you can ask Antigravity to implement new nodes, fix bugs, or enhance the UI.
+5. **Verify**: Use `/n8n: Run Tests` to ensure everything is working.
+6. **Commit**: Once your changes are verified, commit them and open a PR!
+
+---
 
 # n8n - Secure Workflow Automation for Technical Teams
 
-n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
 
