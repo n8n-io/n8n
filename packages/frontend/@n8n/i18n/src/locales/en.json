@@ -4315,5 +4315,13 @@
 	"commandBar.chat.deleteCurrent": "Delete current chat",
 	"commandBar.chat.deleteSession": "Delete \"{title}\"",
 	"commandBar.chat.open.searchPlaceholder": "Search by f title...",
-	"commandBar.chat.stop": "Stop message generation"
+	"commandBar.chat.stop": "Stop message generation",
+	"browserNotifications.permission.request.title": "Enable desktop notifications",
+	"browserNotifications.permission.request.message": "Get notified when your workflows complete or need attention.",
+	"browserNotifications.permission.request.allow": "Allow notifications",
+	"browserNotifications.permission.request.dismiss": "Not now",
+	"browserNotifications.permission.denied.title": "Notifications blocked",
+	"browserNotifications.permission.denied.message": "Desktop notifications are blocked. To enable them, click the lock icon in your browser's address bar and allow notifications.",
+	"browserNotifications.permission.denied.checkAgain": "Check again",
+	"browserNotifications.permission.granted.message": "Desktop notifications are enabled"
 }
