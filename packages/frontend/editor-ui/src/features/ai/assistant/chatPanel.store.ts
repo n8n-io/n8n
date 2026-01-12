@@ -10,6 +10,7 @@ import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.sto
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
 
@@ -67,6 +68,12 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		chatPanelStateStore.isOpen = true;
 
 		if (chatPanelStateStore.activeMode === 'builder') {
+			// Request notification permission when opening builder mode
+			const { requestPermission, canPrompt } = useBrowserNotifications();
+			if (canPrompt.value) {
+				void requestPermission();
+			}
+
 			const builderStore = useBuilderStore();
 			if (!builderStore.streaming && builderStore.chatMessages.length === 0) {
 				void builderStore.fetchBuilderCredits();

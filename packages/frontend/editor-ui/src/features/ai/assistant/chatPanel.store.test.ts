@@ -26,6 +26,20 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRoute: () => mockRoute,
 }));
 
+// Mock useBrowserNotifications
+const mockRequestPermission = vi
+	.fn()
+	.mockResolvedValue({ permission: 'granted', wasRequested: true });
+const mockCanPrompt = { value: false };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		requestPermission: mockRequestPermission,
+		canPrompt: mockCanPrompt,
+		isEnabled: { value: false },
+		showNotification: vi.fn(),
+	}),
+}));
+
 // Mock window.innerWidth
 Object.defineProperty(window, 'innerWidth', {
 	writable: true,
@@ -43,6 +57,10 @@ describe('chatPanel.store', () => {
 	beforeEach(() => {
 		vi.clearAllTimers();
 		vi.useFakeTimers();
+
+		// Reset browser notification mocks
+		mockRequestPermission.mockClear();
+		mockCanPrompt.value = false;
 
 		setActivePinia(
 			createTestingPinia({
@@ -475,6 +493,46 @@ describe('chatPanel.store', () => {
 
 			// Builder chat should be reset since we're not streaming
 			expect(builderStore.resetBuilderChat).toHaveBeenCalled();
+		});
+	});
+
+	describe('browser notification permissions', () => {
+		it('should request notification permission when opening builder mode and canPrompt is true', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			mockCanPrompt.value = true;
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(mockRequestPermission).toHaveBeenCalled();
+		});
+
+		it('should NOT request notification permission when canPrompt is false', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			mockCanPrompt.value = false;
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(mockRequestPermission).not.toHaveBeenCalled();
+		});
+
+		it('should NOT request notification permission when opening assistant mode', async () => {
+			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0];
+			mockCanPrompt.value = true;
+
+			await chatPanelStore.open({ mode: 'assistant' });
+
+			expect(mockRequestPermission).not.toHaveBeenCalled();
+		});
+
+		it('should still open builder panel even if permission request is denied', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			mockCanPrompt.value = true;
+			mockRequestPermission.mockResolvedValueOnce({ permission: 'denied', wasRequested: true });
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.isOpen).toBe(true);
+			expect(chatPanelStateStore.activeMode).toBe('builder');
 		});
 	});
 });
