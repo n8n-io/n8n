@@ -304,7 +304,7 @@ describe('WorkflowRepository', () => {
 
 				// Workflow 2: Has dependencies but with outdated version
 				const workflow2 = await createWorkflow({ versionCounter: 10 });
-				const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
+				const dependencies2 = new WorkflowDependencies(workflow2.id, 7, 'draft');
 				dependencies2.add({
 					dependencyType: 'credentialId',
 					dependencyKey: 'cred-123',
@@ -317,7 +317,7 @@ describe('WorkflowRepository', () => {
 
 				// Workflow 3: Has up-to-date dependencies
 				const workflow3 = await createWorkflow({ versionCounter: 15 });
-				const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
+				const dependencies3 = new WorkflowDependencies(workflow3.id, 15, 'draft');
 				dependencies3.add({
 					dependencyType: 'nodeType',
 					dependencyKey: 'n8n-nodes-base.httpRequest',
