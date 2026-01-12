@@ -226,7 +226,7 @@ export const setupTestServer = ({
 					}
 
 					case 'sourceControl':
-						await import('@/environments.ee/source-control/source-control.controller.ee');
+						await import('@/modules/source-control.ee/source-control.controller.ee');
 						break;
 
 					case 'community-packages':

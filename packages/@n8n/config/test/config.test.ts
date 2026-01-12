@@ -279,7 +279,6 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: true,
 		},
 		sentry: {
 			backendDsn: '',
@@ -411,6 +410,14 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 100,
+			compactingMinimumAgeHours: 3,
+			compactingTimeWindowHours: 2,
+			compactOnStartUp: false,
+			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 		},
 	};
 

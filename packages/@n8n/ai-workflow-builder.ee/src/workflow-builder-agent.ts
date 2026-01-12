@@ -227,6 +227,7 @@ export class WorkflowBuilderAgent {
 			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
 			featureFlags,
+			onGenerationSuccess: this.onGenerationSuccess,
 		});
 	}
 
