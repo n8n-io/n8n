@@ -390,6 +390,24 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
+		it('should set supportsStrictToolCalling to false for OpenAI-compatible backends', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					supportsStrictToolCalling: false,
+				}),
+			);
+		});
+
 		it('should prioritize options.baseURL over credentials.url', async () => {
 			const optionsBaseURL = 'https://options-api.example.com/v1';
 			const credentialsURL = 'https://credentials-api.example.com/v1';
