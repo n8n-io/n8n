@@ -7,10 +7,6 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
-      branch_name:
-        description: 'Branch name to create (leave empty for auto-generated)'
-        required: false
-        type: string
       create_pr:
         description: 'Create PR after completing task'
         required: false
@@ -56,16 +52,10 @@ jobs:
         id: branch
         shell: bash
         env:
-          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          if [ -n "$INPUT_BRANCH_NAME" ]; then
-            BRANCH="$INPUT_BRANCH_NAME"
-          else
-            # Auto-generate branch name from timestamp
-            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-            BRANCH="claude/task-${TIMESTAMP}"
-          fi
-          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "name=claude/task-${RUN_ID}-${RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
       - name: Create working branch
         shell: bash
@@ -73,6 +63,7 @@ jobs:
           git checkout -b "${{ steps.branch.outputs.name }}"
 
       - name: Configure git author
+        id: git-author
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
@@ -84,6 +75,13 @@ jobs:
           USER_EMAIL="${USER_ID}+${ACTOR}@users.noreply.github.com"
           git config user.name "$USER_NAME"
           git config user.email "$USER_EMAIL"
+          # Export for Claude action to use
+          {
+            echo "GIT_AUTHOR_NAME=$USER_NAME"
+            echo "GIT_AUTHOR_EMAIL=$USER_EMAIL"
+            echo "GIT_COMMITTER_NAME=$USER_NAME"
+            echo "GIT_COMMITTER_EMAIL=$USER_EMAIL"
+          } >> "$GITHUB_ENV"
           echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
 
       - name: Prepare Claude prompt
@@ -107,28 +105,26 @@ jobs:
             echo "2. Complete the task described above"
             echo "3. Follow the guidelines from the templates"
             echo "4. Make commits as you work with descriptive messages"
-            echo "5. Ensure code passes linting and type checks before finishing"
+            echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
+            echo "6. Ensure code passes linting and type checks before finishing"
+            echo "7. When done, output a PR title on a single line starting with 'PR_TITLE:' (e.g. 'PR_TITLE: fix: Update smithy dependency to resolve CVE')"
+            echo ""
+            echo "# Token Optimization"
+            echo "When running lint/typecheck, suppress verbose output:"
+            echo "  pnpm lint 2>&1 | tail -30"
+            echo "  pnpm typecheck 2>&1 | tail -30"
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
       - name: Run Claude
-        uses: anthropics/claude-code-action@beta
+        id: claude
+        uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
         with:
-          mode: 'agent'
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          timeout_minutes: '45'
-          direct_prompt: ${{ env.CLAUDE_PROMPT }}
-          allowed_tools: |
-            Bash
-            Read
-            Write
-            Edit
-            Glob
-            Grep
-            WebFetch
-            WebSearch
-            TodoWrite
+          github_token: ${{ steps.app-token.outputs.token }}
+          prompt: ${{ env.CLAUDE_PROMPT }}
+          claude_args: |
+            --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite
 
       - name: Push branch
         shell: bash
@@ -141,8 +137,6 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           # Check if there are any commits to push
           if git log "origin/$INPUT_BASE_BRANCH..HEAD" --oneline | grep -q .; then
-            # Delete remote branch if it exists (allows re-runs)
-            git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
             git push -u origin "$BRANCH_NAME"
             echo "CHANGES_MADE=true" >> "$GITHUB_ENV"
           else
@@ -159,9 +153,16 @@ jobs:
           INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
           BRANCH_NAME: ${{ steps.branch.outputs.name }}
           TRIGGERED_BY: ${{ github.actor }}
+          CLAUDE_CONCLUSION: ${{ steps.claude.outputs.conclusion }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # Generate PR title from branch name: claude/fix-ghsa-123 -> chore: fix ghsa 123
-          PR_TITLE=$(echo "$BRANCH_NAME" | sed 's|claude/||' | sed 's|-| |g' | sed 's|^|chore: |')
+          # Extract PR title from Claude's output (looks for PR_TITLE: prefix)
+          PR_TITLE=$(echo "$CLAUDE_CONCLUSION" | grep -oP 'PR_TITLE:\s*\K.*' | head -1 || echo "")
+
+          # Fallback to generic title if Claude didn't provide one
+          if [ -z "$PR_TITLE" ]; then
+            PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
+          fi
 
           # Create PR with task description in body
           gh pr create \
@@ -172,10 +173,12 @@ jobs:
           ### Task Description
           $INPUT_TASK
 
+          ### Generated by
+          [Workflow Run #${{ github.run_id }}]($RUN_URL)
+
           ---
           *Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*" \
-            --base "$INPUT_BASE_BRANCH" \
-            --draft
+            --base "$INPUT_BASE_BRANCH"
 
       - name: Summary
         shell: bash
