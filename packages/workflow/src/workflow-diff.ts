@@ -182,7 +182,7 @@ const makeMergeShortTimeSpan = (timeDiffMs: number) => {
 
 // Takes a mapping from minimumSize to the minimum time between versions and
 // applies the largest one applicable to the given workflow
-function makeMergeDependingOnSizeRule(mapping: Map<number, number>) {
+function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<number, number>) {
 	const pairs = [...mapping.entries()]
 		.sort((a, b) => b[0] - a[0])
 		.map(([count, time]) => [count, makeMergeShortTimeSpan(time)] as const);
@@ -193,6 +193,10 @@ function makeMergeDependingOnSizeRule(mapping: Map<number, number>) {
 		_wcs: WorkflowChangeSet<N>,
 		metaData: DiffMetaData,
 	) => {
+		if (metaData.workflowSizeChars === undefined) {
+			console.warn('Called mergeDependingOnSizeRule rule without providing required metaData');
+			return false;
+		}
 		for (const [count, time] of pairs) {
 			if (metaData.workflowSizeChars > count) return time(prev, next);
 		}
@@ -217,14 +221,15 @@ export const SKIP_RULES = {
 	skipDifferentUsers,
 };
 
-export type DiffMetaData = {
+// MetaData fields are only included if requested
+export type DiffMetaData = Partial<{
 	workflowSizeChars: number;
-};
+}>;
 
 export type DiffRule<
 	W extends WorkflowDiffBase = WorkflowDiffBase,
 	N extends W['nodes'][number] = W['nodes'][number],
-> = (prev: W, next: W, diff: WorkflowChangeSet<N>, metaData: DiffMetaData) => boolean;
+> = (prev: W, next: W, diff: WorkflowChangeSet<N>, metaData: Partial<DiffMetaData>) => boolean;
 
 // Rough estimation of a node's size in abstract "character" count
 // Does not care about key names which do technically factor in when stringified
@@ -254,6 +259,7 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
 	skipRules: Array<DiffRule<W>> = [],
+	metaDataFields?: Partial<Record<keyof DiffMetaData, boolean>>,
 ): { removed: W[]; remaining: W[] } {
 	if (workflows.length === 0) return { removed: [], remaining: [] };
 	if (workflows.length === 1) {
@@ -268,25 +274,25 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 
 	const n = remaining.length;
 
-	// check latest and an "average" workflow to get a somewhat accurate representation
-	// without counting through the entire history
-	const workflowSizeChars = Math.max(
-		determineWorkflowSize(workflows[Math.floor(workflows.length / 2)]),
-		determineWorkflowSize(workflows[workflows.length - 1]),
-	);
-
-	const metaData = { workflowSizeChars } satisfies DiffMetaData;
+	const metaData = {
+		// check latest and an "average" workflow to get a somewhat accurate representation
+		// without counting through the entire history
+		workflowSizeChars: metaDataFields?.workflowSizeChars
+			? Math.max(
+					determineWorkflowSize(workflows[Math.floor(workflows.length / 2)]),
+					determineWorkflowSize(workflows[workflows.length - 1]),
+				)
+			: undefined,
+	} satisfies DiffMetaData;
 
 	diffLoop: for (let i = n - 1; i > 0; --i) {
-		const md = { ...metaData };
-
 		const wcs = new WorkflowChangeSet(remaining[i - 1], remaining[i]);
 
 		for (const shouldSkip of skipRules) {
-			if (shouldSkip(remaining[i - 1], remaining[i], wcs, md)) continue diffLoop;
+			if (shouldSkip(remaining[i - 1], remaining[i], wcs, metaData)) continue diffLoop;
 		}
 		for (const rule of rules) {
-			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs, md);
+			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs, metaData);
 			if (shouldMerge) {
 				const left = remaining.splice(i - 1, 1)[0];
 				removed.push(left);
