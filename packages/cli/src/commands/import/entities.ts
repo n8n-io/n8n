@@ -50,7 +50,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info(`📁 Input directory: ${inputDir}`);
 		this.logger.info(`🗑️  Truncate tables: ${truncateTables}`);
 		if (skipMigrationChecks) {
-			this.logger.info(`⏭️  Skipping migration checks`);
+			this.logger.info('⏭️  Skipping migration checks');
 		}
 
 		await Container.get(ImportService).importEntities(
