@@ -1034,7 +1034,12 @@ export class ChatHubService {
 		const entry = this.getFirstOutputEntry(outputs);
 		if (!entry) return undefined;
 
-		return this.extractMessage(entry, responseMode);
+		const message = this.extractMessage(entry, responseMode);
+		if (typeof message === 'object' && message !== null) {
+			return jsonStringify(message);
+		}
+
+		return message;
 	}
 
 	private getLastNodeExecuted(execution: IExecutionResponse): string | undefined {
