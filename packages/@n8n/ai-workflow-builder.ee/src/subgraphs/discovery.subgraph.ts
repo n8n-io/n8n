@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, AIMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
@@ -19,8 +19,7 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
-import { createGetNodeRecommendationsTool } from '../tools/get-node-recommendations.tool';
+import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
@@ -141,8 +140,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create base tools
 		const baseTools = [
-			createGetBestPracticesTool(),
-			createGetNodeRecommendationsTool(),
+			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
@@ -254,14 +252,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		}
 
-		const bestPracticesTool = state.messages.find(
-			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
-		);
-
 		// Return raw output without hydration, including templateIds from workflow examples
 		return {
 			nodesFound: output.nodesFound,
-			bestPractices: bestPracticesTool?.text,
+			bestPractices: state.bestPractices,
 			templateIds: state.templateIds ?? [],
 		};
 	}
