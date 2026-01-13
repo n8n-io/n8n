@@ -8,6 +8,7 @@ import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system'
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { isEditable, isRegenerable } from '../chat.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -46,6 +47,9 @@ const executionUrl = computed(() => {
 	return undefined;
 });
 
+const canEdit = computed(() => isEditable(message));
+const canRegenerate = computed(() => isRegenerable(message));
+
 function handleEdit() {
 	emit('edit');
 }
@@ -80,7 +84,7 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canEdit" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
@@ -92,7 +96,7 @@ function handleReadAloud() {
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canRegenerate" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"
