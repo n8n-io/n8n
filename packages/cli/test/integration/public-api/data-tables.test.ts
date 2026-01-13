@@ -131,6 +131,98 @@ describe('GET /data-tables', () => {
 		expect(response2.body.data).toHaveLength(1);
 		expect(response2.body.nextCursor).toBeNull();
 	});
+
+	test('should sort data tables by name ascending', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'zebra',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'apple',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'mango',
+			columns: [{ name: 'col3', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.get('/data-tables').query({ sortBy: 'name:asc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		expect(response.body.data[0].name).toBe('apple');
+		expect(response.body.data[1].name).toBe('mango');
+		expect(response.body.data[2].name).toBe('zebra');
+	});
+
+	test('should sort data tables by createdAt descending', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'first',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'second',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'third',
+			columns: [{ name: 'col3', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.get('/data-tables').query({ sortBy: 'createdAt:desc' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(3);
+		const createdAtTimes = response.body.data.map((table: any) =>
+			new Date(table.createdAt).getTime(),
+		);
+		expect(createdAtTimes).toEqual([...createdAtTimes].sort((a, b) => b - a));
+	});
+
+	test('should reject invalid sortBy option (sizeBytes)', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'table1',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.get('/data-tables').query({ sortBy: 'sizeBytes:asc' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('sortBy must be one of');
+	});
+
+	test('should use default limit of 100', async () => {
+		// Create more than 100 tables to test default
+		for (let i = 1; i <= 101; i++) {
+			await createDataTable(ownerPersonalProject, {
+				name: `table${i}`,
+				columns: [{ name: 'col', type: 'string' }],
+			});
+		}
+
+		const response = await authOwnerAgent.get('/data-tables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(100);
+		expect(response.body.nextCursor).toBeTruthy();
+	});
+
+	test('should enforce max limit of 250', async () => {
+		// Create 260 tables
+		for (let i = 1; i <= 260; i++) {
+			await createDataTable(ownerPersonalProject, {
+				name: `table${i}`,
+				columns: [{ name: 'col', type: 'string' }],
+			});
+		}
+
+		const response = await authOwnerAgent.get('/data-tables').query({ limit: 300 });
+
+		expect(response.statusCode).toBe(200);
+		// Should cap at 250 even though we requested 300
+		expect(response.body.data).toHaveLength(250);
+		expect(response.body.nextCursor).toBeTruthy();
+	});
 });
 
 describe('POST /data-tables', () => {
@@ -174,6 +266,16 @@ describe('POST /data-tables', () => {
 		const response = await authOwnerAgent.post('/data-tables').send({
 			name: '',
 			columns: [],
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject unsupported column type (json)', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'test-table',
+			columns: [{ name: 'data', type: 'json' }],
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -682,6 +784,19 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		expect(response.body[0]).toHaveProperty('age', 30);
 		expect(response.body[1]).toHaveProperty('name', 'Bob');
 		expect(response.body[1]).toHaveProperty('age', 25);
+	});
+
+	test('should fail when returnType is missing', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
+			data: [{ name: 'Alice' }],
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
 	});
 });
 
