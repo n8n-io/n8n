@@ -771,6 +771,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		...(globalContext ?? {}),
 		llmCallLimiter: globalContext?.llmCallLimiter ?? pLimit(langsmithOptions.concurrency),
 		timeoutMs,
+		langsmithClient: lsClient,
 	};
 
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });

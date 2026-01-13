@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { traceable } from 'langsmith/traceable';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -43,10 +44,21 @@ async function evaluateSingleGeneration(
 		donts: ctx?.donts,
 	};
 
-	const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
-		llmCallLimiter: ctx.llmCallLimiter,
-		timeoutMs: ctx.timeoutMs,
-	});
+	// Wrap judge panel in traceable to ensure proper trace context isolation
+	// This prevents judge traces from leaking to other concurrent examples
+	const traceableJudgePanel = traceable(
+		async () =>
+			runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+				llmCallLimiter: ctx.llmCallLimiter,
+				timeoutMs: ctx.timeoutMs,
+			}),
+		{
+			name: 'judge_panel',
+			run_type: 'chain',
+			client: ctx.langsmithClient,
+		},
+	);
+	const result = await traceableJudgePanel();
 
 	const feedback: Feedback[] = [];
 
@@ -122,21 +134,35 @@ async function evaluateMultiGeneration(
 	};
 
 	// Generate all workflows and evaluate in parallel
+	// Each generation is wrapped in traceable to ensure proper trace isolation
 	const generationRuns = await Promise.all(
 		Array.from({ length: numGenerations }, async (_, i) => {
-			const workflow = await runWithOptionalLimiter(async () => {
-				return await withTimeout({
-					promise: ctx.generateWorkflow(ctx.prompt),
-					timeoutMs: ctx.timeoutMs,
-					label: 'pairwise:workflow_generation',
-				});
-			}, ctx.llmCallLimiter);
-			const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
-				generationIndex: i + 1,
-				llmCallLimiter: ctx.llmCallLimiter,
-				timeoutMs: ctx.timeoutMs,
-			});
-			return { workflow, result };
+			const generationIndex = i + 1;
+
+			// Wrap each generation + judge panel in traceable for proper trace grouping
+			const traceableGeneration = traceable(
+				async () => {
+					const workflow = await runWithOptionalLimiter(async () => {
+						return await withTimeout({
+							promise: ctx.generateWorkflow(ctx.prompt),
+							timeoutMs: ctx.timeoutMs,
+							label: 'pairwise:workflow_generation',
+						});
+					}, ctx.llmCallLimiter);
+					const result = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+						generationIndex,
+						llmCallLimiter: ctx.llmCallLimiter,
+						timeoutMs: ctx.timeoutMs,
+					});
+					return { workflow, result };
+				},
+				{
+					name: `generation_${generationIndex}`,
+					run_type: 'chain',
+					client: ctx.langsmithClient,
+				},
+			);
+			return await traceableGeneration();
 		}),
 	);
 

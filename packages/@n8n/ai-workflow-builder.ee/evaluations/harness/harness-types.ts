@@ -36,6 +36,11 @@ export interface EvaluationContext {
 	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
 	 */
 	timeoutMs?: number;
+	/**
+	 * Optional LangSmith client for explicit trace context binding.
+	 * When provided, evaluators can use it to ensure traces attach to the correct parent.
+	 */
+	langsmithClient?: LangsmithClient;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
