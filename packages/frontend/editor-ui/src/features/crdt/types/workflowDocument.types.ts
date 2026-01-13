@@ -1,5 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import type { EventHookOn } from '@vueuse/core';
+import type { CRDTAwareness } from '@n8n/crdt/browser';
+import type { WorkflowAwarenessState } from './awareness.types';
 
 /**
  * Document sync state machine.
@@ -118,4 +120,12 @@ export interface WorkflowDocument {
 
 	/** Find a node by ID */
 	findNode(nodeId: string): WorkflowNode | undefined;
+
+	// --- Awareness (CRDT only) ---
+
+	/**
+	 * The awareness instance for real-time presence/cursors/dragging.
+	 * Only available for CRDT documents, null for REST documents.
+	 */
+	readonly awareness: CRDTAwareness<WorkflowAwarenessState> | null;
 }

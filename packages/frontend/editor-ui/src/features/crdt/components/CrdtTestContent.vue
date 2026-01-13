@@ -1,19 +1,17 @@
 <script lang="ts" setup>
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodeCreation from '@/features/shared/nodeCreator/views/NodeCreation.vue';
-import type {
-	AddedNodesAndConnections,
-	INodeTypeDescription,
-	INodeUi,
-	ToggleNodeCreatorOptions,
-} from '@/Interface';
+import type { AddedNodesAndConnections, INodeUi, ToggleNodeCreatorOptions } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useVueFlow } from '@vue-flow/core';
 import { ref } from 'vue';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
+import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
 import type { WorkflowNode } from '../types/workflowDocument.types';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 
 const doc = useWorkflowDoc();
+const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 const instance = useVueFlow(doc.workflowId);
 
 // Dummy state for NodeCreation props
@@ -107,6 +105,9 @@ const onNodeCreatorClose = () => {
 	<div :class="$style.toolbar">
 		<button :disabled="!doc.canUndo.value" :class="$style.button" @click="doc.undo()">Undo</button>
 		<button :disabled="!doc.canRedo.value" :class="$style.button" @click="doc.redo()">Redo</button>
+		<span v-if="awareness.isReady.value" :class="$style.collaborators">
+			{{ awareness.collaboratorCount.value }} online
+		</span>
 	</div>
 	<WorkflowCanvas v-if="doc.isReady.value" />
 	<div v-else-if="doc.state.value === 'connecting'" :class="$style.loading">
@@ -175,5 +176,14 @@ const onNodeCreatorClose = () => {
 	h2 {
 		margin-bottom: var(--spacing--sm);
 	}
+}
+
+.collaborators {
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-radius: var(--radius);
+	background: var(--color--success--tint-2);
+	color: var(--color--success--shade-1);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
 }
 </style>

@@ -183,5 +183,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
 		findNode,
+		// No awareness for REST documents (single user mode)
+		awareness: null,
 	};
 }

@@ -10,6 +10,19 @@ export type {
 	NodeParamsChange,
 } from './workflowDocument.types';
 
+// Re-export awareness types
+export type {
+	AwarenessUser,
+	AwarenessCursor,
+	AwarenessSelection,
+	AwarenessActivity,
+	DraggingNode,
+	WorkflowAwarenessState,
+	Collaborator,
+	UseWorkflowAwarenessReturn,
+} from './awareness.types';
+export { WorkflowAwarenessKey } from './awareness.types';
+
 /**
  * Injection key for WorkflowDocument.
  * Provided by CrdtWorkflowProvider or RestWorkflowProvider.

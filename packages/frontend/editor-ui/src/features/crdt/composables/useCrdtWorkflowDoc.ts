@@ -1,6 +1,6 @@
 import { computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin } from '@n8n/crdt/browser';
+import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin, CRDTAwareness } from '@n8n/crdt/browser';
 import { isMapChange, ChangeOrigin as CO } from '@n8n/crdt/browser';
 import { useCRDTSync } from './useCRDTSync';
 import type {
@@ -10,6 +10,7 @@ import type {
 	NodePositionChange,
 	NodeParamsChange,
 } from '../types/workflowDocument.types';
+import type { WorkflowAwarenessState } from '../types/awareness.types';
 
 export interface UseCrdtWorkflowDocOptions {
 	/** Document/workflow ID */
@@ -286,5 +287,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
 		findNode,
+		get awareness(): CRDTAwareness<WorkflowAwarenessState> | null {
+			return crdt.awareness as CRDTAwareness<WorkflowAwarenessState> | null;
+		},
 	};
 }

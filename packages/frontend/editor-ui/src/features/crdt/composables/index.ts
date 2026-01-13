@@ -10,3 +10,11 @@ export { useWorkflowDoc, useWorkflowDocOptional } from './useWorkflowSync';
 
 // Canvas adapter (Vue Flow bridge)
 export { useCanvasSync } from './useCanvasSync';
+
+// Awareness (presence, cursors, dragging)
+export {
+	useWorkflowAwareness,
+	useWorkflowAwarenessInject,
+	useWorkflowAwarenessOptional,
+} from './useWorkflowAwareness';
+export type { UseWorkflowAwarenessOptions } from './useWorkflowAwareness';
