@@ -236,7 +236,7 @@ const feedbackExtractor = (run) => run.outputs.feedback.map(toLangsmithEvaluatio
 - **Do not** wrap the `target` function with `traceable()` — `evaluate()` handles that automatically
 - **Do** create `traceable` wrappers **once** outside the target function (not inside concurrent code)
 - **Do** pass all parameters explicitly to avoid closure-based context leaking
-- Inner LangGraph/LangChain calls create their own nested traces under the wrapper
+- **Do** use `getTracingCallbacks()` to bridge traceable context to LangChain calls (pass callbacks to `agent.chat()` or chain's `invoke()`)
 
 ## Available Evaluators
 
