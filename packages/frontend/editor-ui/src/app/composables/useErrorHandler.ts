@@ -15,6 +15,8 @@ export interface HandleErrorOptions {
 	context?: string;
 	/** Override the default toast title */
 	title?: string;
+	/** Override the default toast message (defaults to error.message) */
+	message?: string;
 }
 
 /**
@@ -47,7 +49,7 @@ export function useErrorHandler(options: ErrorHandlerOptions) {
 		toast.showMessage({
 			type: 'error',
 			title,
-			message: errorMessage,
+			message: errorOptions?.message ?? errorMessage,
 		});
 	}
 

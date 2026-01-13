@@ -225,9 +225,9 @@ async function onWorkflowExecuted() {
 function parseWorkflowJson(workflowJson: string): WorkflowDataUpdate | undefined {
 	try {
 		return jsonParse<WorkflowDataUpdate>(workflowJson);
-	} catch {
-		toast.showMessage({
-			type: 'error',
+	} catch (error) {
+		handleError(error, {
+			context: 'workflow-json-parse',
 			title: i18n.baseText('aiAssistant.builder.workflowParsingError.title'),
 			message: i18n.baseText('aiAssistant.builder.workflowParsingError.content'),
 		});

@@ -173,8 +173,8 @@ export function useWorkflowUpdate() {
 		return (
 			a.source === b.source &&
 			a.target === b.target &&
-			a.sourceHandle === b.sourceHandle &&
-			a.targetHandle === b.targetHandle
+			(a.sourceHandle ?? null) === (b.sourceHandle ?? null) &&
+			(a.targetHandle ?? null) === (b.targetHandle ?? null)
 		);
 	}
 
@@ -223,19 +223,15 @@ export function useWorkflowUpdate() {
 	}
 
 	/**
-	 * Set default credentials for nodes without credentials
+	 * Set default credentials on nodes that don't have any (mutates input array).
+	 * Must be called BEFORE nodes are added to store to avoid direct store mutation.
 	 */
-	function applyDefaultCredentials(nodes: INode[]): void {
-		const { nodesByName } = workflowsStore;
+	function setDefaultCredentialsOnNodes(nodes: INode[]): void {
+		for (const node of nodes) {
+			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
+			if (hasCredentials) continue;
 
-		// Filter to nodes without credentials, then map to store nodes
-		const nodesNeedingCredentials = nodes
-			.filter((node) => !node.credentials || Object.keys(node.credentials).length === 0)
-			.map((node) => nodesByName[node.name])
-			.filter((storeNode): storeNode is INodeUi => storeNode !== undefined);
-
-		for (const storeNode of nodesNeedingCredentials) {
-			const nodeType = nodeTypesStore.getNodeType(storeNode.type);
+			const nodeType = nodeTypesStore.getNodeType(node.type);
 			if (!nodeType?.credentials) continue;
 
 			for (const credentialConfig of nodeType.credentials) {
@@ -243,7 +239,7 @@ export function useWorkflowUpdate() {
 				if (!credentials || credentials.length === 0) continue;
 
 				const credential = credentials[0];
-				storeNode.credentials = {
+				node.credentials = {
 					[credential.type]: {
 						id: credential.id,
 						name: credential.name,
@@ -253,7 +249,7 @@ export function useWorkflowUpdate() {
 				const authField = getMainAuthField(nodeType);
 				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
 				if (authField && authType) {
-					storeNode.parameters[authField.name] = authType.value;
+					node.parameters[authField.name] = authType.value;
 				}
 
 				break;
@@ -301,6 +297,9 @@ export function useWorkflowUpdate() {
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
 		try {
+			// Apply default credentials to incoming nodes BEFORE adding to store
+			setDefaultCredentialsOnNodes(workflowData.nodes ?? []);
+
 			const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
 
 			await updateExistingNodes(nodesToUpdate);
@@ -308,7 +307,6 @@ export function useWorkflowUpdate() {
 			const addedNodes = await addNewNodes(nodesToAdd);
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
-			applyDefaultCredentials(workflowData.nodes ?? []);
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
 			builderStore.setBuilderMadeEdits(true);
