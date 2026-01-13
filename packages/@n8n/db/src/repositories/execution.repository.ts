@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
+	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -422,21 +423,34 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
+		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 
-		// Check if execution already has a startedAt timestamp
-		const execution = await this.findOne({
-			select: ['startedAt'],
-			where: { id: executionId },
-		});
+		const updateThenFetch = async (manager: EntityManager) => {
+			// Update status, set startedAt only if not already set (preserves original for resumed executions)
+			await manager
+				.createQueryBuilder()
+				.update(ExecutionEntity)
+				.set({
+					status: 'running',
+					startedAt: () => `COALESCE(startedAt, '${startedAt.toISOString()}')`,
+				})
+				.where('id = :id', { id: executionId })
+				.execute();
 
-		// Only set startedAt if it's not already set (to preserve original start time for resumed executions)
-		if (execution?.startedAt) {
-			await this.update({ id: executionId }, { status: 'running' });
-			return execution.startedAt;
-		} else {
-			await this.update({ id: executionId }, { status: 'running', startedAt });
-			return startedAt;
+			// Fetch the actual startedAt
+			const result = await manager.findOne(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			return result?.startedAt ?? startedAt;
+		};
+
+		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
+			return await updateThenFetch(this.manager);
 		}
+
+		return await this.manager.transaction(updateThenFetch);
 	}
 
 	/**

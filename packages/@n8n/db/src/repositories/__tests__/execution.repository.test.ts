@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from '@n8n/di';
+import type { UpdateQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 import type { IExecutionResponse } from 'entities/types-db';
 
@@ -408,54 +410,64 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('setRunning', () => {
-		test('should set startedAt when execution has no startedAt', async () => {
-			const executionId = '123';
-			const mockExecution = { startedAt: null };
+		let updateQueryBuilder: jest.Mocked<UpdateQueryBuilder<ExecutionEntity>>;
 
-			entityManager.findOne.mockResolvedValueOnce(mockExecution);
-			entityManager.update.mockResolvedValueOnce({ affected: 1 });
+		beforeEach(() => {
+			// Mock query builder for update
+			updateQueryBuilder = mock<UpdateQueryBuilder<ExecutionEntity>>();
+			updateQueryBuilder.update.mockReturnThis();
+			updateQueryBuilder.set.mockReturnThis();
+			updateQueryBuilder.where.mockReturnThis();
+			updateQueryBuilder.execute.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
-			const result = await executionRepository.setRunning(executionId);
-
-			// Should query for existing startedAt
-			expect(entityManager.findOne).toHaveBeenCalledWith(ExecutionEntity, {
-				select: ['startedAt'],
-				where: { id: executionId },
-			});
-
-			// Should update with both status and new startedAt
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: executionId },
-				{ status: 'running', startedAt: expect.any(Date) },
+			entityManager.createQueryBuilder.mockReturnValue(
+				updateQueryBuilder as unknown as ReturnType<typeof entityManager.createQueryBuilder>,
 			);
 
-			expect(result).toBeInstanceOf(Date);
+			// Mock transaction to pass through to the callback
+			entityManager.transaction.mockImplementation(async (callback: unknown) => {
+				return await (callback as (em: typeof entityManager) => Promise<unknown>)(entityManager);
+			});
 		});
 
-		test('should preserve existing startedAt when resuming execution', async () => {
-			const executionId = '456';
-			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
-			const mockExecution = { startedAt: existingStartedAt };
+		test('should update first then fetch startedAt', async () => {
+			const executionId = '123';
+			const returnedStartedAt = new Date();
 
-			entityManager.findOne.mockResolvedValueOnce(mockExecution);
-			entityManager.update.mockResolvedValueOnce({ affected: 1 });
+			entityManager.findOne.mockResolvedValueOnce({ startedAt: returnedStartedAt });
 
 			const result = await executionRepository.setRunning(executionId);
 
-			// Should query for existing startedAt
+			// Should run in a transaction
+			expect(entityManager.transaction).toHaveBeenCalled();
+
+			// Should update with COALESCE to preserve existing startedAt
+			expect(updateQueryBuilder.update).toHaveBeenCalledWith(ExecutionEntity);
+			expect(updateQueryBuilder.set).toHaveBeenCalledWith({
+				status: 'running',
+				startedAt: expect.any(Function),
+			});
+			expect(updateQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: executionId });
+			expect(updateQueryBuilder.execute).toHaveBeenCalled();
+
+			// Should fetch the actual startedAt value after update
 			expect(entityManager.findOne).toHaveBeenCalledWith(ExecutionEntity, {
 				select: ['startedAt'],
 				where: { id: executionId },
 			});
 
-			// Should update ONLY status (not startedAt)
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: executionId },
-				{ status: 'running' },
-			);
+			expect(result).toBe(returnedStartedAt);
+		});
 
+		test('should return existing startedAt for resumed executions', async () => {
+			const executionId = '456';
+			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
+
+			entityManager.findOne.mockResolvedValueOnce({ startedAt: existingStartedAt });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			expect(entityManager.transaction).toHaveBeenCalled();
 			expect(result).toBe(existingStartedAt);
 		});
 	});
