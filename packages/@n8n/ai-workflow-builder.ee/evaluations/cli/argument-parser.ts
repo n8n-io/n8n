@@ -67,7 +67,6 @@ const cliSchema = z
 
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
-		multiAgent: z.boolean().default(false),
 	})
 	.strict();
 
@@ -186,12 +185,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		kind: 'boolean',
 		group: 'feature',
 		desc: 'Enable template examples phase',
-	},
-	'--multi-agent': {
-		key: 'multiAgent',
-		kind: 'boolean',
-		group: 'feature',
-		desc: 'Enable multi-agent mode',
 	},
 
 	// Advanced
@@ -336,20 +329,16 @@ function parseCli(argv: string[]): {
 	return { values, seenKeys };
 }
 
-function parseFeatureFlags(args: { templateExamples: boolean; multiAgent: boolean }):
-	| BuilderFeatureFlags
-	| undefined {
+function parseFeatureFlags(args: {
+	templateExamples: boolean;
+}): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
-
 	const templateExamples = templateExamplesFromEnv || args.templateExamples;
-	const multiAgent = multiAgentFromEnv || args.multiAgent;
 
-	if (!templateExamples && !multiAgent) return undefined;
+	if (!templateExamples) return undefined;
 
 	return {
 		templateExamples: templateExamples || undefined,
-		multiAgent: multiAgent || undefined,
 	};
 }
 
@@ -417,7 +406,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
-		multiAgent: parsed.multiAgent,
 	});
 
 	const filters = parseFilters({

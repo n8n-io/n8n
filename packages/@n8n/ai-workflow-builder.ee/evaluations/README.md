@@ -331,7 +331,6 @@ Notes:
 --donts <text>      # Pairwise: things the workflow should not do
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
---multi-agent       # Enable multi-agent feature flag
 ```
 
 ### CSV Format
