@@ -1,10 +1,6 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
-import type {
-	CredentialsRepository,
-	TagRepository,
-	WorkflowPublishHistoryRepository,
-} from '@n8n/db';
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
@@ -46,7 +42,6 @@ describe('ImportService', () => {
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDatabaseConfig: DatabaseConfig;
-	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -60,7 +55,6 @@ describe('ImportService', () => {
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDatabaseConfig = mock<DatabaseConfig>();
-		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -108,7 +102,6 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			mockDatabaseConfig,
-			mockWorkflowPublishHistoryRepository,
 		);
 	});
 

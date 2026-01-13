@@ -7,7 +7,6 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
-	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager } from '@n8n/typeorm';
@@ -57,7 +56,6 @@ export class ImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async initRecords() {
@@ -81,7 +79,11 @@ export class ImportService {
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			if (workflow.id) {
-				await this.activeWorkflowManager.remove(workflow.id);
+				try {
+					await this.activeWorkflowManager.remove(workflow.id);
+				} catch {
+					// Workflow doesn't exist or has no active version, nothing to remove
+				}
 			}
 		}
 
@@ -89,21 +91,16 @@ export class ImportService {
 		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
-				if (workflow.active || workflow.activeVersionId) {
-					await this.workflowPublishHistoryRepository.addRecord({
-						workflowId: workflow.id,
-						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
-						event: 'deactivated',
-						userId: null,
-					});
+				// Check if workflow exists BEFORE attempting any operations
+				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
+				// Deactivate workflows during import to prevent activation issues
+				if (workflow.active || workflow.activeVersionId) {
 					workflow.active = false;
 					workflow.activeVersionId = null;
 
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
