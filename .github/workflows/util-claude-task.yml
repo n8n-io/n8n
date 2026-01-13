@@ -92,7 +92,9 @@ jobs:
       - name: Run Claude
         uses: anthropics/claude-code-action@beta
         with:
+          mode: 'agent'
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           timeout_minutes: '45'
           direct_prompt: ${{ env.CLAUDE_PROMPT }}
           allowed_tools: |
