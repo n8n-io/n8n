@@ -33,9 +33,17 @@ jobs:
       id-token: write
 
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           ref: ${{ inputs.base_branch }}
 
@@ -63,6 +71,20 @@ jobs:
         shell: bash
         run: |
           git checkout -b "${{ steps.branch.outputs.name }}"
+
+      - name: Configure git author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          # Set git author to the user who triggered the workflow
+          USER_DATA=$(gh api "/users/$ACTOR")
+          USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
+          USER_ID=$(echo "$USER_DATA" | jq -r '.id')
+          USER_EMAIL="${USER_ID}+${ACTOR}@users.noreply.github.com"
+          git config user.name "$USER_NAME"
+          git config user.email "$USER_EMAIL"
+          echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
 
       - name: Prepare Claude prompt
         id: prompt
@@ -113,9 +135,14 @@ jobs:
         env:
           INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
           BRANCH_NAME: ${{ steps.branch.outputs.name }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Configure git to use app token for push
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           # Check if there are any commits to push
           if git log "origin/$INPUT_BASE_BRANCH..HEAD" --oneline | grep -q .; then
+            # Delete remote branch if it exists (allows re-runs)
+            git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
             git push -u origin "$BRANCH_NAME"
             echo "CHANGES_MADE=true" >> "$GITHUB_ENV"
           else
@@ -127,13 +154,18 @@ jobs:
         if: inputs.create_pr && env.CHANGES_MADE == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           INPUT_TASK: ${{ inputs.task }}
           INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
+          TRIGGERED_BY: ${{ github.actor }}
         run: |
+          # Generate PR title from branch name: claude/fix-ghsa-123 -> chore: fix ghsa 123
+          PR_TITLE=$(echo "$BRANCH_NAME" | sed 's|claude/||' | sed 's|-| |g' | sed 's|^|chore: |')
+
           # Create PR with task description in body
           gh pr create \
-            --title "chore: Claude automated task" \
+            --title "$PR_TITLE" \
             --body "## Summary
           Automated task completed by Claude.
 
@@ -141,7 +173,7 @@ jobs:
           $INPUT_TASK
 
           ---
-          *This PR was created automatically by the Claude Task Runner workflow.*" \
+          *Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*" \
             --base "$INPUT_BASE_BRANCH" \
             --draft
 
