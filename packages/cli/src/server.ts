@@ -408,9 +408,6 @@ export class Server extends AbstractServer {
 							preload: false,
 						}
 					: false,
-				// Enable cross-origin isolation for OPFS and WASM (SharedArrayBuffer support)
-				crossOriginOpenerPolicy: { policy: 'same-origin' },
-				crossOriginEmbedderPolicy: { policy: 'require-corp' },
 			});
 
 			// Route all UI urls to index.html to support history-api
@@ -441,7 +438,9 @@ export class Server extends AbstractServer {
 					!nonUIRoutesRegex.test(req.path)
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
-					res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
+					securityHeadersMiddleware(req, res, () => {
+						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
+					});
 				} else {
 					next();
 				}
@@ -454,7 +453,6 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
-				securityHeadersMiddleware,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,

@@ -4,7 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { runDataWorker } from '@/app/workers/run-data/instance';
+import { initialize as initializeRunDataWorker } from '@/app/workers/run-data/instance';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
 	registerModuleModals,
@@ -214,7 +214,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 
 	// Initialize run data worker
-	await runDataWorker.initialize({ baseUrl: rootStore.baseUrl });
+	await initializeRunDataWorker();
 
 	authenticatedFeaturesInitialized = true;
 }

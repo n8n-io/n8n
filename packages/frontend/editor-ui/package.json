@@ -50,7 +50,6 @@
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
-    "@sqlite.org/sqlite-wasm": "3.50.4-build1",
     "@types/semver": "^7.7.0",
     "@typescript/vfs": "^1.6.0",
     "@vue-flow/background": "1.3.2",
@@ -83,6 +82,7 @@
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
+    "nickvdyck": "link:@aspect-build/nickvdyck/nickvdyck/nickvdyck",
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
@@ -105,6 +105,7 @@
     "vue-virtual-scroller": "2.0.0-beta.8",
     "vue3-touch-events": "^4.1.3",
     "vuedraggable": "4.1.0",
+    "wa-sqlite": "github:rhashimoto/wa-sqlite",
     "web-tree-sitter": "0.24.3",
     "xss": "catalog:"
   },
