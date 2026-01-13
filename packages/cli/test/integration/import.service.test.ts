@@ -273,33 +273,35 @@ describe('ImportService', () => {
 		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
 	});
 
-	test('should create a record in workflow publish history if active version is the latest version', async () => {
-		// Create an active workflow
-		const workflowToImport = newWorkflow();
-		workflowToImport.active = true;
-		workflowToImport.activeVersionId = workflowToImport.versionId!;
+	test('should create a record in workflow publish history if active version exists', async () => {
+		// Create an existing active workflow in the database first
+		const existingWorkflow = await createActiveWorkflow();
+		const originalActiveVersionId = existingWorkflow.activeVersionId!;
+
+		// Now import it again (simulating re-import of an active workflow)
+		const workflowToImport = await getWorkflowById(existingWorkflow.id);
+		if (!workflowToImport) fail('Expected to find workflow');
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		// Get the workflow to find the new versionId that was generated
-		const importedWorkflow = await getWorkflowById(workflowToImport.id);
-
 		const publishHistoryRecords = await workflowPublishHistoryRepository.find({
 			where: {
-				workflowId: workflowToImport.id,
+				workflowId: existingWorkflow.id,
 				event: 'deactivated',
 			},
 		});
 
+		// Should have publish history for deactivating the original active version
 		expect(publishHistoryRecords).toHaveLength(1);
-		expect(publishHistoryRecords[0].versionId).toBe(importedWorkflow?.versionId);
+		expect(publishHistoryRecords[0].versionId).toBe(originalActiveVersionId);
 	});
 
-	test('should not create a record in workflow publish history if active version is different from the latest version', async () => {
-		// Create an active workflow
+	test('should not create a record in workflow publish history for new workflows', async () => {
 		const workflowToImport = newWorkflow();
 		workflowToImport.active = true;
 		workflowToImport.activeVersionId = 'some-version';
+
+		if (!workflowToImport) fail('Expected to find workflow');
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 

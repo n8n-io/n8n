@@ -73,7 +73,7 @@ export class ImportService {
 		// Check existence and active status of all workflows
 		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
 		const existingWorkflowIds = new Set<string>();
-		const activeWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
 
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
@@ -84,7 +84,7 @@ export class ImportService {
 			for (const { id, activeVersionId } of existingWorkflows) {
 				existingWorkflowIds.add(id);
 				if (activeVersionId !== null) {
-					activeWorkflowIds.add(id);
+					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
 			}
 		}
@@ -102,7 +102,7 @@ export class ImportService {
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database and is active
-			if (workflow.id && activeWorkflowIds.has(workflow.id)) {
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
@@ -113,36 +113,31 @@ export class ImportService {
 
 			// Upsert all workflows
 			for (const workflow of workflows) {
-				const wasActive = workflow.active || workflow.activeVersionId;
-				// Only add publish history if activeVersionId matches the current versionId
-				// If they differ, we don't have the history for the old active version
-				const shouldAddPublishHistory =
-					wasActive && workflow.activeVersionId === workflow.versionId;
-
 				// Always generate a new versionId on import to ensure proper history ordering
 				workflow.versionId = uuid();
 
-				if (wasActive) {
-					workflow.active = false;
-					workflow.activeVersionId = null;
-
+				// Always deactivate workflows on import - they need to be manually activated later
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				if (oldActiveVersionId || workflow.activeVersionId || workflow.active) {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? existingWorkflowIds.has(workflow.id) : false;
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
-				if (shouldAddPublishHistory) {
-					workflowsNeedingPublishHistory.push({ workflowId, versionId: workflow.versionId });
+				// Only add publish history if workflow was previously active
+				if (oldActiveVersionId) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
 				}
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
