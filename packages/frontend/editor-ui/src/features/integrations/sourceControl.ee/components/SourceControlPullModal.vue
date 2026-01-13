@@ -204,6 +204,32 @@ const otherFiles = computed(() => {
 	return others;
 });
 
+const otherFilesText = computed(() => {
+	const parts: string[] = [];
+
+	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables]?.length) {
+		parts.push(
+			`Variables (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables].length})`,
+		);
+	}
+	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable]?.length) {
+		parts.push(
+			`Data tables (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable].length})`,
+		);
+	}
+	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags]?.length) {
+		parts.push(`Tags (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags].length})`);
+	}
+	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders]?.length) {
+		parts.push(`Folders (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders].length})`);
+	}
+	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project]?.length) {
+		parts.push(`Projects (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project].length})`);
+	}
+
+	return parts.join(', ');
+});
+
 function close() {
 	// Navigate back in history to maintain proper browser navigation
 	// The global route watcher will handle closing the modal
@@ -399,23 +425,7 @@ onMounted(() => {
 		<template #footer>
 			<div v-if="otherFiles.length" class="mb-xs">
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
-				<N8nText size="small">
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length">
-						Variables ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.datatable]?.length">
-						Data tables ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.datatable]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length">
-						Tags ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length">
-						Folders ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length">
-						Projects ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length || 0 }})
-					</template>
-				</N8nText>
+				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
 			<div :class="$style.footer">
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
