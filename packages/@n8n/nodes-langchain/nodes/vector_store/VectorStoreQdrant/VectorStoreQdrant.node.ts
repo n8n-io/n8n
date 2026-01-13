@@ -45,6 +45,14 @@ const sharedOptions: INodeProperties[] = [
 		default: 'metadata',
 		description: 'The key to use for the metadata payload in Qdrant. Default is "metadata".',
 	},
+	{
+		displayName: 'Vector Name',
+		name: 'vectorName',
+		type: 'string',
+		default: '',
+		description:
+			'The name of the vector to use for the query. Required if the collection uses named vectors.',
+	},
 ];
 
 const insertFields: INodeProperties[] = [
@@ -129,6 +137,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 		);
 		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
+		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '') as string;
+
 		const credentials = await context.getCredentials('qdrantApi');
 
 		const client = createQdrantClient(credentials as QdrantCredential);
@@ -138,6 +148,7 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 			collectionName: collection,
 			contentPayloadKey: contentPayloadKey !== '' ? contentPayloadKey : undefined,
 			metadataPayloadKey: metadataPayloadKey !== '' ? metadataPayloadKey : undefined,
+			vectorName: vectorName !== '' ? vectorName : undefined,
 		};
 
 		return await ExtendedQdrantVectorStore.fromExistingCollection(embeddings, config, filter);
@@ -157,6 +168,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 		);
 		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
+		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '') as string;
+
 		// If collection config is not provided, the collection will be created with default settings
 		// i.e. with the size of the passed embeddings and "Cosine" distance metric
 		const { collectionConfig } = context.getNodeParameter('options', itemIndex, {}) as {
@@ -172,6 +185,7 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 			collectionConfig,
 			contentPayloadKey: contentPayloadKey !== '' ? contentPayloadKey : undefined,
 			metadataPayloadKey: metadataPayloadKey !== '' ? metadataPayloadKey : undefined,
+			vectorName: vectorName !== '' ? vectorName : undefined,
 		};
 
 		await QdrantVectorStore.fromDocuments(documents, embeddings, config);
