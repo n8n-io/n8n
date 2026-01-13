@@ -111,6 +111,13 @@ jobs:
           # Extract PR title from Claude's output (looks for PR_TITLE: prefix)
           PR_TITLE=$(echo "$CLAUDE_CONCLUSION" | sed -n 's/.*PR_TITLE:\s*//p' | head -1)
           if [ -z "$PR_TITLE" ]; then
+            # Fallback: use the last commit message
+            PR_TITLE=$(git log -1 --format='%s' 2>/dev/null | head -1)
+            # Strip Co-authored-by suffix if present
+            PR_TITLE="${PR_TITLE%%[Cc]o-[Aa]uthored-[Bb]y:*}"
+            PR_TITLE="${PR_TITLE%% }"
+          fi
+          if [ -z "$PR_TITLE" ]; then
             PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
           fi
           echo "PR_TITLE=$PR_TITLE" >> "$GITHUB_ENV"
