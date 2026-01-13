@@ -284,10 +284,28 @@ describe('WorkflowStatisticsService', () => {
 				mode: 'trigger',
 				startedAt: new Date(),
 			};
+
+			// Create a fresh instance with workflowRepository returning false (no error workflows exist)
+			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+			(
+				workflowRepositoryNoErrorWorkflows as unknown as {
+					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+				}
+			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+			const settingsRepository = Container.get(SettingsRepository);
+			const statisticsService = new WorkflowStatisticsService(
+				mock(),
+				workflowStatisticsRepository,
+				Container.get(OwnershipService),
+				userService,
+				Container.get(EventService),
+				settingsRepository,
+				workflowRepositoryNoErrorWorkflows,
+			);
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 
 			// ACT
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+			await statisticsService.workflowExecutionCompleted(workflow, runData);
 
 			// ASSERT
 			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-failed', {
@@ -307,12 +325,31 @@ describe('WorkflowStatisticsService', () => {
 				mode: 'trigger',
 				startedAt: new Date(),
 			};
-			// First failure
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// Create a fresh instance with workflowRepository returning false (no error workflows exist)
+			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+			(
+				workflowRepositoryNoErrorWorkflows as unknown as {
+					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+				}
+			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+			const settingsRepository = Container.get(SettingsRepository);
+			const statisticsService = new WorkflowStatisticsService(
+				mock(),
+				workflowStatisticsRepository,
+				Container.get(OwnershipService),
+				userService,
+				Container.get(EventService),
+				settingsRepository,
+				workflowRepositoryNoErrorWorkflows,
+			);
+
+			// First failure - this will set the instance.firstProductionFailure setting
+			await statisticsService.workflowExecutionCompleted(workflow, runData);
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 
 			// ACT - Second failure
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+			await statisticsService.workflowExecutionCompleted(workflow, runData);
 
 			// ASSERT
 			expect(emitSpy).not.toHaveBeenCalled();
@@ -401,6 +438,54 @@ describe('WorkflowStatisticsService', () => {
 				projectId: teamProject.id,
 				workflowId: teamWorkflow.id,
 				userId: null,
+			});
+		});
+
+		test('emits instance-first-production-workflow-failed with instance owner for team project', async () => {
+			// ARRANGE
+			const teamProject = await createTeamProject('Team Project for Failure');
+			const teamWorkflow = await createWorkflow({ settings: {} }, teamProject);
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+			};
+
+			// Create a fresh instance with workflowRepository returning false (no error workflows exist)
+			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+			(
+				workflowRepositoryNoErrorWorkflows as unknown as {
+					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+				}
+			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+			const ownershipService = Container.get(OwnershipService);
+			const settingsRepository = Container.get(SettingsRepository);
+			const statisticsService = new WorkflowStatisticsService(
+				mock(),
+				workflowStatisticsRepository,
+				ownershipService,
+				userService,
+				Container.get(EventService),
+				settingsRepository,
+				workflowRepositoryNoErrorWorkflows,
+			);
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// Get the instance owner to verify the userId
+			const instanceOwner = await ownershipService.getInstanceOwner();
+
+			// ACT
+			await statisticsService.workflowExecutionCompleted(teamWorkflow, runData);
+
+			// ASSERT
+			// For team projects, it should fall back to instance owner
+			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-failed', {
+				projectId: teamProject.id,
+				workflowId: teamWorkflow.id,
+				workflowName: teamWorkflow.name,
+				userId: instanceOwner.id,
 			});
 		});
 	});
