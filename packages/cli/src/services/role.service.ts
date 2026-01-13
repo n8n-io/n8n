@@ -33,8 +33,6 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { RoleCacheService } from './role-cache.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { isUniqueConstraintError } from '@/response-helper';
