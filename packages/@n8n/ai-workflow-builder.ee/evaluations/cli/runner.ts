@@ -26,7 +26,7 @@ type CliEvaluationOptions = {
 	testCaseFilter?: string; // Optional test case ID to run only a specific test
 	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
 	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
-	featureFlags?: BuilderFeatureFlags; // Optional feature flags to pass to the agent (e.g. templateExamples, multiAgent)
+	featureFlags?: BuilderFeatureFlags; // Optional feature flags to pass to the agent (e.g. templateExamples)
 };
 
 /**
