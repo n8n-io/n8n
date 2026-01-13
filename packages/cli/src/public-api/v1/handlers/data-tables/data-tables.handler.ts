@@ -130,7 +130,9 @@ export = {
 					payload.data,
 				);
 
-				return res.status(201).json(result);
+				const { project: _project, ...dataTable } = result;
+
+				return res.status(201).json(dataTable);
 			} catch (error) {
 				return handleError(error, res);
 			}
@@ -155,7 +157,9 @@ export = {
 					throw new DataTableNotFoundError(dataTableId);
 				}
 
-				return res.json(result);
+				const { project: _project, ...dataTable } = result;
+
+				return res.json(dataTable);
 			} catch (error) {
 				return handleError(error, res);
 			}
@@ -189,7 +193,9 @@ export = {
 					throw new DataTableNotFoundError(dataTableId);
 				}
 
-				return res.json(result);
+				const { project: _project, ...dataTable } = result;
+
+				return res.json(dataTable);
 			} catch (error) {
 				return handleError(error, res);
 			}
