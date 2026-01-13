@@ -187,6 +187,19 @@ export class CredentialApiHelper {
 	}
 
 	/**
+	 * Share a credential with users or projects
+	 */
+	async shareCredential(credentialId: string, shareWithIds: string[]): Promise<void> {
+		const response = await this.api.request.put(`/rest/credentials/${credentialId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share credential: ${await response.text()}`);
+		}
+	}
+
+	/**
 	 * Make credential unique by adding a unique suffix to avoid naming conflicts in tests.
 	 */
 	private makeCredentialUnique(
