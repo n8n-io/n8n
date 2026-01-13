@@ -4,4 +4,3 @@ export type * from './i-data-provider';
 export type * from './i-traceable';
 export type * from './i-descriptor';
 export type * from './i-validatable';
-export type * from './text-type';

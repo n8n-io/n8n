@@ -3,7 +3,7 @@ import { TranslationAgentRequest } from 'intento-agents/dist/translation/transla
 import { ContextFactory, Tracer } from 'intento-core';
 import { CONTEXT_TRANSLATION, TranslationContext } from 'intento-translation';
 import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, INodeTypeBaseDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 export class TranslationAgentV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -55,9 +55,18 @@ export class TranslationAgentV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const signal = this.getExecutionCancelSignal() ?? new AbortController().signal;
-		const tracer = new Tracer(TranslationAgentDescriptor, this);
-		const context = ContextFactory.read<TranslationContext>(TranslationContext, this, tracer);
-		const request = new TranslationAgentRequest(context);
+		const request = TranslationAgentV1.createRequest(this);
 		return await new TranslationAgent(this).run(request, signal);
+	}
+
+	private static createRequest(functions: IExecuteFunctions): TranslationAgentRequest {
+		const tracer = new Tracer(TranslationAgentDescriptor, functions);
+		try {
+			const context = ContextFactory.read<TranslationContext>(TranslationContext, functions, tracer);
+			return new TranslationAgentRequest(context);
+		} catch (error) {
+			const message = `⚙️ Agent is misconfigured. Please fix the configuration. Details: ${(error as Error).message}`;
+			throw new NodeOperationError(functions.getNode(), message);
+		}
 	}
 }

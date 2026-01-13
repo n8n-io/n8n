@@ -12,24 +12,38 @@ const TRANSLATION = {
 	},
 };
 
+/**
+ * Translation request context with source/target languages and text to translate.
+ *
+ * Immutable after construction (Object.freeze). Must call throwIfInvalid() before use.
+ */
 export class TranslationContext implements IContext {
 	readonly from?: string;
 	readonly to: string;
 	readonly text: string[];
 
+	/**
+	 * Creates translation context for agent execution.
+	 *
+	 * @param text - Single string or array of strings to translate (normalized to array internally)
+	 * @param to - Target language code (ISO 639-1/BCP-47, e.g., "en", "en-US")
+	 * @param from - Source language code (undefined triggers auto-detection)
+	 */
 	constructor(
-		@mapTo(TRANSLATION.KEYS.TEXT) text: string[],
+		@mapTo(TRANSLATION.KEYS.TEXT) text: string | string[],
 		@mapTo(TRANSLATION.KEYS.TO) to: string,
 		@mapTo(TRANSLATION.KEYS.FROM) from?: string,
 	) {
 		this.from = from;
 		this.to = to;
+		// NOTE: Normalize Text union type to array for consistent downstream processing
 		this.text = Array.isArray(text) ? text : [text];
 		Object.freeze(this);
 	}
 
 	throwIfInvalid(): void {
-		if (this.text === null || this.text === undefined) throw new Error('"text" must be provided.');
+		const wrongText = this.text.filter((t) => t === null || t === undefined);
+		if (wrongText.length > 0) throw new Error('"text" contains null or undefined values.');
 		if (this.to === undefined || this.to.trim() === '') throw new Error('"to" language must be specified.');
 		if (this.text.length === 0) throw new Error('"text" must contain at least one string to translate.');
 	}
@@ -38,6 +52,7 @@ export class TranslationContext implements IContext {
 		return {
 			from: this.from,
 			to: this.to,
+			// NOTE: Log count not content to avoid PII in logs
 			textCount: this.text.length,
 		};
 	}

@@ -22,10 +22,22 @@ const DELAY = {
 
 export type DelayMode = 'noDelay' | 'randomDelay' | 'fixedDelay';
 
+/**
+ * Context for configuring delays between translation requests.
+ *
+ * Supports no delay, fixed delay, or random delay patterns for rate limiting
+ * and throttling translation provider requests. Must call throwIfInvalid() after
+ * construction to ensure delayValue is provided when required by mode.
+ */
 export class DelayContext implements IContext {
 	readonly delayMode: DelayMode;
+	/** Delay duration in milliseconds. Required for randomDelay and fixedDelay modes. */
 	readonly delayValue?: number;
 
+	/**
+	 * @param delayMode - Type of delay: noDelay (immediate), randomDelay (0 to delayValue), fixedDelay (constant)
+	 * @param delayValue - Delay duration in ms. Must be 100-60000ms for randomDelay/fixedDelay modes
+	 */
 	constructor(@mapTo(DELAY.KEYS.DELAY_MODE) delayMode: DelayMode, @mapTo(DELAY.KEYS.DELAY_VALUE) delayValue?: number) {
 		this.delayMode = delayMode;
 		this.delayValue = delayValue;
@@ -33,6 +45,12 @@ export class DelayContext implements IContext {
 		Object.freeze(this);
 	}
 
+	/**
+	 * Validates delayValue is provided and within bounds for randomDelay/fixedDelay modes.
+	 *
+	 * @throws Error if delayValue missing when required by mode
+	 * @throws RangeError if delayValue outside 100-60000ms range
+	 */
 	throwIfInvalid(): void {
 		switch (this.delayMode) {
 			case DELAY.MODES.NO_DELAY:
@@ -57,15 +75,25 @@ export class DelayContext implements IContext {
 		};
 	}
 
+	/**
+	 * Calculates delay duration in milliseconds based on mode.
+	 *
+	 * For randomDelay, returns uniform random value [0, delayValue).
+	 * Assumes throwIfInvalid() called - delayValue is guaranteed non-null for non-zero modes.
+	 *
+	 * @returns Delay in milliseconds (0 for noDelay, random for randomDelay, fixed for fixedDelay)
+	 */
 	calculateDelay(): number {
 		switch (this.delayMode) {
 			case DELAY.MODES.NO_DELAY:
 				return 0;
 			case DELAY.MODES.RANDOM_DELAY:
+				// NOTE: Math.random() returns [0, 1), so result is [0, delayValue) in ms
 				return Math.floor(Math.random() * this.delayValue!);
 			case DELAY.MODES.FIXED_DELAY:
 				return this.delayValue!;
 			default:
+				// NOTE: Should never reach here if throwIfInvalid() called - default returns 0 for safety
 				return 0;
 		}
 	}
