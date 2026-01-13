@@ -13,16 +13,5 @@ export const imageGenerationRecommendation: NodeRecommendationDocument = {
 		],
 		reasoning:
 			"OpenAI provides comprehensive image capabilities: DALL-E for generation/editing, GPT-4 Vision for analysis. Prefer OpenAI when user doesn't specify a provider.",
-		alternatives: [
-			{
-				trigger: 'Gemini or Google',
-				recommendation:
-					'Use @n8n/n8n-nodes-langchain.lmChatGoogleGemini for image analysis (Gemini has vision capabilities)',
-			},
-			{
-				trigger: 'Stable Diffusion',
-				recommendation: 'Use HTTP Request node with Stability AI or similar API',
-			},
-		],
 	},
 };

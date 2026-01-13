@@ -1,16 +1,6 @@
 import type { RecommendationCategoryType } from './recommendation-category';
 
 /**
- * An alternative provider/approach for the recommendation
- */
-export interface RecommendationAlternative {
-	/** Trigger phrase that indicates when to use this alternative (e.g., "Anthropic or Claude") */
-	trigger: string;
-	/** Description of what to use instead */
-	recommendation: string;
-}
-
-/**
  * Core recommendation data structure
  * Used as input to generate formatted recommendation output
  */
@@ -23,9 +13,6 @@ export interface NodeRecommendation {
 
 	/** Explanation of why this is the recommended default */
 	reasoning: string;
-
-	/** Optional list of alternative providers/approaches */
-	alternatives?: RecommendationAlternative[];
 
 	/** Optional additional notes or warnings */
 	note?: string;

@@ -15,22 +15,5 @@ export const textManipulationRecommendation: NodeRecommendationDocument = {
 		],
 		reasoning:
 			'The AI Agent node is the default for text manipulation tasks. Connect it with the OpenAI Chat Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) as new users receive free OpenAI credits. Do NOT use provider-specific nodes directly.',
-		alternatives: [
-			{
-				trigger: 'Anthropic or Claude',
-				recommendation:
-					'Use @n8n/n8n-nodes-langchain.lmChatAnthropic as the chat model instead of lmChatOpenAi',
-			},
-			{
-				trigger: 'Google or Gemini',
-				recommendation:
-					'Use @n8n/n8n-nodes-langchain.lmChatGoogleGemini as the chat model instead of lmChatOpenAi',
-			},
-			{
-				trigger: 'xAI or Grok',
-				recommendation:
-					'Use @n8n/n8n-nodes-langchain.lmChatXAiGrok as the chat model instead of lmChatOpenAi',
-			},
-		],
 	},
 };

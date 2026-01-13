@@ -13,16 +13,5 @@ export const audioGenerationRecommendation: NodeRecommendationDocument = {
 		],
 		reasoning:
 			"OpenAI provides comprehensive audio capabilities: TTS for speech generation, Whisper for transcription and translation. Prefer OpenAI when user doesn't specify a provider.",
-		alternatives: [
-			{
-				trigger: 'ElevenLabs',
-				recommendation:
-					'Use HTTP Request node with ElevenLabs API for natural-sounding voice generation',
-			},
-			{
-				trigger: 'Gemini or Google',
-				recommendation: 'Use Google Gemini for audio transcription capabilities',
-			},
-		],
 	},
 };
