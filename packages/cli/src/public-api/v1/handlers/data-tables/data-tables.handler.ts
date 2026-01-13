@@ -69,8 +69,6 @@ export = {
 		validCursor,
 		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
 			try {
-				const { offset = 0, limit = 100 } = req.query;
-
 				// Validate query parameters using DTO (convert to strings first)
 				const payload = ListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
@@ -79,25 +77,27 @@ export = {
 					});
 				}
 
+				const { skip, take, sortBy, filter } = payload.data;
+
 				// Get user's personal project
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,
 				);
 
 				// Add projectId to filter
-				const providedFilter = payload.data.filter ?? {};
+				const providedFilter = filter ?? {};
 				const result = await Container.get(DataTableService).getManyAndCount({
-					skip: offset,
-					take: limit,
+					skip,
+					take,
 					filter: { ...providedFilter, projectId: project.id },
-					sortBy: payload.data.sortBy,
+					sortBy,
 				});
 
 				return res.json({
 					data: result.data,
 					nextCursor: encodeNextCursor({
-						offset,
-						limit,
+						offset: skip,
+						limit: take,
 						numberOfTotalRecords: result.count,
 					}),
 				});

@@ -3,8 +3,6 @@ import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workfl
 import type {
 	AddDataTableRowsDto,
 	CreateDataTableDto,
-	ListDataTableContentQueryDto,
-	ListDataTableQueryDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,

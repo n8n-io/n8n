@@ -17,3 +17,4 @@ properties:
       - all: Return the full row data for all inserted rows
 required:
   - data
+  - returnType

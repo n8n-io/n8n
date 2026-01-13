@@ -6,13 +6,16 @@ import { Container } from '@n8n/di';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { createDataTable } from '../shared/db/data-tables';
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;
+let member: User;
 let ownerPersonalProject: Project;
+let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -21,9 +24,11 @@ const testServer = utils.setupTestServer({
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
+	member = await createMemberWithApiKey();
 
 	const projectRepository = Container.get(ProjectRepository);
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 });
 
 beforeEach(async () => {
@@ -55,8 +60,10 @@ beforeEach(async () => {
 	};
 
 	ownerPersonalProject = await createPersonalProject(owner);
+	memberPersonalProject = await createPersonalProject(member);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 const testWithAPIKey =
@@ -207,6 +214,34 @@ describe('GET /data-tables/:dataTableId', () => {
 		expect(response.body).toHaveProperty('columns');
 		expect(response.body.columns).toHaveLength(2);
 	});
+
+	test('should return 404 when user does not have access to the data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'owner-table',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${dataTable.id}'`,
+		);
+	});
+
+	test('should allow access to own data table', async () => {
+		const dataTable = await createDataTable(memberPersonalProject, {
+			name: 'member-table',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', dataTable.id);
+		expect(response.body).toHaveProperty('name', 'member-table');
+	});
 });
 
 describe('PATCH /data-tables/:dataTableId', () => {
@@ -259,6 +294,23 @@ describe('PATCH /data-tables/:dataTableId', () => {
 		expect(response.statusCode).toBe(409);
 		expect(response.body).toHaveProperty('message');
 	});
+
+	test('should return 404 when user does not have access to update the data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'owner-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.patch(`/data-tables/${dataTable.id}`).send({
+			name: 'hacked-name',
+		});
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${dataTable.id}'`,
+		);
+	});
 });
 
 describe('DELETE /data-tables/:dataTableId', () => {
@@ -294,6 +346,25 @@ describe('DELETE /data-tables/:dataTableId', () => {
 		// Verify it's deleted
 		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
 		expect(getResponse.statusCode).toBe(404);
+	});
+
+	test('should return 404 when user does not have access to delete the data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'owner-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.delete(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${dataTable.id}'`,
+		);
+
+		// Verify it's not actually deleted
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+		expect(getResponse.statusCode).toBe(200);
 	});
 });
 
@@ -448,10 +519,10 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(3);
-		// Just verify that sorting by createdAt works without error
-		// (all rows may have same/similar timestamp if inserted quickly)
-		expect(response.body.data[0]).toHaveProperty('createdAt');
-		expect(response.body.data[0]).toHaveProperty('name');
+		expect(response.body.data.every((row: any) => row.createdAt)).toBe(true);
+
+		const createdAtTimes = response.body.data.map((row: any) => new Date(row.createdAt).getTime());
+		expect(createdAtTimes).toEqual([...createdAtTimes].sort((a, b) => b - a));
 	});
 
 	test('should reject column names with invalid characters', async () => {

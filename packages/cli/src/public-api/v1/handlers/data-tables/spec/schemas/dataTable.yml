@@ -20,7 +20,7 @@ properties:
           description: Column name
         type:
           type: string
-          enum: [string, number, boolean, date, json]
+          enum: [string, number, boolean, date]
           description: Column data type
         index:
           type: integer
