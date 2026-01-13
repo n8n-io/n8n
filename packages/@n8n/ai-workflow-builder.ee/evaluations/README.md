@@ -218,6 +218,7 @@ const traceableGenerateWorkflow = traceable(
 );
 
 const target = async (inputs) => {
+  const { prompt } = inputs;
   // Call the pre-created wrapper with explicit params (no closures)
   const workflow = await traceableGenerateWorkflow({
     prompt,

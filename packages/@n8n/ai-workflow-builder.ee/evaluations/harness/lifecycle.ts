@@ -89,9 +89,17 @@ function getDisplayMetricName(evaluator: string, metric: string): string {
 	return metric;
 }
 
-function getDisplayLines(details?: Record<string, unknown>): DisplayLine[] | undefined {
+function isDisplayLine(item: unknown): item is DisplayLine {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('text' in item)) return false;
+	return typeof item.text === 'string';
+}
+
+function getDisplayLines(details?: Feedback['details']): DisplayLine[] | undefined {
 	if (!details?.displayLines || !Array.isArray(details.displayLines)) return undefined;
-	return details.displayLines as DisplayLine[];
+	// Validate each item matches DisplayLine shape
+	if (!details.displayLines.every(isDisplayLine)) return undefined;
+	return details.displayLines;
 }
 
 function formatMetricValue(evaluator: string, metric: string, score: number): string {

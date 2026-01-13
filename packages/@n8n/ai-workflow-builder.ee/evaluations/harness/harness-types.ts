@@ -71,7 +71,7 @@ export interface Feedback {
 	 * Evaluators can provide structured data here for better logging.
 	 * The `comment` field remains the primary text for LangSmith.
 	 */
-	details?: Record<string, unknown>;
+	details?: { displayLines?: DisplayLine[] } & Record<string, unknown>;
 }
 
 /**

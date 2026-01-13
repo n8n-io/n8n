@@ -387,7 +387,7 @@ describe('CLI', () => {
 		});
 
 		describe('exit codes', () => {
-			it('should exit with 0 when pass rate >= 70%', async () => {
+			it('should always exit with 0 on successful completion (pass/fail is informational)', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
 
 				const { runV2Evaluation } = await import('../cli');
@@ -395,28 +395,20 @@ describe('CLI', () => {
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when pass rate < 70%', async () => {
+			it('should exit with 0 even when pass rate is low', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 5 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
-			});
-
-			it('should exit with 0 when pass rate is exactly 70%', async () => {
-				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
-
-				const { runV2Evaluation } = await import('../cli');
-
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when no examples', async () => {
+			it('should exit with 0 even when no examples', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 0, passed: 0 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 		});
 

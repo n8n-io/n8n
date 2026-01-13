@@ -1,10 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { getLangchainCallbacks } from 'langsmith/langchain';
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
-import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
+import {
+	getTracingCallbacks,
+	runWithOptionalLimiter,
+	withTimeout,
+} from '../../harness/evaluation-helpers';
 import type { EvaluationContext } from '../../harness/harness-types';
 
 // ============================================================================
@@ -83,13 +86,8 @@ export async function runJudgePanel(
 	const { experimentName, llmCallLimiter, timeoutMs } = options ?? {};
 	const panelStartTime = Date.now();
 
-	// Bridge LangSmith traceable context to LangChain callbacks (undefined if not tracing)
-	let callbacks: Awaited<ReturnType<typeof getLangchainCallbacks>> | undefined;
-	try {
-		callbacks = await getLangchainCallbacks();
-	} catch {
-		callbacks = undefined;
-	}
+	// Bridge LangSmith traceable context to LangChain callbacks
+	const callbacks = await getTracingCallbacks();
 
 	// Run all judges in parallel, tracking timing for each
 	const judgeTimings: number[] = [];
