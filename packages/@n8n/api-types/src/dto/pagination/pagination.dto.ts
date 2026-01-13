@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-export const MAX_ITEMS_PER_PAGE = 50;
+export const MAX_ITEMS_PER_PAGE = 250;
 
 const skipValidator = z
 	.string()
@@ -18,7 +18,7 @@ export const createTakeValidator = (maxItems: number, allowInfinity: boolean = f
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 10))
+		.transform((val) => (val ? parseInt(val, 10) : 100))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `take` must be a valid integer',
 		})

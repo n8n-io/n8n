@@ -77,7 +77,7 @@ export = {
 					});
 				}
 
-				const { skip, take, sortBy, filter } = payload.data;
+				const { skip = 0, take = 100, sortBy, filter } = payload.data;
 
 				// Get user's personal project
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(

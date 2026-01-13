@@ -72,7 +72,6 @@ export = {
 		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { offset = 0, limit = 100 } = req.query;
 
 				// Validate query parameters using DTO (convert to strings first)
 				const payload = ListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
@@ -82,25 +81,27 @@ export = {
 					});
 				}
 
+				const { skip = 0, take = 100, filter, sortBy, search } = payload.data;
+
 				const projectId = await getProjectIdForDataTable(dataTableId);
 
 				const result = await Container.get(DataTableService).getManyRowsAndCount(
 					dataTableId,
 					projectId,
 					{
-						skip: offset,
-						take: limit,
-						filter: payload.data.filter,
-						sortBy: payload.data.sortBy,
-						search: payload.data.search,
+						skip,
+						take,
+						filter,
+						sortBy,
+						search,
 					},
 				);
 
 				return res.json({
 					data: result.data,
 					nextCursor: encodeNextCursor({
-						offset,
-						limit,
+						offset: skip,
+						limit: take,
 						numberOfTotalRecords: result.count,
 					}),
 				});

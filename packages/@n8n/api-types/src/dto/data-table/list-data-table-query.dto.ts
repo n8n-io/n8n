@@ -11,8 +11,6 @@ const VALID_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
-	'sizeBytes:asc',
-	'sizeBytes:desc',
 ] as const;
 
 export type ListDataTableQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
