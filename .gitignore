@@ -23,6 +23,7 @@ packages/**/.turbo
 CHANGELOG-*.md
 *.mdx
 build-storybook.log
+build.log
 *.junit.xml
 junit.xml
 test-results.json
