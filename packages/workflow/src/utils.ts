@@ -441,10 +441,6 @@ export function isCommunityPackageName(packageName: string): boolean {
 	return !!nameMatch;
 }
 
-export function dedupe<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
-}
-
 /**
  * Extracts a safe filename from a path or filename string.
  *
