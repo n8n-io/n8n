@@ -3420,6 +3420,9 @@ importers:
       '@n8n/db':
         specifier: workspace:*
         version: link:../../@n8n/db
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../@n8n/permissions
       '@playwright/test':
         specifier: catalog:e2e
         version: 1.57.0

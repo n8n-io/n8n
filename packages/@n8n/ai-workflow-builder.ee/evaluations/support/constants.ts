@@ -33,7 +33,6 @@ export const DEFAULTS = {
 	TIMEOUT_MS: 20 * 60 * 1000,
 	DATASET_NAME: 'notion-pairwise-workflows',
 	FEATURE_FLAGS: {
-		multiAgent: true,
 		templateExamples: false,
 	},
 } as const;
