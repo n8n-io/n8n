@@ -521,11 +521,14 @@ export class WorkflowService {
 		}
 	}
 
-	private async _findConflictingWebhooks(workflowEntity: WorkflowEntity) {
+	private async _findConflictingWebhooks(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
 		const workflow = new Workflow({
 			id: workflowEntity.id,
-			nodes: workflowEntity.nodes,
-			connections: workflowEntity.connections,
+			nodes: versionToActivate.nodes,
+			connections: versionToActivate.connections,
 			active: !!workflowEntity.activeVersion,
 			settings: workflowEntity.settings,
 			nodeTypes: this.nodeTypes,
@@ -537,8 +540,11 @@ export class WorkflowService {
 		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
 	}
 
-	private async _detectWebhookConflicts(workflowEntity: WorkflowEntity) {
-		const conflicts = await this._findConflictingWebhooks(workflowEntity);
+	private async _detectWebhookConflicts(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
+		const conflicts = await this._findConflictingWebhooks(workflowEntity, versionToActivate);
 
 		if (conflicts.length > 0) {
 			throw new ConflictError(
@@ -613,7 +619,7 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
-		await this._detectWebhookConflicts(workflow);
+		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
