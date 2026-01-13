@@ -70,13 +70,17 @@ export class ImportService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 
-		// Check existence of all workflows once to avoid duplicate queries
+		// Check existence and active status of all workflows once to avoid duplicate queries
 		const existingWorkflowIds = new Set<string>();
+		const activeWorkflowIds = new Set<string>();
 		for (const workflow of workflows) {
 			if (workflow.id) {
-				const exists = await dbManager.existsBy(WorkflowEntity, { id: workflow.id });
-				if (exists) {
+				const existingWorkflow = await dbManager.findOneBy(WorkflowEntity, { id: workflow.id });
+				if (existingWorkflow) {
 					existingWorkflowIds.add(workflow.id);
+					if (existingWorkflow.activeVersionId !== null) {
+						activeWorkflowIds.add(workflow.id);
+					}
 				}
 			}
 		}
@@ -93,8 +97,8 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			// Only remove if the workflow already exists in the database
-			if (workflow.id && existingWorkflowIds.has(workflow.id)) {
+			// Only remove if the workflow already exists in the database and is active
+			if (workflow.id && activeWorkflowIds.has(workflow.id)) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
