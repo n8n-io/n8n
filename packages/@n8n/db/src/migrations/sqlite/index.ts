@@ -51,6 +51,7 @@ import { AddResolvableFieldsToCredentials1764689448000 } from './1764689448000-A
 import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdForeignKeys';
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { CreateChatMemoryTables1768830000000 } from './1768830000000-CreateChatMemoryTables';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -267,6 +268,7 @@ const sqliteMigrations: Migration[] = [
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateChatMemoryTables1768830000000,
 ];
 
 export { sqliteMigrations };

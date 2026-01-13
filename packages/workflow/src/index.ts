@@ -7,6 +7,7 @@ export * from './errors';
 export * from './constants';
 export * from './common';
 export * from './cron';
+export * from './chat-hub.types';
 export * from './data-table.types';
 export * from './deferred-promise';
 export * from './execution-context';

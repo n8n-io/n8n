@@ -53,6 +53,11 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		return await em.delete(ChatHubMessage, { id });
 	}
 
+	async deleteBySessionId(sessionId: ChatSessionId, trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		return await em.delete(ChatHubMessage, { sessionId });
+	}
+
 	async getManyBySessionId(sessionId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
 		return await em.find(ChatHubMessage, {
