@@ -10,9 +10,9 @@ import type { Cluster, ClusterOptions, DNSLookupFunction, RedisOptions } from 'i
 import { InstanceSettings } from 'n8n-core';
 import { isAbsolute } from 'path';
 
-import { TypedEmitter } from '@/typed-emitter';
-
 import type { RedisClientType } from '../scaling/redis/redis.types';
+
+import { TypedEmitter } from '@/typed-emitter';
 
 type RedisEventMap = {
 	['connection-lost']: number;
