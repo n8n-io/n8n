@@ -9,18 +9,22 @@ export type EnvProviderState = {
 /**
  * Captures a snapshot of the environment variables and configuration
  * that can be used to initialize an environment provider.
+ *
+ * @param isEnvAccessBlocked - Whether env access is blocked. If undefined,
+ *   falls back to checking process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE for
+ *   backward compatibility.
  */
-export function createEnvProviderState(): EnvProviderState {
+export function createEnvProviderState(isEnvAccessBlocked?: boolean): EnvProviderState {
 	const isProcessAvailable = typeof process !== 'undefined';
-	const isEnvAccessBlocked = isProcessAvailable
-		? process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'false'
-		: false;
+	const envBlocked =
+		isEnvAccessBlocked ??
+		(isProcessAvailable ? process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'false' : false);
 	const env: Record<string, string> =
-		!isProcessAvailable || isEnvAccessBlocked ? {} : (process.env as Record<string, string>);
+		!isProcessAvailable || envBlocked ? {} : (process.env as Record<string, string>);
 
 	return {
 		isProcessAvailable,
-		isEnvAccessBlocked,
+		isEnvAccessBlocked: envBlocked,
 		env,
 	};
 }
