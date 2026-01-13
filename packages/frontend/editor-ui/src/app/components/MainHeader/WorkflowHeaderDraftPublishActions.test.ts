@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -135,23 +136,32 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Active version indicator', () => {
-		it('should not show active version indicator when there is no active version', () => {
+		it('should not show active version indicator when there is no active version', async () => {
 			workflowsStore.workflow.activeVersion = null;
 
-			const { queryByTestId } = renderComponent();
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			// Hover over publish button to open tooltip
+			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
 		});
 
-		it('should show active version indicator when there is an active version', () => {
+		it('should show active version indicator when there is an active version', async () => {
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			// Hover over publish button to open tooltip
+			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
+
+			// Wait for tooltip to appear (show-after is 300ms)
+			await waitFor(() => {
+				expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			});
 		});
 
-		it('should use latest activation date from workflowPublishHistory when available', () => {
+		it('should use latest activation date from workflowPublishHistory when available', async () => {
 			const oldDate = '2024-01-01T00:00:00.000Z';
 			const latestActivationDate = '2024-06-15T10:30:00.000Z';
 			workflowsStore.workflow.activeVersion = {
@@ -188,9 +198,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent({
 				global: {
 					stubs: {
-						N8nTooltip: {
-							template: '<div><slot name="content" /></div>',
-						},
 						TimeAgo: {
 							props: ['date'],
 							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
@@ -199,8 +206,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+			// Hover over publish button to open tooltip
+			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
+
+			// Wait for tooltip to appear (show-after is 300ms)
+			await waitFor(() => {
+				expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+				expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+			});
 		});
 	});
 
