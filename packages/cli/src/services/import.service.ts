@@ -79,11 +79,7 @@ export class ImportService {
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			if (workflow.id) {
-				try {
-					await this.activeWorkflowManager.remove(workflow.id);
-				} catch {
-					// Workflow doesn't exist or has no active version, nothing to remove
-				}
+				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
