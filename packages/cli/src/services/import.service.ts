@@ -70,6 +70,17 @@ export class ImportService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 
+		// Check existence of all workflows once to avoid duplicate queries
+		const existingWorkflowIds = new Set<string>();
+		for (const workflow of workflows) {
+			if (workflow.id) {
+				const exists = await dbManager.existsBy(WorkflowEntity, { id: workflow.id });
+				if (exists) {
+					existingWorkflowIds.add(workflow.id);
+				}
+			}
+		}
+
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
 				this.toNewCredentialFormat(node);
@@ -83,11 +94,8 @@ export class ImportService {
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database
-			if (workflow.id) {
-				const exists = await dbManager.existsBy(WorkflowEntity, { id: workflow.id });
-				if (exists) {
-					await this.activeWorkflowManager.remove(workflow.id);
-				}
+			if (workflow.id && existingWorkflowIds.has(workflow.id)) {
+				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
@@ -113,7 +121,7 @@ export class ImportService {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
 
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
+				const exists = workflow.id ? existingWorkflowIds.has(workflow.id) : false;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
