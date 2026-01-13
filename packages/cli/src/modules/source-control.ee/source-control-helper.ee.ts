@@ -23,6 +23,7 @@ import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { StatusResourceOwner } from './types/resource-owner';
+import type { ExportableDataTable, ExportableDataTableColumn } from './types/exportable-data-table';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -280,4 +281,44 @@ export function isWorkflowModified(
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+}
+
+/**
+ * Compares two data table columns arrays to check if they are equal
+ */
+function areDataTableColumnsEqual(
+	localColumns: ExportableDataTableColumn[],
+	remoteColumns: ExportableDataTableColumn[],
+): boolean {
+	if (localColumns.length !== remoteColumns.length) {
+		return false;
+	}
+
+	const sortedLocal = [...localColumns].sort((a, b) => a.id.localeCompare(b.id));
+	const sortedRemote = [...remoteColumns].sort((a, b) => a.id.localeCompare(b.id));
+
+	return sortedLocal.every((localCol, idx) => {
+		const remoteCol = sortedRemote[idx];
+		return (
+			localCol.id === remoteCol.id &&
+			localCol.name === remoteCol.name &&
+			localCol.type === remoteCol.type &&
+			localCol.index === remoteCol.index
+		);
+	});
+}
+
+/**
+ * Checks if a data table has been modified by comparing basic properties and schema (columns)
+ * between local and remote versions
+ */
+export function isDataTableModified(
+	localDt: ExportableDataTable,
+	remoteDt: ExportableDataTable,
+): boolean {
+	if (localDt.name !== remoteDt.name) {
+		return true;
+	}
+
+	return !areDataTableColumnsEqual(localDt.columns, remoteDt.columns);
 }

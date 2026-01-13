@@ -1762,5 +1762,387 @@ describe('getStatus', () => {
 			const deletedFile = dataTableFiles.find((f) => f.id === 'dt8');
 			expect(deletedFile?.status).toBe('deleted');
 		});
+
+		describe('schema change detection', () => {
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			it('should detect column addition', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-1',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'Column 3', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-1',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-1',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should detect column deletion', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-2',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-2',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-2',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should detect column type change', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-3',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'number', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-3',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-3',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should detect column name change', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-4',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Updated Column Name', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-4',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-4',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should detect column reordering (index change)', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-5',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 1 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 0 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-5',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-5',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should not detect modifications when schemas are identical', async () => {
+				// ARRANGE
+				const dataTable = {
+					id: 'dt-schema-6',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'Column 3', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([dataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
+			});
+
+			it('should detect combined changes (name and schema)', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-7',
+					name: 'Updated Name',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'New Column', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-7',
+					name: 'Original Name',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-7',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should handle empty columns arrays correctly', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-8',
+					name: 'Empty Columns',
+					projectId: 'project1',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-8',
+					name: 'Empty Columns',
+					projectId: 'project1',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
+			});
+
+			it('should detect when one has empty columns and other has columns', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-9',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-9',
+					name: 'Schema Test',
+					projectId: 'project1',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFile.mockResolvedValue([remoteDataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-9',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+		});
 	});
 });

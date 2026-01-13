@@ -18,6 +18,7 @@ import {
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
+	isDataTableModified,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
@@ -478,13 +479,18 @@ export class SourceControlStatusService {
 
 		const dtModifiedInEither: ExportableDataTable[] = [];
 		dataTablesLocal.forEach((local) => {
-			const mismatchingIds = dataTablesRemote.find(
-				(remote) =>
+			const remote = dataTablesRemote.find((r) => r.id === local.id);
+
+			if (remote) {
+				const hasMismatch =
 					(remote.id === local.id && remote.name !== local.name) ||
-					(remote.id !== local.id && remote.name === local.name),
-			);
-			if (mismatchingIds) {
-				dtModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
+					(remote.id !== local.id && remote.name === local.name);
+
+				const isModified = isDataTableModified(local, remote);
+
+				if (hasMismatch || isModified) {
+					dtModifiedInEither.push(options.preferLocalVersion ? local : remote);
+				}
 			}
 		});
 
