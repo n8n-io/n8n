@@ -2309,7 +2309,7 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId for all webhook nodes
+					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
 						if (node.webhookId) {
 							nodeHelpers.assignWebhookId(node);
