@@ -560,7 +560,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 	});
 
 	describe('multipleValues=false fixedCollection', () => {
-		it('renders correctly and emits changes', async () => {
+		it('renders values correctly', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
