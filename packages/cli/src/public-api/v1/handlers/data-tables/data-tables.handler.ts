@@ -94,8 +94,10 @@ export = {
 					sortBy,
 				});
 
+				const data = result.data.map(({ project: _project, ...rest }) => rest);
+
 				return res.json({
-					data: result.data,
+					data,
 					nextCursor: encodeNextCursor({
 						offset,
 						limit,
