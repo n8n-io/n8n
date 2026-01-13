@@ -219,67 +219,267 @@ describe('RateLimitService', () => {
 			});
 		});
 
-		test('should set expiry when PTTL returns -1 (no expiry)', async () => {
-			const key = 'test-key';
-			const limit = 3;
-			const windowMs = 60000;
-
-			const redisClient = (rateLimitService as any).redisClient;
-
-			// Default mock already returns PTTL = -1 (no expiry)
-			const status = await rateLimitService.tryConsume({ key, limit, windowMs });
-
-			// pexpire should be called when PTTL <= 0
-			expect(redisClient.pexpire).toHaveBeenCalledWith(key, windowMs);
-			expect(status.allowed).toBe(true);
-			expect(status.remaining).toBe(2);
-		});
-
-		test('should not set expiry when PTTL returns positive value', async () => {
-			const key = 'test-key';
-			const limit = 3;
-			const windowMs = 60000;
-
-			const redisClient = (rateLimitService as any).redisClient;
-
-			// Clear any previous calls and mock PTTL returning positive value (expiry exists)
-			redisClient.pexpire.mockClear();
-			redisClient.pipeline.mockReturnValue({
-				incr: jest.fn().mockReturnThis(),
-				pttl: jest.fn().mockReturnThis(),
-				exec: jest.fn().mockResolvedValue([
-					[null, 2], // incr result (second request)
-					[null, 55000], // pttl result (expiry already set)
-				]),
+		test('should fall back to in-memory when Redis client creation fails', () => {
+			const failingRedisClientService = mock<RedisClientService>({
+				toValidPrefix: jest.fn().mockReturnValue('{n8n:rate-limit}'),
+				createClient: jest.fn().mockImplementation(() => {
+					throw new Error('Redis connection failed');
+				}),
 			});
 
-			const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+			const service = new RateLimitService(logger, failingRedisClientService, globalConfig);
 
-			// pexpire should NOT be called when PTTL > 0
-			expect(redisClient.pexpire).not.toHaveBeenCalled();
-			expect(status.allowed).toBe(true);
-			expect(status.remaining).toBe(1);
-		});
-
-		test('should fail open on Redis errors', async () => {
-			const key = 'test-key';
-			const limit = 3;
-			const windowMs = 60000;
-
-			const redisClient = (rateLimitService as any).redisClient;
-			redisClient.pipeline.mockReturnValue({
-				incr: jest.fn().mockReturnThis(),
-				pttl: jest.fn().mockReturnThis(),
-				exec: jest.fn().mockRejectedValue(new Error('Redis connection error')),
-			});
-
-			const status = await rateLimitService.tryConsume({ key, limit, windowMs });
-
-			expect(status.allowed).toBe(true); // Fail open - allow the request
-			expect(logger.error).toHaveBeenCalledWith(
-				'Error consuming rate limit in Redis, failing open',
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to create Redis client for rate limiting, falling back to in-memory',
 				expect.any(Object),
 			);
+
+			service.shutdown();
+		});
+
+		describe('tryConsume()', () => {
+			test('should set expiry when PTTL returns -1 (no expiry)', async () => {
+				const key = 'test-key';
+				const limit = 3;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+
+				// Default mock already returns PTTL = -1 (no expiry)
+				const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+				// pexpire should be called when PTTL <= 0
+				expect(redisClient.pexpire).toHaveBeenCalledWith(key, windowMs);
+				expect(status.allowed).toBe(true);
+				expect(status.remaining).toBe(2);
+			});
+
+			test('should not set expiry when PTTL returns positive value', async () => {
+				const key = 'test-key';
+				const limit = 3;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+
+				// Clear any previous calls and mock PTTL returning positive value (expiry exists)
+				redisClient.pexpire.mockClear();
+				redisClient.pipeline.mockReturnValue({
+					incr: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue([
+						[null, 2], // incr result (second request)
+						[null, 55000], // pttl result (expiry already set)
+					]),
+				});
+
+				const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+				// pexpire should NOT be called when PTTL > 0
+				expect(redisClient.pexpire).not.toHaveBeenCalled();
+				expect(status.allowed).toBe(true);
+				expect(status.remaining).toBe(1);
+			});
+
+			test('should fail open when pipeline returns null', async () => {
+				const key = 'test-key';
+				const limit = 3;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					incr: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue(null),
+				});
+
+				const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(logger.error).toHaveBeenCalledWith('Redis pipeline returned null, failing open', {
+					key,
+				});
+			});
+
+			test('should fail open when pipeline has errors', async () => {
+				const key = 'test-key';
+				const limit = 3;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					incr: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue([
+						[new Error('INCR failed'), null],
+						[null, 60000],
+					]),
+				});
+
+				const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(logger.error).toHaveBeenCalledWith(
+					'Error in Redis pipeline, failing open',
+					expect.any(Object),
+				);
+			});
+
+			test('should fail open on Redis exception', async () => {
+				const key = 'test-key';
+				const limit = 3;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					incr: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockRejectedValue(new Error('Redis connection error')),
+				});
+
+				const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(logger.error).toHaveBeenCalledWith(
+					'Error consuming rate limit in Redis, failing open',
+					expect.any(Object),
+				);
+			});
+		});
+
+		describe('get()', () => {
+			test('should return status from Redis', async () => {
+				const key = 'test-key';
+				const limit = 5;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					get: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue([
+						[null, '2'], // get result (2 requests made)
+						[null, 45000], // pttl result
+					]),
+				});
+
+				const status = await rateLimitService.get({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(status.remaining).toBe(3);
+			});
+
+			test('should return full limit when key does not exist', async () => {
+				const key = 'test-key';
+				const limit = 5;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					get: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue([
+						[null, null], // get result (key doesn't exist)
+						[null, -2], // pttl result (-2 = key doesn't exist)
+					]),
+				});
+
+				const status = await rateLimitService.get({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(status.remaining).toBe(5);
+			});
+
+			test('should fail open when pipeline returns null', async () => {
+				const key = 'test-key';
+				const limit = 5;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					get: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue(null),
+				});
+
+				const status = await rateLimitService.get({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(status.remaining).toBe(5);
+				expect(logger.error).toHaveBeenCalledWith('Redis pipeline returned null, failing open', {
+					key,
+				});
+			});
+
+			test('should fail open when pipeline has errors', async () => {
+				const key = 'test-key';
+				const limit = 5;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					get: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockResolvedValue([
+						[new Error('GET failed'), null],
+						[null, 60000],
+					]),
+				});
+
+				const status = await rateLimitService.get({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(logger.error).toHaveBeenCalledWith(
+					'Error getting rate limit count from Redis, failing open',
+					expect.any(Object),
+				);
+			});
+
+			test('should fail open on Redis exception', async () => {
+				const key = 'test-key';
+				const limit = 5;
+				const windowMs = 60000;
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.pipeline.mockReturnValue({
+					get: jest.fn().mockReturnThis(),
+					pttl: jest.fn().mockReturnThis(),
+					exec: jest.fn().mockRejectedValue(new Error('Redis connection error')),
+				});
+
+				const status = await rateLimitService.get({ key, limit, windowMs });
+
+				expect(status.allowed).toBe(true);
+				expect(logger.error).toHaveBeenCalledWith(
+					'Error getting rate limit status from Redis, failing open',
+					expect.any(Object),
+				);
+			});
+		});
+
+		describe('reset()', () => {
+			test('should delete key from Redis', async () => {
+				const key = 'test-key';
+
+				const redisClient = (rateLimitService as any).redisClient;
+
+				await rateLimitService.reset({ key });
+
+				expect(redisClient.del).toHaveBeenCalledWith(key);
+			});
+
+			test('should log error when Redis delete fails', async () => {
+				const key = 'test-key';
+
+				const redisClient = (rateLimitService as any).redisClient;
+				redisClient.del.mockRejectedValue(new Error('Redis delete failed'));
+
+				await rateLimitService.reset({ key });
+
+				expect(logger.error).toHaveBeenCalledWith(
+					'Error resetting rate limit in Redis',
+					expect.any(Object),
+				);
+			});
 		});
 	});
 
