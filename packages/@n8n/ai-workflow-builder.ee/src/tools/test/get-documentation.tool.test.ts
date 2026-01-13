@@ -146,7 +146,7 @@ describe('get_documentation tool', () => {
 			expect(result).toContain('<audio_generation>');
 		});
 
-		it('should include alternatives in recommendations', async () => {
+		it('should include connected nodes in recommendations', async () => {
 			const { tool } = createGetDocumentationTool();
 
 			const command = await tool.invoke(
@@ -162,9 +162,9 @@ describe('get_documentation tool', () => {
 			);
 			const result = getMessageContent(command);
 
-			expect(result).toContain('<alternatives>');
-			expect(result).toContain('Anthropic');
-			expect(result).toContain('lmChatAnthropic');
+			expect(result).toContain('<connected_nodes>');
+			expect(result).toContain('lmChatOpenAi');
+			expect(result).toContain('ai_languageModel');
 		});
 	});
 

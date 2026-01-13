@@ -1,3 +1,5 @@
+import type { NodeConnectionType } from 'n8n-workflow';
+
 /**
  * Categories for node recommendations
  * Generic enumeration that can be expanded beyond AI tasks in the future
@@ -30,6 +32,18 @@ export const RecommendationCategoryDescription: Record<RecommendationCategoryTyp
 };
 
 /**
+ * A recommended node to connect to the default node
+ */
+export interface ConnectedNodeRecommendation {
+	/** The n8n node type to connect (e.g., "@n8n/n8n-nodes-langchain.lmChatOpenAi") */
+	nodeType: string;
+	/** The connection type */
+	connectionType: NodeConnectionType;
+	/** Brief description of why this connection is recommended */
+	description?: string;
+}
+
+/**
  * Core recommendation data structure
  * Used as input to generate formatted recommendation output
  */
@@ -42,6 +56,9 @@ export interface NodeRecommendation {
 
 	/** Explanation of why this is the recommended default */
 	reasoning: string;
+
+	/** Optional list of nodes to connect to the default node */
+	connectedNodes?: ConnectedNodeRecommendation[];
 
 	/** Optional additional notes or warnings */
 	note?: string;

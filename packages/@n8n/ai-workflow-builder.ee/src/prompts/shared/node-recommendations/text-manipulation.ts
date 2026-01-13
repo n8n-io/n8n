@@ -16,6 +16,13 @@ export const textManipulationRecommendation: NodeRecommendationDocument = {
 			'Content generation and writing',
 		],
 		reasoning:
-			'The AI Agent node is the default for text manipulation tasks. Connect it with the OpenAI Chat Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) as new users receive free OpenAI credits. Do NOT use provider-specific nodes directly.',
+			'The AI Agent node is the default for text manipulation tasks. New users receive free OpenAI credits. Do NOT use provider-specific nodes directly.',
+		connectedNodes: [
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				connectionType: 'ai_languageModel',
+				description: 'Required chat model for the AI Agent',
+			},
+		],
 	},
 };

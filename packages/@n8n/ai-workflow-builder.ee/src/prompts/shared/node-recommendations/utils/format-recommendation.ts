@@ -10,6 +10,17 @@ export function formatRecommendation(rec: NodeRecommendation): string {
 		.section('operations', rec.operations.map((op) => `- ${op}`).join('\n'))
 		.section('reasoning', rec.reasoning);
 
+	// Add connected nodes if present
+	if (rec.connectedNodes && rec.connectedNodes.length > 0) {
+		const connectedContent = rec.connectedNodes
+			.map((cn) => {
+				const desc = cn.description ? ` - ${cn.description}` : '';
+				return `- ${cn.nodeType} (connection: ${cn.connectionType})${desc}`;
+			})
+			.join('\n');
+		builder.section('connected_nodes', connectedContent);
+	}
+
 	// Add note if present
 	if (rec.note) {
 		builder.section('note', rec.note);
