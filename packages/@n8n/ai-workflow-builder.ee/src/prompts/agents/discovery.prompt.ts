@@ -289,6 +289,22 @@ const CRITICAL_RULES = `- NEVER ask clarifying questions
 - When user specifies a model name (e.g., 'gpt-4.1-mini') try to use this if it is a valid option
 - PREFER native n8n nodes (especially Edit Fields) over Code node`;
 
+const NODE_RECOMMENDATIONS_GUIDANCE = `When to call get_node_recommendations:
+- User wants AI capabilities but doesn't specify exact nodes/providers
+- User mentions generic tasks like "generate image", "transcribe audio", "analyze text"
+- User mentions AI but no specific model (OpenAI, Anthropic, etc.)
+
+Do NOT call get_node_recommendations when:
+- User explicitly names a provider (e.g., "use Claude", "with OpenAI", "using Gemini")
+- User specifies exact node names
+- Task doesn't involve AI/ML capabilities
+
+Categories to use:
+- text_manipulation: summarization, analysis, extraction, classification, chat, content creation
+- image_generation: generate, analyze, edit, describe images
+- video_generation: create videos from text or images
+- audio_generation: text-to-speech, transcription, translation`;
+
 const RESTRICTIONS = `- Output text commentary between tool calls
 - Include bestPractices or categorization in submit_discovery_results
 - Flag parameters that don't affect connections
@@ -299,6 +315,7 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 
 	const tools = [
 		'- get_best_practices: Retrieve best practices (internal context)',
+		'- get_node_recommendations: Get default node recommendations for AI tasks when user does not specify providers',
 		'- search_nodes: Find n8n nodes by keyword',
 		'- get_node_details: Get complete node information including <connections>',
 	];
@@ -349,6 +366,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('process', processSteps)
 		.section('technique_categorization', TECHNIQUE_CATEGORIZATION)
 		.section('technique_clarifications', TECHNIQUE_CLARIFICATIONS)
+		.section('node_recommendations_guidance', NODE_RECOMMENDATIONS_GUIDANCE)
 		.section('code_node_alternatives', CODE_NODE_ALTERNATIVES)
 		.section('connection_changing_parameters', CONNECTION_PARAMETERS)
 		.section('dynamic_output_nodes', DYNAMIC_OUTPUT_NODES)

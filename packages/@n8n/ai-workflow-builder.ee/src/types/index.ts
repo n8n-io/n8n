@@ -11,6 +11,10 @@ export type * from './utils';
 export type * from './categorization';
 export type * from './best-practices';
 export type * from './node-guidance';
+export type * from './node-recommendations';
+
+// Re-export recommendation categories (includes both types and runtime values)
+export * from './recommendation-category';
 
 // Re-export web/templates (includes both types and runtime values)
 export * from './web/templates';

@@ -20,6 +20,7 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
+import { createGetNodeRecommendationsTool } from '../tools/get-node-recommendations.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
@@ -141,6 +142,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Create base tools
 		const baseTools = [
 			createGetBestPracticesTool(),
+			createGetNodeRecommendationsTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
