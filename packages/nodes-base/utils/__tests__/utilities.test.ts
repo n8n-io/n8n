@@ -1,6 +1,9 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { INode, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE } from 'n8n-workflow';
 
 import {
+	addExecutionHints,
 	compareItems,
 	flattenKeys,
 	fuzzyCompare,
@@ -321,5 +324,91 @@ describe('removeTrailingSlash', () => {
 
 	it('does not change a URL without trailing slash', () => {
 		expect(removeTrailingSlash('https://example.com')).toBe('https://example.com');
+	});
+});
+
+describe('addExecutionHints', () => {
+	const executeQueryOperationContext = {
+		getNodeParameter: (parameterName: string) => {
+			if (parameterName === 'options.queryBatching') {
+				return 'single';
+			}
+			if (parameterName === 'query') {
+				return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
+			}
+		},
+		addExecutionHints: jest.fn(),
+	} as unknown as IExecuteFunctions;
+
+	const insertHint = {
+		message:
+			"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+		location: 'outputPane',
+	};
+
+	const selectHint = {
+		location: 'outputPane',
+		message:
+			"This node ran 2 times, once for each input item. To run for the first item only, enable 'execute once' in the node settings",
+	};
+
+	it('should add batching insert hint to Postgres executeQuery operation', () => {
+		addExecutionHints(
+			executeQueryOperationContext,
+			mock<INode>({
+				type: POSTGRES_NODE_TYPE,
+			}),
+			[{ json: {} }, { json: {} }],
+			'executeQuery',
+			false,
+		);
+		expect(executeQueryOperationContext.addExecutionHints).toHaveBeenCalledWith(insertHint);
+	});
+
+	it('should add batching insert hint to MySql executeQuery operation', () => {
+		addExecutionHints(
+			executeQueryOperationContext,
+			mock<INode>({
+				type: MYSQL_NODE_TYPE,
+			}),
+			[{ json: {} }, { json: {} }],
+			'executeQuery',
+			false,
+		);
+		expect(executeQueryOperationContext.addExecutionHints).toHaveBeenCalledWith(insertHint);
+	});
+
+	it('should add run per item hint to Postgres select operation ', () => {
+		const context = {
+			addExecutionHints: jest.fn(),
+		} as unknown as IExecuteFunctions;
+
+		addExecutionHints(
+			context,
+			mock<INode>({
+				type: POSTGRES_NODE_TYPE,
+			}),
+			[{ json: {} }, { json: {} }],
+			'select',
+			false,
+		);
+		expect(context.addExecutionHints).toHaveBeenCalledWith(selectHint);
+	});
+
+	it('should add run per item hint to MySQL select operation', () => {
+		const context = {
+			addExecutionHints: jest.fn(),
+		} as unknown as IExecuteFunctions;
+
+		addExecutionHints(
+			context,
+			mock<INode>({
+				type: MYSQL_NODE_TYPE,
+			}),
+			[{ json: {} }, { json: {} }],
+			'select',
+			false,
+		);
+		expect(context.addExecutionHints).toHaveBeenCalledWith(selectHint);
 	});
 });

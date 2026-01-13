@@ -1,4 +1,4 @@
-import type { INode, NodeParameterValueType } from '@/interfaces';
+import type { INode, NodeParameterValueType } from '../interfaces';
 
 export function renameFormFields(
 	node: INode,

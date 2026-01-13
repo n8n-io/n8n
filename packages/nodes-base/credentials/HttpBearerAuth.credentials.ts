@@ -7,7 +7,7 @@ export class HttpBearerAuth implements ICredentialType {
 
 	displayName = 'Bearer Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
@@ -22,6 +22,7 @@ export class HttpBearerAuth implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			resolvableField: true,
 		},
 		{
 			displayName:
@@ -36,7 +37,7 @@ export class HttpBearerAuth implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: 'Bearer ={{$credentials.token}}',
+				Authorization: '=Bearer {{$credentials.token}}',
 			},
 		},
 	};

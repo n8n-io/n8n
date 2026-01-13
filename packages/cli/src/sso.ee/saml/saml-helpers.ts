@@ -1,17 +1,16 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
-import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
 import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 import {
@@ -25,11 +24,11 @@ import {
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
 export function isSamlLoginEnabled(): boolean {
-	return config.getEnv(SAML_LOGIN_ENABLED);
+	return Container.get(GlobalConfig).sso.saml.loginEnabled;
 }
 
 export function getSamlLoginLabel(): string {
-	return config.getEnv(SAML_LOGIN_LABEL);
+	return Container.get(GlobalConfig).sso.saml.loginLabel;
 }
 
 // can only toggle between email and saml, not directly to e.g. ldap
@@ -44,12 +43,12 @@ export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 	const targetAuthenticationMethod =
 		!enabled && currentAuthenticationMethod === 'saml' ? 'email' : currentAuthenticationMethod;
 
-	config.set(SAML_LOGIN_ENABLED, enabled);
+	Container.get(GlobalConfig).sso.saml.loginEnabled = enabled;
 	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
 }
 
 export function setSamlLoginLabel(label: string): void {
-	config.set(SAML_LOGIN_LABEL, label);
+	Container.get(GlobalConfig).sso.saml.loginLabel = label;
 }
 
 export function isSamlLicensed(): boolean {
@@ -80,7 +79,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
 				lastName: attributes.lastName,
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				// generates a password that is not used or known to the user
 				password: await Container.get(PasswordUtility).hash(randomPassword),
 			},
@@ -119,8 +118,14 @@ export async function updateUserFromSamlAttributes(
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
 	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not create User');
-	return resultUser;
+	if (!resultUser) throw new AuthError('Could not update User');
+	const userWithRole = await Container.get(UserRepository).findOne({
+		where: { id: resultUser.id },
+		relations: ['role'],
+		transaction: false,
+	});
+	if (!userWithRole) throw new AuthError('Failed to fetch user!');
+	return userWithRole;
 }
 
 type GetMappedSamlReturn = {
@@ -131,6 +136,10 @@ type GetMappedSamlReturn = {
 export function getMappedSamlAttributesFromFlowResult(
 	flowResult: FlowResult,
 	attributeMapping: SamlAttributeMapping,
+	jitClaimNames: {
+		instanceRole: string | null;
+		projectRoles: string | null;
+	},
 ): GetMappedSamlReturn {
 	const result: GetMappedSamlReturn = {
 		attributes: undefined,
@@ -139,12 +148,12 @@ export function getMappedSamlAttributesFromFlowResult(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (flowResult?.extract?.attributes) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const attributes = flowResult.extract.attributes as { [key: string]: string };
+		const attributes = flowResult.extract.attributes as { [key: string]: string | string[] };
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
-		const email = attributes[attributeMapping.email];
-		const firstName = attributes[attributeMapping.firstName];
-		const lastName = attributes[attributeMapping.lastName];
-		const userPrincipalName = attributes[attributeMapping.userPrincipalName];
+		const email = attributes[attributeMapping.email] as string;
+		const firstName = attributes[attributeMapping.firstName] as string;
+		const lastName = attributes[attributeMapping.lastName] as string;
+		const userPrincipalName = attributes[attributeMapping.userPrincipalName] as string;
 
 		result.attributes = {
 			email,
@@ -152,6 +161,15 @@ export function getMappedSamlAttributesFromFlowResult(
 			lastName,
 			userPrincipalName,
 		};
+		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
+			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
+		}
+		if (jitClaimNames.projectRoles && attributes[jitClaimNames.projectRoles]) {
+			const projectRolesFromFlowResult = attributes[jitClaimNames.projectRoles];
+			result.attributes.n8nProjectRoles = Array.isArray(projectRolesFromFlowResult)
+				? projectRolesFromFlowResult
+				: [projectRolesFromFlowResult];
+		}
 		if (!email) result.missingAttributes.push(attributeMapping.email);
 		if (!userPrincipalName) result.missingAttributes.push(attributeMapping.userPrincipalName);
 		if (!firstName) result.missingAttributes.push(attributeMapping.firstName);

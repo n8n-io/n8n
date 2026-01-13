@@ -19,6 +19,7 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	streamingEnabled?: boolean;
 };
 
 export type JobResult = {
@@ -56,6 +57,7 @@ export type JobFinishedMessage = {
 	kind: 'job-finished';
 	executionId: string;
 	workerId: string;
+	success: boolean;
 };
 
 export type SendChunkMessage = {

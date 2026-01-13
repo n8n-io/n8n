@@ -6,10 +6,12 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
+
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -18,7 +20,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
@@ -28,7 +30,6 @@ import {
 	isOidcCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')
 export class MeController {
 	constructor(
@@ -54,11 +55,11 @@ export class MeController {
 		const {
 			id: userId,
 			email: currentEmail,
-			mfaEnabled,
 			firstName: currentFirstName,
 			lastName: currentLastName,
 		} = req.user;
 
+		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
 		const isFirstNameChanged = firstName !== currentFirstName;
@@ -72,7 +73,7 @@ export class MeController {
 				`Request to update user failed because ${getCurrentAuthenticationMethod()} user may not change their profile information`,
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
 			throw new BadRequestError(
@@ -80,40 +81,24 @@ export class MeController {
 			);
 		}
 
-		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {
-			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
-				{
-					userId,
-					payload,
-				},
-			);
-			throw new BadRequestError('SAML user may not change their email');
-		}
+		await this.validateChangingUserEmail(req.user, payload);
 
-		if (mfaEnabled && isEmailBeingChanged) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
-			}
-
-			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaCodeValid) {
-				throw new InvalidMfaCodeError();
-			}
-		}
-
-		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+		await this.externalHooks.run('user.profile.beforeUpdate', [
+			userId,
+			currentEmail,
+			payloadWithoutPassword,
+		]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
-		await this.userService.update(userId, payload);
+		await this.userService.update(userId, payloadWithoutPassword);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
+			relations: ['role'],
 		});
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
@@ -127,6 +112,60 @@ export class MeController {
 		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
 
 		return publicUser;
+	}
+
+	private async validateChangingUserEmail(currentUser: User, payload: UserUpdateRequestDto) {
+		if (!payload.email || payload.email === currentUser.email) {
+			// email is not being changed
+			return;
+		}
+		const { currentPassword: providedCurrentPassword, ...payloadWithoutPassword } = payload;
+		const { id: userId, mfaEnabled } = currentUser;
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			this.logger.debug(
+				'Request to update user failed because SAML user may not change their email',
+				{
+					userId: currentUser.id,
+					payload: payloadWithoutPassword,
+				},
+			);
+			throw new BadRequestError('SAML user may not change their email');
+		}
+
+		if (mfaEnabled) {
+			if (!payload.mfaCode) {
+				throw new BadRequestError('Two-factor code is required to change email');
+			}
+
+			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
+			if (!isMfaCodeValid) {
+				throw new InvalidMfaCodeError();
+			}
+		} else {
+			if (currentUser.password === null) {
+				this.logger.debug('User with no password changed their email', {
+					userId: currentUser.id,
+					payload: payloadWithoutPassword,
+				});
+				return;
+			}
+
+			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
+				throw new BadRequestError('Current password is required to change email');
+			}
+
+			const isProvidedPasswordCorrect = await this.passwordUtility.compare(
+				providedCurrentPassword,
+				currentUser.password,
+			);
+			if (!isProvidedPasswordCorrect) {
+				throw new BadRequestError(
+					'Unable to update profile. Please check your credentials and try again.',
+				);
+			}
+		}
 	}
 
 	/**
@@ -183,7 +222,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

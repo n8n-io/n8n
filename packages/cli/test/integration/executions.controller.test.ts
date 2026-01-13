@@ -1,3 +1,11 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -8,12 +16,8 @@ import {
 	createWaitingExecution,
 	getAllExecutions,
 } from './shared/db/executions';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {
@@ -142,5 +146,30 @@ describe('POST /executions/stop', () => {
 		const execution = await saveWaitingExecution({ belongingTo: owner });
 
 		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
+	});
+});
+describe('POST /executions/stopMany', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(member)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(0);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(owner)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(1);
 	});
 });

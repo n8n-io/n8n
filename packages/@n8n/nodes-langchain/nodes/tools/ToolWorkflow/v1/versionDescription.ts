@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -33,9 +33,9 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 	outputs: [NodeConnectionTypes.AiTool],
 	outputNames: ['Tool'],
 	properties: [

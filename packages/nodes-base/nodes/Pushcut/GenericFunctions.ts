@@ -16,7 +16,7 @@ export async function pushcutApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string | undefined,
+	uri?: string,
 	option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('pushcutApi');

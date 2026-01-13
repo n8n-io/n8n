@@ -10,7 +10,7 @@
 	},
 	"include": ["src/**/*.ts"],
 	"references": [
-		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../../workflow/tsconfig.build.esm.json" },
 		{ "path": "../constants/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" },
 		{ "path": "../permissions/tsconfig.build.json" }

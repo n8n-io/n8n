@@ -1,12 +1,16 @@
+import type { Tool } from '@langchain/classic/tools';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseLLMOutputParser } from '@langchain/core/output_parsers';
 import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import type { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
+import type { Runnable } from '@langchain/core/runnables';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { isChatInstance } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
-import { createPromptTemplate } from './promptUtils';
+import { createPromptTemplate, getAgentStepsParser } from './promptUtils';
 import type { ChainExecutionParams } from './types';
 
 export class NaiveJsonOutputParser<
@@ -63,7 +67,7 @@ export function isModelWithFormat(
  * Determines if an LLM is configured to output JSON and returns the appropriate output parser
  */
 export function getOutputParserForLLM(
-	llm: BaseLanguageModel,
+	llm: BaseChatModel | BaseLanguageModel,
 ): BaseLLMOutputParser<string | Record<string, unknown>> {
 	if (isModelWithResponseFormat(llm) && llm.modelKwargs?.response_format?.type === 'json_object') {
 		return new NaiveJsonOutputParser();
@@ -74,6 +78,11 @@ export function getOutputParserForLLM(
 	}
 
 	if (isModelInThinkingMode(llm)) {
+		return new NaiveJsonOutputParser();
+	}
+
+	// For example Mistral's Magistral models (LmChatMistralCloud node)
+	if (llm.metadata?.output_format === 'json') {
 		return new NaiveJsonOutputParser();
 	}
 
@@ -90,7 +99,7 @@ async function executeSimpleChain({
 	prompt,
 }: {
 	context: IExecuteFunctions;
-	llm: BaseLanguageModel;
+	llm: BaseChatModel | BaseLanguageModel;
 	query: string;
 	prompt: ChatPromptTemplate | PromptTemplate;
 }) {
@@ -108,6 +117,26 @@ async function executeSimpleChain({
 	return [response];
 }
 
+// Some models nodes, like OpenAI, can define built-in tools in their metadata
+function withBuiltInTools(llm: BaseChatModel | BaseLanguageModel) {
+	const modelTools = (llm.metadata?.tools as Tool[]) ?? [];
+	if (modelTools.length && isChatInstance(llm) && llm.bindTools) {
+		return llm.bindTools(modelTools);
+	}
+	return llm;
+}
+
+function prepareLlm(
+	llm: BaseLanguageModel | BaseChatModel,
+	fallbackLlm?: BaseLanguageModel | BaseChatModel | null,
+) {
+	const mainLlm = withBuiltInTools(llm);
+	if (fallbackLlm) {
+		return mainLlm.withFallbacks([withBuiltInTools(fallbackLlm)]);
+	}
+	return mainLlm;
+}
+
 /**
  * Creates and executes an LLM chain with the given prompt and optional output parsers
  */
@@ -118,7 +147,10 @@ export async function executeChain({
 	llm,
 	outputParser,
 	messages,
+	fallbackLlm,
 }: ChainExecutionParams): Promise<unknown[]> {
+	const version = context.getNode().typeVersion;
+	const model = prepareLlm(llm, fallbackLlm) as BaseChatModel | BaseLanguageModel;
 	// If no output parsers provided, use a simple chain with basic prompt template
 	if (!outputParser) {
 		const promptTemplate = await createPromptTemplate({
@@ -131,7 +163,7 @@ export async function executeChain({
 
 		return await executeSimpleChain({
 			context,
-			llm,
+			llm: model,
 			query,
 			prompt: promptTemplate,
 		});
@@ -149,10 +181,20 @@ export async function executeChain({
 		query,
 	});
 
-	const chain = promptWithInstructions
-		.pipe(llm)
-		.pipe(outputParser)
-		.withConfig(getTracingConfig(context));
+	let chain: Runnable<{ query: string }>;
+	if (version >= 1.9) {
+		// use getAgentStepsParser to have more robust output parsing
+		chain = promptWithInstructions
+			.pipe(model)
+			.pipe(getAgentStepsParser(outputParser))
+			.withConfig(getTracingConfig(context));
+	} else {
+		chain = promptWithInstructions
+			.pipe(model)
+			.pipe(outputParser)
+			.withConfig(getTracingConfig(context));
+	}
+
 	const response = await chain.invoke({ query }, { signal: context.getExecutionCancelSignal() });
 
 	// Ensure response is always returned as an array

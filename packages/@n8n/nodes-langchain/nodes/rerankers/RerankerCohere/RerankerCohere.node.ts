@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { CohereRerank } from '@langchain/cohere';
 import {
 	NodeConnectionTypes,
@@ -71,16 +70,26 @@ export class RerankerCohere implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Top N',
+				name: 'topN',
+				type: 'number',
+				description: 'The maximum number of documents to return after reranking',
+				default: 3,
+			},
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for reranking Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'rerank-v3.5') as string;
+		const topN = this.getNodeParameter('topN', itemIndex, 3) as number;
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
+
 		const reranker = new CohereRerank({
 			apiKey: credentials.apiKey,
 			model: modelName,
+			topN,
 		});
 
 		return {

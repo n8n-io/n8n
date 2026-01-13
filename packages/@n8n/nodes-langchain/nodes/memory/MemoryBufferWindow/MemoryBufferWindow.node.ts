@@ -1,6 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
+import type { BufferWindowMemoryInput } from '@langchain/classic/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -99,13 +98,20 @@ export class MemoryBufferWindow implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'This node stores memory locally in the n8n instance. It is not compatible with Queue Mode or Multi-Main setups, as memory will not be shared across workers. For production use with scaling, consider using an external memory store such as Redis, Postgres, or another persistent memory node.',
+				name: 'scalingNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',

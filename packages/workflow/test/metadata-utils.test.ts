@@ -1,4 +1,4 @@
-import { parseErrorMetadata } from '@/metadata-utils';
+import { parseErrorMetadata } from '../src/metadata-utils';
 
 describe('MetadataUtils', () => {
 	describe('parseMetadataFromError', () => {

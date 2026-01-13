@@ -1,7 +1,9 @@
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
-import type { Settings } from '@n8n/db';
+import type { Settings, User } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
@@ -10,9 +12,8 @@ import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import type { EventService } from '@/events/event.service';
-import { mockInstance } from '@test/mocking';
 
-import { BINARY_AD_ATTRIBUTES, LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from '../constants';
+import { BINARY_AD_ATTRIBUTES } from '../constants';
 import {
 	getLdapIds,
 	createFilter,
@@ -22,6 +23,10 @@ import {
 	mapLdapUserToDbUser,
 	saveLdapSynchronization,
 	resolveEntryBinaryAttributes,
+	getAuthIdentityByLdapId,
+	getUserByEmail,
+	isLdapEnabled,
+	createLdapUserOnLocalDb,
 } from '../helpers.ee';
 import { LdapService } from '../ldap.service.ee';
 
@@ -44,12 +49,25 @@ jest.mock('../helpers.ee', () => ({
 	resolveBinaryAttributes: jest.fn(),
 	processUsers: jest.fn(),
 	resolveEntryBinaryAttributes: jest.fn(),
+	isLdapEnabled: jest.fn(() => true),
+	getAuthIdentityByLdapId: jest.fn(),
+	getUserByEmail: jest.fn(),
+	createLdapUserOnLocalDb: jest.fn(),
 }));
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
 	randomString: jest.fn(),
 }));
+
+mockInstance(GlobalConfig, {
+	sso: {
+		ldap: {
+			loginEnabled: true,
+			loginLabel: 'fakeLoginLabel',
+		},
+	},
+});
 
 describe('LdapService', () => {
 	const ldapConfig: LdapConfig = {
@@ -72,9 +90,10 @@ describe('LdapService', () => {
 		synchronizationInterval: 60,
 		searchPageSize: 1,
 		searchTimeout: 6,
+		enforceEmailUniqueness: true,
 	};
 
-	let settingsRepository = mockInstance(SettingsRepository);
+	const settingsRepository = mockInstance(SettingsRepository);
 
 	beforeAll(() => {
 		// Need fake timers to avoid setInterval
@@ -92,10 +111,10 @@ describe('LdapService', () => {
 		} as Settings);
 	};
 
-	const createDefaultLdapService = (config: LdapConfig) => {
+	const createDefaultLdapService = (config: LdapConfig, eventService?: EventService) => {
 		mockSettingsRespositoryFindOneByOrFail(config);
 
-		return new LdapService(mockLogger(), settingsRepository, mock(), mock());
+		return new LdapService(mockLogger(), settingsRepository, mock(), eventService ?? mock());
 	};
 
 	describe('init()', () => {
@@ -116,13 +135,12 @@ describe('LdapService', () => {
 
 			await ldapService.init();
 
-			expect(configSetSpy).toHaveBeenNthCalledWith(1, LDAP_LOGIN_ENABLED, ldapConfig.loginEnabled);
 			expect(configSetSpy).toHaveBeenNthCalledWith(
-				2,
+				1,
 				'userManagement.authenticationMethod',
 				'ldap',
 			);
-			expect(configSetSpy).toHaveBeenNthCalledWith(3, LDAP_LOGIN_LABEL, ldapConfig.loginLabel);
+			expect(Container.get(GlobalConfig).sso.ldap.loginLabel).toBe(ldapConfig.loginLabel);
 		});
 
 		it('should set expected configuration variables from LDAP config if LDAP is disabled', async () => {
@@ -134,13 +152,12 @@ describe('LdapService', () => {
 
 			await ldapService.init();
 
-			expect(configSetSpy).toHaveBeenNthCalledWith(1, LDAP_LOGIN_ENABLED, givenConfig.loginEnabled);
 			expect(configSetSpy).toHaveBeenNthCalledWith(
-				2,
+				1,
 				'userManagement.authenticationMethod',
 				'email',
 			);
-			expect(configSetSpy).toHaveBeenNthCalledWith(3, LDAP_LOGIN_LABEL, givenConfig.loginLabel);
+			expect(Container.get(GlobalConfig).sso.ldap.loginLabel).toBe(ldapConfig.loginLabel);
 		});
 
 		it('should show logger warning if authentication method is not ldap or email', async () => {
@@ -356,17 +373,14 @@ describe('LdapService', () => {
 
 		it('should update the LDAP login label in the config', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
-
 			mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
 				delete: jest.fn(),
 			});
-
 			const cipherMock = mock<Cipher>({
 				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
 			});
-			const configSetSpy = jest.spyOn(config, 'set');
-
+			const globalConfig = Container.get(GlobalConfig);
 			config.set('userManagement.authenticationMethod', 'email');
 			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
 
@@ -377,8 +391,7 @@ describe('LdapService', () => {
 				loginLabel: 'newLoginLabel',
 			};
 			await ldapService.updateConfig(newConfig);
-
-			expect(configSetSpy).toHaveBeenNthCalledWith(4, LDAP_LOGIN_LABEL, newConfig.loginLabel);
+			expect(globalConfig.sso.ldap.loginLabel).toBe(newConfig.loginLabel);
 		});
 	});
 
@@ -1366,6 +1379,71 @@ describe('LdapService', () => {
 			ldapService.stopSync();
 
 			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('handleLdapLogin()', () => {
+		describe('enforceEmailUniqueness', () => {
+			const mockUser: User = mock<User>({
+				email: 'jdoe@example.com',
+				firstName: 'John',
+				lastName: 'Doe',
+			});
+
+			beforeEach(() => {
+				Client.prototype.search = jest.fn().mockImplementation(async () => ({
+					searchEntries: [
+						{
+							dn: 'uid:duplicate,ou=users,dc=example,dc=com',
+							cn: 'Duplicate',
+							mail: 'jdoe@example.com', // same email as jdoe
+							uid: 'duplicate',
+						},
+						{
+							dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+							cn: 'John Doe',
+							mail: 'jdoe@example.com',
+							uid: 'jdoe',
+						},
+					],
+				}));
+
+				const mockedGetAuthIdentity = getAuthIdentityByLdapId as jest.Mock;
+				mockedGetAuthIdentity.mockResolvedValue(null);
+
+				const mockIsLdapEnabled = isLdapEnabled as jest.Mock;
+				mockIsLdapEnabled.mockReturnValue(true);
+
+				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as jest.Mock;
+				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockUser);
+
+				const mockedGetUserByEmail = getUserByEmail as jest.Mock;
+				mockedGetUserByEmail.mockResolvedValue(null);
+			});
+
+			it('should allow login when duplicates exist but enforcement is disabled', async () => {
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: false,
+				});
+
+				await ldapService.init();
+
+				const result = await ldapService.handleLdapLogin('jdoe', 'password');
+				expect(result).toEqual(mockUser);
+			});
+
+			it('should not allow login when duplicates exist and enforcement is enabled', async () => {
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: true,
+				});
+
+				await ldapService.init();
+
+				const result = await ldapService.handleLdapLogin('jdoe', 'password');
+				expect(result).toBeUndefined();
+			});
 		});
 	});
 });

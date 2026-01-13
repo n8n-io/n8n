@@ -3,11 +3,12 @@ import {
 	User,
 	CredentialsRepository,
 	ProjectRepository,
-	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { BaseCommand } from '../base-command';
@@ -17,14 +18,15 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
+	lastActiveAt: null,
 	role: 'global:owner',
 };
 
+@Command({
+	name: 'user-management:reset',
+	description: 'Resets the database to the default user state',
+})
 export class Reset extends BaseCommand {
-	static description = 'Resets the database to the default user state';
-
-	static examples = ['$ n8n user-management:reset'];
-
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -51,16 +53,13 @@ export class Reset extends BaseCommand {
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 
-		await Container.get(SettingsRepository).update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'false' },
-		);
-
 		this.logger.info('Successfully reset the database to default user state.');
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		const owner = await Container.get(UserRepository).findOneBy({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
 
 		if (owner) return owner;
 
@@ -70,12 +69,14 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+		return await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
 	}
 
 	async catch(error: Error): Promise<void> {
 		this.logger.error('Error resetting database. See log messages for details.');
 		this.logger.error(error.message);
-		this.exit(1);
+		process.exit(1);
 	}
 }

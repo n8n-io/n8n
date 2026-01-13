@@ -1,7 +1,7 @@
-import type { TagEntity, WorkflowEntity } from '@n8n/db';
+import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { AuthlessRequest, AuthenticatedRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
@@ -34,6 +34,7 @@ export declare namespace ExecutionRequest {
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
+	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 }
 
 export declare namespace TagRequest {
@@ -81,10 +82,16 @@ export declare namespace WorkflowRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
-	type Activate = Get;
+	type Activate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ versionId?: string; name?: string; description?: string },
+		{}
+	>;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
+	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
 export declare namespace UserRequest {
@@ -135,6 +142,20 @@ export declare namespace CredentialRequest {
 		{},
 		{},
 		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
+
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{
+			type?: string;
+			name?: string;
+			data?: ICredentialDataDecryptedObject;
+			isGlobal?: boolean;
+			isResolvable?: boolean;
+			isPartialData?: boolean;
+		},
 		{}
 	>;
 

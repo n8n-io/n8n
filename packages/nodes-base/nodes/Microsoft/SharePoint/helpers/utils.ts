@@ -12,6 +12,8 @@ import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { IErrorResponse } from './interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
 
+export const escapeFilterValue = (value: string) => value.replaceAll("'", "''");
+
 export async function simplifyItemPostReceive(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -207,7 +209,7 @@ export async function handleErrorPostReceive(
 		if (resource === 'file' && operation === 'download' && Buffer.isBuffer(response.body)) {
 			response.body = jsonParse((response.body as Buffer).toString());
 		}
-		const error = (response.body as IErrorResponse)?.error ?? {};
+		const error = (response.body as IErrorResponse)?.error ?? ({} as IErrorResponse['error']);
 
 		if (resource === 'file') {
 			if (operation === 'download') {

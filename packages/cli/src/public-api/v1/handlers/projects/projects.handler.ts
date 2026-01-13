@@ -3,8 +3,9 @@ import {
 	ChangeUserRoleInProject,
 	CreateProjectDto,
 	DeleteProjectDto,
-	UpdateProjectDto,
+	UpdateProjectWithRelationsDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -12,7 +13,6 @@ import type { Response } from 'express';
 import { ProjectController } from '@/controllers/project.controller';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import type { PaginatedRequest } from '@/public-api/types';
-import type { AuthenticatedRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';
 
 import {
@@ -42,7 +42,7 @@ export = {
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
-			const payload = UpdateProjectDto.safeParse(req.body);
+			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
 			if (payload.error) {
 				return res.status(400).json(payload.error.errors[0]);
 			}

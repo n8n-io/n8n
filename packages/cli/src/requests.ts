@@ -1,21 +1,25 @@
 import type { ProjectIcon, ProjectType } from '@n8n/api-types';
-import type { Variables, Project, User, ListQueryDb, WorkflowHistory } from '@n8n/db';
-import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
-import type express from 'express';
+import type {
+	APIRequest,
+	AuthenticatedRequest,
+	Variables,
+	Project,
+	User,
+	ListQueryDb,
+	WorkflowHistory,
+} from '@n8n/db';
+import type {
+	AssignableGlobalRole,
+	AssignableProjectRole,
+	GlobalRole,
+	ProjectRole,
+	Scope,
+} from '@n8n/permissions';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
 	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
-
-export type APIRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	browserId?: string;
-};
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -23,19 +27,6 @@ export type AuthlessRequest<
 	RequestBody = {},
 	RequestQuery = {},
 > = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
-
-export type AuthenticatedRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
-	user: User;
-	cookies: Record<string, string | undefined>;
-	headers: express.Request['headers'] & {
-		'push-ref': string;
-	};
-};
 
 export namespace ListQuery {
 	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
@@ -81,6 +72,8 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
@@ -164,6 +157,7 @@ export declare namespace UserRequest {
 // ----------------------------------
 
 export declare namespace MFA {
+	type Enforce = AuthenticatedRequest<{}, {}, { enforce: boolean }, {}>;
 	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
 	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;
@@ -217,7 +211,11 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, { name?: string; verify?: boolean; version?: string }>;
+	type Post = AuthenticatedRequest<
+		{},
+		{},
+		{ name?: string; verify?: boolean; version?: string; checksum?: string }
+	>;
 
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
@@ -229,7 +227,7 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace LicenseRequest {
-	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
 }
 
 // ----------------------------------
@@ -239,7 +237,19 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest;
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+			projectId?: string;
+			state?: 'empty';
+		}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
@@ -279,7 +289,7 @@ export declare namespace ActiveWorkflowRequest {
 
 export declare namespace ProjectRequest {
 	type GetMyProjectsResponse = Array<
-		Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
+		Project & { role: ProjectRole | AssignableProjectRole | GlobalRole; scopes?: Scope[] }
 	>;
 
 	type ProjectRelationResponse = {
@@ -287,7 +297,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
-		role: ProjectRole;
+		role: ProjectRole | AssignableProjectRole;
 	};
 	type ProjectWithRelations = {
 		id: string;

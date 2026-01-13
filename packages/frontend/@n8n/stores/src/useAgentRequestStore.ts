@@ -44,7 +44,7 @@ export const useAgentRequestStore = defineStore('agentRequest', () => {
 		if (typeof query === 'string') {
 			return undefined;
 		}
-		return query?.[paramName] as NodeParameterValueType;
+		return query?.[paramName];
 	};
 
 	const setAgentRequestForNode = (

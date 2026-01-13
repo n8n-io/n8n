@@ -32,7 +32,7 @@
             "type": "string"
         },
         "messaging_service_sid": {
-            "type": "null"
+            "type": "string"
         },
         "num_media": {
             "type": "string"
@@ -64,5 +64,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 5
 }

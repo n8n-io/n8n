@@ -1,11 +1,9 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { TestRunRepository } from '@n8n/db';
 import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createTestCaseExecution, createTestRun } from '@test-integration/db/evaluation';
-
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('TestRunRepository', () => {
 	let testRunRepository: TestRunRepository;

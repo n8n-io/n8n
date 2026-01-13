@@ -1,6 +1,4 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
 import type { ExtensionMap } from './extensions';

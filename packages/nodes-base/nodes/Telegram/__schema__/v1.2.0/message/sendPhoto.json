@@ -7,6 +7,9 @@
         "result": {
             "type": "object",
             "properties": {
+                "caption": {
+                    "type": "string"
+                },
                 "chat": {
                     "type": "object",
                     "properties": {
@@ -17,6 +20,9 @@
                             "type": "integer"
                         },
                         "type": {
+                            "type": "string"
+                        },
+                        "username": {
                             "type": "string"
                         }
                     }
@@ -70,5 +76,5 @@
             }
         }
     },
-    "version": 3
+    "version": 5
 }

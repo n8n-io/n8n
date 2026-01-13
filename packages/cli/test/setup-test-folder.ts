@@ -10,7 +10,7 @@ mkdirSync(baseDir, { recursive: true });
 const testDir = mkdtempSync(baseDir);
 mkdirSync(join(testDir, '.n8n'));
 process.env.N8N_USER_FOLDER = testDir;
-process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
+process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
 
 writeFileSync(
 	join(testDir, '.n8n/config'),

@@ -1,7 +1,7 @@
-import { mockFn } from 'jest-mock-extended';
+import { mockFn } from 'vitest-mock-extended';
 
-import type { INode } from '@/index';
-import { renameFormFields } from '@/node-parameters/rename-node-utils';
+import type { INode } from '../src/index';
+import { renameFormFields } from '../src/node-parameters/rename-node-utils';
 
 const makeNode = (formFieldValues: Array<Record<string, unknown>>) =>
 	({

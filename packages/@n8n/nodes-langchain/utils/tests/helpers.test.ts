@@ -1,5 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { Toolkit } from 'langchain/agents';
+import { Toolkit } from '@langchain/classic/agents';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
@@ -8,58 +8,11 @@ import { z } from 'zod';
 import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
-	nodeNameToToolName,
+	hasLongSequentialRepeat,
 	unwrapNestedOutput,
+	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
-
-describe('nodeNameToToolName', () => {
-	const getNodeWithName = (name: string): INode => ({
-		id: 'test-node',
-		name,
-		type: 'test',
-		typeVersion: 1,
-		position: [0, 0] as [number, number],
-		parameters: {},
-	});
-	it('should replace spaces with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test Node'))).toBe('Test_Node');
-	});
-
-	it('should replace dots with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test.Node'))).toBe('Test_Node');
-	});
-
-	it('should replace question marks with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test?Node'))).toBe('Test_Node');
-	});
-
-	it('should replace exclamation marks with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test!Node'))).toBe('Test_Node');
-	});
-
-	it('should replace equals signs with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test=Node'))).toBe('Test_Node');
-	});
-
-	it('should replace multiple special characters with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test.Node?With!Special=Chars'))).toBe(
-			'Test_Node_With_Special_Chars',
-		);
-	});
-
-	it('should handle names that already have underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test_Node'))).toBe('Test_Node');
-	});
-
-	it('should handle names with consecutive special characters', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test..!!??==Node'))).toBe('Test_Node');
-	});
-
-	it('should replace various special characters with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test#+*()[]{}:;,<>/\\\'"%$Node'))).toBe('Test_Node');
-	});
-});
 
 describe('escapeSingleCurlyBrackets', () => {
 	it('should return undefined when input is undefined', () => {
@@ -224,6 +177,8 @@ describe('getConnectedTools', () => {
 		};
 
 		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
+		// Add getParentNodes mock for metadata functionality
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue([]);
 
 		mockN8nTool = new N8nTool(mockExecuteFunctions as unknown as ISupplyDataFunctions, {
 			name: 'Dummy Tool',
@@ -319,10 +274,96 @@ describe('getConnectedTools', () => {
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 		expect(tools).toEqual([
-			{ name: 'tool1', description: 'desc1' },
-			{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
-			{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			{
+				name: 'tool1',
+				description: 'desc1',
+				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool1',
+				description: 'toolkitToolDesc1',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool2',
+				description: 'toolkitToolDesc2',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
 		]);
+	});
+
+	it('should add metadata to all tools with source node information', async () => {
+		class MockToolkit extends Toolkit {
+			tools: Tool[];
+
+			constructor(tools: unknown[]) {
+				super();
+				this.tools = tools as Tool[];
+			}
+		}
+		const mockParentNodes = [{ name: 'RegularTool' }, { name: 'MCP Client Tool' }];
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+			new MockToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			]),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(3);
+
+		// Regular tool should have metadata with isFromToolkit: false
+		expect(tools[0].name).toBe('tool1');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'RegularTool',
+		});
+
+		// Toolkit tools should have metadata with isFromToolkit: true
+		expect(tools[1].name).toBe('toolkitTool1');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+
+		expect(tools[2].name).toBe('toolkitTool2');
+		expect(tools[2].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	it('should preserve existing metadata when adding toolkit metadata', async () => {
+		class MockToolkit extends Toolkit {
+			tools: Tool[];
+
+			constructor(tools: unknown[]) {
+				super();
+				this.tools = tools as Tool[];
+			}
+		}
+		const mockParentNodes = [{ name: 'MCP Client Tool' }];
+		const mockTools = [
+			new MockToolkit([
+				{ name: 'toolkitTool1', description: 'desc1', metadata: { customField: 'value' } },
+			]),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools[0].metadata).toEqual({
+			customField: 'value',
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
 	});
 });
 
@@ -421,5 +462,155 @@ describe('unwrapNestedOutput', () => {
 		};
 
 		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+});
+
+describe('getSessionId', () => {
+	let mockCtx: any;
+
+	beforeEach(() => {
+		mockCtx = {
+			getNodeParameter: jest.fn(),
+			evaluateExpression: jest.fn(),
+			getChatTrigger: jest.fn(),
+			getNode: jest.fn(),
+		};
+	});
+
+	it('should retrieve sessionId from bodyData', () => {
+		mockCtx.getBodyData = jest.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: '12345' });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should retrieve sessionId from chat trigger', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValueOnce(undefined);
+		mockCtx.getChatTrigger.mockReturnValue({ name: 'chatTrigger' });
+		mockCtx.evaluateExpression.mockReturnValueOnce('67890');
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('67890');
+	});
+
+	it('should throw error if sessionId is not found', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should use custom sessionId if provided', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('custom').mockReturnValueOnce('customSessionId');
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('customSessionId');
+	});
+});
+
+describe('hasLongSequentialRepeat', () => {
+	it('should return false for text shorter than threshold', () => {
+		const text = 'a'.repeat(99);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
+	});
+
+	it('should return false for normal text without repeats', () => {
+		const text = 'This is a normal text without many sequential repeating characters.';
+		expect(hasLongSequentialRepeat(text)).toBe(false);
+	});
+
+	it('should return true for text with exactly threshold repeats', () => {
+		const text = 'a'.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should return true for text with more than threshold repeats', () => {
+		const text = 'b'.repeat(150);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should detect repeats in the middle of text', () => {
+		const text = 'Normal text ' + 'x'.repeat(100) + ' more normal text';
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should detect repeats at the end of text', () => {
+		const text = 'Normal text at the beginning' + 'z'.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should work with different thresholds', () => {
+		const text = 'a'.repeat(50);
+		expect(hasLongSequentialRepeat(text, 30)).toBe(true);
+		expect(hasLongSequentialRepeat(text, 60)).toBe(false);
+	});
+
+	it('should handle special characters', () => {
+		const text = '.'.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should handle spaces', () => {
+		const text = ' '.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should handle newlines', () => {
+		const text = '\n'.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	it('should not detect non-sequential repeats', () => {
+		const text = 'ababab'.repeat(50); // 300 chars but no sequential repeats
+		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
+	});
+
+	it('should handle mixed content with repeats below threshold', () => {
+		const text = 'aaa' + 'b'.repeat(50) + 'ccc' + 'd'.repeat(40) + 'eee';
+		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
+	});
+
+	it('should handle empty string', () => {
+		expect(hasLongSequentialRepeat('', 100)).toBe(false);
+	});
+
+	it('should work with very large texts', () => {
+		const normalText = 'Lorem ipsum dolor sit amet '.repeat(1000);
+		const textWithRepeat = normalText + 'A'.repeat(100) + normalText;
+		expect(hasLongSequentialRepeat(textWithRepeat, 100)).toBe(true);
+	});
+
+	it('should detect unicode character repeats', () => {
+		const text = '😀'.repeat(100);
+		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
+	});
+
+	describe('error handling', () => {
+		it('should handle null input', () => {
+			expect(hasLongSequentialRepeat(null as any)).toBe(false);
+		});
+
+		it('should handle undefined input', () => {
+			expect(hasLongSequentialRepeat(undefined as any)).toBe(false);
+		});
+
+		it('should handle non-string input', () => {
+			expect(hasLongSequentialRepeat(123 as any)).toBe(false);
+			expect(hasLongSequentialRepeat({} as any)).toBe(false);
+			expect(hasLongSequentialRepeat([] as any)).toBe(false);
+		});
+
+		it('should handle zero or negative threshold', () => {
+			const text = 'a'.repeat(100);
+			expect(hasLongSequentialRepeat(text, 0)).toBe(false);
+			expect(hasLongSequentialRepeat(text, -1)).toBe(false);
+		});
+
+		it('should handle empty string', () => {
+			expect(hasLongSequentialRepeat('', 100)).toBe(false);
+		});
 	});
 });

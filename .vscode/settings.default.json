@@ -33,5 +33,6 @@
 		{
 			"mode": "auto"
 		}
-	]
+	],
+	"vitest.workspaceConfig": "./vitest.workspace.ts"
 }

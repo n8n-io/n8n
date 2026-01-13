@@ -9,9 +9,8 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { AuthRolesService, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -19,27 +18,29 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
-import { ensureError, sleep, UserError } from 'n8n-workflow';
+import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
-import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-export abstract class BaseCommand extends Command {
+export abstract class BaseCommand<F = never> {
+	readonly flags: F;
+
 	protected logger = Container.get(Logger);
 
 	protected dbConnection: DbConnection;
@@ -64,6 +65,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
 
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -75,10 +78,6 @@ export abstract class BaseCommand extends Command {
 
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
-
-	protected async loadModules() {
-		await this.moduleRegistry.loadModules();
-	}
 
 	async init(): Promise<void> {
 		this.dbConnection = Container.get(DbConnection);
@@ -92,12 +91,14 @@ export abstract class BaseCommand extends Command {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
+			withEventLoopBlockDetection: true,
 		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
@@ -122,12 +123,13 @@ export abstract class BaseCommand extends Command {
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
 
-		Container.get(DeprecationService).warn();
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
+		await Container.get(AuthRolesService).init();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
-			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.executions.mode === 'queue' &&
 			this.globalConfig.database.type === 'sqlite'
 		) {
 			this.logger.warn(
@@ -135,13 +137,24 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		const { communityPackages } = this.globalConfig.nodes;
-		if (communityPackages.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import('@/services/community-packages.service');
+		// @TODO: Move to community-packages module
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import(
+				'@/modules/community-packages/community-packages.service'
+			);
 			await Container.get(CommunityPackagesService).init();
 		}
 
-		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+		const taskRunnersConfig = this.globalConfig.taskRunners;
+
+		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+			if (taskRunnersConfig.insecureMode) {
+				this.logger.warn(
+					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
+				);
+			}
+
 			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			await Container.get(TaskRunnerModule).start();
 		}
@@ -175,47 +188,49 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
-	async initObjectStoreService() {
-		const binaryDataConfig = Container.get(BinaryDataConfig);
-		const isSelected = binaryDataConfig.mode === 's3';
-		const isAvailable = binaryDataConfig.availableModes.includes('s3');
+	protected log(message: string) {
+		this.logger.info(message);
+	}
 
-		if (!isSelected) return;
-
-		if (isSelected && !isAvailable) {
-			throw new UserError(
-				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
-			);
-		}
-
-		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
-		if (!isLicensed) {
-			this.logger.error(
-				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-			);
-			return this.exit(1);
-		}
-
-		this.logger.debug('License found for external storage - Initializing object store service');
-		try {
-			await Container.get(ObjectStoreService).init();
-			this.logger.debug('Object store init completed');
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.debug('Object store init failed', { error });
-		}
+	protected error(message: string) {
+		throw new UnexpectedError(message);
 	}
 
 	async initBinaryDataService() {
-		try {
-			await this.initObjectStoreService();
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error(`Failed to init object store: ${error.message}`, { error });
-			process.exit(1);
+		const binaryDataConfig = Container.get(BinaryDataConfig);
+		const binaryDataService = Container.get(BinaryDataService);
+		const isS3WriteMode = binaryDataConfig.mode === 's3';
+
+		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		binaryDataService.setManager('database', Container.get(DatabaseManager));
+
+		if (isS3WriteMode) {
+			const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
+			if (!isLicensed) {
+				this.logger.error(
+					'S3 binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
 		}
 
-		await Container.get(BinaryDataService).init();
+		// we always try to init S3 for reading - silently fail if not configured
+		try {
+			const objectStoreService = Container.get(ObjectStoreService);
+			await objectStoreService.init();
+			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
+			binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
+		} catch {
+			if (isS3WriteMode) {
+				this.logger.error(
+					'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+				);
+				process.exit(1);
+			}
+			// S3 not configured - users without S3 data are unaffected; users with S3 data will fail at runtime when reading
+		}
+
+		await binaryDataService.init();
 	}
 
 	protected async initDataDeduplicationService() {
@@ -264,13 +279,13 @@ export abstract class BaseCommand extends Command {
 
 	async finally(error: Error | undefined) {
 		if (error?.message) this.logger.error(error.message);
-		if (inTest || this.id === 'start') return;
+		if (inTest || this.constructor.name === 'Start') return;
 		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
 		}
-		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
-		this.exit(exitCode);
+		const exitCode = error ? 1 : 0;
+		process.exit(exitCode);
 	}
 
 	protected onTerminationSignal(signal: string) {

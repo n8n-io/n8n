@@ -2,8 +2,7 @@
 import parseDiff from 'parse-diff';
 import { computed } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-
+import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 
@@ -109,14 +108,14 @@ const diffs = computed(() => {
 		</div>
 		<div :class="$style.actions">
 			<div v-if="error">
-				<N8nIcon icon="exclamation-triangle" color="danger" class="mr-5xs" />
+				<N8nIcon icon="triangle-alert" color="danger" class="mr-5xs" />
 				<span :class="$style.infoText">{{ t('codeDiff.couldNotReplace') }}</span>
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
 					type="secondary"
 					size="mini"
-					icon="undo"
+					icon="undo-2"
 					data-test-id="undo-replace-button"
 					@click="() => emit('undo')"
 				>
@@ -131,7 +130,7 @@ const diffs = computed(() => {
 				v-else
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
-				icon="refresh"
+				icon="refresh-cw"
 				data-test-id="replace-code-button"
 				:disabled="!content || streaming"
 				:loading="replacing"
@@ -144,15 +143,15 @@ const diffs = computed(() => {
 
 <style lang="scss" module>
 .container {
-	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
-	border-radius: var(--border-radius-base);
+	border: var(--border);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
 }
 
 .title {
-	padding: var(--spacing-2xs);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
+	padding: var(--spacing--2xs);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
 	// ensure consistent spacing even if title is empty
 	min-height: 32.5px;
 	line-height: normal;
@@ -160,25 +159,25 @@ const diffs = computed(() => {
 }
 
 .lineNumber {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	min-width: 18px;
 	max-width: 18px;
 	text-align: center;
-	border-right: var(--border-base);
+	border-right: var(--border);
 }
 
 .diffSection {
 	overflow: scroll;
-	border-top: var(--border-base);
-	border-bottom: var(--border-base);
+	border-top: var(--border);
+	border-bottom: var(--border);
 	max-height: 218px; // 12 lines
-	background-color: var(--color-background-base);
-	font-family: var(--font-family-monospace);
+	background-color: var(--color--background);
+	font-family: var(--font-family--monospace);
 }
 
 .diff {
 	display: flex;
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	line-height: 18px; /* 100% */
 	height: 18px;
 	max-height: 18px;
@@ -195,32 +194,32 @@ const diffs = computed(() => {
 }
 
 .add {
-	color: var(--color-success);
-	background-color: var(--color-success-tint-2);
+	color: var(--color--success);
+	background-color: var(--color--success--tint-4);
 }
 
 .del {
-	color: var(--color-danger);
-	background-color: var(--color-danger-tint-2);
+	color: var(--color--danger);
+	background-color: var(--color--danger--tint-4);
 }
 
 .normal {
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color--foreground--tint-2);
 }
 
 .actions {
-	padding: var(--spacing-2xs);
+	padding: var(--spacing--2xs);
 
 	> button {
 		> span {
-			margin-right: var(--spacing-4xs);
+			margin-right: var(--spacing--4xs);
 		}
 	}
 }
 
 .infoText {
-	color: var(--color-text-light);
-	font-size: var(--font-size-xs);
-	margin-left: var(--spacing-4xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	margin-left: var(--spacing--4xs);
 }
 </style>

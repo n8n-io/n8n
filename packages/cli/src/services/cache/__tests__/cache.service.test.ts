@@ -38,7 +38,7 @@ for (const backend of ['memory', 'redis'] as const) {
 
 			if (backend === 'redis') {
 				test('with auto backend and queue mode, should select redis', async () => {
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 
 					await cacheService.init();
 

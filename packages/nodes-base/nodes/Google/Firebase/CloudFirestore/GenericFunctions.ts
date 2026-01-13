@@ -152,7 +152,7 @@ export function documentToJson(fields: IDataObject): IDataObject {
 				// @ts-ignore
 				const list = value.values as IDataObject[];
 				// @ts-ignore
-				return !!list ? list.map((l) => documentToJson(l)) : [];
+				return list ? list.map((l) => documentToJson(l)) : [];
 			}
 		} else {
 			// @ts-ignore

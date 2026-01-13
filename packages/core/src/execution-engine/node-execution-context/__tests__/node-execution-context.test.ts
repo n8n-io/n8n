@@ -7,10 +7,11 @@ import type {
 	INodeTypes,
 	INodeExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -19,7 +20,11 @@ import { NodeExecutionContext } from '../node-execution-context';
 class TestContext extends NodeExecutionContext {}
 
 describe('NodeExecutionContext', () => {
-	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: 'abc123',
+		encryptionKey: 'testEncryptionKey',
+		hmacSignatureSecret: 'testHmacSignatureSecret',
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
@@ -34,7 +39,7 @@ describe('NodeExecutionContext', () => {
 		timezone: 'UTC',
 		expression,
 	});
-	let additionalData = mock<IWorkflowExecuteAdditionalData>({
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
 	});
 
@@ -115,6 +120,31 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('getChatTrigger', () => {
+		it('should return a chat trigger node if it exists in the workflow', () => {
+			const chatNode = mock<INode>({ name: 'Chat', type: CHAT_TRIGGER_NODE_TYPE });
+
+			workflow.nodes = {
+				Chat: chatNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toEqual(chatNode);
+		});
+		it('should return a null if there is no chat trigger node in the workflow', () => {
+			const someNode = mock<INode>({ name: 'Some Node', type: 'someType' });
+
+			workflow.nodes = {
+				'Some Node': someNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('getKnownNodeTypes', () => {
 		it('should call getKnownTypes method of nodeTypes', () => {
 			testContext.getKnownNodeTypes();
@@ -162,6 +192,64 @@ describe('NodeExecutionContext', () => {
 			testContext.getCredentialsProperties('testType');
 			expect(additionalData.credentialsHelper.getCredentialsProperties).toHaveBeenCalledWith(
 				'testType',
+			);
+		});
+	});
+
+	describe('_getCredentials', () => {
+		it('should set executionContext on additionalData before retrieving credentials', async () => {
+			const credentialDetails = { id: 'cred123', name: 'Test Credential' };
+			const testNode = mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			testNode.credentials = { testCredential: credentialDetails };
+
+			const runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+			};
+			const testRunExecutionData = createRunExecutionData({
+				resultData: { runData: {} },
+				executionData: { runtimeData },
+			});
+
+			let capturedExecutionContext: unknown;
+			const mockCredentialsHelper = {
+				getDecrypted: jest
+					.fn()
+					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
+						// Capture the executionContext value at the moment getDecrypted is called
+						capturedExecutionContext = additionalData.executionContext;
+						return { token: 'test-token' };
+					}),
+				getCredentialsProperties: jest.fn(),
+			};
+
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mockCredentialsHelper,
+			});
+
+			const contextWithCredentials = new TestContext(
+				workflow,
+				testNode,
+				mockAdditionalData,
+				mode,
+				testRunExecutionData,
+			);
+
+			await contextWithCredentials['_getCredentials']('testCredential');
+
+			// Assert that executionContext was already set when getDecrypted was called
+			expect(capturedExecutionContext).toEqual(runtimeData);
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				mockAdditionalData,
+				credentialDetails,
+				'testCredential',
+				mode,
+				undefined,
+				false,
+				undefined,
 			);
 		});
 	});
@@ -336,6 +424,295 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
+		});
+	});
+
+	describe('getSignedResumeUrl', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			testContext = new TestContext(
+				workflow,
+				mock<INode>({
+					id: 'node456',
+				}),
+				mock<IWorkflowExecuteAdditionalData>({
+					executionId: '123',
+					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+				}),
+				mode,
+				createRunExecutionData({
+					validateSignature: true,
+					resultData: { runData: {} },
+				}),
+			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		});
+		it('should return a signed resume URL with no query parameters', () => {
+			const result = testContext.getSignedResumeUrl();
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			);
+		});
+
+		it('should return a signed resume URL with query parameters', () => {
+			const result = testContext.getSignedResumeUrl({ approved: 'true' });
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			);
+		});
+	});
+
+	describe('nodeFeatures', () => {
+		it('should return empty object when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({});
+		});
+
+		it('should return enabled features based on node version', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: true,
+				useFeatureB: false,
+				useFeatureC: true,
+			});
+		});
+
+		it('should return correct features for version 2.1', () => {
+			node.typeVersion = 2.1;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: false,
+				useFeatureB: true,
+				useFeatureC: false,
+			});
+		});
+
+		it('should handle simple version number conditions', () => {
+			node.typeVersion = 2;
+			nodeType.description.features = {
+				useFeatureD: { '@version': [2] },
+				useFeatureE: { '@version': [{ _cnd: { lt: 2.3 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureD: true,
+				useFeatureE: true,
+			});
+		});
+	});
+
+	describe('isNodeFeatureEnabled', () => {
+		it('should return true when feature is enabled', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when feature is disabled', () => {
+			node.typeVersion = 2.3;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when feature does not exist', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('nonExistentFeature');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle multiple features correctly', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			expect(testContext.isNodeFeatureEnabled('useFeatureA')).toBe(true);
+			expect(testContext.isNodeFeatureEnabled('useFeatureB')).toBe(false);
+			expect(testContext.isNodeFeatureEnabled('useFeatureC')).toBe(true);
+		});
+	});
+
+	describe('getWorkflowSettings', () => {
+		it('should return workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(result).toEqual(settings);
+		});
+
+		it('should return a frozen object that cannot be modified', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(result.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should return a deep clone that does not affect the original workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(workflow.settings.saveDataErrorExecution).toBe('all');
+
+			const result2 = testContext.getWorkflowSettings();
+			expect(result2.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should memoize the result and return the same reference on multiple calls', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result1 = testContext.getWorkflowSettings();
+			const result2 = testContext.getWorkflowSettings();
+
+			expect(result1).toBe(result2);
+		});
+
+		it('should handle binaryMode setting correctly', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				binaryMode: 'separate',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(result.binaryMode).toBe('separate');
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'combined';
+			}).toThrow(TypeError);
+			expect(result.binaryMode).toBe('separate');
+		});
+
+		it('should prevent modification of all workflow settings properties', () => {
+			const settings: IWorkflowSettings = {
+				timezone: 'America/New_York',
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'none',
+				executionTimeout: 3600,
+				binaryMode: 'combined',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).timezone = 'UTC';
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).executionTimeout = 7200;
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'separate';
+			}).toThrow(TypeError);
+			expect(result.timezone).toBe('America/New_York');
+			expect(result.executionTimeout).toBe(3600);
+			expect(result.binaryMode).toBe('combined');
+		});
+
+		it('should freeze nested objects in settings', () => {
+			const settingsWithNested = {
+				saveDataErrorExecution: 'all' as const,
+				callerIds: 'workflow1,workflow2',
+				hypotheticalNested: { key: 'value', deep: { prop: 'test' } },
+			};
+			workflow.settings = settingsWithNested as IWorkflowSettings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+
+			const nested = (result as Record<string, unknown>).hypotheticalNested;
+			if (nested && typeof nested === 'object') {
+				const isFrozen = Object.isFrozen(nested);
+				if (isFrozen) {
+					expect(() => {
+						(nested as Record<string, unknown>).key = 'modified';
+					}).toThrow(TypeError);
+
+					const deep = (nested as Record<string, unknown>).deep;
+					if (deep && typeof deep === 'object' && Object.isFrozen(deep)) {
+						expect(() => {
+							(deep as Record<string, unknown>).prop = 'modified';
+						}).toThrow(TypeError);
+					}
+				}
+			}
 		});
 	});
 });

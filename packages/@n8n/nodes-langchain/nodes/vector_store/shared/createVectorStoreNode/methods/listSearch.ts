@@ -4,6 +4,8 @@ import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from '
 
 import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
 import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
+import type { WeaviateCredential } from '../../../VectorStoreWeaviate/Weaviate.utils';
+import { createWeaviateClient } from '../../../VectorStoreWeaviate/Weaviate.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -83,6 +85,21 @@ export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
 	const response = await client.listCollections();
 
 	const results = response.data.map((collection) => ({
+		name: collection.name,
+		value: collection.name,
+	}));
+
+	return { results };
+}
+
+export async function weaviateCollectionsSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('weaviateApi');
+
+	const client = await createWeaviateClient(credentials as WeaviateCredential);
+
+	const collections = await client.collections.listAll();
+
+	const results = collections.map((collection: { name: string }) => ({
 		name: collection.name,
 		value: collection.name,
 	}));

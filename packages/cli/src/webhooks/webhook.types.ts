@@ -9,7 +9,7 @@ export type WebhookRequest = Request<{ path: string }> & {
 };
 
 export type WaitingWebhookRequest = WebhookRequest & {
-	params: WebhookRequest['path'] & { suffix?: string };
+	params: Pick<WebhookRequest['params'], 'path'> & { suffix?: string };
 };
 
 export interface WebhookAccessControlOptions {
@@ -37,3 +37,16 @@ export interface IWebhookResponseCallbackData {
 }
 
 export type Method = NonNullable<IHttpRequestMethods>;
+
+/** Response headers. Keys are always lower-cased. */
+export type WebhookResponseHeaders = Map<string, string>;
+
+/**
+ * The headers object that node's `responseHeaders` property can return
+ */
+export type WebhookNodeResponseHeaders = {
+	entries?: Array<{
+		name: string;
+		value: string;
+	}>;
+};

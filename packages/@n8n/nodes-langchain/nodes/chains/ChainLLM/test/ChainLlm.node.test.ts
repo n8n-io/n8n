@@ -36,6 +36,7 @@ jest.mock('../methods/responseFormatter', () => ({
 describe('ChainLlm Node', () => {
 	let node: ChainLlm;
 	let mockExecuteFunction: jest.Mocked<IExecuteFunctions>;
+	let needsFallback: boolean;
 
 	beforeEach(() => {
 		node = new ChainLlm();
@@ -48,6 +49,8 @@ describe('ChainLlm Node', () => {
 			error: jest.fn(),
 		};
 
+		needsFallback = false;
+
 		mockExecuteFunction.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunction.getNode.mockReturnValue({
 			name: 'Chain LLM',
@@ -57,6 +60,7 @@ describe('ChainLlm Node', () => {
 
 		mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
 			if (param === 'messages.messageValues') return [];
+			if (param === 'needsFallback') return needsFallback;
 			return defaultValue;
 		});
 
@@ -96,6 +100,7 @@ describe('ChainLlm Node', () => {
 				context: mockExecuteFunction,
 				itemIndex: 0,
 				query: 'Test prompt',
+				fallbackLlm: null,
 				llm: expect.any(FakeChatModel),
 				outputParser: undefined,
 				messages: [],
@@ -151,6 +156,7 @@ describe('ChainLlm Node', () => {
 				context: mockExecuteFunction,
 				itemIndex: 0,
 				query: 'Old version prompt',
+				fallbackLlm: null,
 				llm: expect.any(Object),
 				outputParser: undefined,
 				messages: expect.any(Array),
@@ -505,6 +511,35 @@ describe('ChainLlm Node', () => {
 			expect(responseFormatterModule.formatResponse).toHaveBeenCalledWith(markdownResponse, true);
 		});
 
+		it('should use fallback llm if enabled', async () => {
+			needsFallback = true;
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
+
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(undefined);
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue(['Test response']);
+
+			const fakeLLM = new FakeChatModel({});
+			const fakeFallbackLLM = new FakeChatModel({});
+			mockExecuteFunction.getInputConnectionData.mockResolvedValue([fakeLLM, fakeFallbackLLM]);
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(executeChainModule.executeChain).toHaveBeenCalledWith({
+				context: mockExecuteFunction,
+				itemIndex: 0,
+				query: 'Test prompt',
+				fallbackLlm: expect.any(FakeChatModel),
+				llm: expect.any(FakeChatModel),
+				outputParser: undefined,
+				messages: [],
+			});
+
+			expect(mockExecuteFunction.logger.debug).toHaveBeenCalledWith('Executing Basic LLM Chain');
+
+			expect(result).toEqual([[{ json: expect.any(Object) }]]);
+		});
+
 		it('should pass correct itemIndex to getOptionalOutputParser', async () => {
 			// Clear any previous calls to the mock
 			(outputParserModule.getOptionalOutputParser as jest.Mock).mockClear();
@@ -568,6 +603,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 0,
 				query: 'Test prompt 1',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser1,
 				messages: [],
 			});
@@ -576,6 +612,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 1,
 				query: 'Test prompt 2',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser2,
 				messages: [],
 			});
@@ -584,6 +621,7 @@ describe('ChainLlm Node', () => {
 				itemIndex: 2,
 				query: 'Test prompt 3',
 				llm: expect.any(Object),
+				fallbackLlm: null,
 				outputParser: mockParser3,
 				messages: [],
 			});

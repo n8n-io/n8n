@@ -20,6 +20,7 @@ import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	createEmail,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../../../utils/sendAndWait/utils';
 import {
@@ -31,17 +32,17 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import { replyToEmail } from '../utils/replyToEmail';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
@@ -70,6 +71,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
@@ -333,7 +335,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -561,10 +563,10 @@ export class GmailV2 implements INodeType {
 							attachments,
 						};
 
-						if (threadId && options.replyTo) {
+						if (threadId) {
 							// If a threadId is set, we need to add the Message-ID of the last message in the thread
 							// to the email so that Gmail can correctly associate the draft with the thread
-							await addThreadHeadersToEmail.call(this, email, threadId);
+							await addThreadHeadersToEmail.call(this, email, threadId as string);
 						}
 
 						const body = {
@@ -757,7 +759,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash

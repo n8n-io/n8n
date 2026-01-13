@@ -55,6 +55,13 @@ The benchmark suite consists of [benchmark scenarios](#benchmark-scenarios) and 
 pnpm benchmark-locally
 ```
 
+You can filter to a specific scenario and setup:
+
+```sh
+# Run only the http-node scenario with the sqlite setup
+pnpm benchmark-locally --runDir /tmp/n8n-data --scenarioFilter http-node sqlite
+```
+
 ### In the cloud
 
 ```sh

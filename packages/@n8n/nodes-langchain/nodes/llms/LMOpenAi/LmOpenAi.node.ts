@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -9,7 +8,9 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -28,7 +29,7 @@ type LmOpenAiOptions = {
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOpenAi',
 		hidden: true,
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
@@ -52,9 +53,9 @@ export class LmOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -250,15 +251,20 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 		const configuration: ClientOptions = {
-			httpAgent: getHttpProxyAgent(),
+			fetchOptions: {
+				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1'),
+			},
+			defaultHeaders,
 		};
+
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		}
 
 		const model = new OpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...options,
 			configuration,

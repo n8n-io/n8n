@@ -2,6 +2,7 @@
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"baseUrl": ".",
+		"moduleResolution": "bundler",
 		"rootDirs": [
 			".",
 			"../@n8n/rest-api-client/src",
@@ -31,5 +32,5 @@
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
-	"exclude": ["src/plugins/codemirror/typescript/worker/**/*.d.ts"]
+	"exclude": ["src/**/*.stories.ts", "src/plugins/codemirror/typescript/worker/**/*.d.ts"]
 }

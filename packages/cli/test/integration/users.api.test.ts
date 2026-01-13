@@ -1,10 +1,26 @@
-import type { User } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	createWorkflow,
+	getWorkflowById,
+	shareWorkflowWithUsers,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { PublicUser, User } from '@n8n/db';
+import {
+	FolderRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
@@ -21,15 +37,11 @@ import {
 	saveCredential,
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
-import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
-import { mockInstance } from '../shared/mocking';
+import { createRole } from '@test-integration/db/roles';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -42,7 +54,9 @@ const testServer = utils.setupTestServer({
 describe('GET /users', () => {
 	let owner: User;
 	let member1: User;
+	let member2: User;
 	let ownerAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
 	let userRepository: UserRepository;
 
 	beforeAll(async () => {
@@ -51,33 +65,38 @@ describe('GET /users', () => {
 		userRepository = Container.get(UserRepository);
 
 		owner = await createUser({
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 			email: 'owner@n8n.io',
 			firstName: 'OwnerFirstName',
 			lastName: 'OwnerLastName',
 		});
 		member1 = await createUser({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 			email: 'member1@n8n.io',
 			firstName: 'Member1FirstName',
 			lastName: 'Member1LastName',
 			mfaEnabled: true,
 		});
-		await createUser({
-			role: 'global:member',
+		member2 = await createUser({
+			role: GLOBAL_MEMBER_ROLE,
 			email: 'member2@n8n.io',
 			firstName: 'Member2FirstName',
 			lastName: 'Member2LastName',
 		});
 		await createUser({
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 			email: 'admin@n8n.io',
 			firstName: 'AdminFirstName',
 			lastName: 'AdminLastName',
 			mfaEnabled: true,
 		});
 
+		for (let i = 0; i < 10; i++) {
+			await createTeamProject(`project${i}`, member1);
+		}
+
 		ownerAgent = testServer.authAgentFor(owner);
+		memberAgent = testServer.authAgentFor(member1);
 	});
 
 	test('should return all users', async () => {
@@ -435,6 +454,18 @@ describe('GET /users', () => {
 				response.body.data.items.forEach(validateUser);
 			});
 
+			test('should return all users with large enough take', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('take=5&expand[]=projectRelations&sortBy[]=role:desc')
+					.expect(200);
+
+				expect(response.body.data.count).toBe(4);
+				expect(response.body.data.items).toHaveLength(4);
+
+				response.body.data.items.forEach(validateUser);
+			});
+
 			test('should return all users with negative take', async () => {
 				const users: User[] = [];
 
@@ -488,12 +519,12 @@ describe('GET /users', () => {
 		describe('expand', () => {
 			test('should expand on team projects', async () => {
 				const project = await createTeamProject('Test Project');
-				await linkUserToProject(member1, project, 'project:admin');
+				await linkUserToProject(member2, project, 'project:admin');
 
 				const response = await ownerAgent
 					.get('/users')
 					.query(
-						`filter={ "email": "${member1.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc`,
+						`filter={ "email": "${member2.email}" }&select[]=firstName&take=1&expand[]=projectRelations&sortBy[]=role:asc`,
 					)
 					.expect(200);
 
@@ -541,6 +572,65 @@ describe('GET /users', () => {
 				});
 
 				expect(response.body.data.items[0].projectRelations).toHaveLength(0);
+			});
+		});
+
+		describe('inviteAcceptUrl', () => {
+			let pendingUser: User;
+			beforeAll(async () => {
+				pendingUser = await createUser({
+					role: { slug: 'global:member' },
+					email: 'pending@n8n.io',
+					firstName: 'PendingFirstName',
+					lastName: 'PendingLastName',
+					password: null,
+				});
+			});
+
+			afterAll(async () => {
+				await userRepository.delete({ id: pendingUser.id });
+			});
+
+			test('should include inviteAcceptUrl for pending users', async () => {
+				const response = await ownerAgent.get('/users').expect(200);
+
+				const responseData = response.body.data as {
+					count: number;
+					items: PublicUser[];
+				};
+
+				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
+
+				expect(pendingUserInResponse).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).toMatch(
+					new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
+				);
+
+				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
+
+				expect(nonPendingUser).toBeDefined();
+				expect(nonPendingUser!.isPending).toBe(false);
+				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
+			});
+
+			test('should not include inviteAcceptUrl for pending users, if member requests it', async () => {
+				const response = await memberAgent.get('/users').expect(200);
+
+				const responseData = response.body.data as {
+					count: number;
+					items: PublicUser[];
+				};
+
+				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
+
+				expect(pendingUserInResponse).toBeDefined();
+				expect(pendingUserInResponse!.inviteAcceptUrl).not.toBeDefined();
+
+				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
+
+				expect(nonPendingUser).toBeDefined();
+				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
 			});
 		});
 
@@ -636,14 +726,14 @@ describe('GET /users', () => {
 
 			test('should sort by firstName and lastName combined', async () => {
 				const user1 = await createUser({
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: 'memberz1@n8n.io',
 					firstName: 'ZZZFirstName',
 					lastName: 'ZZZLastName',
 				});
 
 				const user2 = await createUser({
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: 'memberz2@n8n.io',
 					firstName: 'ZZZFirstName',
 					lastName: 'ZZYLastName',
@@ -677,6 +767,63 @@ describe('GET /users', () => {
 
 				await userRepository.delete({ id: user1.id });
 				await userRepository.delete({ id: user2.id });
+			});
+		});
+
+		describe('field restrictions based on user:create scope', () => {
+			test('should return limited fields for members without user:create scope', async () => {
+				const response = await memberAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				expect(users).toBeInstanceOf(Array);
+
+				// Fields that should be restricted for members without user:create scope
+				const restrictionsFields = [
+					'mfaEnabled',
+					'settings',
+					'personalizationAnswers',
+					'inviteAcceptUrl',
+					'lastActiveAt',
+					'isOwner',
+					'signInType',
+					'projectRelations',
+				];
+
+				// Verify that sensitive/admin fields are NOT present for members
+				users.forEach((user: any) => {
+					// Basic fields should be present
+					expect(user).toHaveProperty('id');
+
+					if (user.id !== member1.id) {
+						// Admin-only fields should NOT be present
+						restrictionsFields.forEach((field) => {
+							expect(user).not.toHaveProperty(field);
+						});
+					} else {
+						// Admin-only fields should be present for own user
+						expect(user).toHaveProperty('mfaEnabled');
+						expect(user).toHaveProperty('settings');
+						expect(user).toHaveProperty('personalizationAnswers');
+						expect(user).toHaveProperty('lastActiveAt');
+						expect(user).toHaveProperty('isOwner');
+						expect(user).toHaveProperty('signInType');
+					}
+				});
+			});
+
+			test('should return full fields for owners/admins with user:create scope', async () => {
+				const response = await ownerAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				expect(users).toBeInstanceOf(Array);
+
+				// Verify that admin fields ARE present for owners
+				const userWithMfa = users.find((u: any) => u.email === 'member1@n8n.io');
+				expect(userWithMfa).toHaveProperty('mfaEnabled', true);
+				expect(userWithMfa).toHaveProperty('isOwner');
+				expect(userWithMfa).toHaveProperty('signInType');
 			});
 		});
 	});
@@ -1002,7 +1149,7 @@ describe('DELETE /users/:id', () => {
 					id: teamProject.id,
 					projectRelations: {
 						userId: transferee.id,
-						role: 'project:editor',
+						role: { slug: 'project:editor' },
 					},
 				}),
 			).resolves.not.toBeNull(),
@@ -1336,7 +1483,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(otherAdmin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore other admin
 
@@ -1354,7 +1501,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore admin
 
@@ -1370,9 +1517,9 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toStrictEqual({ success: true });
 
-			const user = await getUserById(admin.id);
+			const user = await getUserById(member.id);
 
-			expect(user.role).toBe('global:admin');
+			expect(user.role.slug).toBe('global:admin');
 
 			// restore member
 
@@ -1421,7 +1568,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:admin');
+			expect(user.role.slug).toBe('global:admin');
 
 			// restore member
 
@@ -1439,7 +1586,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore admin
 
@@ -1482,5 +1629,31 @@ describe('PATCH /users/:id/role', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toStrictEqual({ success: true });
+	});
+
+	test('should fail to change to non-existing role', async () => {
+		const customRole = 'custom:project-role';
+		await createRole({ slug: customRole, displayName: 'Custom Role', roleType: 'project' });
+		const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+			newRoleName: customRole,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Role custom:project-role does not exist');
+	});
+
+	test('should change to existing custom role', async () => {
+		const customRole = 'custom:role';
+		await createRole({ slug: customRole, displayName: 'Custom Role 1', roleType: 'global' });
+		const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+			newRoleName: customRole,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual({ success: true });
+
+		const user = await getUserById(member.id);
+
+		expect(user.role.slug).toBe(customRole);
 	});
 });
