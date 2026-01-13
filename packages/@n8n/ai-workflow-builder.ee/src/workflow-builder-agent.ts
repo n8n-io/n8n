@@ -134,7 +134,7 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async* chat(
+	async *chat(
 		payload: ChatPayload,
 		userId?: string,
 		abortSignal?: AbortSignal,
@@ -240,7 +240,7 @@ export class WorkflowBuilderAgent {
 		throw error;
 	}
 
-	private async* processAgentStream(
+	private async *processAgentStream(
 		stream: Awaited<ReturnType<typeof this.createAgentStream>>,
 		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
