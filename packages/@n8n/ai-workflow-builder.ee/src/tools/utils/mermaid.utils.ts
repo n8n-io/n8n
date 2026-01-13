@@ -830,10 +830,11 @@ class MermaidBuilder {
 				if (this.isInNestedSticky(nodeName, nestedStickyIds)) continue;
 				if (this.isInNestedSticky(targetName, nestedStickyIds)) continue;
 
-				const sourceSubgraphType = this.getSubgraphType(nodeName, nestedStickyIds);
-				const targetSubgraphType = this.getSubgraphType(targetName, nestedStickyIds);
+				const sourceSubgraphId = this.getSubgraphId(nodeName, nestedStickyIds);
+				const targetSubgraphId = this.getSubgraphId(targetName, nestedStickyIds);
 
-				if (sourceSubgraphType === targetSubgraphType) continue;
+				// Skip if both nodes are in the same subgraph (connections already handled internally)
+				if (sourceSubgraphId === targetSubgraphId) continue;
 
 				const sourceId = this.nodeIdMap.get(nodeName);
 				const targetId = this.nodeIdMap.get(targetName);
@@ -855,21 +856,28 @@ class MermaidBuilder {
 		);
 	}
 
-	private getSubgraphType(
-		nodeName: string,
-		nestedStickyIds: Set<string>,
-	): 'sticky' | 'agent' | 'none' {
-		const inStandaloneSticky = this.stickyOverlaps.multiNodeOverlap.some(
+	/**
+	 * Returns a unique identifier for the subgraph a node belongs to.
+	 * This allows distinguishing between different sticky subgraphs or different agent subgraphs.
+	 */
+	private getSubgraphId(nodeName: string, nestedStickyIds: Set<string>): string {
+		// Check if in a standalone sticky subgraph
+		const stickySubgraph = this.stickyOverlaps.multiNodeOverlap.find(
 			({ sticky, nodeNames }) =>
 				nodeNames.includes(nodeName) && !nestedStickyIds.has(sticky.node.id ?? ''),
 		);
-		if (inStandaloneSticky) return 'sticky';
+		if (stickySubgraph) {
+			return `sticky:${stickySubgraph.sticky.node.id}`;
+		}
 
-		const inAgentSubgraph = this.agentSubgraphs.some(
+		// Check if in an agent subgraph
+		const agentSubgraph = this.agentSubgraphs.find(
 			({ agentNode, aiConnectedNodeNames }) =>
 				agentNode.name === nodeName || aiConnectedNodeNames.includes(nodeName),
 		);
-		if (inAgentSubgraph) return 'agent';
+		if (agentSubgraph) {
+			return `agent:${agentSubgraph.agentNode.id}`;
+		}
 
 		return 'none';
 	}
