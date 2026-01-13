@@ -1,5 +1,4 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { DatabaseConfig } from '@n8n/config';
 import type {
 	CredentialsRepository,
 	TagRepository,
@@ -45,7 +44,6 @@ describe('ImportService', () => {
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
-	let mockDatabaseConfig: DatabaseConfig;
 	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeEach(() => {
@@ -59,7 +57,6 @@ describe('ImportService', () => {
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
-		mockDatabaseConfig = mock<DatabaseConfig>();
 		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
 		// Set up cipher mock
@@ -107,7 +104,6 @@ describe('ImportService', () => {
 			mockCipher,
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			mockDatabaseConfig,
 			mockWorkflowPublishHistoryRepository,
 		);
 	});
