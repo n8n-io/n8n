@@ -80,6 +80,13 @@ const loadQuickStartTemplates = async () => {
 };
 
 onMounted(() => {
+	// Reset scroll
+	setTimeout(() => {
+		const content = document.getElementById('content');
+		const contentWrapper = content?.querySelector(':scope > div');
+		contentWrapper?.scrollTo({ top: 0, behavior: 'auto' });
+	}, 50);
+
 	resourceCenterStore.trackResourceCenterView();
 	void loadTemplates();
 	void loadQuickStartTemplates();
