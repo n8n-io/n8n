@@ -14,7 +14,6 @@ test.describe('Workflow Publish', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getOpenPublishModalButton()).toBeDisabled();
 	});
 
