@@ -521,7 +521,7 @@ export class WorkflowService {
 		}
 	}
 
-	async findConflictingWebhooks(workflowEntity: WorkflowEntity) {
+	private async _findConflictingWebhooks(workflowEntity: WorkflowEntity) {
 		const workflow = new Workflow({
 			id: workflowEntity.id,
 			nodes: workflowEntity.nodes,
@@ -538,7 +538,7 @@ export class WorkflowService {
 	}
 
 	private async _detectWebhookConflicts(workflowEntity: WorkflowEntity) {
-		const conflicts = await this.findConflictingWebhooks(workflowEntity);
+		const conflicts = await this._findConflictingWebhooks(workflowEntity);
 
 		if (conflicts.length > 0) {
 			throw new ConflictError(
