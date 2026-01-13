@@ -39,3 +39,33 @@ export const paginationSchema = {
 };
 
 export class PaginationDto extends Z.class(paginationSchema) {}
+
+// Public API uses offset/limit instead of skip/take
+const offsetValidator = z
+	.string()
+	.optional()
+	.transform((val) => (val ? parseInt(val, 10) : 0))
+	.refine((val) => !isNaN(val) && Number.isInteger(val), {
+		message: 'Param `offset` must be a valid integer',
+	})
+	.refine((val) => val >= 0, {
+		message: 'Param `offset` must be a non-negative integer',
+	});
+
+const createLimitValidator = (maxItems: number) =>
+	z
+		.string()
+		.optional()
+		.transform((val) => (val ? parseInt(val, 10) : 100))
+		.refine((val) => !isNaN(val) && Number.isInteger(val), {
+			message: 'Param `limit` must be a valid integer',
+		})
+		.refine((val) => val >= 0, {
+			message: 'Param `limit` must be a non-negative integer',
+		})
+		.transform((val) => Math.min(val, maxItems));
+
+export const publicApiPaginationSchema = {
+	offset: offsetValidator,
+	limit: createLimitValidator(MAX_ITEMS_PER_PAGE),
+};

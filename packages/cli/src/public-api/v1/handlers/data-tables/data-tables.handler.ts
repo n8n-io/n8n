@@ -1,4 +1,8 @@
-import { ListDataTableQueryDto, CreateDataTableDto, UpdateDataTableDto } from '@n8n/api-types';
+import {
+	PublicApiListDataTableQueryDto,
+	CreateDataTableDto,
+	UpdateDataTableDto,
+} from '@n8n/api-types';
 import { ProjectRepository } from '@n8n/db';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
@@ -70,14 +74,14 @@ export = {
 		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
 			try {
 				// Validate query parameters using DTO (convert to strings first)
-				const payload = ListDataTableQueryDto.safeParse(stringifyQuery(req.query));
+				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
 						message: payload.error.errors[0]?.message || 'Invalid query parameters',
 					});
 				}
 
-				const { skip = 0, take = 100, sortBy, filter } = payload.data;
+				const { offset, limit, filter, sortBy } = payload.data;
 
 				// Get user's personal project
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -87,8 +91,8 @@ export = {
 				// Add projectId to filter
 				const providedFilter = filter ?? {};
 				const result = await Container.get(DataTableService).getManyAndCount({
-					skip,
-					take,
+					skip: offset,
+					take: limit,
 					filter: { ...providedFilter, projectId: project.id },
 					sortBy,
 				});
@@ -96,8 +100,8 @@ export = {
 				return res.json({
 					data: result.data,
 					nextCursor: encodeNextCursor({
-						offset: skip,
-						limit: take,
+						offset,
+						limit,
 						numberOfTotalRecords: result.count,
 					}),
 				});

@@ -1,5 +1,5 @@
 import {
-	ListDataTableContentQueryDto,
+	PublicApiListDataTableContentQueryDto,
 	AddDataTableRowsDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -74,14 +74,14 @@ export = {
 				const { dataTableId } = req.params;
 
 				// Validate query parameters using DTO (convert to strings first)
-				const payload = ListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
+				const payload = PublicApiListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
 						message: payload.error.errors[0]?.message || 'Invalid query parameters',
 					});
 				}
 
-				const { skip = 0, take = 100, filter, sortBy, search } = payload.data;
+				const { offset, limit, filter, sortBy, search } = payload.data;
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
 
@@ -89,8 +89,8 @@ export = {
 					dataTableId,
 					projectId,
 					{
-						skip,
-						take,
+						skip: offset,
+						take: limit,
 						filter,
 						sortBy,
 						search,
@@ -100,8 +100,8 @@ export = {
 				return res.json({
 					data: result.data,
 					nextCursor: encodeNextCursor({
-						offset: skip,
-						limit: take,
+						offset,
+						limit,
 						numberOfTotalRecords: result.count,
 					}),
 				});

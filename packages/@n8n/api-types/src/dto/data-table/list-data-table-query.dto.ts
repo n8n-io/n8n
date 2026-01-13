@@ -2,7 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { paginationSchema } from '../pagination/pagination.dto';
+import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 const VALID_SORT_OPTIONS = [
 	'name:asc',
@@ -63,6 +63,13 @@ const sortByValidator = z
 
 export class ListDataTableQueryDto extends Z.class({
 	...paginationSchema,
+	filter: filterValidator,
+	sortBy: sortByValidator,
+}) {}
+
+// Public API version using offset/limit
+export class PublicApiListDataTableQueryDto extends Z.class({
+	...publicApiPaginationSchema,
 	filter: filterValidator,
 	sortBy: sortByValidator,
 }) {}

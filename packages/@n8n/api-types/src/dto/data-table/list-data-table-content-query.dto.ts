@@ -4,7 +4,7 @@ import { Z } from 'zod-class';
 
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
-import { paginationSchema } from '../pagination/pagination.dto';
+import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 const filterValidator = z
 	.string()
@@ -79,6 +79,15 @@ const sortByValidator = z
 export class ListDataTableContentQueryDto extends Z.class({
 	take: paginationSchema.take.optional(),
 	skip: paginationSchema.skip.optional(),
+	filter: filterValidator.optional(),
+	sortBy: sortByValidator.optional(),
+	search: z.string().optional(),
+}) {}
+
+// Public API version using offset/limit
+export class PublicApiListDataTableContentQueryDto extends Z.class({
+	limit: publicApiPaginationSchema.limit,
+	offset: publicApiPaginationSchema.offset,
 	filter: filterValidator.optional(),
 	sortBy: sortByValidator.optional(),
 	search: z.string().optional(),
