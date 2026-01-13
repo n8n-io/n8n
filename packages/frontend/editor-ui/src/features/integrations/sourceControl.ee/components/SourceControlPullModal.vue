@@ -176,13 +176,17 @@ const tabs = computed(() => {
 	];
 });
 
-// Other files (variables, tags, folders) that are always pulled
+// Other files (variables, data tables, tags, folders, projects) that are always pulled
 const otherFiles = computed(() => {
 	const others: SourceControlledFileWithProject[] = [];
 
 	const variables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables];
 	if (variables) {
 		others.push.apply(others, variables);
+	}
+	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable];
+	if (dataTables) {
+		others.push.apply(others, dataTables);
 	}
 	const tags = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags];
 	if (tags) {
@@ -398,6 +402,9 @@ onMounted(() => {
 				<N8nText size="small">
 					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length">
 						Variables ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length || 0 }}),
+					</template>
+					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.datatable]?.length">
+						Data tables ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.datatable]?.length || 0 }}),
 					</template>
 					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length">
 						Tags ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length || 0 }}),
