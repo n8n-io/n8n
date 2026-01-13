@@ -47,12 +47,8 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'remove_node',
 ];
 
-/**
- * Parent graph nodes that should emit user-facing messages
- * - agent: V1 single agent (backward compatibility)
- * - responder: The ONLY node that should emit in multi-agent mode
- */
-const EMITTING_NODES = ['agent', 'responder'];
+/** Parent graph node that emits user-facing messages */
+const EMITTING_NODES = ['responder'];
 
 /** Parent graph nodes to skip entirely (internal coordination) */
 const SKIPPED_NODES = [

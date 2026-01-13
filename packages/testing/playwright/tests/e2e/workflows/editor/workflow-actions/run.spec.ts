@@ -4,8 +4,9 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Run', () => {
+test.describe('Workflow Run @fixme', () => {
+	test.fixme();
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -15,7 +16,6 @@ test.skip('Workflow Run', () => {
 	}) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.clickNodePlusEndpoint('Edit Fields');
 		await expect(n8n.canvas.nodeCreatorSearchBar()).toBeVisible();
@@ -32,7 +32,6 @@ test.skip('Workflow Run', () => {
 
 	test('should run workflow on button click', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(
@@ -42,7 +41,6 @@ test.skip('Workflow Run', () => {
 
 	test('should run workflow using keyboard shortcut', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.hitExecuteWorkflow();
 		await expect(

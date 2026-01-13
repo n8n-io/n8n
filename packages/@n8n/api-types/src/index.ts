@@ -49,7 +49,7 @@ export {
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,

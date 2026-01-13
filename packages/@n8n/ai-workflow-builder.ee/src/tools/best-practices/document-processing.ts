@@ -235,7 +235,7 @@ Modes: Use "Pass Through" to preserve binary from one branch
 **Edit Fields (Set) (n8n-nodes-base.set)**
 Purpose: Better choice for combining data from separate/independent branches
 Use for: Adding fields from different sources, preserving binary while adding processed data
-Configuration: Set common fields and use "Include Other Input Fields" OFF to preserve existing data including binary
+Configuration: Set common fields and use "Include Other Input Fields" ON to preserve existing data including binary
 
 **Execute Workflow Trigger (n8n-nodes-base.executeWorkflowTrigger)**
 Purpose: Start point for sub-workflows that are called by other workflows
