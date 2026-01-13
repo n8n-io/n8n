@@ -430,7 +430,7 @@ export class McpClientTool implements INodeType {
 					// When additionalProperties is explicitly false, filter to schema-defined properties.
 					// Otherwise (true or omitted), pass all arguments through
 					const sanitizedToolArguments: IDataObject =
-						schema.additionalProperties === false
+						schema.additionalProperties !== true
 							? pick(toolArguments, Object.keys(schema.properties ?? {}))
 							: toolArguments;
 
