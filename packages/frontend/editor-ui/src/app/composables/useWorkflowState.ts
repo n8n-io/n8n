@@ -21,11 +21,12 @@ import {
 	type IDataObject,
 	type INodeParameters,
 	type IWorkflowSettings,
+	type IPinData,
 } from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { isEmpty } from '@/app/utils/typesUtils';
+import { isEmpty, isJsonKeyObject } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
@@ -37,6 +38,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { WorkflowMetadata } from '@n8n/rest-api-client';
+import { dataPinningEventBus } from '../event-bus';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -57,7 +60,7 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
@@ -69,7 +72,7 @@ export function useWorkflowState() {
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		ws.workflow.connections = {};
@@ -78,7 +81,7 @@ export function useWorkflowState() {
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		if (data.removePinData) {
@@ -185,6 +188,50 @@ export function useWorkflowState() {
 		return workflowData;
 	}
 
+	function addWorkflowTagIds(tags: string[]) {
+		ws.workflow.tags = [...new Set([...(ws.workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
+	}
+
+	function removeWorkflowTagId(tagId: string) {
+		const tags = ws.workflow.tags as string[];
+		const updated = tags.filter((id: string) => id !== tagId);
+		ws.workflow.tags = updated as IWorkflowDb['tags'];
+	}
+
+	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
+		ws.workflow.scopes = scopes;
+	}
+
+	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+		ws.workflow.meta = metadata;
+	}
+
+	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+		ws.workflow.meta = {
+			...ws.workflow.meta,
+			...data,
+		};
+	}
+
+	function setWorkflowPinData(data: IPinData = {}) {
+		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
+			accu[nodeName] = data[nodeName].map((item) => {
+				if (!isJsonKeyObject(item)) {
+					return { json: item };
+				}
+
+				return item;
+			});
+
+			return accu;
+		}, {} as IPinData);
+
+		ws.workflow.pinData = validPinData;
+		ws.workflowObject.setPinData(validPinData);
+
+		dataPinningEventBus.emit('pin-data', validPinData);
+	}
+
 	////
 	// Execution
 	////
@@ -287,7 +334,7 @@ export function useWorkflowState() {
 		});
 
 		if (changed) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			ws.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
 		}
 	}
@@ -330,7 +377,9 @@ export function useWorkflowState() {
 			[updateInformation.key]: updateInformation.value,
 		});
 
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
+		if (changed) {
+			uiStore.markStateDirty();
+		}
 
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
@@ -363,7 +412,7 @@ export function useWorkflowState() {
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
 				if (changed) {
-					uiStore.stateIsDirty = true;
+					uiStore.markStateDirty();
 				}
 			}
 		}
@@ -418,6 +467,12 @@ export function useWorkflowState() {
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
+		addWorkflowTagIds,
+		removeWorkflowTagId,
+		setWorkflowScopes,
+		setWorkflowMetadata,
+		addToWorkflowMetadata,
+		setWorkflowPinData,
 
 		// Execution
 		markExecutionAsStopped,

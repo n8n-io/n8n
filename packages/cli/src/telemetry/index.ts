@@ -18,7 +18,7 @@ import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
-import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'

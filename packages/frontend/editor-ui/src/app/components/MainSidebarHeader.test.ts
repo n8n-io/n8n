@@ -7,7 +7,6 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import MainSidebarHeader from './MainSidebarHeader.vue';
-import { COMMAND_BAR_EXPERIMENT } from '../constants';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -20,9 +19,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({
-		isVariantEnabled: vi.fn().mockImplementation((name) => name === COMMAND_BAR_EXPERIMENT.name),
-	}),
+	usePostHog: () => ({}),
 }));
 
 let settingsStore: MockedStore<typeof useSettingsStore>;
