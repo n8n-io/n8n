@@ -439,9 +439,29 @@ export class Expression {
 			});
 		}
 
+		// Wrap data proxy to override toString() for objects/arrays to use JSON.stringify
+		// This prevents [object Object] when objects are used in template literals
+		const wrapWithJsonStringify = (obj: unknown): unknown => {
+			if (obj === null || typeof obj !== 'object') return obj;
+			if (obj instanceof Date || DateTime.isDateTime(obj)) return obj;
+			return new Proxy(obj, {
+				get: (target, prop) => {
+					if (prop === 'toString' || prop === Symbol.toPrimitive) {
+						return () => JSON.stringify(target);
+					}
+					const value = Reflect.get(target, prop) as unknown;
+					return typeof value === 'object' && value !== null ? wrapWithJsonStringify(value) : value;
+				},
+			});
+		};
+		const wrappedData = new Proxy(data, {
+			get: (target, prop) => wrapWithJsonStringify(Reflect.get(target, prop) as unknown),
+		});
+
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data);
+		const returnValue = this.renderExpression(extendedExpression, wrappedData);
+
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new ApplicationError('this is a DateTime, please access its methods');
