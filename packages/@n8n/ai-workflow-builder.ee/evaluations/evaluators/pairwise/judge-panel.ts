@@ -1,4 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { RunnableConfig } from '@langchain/core/runnables';
+import { getLangchainCallbacks } from 'langsmith/langchain';
 
 import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
@@ -100,24 +102,29 @@ export async function runJudgePanel(
 	const { generationIndex, experimentName, llmCallLimiter, timeoutMs } = options ?? {};
 	const panelStartTime = Date.now();
 
+	// Get LangChain callbacks from the current traceable context
+	// This bridges LangSmith's traceable() context to LangChain's callback system
+	const callbacks = await getLangchainCallbacks();
+
 	// Run all judges in parallel, tracking timing for each
 	const judgeTimings: number[] = [];
 	const judgeResults = await Promise.all(
 		Array.from({ length: numJudges }, async (_, judgeIndex) => {
 			const runJudge = async (): Promise<PairwiseEvaluationResult> => {
 				const judgeStartTime = Date.now();
+
+				// Build config with callbacks for proper trace context propagation
+				const config: RunnableConfig = {
+					runName: `judge_${judgeIndex + 1}`,
+					metadata: {
+						...(experimentName && { experiment_name: experimentName }),
+						...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
+					},
+					callbacks,
+				};
+
 				const result = await withTimeout({
-					promise: evaluateWorkflowPairwise(
-						llm,
-						{ workflowJSON: workflow, evalCriteria },
-						{
-							runName: `judge_${judgeIndex + 1}`,
-							metadata: {
-								...(experimentName && { experiment_name: experimentName }),
-								...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
-							},
-						},
-					),
+					promise: evaluateWorkflowPairwise(llm, { workflowJSON: workflow, evalCriteria }, config),
 					timeoutMs,
 					label: `pairwise:judge${judgeIndex + 1}`,
 				});
