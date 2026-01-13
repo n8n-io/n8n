@@ -78,14 +78,22 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	}
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		typeof (error as { code: unknown }).code === 'string'
+	);
+}
+
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
 	try {
 		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
 			fallbackValue: { folders: [] },
 		});
 	} catch (error) {
-		// Return fallback if file not found
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
 			return { folders: [] };
 		}
 		throw error;
@@ -100,8 +108,7 @@ export async function readDataTablesFromSourceControlFile(
 			fallbackValue: [],
 		});
 	} catch (error) {
-		// Return fallback if file not found
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
 			return [];
 		}
 		throw error;

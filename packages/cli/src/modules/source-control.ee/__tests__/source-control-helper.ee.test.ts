@@ -491,3 +491,50 @@ describe('readFoldersFromSourceControlFile', () => {
 		});
 	});
 });
+
+describe('readDataTablesFromSourceControlFile', () => {
+	beforeEach(() => {
+		// Reset module registry so we can unmock properly
+		jest.resetModules();
+		jest.unmock('node:fs/promises');
+	});
+
+	it('should return empty array if the file path is not valid (ENOENT)', async () => {
+		const filePath = 'invalid/path/data_tables.json';
+		// Import the function after resetting modules
+		const { readDataTablesFromSourceControlFile } = await import(
+			'@/modules/source-control.ee/source-control-helper.ee'
+		);
+		const result = await readDataTablesFromSourceControlFile(filePath);
+		expect(result).toEqual([]);
+	});
+
+	it('should parse valid data table JSON successfully', async () => {
+		const mockDataTables = [
+			{
+				id: 'dt1',
+				name: 'Test Table',
+				projectId: 'project1',
+				columns: [
+					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+				],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			},
+		];
+
+		// Mock fsReadFile to return valid JSON
+		jest.doMock('node:fs/promises', () => ({
+			readFile: jest.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
+		}));
+
+		// Import the function after mocking
+		const { readDataTablesFromSourceControlFile } = await import(
+			'@/modules/source-control.ee/source-control-helper.ee'
+		);
+
+		const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');
+		expect(result).toEqual(mockDataTables);
+	});
+});

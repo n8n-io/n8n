@@ -280,8 +280,6 @@ export class SourceControlExportService {
 
 			const existingDataTables = await readDataTablesFromSourceControlFile(fileName);
 
-			// keep all data tables that are not accessible by the current user
-			// if allowedProjects is undefined, all data tables are accessible by the current user
 			const dataTablesToKeepUnchanged = context.hasAccessToAllProjects()
 				? []
 				: existingDataTables.filter((table) => {

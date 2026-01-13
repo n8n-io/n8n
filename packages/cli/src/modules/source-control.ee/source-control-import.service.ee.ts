@@ -1385,7 +1385,6 @@ export class SourceControlImportService {
 			return;
 		}
 
-		// Use deleteDataTable to properly delete both the entity and physical table
 		for (const candidate of candidates) {
 			await this.dataTableRepository.deleteDataTable(candidate.id);
 		}
