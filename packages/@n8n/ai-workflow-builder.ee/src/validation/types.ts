@@ -74,7 +74,6 @@ export interface ProgrammaticEvaluationResult {
 export interface ProgrammaticEvaluationInput {
 	generatedWorkflow: SimpleWorkflow;
 	userPrompt?: string;
-	referenceWorkflow?: SimpleWorkflow;
 	referenceWorkflows?: SimpleWorkflow[];
 	preset?: 'strict' | 'standard' | 'lenient';
 }

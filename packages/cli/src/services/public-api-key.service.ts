@@ -6,6 +6,7 @@ import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -171,7 +172,7 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
+			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
