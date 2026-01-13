@@ -26,6 +26,8 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	'reload-source-control-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {
