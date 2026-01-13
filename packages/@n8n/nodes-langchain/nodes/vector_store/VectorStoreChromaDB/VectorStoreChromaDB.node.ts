@@ -1,4 +1,5 @@
-import { Chroma, ChromaLibArgs } from '@langchain/community/vectorstores/chroma';
+import type { ChromaLibArgs } from '@langchain/community/vectorstores/chroma';
+import { Chroma } from '@langchain/community/vectorstores/chroma';
 import type { Document } from '@langchain/core/documents';
 import {
 	NodeOperationError,
@@ -6,6 +7,8 @@ import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type ISupplyDataFunctions,
+	NodeApiError,
+	ApplicationError,
 } from 'n8n-workflow';
 import { ChromaClient, CloudClient, type Collection } from 'chromadb';
 import { metadataFilterField } from '@utils/sharedFields';
@@ -195,7 +198,7 @@ class ExtendedChroma extends Chroma {
 					embeddingFunction: null,
 				});
 			} catch (err) {
-				throw new Error(`Chroma getOrCreateCollection error: ${err}`);
+				throw new ApplicationError(`Chroma getOrCreateCollection error: ${err}`);
 			}
 		}
 
@@ -206,7 +209,7 @@ class ExtendedChroma extends Chroma {
 		query: number[],
 		k: number,
 		filter?: this['FilterType'],
-	): Promise<[Document, number][]> {
+	): Promise<Array<[Document, number]>> {
 		const queryEmbeddings: number[][] = Array.isArray(query[0])
 			? (query as unknown as number[][])
 			: [query];
@@ -301,7 +304,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 	},
 	methods: {
 		listSearch: {
-			chromaCollectionsSearch: async function (this: ILoadOptionsFunctions) {
+			async chromaCollectionsSearch(this: ILoadOptionsFunctions) {
 				try {
 					const client = await getChromaClient(this);
 					const collections = await client.listCollections();
@@ -320,9 +323,10 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 					// Check for connection errors
 					if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Failed to connect')) {
-						throw new Error(
-							'Cannot connect to ChromaDB. Please ensure ChromaDB is running and accessible at the configured URL.',
-						);
+						throw new NodeApiError(this.getNode(), {
+							message:
+								'Cannot connect to ChromaDB. Please ensure ChromaDB is running and accessible at the configured URL.',
+						});
 					}
 
 					// Check for authentication errors
@@ -331,12 +335,15 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 						errorMessage.includes('401') ||
 						errorMessage.includes('403')
 					) {
-						throw new Error(
-							'Authentication failed. Please check your API key or token in the credentials.',
-						);
+						throw new NodeApiError(this.getNode(), {
+							message:
+								'Authentication failed. Please check your API key or token in the credentials',
+						});
 					}
 
-					throw new Error(`Failed to list ChromaDB collections: ${errorMessage}`);
+					throw new NodeApiError(this.getNode(), {
+						message: `Failed to list ChromaDB collections: ${errorMessage}`,
+					});
 				}
 			},
 		},
@@ -353,7 +360,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 		try {
 			const config = await getChromaLibConfig(context, collection, itemIndex);
-			return ExtendedChroma.fromExistingCollection(embeddings, config);
+			return await ExtendedChroma.fromExistingCollection(embeddings, config);
 		} catch (error) {
 			throw new NodeOperationError(
 				context.getNode(),
