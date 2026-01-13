@@ -29,10 +29,8 @@ import {
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import pick from 'lodash/pick';
-import { type INodeExecutionData, type ITelemetryTrackProperties } from 'n8n-workflow';
+import { type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
@@ -123,8 +121,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-	const credentialsStore = useCredentialsStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const ndvStore = useNDVStore();
 	const route = useRoute();
 	const locale = useI18n();

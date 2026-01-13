@@ -543,8 +543,7 @@ describe('useWorkflowUpdate', () => {
 				});
 				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([mockCredential]);
 
-				const existingNodeInStore = { ...nodeWithoutCreds, parameters: {} } as INodeUi;
-				workflowsStore.nodesByName = { 'HTTP Request': existingNodeInStore };
+				mockCanvasOperations.addNodes.mockResolvedValue([nodeWithoutCreds as INodeUi]);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -553,9 +552,15 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(existingNodeInStore.credentials).toEqual({
-					httpBasicAuth: { id: 'cred-1', name: 'My Credential' },
-				});
+				// Credentials should be applied to the node before it's added to the store
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[
+						expect.objectContaining({
+							credentials: { httpBasicAuth: { id: 'cred-1', name: 'My Credential' } },
+						}),
+					],
+					expect.any(Object),
+				);
 			});
 
 			it('should not override existing credentials', async () => {
@@ -567,15 +572,14 @@ describe('useWorkflowUpdate', () => {
 					credentials: existingCredentials,
 				});
 
-				const storeNode = { ...nodeWithCreds, parameters: {} } as INodeUi;
-				workflowsStore.nodesByName = { 'HTTP Request': storeNode };
-
 				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 					credentials: [{ name: 'httpBasicAuth' }],
 				});
 				credentialsStore.getCredentialsByType = vi
 					.fn()
 					.mockReturnValue([{ id: 'other-cred', name: 'Other', type: 'httpBasicAuth' }]);
+
+				mockCanvasOperations.addNodes.mockResolvedValue([nodeWithCreds as INodeUi]);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -584,8 +588,11 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				// Credentials should remain unchanged
-				expect(storeNode.credentials).toEqual(existingCredentials);
+				// Existing credentials should not be overwritten
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[expect.objectContaining({ credentials: existingCredentials })],
+					expect.any(Object),
+				);
 			});
 		});
 

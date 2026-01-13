@@ -801,7 +801,6 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 			trackEvents: payload.trackEvents,
 			trackHistory: payload.trackHistory,
 			trackBulk: payload.trackBulk,
-			onComplete: payload.onComplete,
 		},
 	);
 
