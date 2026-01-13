@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.59.8",
+  "version": "1.59.9",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
