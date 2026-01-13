@@ -133,7 +133,7 @@ export class RateLimitService {
 			// rate limiting since it would only affect a single key until manual cleanup or Redis restart.
 			const results = await this.redisClient!.pipeline().incr(key).pttl(key).exec();
 
-			if (!results) {
+			if (!results || results.length < 2) {
 				this.logger.error('Redis pipeline returned null, failing open', { key });
 				return {
 					allowed: true,
@@ -142,7 +142,9 @@ export class RateLimitService {
 				};
 			}
 
-			const [[incrErr, count], [ttlErr, pttl]] = results as Array<[Error | null, number]>;
+			const [incrResult, ttlResult] = results;
+			const incrErr = incrResult?.[0];
+			const ttlErr = ttlResult?.[0];
 
 			if (incrErr || ttlErr) {
 				this.logger.error('Error in Redis pipeline, failing open', {
@@ -158,9 +160,11 @@ export class RateLimitService {
 				};
 			}
 
+			const count = Number(incrResult?.[1]) || 0;
+
 			// PTTL returns -1 if key has no expiry, -2 if key doesn't exist (won't happen after INCR).
 			// Set expiry if not already set (new key or edge case recovery).
-			let ttl = pttl;
+			let ttl = Number(ttlResult?.[1]) || 0;
 			if (ttl <= 0) {
 				await this.redisClient!.pexpire(key, windowMs);
 				ttl = windowMs;
@@ -184,11 +188,9 @@ export class RateLimitService {
 
 	private async getRedis({ key, limit, windowMs }: RateLimitOptions): Promise<RateLimitStatus> {
 		try {
-			const pipeline = this.redisClient!.pipeline().get(key).pttl(key);
+			const results = await this.redisClient!.pipeline().get(key).pttl(key).exec();
 
-			const results = await pipeline.exec();
-
-			if (!results) {
+			if (!results || results.length < 2) {
 				this.logger.error('Redis pipeline returned null, failing open', { key });
 
 				return {
@@ -198,11 +200,10 @@ export class RateLimitService {
 				};
 			}
 
-			const [[countErr, countValue], [ttlErr, ttl]] = results as Array<
-				[Error | null, string | number | null]
-			>;
+			const [countResult, ttlResult] = results;
+			const countErr = countResult?.[0];
+			const ttlErr = ttlResult?.[0];
 
-			// Check for errors in pipeline results and fail open
 			if (countErr || ttlErr) {
 				this.logger.error('Error getting rate limit count from Redis, failing open', {
 					error: countErr,
@@ -216,10 +217,10 @@ export class RateLimitService {
 				};
 			}
 
-			const count = countValue ? parseInt(countValue as string, 10) : 0;
+			const count = Number(countResult?.[1]) || 0;
+			const ttlValue = Number(ttlResult?.[1]) || 0;
 			const remaining = Math.max(0, limit - count);
 			const allowed = count < limit;
-			const ttlValue = typeof ttl === 'number' ? ttl : 0;
 			const resetAt = new Date(Date.now() + (ttlValue > 0 ? ttlValue : windowMs));
 
 			return { allowed, remaining, resetAt };
