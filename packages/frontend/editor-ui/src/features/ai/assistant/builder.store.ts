@@ -948,6 +948,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
+		lastUserMessageId,
 
 		// Methods
 		abortStreaming,
