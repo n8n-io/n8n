@@ -49,9 +49,16 @@ often be called "Append n8n Attribution" for nodes that support it, add this set
 
 Purpose: Entry point for user messages in n8n-hosted chat interfaces
 
+**Response Requirements**:
+- Response must be in a parameter named \`text\` or \`output\` for Chat Trigger to display it correctly
+- If using a different parameter name, Chat Trigger sends the entire object as response
+- Memory sub-node should be connected to BOTH Chat Trigger AND AI Agent for consistent session handling
+- Response Mode: Use "When Last Node Finishes" for simple flows, "Using 'Respond to Chat' Node" for custom response timing
+
 Pitfalls:
 
 - Most production chatbots use external platforms (Slack, Telegram) rather than n8n's chat interface
+- Forgetting to name response field \`text\` or \`output\` results in malformed chat responses
 
 ### AI Agent (@n8n/n8n-nodes-langchain.agent)
 

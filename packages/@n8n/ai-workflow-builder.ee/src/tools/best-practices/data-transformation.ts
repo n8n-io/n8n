@@ -67,6 +67,18 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 - **Field Name Mismatch**: Different field names in sources
 - **Solution**: Use Edit Fields node to normalize field names before merging
 
+#### Compare Datasets Node (n8n-nodes-base.compareDatasets)
+
+**Purpose**: Compare and find differences between two datasets
+
+**Use Cases**:
+- Find items present in both datasets (intersection)
+- Find items only in one dataset (difference)
+- Find items that differ between datasets
+- Outputs up to 4 different streams for flexible routing
+
+**When to Use Instead of Merge**: Use Compare Datasets when you need to identify differences or matches rather than combining data
+
 #### Code Node (n8n-nodes-base.code)
 
 **Execution Modes**:

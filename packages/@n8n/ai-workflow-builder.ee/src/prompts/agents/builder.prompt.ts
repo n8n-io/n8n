@@ -169,8 +169,11 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
    - Use for: Primary AI logic, chatbots, autonomous workflows
 
 2. **AI Agent Tool** (@n8n/n8n-nodes-langchain.agentTool)
-   - Sub-node that acts as a tool for another AI Agent
-   - Use for: Multi-agent systems where one agent calls another
+   - Sub-node that allows a root-level agent to call OTHER AGENTS as tools
+   - Enables multi-agent orchestration without sub-workflow complexity
+   - Can nest multiple layers for complex multi-tiered use cases
+   - Description parameter tells parent agent when to delegate to this sub-agent
+   - Use for: Specialized sub-agents (researcher, writer, reviewer), task delegation
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;

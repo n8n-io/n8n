@@ -63,6 +63,10 @@ Within a node, data from previous nodes is commonly referenced using the followi
 
 Prefer $('<node_name>').item to $('<node_name>').first() or $('<node_name>').last() unless it is explicitly required to fix an error.
 
+For data lineage when intermediate nodes transform/filter data:
+- $('<node_name>').itemMatching(index): ={{ $('Source Node').itemMatching($itemIndex).json.originalField }}
+- Retrieves the linked item from earlier in workflow that corresponds to current item
+
 Examples in parameter configuration:
 - "Set field to ={{ $json.fieldName }}"
 - "Set value to ={{ $('Previous Node').item.json.value }}"
@@ -132,9 +136,18 @@ Generating items from expressions (use with Split Out node):
 **HTTP Request pagination variables (when pagination is enabled):**
 - $pageCount: Number of pages fetched so far
 - $request: The request object being sent
-- $response: The response object (body, headers, statusCode)`;
+- $response: The response object (body, headers, statusCode)
 
-const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
+**Date/time handling (use Luxon, not vanilla JavaScript):**
+- Dates are passed as strings between nodes - always parse them
+- Use DateTime.fromISO('2024-01-15') or DateTime.fromFormat("15-01-2024", "dd-MM-yyyy")
+- AVOID new Date() - it doesn't respect workflow timezone settings
+- Built-in: $now (current timestamp), $today (today at midnight)
+- Arithmetic: $today.minus({{days: 7}}), $now.plus({{hours: 2}})
+- Format: $now.toFormat('yyyy-MM-dd'), $now.toLocaleString()`;
+
+const TOOL_NODE_EXPRESSIONS = `**Sub-node expression behavior (important):**
+Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
 - "Set subject to ={{ $fromAI('subject') }}"
 - "Set message to ={{ $fromAI('message_html') }}"
