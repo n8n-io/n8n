@@ -4,7 +4,6 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	ListDataTableOptions,
-	ListDataTableOptionsSortByKey,
 } from 'n8n-workflow';
 
 import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
