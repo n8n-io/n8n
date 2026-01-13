@@ -6,7 +6,6 @@ import type { Response } from 'express';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
@@ -14,8 +13,9 @@ import * as middlewares from '@/public-api/v1/shared/middlewares/global.middlewa
 const mockMiddleware = jest.fn(async (_req, _res, next) => next());
 jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const handler = require('../data-tables.handler');
+const handler = require('../data-tables.rows.handler');
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: jest.Mocked<DataTableService>;
@@ -67,7 +67,7 @@ describe('DataTable Handler', () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
-				query: { skip: 0, take: 100 },
+				query: { offset: '0', limit: '100' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
@@ -82,7 +82,7 @@ describe('DataTable Handler', () => {
 			});
 
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
@@ -92,12 +92,11 @@ describe('DataTable Handler', () => {
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
 				dataTableId,
 				projectId,
-				{ skip: 0, take: 100 },
+				{ skip: 0, take: 100, filter: undefined, sortBy: undefined, search: undefined },
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith({
-				data: mockRows,
-				count: 2,
-			});
+			const callArg = (mockResponse.json as jest.Mock).mock.calls[0][0];
+			expect(callArg).toHaveProperty('data', mockRows);
+			expect(callArg).toHaveProperty('nextCursor');
 		});
 
 		it('should handle filter, sortBy, and search parameters', async () => {
@@ -107,8 +106,8 @@ describe('DataTable Handler', () => {
 			const req = {
 				params: { dataTableId },
 				query: {
-					skip: 10,
-					take: 50,
+					offset: '10',
+					limit: '50',
 					filter: filterStr,
 					sortBy: 'createdAt:desc',
 					search: 'test',
@@ -122,7 +121,7 @@ describe('DataTable Handler', () => {
 			});
 
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
@@ -132,7 +131,7 @@ describe('DataTable Handler', () => {
 					skip: 10,
 					take: 50,
 					filter: JSON.parse(filterStr),
-					sortBy: 'createdAt:desc',
+					sortBy: ['createdAt', 'DESC'],
 					search: 'test',
 				},
 			);
@@ -142,16 +141,14 @@ describe('DataTable Handler', () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
-				query: {},
+				query: { offset: '0', limit: '100' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
-			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
-				new DataTableNotFoundError(dataTableId),
-			);
+			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
 
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -164,21 +161,17 @@ describe('DataTable Handler', () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
-				query: {},
+				query: { offset: '0', limit: '100', filter: 'invalid-json' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
-			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
-				new DataTableValidationError('Invalid filter'),
-			);
-
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(400);
 			expect(mockResponse.json).toHaveBeenCalledWith({
-				message: expect.stringContaining('Invalid filter'),
+				message: expect.stringContaining('Invalid'),
 			});
 		});
 	});
@@ -261,11 +254,11 @@ describe('DataTable Handler', () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
-				body: { data: [{ name: 'Test' }] },
+				body: { data: [{ name: 'Test' }], returnType: 'count' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.InsertRows;
 
-			mockDataTableService.insertRows.mockRejectedValue(new DataTableNotFoundError(dataTableId));
+			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
 
 			// Act
 			await handler.insertDataTableRows[2](req, mockResponse as Response);
@@ -336,7 +329,10 @@ describe('DataTable Handler', () => {
 			const req = {
 				params: { dataTableId },
 				body: {
-					filter: { type: 'and', filters: [] },
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+					},
 					data: { status: 'test' },
 					returnData: true,
 					dryRun: true,
@@ -508,7 +504,7 @@ describe('DataTable Handler', () => {
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(400);
 			expect(mockResponse.json).toHaveBeenCalledWith({
-				message: expect.stringContaining('Filter is required'),
+				message: 'Required',
 			});
 		});
 
@@ -552,7 +548,7 @@ describe('DataTable Handler', () => {
 			// Arrange
 			const req = {
 				params: { dataTableId: otherUserDataTableId },
-				query: {},
+				query: { offset: '0', limit: '100' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
@@ -561,24 +557,19 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			// But the data table belongs to another project, so service throws DataTableNotFoundError
-			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
+			// But the data table belongs to another project, so getProjectIdForDataTable throws
+			mockDataTableRepository.findOne.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
 
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
 				where: { id: otherUserDataTableId },
 				relations: ['project'],
 			});
-			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
-				otherUserDataTableId,
-				projectId, // User's own project ID
-				{},
-			);
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
 			expect(mockResponse.json).toHaveBeenCalledWith({
 				message: expect.stringContaining(otherUserDataTableId),
@@ -718,7 +709,7 @@ describe('DataTable Handler', () => {
 			const nonExistentDataTableId = 'non-existent-table-id';
 			const req = {
 				params: { dataTableId: nonExistentDataTableId },
-				query: {},
+				query: { offset: '0', limit: '100' },
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
@@ -726,12 +717,12 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
+			mockDataTableRepository.findOne.mockRejectedValue(
 				new DataTableNotFoundError(nonExistentDataTableId),
 			);
 
 			// Act
-			await handler.getDataTableRows[2](req, mockResponse as Response);
+			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
 			// The error message should be the same whether:
