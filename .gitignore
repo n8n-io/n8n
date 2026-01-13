@@ -45,3 +45,5 @@ packages/cli/THIRD_PARTY_LICENSES.md
 .nyc_output
 packages/cli/src/commands/export/outputs
 *.bak
+.data
+.data/

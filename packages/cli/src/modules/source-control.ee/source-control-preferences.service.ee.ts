@@ -1,19 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { writeFile, readFile } from 'node:fs/promises';
-import path from 'path';
+import { readFile, writeFile } from 'node:fs/promises';
+import * as path from 'path';
 
 import {
-	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
-	SOURCE_CONTROL_SSH_KEY_NAME,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
+	SOURCE_CONTROL_SSH_FOLDER,
+	SOURCE_CONTROL_SSH_KEY_NAME,
 } from './constants';
 import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
 import { SourceControlConfig } from './source-control.config';
@@ -258,6 +258,7 @@ export class SourceControlPreferencesService {
 	async setPreferences(
 		preferences: Partial<SourceControlPreferences>,
 		saveToDb = true,
+		broadcastReload = true,
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
@@ -294,8 +295,24 @@ export class SourceControlPreferencesService {
 			} catch (error) {
 				throw new UnexpectedError('Failed to save source control preferences', { cause: error });
 			}
+
+			if (broadcastReload) {
+				await this.broadcastReloadSourceControlConfiguration();
+			}
 		}
 		return this.sourceControlPreferences;
+	}
+
+	/**
+	 * Broadcasts a reload event to other main instances in multi-main deployments.
+	 * Used to notify other instances when source control configuration changes.
+	 */
+	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
+			this.logger.debug('Broadcasting source control configuration reload to other main instances');
+		}
 	}
 
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
@@ -308,8 +325,9 @@ export class SourceControlPreferencesService {
 			try {
 				const preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);
 				if (preferences) {
-					// set local preferences but don't write back to db
-					await this.setPreferences(preferences, false);
+					// set local preferences but don't write back to db and don't broadcast
+					// (this is typically called when receiving a reload event from another instance)
+					await this.setPreferences(preferences, false, false);
 					return preferences;
 				}
 			} catch (error) {
@@ -318,7 +336,9 @@ export class SourceControlPreferencesService {
 				);
 			}
 		}
-		await this.setPreferences(new SourceControlPreferences(), true);
+		// Initialize with default preferences, save to DB but don't broadcast
+		// (this is initialization, not a user-initiated change)
+		await this.setPreferences(new SourceControlPreferences(), true, false);
 		return this.sourceControlPreferences;
 	}
 }

@@ -81,7 +81,10 @@ export function createGetBestPracticesTool() {
 					missing: techniques.length - availableDocs.length,
 				});
 
-				return createSuccessResponse(config, message);
+				// Include technique categories in state update for telemetry
+				return createSuccessResponse(config, message, {
+					techniqueCategories: techniques,
+				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {

@@ -4,7 +4,7 @@ import type { SimpleWorkflow } from '@/types';
 import { validateNodes } from '@/validation/checks';
 import type { SingleEvaluatorResult } from '@/validation/types';
 
-import { calcSingleEvaluatorScore } from '../../utils/score';
+import { calcSingleEvaluatorScore } from '../score';
 
 export function evaluateNodes(
 	workflow: SimpleWorkflow,
