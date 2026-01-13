@@ -1,3 +1,12 @@
+## [2.3.3](https://github.com/n8n-io/n8n/compare/n8n@2.3.2...n8n@2.3.3) (2026-01-13)
+
+
+### Bug Fixes
+
+* **core:** Sanitize filenames for file operations ([#23988](https://github.com/n8n-io/n8n/issues/23988)) ([30791da](https://github.com/n8n-io/n8n/commit/30791da0ad00efa8b823ea093f3640b2b244780f))
+
+
+
 ## [2.3.2](https://github.com/n8n-io/n8n/compare/n8n@2.3.1...n8n@2.3.2) (2026-01-09)
 
 
