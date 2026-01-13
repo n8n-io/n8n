@@ -2324,17 +2324,14 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId if workflow already contains a node with the same webhookId
+					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const isDuplicate = Object.values(workflowsStore.workflowObject.nodes).some(
-							(n) => n.webhookId === node.webhookId,
-						);
-						if (isDuplicate) {
+						if (node.webhookId) {
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject).path) {
+							} else if ((node.parameters.options as IDataObject)?.path) {
 								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
