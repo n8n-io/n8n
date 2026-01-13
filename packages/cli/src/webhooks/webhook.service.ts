@@ -331,7 +331,7 @@ export class WebhookService {
 							workflowId: workflow.id,
 							webhookPath: conflict.path,
 							method: conflict.httpMethod,
-							node: node.id,
+							node: conflict.node,
 							webhookId: conflict.webhookId,
 						},
 					});
