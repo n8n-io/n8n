@@ -1,3 +1,15 @@
+## [1.123.11](https://github.com/n8n-io/n8n/compare/n8n@1.123.10...n8n@1.123.11) (2026-01-08)
+
+
+### Bug Fixes
+
+* Backport CVE fixes from master ([#23984](https://github.com/n8n-io/n8n/issues/23984)) ([b1460c7](https://github.com/n8n-io/n8n/commit/b1460c7cc1e8e77775fbd6c4621904c245210fc8))
+* Bump Validator dependency 1.x ([#24027](https://github.com/n8n-io/n8n/issues/24027)) ([5dc3e41](https://github.com/n8n-io/n8n/commit/5dc3e4171bc24371917f623a21fe92b458c27241))
+* **core:** Fix CORS issue in waiting webhook responses ([#23861](https://github.com/n8n-io/n8n/issues/23861)) ([8ea741a](https://github.com/n8n-io/n8n/commit/8ea741a2e34fa706e14f6e0fdab59cbdfd52ddc8))
+* **McpClientTool Node:** Sanitize MCP tool arguments based on schema ([#23979](https://github.com/n8n-io/n8n/issues/23979)) ([b6059a1](https://github.com/n8n-io/n8n/commit/b6059a120b924638bc8cb70bd516b2ff600ef753))
+
+
+
 ## [1.123.10](https://github.com/n8n-io/n8n/compare/n8n@1.123.9...n8n@1.123.10) (2025-12-31)
 
 
