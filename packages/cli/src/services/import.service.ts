@@ -11,7 +11,7 @@ import {
 	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -70,17 +70,21 @@ export class ImportService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 
-		// Check existence and active status of all workflows once to avoid duplicate queries
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
 		const existingWorkflowIds = new Set<string>();
 		const activeWorkflowIds = new Set<string>();
-		for (const workflow of workflows) {
-			if (workflow.id) {
-				const existingWorkflow = await dbManager.findOneBy(WorkflowEntity, { id: workflow.id });
-				if (existingWorkflow) {
-					existingWorkflowIds.add(workflow.id);
-					if (existingWorkflow.activeVersionId !== null) {
-						activeWorkflowIds.add(workflow.id);
-					}
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeWorkflowIds.add(id);
 				}
 			}
 		}
