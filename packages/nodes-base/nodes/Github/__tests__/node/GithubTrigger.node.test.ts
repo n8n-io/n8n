@@ -189,7 +189,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should reject with 401 when signature verification fails', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockResolvedValueOnce(false);
+			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(false);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhook.call(mockThis);
@@ -199,7 +199,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should process webhook when signature verification succeeds', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockResolvedValueOnce(true);
+			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhook.call(mockThis);
@@ -208,7 +208,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should return OK for ping events when signature verification succeeds', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockResolvedValueOnce(true);
+			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
 			mockThis.getBodyData.mockReturnValue({ hook_id: '123' });
 
 			const trigger = new GithubTrigger();

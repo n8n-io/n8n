@@ -620,7 +620,7 @@ export class GithubTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// Verify the webhook signature before processing
-		if (!(await verifySignature.call(this))) {
+		if (!verifySignature.call(this)) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();
 
