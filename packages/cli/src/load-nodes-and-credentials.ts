@@ -108,7 +108,7 @@ export class LoadNodesAndCredentials {
 	releaseTypes() {
 		this.types = { nodes: [], credentials: [] };
 		for (const loader of Object.values(this.loaders)) {
-			loader.types = { nodes: [], credentials: [] };
+			loader.releaseTypes();
 		}
 	}
 
