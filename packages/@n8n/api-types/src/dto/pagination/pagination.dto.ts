@@ -18,7 +18,7 @@ export const createTakeValidator = (maxItems: number, allowInfinity: boolean = f
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 100))
+		.transform((val) => (val ? parseInt(val, 10) : 10))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `take` must be a valid integer',
 		})
