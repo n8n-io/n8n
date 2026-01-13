@@ -4,10 +4,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 
-import {
-	buildSupervisorPrompt,
-	SUPERVISOR_PROMPT_SUFFIX,
-} from '@/prompts/agents/supervisor.prompt';
+import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
@@ -20,7 +17,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
 		[
 			{
 				type: 'text',
-				text: buildSupervisorPrompt() + SUPERVISOR_PROMPT_SUFFIX,
+				text: buildSupervisorPrompt(),
 				cache_control: { type: 'ephemeral' },
 			},
 		],

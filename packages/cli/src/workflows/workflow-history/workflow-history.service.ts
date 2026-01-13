@@ -4,6 +4,8 @@ import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
@@ -100,6 +102,7 @@ export class WorkflowHistoryService {
 		user: User | string,
 		workflow: IWorkflowBase,
 		workflowId: string,
+		autosaved = false,
 		transactionManager?: EntityManager,
 	) {
 		if (!workflow.nodes || !workflow.connections) {
@@ -121,6 +124,7 @@ export class WorkflowHistoryService {
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
 				workflowId,
+				autosaved,
 			});
 		} catch (e) {
 			const error = ensureError(e);
@@ -132,5 +136,37 @@ export class WorkflowHistoryService {
 
 	async updateVersion(versionId: string, workflowId: string, updateData: WorkflowHistoryUpdate) {
 		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
+	}
+
+	/**
+	 * Get multiple versions by their IDs
+	 * Returns only versions that exist, skipping non-existent ones
+	 */
+	async getVersionsByIds(
+		user: User,
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Array<{ versionId: string; createdAt: Date }>> {
+		if (versionIds.length === 0) {
+			return [];
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const versions = await this.workflowHistoryRepository.find({
+			where: {
+				workflowId: workflow.id,
+				versionId: In(versionIds),
+			},
+			select: ['versionId', 'createdAt'],
+		});
+
+		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
 	}
 }

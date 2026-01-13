@@ -162,6 +162,12 @@ export const establishExecutionContext = async (
 		return;
 	}
 
+	// Store basic trigger node info in the context for reference
+	executionData.runtimeData.triggerNode = {
+		name: startItem.node.name,
+		type: startItem.node.type,
+	};
+
 	// We were triggered from a parent execution
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {

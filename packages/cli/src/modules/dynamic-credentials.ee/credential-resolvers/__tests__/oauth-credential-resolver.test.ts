@@ -3,12 +3,14 @@ import type { Cipher } from 'n8n-core';
 
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
 import type { OAuth2TokenIntrospectionIdentifier } from '../identifiers/oauth2-introspection-identifier';
+import type { OAuth2UserInfoIdentifier } from '../identifiers/oauth2-userinfo-identifier';
 import { OAuthCredentialResolver } from '../oauth-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
 
 describe('OAuthCredentialResolver', () => {
 	let mockLogger: jest.Mocked<Logger>;
 	let mockIdentifier: jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
+	let mockIdentifierUserInfo: jest.Mocked<OAuth2UserInfoIdentifier>;
 	let mockStorage: jest.Mocked<DynamicCredentialEntryStorage>;
 	let mockCipher: jest.Mocked<Cipher>;
 
@@ -17,6 +19,7 @@ describe('OAuthCredentialResolver', () => {
 		clientId: 'test-client-id',
 		clientSecret: 'test-client-secret',
 		subjectClaim: 'sub',
+		validation: 'oauth2-introspection',
 	};
 
 	beforeEach(() => {
@@ -31,6 +34,11 @@ describe('OAuthCredentialResolver', () => {
 			resolve: jest.fn(),
 			validateOptions: jest.fn(),
 		} as unknown as jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
+
+		mockIdentifierUserInfo = {
+			resolve: jest.fn(),
+			validateOptions: jest.fn(),
+		} as unknown as jest.Mocked<OAuth2UserInfoIdentifier>;
 
 		mockStorage = {
 			getCredentialData: jest.fn(),
@@ -81,7 +89,13 @@ describe('OAuthCredentialResolver', () => {
 			mockCipher.encrypt.mockImplementation((data) => JSON.stringify(data));
 			mockCipher.decrypt.mockImplementation((data) => data);
 
-			return new OAuthCredentialResolver(mockLogger, mockIdentifier, mockStorage, mockCipher);
+			return new OAuthCredentialResolver(
+				mockLogger,
+				mockIdentifier,
+				mockIdentifierUserInfo,
+				mockStorage,
+				mockCipher,
+			);
 		},
 		validationTests: {
 			validOptions: [
@@ -93,6 +107,16 @@ describe('OAuthCredentialResolver', () => {
 						metadataUri: validOptions.metadataUri,
 						clientId: validOptions.clientId,
 						clientSecret: validOptions.clientSecret,
+						validation: 'oauth2-introspection',
+					},
+				],
+				[
+					'alternative validation',
+					{
+						metadataUri: validOptions.metadataUri,
+						clientId: validOptions.clientId,
+						clientSecret: validOptions.clientSecret,
+						validation: 'oauth2-userinfo',
 					},
 				],
 			],
@@ -115,7 +139,13 @@ describe('OAuthCredentialResolver', () => {
 		beforeEach(() => {
 			mockIdentifier.resolve.mockResolvedValue('oauth-subject-123');
 			mockIdentifier.validateOptions.mockResolvedValue(undefined);
-			resolver = new OAuthCredentialResolver(mockLogger, mockIdentifier, mockStorage, mockCipher);
+			resolver = new OAuthCredentialResolver(
+				mockLogger,
+				mockIdentifier,
+				mockIdentifierUserInfo,
+				mockStorage,
+				mockCipher,
+			);
 		});
 
 		describe('getSecret', () => {
@@ -275,6 +305,81 @@ describe('OAuthCredentialResolver', () => {
 					'encrypted',
 					validOptions,
 				);
+			});
+		});
+
+		describe('identifier routing', () => {
+			it('should use introspection identifier when validation is oauth2-introspection', async () => {
+				const credentialId = 'cred-123';
+				const context = testHelpers.createContext('access-token-xyz');
+				const introspectionOptions = {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client',
+					clientSecret: 'test-secret',
+					subjectClaim: 'sub',
+					validation: 'oauth2-introspection' as const,
+				};
+				const handle = testHelpers.createHandle(introspectionOptions);
+
+				mockIdentifier.resolve.mockResolvedValue('introspection-subject-123');
+				mockIdentifier.validateOptions.mockResolvedValue(undefined);
+				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
+				mockCipher.decrypt.mockReturnValue('{"apiKey":"test-key"}');
+
+				await resolver.getSecret(credentialId, context, handle);
+
+				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, introspectionOptions);
+				expect(mockIdentifierUserInfo.resolve).not.toHaveBeenCalled();
+			});
+
+			it('should use userinfo identifier when validation is oauth2-userinfo', async () => {
+				const credentialId = 'cred-123';
+				const context = testHelpers.createContext('access-token-xyz');
+				const userInfoOptions = {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					subjectClaim: 'sub',
+					validation: 'oauth2-userinfo' as const,
+				};
+				const handle = testHelpers.createHandle(userInfoOptions);
+
+				mockIdentifierUserInfo.resolve.mockResolvedValue('userinfo-subject-456');
+				mockIdentifierUserInfo.validateOptions.mockResolvedValue(undefined);
+				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
+				mockCipher.decrypt.mockReturnValue('{"apiKey":"test-key"}');
+
+				await resolver.getSecret(credentialId, context, handle);
+
+				expect(mockIdentifierUserInfo.resolve).toHaveBeenCalledWith(context, userInfoOptions);
+				expect(mockIdentifier.resolve).not.toHaveBeenCalled();
+			});
+
+			it('should route validateOptions to correct identifier based on validation method', async () => {
+				const introspectionOptions = {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client',
+					clientSecret: 'test-secret',
+					subjectClaim: 'sub',
+					validation: 'oauth2-introspection' as const,
+				};
+
+				const userInfoOptions = {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					subjectClaim: 'sub',
+					validation: 'oauth2-userinfo' as const,
+				};
+
+				mockIdentifier.validateOptions.mockResolvedValue(undefined);
+				mockIdentifierUserInfo.validateOptions.mockResolvedValue(undefined);
+
+				await resolver.validateOptions(introspectionOptions);
+				expect(mockIdentifier.validateOptions).toHaveBeenCalledWith(introspectionOptions);
+				expect(mockIdentifierUserInfo.validateOptions).not.toHaveBeenCalled();
+
+				jest.clearAllMocks();
+
+				await resolver.validateOptions(userInfoOptions);
+				expect(mockIdentifierUserInfo.validateOptions).toHaveBeenCalledWith(userInfoOptions);
+				expect(mockIdentifier.validateOptions).not.toHaveBeenCalled();
 			});
 		});
 	});

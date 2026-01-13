@@ -5,7 +5,7 @@ import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials } from 'n8n-core';
+import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -49,6 +49,8 @@ import {
 	type CsrfState,
 	type OAuth1CredentialData,
 } from './types';
+import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -69,6 +71,8 @@ export class OauthService {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly cipher: Cipher,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
@@ -146,12 +150,14 @@ export class OauthService {
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
+		const canUseExternalSecrets =
+			await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
-			credential,
 			credential.type,
 			'internal',
+			canUseExternalSecrets,
 			undefined,
 			undefined,
 		)) as unknown as T;
@@ -171,7 +177,9 @@ export class OauthService {
 	}
 
 	/** Get a credential without user check */
-	protected async getCredentialWithoutUser(credentialId: string): Promise<ICredentialsDb | null> {
+	protected async getCredentialWithoutUser(
+		credentialId: string,
+	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
@@ -181,26 +189,48 @@ export class OauthService {
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			...data,
+			data: this.cipher.encrypt(JSON.stringify(data)),
 		};
-		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
+
+		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
+		return [csrfSecret, base64State];
 	}
 
-	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
+	protected decodeCsrfState(
+		encodedState: string,
+		req: AuthenticatedRequest,
+	): CsrfState & CreateCsrfStateData {
 		const errorMessage = 'Invalid state format';
-		const decoded = jsonParse<CsrfState>(Buffer.from(encodedState, 'base64').toString(), {
+		const decodedState = Buffer.from(encodedState, 'base64').toString();
+		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
+		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
+			errorMessage,
+		});
+
+		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		if (decoded.userId !== req.user?.id) {
+		// user validation not required for dynamic credentials
+		if (decryptedState.origin === 'dynamic-credential') {
+			return {
+				...decoded,
+				...decryptedState,
+			};
+		}
+
+		// if we skip auth on oauth callback, we cannot validate user id
+		if (!skipAuthOnOAuthCallback && decryptedState.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return decoded;
+		return {
+			...decoded,
+			...decryptedState,
+		};
 	}
 
 	protected verifyCsrfState(
@@ -218,7 +248,9 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
+	): Promise<
+		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
+	> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -242,7 +274,7 @@ export class OauthService {
 			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
-		return [credential, decryptedDataOriginal, oauthCredentials];
+		return [credential, decryptedDataOriginal, oauthCredentials, state];
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
@@ -554,5 +586,32 @@ export class OauthService {
 			grant_types: ['client_credentials'],
 			token_endpoint_auth_method: tokenEndpointAuthMethod,
 		};
+	}
+
+	async saveDynamicCredential(
+		credential: CredentialsEntity,
+		oauthTokenData: ICredentialDataDecryptedObject,
+		authHeader: string,
+		credentialResolverId: string,
+	) {
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(oauthTokenData, ['csrfSecret']);
+
+		const credentialStoreMetadata: CredentialStoreMetadata = {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			isResolvable: credential.isResolvable,
+			resolverId: credentialResolverId,
+		};
+
+		await this.dynamicCredentialsProxy.storeIfNeeded(
+			credentialStoreMetadata,
+			oauthTokenData,
+			//  todo parse this
+			{ version: 1, identity: authHeader },
+			credentials.getData(),
+			{ credentialResolverId },
+		);
 	}
 }

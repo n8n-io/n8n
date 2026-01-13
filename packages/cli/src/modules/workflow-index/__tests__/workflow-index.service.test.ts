@@ -155,7 +155,7 @@ describe('WorkflowIndexService', () => {
 			const workflow = createWorkflow([
 				createNode({
 					id: 'node-1',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 				}),
 			]);
 
@@ -355,6 +355,66 @@ describe('WorkflowIndexService', () => {
 				]),
 			);
 		});
+
+		it('should insert placeholder for workflow with no nodes', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([]);
+
+			await service.updateIndexFor(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
+
+		it('should insert placeholder for workflow with nodes but no extractable dependencies', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			// Node with empty type - no nodeType dependency will be created
+			const workflow = createWorkflow([
+				{
+					id: 'node-1',
+					name: 'EmptyNode',
+					type: '', // Empty type - no dependency extracted
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				} as INode,
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
 	});
 
 	describe('init()', () => {
@@ -372,7 +432,7 @@ describe('WorkflowIndexService', () => {
 	describe('buildIndex()', () => {
 		it('should retrieve unindexed workflows and update their dependencies', async () => {
 			const workflow1 = createWorkflowEntity([
-				createNode({ id: 'node-1', type: 'n8n-nodes-base.start' }),
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
 			]);
 			const workflow2 = createWorkflowEntity([
 				createNode({ id: 'node-2', type: 'n8n-nodes-base.webhook', parameters: { path: 'test' } }),
@@ -420,7 +480,7 @@ describe('WorkflowIndexService', () => {
 			// Create 5 workflows to test multiple batches
 			const workflows = Array.from({ length: 5 }, (_, i) => {
 				const workflow = createWorkflowEntity([
-					createNode({ id: `node-${i}`, type: 'n8n-nodes-base.start' }),
+					createNode({ id: `node-${i}`, type: 'n8n-nodes-base.manualTrigger' }),
 				]);
 				workflow.id = `workflow-${i}`;
 				return workflow;

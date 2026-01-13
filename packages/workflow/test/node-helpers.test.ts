@@ -1514,6 +1514,103 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" preserves explicitly added options with all default values (GitHub case)',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'additionalParameters',
+							displayName: 'Additional Parameters',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'author',
+									displayName: 'Author',
+									values: [
+										{
+											name: 'name',
+											displayName: 'Name',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'email',
+											displayName: 'Email',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+								{
+									name: 'branch',
+									displayName: 'Branch',
+									values: [
+										{
+											name: 'branch',
+											displayName: 'Branch',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						additionalParameters: {
+							author: {
+								name: '',
+								email: '',
+							},
+							branch: {
+								branch: '',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+				},
+			},
 			// Remember it is correct that default strings get returned here even when returnDefaults
 			// is set to false because if they would not, there would be no way to know which value
 			// got added and which one not.
@@ -4866,6 +4963,205 @@ describe('NodeHelpers', () => {
 				},
 				false,
 			],
+			[
+				'Should return true if @feature is enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is not enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition eq is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition eq is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition not is met (feature disabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition not is not met (feature enabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature with multiple conditions (OR logic)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+							useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }, { _cnd: { eq: 'useFeatureB' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is checked but node has no features',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: undefined,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
 		];
 
 		for (const [description, input, expected] of tests) {
@@ -5633,8 +5929,7 @@ describe('NodeHelpers', () => {
 
 		test.each([
 			['javaScript', 'Code in JavaScript'],
-			['python', 'Code in Python'],
-			['pythonNative', 'Code in Python (Native)'],
+			['pythonNative', 'Code in Python'],
 		])(
 			'should return action-based name for Code node with %s language',
 			(language, expectedAction) => {
@@ -5652,13 +5947,8 @@ describe('NodeHelpers', () => {
 							},
 							{
 								name: 'Python',
-								value: 'python',
-								action: 'Code in Python',
-							},
-							{
-								name: 'Python (Native)',
 								value: 'pythonNative',
-								action: 'Code in Python (Native)',
+								action: 'Code in Python',
 							},
 						],
 						default: 'javaScript',

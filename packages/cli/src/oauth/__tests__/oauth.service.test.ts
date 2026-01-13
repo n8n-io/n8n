@@ -9,6 +9,7 @@ import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Cipher } from 'n8n-core';
 
 import {
 	OauthService,
@@ -26,6 +27,8 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { Credentials } from 'n8n-core';
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');
@@ -40,6 +43,8 @@ describe('OauthService', () => {
 	const urlService = mockInstance(UrlService);
 	const globalConfig = mockInstance(GlobalConfig);
 	const externalHooks = mockInstance(ExternalHooks);
+	const cipher = mock<Cipher>();
+	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
 
 	let service: OauthService;
 
@@ -62,6 +67,17 @@ describe('OauthService', () => {
 		axios.get = jest.fn();
 		axios.post = jest.fn();
 
+		// Setup cipher mock - encrypt returns the input as-is for testing, decrypt does the reverse
+		cipher.encrypt.mockImplementation((data: string) => {
+			// For testing, we'll use base64 encoding as a simple mock
+			// In production, this would be actual encryption
+			return Buffer.from(data).toString('base64');
+		});
+		cipher.decrypt.mockImplementation((data: string) => {
+			// For testing, decode the base64
+			return Buffer.from(data, 'base64').toString();
+		});
+
 		service = new OauthService(
 			logger,
 			credentialsHelper,
@@ -70,6 +86,8 @@ describe('OauthService', () => {
 			urlService,
 			globalConfig,
 			externalHooks,
+			cipher,
+			dynamicCredentialsProxy,
 		);
 	});
 
@@ -236,9 +254,9 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				additionalData,
 				decryptedData,
-				credential,
 				credential.type,
 				'internal',
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -316,48 +334,85 @@ describe('OauthService', () => {
 
 	describe('createCsrfState', () => {
 		it('should create CSRF state with correct structure', () => {
-			const data = { cid: 'credential-id', userId: 'user-id' };
+			const data = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [csrfSecret, encodedState] = service.createCsrfState(data);
+			const [csrfSecret, base64State] = service.createCsrfState(data);
 
 			expect(typeof csrfSecret).toBe('string');
 			expect(csrfSecret.length).toBeGreaterThan(0);
+			expect(cipher.encrypt).toHaveBeenCalled();
 
-			const decoded = JSON.parse(Buffer.from(encodedState, 'base64').toString());
-			expect(decoded.cid).toBe('credential-id');
-			expect(decoded.userId).toBe('user-id');
-			expect(decoded.token).toBeDefined();
-			expect(decoded.createdAt).toBe(timestamp);
+			// Verify base64State is a valid base64 string
+			expect(typeof base64State).toBe('string');
+			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
+			expect(base64Decoded.token).toBeDefined();
+			expect(base64Decoded.createdAt).toBe(timestamp);
+			expect(base64Decoded.data).toBeDefined();
+
+			// Decrypt the data field to verify CSRF data
+			const decryptedData = JSON.parse(cipher.decrypt(base64Decoded.data));
+			expect(decryptedData.cid).toBe('credential-id');
+			expect(decryptedData.userId).toBe('user-id');
+			expect(decryptedData.origin).toBe('static-credential');
 		});
 
 		it('should include additional data in state', () => {
-			const data = { cid: 'credential-id', customField: 'custom-value' };
+			const data = {
+				cid: 'credential-id',
+				customField: 'custom-value',
+				origin: 'static-credential' as const,
+			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [, encodedState] = service.createCsrfState(data);
+			const [, base64State] = service.createCsrfState(data);
 
-			const decoded = JSON.parse(Buffer.from(encodedState, 'base64').toString());
-			expect(decoded.customField).toBe('custom-value');
+			expect(cipher.encrypt).toHaveBeenCalled();
+
+			// Verify base64State structure
+			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
+			expect(base64Decoded.token).toBeDefined();
+			expect(base64Decoded.createdAt).toBeDefined();
+			expect(base64Decoded.data).toBeDefined();
+
+			// Decrypt and verify the customField is in the encrypted data
+			const decryptedData = JSON.parse(cipher.decrypt(base64Decoded.data));
+			expect(decryptedData.customField).toBe('custom-value');
 		});
 	});
 
 	describe('decodeCsrfState', () => {
 		it('should decode valid CSRF state', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
 			const result = (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toEqual(state);
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential',
+			});
 		});
 
 		it('should throw error when state format is invalid', () => {
@@ -372,11 +427,17 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when cid is missing', () => {
+			const csrfData = {
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
 			const state = {
 				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -385,11 +446,17 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when token is missing', () => {
-			const state = {
+			const csrfData = {
 				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -398,13 +465,18 @@ describe('OauthService', () => {
 		});
 
 		it('should throw AuthError when userId does not match', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -414,18 +486,143 @@ describe('OauthService', () => {
 		});
 
 		it('should throw AuthError when req.user is undefined', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
 
 			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
+		});
+
+		it('should bypass user validation for dynamic-credential origin', () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			const result = (service as any).decodeCsrfState(encodedState, req);
+
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential',
+			});
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+		});
+
+		it('should bypass user validation for dynamic-credential origin even when req.user is undefined', () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: undefined,
+			});
+
+			const result = (service as any).decodeCsrfState(encodedState, req);
+
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential',
+			});
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+		});
+
+		it('should require user validation for static-credential origin', () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow('Unauthorized');
+		});
+
+		it('should require user validation when origin is undefined', () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow('Unauthorized');
+		});
+
+		it('should require user validation for invalid origin values', () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'invalid-origin' as any,
+			};
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
+			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow('Unauthorized');
 		});
 	});
 
@@ -438,6 +635,25 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
+				createdAt: Date.now(),
+			};
+			const decrypted = { csrfSecret };
+
+			const result = (service as any).verifyCsrfState(decrypted, state);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true for valid CSRF state with dynamic credential origin', () => {
+			const csrfSecret = 'csrf-secret';
+			const token = new (require('csrf'))();
+			const stateToken = token.create(csrfSecret);
+
+			const state = {
+				token: stateToken,
+				cid: 'credential-id',
+				origin: 'dynamic-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = { csrfSecret };
@@ -456,6 +672,7 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: expiredTime,
 			};
 			const decrypted = { csrfSecret };
@@ -473,6 +690,7 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = {};
@@ -486,6 +704,7 @@ describe('OauthService', () => {
 			const state = {
 				token: 'invalid-token',
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = { csrfSecret: 'csrf-secret' };
@@ -498,27 +717,32 @@ describe('OauthService', () => {
 
 	describe('resolveCredential', () => {
 		it('should resolve credential successfully', async () => {
-			const state = {
-				token: 'token',
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
-				createdAt: timestamp,
+				origin: 'static-credential' as const,
 			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-			const token = new (require('csrf'))();
-			const stateToken = token.create('csrf-secret');
-			state.token = stateToken;
-
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { state: Buffer.from(JSON.stringify(state)).toString('base64') },
+				query: { state: encodedState },
 				user: mock<User>({ id: 'user-id' }),
 			});
 
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
@@ -528,17 +752,31 @@ describe('OauthService', () => {
 
 			const result = await service.resolveCredential(req);
 
-			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials]);
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential',
+			});
 		});
 
 		it('should throw UnexpectedError when credential is not found', async () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 				query: { state: encodedState },
@@ -554,13 +792,18 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when CSRF state is invalid', async () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
@@ -583,6 +826,209 @@ describe('OauthService', () => {
 			await expect(service.resolveCredential(req)).rejects.toThrow(
 				'The OAuth callback state is invalid!',
 			);
+		});
+
+		it('should resolve dynamic credential without user validation but still verify CSRF', async () => {
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { state: encodedState },
+				user: mock<User>({ id: 'user-id' }), // Different user ID - should be bypassed
+			});
+
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
+
+			const result = await service.resolveCredential(req);
+
+			// Should succeed despite different user ID because origin is dynamic-credential
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential',
+			});
+			// CSRF validation should still be called
+			expect(verifySpy).toHaveBeenCalled();
+		});
+
+		it('should still verify CSRF for dynamic credentials even when req.user is undefined', async () => {
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential' as const,
+			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { state: encodedState },
+				user: undefined, // No user - should be bypassed for dynamic credentials
+			});
+
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
+			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
+
+			const result = await service.resolveCredential(req);
+
+			// Should succeed despite no user because origin is dynamic-credential
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential',
+			});
+			// CSRF validation should still be called
+			expect(verifySpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('saveDynamicCredential', () => {
+		beforeEach(() => {
+			// Mock Credentials.getData to return empty object to avoid decryption issues
+			jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({});
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should save dynamic credential with correct parameters', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+				isResolvable: true,
+				resolverId: 'resolver-id',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			dynamicCredentialsProxy.storeIfNeeded.mockResolvedValue(undefined);
+
+			await service.saveDynamicCredential(
+				credential,
+				oauthTokenData,
+				authToken,
+				credentialResolverId,
+			);
+
+			expect(dynamicCredentialsProxy.storeIfNeeded).toHaveBeenCalledWith(
+				{
+					id: 'credential-id',
+					name: 'Test Credential',
+					type: 'googleOAuth2Api',
+					isResolvable: true,
+					resolverId: 'resolver-id',
+				},
+				oauthTokenData,
+				{ version: 1, identity: authToken },
+				expect.any(Object),
+				{ credentialResolverId: 'resolver-id' },
+			);
+		});
+
+		it('should remove csrfSecret from credential data', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+				csrfSecret: 'csrf-secret',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			dynamicCredentialsProxy.storeIfNeeded.mockResolvedValue(undefined);
+
+			await service.saveDynamicCredential(
+				credential,
+				oauthTokenData,
+				authToken,
+				credentialResolverId,
+			);
+
+			// Verify that storeIfNeeded was called with data that doesn't include csrfSecret
+			const callArgs = dynamicCredentialsProxy.storeIfNeeded.mock.calls[0];
+			const staticData = callArgs[3] as any;
+			expect(staticData).not.toHaveProperty('csrfSecret');
+		});
+
+		it('should handle errors from dynamicCredentialsProxy', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			const error = new Error('Storage failed');
+			dynamicCredentialsProxy.storeIfNeeded.mockRejectedValue(error);
+
+			await expect(
+				service.saveDynamicCredential(credential, oauthTokenData, authToken, credentialResolverId),
+			).rejects.toThrow('Storage failed');
 		});
 	});
 
@@ -648,9 +1094,9 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id' },
-				credential,
 				credential.type,
 				'internal',
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -674,9 +1120,9 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
-				credential,
 				credential.type,
 				'internal',
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -700,9 +1146,9 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
-				credential,
 				credential.type,
 				'internal',
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -741,6 +1187,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -751,7 +1198,11 @@ describe('OauthService', () => {
 			expect(callArgs[1]).toHaveProperty('csrfSecret');
 			expect(typeof callArgs[1].csrfSecret).toBe('string');
 			expect(callArgs[2] || []).toEqual([]);
-			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', expect.any(Array));
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', [
+				expect.objectContaining({
+					state: expect.any(String), // base64State
+				}),
+			]);
 		});
 
 		it('should generate auth URI with PKCE flow', async () => {
@@ -791,6 +1242,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -835,6 +1287,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -888,6 +1341,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -936,12 +1390,14 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Invalid OAuth2 server metadata');
@@ -977,12 +1433,14 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Invalid client registration response');
@@ -1033,6 +1491,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1074,10 +1533,11 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			jest.spyOn(service, 'createCsrfState').mockReturnValue(['csrf-secret', 'encoded-state']);
+			jest.spyOn(service, 'createCsrfState').mockReturnValue(['csrf-secret', 'base64-state']);
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1111,6 +1571,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1143,6 +1604,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1168,6 +1630,7 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth1AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Request token failed');

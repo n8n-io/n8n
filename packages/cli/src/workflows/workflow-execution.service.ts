@@ -25,6 +25,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -47,6 +48,7 @@ export class WorkflowExecutionService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly executionDataService: ExecutionDataService,
+		private readonly eventService: EventService,
 	) {}
 
 	async runWorkflow(
@@ -249,23 +251,31 @@ export class WorkflowExecutionService {
 	}
 
 	async executeChatWorkflow(
+		user: User,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
-		user: User,
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		const data: IWorkflowExecutionDataProcess = {
+			userId: user.id,
 			executionMode,
 			workflowData,
-			userId: user.id,
 			executionData,
 			streamingEnabled,
 			httpResponse,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
+
+		this.eventService.emit('workflow-executed', {
+			user: { id: user.id },
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'chat',
+		});
 
 		return {
 			executionId,
@@ -280,11 +290,23 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.findOneBy({ id: workflowId });
+			const workflowData = await this.workflowRepository.get(
+				{ id: workflowId },
+				{ relations: ['activeVersion'] },
+			);
 			if (workflowData === null) {
-				// The error workflow could not be found
+				// The workflow could not be found
 				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
+					{ workflowId },
+				);
+				return;
+			}
+
+			if (workflowData.activeVersion === null) {
+				// The workflow is not active
+				this.logger.error(
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
 					{ workflowId },
 				);
 				return;
@@ -295,9 +317,9 @@ export class WorkflowExecutionService {
 				id: workflowId,
 				name: workflowData.name,
 				nodeTypes: this.nodeTypes,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: workflowData.activeVersion !== null,
+				nodes: workflowData.activeVersion.nodes,
+				connections: workflowData.activeVersion.connections,
+				active: true,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});
@@ -407,7 +429,14 @@ export class WorkflowExecutionService {
 				projectId: runningProject.id,
 			};
 
-			await this.workflowRunner.run(runData);
+			const executionId = await this.workflowRunner.run(runData);
+
+			this.eventService.emit('workflow-executed', {
+				workflowId,
+				workflowName: workflowData.name,
+				executionId,
+				source: 'error',
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(

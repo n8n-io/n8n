@@ -521,6 +521,314 @@
 					"createdAt": "2011-12-30T20:24:19.620Z",
 					"updatedAt": "2011-12-31T20:24:19.620Z"
 				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60001",
+					"email": "marcus_stone@techwave.io",
+					"username": "marcus92",
+					"profile": {
+						"name": "Marcus Stone",
+						"company": "Techwave",
+						"dob": "1992-03-15",
+						"address": "123 Oak Street, Portland, Oregon",
+						"location": {
+							"lat": 45.523064,
+							"long": -122.676483
+						},
+						"about": "Software developer with passion for clean code."
+					},
+					"apiKey": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+					"roles": ["member"],
+					"createdAt": "2012-03-15T10:30:00.000Z",
+					"updatedAt": "2012-03-16T10:30:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60002",
+					"email": "diana_wells@cloudnet.com",
+					"username": "diana93",
+					"profile": {
+						"name": "Diana Wells",
+						"company": "Cloudnet",
+						"dob": "1993-07-22",
+						"address": "456 Pine Avenue, Seattle, Washington",
+						"location": {
+							"lat": 47.606209,
+							"long": -122.332069
+						},
+						"about": "Cloud architect specializing in distributed systems."
+					},
+					"apiKey": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+					"roles": ["admin"],
+					"createdAt": "2013-07-22T14:45:00.000Z",
+					"updatedAt": "2013-07-23T14:45:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60003",
+					"email": "carlos_rivera@datastream.net",
+					"username": "carlos89",
+					"profile": {
+						"name": "Carlos Rivera",
+						"company": "Datastream",
+						"dob": "1989-11-08",
+						"address": "789 Elm Road, Austin, Texas",
+						"location": {
+							"lat": 30.267153,
+							"long": -97.743057
+						},
+						"about": "Data engineer focused on real-time analytics."
+					},
+					"apiKey": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+					"roles": ["member", "admin"],
+					"createdAt": "2014-11-08T09:15:00.000Z",
+					"updatedAt": "2014-11-09T09:15:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60004",
+					"email": "marina_foster@webcraft.org",
+					"username": "marina91",
+					"profile": {
+						"name": "Marina Foster",
+						"company": "Webcraft",
+						"dob": "1991-05-30",
+						"address": "321 Maple Lane, Denver, Colorado",
+						"location": {
+							"lat": 39.739236,
+							"long": -104.990251
+						},
+						"about": "Frontend developer with eye for design."
+					},
+					"apiKey": "d4e5f6a7-b8c9-0123-defa-456789012345",
+					"roles": ["guest"],
+					"createdAt": "2011-05-30T16:20:00.000Z",
+					"updatedAt": "2011-05-31T16:20:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60005",
+					"email": "nathan_blake@innovate.tech",
+					"username": "nathan90",
+					"profile": {
+						"name": "Nathan Blake",
+						"company": "Innovate",
+						"dob": "1990-09-12",
+						"address": "654 Cedar Court, Miami, Florida",
+						"location": {
+							"lat": 25.761681,
+							"long": -80.191788
+						},
+						"about": "Product manager driving innovation."
+					},
+					"apiKey": "e5f6a7b8-c9d0-1234-efab-567890123456",
+					"roles": ["owner"],
+					"createdAt": "2010-09-12T11:00:00.000Z",
+					"updatedAt": "2010-09-13T11:00:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60006",
+					"email": "sarah_martin@codebase.dev",
+					"username": "sarah94",
+					"profile": {
+						"name": "Sarah Martin",
+						"company": "Codebase",
+						"dob": "1994-01-25",
+						"address": "987 Birch Street, Boston, Massachusetts",
+						"location": {
+							"lat": 42.360082,
+							"long": -71.05888
+						},
+						"about": "Backend developer passionate about APIs."
+					},
+					"apiKey": "f6a7b8c9-d0e1-2345-fabc-678901234567",
+					"roles": ["member", "guest"],
+					"createdAt": "2014-01-25T08:30:00.000Z",
+					"updatedAt": "2014-01-26T08:30:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60007",
+					"email": "richard_ward@systems.io",
+					"username": "richard88",
+					"profile": {
+						"name": "Richard Ward",
+						"company": "Systems",
+						"dob": "1988-06-18",
+						"address": "147 Spruce Way, Chicago, Illinois",
+						"location": {
+							"lat": 41.878114,
+							"long": -87.629798
+						},
+						"about": "Systems administrator with security focus."
+					},
+					"apiKey": "a7b8c9d0-e1f2-3456-abcd-789012345678",
+					"roles": ["admin", "owner"],
+					"createdAt": "2012-06-18T13:45:00.000Z",
+					"updatedAt": "2012-06-19T13:45:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60008",
+					"email": "clara_bennett@digital.co",
+					"username": "clara92",
+					"profile": {
+						"name": "Clara Bennett",
+						"company": "Digital",
+						"dob": "1992-12-03",
+						"address": "258 Willow Drive, Phoenix, Arizona",
+						"location": {
+							"lat": 33.448376,
+							"long": -112.074036
+						},
+						"about": "UX designer creating intuitive interfaces."
+					},
+					"apiKey": "b8c9d0e1-f2a3-4567-bcde-890123456789",
+					"roles": ["member"],
+					"createdAt": "2013-12-03T15:00:00.000Z",
+					"updatedAt": "2013-12-04T15:00:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60009",
+					"email": "gary_thompson@network.net",
+					"username": "gary91",
+					"profile": {
+						"name": "Gary Thompson",
+						"company": "Network",
+						"dob": "1991-08-27",
+						"address": "369 Aspen Road, Atlanta, Georgia",
+						"location": {
+							"lat": 33.749001,
+							"long": -84.387985
+						},
+						"about": "Network engineer optimizing connectivity."
+					},
+					"apiKey": "c9d0e1f2-a3b4-5678-cdef-901234567890",
+					"roles": ["guest", "member"],
+					"createdAt": "2011-08-27T10:15:00.000Z",
+					"updatedAt": "2011-08-28T10:15:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60010",
+					"email": "maria_garcia@solutions.biz",
+					"username": "maria90",
+					"profile": {
+						"name": "Maria Garcia",
+						"company": "Solutions",
+						"dob": "1990-02-14",
+						"address": "480 Palm Avenue, San Diego, California",
+						"location": {
+							"lat": 32.715736,
+							"long": -117.161087
+						},
+						"about": "Business analyst bridging tech and strategy."
+					},
+					"apiKey": "d0e1f2a3-b4c5-6789-defa-012345678901",
+					"roles": ["admin"],
+					"createdAt": "2010-02-14T12:30:00.000Z",
+					"updatedAt": "2010-02-15T12:30:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60011",
+					"email": "brian_carter@startup.inc",
+					"username": "brian93",
+					"profile": {
+						"name": "Brian Carter",
+						"company": "Startup",
+						"dob": "1993-10-09",
+						"address": "591 Redwood Lane, Nashville, Tennessee",
+						"location": {
+							"lat": 36.162663,
+							"long": -86.781601
+						},
+						"about": "Entrepreneur building the next big thing."
+					},
+					"apiKey": "e1f2a3b4-c5d6-7890-efab-123456789012",
+					"roles": ["owner", "admin"],
+					"createdAt": "2014-10-09T17:45:00.000Z",
+					"updatedAt": "2014-10-10T17:45:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60012",
+					"email": "rachel_adams@creative.studio",
+					"username": "rachel89",
+					"profile": {
+						"name": "Rachel Adams",
+						"company": "Creative",
+						"dob": "1989-04-01",
+						"address": "702 Cypress Street, Minneapolis, Minnesota",
+						"location": {
+							"lat": 44.977753,
+							"long": -93.265011
+						},
+						"about": "Creative director with vision for brands."
+					},
+					"apiKey": "f2a3b4c5-d6e7-8901-fabc-234567890123",
+					"roles": ["member", "owner"],
+					"createdAt": "2012-04-01T09:00:00.000Z",
+					"updatedAt": "2012-04-02T09:00:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60013",
+					"email": "david_harris@enterprise.corp",
+					"username": "david92",
+					"profile": {
+						"name": "David Harris",
+						"company": "Enterprise",
+						"dob": "1992-07-16",
+						"address": "813 Magnolia Court, Dallas, Texas",
+						"location": {
+							"lat": 32.776665,
+							"long": -96.796989
+						},
+						"about": "Enterprise architect scaling solutions."
+					},
+					"apiKey": "a3b4c5d6-e7f8-9012-abcd-345678901234",
+					"roles": ["admin", "member"],
+					"createdAt": "2013-07-16T14:15:00.000Z",
+					"updatedAt": "2013-07-17T14:15:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"id": "654cfa06a1b2c3d4e5f60014",
+					"email": "laura_wilson@platform.app",
+					"username": "laura94",
+					"profile": {
+						"name": "Laura Wilson",
+						"company": "Platform",
+						"dob": "1994-11-28",
+						"address": "924 Sequoia Drive, San Francisco, California",
+						"location": {
+							"lat": 37.774929,
+							"long": -122.419418
+						},
+						"about": "Platform engineer ensuring reliability."
+					},
+					"apiKey": "b4c5d6e7-f8a9-0123-bcde-456789012345",
+					"roles": ["guest", "admin"],
+					"createdAt": "2014-11-28T11:30:00.000Z",
+					"updatedAt": "2014-11-29T11:30:00.000Z"
+				}
 			}
 		]
 	},

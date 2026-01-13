@@ -95,6 +95,13 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD')
 	timeoutThreshold: number = 10_000;
 
+	/** Slot refresh timeout (in milliseconds) before a timeout occurs while refreshing slots from the cluster. */
+	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_TIMEOUT')
+	slotsRefreshTimeout: number = 1_000;
+	/** Slot refresh interval (in milliseconds) between every automatic slot refresh. */
+	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_INTERVAL')
+	slotsRefreshInterval: number = 5_000;
+
 	/** Redis username. Redis 6.0 or higher required. */
 	@Env('QUEUE_BULL_REDIS_USERNAME')
 	username: string = '';

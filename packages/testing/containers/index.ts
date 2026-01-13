@@ -2,21 +2,16 @@
  * n8n Test Containers
  *
  * This package provides container management utilities for n8n testing.
+ * Services are accessed via n8nContainer.services.* in tests.
  */
 
-export { createN8NStack } from './n8n-test-container-creation';
-export type { N8NConfig, N8NStack } from './n8n-test-container-creation';
+// Stack orchestration - primary public API
+export { createN8NStack } from './stack';
+export type { N8NConfig, N8NStack } from './stack';
 
+// Performance plans (CLI-only)
 export * from './performance-plans';
 
-export { ContainerTestHelpers } from './n8n-test-container-helpers';
-export {
-	setupMailpit,
-	getMailpitEnvironment,
-	mailpitClear,
-	mailpitList,
-	mailpitGet,
-	mailpitWaitForMessage,
-	type MailpitMessage,
-	type MailpitQuery,
-} from './n8n-test-container-mailpit';
+// Types used externally by tests
+export { type LogEntry } from './services/observability';
+export { type GiteaHelper } from './services/gitea';

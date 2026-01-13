@@ -7,7 +7,7 @@ import type {
 	EngineResponse,
 } from 'n8n-workflow';
 
-import { buildExecutionContext, executeBatch, checkMaxIterations } from './helpers';
+import { buildExecutionContext, executeBatch } from './helpers';
 import type { RequestResponseMetadata } from './types';
 
 /* -----------------------------------------------------------
@@ -31,12 +31,9 @@ export async function toolsAgentExecute(
 ): Promise<INodeExecutionData[][] | EngineRequest<RequestResponseMetadata>> {
 	this.logger.debug('Executing Tools Agent V3');
 
-	// Check max iterations if this is a continuation of a previous execution
-	const maxIterations = this.getNodeParameter('options.maxIterations', 0, 10) as number;
-	checkMaxIterations(response, maxIterations, this.getNode());
+	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
 
 	const returnData: INodeExecutionData[] = [];
-	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
 
 	// Build execution context with shared configuration
 	const executionContext = await buildExecutionContext(this);

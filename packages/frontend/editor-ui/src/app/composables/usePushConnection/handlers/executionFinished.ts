@@ -17,7 +17,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	SampleTemplates,
-	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 } from '@/features/workflows/templates/utils/workflowSamples';
 import {
@@ -94,21 +93,14 @@ export async function executionFinished(
 			);
 		} else if (
 			templateId === 'ready-to-run-ai-workflow' ||
-			templateId === 'ready-to-run-ai-workflow-v1' ||
-			templateId === 'ready-to-run-ai-workflow-v2' ||
-			templateId === 'ready-to-run-ai-workflow-v3' ||
-			templateId === 'ready-to-run-ai-workflow-v4'
+			templateId === 'ready-to-run-ai-workflow-v5' ||
+			templateId === 'ready-to-run-ai-workflow-v6'
 		) {
 			if (data.status === 'success') {
 				readyToRunStore.trackExecuteAiWorkflowSuccess();
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isPrebuiltAgentTemplateId(templateId)) {
-			telemetry.track('User executed pre-built Agent', {
-				template: templateId,
-				status: data.status,
-			});
 		} else if (isTutorialTemplateId(templateId)) {
 			telemetry.track('User executed tutorial template', {
 				template: templateId,
@@ -286,7 +278,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
+				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
+					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});

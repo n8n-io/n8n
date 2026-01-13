@@ -11,7 +11,6 @@ test.describe('Workflow Production Checklist', () => {
 		n8n,
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
 
@@ -35,7 +34,6 @@ test.describe('Workflow Production Checklist', () => {
 
 		await n8n.canvas.nodeDisableButton('Message a model').click();
 
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
@@ -52,7 +50,6 @@ test.describe('Workflow Production Checklist', () => {
 		n8n,
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
@@ -69,7 +66,6 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should open workflow settings modal when time saved action is clicked', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
@@ -85,7 +81,6 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should allow ignoring individual actions', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
@@ -103,10 +98,28 @@ test.describe('Workflow Production Checklist', () => {
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
-	test.skip('should show completed state for configured actions', async ({ n8n }) => {
+	// Flaky in multi-main mode
+	test.fixme('should show completed state for configured actions @fixme', async ({ n8n, api }) => {
+		const errorWorkflow = await api.workflows.createWorkflow({
+			name: 'Error Handler',
+			nodes: [
+				{
+					id: 'error-trigger',
+					name: 'Error Trigger',
+					type: 'n8n-nodes-base.errorTrigger',
+					parameters: {},
+					typeVersion: 1,
+					position: [0, 0],
+				},
+			],
+			connections: {},
+			settings: {},
+			active: false,
+		});
+		await api.workflows.activate(errorWorkflow.id, errorWorkflow.versionId);
+
+		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
@@ -114,7 +127,7 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.workflowSettingsModal.open();
 		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 
-		await n8n.workflowSettingsModal.selectErrorWorkflow('My workflow');
+		await n8n.workflowSettingsModal.selectErrorWorkflow('Error Handler');
 		await n8n.workflowSettingsModal.clickSave();
 		await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
 
@@ -131,7 +144,6 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();

@@ -64,7 +64,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -117,7 +117,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -181,7 +181,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -226,7 +226,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -280,7 +280,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -338,7 +338,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -419,7 +419,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -495,7 +495,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -552,7 +552,7 @@ describe('ChatHubWorkflowService', () => {
 					'Hello',
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
 					'UTC',
@@ -569,6 +569,50 @@ describe('ChatHubWorkflowService', () => {
 				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Here is a text file' },
 					{ type: 'text', text: `File: document.txt\nContent: \n${textContent}` },
+				]);
+			});
+
+			it('should replace unsupported attachment with unsupported message', async () => {
+				const mockAudioAttachment: IBinaryData = {
+					data: 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA',
+					mimeType: 'audio/mp3',
+					fileName: 'audio.mp3',
+				};
+
+				const mockMessage = new ChatHubMessage();
+				mockMessage.id = 'msg-1';
+				mockMessage.content = 'Listen to this audio';
+				mockMessage.type = 'human';
+				mockMessage.attachments = [mockAudioAttachment];
+				mockMessage.sessionId = 'session-456';
+				mockMessage.session = new ChatHubSession();
+				mockMessage.status = 'running';
+
+				const mockHistory: ChatHubMessage[] = [mockMessage];
+
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					mockHistory,
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+				);
+
+				const restoreMemoryNode = result.workflowData.nodes.find(
+					(node) => node.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
+
+				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
+				expect(messageValues[0].message).toEqual([
+					{ type: 'text', text: 'Listen to this audio' },
+					{ type: 'text', text: 'File: audio.mp3\n(Unsupported file type)' },
 				]);
 			});
 		});
