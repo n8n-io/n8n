@@ -1,3 +1,12 @@
+## [1.123.13](https://github.com/n8n-io/n8n/compare/n8n@1.123.12...n8n@1.123.13) (2026-01-13)
+
+
+### Bug Fixes
+
+* Fix CLI import command ([#24239](https://github.com/n8n-io/n8n/issues/24239)) ([b1b39be](https://github.com/n8n-io/n8n/commit/b1b39bee744391e33ffab412a9ebd3d06709d2c9))
+
+
+
 ## [1.123.12](https://github.com/n8n-io/n8n/compare/n8n@1.123.11...n8n@1.123.12) (2026-01-13)
 
 
