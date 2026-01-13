@@ -20,6 +20,7 @@ import type {
 	BINARY_MODE_SEPARATE,
 } from './constants';
 
+import type { IChatHubMemoryService } from './chat-hub.types';
 import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
@@ -1005,6 +1006,28 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type ChatHubProxyProvider = {
+	getChatHubProxy(
+		workflow: Workflow,
+		node: INode,
+		sessionId: string,
+		memoryNodeId: string,
+		turnId: string | null,
+		previousTurnIds: string[],
+		ownerId?: string,
+	): Promise<IChatHubMemoryService>;
+};
+
+export type ChatHubProxyFunctions = {
+	// Optional to account for situations where the chat-hub module is disabled
+	getChatHubProxy?(
+		sessionId: string,
+		memoryNodeId: string,
+		turnId: string | null,
+		previousTurnIds: string[] | null,
+	): Promise<IChatHubMemoryService>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1071,7 +1094,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataTableProxyFunctions & {
+			DataTableProxyFunctions &
+			ChatHubProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1163,7 +1187,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		ChatHubProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };

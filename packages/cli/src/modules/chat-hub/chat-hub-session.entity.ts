@@ -18,15 +18,15 @@ import {
 } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 
-import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 
 export interface IChatHubSession {
 	id: string;
 	createdAt: Date;
 	updatedAt: Date;
 	title: string;
-	ownerId: string;
+	ownerId: string | null;
 	lastMessageAt: Date;
 	credentialId: string | null;
 	provider: ChatHubProvider | null;
@@ -51,9 +51,10 @@ export class ChatHubSession extends WithTimestamps {
 
 	/**
 	 * ID of the user that owns this chat session.
+	 * Can be null for anonymous sessions (manual executions, public triggers).
 	 */
-	@Column({ type: String })
-	ownerId: string;
+	@Column({ type: String, nullable: true })
+	ownerId: string | null;
 
 	/**
 	 * The user that owns this chat session.

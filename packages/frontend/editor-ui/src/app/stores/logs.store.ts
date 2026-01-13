@@ -52,7 +52,7 @@ export const useLogsStore = defineStore('logs', () => {
 	}
 
 	function getNewSessionId(): string {
-		return uuid().replace(/-/g, '');
+		return uuid();
 	}
 
 	function resetChatSessionId() {

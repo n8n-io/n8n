@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
+import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -39,6 +40,17 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			.leftJoinAndSelect('session.workflow', 'workflow')
 			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
 			.where('session.ownerId = :userId', { userId })
+			// Only show sessions that have at least one message
+			// (excludes sessions created by manual workflow executions with MemoryChatHub that only have memory entries)
+			.andWhere((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('1')
+					.from(ChatHubMessage, 'msg')
+					.where('msg.sessionId = session.id')
+					.getQuery();
+				return `EXISTS ${subQuery}`;
+			})
 			.orderBy('session.lastMessageAt', 'DESC')
 			.addOrderBy('session.id', 'ASC');
 
@@ -65,15 +77,28 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		return await queryBuilder.getMany();
 	}
 
-	async existsById(id: string, userId: string, trx?: EntityManager): Promise<boolean> {
+	async existsById(id: string, userId: string | undefined, trx?: EntityManager): Promise<boolean> {
 		const em = trx ?? this.manager;
-		return await em.exists(ChatHubSession, { where: { id, ownerId: userId } });
+		const session = await em.findOne(ChatHubSession, {
+			where: { id },
+			select: ['id', 'ownerId'],
+		});
+
+		if (!session) return false;
+
+		// If session has an owner, require userId to match
+		if (session.ownerId !== null) {
+			return session.ownerId === userId;
+		}
+
+		// Anonymous session - accessible by sessionId alone
+		return true;
 	}
 
-	async getOneById(id: string, userId: string, trx?: EntityManager) {
+	async getOneById(id: string, userId: string | undefined, trx?: EntityManager) {
 		const em = trx ?? this.manager;
-		return await em.findOne(ChatHubSession, {
-			where: { id, ownerId: userId },
+		const session = await em.findOne(ChatHubSession, {
+			where: { id },
 			relations: {
 				messages: true,
 				agent: true,
@@ -82,6 +107,15 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 				},
 			},
 		});
+
+		if (!session) return null;
+
+		// If session has an owner, require userId to match
+		if (session.ownerId !== null && session.ownerId !== userId) {
+			return null;
+		}
+
+		return session;
 	}
 
 	async deleteAll(trx?: EntityManager) {
