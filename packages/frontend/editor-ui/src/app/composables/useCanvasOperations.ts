@@ -31,6 +31,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
@@ -2309,13 +2310,15 @@ export function useCanvasOperations() {
 					}
 
 					// Generate new webhookId for all webhook nodes
-					if (node.webhookId) {
-						nodeHelpers.assignWebhookId(node);
+					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
+						if (node.webhookId) {
+							nodeHelpers.assignWebhookId(node);
 
-						if (node.parameters.path) {
-							node.parameters.path = node.webhookId;
-						} else if ((node.parameters.options as IDataObject)?.path) {
-							(node.parameters.options as IDataObject).path = node.webhookId;
+							if (node.parameters.path) {
+								node.parameters.path = node.webhookId;
+							} else if ((node.parameters.options as IDataObject)?.path) {
+								(node.parameters.options as IDataObject).path = node.webhookId;
+							}
 						}
 					}
 
