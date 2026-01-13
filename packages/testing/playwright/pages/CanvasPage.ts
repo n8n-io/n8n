@@ -437,7 +437,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getPublishButton(): Locator {
-		return this.page.getByTestId('workflow-open-publish-modal-button');
+		return this.page.getByTestId('workflow-publish-button');
 	}
 
 	getPublishedIndicator(): Locator {

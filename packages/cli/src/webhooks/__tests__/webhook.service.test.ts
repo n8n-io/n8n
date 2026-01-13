@@ -9,7 +9,6 @@ import config from '@/config';
 import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/webhooks/webhook.service';
-import { id } from 'zod/dist/types/v4/locales';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {

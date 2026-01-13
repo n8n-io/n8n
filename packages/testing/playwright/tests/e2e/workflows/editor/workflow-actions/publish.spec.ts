@@ -33,7 +33,7 @@ test.describe('Workflow Publish', () => {
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 
-		await expect(n8n.canvas.getPublishButton()).toBeDisabled();
+		await expect(n8n.canvas.getOpenPublishModalButton()).toBeDisabled();
 	});
 
 	test('should be able to publish workflow when nodes with errors are disabled', async ({
