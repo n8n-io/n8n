@@ -1,7 +1,7 @@
 import type { DatabaseConfig } from '@/app/workers/database';
 
 export const databaseConfig: DatabaseConfig = {
-	filename: 'file:n8n.sqlite3?vfs=opfs',
+	filename: '/n8n.sqlite3',
 	tables: {
 		executions: {
 			name: 'executions',
@@ -12,6 +12,15 @@ export const databaseConfig: DatabaseConfig = {
           data TEXT CHECK (json_valid(data)) NOT NULL,
           workflow TEXT CHECK (json_valid(workflow)) NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `,
+		},
+		nodeTypes: {
+			name: 'nodeTypes',
+			schema: `
+        CREATE TABLE IF NOT EXISTS nodeTypes (
+          id TEXT PRIMARY KEY,
+          data TEXT CHECK (json_valid(data)) NOT NULL
         );
       `,
 		},

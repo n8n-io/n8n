@@ -1,5 +1,5 @@
-import { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
-import type { Promiser, DbId } from '@sqlite.org/sqlite-wasm';
+import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
+import type { Database as Sqlite3Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 
 export type DatabaseTable = {
 	name: string;
@@ -7,42 +7,58 @@ export type DatabaseTable = {
 };
 
 export type DatabaseConfig = {
-	filename: `file:${string}.sqlite3?vfs=opfs`;
+	filename: string;
 	tables: Record<string, DatabaseTable>;
 };
 
-export async function initializeDatabase(config: DatabaseConfig) {
-	// Initialize the SQLite worker
-	const promiser: Promiser = await new Promise((resolve) => {
-		const _promiser = sqlite3Worker1Promiser({
-			onready: () => resolve(_promiser),
-		});
+export type Database = {
+	db: Sqlite3Database;
+	sqlite3: Sqlite3Static;
+};
+
+export async function initializeDatabase(config: DatabaseConfig): Promise<Database> {
+	console.log('SharedWorker / initializeDatabase');
+	console.log('SharedWorker / crossOriginIsolated:', self.crossOriginIsolated);
+	console.log(
+		'SharedWorker / SharedArrayBuffer available:',
+		typeof SharedArrayBuffer !== 'undefined',
+	);
+
+	// Initialize SQLite directly in the SharedWorker (no nested worker needed)
+	const sqlite3 = await sqlite3InitModule({
+		print: console.log,
+		printErr: console.error,
+		locateFile: (file: string) => {
+			// In development, Vite serves from node_modules
+			// In production, files are copied to assets/
+			if (file.endsWith('.wasm')) {
+				return new URL(`/assets/${file}`, self.location.origin).href;
+			}
+			return file;
+		},
 	});
 
-	if (!promiser) throw new Error('Failed to initialize promiser');
+	console.log('Running SQLite3 version', sqlite3.version.libVersion);
 
-	// Get configuration and open database
-	const cfg = await promiser('config-get', {});
-	const openResponse = await promiser('open', {
-		filename: config.filename,
-	});
+	// Use OPFS if available for persistent storage, otherwise use in-memory
+	const db =
+		'opfs' in sqlite3
+			? new sqlite3.oo1.OpfsDb(config.filename)
+			: new sqlite3.oo1.DB(config.filename, 'ct');
 
-	if (openResponse.type === 'error') {
-		throw new Error(openResponse.result.message);
-	}
+	console.log(
+		'opfs' in sqlite3
+			? `OPFS is available, created persisted database at ${db.filename}`
+			: `OPFS is not available, created transient database ${db.filename}`,
+	);
 
-	const dbId: DbId = openResponse.result.dbId;
-
+	// Create tables from config
 	for (const table of Object.values(config.tables)) {
-		await promiser('exec', {
-			dbId,
-			sql: table.schema,
-		});
+		db.exec(table.schema);
 	}
 
 	return {
-		promiser,
-		dbId,
-		cfg,
+		db,
+		sqlite3,
 	};
 }

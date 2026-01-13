@@ -38,6 +38,10 @@ export async function getNodeTypes(baseUrl: string) {
 	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/nodes.json');
 }
 
+export async function getNodeTypeVersions(baseUrl: string): Promise<string[]> {
+	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/node-versions.json');
+}
+
 export async function fetchCommunityNodeTypes(
 	context: IRestApiContext,
 ): Promise<CommunityNodeType[]> {

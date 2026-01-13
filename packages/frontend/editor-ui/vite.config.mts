@@ -106,6 +106,19 @@ const plugins: UserConfig['plugins'] = [
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
+			// SQLite WASM files for OPFS database support
+			{
+				src: pathPosix.resolve(
+					'node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3.wasm',
+				),
+				dest: 'assets',
+			},
+			{
+				src: pathPosix.resolve(
+					'node_modules/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-opfs-async-proxy.js',
+				),
+				dest: 'assets',
+			},
 		],
 	}),
 	vue(),
@@ -200,6 +213,18 @@ const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
 	defineConfig({
+		server: {
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin',
+				'Cross-Origin-Embedder-Policy': 'require-corp',
+			},
+		},
+		preview: {
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin',
+				'Cross-Origin-Embedder-Policy': 'require-corp',
+			},
+		},
 		define: {
 			// This causes test to fail but is required for actually running it
 			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
@@ -227,6 +252,7 @@ export default mergeConfig(
 			target,
 		},
 		optimizeDeps: {
+			exclude: ['@sqlite.org/sqlite-wasm'],
 			esbuildOptions: {
 				target,
 			},
