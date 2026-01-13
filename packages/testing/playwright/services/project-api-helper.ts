@@ -30,6 +30,32 @@ export class ProjectApiHelper {
 	}
 
 	/**
+	 * Get a user's personal project
+	 * @param userId The ID of the user
+	 * @returns The user's personal project
+	 */
+	async getPersonalProject(userId: string): Promise<Project> {
+		const response = await this.api.request.get('/rest/projects');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get projects: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const projects = result.data ?? result;
+
+		const personalProject = projects.find((p: Project) => 
+			p.type === 'personal' && p.projectRelations?.some((pr: { userId: string }) => pr.userId === userId)
+		);
+
+		if (!personalProject) {
+			throw new TestError(`Personal project not found for user ${userId}`);
+		}
+
+		return personalProject;
+	}
+
+	/**
 	 * Delete a project
 	 * @param projectId The ID of the project to delete
 	 * @returns True if deletion was successful
