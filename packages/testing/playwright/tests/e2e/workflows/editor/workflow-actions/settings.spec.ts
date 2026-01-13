@@ -21,8 +21,6 @@ test.describe('Workflow Settings @fixme', () => {
 		const responseBody = await workflowsResponse.json();
 		const totalWorkflows = responseBody.count;
 
-		await n8n.canvas.saveWorkflow();
-
 		await n8n.workflowSettingsModal.open();
 		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 

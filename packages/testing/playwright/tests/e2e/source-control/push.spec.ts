@@ -156,7 +156,7 @@ test.describe('Push resources to Git @capability:source-control @fixme', () => {
 		// modify and delete resources
 		await n8n.navigate.toWorkflow(workflow.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await n8n.api.credentials.deleteCredential(credential.id);
 
@@ -234,7 +234,7 @@ test.describe('Push resources to Git @capability:source-control @fixme', () => {
 		// modify workflow A
 		await n8n.navigate.toWorkflow(workflowA.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// check resources
 		await n8n.navigate.toHome();
