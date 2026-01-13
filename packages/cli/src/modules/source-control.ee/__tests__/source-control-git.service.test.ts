@@ -159,6 +159,110 @@ describe('SourceControlGitService', () => {
 		});
 	});
 
+	describe('ensureBranchSetup', () => {
+		describe('when current branch matches target branch', () => {
+			it('should not modify anything', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'main' } as never);
+				gitService.git = git;
+
+				const fetchSpy = jest.spyOn(gitService, 'fetch');
+				const checkoutSpy = jest.spyOn(git, 'checkout');
+
+				// Call private method using type assertion
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(fetchSpy).not.toHaveBeenCalled();
+				expect(checkoutSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when current branch does not match target branch', () => {
+			it('should checkout and track the target branch from remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main', 'develop'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(git.checkout).toHaveBeenCalledWith('main');
+				expect(git.branch).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
+			});
+
+			it('should not checkout if target branch does not exist on remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['develop', 'feature'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when fetch fails', () => {
+			it('should log warning and return without failing', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				const fetchError = new Error('Network error');
+				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during branch setup recovery',
+					{ error: fetchError },
+				);
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when checkout fails', () => {
+			it('should log warning and not throw', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				git.checkout.mockRejectedValue(new Error('Checkout failed'));
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main'],
+				});
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to checkout branch during recovery',
+					expect.objectContaining({ targetBranch: 'main' }),
+				);
+			});
+		});
+	});
+
 	describe('setGitCommand', () => {
 		it('should setup git client for https connection', async () => {
 			const credentials = { username: 'testuser', password: 'testpass' };

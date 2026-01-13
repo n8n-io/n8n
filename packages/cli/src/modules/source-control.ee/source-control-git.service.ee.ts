@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
 import { UnexpectedError } from 'n8n-workflow';
-import path from 'path';
+import * as path from 'path';
 import proxyFromEnv from 'proxy-from-env';
 import type {
 	CommitResult,
@@ -103,6 +103,11 @@ export class SourceControlGitService {
 				const instanceOwner = await this.ownershipService.getInstanceOwner();
 				await this.initRepository(sourceControlPreferences, instanceOwner);
 			}
+		}
+
+		// Ensure local repo is on the correct branch before operations in multi-main setups.
+		if (sourceControlPreferences.connected && sourceControlPreferences.branchName) {
+			await this.ensureBranchSetup(sourceControlPreferences.branchName);
 		}
 	}
 
@@ -278,6 +283,44 @@ export class SourceControlGitService {
 			await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
 
 			this.logger.info('Set local git repository to track remote', { upstream });
+		}
+	}
+
+	/**
+	 * Ensures the local repository is properly tracking the configured branch.
+	 * This handles recovery scenarios where source control is connected in DB
+	 * but local git state is incomplete (common in multi-main deployments).
+	 */
+	private async ensureBranchSetup(targetBranch: string): Promise<void> {
+		if (!this.git) return;
+
+		const { current: currentBranch } = await this.git.branch();
+
+		// If already on the correct branch, nothing to do
+		if (currentBranch === targetBranch) {
+			return;
+		}
+
+		// Fetch to ensure we have remote refs
+		try {
+			await this.fetch();
+		} catch (error) {
+			this.logger.warn('Failed to fetch during branch setup recovery', { error });
+			return; // Don't fail initialization, let sanityCheck handle errors
+		}
+
+		const { branches: remoteBranches } = await this.getBranches();
+
+		// If the target branch exists on remote, check it out
+		if (remoteBranches.includes(targetBranch)) {
+			try {
+				await this.git.checkout(targetBranch);
+				const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
+				await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
+				this.logger.info('Recovered source control branch setup', { targetBranch, upstream });
+			} catch (error) {
+				this.logger.warn('Failed to checkout branch during recovery', { targetBranch, error });
+			}
 		}
 	}
 
