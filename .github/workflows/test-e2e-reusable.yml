@@ -61,6 +61,8 @@ on:
         required: false
       N8N_LICENSE_ACTIVATION_KEY:
         required: false
+      N8N_LICENSE_CERT:
+        required: false
       N8N_ENCRYPTION_KEY:
         required: false
 
@@ -139,6 +141,8 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
 
       - name: Upload Failure Artifacts
         if: ${{ failure() && inputs.upload-failure-artifacts }}
