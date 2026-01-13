@@ -137,7 +137,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 		);
 		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
-		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '') as string;
+		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '');
+		assertParamIsString('vectorName', vectorName, context.getNode());
 
 		const credentials = await context.getCredentials('qdrantApi');
 
@@ -168,7 +169,8 @@ export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVecto
 		);
 		assertParamIsString('metadataPayloadKey', metadataPayloadKey, context.getNode());
 
-		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '') as string;
+		const vectorName = context.getNodeParameter('options.vectorName', itemIndex, '');
+		assertParamIsString('vectorName', vectorName, context.getNode());
 
 		// If collection config is not provided, the collection will be created with default settings
 		// i.e. with the size of the passed embeddings and "Cosine" distance metric
