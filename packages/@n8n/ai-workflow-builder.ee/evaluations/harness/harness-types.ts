@@ -40,6 +40,15 @@ export type TestCaseContext = Omit<Partial<EvaluationContext>, 'prompt'>;
 export type GlobalRunContext = Omit<Partial<EvaluationContext>, 'prompt'>;
 
 /**
+ * A styled line for verbose display output.
+ * Evaluators can provide these in `details.displayLines` for custom formatting.
+ */
+export interface DisplayLine {
+	text: string;
+	color?: 'yellow' | 'red' | 'dim';
+}
+
+/**
  * What evaluators return - a single piece of feedback.
  */
 export interface Feedback {
@@ -57,6 +66,12 @@ export interface Feedback {
 	 * - `detail`: unstable/verbose metrics that should not affect scoring
 	 */
 	kind: 'score' | 'metric' | 'detail';
+	/**
+	 * Optional structured details for rich display.
+	 * Evaluators can provide structured data here for better logging.
+	 * The `comment` field remains the primary text for LangSmith.
+	 */
+	details?: Record<string, unknown>;
 }
 
 /**
