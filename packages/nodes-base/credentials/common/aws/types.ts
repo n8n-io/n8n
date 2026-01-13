@@ -208,9 +208,11 @@ export type AwsCredentialsTypeBase = {
 };
 
 export type AwsIamCredentialsType = AwsCredentialsTypeBase & {
-	accessKeyId: string;
-	secretAccessKey: string;
-	temporaryCredentials: boolean;
+	authenticationMethod?: 'accessKeys' | 'profile'; // Optional for backwards compatibility
+	profileName?: string; // For AWS CLI profile
+	accessKeyId?: string; // Now optional (not required for profile method)
+	secretAccessKey?: string; // Now optional
+	temporaryCredentials?: boolean;
 	sessionToken?: string;
 };
 

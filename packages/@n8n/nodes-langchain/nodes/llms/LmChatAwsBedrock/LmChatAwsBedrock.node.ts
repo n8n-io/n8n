@@ -1,5 +1,6 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import { fromIni, fromTemporaryCredentials, fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent } from '@utils/httpProxyAgent';
@@ -12,6 +13,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type {
+	AwsIamCredentialsType,
+	AwsAssumeRoleCredentialsType,
+} from 'n8n-nodes-base/dist/credentials/common/aws/types';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -49,7 +54,21 @@ export class LmChatAwsBedrock implements INodeType {
 		credentials: [
 			{
 				name: 'aws',
-				required: true,
+				required: false, // Optional now!
+				displayOptions: {
+					show: {
+						authentication: ['accessKeys', 'profile'],
+					},
+				},
+			},
+			{
+				name: 'awsAssumeRole',
+				required: false, // Optional now!
+				displayOptions: {
+					show: {
+						authentication: ['assumeRole'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -58,6 +77,34 @@ export class LmChatAwsBedrock implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Keys',
+						value: 'accessKeys',
+						description: 'Use explicit AWS access keys',
+					},
+					{
+						name: 'AWS CLI Profile',
+						value: 'profile',
+						description: 'Use AWS CLI profile from ~/.aws/credentials',
+					},
+					{
+						name: 'Assume Role',
+						value: 'assumeRole',
+						description: 'Assume an IAM role (for cross-account access)',
+					},
+					{
+						name: 'Default AWS Credentials',
+						value: 'default',
+						description: 'Let AWS SDK auto-detect (env vars, ECS/EKS roles, EC2 instance profile)',
+					},
+				],
+				default: 'accessKeys', // Backwards compatible
+			},
 			{
 				displayName: 'Model Source',
 				name: 'modelSource',
@@ -224,28 +271,95 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'accessKeys') as
+			| 'accessKeys'
+			| 'profile'
+			| 'assumeRole'
+			| 'default';
+
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
-		// We set-up client manually to pass httpAgent and httpsAgent
+		// Configure Bedrock client
 		const proxyAgent = getNodeProxyAgent();
+		let region = 'us-east-1'; // Default region
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
-			},
+			region,
 		};
+
+		// Handle authentication based on user selection
+		if (authentication === 'default') {
+			// Don't pass credentials - AWS SDK will use its provider chain!
+			// This auto-detects: Env vars → CLI profiles → ECS → EKS → EC2
+		} else if (authentication === 'assumeRole') {
+			const credentials = await this.getCredentials<AwsAssumeRoleCredentialsType>('awsAssumeRole');
+			region = credentials.region;
+			clientConfig.region = region;
+
+			// Use AWS SDK's fromTemporaryCredentials with system or explicit credentials
+			const useSystemCreds = credentials.useSystemCredentialsForRole ?? false;
+
+			if (useSystemCreds) {
+				// Use AWS SDK's fromNodeProviderChain for automatic system credential detection
+				// This handles: env vars, ECS metadata, EKS pod identity, EC2 instance profile, AWS SSO
+				try {
+					clientConfig.credentials = fromTemporaryCredentials({
+						masterCredentials: fromNodeProviderChain(), // AWS SDK handles all credential sources
+						params: {
+							RoleArn: credentials.roleArn!,
+							RoleSessionName: credentials.roleSessionName || 'n8n-bedrock-session',
+							ExternalId: credentials.externalId,
+							DurationSeconds: 3600,
+						},
+					});
+				} catch (error) {
+					throw new Error(
+						`Failed to obtain system credentials or assume role ${credentials.roleArn}: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+							'Ensure n8n is running in AWS (ECS/EKS/EC2) with an attached IAM role, or set AWS environment variables.',
+					);
+				}
+			} else {
+				// Use explicit STS credentials to assume role
+				clientConfig.credentials = fromTemporaryCredentials({
+					masterCredentials: {
+						accessKeyId: credentials.stsAccessKeyId!,
+						secretAccessKey: credentials.stsSecretAccessKey!,
+						...(credentials.stsSessionToken && { sessionToken: credentials.stsSessionToken }),
+					},
+					params: {
+						RoleArn: credentials.roleArn!,
+						RoleSessionName: credentials.roleSessionName || 'n8n-bedrock-session',
+						ExternalId: credentials.externalId,
+						DurationSeconds: 3600,
+					},
+				});
+			}
+		} else {
+			// accessKeys or profile
+			const credentials = await this.getCredentials<AwsIamCredentialsType>('aws');
+			region = credentials.region;
+			clientConfig.region = region;
+
+			const authMethod = credentials.authenticationMethod || 'accessKeys';
+
+			if (authMethod === 'accessKeys') {
+				// Explicit credentials (current behavior)
+				clientConfig.credentials = {
+					accessKeyId: credentials.accessKeyId!,
+					secretAccessKey: credentials.secretAccessKey!,
+					...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+				};
+			} else if (authMethod === 'profile') {
+				// AWS CLI profile - use AWS SDK's fromIni
+				clientConfig.credentials = fromIni({
+					profile: credentials.profileName || 'default',
+					ignoreCache: true, // Allow external credential updates without n8n restart
+				});
+			}
+		}
 
 		if (proxyAgent) {
 			clientConfig.requestHandler = new NodeHttpHandler({
@@ -254,13 +368,13 @@ export class LmChatAwsBedrock implements INodeType {
 			});
 		}
 
-		// Pass the pre-configured client to avoid credential resolution proxy issues
 		const client = new BedrockRuntimeClient(clientConfig);
 
+		// Create LangChain model
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region,
+			region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],
