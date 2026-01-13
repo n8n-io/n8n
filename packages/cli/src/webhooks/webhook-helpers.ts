@@ -39,6 +39,7 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
 	tryToParseUrl,
@@ -75,6 +76,7 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
+import merge from 'lodash/merge';
 
 export function handleHostedChatResponse(
 	res: express.Response,
@@ -328,6 +330,13 @@ export function prepareExecutionData(
 		},
 	];
 
+	if (
+		workflowStartNode.type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE &&
+		runExecutionData?.executionData?.nodeExecutionStack
+	) {
+		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
+	}
+
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
 			nodeExecutionStack,
@@ -451,7 +460,9 @@ export async function executeWebhook(
 		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE) {
+		if (
+			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({
