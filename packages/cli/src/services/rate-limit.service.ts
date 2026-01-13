@@ -127,13 +127,11 @@ export class RateLimitService {
 		windowMs,
 	}: RateLimitOptions): Promise<RateLimitStatus> {
 		try {
-			// Use Redis pipeline for atomic operations
-			const pipeline = this.redisClient!.pipeline();
-			pipeline.incr(key);
-			pipeline.pexpire(key, windowMs, 'NX'); // Only set expiry if key has no expiry (Redis 7.0+)
-			pipeline.pttl(key);
-
-			const results = await pipeline.exec();
+			// Note: We intentionally avoid using a Lua script here to keep the implementation simple.
+			// The trade-off is a small race window where if the process crashes between INCR and
+			// PEXPIRE on a new key, the key could persist without a TTL. This is acceptable for
+			// rate limiting since it would only affect a single key until manual cleanup or Redis restart.
+			const results = await this.redisClient!.pipeline().incr(key).pttl(key).exec();
 
 			if (!results) {
 				this.logger.error('Redis pipeline returned null, failing open', { key });
@@ -144,14 +142,12 @@ export class RateLimitService {
 				};
 			}
 
-			const [[incrErr, count], [expireErr], [ttlErr, ttl]] = results as Array<
-				[Error | null, number]
-			>;
+			const [[incrErr, count], [ttlErr, pttl]] = results as Array<[Error | null, number]>;
 
-			// Check for errors in pipeline results and fail open
-			if (incrErr) {
-				this.logger.error('Error incrementing rate limit counter in Redis, failing open', {
-					error: incrErr,
+			if (incrErr || ttlErr) {
+				this.logger.error('Error in Redis pipeline, failing open', {
+					incrErr,
+					ttlErr,
 					key,
 				});
 
@@ -162,33 +158,15 @@ export class RateLimitService {
 				};
 			}
 
-			if (expireErr) {
-				this.logger.error('Error setting expiry for rate limit in Redis, failing open', {
-					error: expireErr,
-					key,
-				});
-
-				return {
-					allowed: true,
-					remaining: limit,
-					resetAt: new Date(Date.now() + windowMs),
-				};
+			// PTTL returns -1 if key has no expiry, -2 if key doesn't exist (won't happen after INCR).
+			// Set expiry if not already set (new key or edge case recovery).
+			let ttl = pttl;
+			if (ttl <= 0) {
+				await this.redisClient!.pexpire(key, windowMs);
+				ttl = windowMs;
 			}
 
-			if (ttlErr) {
-				this.logger.error('Error getting TTL for rate limit in Redis, failing open', {
-					error: ttlErr,
-					key,
-				});
-
-				return {
-					allowed: true,
-					remaining: limit,
-					resetAt: new Date(Date.now() + windowMs),
-				};
-			}
-
-			const resetAt = new Date(Date.now() + (ttl > 0 ? ttl : windowMs));
+			const resetAt = new Date(Date.now() + ttl);
 			const remaining = Math.max(0, limit - count);
 			const allowed = count <= limit;
 
@@ -330,6 +308,10 @@ export class RateLimitService {
 		if (this.cleanupInterval) {
 			clearInterval(this.cleanupInterval);
 			this.cleanupInterval = undefined;
+		}
+
+		if (this.redisClient) {
+			this.redisClient.disconnect();
 		}
 
 		this.inMemoryStore.clear();

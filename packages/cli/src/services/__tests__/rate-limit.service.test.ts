@@ -192,17 +192,17 @@ describe('RateLimitService', () => {
 				createClient: jest.fn().mockReturnValue({
 					pipeline: jest.fn().mockReturnValue({
 						incr: jest.fn().mockReturnThis(),
-						pexpire: jest.fn().mockReturnThis(),
 						pttl: jest.fn().mockReturnThis(),
 						get: jest.fn().mockReturnThis(),
 						exec: jest.fn().mockResolvedValue([
-							[null, 1], // incr result
-							[null, 1], // pexpire result (1 = expiry was set)
-							[null, 60000], // pttl result
+							[null, 1], // incr result (first request)
+							[null, -1], // pttl result (-1 = no expiry yet)
 						]),
 					}),
+					pexpire: jest.fn().mockResolvedValue(1),
 					get: jest.fn().mockResolvedValue('0'),
 					del: jest.fn().mockResolvedValue(1),
+					disconnect: jest.fn(),
 				}),
 			});
 
@@ -219,20 +219,46 @@ describe('RateLimitService', () => {
 			});
 		});
 
-		test('should consume using Redis pipeline', async () => {
+		test('should set expiry when PTTL returns -1 (no expiry)', async () => {
 			const key = 'test-key';
 			const limit = 3;
 			const windowMs = 60000;
 
 			const redisClient = (rateLimitService as any).redisClient;
-			const pipeline = redisClient.pipeline();
+
+			// Default mock already returns PTTL = -1 (no expiry)
+			const status = await rateLimitService.tryConsume({ key, limit, windowMs });
+
+			// pexpire should be called when PTTL <= 0
+			expect(redisClient.pexpire).toHaveBeenCalledWith(key, windowMs);
+			expect(status.allowed).toBe(true);
+			expect(status.remaining).toBe(2);
+		});
+
+		test('should not set expiry when PTTL returns positive value', async () => {
+			const key = 'test-key';
+			const limit = 3;
+			const windowMs = 60000;
+
+			const redisClient = (rateLimitService as any).redisClient;
+
+			// Clear any previous calls and mock PTTL returning positive value (expiry exists)
+			redisClient.pexpire.mockClear();
+			redisClient.pipeline.mockReturnValue({
+				incr: jest.fn().mockReturnThis(),
+				pttl: jest.fn().mockReturnThis(),
+				exec: jest.fn().mockResolvedValue([
+					[null, 2], // incr result (second request)
+					[null, 55000], // pttl result (expiry already set)
+				]),
+			});
 
 			const status = await rateLimitService.tryConsume({ key, limit, windowMs });
 
-			expect(pipeline.incr).toHaveBeenCalledWith(key);
-			expect(pipeline.pexpire).toHaveBeenCalledWith(key, windowMs, 'NX');
-			expect(pipeline.pttl).toHaveBeenCalledWith(key);
+			// pexpire should NOT be called when PTTL > 0
+			expect(redisClient.pexpire).not.toHaveBeenCalled();
 			expect(status.allowed).toBe(true);
+			expect(status.remaining).toBe(1);
 		});
 
 		test('should fail open on Redis errors', async () => {
@@ -243,7 +269,6 @@ describe('RateLimitService', () => {
 			const redisClient = (rateLimitService as any).redisClient;
 			redisClient.pipeline.mockReturnValue({
 				incr: jest.fn().mockReturnThis(),
-				pexpire: jest.fn().mockReturnThis(),
 				pttl: jest.fn().mockReturnThis(),
 				exec: jest.fn().mockRejectedValue(new Error('Redis connection error')),
 			});
@@ -259,7 +284,7 @@ describe('RateLimitService', () => {
 	});
 
 	describe('Shutdown', () => {
-		test('should clean up resources gracefully', () => {
+		test('should clean up resources gracefully for in-memory store', () => {
 			// Use regular mode (in-memory) for this test
 			globalConfig.executions.mode = 'regular';
 
@@ -269,6 +294,31 @@ describe('RateLimitService', () => {
 
 			rateLimitService.shutdown();
 
+			expect(logger.debug).toHaveBeenCalledWith('Rate limit service shutdown');
+		});
+
+		test('should disconnect Redis client on shutdown', () => {
+			// Use queue mode (Redis) for this test
+			globalConfig.executions.mode = 'queue';
+
+			const mockDisconnect = jest.fn();
+			const redisClientService = mock<RedisClientService>({
+				toValidPrefix: jest.fn().mockReturnValue('{n8n:rate-limit}'),
+				createClient: jest.fn().mockReturnValue({
+					disconnect: mockDisconnect,
+					pipeline: jest.fn().mockReturnValue({
+						incr: jest.fn().mockReturnThis(),
+						pttl: jest.fn().mockReturnThis(),
+						exec: jest.fn().mockResolvedValue([]),
+					}),
+				}),
+			});
+
+			const rateLimitService = new RateLimitService(logger, redisClientService, globalConfig);
+
+			rateLimitService.shutdown();
+
+			expect(mockDisconnect).toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith('Rate limit service shutdown');
 		});
 	});

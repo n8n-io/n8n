@@ -419,11 +419,12 @@ describe('POST /forgot-password - Rate Limiting', () => {
 
 		const testEmail = owner.email;
 
-		try {
-			await testServer.authlessAgent.post('/forgot-password').send({ email: testEmail });
-		} catch {
-			// Expect error
-		}
+		const response = await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: testEmail });
+
+		// The endpoint returns 500 when email sending fails
+		expect(response.statusCode).toBe(500);
 
 		// Rate limit IS incremented even when email fails (to prevent retry-bombing)
 		const emailKey = `password-reset:email:${testEmail.toLowerCase()}`;
