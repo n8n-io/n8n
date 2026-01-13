@@ -100,4 +100,39 @@ export class UserApiHelper {
 		const users = await this.getUsers({ filter: { email } });
 		return users[0] ?? null;
 	}
+
+	/**
+	 * Get the owner user
+	 */
+	async getOwner(): Promise<TestUser> {
+		const users = await this.getUsers();
+		const ownerUser = users.find((u) => u.role === 'global:owner');
+		if (!ownerUser) {
+			throw new TestError('No owner user found');
+		}
+		return {
+			id: ownerUser.id,
+			email: ownerUser.email ?? 'owner@n8n.io',
+			password: 'n8n', // Default owner password
+			firstName: ownerUser.firstName ?? 'Owner',
+			lastName: ownerUser.lastName ?? 'User',
+			role: 'global:owner',
+		};
+	}
+
+	/**
+	 * Execute API calls with a specific user's context
+	 * @param user - User to impersonate
+	 * @param fn - Function to execute with the user's API context
+	 */
+	async withUser<T>(user: TestUser, fn: (userApi: ApiHelpers) => Promise<T>): Promise<T> {
+		// Create a new API helper with fresh context
+		const userApiHelper = new (this.api.constructor as new () => ApiHelpers)();
+		
+		// Login as the specified user
+		await userApiHelper.login({ email: user.email, password: user.password });
+		
+		// Execute the fn with the user's API context
+		return await fn(userApiHelper);
+	}
 }
