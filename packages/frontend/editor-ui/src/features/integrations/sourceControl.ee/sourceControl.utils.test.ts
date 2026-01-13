@@ -125,5 +125,55 @@ describe('source control utils', () => {
 				}),
 			);
 		});
+
+		it('should show granular feedback with data tables', async () => {
+			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+			await notifyUserAboutPullWorkFolderOutcome(
+				[
+					{
+						id: '014da93897f146d2b880-baa374b9d02d',
+						name: 'My Workflow',
+						type: 'workflow',
+						status: 'created',
+						location: 'remote',
+						conflict: false,
+						file: '/014da93897f146d2b880-baa374b9d02d.json',
+						updatedAt: '2025-01-09T13:12:24.580Z',
+					},
+					{
+						id: 'data-table-1',
+						name: 'Customer Data',
+						type: 'datatable',
+						status: 'created',
+						location: 'remote',
+						conflict: false,
+						file: '/data_tables.json',
+						updatedAt: '2025-01-09T13:12:24.586Z',
+					},
+					{
+						id: 'data-table-2',
+						name: 'Sales Data',
+						type: 'datatable',
+						status: 'modified',
+						location: 'remote',
+						conflict: false,
+						file: '/data_tables.json',
+						updatedAt: '2025-01-09T13:12:24.587Z',
+					},
+				],
+				toast,
+				router,
+			);
+
+			expect(toast.showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: '1 Workflow and 2 Data tables were pulled',
+				}),
+			);
+		});
 	});
 });

@@ -294,6 +294,16 @@ describe('SourceControlPushModal', () => {
 				updatedAt: '2024-09-20T14:42:51.968Z',
 			},
 			{
+				id: 'data-table-1',
+				name: 'Customer Data',
+				type: 'datatable',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/data_tables.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+			{
 				id: 'mappings',
 				name: 'tags',
 				type: 'tags',
@@ -354,6 +364,7 @@ describe('SourceControlPushModal', () => {
 			[
 				'Changes to variables, data tables, tags, folders and projects',
 				'Variables : at least one new or modified.',
+				'Data tables : at least one new or modified.',
 				'Tags : at least one new or modified.',
 				'Folders : at least one new or modified.',
 				'Projects : at least one new or modified.',
