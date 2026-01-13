@@ -61,6 +61,8 @@ on:
         required: false
       N8N_LICENSE_ACTIVATION_KEY:
         required: false
+      N8N_LICENSE_CERT:
+        required: false
       N8N_ENCRYPTION_KEY:
         required: false
 
@@ -69,8 +71,6 @@ env:
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
-  # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
-  COVERAGE_ENABLED: 'true'
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
   N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
@@ -141,6 +141,8 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
 
       - name: Upload Failure Artifacts
         if: ${{ failure() && inputs.upload-failure-artifacts }}
