@@ -1232,6 +1232,144 @@ describe('AskAssistantBuild', () => {
 			// Should only be called once
 			expect(updateWorkflowMock).toHaveBeenCalledTimes(1);
 		});
+
+		it('should abort streaming when updateWorkflow returns an error', async () => {
+			const testError = new Error('Failed to update workflow');
+			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Node',
+								type: 'n8n-nodes-base.httpRequest',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							},
+						],
+						connections: {},
+					}),
+				},
+			];
+
+			await flushPromises();
+
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
+
+		it('should not accumulate node IDs after error occurs', async () => {
+			// First update succeeds and adds a node
+			updateWorkflowMock
+				.mockResolvedValueOnce({ success: true, newNodeIds: ['node-1'] })
+				// Second update fails
+				.mockResolvedValueOnce({ success: false, error: new Error('Failed') });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			const msgId1 = faker.string.uuid();
+			const msgId2 = faker.string.uuid();
+
+			// First message - should succeed
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// Second message - should fail and abort
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: msgId2,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// First call should have empty nodeIdsToTidyUp, second should have accumulated 'node-1'
+			expect(updateWorkflowMock).toHaveBeenNthCalledWith(1, expect.anything(), {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: [],
+			});
+			expect(updateWorkflowMock).toHaveBeenNthCalledWith(2, expect.anything(), {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: ['node-1'],
+			});
+
+			// Should abort after error
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
+
+		it('should not process remaining messages after error occurs', async () => {
+			const testError = new Error('Failed to update workflow');
+			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Add multiple messages at once
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// Should only be called once because error stops processing
+			expect(updateWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
 	});
 
 	describe('undo recording management', () => {

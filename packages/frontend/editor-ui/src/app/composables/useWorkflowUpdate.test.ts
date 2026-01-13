@@ -20,9 +20,10 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	},
 }));
 
-// Mock canvas utils
+// Mock canvas utils - using hoisted for proper initialization
+const mockMapLegacyConnectionsToCanvasConnections = vi.hoisted(() => vi.fn().mockReturnValue([]));
 vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
-	mapLegacyConnectionsToCanvasConnections: vi.fn().mockReturnValue([]),
+	mapLegacyConnectionsToCanvasConnections: mockMapLegacyConnectionsToCanvasConnections,
 }));
 
 // Mock useWorkflowState - using hoisted for proper initialization
@@ -66,6 +67,9 @@ describe('useWorkflowUpdate', () => {
 		builderStore = mockedStore(useBuilderStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+
+		// Reset canvas utils mock to default behavior
+		mockMapLegacyConnectionsToCanvasConnections.mockReturnValue([]);
 
 		// Setup default mocks
 		workflowsStore.allNodes = [];
@@ -140,7 +144,10 @@ describe('useWorkflowUpdate', () => {
 						telemetry: false,
 					},
 				);
-				expect(result.newNodeIds).toEqual(['new-node-1']);
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.newNodeIds).toEqual(['new-node-1']);
+				}
 			});
 
 			it('should remove nodes that are no longer in the update', async () => {
@@ -546,6 +553,132 @@ describe('useWorkflowUpdate', () => {
 
 				// getNodeByName should not be called because node already has credentials
 				expect(workflowsStore.getNodeByName).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('error handling', () => {
+			it('should return success: false with error when addNodes throws', async () => {
+				const testError = new Error('Failed to add nodes');
+				mockCanvasOperations.addNodes.mockRejectedValueOnce(testError);
+
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				const result = await updateWorkflow({
+					nodes: [newNode],
+					connections: {},
+				});
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					expect(result.error).toBe(testError);
+				}
+			});
+
+			it('should return success: false with error when addConnections throws', async () => {
+				const testError = new Error('Failed to add connections');
+				mockCanvasOperations.addConnections.mockRejectedValueOnce(testError);
+
+				// Mock mapLegacyConnectionsToCanvasConnections to return:
+				// - empty array for existing connections (first call)
+				// - non-empty array for new connections (second call) to trigger addConnections
+				mockMapLegacyConnectionsToCanvasConnections
+					.mockReturnValueOnce([]) // existing connections
+					.mockReturnValueOnce([
+						{ source: 'node-1', target: 'node-2', sourceHandle: 'main', targetHandle: 'main' },
+					]); // new connections
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				const result = await updateWorkflow({
+					nodes: [],
+					connections: { 'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] } },
+				});
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					expect(result.error).toBe(testError);
+				}
+			});
+
+			it('should return success: false with error when cloneWorkflowObject throws', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Existing Node',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const testError = new Error('Failed to clone workflow');
+				workflowsStore.cloneWorkflowObject = vi.fn().mockImplementation(() => {
+					throw testError;
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				const result = await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Existing Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { updated: true },
+						},
+					],
+					connections: {},
+				});
+
+				expect(result.success).toBe(false);
+				if (!result.success) {
+					expect(result.error).toBe(testError);
+				}
+			});
+
+			it('should not call setBuilderMadeEdits when error occurs', async () => {
+				const testError = new Error('Failed to add nodes');
+				mockCanvasOperations.addNodes.mockRejectedValueOnce(testError);
+
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [newNode],
+					connections: {},
+				});
+
+				expect(builderStore.setBuilderMadeEdits).not.toHaveBeenCalled();
+			});
+
+			it('should not emit tidyUp event when error occurs', async () => {
+				const testError = new Error('Failed to add nodes');
+				mockCanvasOperations.addNodes.mockRejectedValueOnce(testError);
+
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [newNode],
+					connections: {},
+				});
+
+				expect(canvasEventBusEmitMock).not.toHaveBeenCalled();
 			});
 		});
 	});

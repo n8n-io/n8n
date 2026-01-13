@@ -21,6 +21,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
@@ -45,6 +46,10 @@ const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
 const { updateWorkflow } = useWorkflowUpdate();
+const { handleError } = useErrorHandler({
+	source: 'ai-builder',
+	titleKey: 'aiAssistant.builder.error.title',
+});
 const { onDocumentVisible } = useDocumentVisibility();
 
 onDocumentVisible(() => {
@@ -247,6 +252,12 @@ watch(
 				isInitialGeneration: builderStore.initialGeneration,
 				nodeIdsToTidyUp: accumulatedNodeIdsToTidyUp.value,
 			});
+
+			if (!result.success) {
+				handleError(result.error, { context: 'workflow-update' });
+				builderStore.abortStreaming();
+				return;
+			}
 
 			// Accumulate new node IDs so subsequent messages tidy up all new nodes
 			if (result.newNodeIds.length > 0) {

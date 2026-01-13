@@ -234,6 +234,7 @@
 	"aiAssistant.builder.invalidPrompt": "Prompt validation failed. Please try again with a clearer description of your workflow requirements and supported integrations.",
 	"aiAssistant.builder.workflowParsingError.title": "Unable to insert workflow",
 	"aiAssistant.builder.workflowParsingError.content": "The workflow returned by AI could not be parsed. Please try again.",
+	"aiAssistant.builder.error.title": "Workflow update failed",
 	"aiAssistant.builder.canvasPrompt.title": "What would you like to automate?",
 	"aiAssistant.builder.canvasPrompt.confirmTitle": "Replace current prompt?",
 	"aiAssistant.builder.canvasPrompt.confirmMessage": "This will replace your current prompt. Are you sure?",

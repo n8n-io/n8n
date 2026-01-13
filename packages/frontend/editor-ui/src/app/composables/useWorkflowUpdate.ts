@@ -24,11 +24,16 @@ export interface UpdateWorkflowOptions {
 	nodeIdsToTidyUp?: string[];
 }
 
-export interface UpdateWorkflowResult {
-	success: boolean;
-	/** IDs of nodes that were newly added */
-	newNodeIds: string[];
-}
+export type UpdateWorkflowResult =
+	| {
+			success: true;
+			/** IDs of nodes that were newly added */
+			newNodeIds: string[];
+	  }
+	| {
+			success: false;
+			error: unknown;
+	  };
 
 export function useWorkflowUpdate() {
 	const workflowsStore = useWorkflowsStore();
@@ -305,25 +310,29 @@ export function useWorkflowUpdate() {
 		workflowData: WorkflowDataUpdate,
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
-		const pinnedDataById = capturePinnedDataById();
-		const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
+		try {
+			const pinnedDataById = capturePinnedDataById();
+			const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
 
-		updateExistingNodes(nodesToUpdate);
-		removeStaleNodes(nodesToRemove);
-		const addedNodes = await addNewNodes(nodesToAdd);
-		const newNodeIds = addedNodes.map((n) => n.id);
-		await updateConnections(workflowData.connections ?? {});
-		restorePinnedData(pinnedDataById);
-		applyDefaultCredentials(workflowData.nodes ?? []);
-		updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+			updateExistingNodes(nodesToUpdate);
+			removeStaleNodes(nodesToRemove);
+			const addedNodes = await addNewNodes(nodesToAdd);
+			const newNodeIds = addedNodes.map((n) => n.id);
+			await updateConnections(workflowData.connections ?? {});
+			restorePinnedData(pinnedDataById);
+			applyDefaultCredentials(workflowData.nodes ?? []);
+			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
-		builderStore.setBuilderMadeEdits(true);
+			builderStore.setBuilderMadeEdits(true);
 
-		// Combine newly added node IDs with any additional IDs from previous messages
-		const allNodeIdsToTidyUp = [...newNodeIds, ...(options?.nodeIdsToTidyUp ?? [])];
-		tidyUpNewNodes(allNodeIdsToTidyUp);
+			// Combine newly added node IDs with any additional IDs from previous messages
+			const allNodeIdsToTidyUp = [...newNodeIds, ...(options?.nodeIdsToTidyUp ?? [])];
+			tidyUpNewNodes(allNodeIdsToTidyUp);
 
-		return { success: true, newNodeIds };
+			return { success: true, newNodeIds };
+		} catch (error) {
+			return { success: false, error };
+		}
 	}
 
 	return { updateWorkflow };
