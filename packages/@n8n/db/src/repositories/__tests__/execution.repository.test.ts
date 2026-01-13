@@ -424,9 +424,9 @@ describe('ExecutionRepository', () => {
 				updateQueryBuilder as unknown as ReturnType<typeof entityManager.createQueryBuilder>,
 			);
 
-			// Mock transaction to pass through to the callback
-			entityManager.transaction.mockImplementation(async (callback: unknown) => {
-				return await (callback as (em: typeof entityManager) => Promise<unknown>)(entityManager);
+			// Mock transaction to pass through to the fn
+			entityManager.transaction.mockImplementation(async (fn: unknown) => {
+				return await (fn as (em: typeof entityManager) => Promise<unknown>)(entityManager);
 			});
 		});
 
