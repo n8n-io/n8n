@@ -10,6 +10,10 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
@@ -18,6 +22,7 @@ export interface N8nPromptInputProps {
 	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	creditsQuota?: number;
 	creditsRemaining?: number;
 	showAskOwnerTooltip?: boolean;
@@ -35,6 +40,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	minLines: 1,
 	streaming: false,
 	disabled: false,
+	disabledTooltip: undefined,
 	creditsQuota: undefined,
 	creditsRemaining: undefined,
 	showAskOwnerTooltip: false,
@@ -328,126 +334,128 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.wrapper">
-		<div
-			ref="containerRef"
-			:class="[
-				$style.container,
-				{
-					[$style.focused]: isFocused,
-					[$style.multiline]: isMultiline,
-					[$style.disabled]: disabled || hasNoCredits,
-					[$style.withBottomBorder]: !!showCredits,
-				},
-			]"
-			:style="containerStyle"
-		>
-			<!-- Warning banner when character limit is reached -->
-			<N8nCallout
-				v-if="showWarningBanner"
-				slim
-				icon="info"
-				theme="warning"
-				:class="$style.warningCallout"
+	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
+		<div v-bind="$attrs" :class="$style.wrapper">
+			<div
+				ref="containerRef"
+				:class="[
+					$style.container,
+					{
+						[$style.focused]: isFocused,
+						[$style.multiline]: isMultiline,
+						[$style.disabled]: disabled || hasNoCredits,
+						[$style.withBottomBorder]: !!showCredits,
+					},
+				]"
+				:style="containerStyle"
 			>
-				{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
-			</N8nCallout>
-
-			<!-- Single line mode: input and button side by side -->
-			<div v-if="!isMultiline" :class="$style.singleLineWrapper">
-				<textarea
-					ref="textareaRef"
-					v-model="textValue"
-					:class="[
-						$style.singleLineTextarea,
-						'ignore-key-press-node-creator',
-						'ignore-key-press-canvas',
-					]"
-					:placeholder="hasNoCredits ? '' : placeholder"
-					:disabled="disabled || hasNoCredits"
-					:maxlength="maxLength"
-					rows="1"
-					@keydown="handleKeyDown"
-					@focus="handleFocus"
-					@blur="handleBlur"
-					@input="adjustHeight"
-				/>
-				<div :class="$style.inlineActions">
-					<N8nSendStopButton
-						data-test-id="send-message-button"
-						:streaming="streaming"
-						:disabled="sendDisabled"
-						@send="handleSubmit"
-						@stop="handleStop"
-					/>
-				</div>
-			</div>
-
-			<!-- Multiline mode: textarea full width with button below -->
-			<template v-else>
-				<!-- Use ScrollArea when content exceeds max height -->
-				<N8nScrollArea
-					ref="scrollAreaRef"
-					:class="$style.scrollAreaWrapper"
-					:max-height="`${textAreaMaxHeight}px`"
-					type="auto"
+				<!-- Warning banner when character limit is reached -->
+				<N8nCallout
+					v-if="showWarningBanner"
+					slim
+					icon="info"
+					theme="warning"
+					:class="$style.warningCallout"
 				>
+					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
+				</N8nCallout>
+
+				<!-- Single line mode: input and button side by side -->
+				<div v-if="!isMultiline" :class="$style.singleLineWrapper">
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
 						:class="[
-							$style.multilineTextarea,
+							$style.singleLineTextarea,
 							'ignore-key-press-node-creator',
 							'ignore-key-press-canvas',
 						]"
-						:style="textareaStyle"
 						:placeholder="hasNoCredits ? '' : placeholder"
 						:disabled="disabled || hasNoCredits"
 						:maxlength="maxLength"
+						rows="1"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
 						@input="adjustHeight"
 					/>
-				</N8nScrollArea>
-				<div :class="$style.bottomActions">
-					<N8nSendStopButton
-						data-test-id="send-message-button"
-						:streaming="streaming"
-						:disabled="sendDisabled"
-						@send="handleSubmit"
-						@stop="handleStop"
-					/>
+					<div :class="$style.inlineActions">
+						<N8nSendStopButton
+							data-test-id="send-message-button"
+							:streaming="streaming"
+							:disabled="sendDisabled"
+							@send="handleSubmit"
+							@stop="handleStop"
+						/>
+					</div>
 				</div>
-			</template>
-		</div>
 
-		<!-- Credits bar below input -->
-		<div v-if="showCredits" :class="$style.creditsBar">
-			<div :class="$style.creditsInfoWrapper">
-				<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+				<!-- Multiline mode: textarea full width with button below -->
+				<template v-else>
+					<!-- Use ScrollArea when content exceeds max height -->
+					<N8nScrollArea
+						ref="scrollAreaRef"
+						:class="$style.scrollAreaWrapper"
+						:max-height="`${textAreaMaxHeight}px`"
+						type="auto"
+					>
+						<textarea
+							ref="textareaRef"
+							v-model="textValue"
+							:class="[
+								$style.multilineTextarea,
+								'ignore-key-press-node-creator',
+								'ignore-key-press-canvas',
+							]"
+							:style="textareaStyle"
+							:placeholder="hasNoCredits ? '' : placeholder"
+							:disabled="disabled || hasNoCredits"
+							:maxlength="maxLength"
+							@keydown="handleKeyDown"
+							@focus="handleFocus"
+							@blur="handleBlur"
+							@input="adjustHeight"
+						/>
+					</N8nScrollArea>
+					<div :class="$style.bottomActions">
+						<N8nSendStopButton
+							data-test-id="send-message-button"
+							:streaming="streaming"
+							:disabled="sendDisabled"
+							@send="handleSubmit"
+							@stop="handleStop"
+						/>
+					</div>
+				</template>
+			</div>
+
+			<!-- Credits bar below input -->
+			<div v-if="showCredits" :class="$style.creditsBar">
+				<div :class="$style.creditsInfoWrapper">
+					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+					<N8nTooltip
+						:content="creditsTooltipContent"
+						:popper-class="$style.infoPopper"
+						:show-after="300"
+						placement="top"
+					>
+						<N8nIcon icon="info" size="small" />
+					</N8nTooltip>
+				</div>
 				<N8nTooltip
-					:content="creditsTooltipContent"
-					:popper-class="$style.infoPopper"
-					:show-after="300"
+					:disabled="!showAskOwnerTooltip"
+					:content="t('promptInput.askAdminToUpgrade')"
 					placement="top"
+					:show-after="300"
+					:enterable="false"
 				>
-					<N8nIcon icon="info" size="small" />
+					<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
+						{{ t('promptInput.getMore') }}
+					</N8nLink>
 				</N8nTooltip>
 			</div>
-			<N8nTooltip
-				:disabled="!showAskOwnerTooltip"
-				:content="t('promptInput.askAdminToUpgrade')"
-				placement="top"
-				:show-after="300"
-				:enterable="false"
-			>
-				<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
-					{{ t('promptInput.getMore') }}
-				</N8nLink>
-			</N8nTooltip>
 		</div>
-	</div>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>

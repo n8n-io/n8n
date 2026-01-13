@@ -16,7 +16,12 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	TelemetryHelpers,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -149,6 +154,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			}
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+
+			if (
+				rootStore.binaryDataMode === 'default' &&
+				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
+			) {
+				toast.showMessage({
+					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
+					type: 'error',
+				});
+				return undefined;
+			}
 
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,

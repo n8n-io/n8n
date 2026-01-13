@@ -1243,6 +1243,44 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('Secret events', () => {
+		it('should log on `external-secrets-provider-settings-saved`', () => {
+			const event: RelayEventMap['external-secrets-provider-settings-saved'] = {
+				userId: 'user123',
+				vaultType: 'aws',
+				isValid: true,
+				isNew: false,
+			};
+
+			eventService.emit('external-secrets-provider-settings-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.provider.settings.saved',
+				payload: {
+					userId: 'user123',
+					vaultType: 'aws',
+					isValid: true,
+					isNew: false,
+				},
+			});
+		});
+
+		it('should log on `external-secrets-provider-reloaded`', () => {
+			const event: RelayEventMap['external-secrets-provider-reloaded'] = {
+				vaultType: 'aws',
+			};
+
+			eventService.emit('external-secrets-provider-reloaded', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.provider.reloaded',
+				payload: {
+					vaultType: 'aws',
+				},
+			});
+		});
+	});
+
 	describe('auth events', () => {
 		it('should log on `user-login-failed` event', () => {
 			const event: RelayEventMap['user-login-failed'] = {
@@ -1691,6 +1729,169 @@ describe('LogStreamingEventRelay', () => {
 					workflowName: 'Retry Test Workflow',
 					executionId: 'exec-retry-456',
 					source: 'user-retry',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for webhook execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-webhook',
+				workflowName: 'Webhook Test Workflow',
+				executionId: 'exec-webhook-123',
+				source: 'webhook',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-webhook',
+					workflowName: 'Webhook Test Workflow',
+					executionId: 'exec-webhook-123',
+					source: 'webhook',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for trigger execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-trigger',
+				workflowName: 'Trigger Test Workflow',
+				executionId: 'exec-trigger-123',
+				source: 'trigger',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-trigger',
+					workflowName: 'Trigger Test Workflow',
+					executionId: 'exec-trigger-123',
+					source: 'trigger',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for error workflow execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-error',
+				workflowName: 'Error Test Workflow',
+				executionId: 'exec-error-123',
+				source: 'error',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-error',
+					workflowName: 'Error Test Workflow',
+					executionId: 'exec-error-123',
+					source: 'error',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for CLI execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-cli',
+				},
+				workflowId: 'wf-cli',
+				workflowName: 'CLI Test Workflow',
+				executionId: 'exec-cli-123',
+				source: 'cli',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-cli',
+					workflowId: 'wf-cli',
+					workflowName: 'CLI Test Workflow',
+					executionId: 'exec-cli-123',
+					source: 'cli',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for integrated/subworkflow execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-integrated',
+				},
+				workflowId: 'wf-integrated',
+				workflowName: 'Integrated Test Workflow',
+				executionId: 'exec-integrated-123',
+				source: 'integrated',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-integrated',
+					workflowId: 'wf-integrated',
+					workflowName: 'Integrated Test Workflow',
+					executionId: 'exec-integrated-123',
+					source: 'integrated',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for evaluation execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-eval',
+				},
+				workflowId: 'wf-evaluation',
+				workflowName: 'Evaluation Test Workflow',
+				executionId: 'exec-evaluation-123',
+				source: 'evaluation',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-eval',
+					workflowId: 'wf-evaluation',
+					workflowName: 'Evaluation Test Workflow',
+					executionId: 'exec-evaluation-123',
+					source: 'evaluation',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for chat execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-chat',
+				},
+				workflowId: 'wf-chat',
+				workflowName: 'Chat Test Workflow',
+				executionId: 'exec-chat-123',
+				source: 'chat',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-chat',
+					workflowId: 'wf-chat',
+					workflowName: 'Chat Test Workflow',
+					executionId: 'exec-chat-123',
+					source: 'chat',
 				},
 			});
 		});

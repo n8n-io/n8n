@@ -90,6 +90,8 @@ export const eventNamesAudit = [
 	'n8n.audit.variable.created',
 	'n8n.audit.variable.updated',
 	'n8n.audit.variable.deleted',
+	'n8n.audit.external-secrets.provider.settings.saved',
+	'n8n.audit.external-secrets.provider.reloaded',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

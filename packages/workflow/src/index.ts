@@ -54,6 +54,7 @@ export {
 	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
@@ -66,6 +67,7 @@ export {
 	isResourceLocatorValue,
 	isFilterValue,
 	isNodeConnectionType,
+	isBinaryValue,
 } from './type-guards';
 
 export {

@@ -60,7 +60,7 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
@@ -72,7 +72,7 @@ export function useWorkflowState() {
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		ws.workflow.connections = {};
@@ -81,7 +81,7 @@ export function useWorkflowState() {
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		if (data.removePinData) {
@@ -334,7 +334,7 @@ export function useWorkflowState() {
 		});
 
 		if (changed) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			ws.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
 		}
 	}
@@ -377,7 +377,9 @@ export function useWorkflowState() {
 			[updateInformation.key]: updateInformation.value,
 		});
 
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
+		if (changed) {
+			uiStore.markStateDirty();
+		}
 
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
@@ -410,7 +412,7 @@ export function useWorkflowState() {
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
 				if (changed) {
-					uiStore.stateIsDirty = true;
+					uiStore.markStateDirty();
 				}
 			}
 		}

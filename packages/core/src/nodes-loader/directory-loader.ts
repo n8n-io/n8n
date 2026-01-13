@@ -28,6 +28,7 @@ import {
 	commonDeclarativeNodeOptionParameters,
 	commonPollingParameters,
 	CUSTOM_NODES_CATEGORY,
+	CUSTOM_NODES_PACKAGE_NAME,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
@@ -347,7 +348,7 @@ export abstract class DirectoryLoader {
 	 * to a node description `codex` property.
 	 */
 	private addCodex(node: INodeType | IVersionedNodeType, filePath: string) {
-		const isCustom = this.packageName === 'CUSTOM';
+		const isCustom = this.packageName === CUSTOM_NODES_PACKAGE_NAME;
 		try {
 			let codex;
 

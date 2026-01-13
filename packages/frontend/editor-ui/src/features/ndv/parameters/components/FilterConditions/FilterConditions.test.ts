@@ -116,9 +116,9 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[0]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.tags }}',
 		);
-		expect(
-			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('contains');
+		expect(within(conditions[0]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'contains',
+		);
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('exotic');
@@ -127,18 +127,18 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[1]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.meta }}',
 		);
-		expect(
-			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is not empty');
+		expect(within(conditions[1]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is not empty',
+		);
 		expect(within(conditions[1]).queryByTestId('filter-condition-right')).not.toBeInTheDocument();
 
 		// string:equals
 		expect(within(conditions[2]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.name }}',
 		);
-		expect(
-			within(conditions[2]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is equal to');
+		expect(within(conditions[2]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is equal to',
+		);
 		expect(
 			within(conditions[2]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('John');
@@ -147,9 +147,9 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[3]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.tags }}',
 		);
-		expect(
-			within(conditions[3]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('length greater than or equal to');
+		expect(within(conditions[3]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'length greater than or equal to',
+		);
 		expect(
 			within(conditions[3]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue(5);
@@ -396,7 +396,7 @@ describe('FilterConditions.vue', () => {
 			expect(right.querySelector('input')).toBeDisabled();
 
 			const operatorSelect = within(condition).getByTestId('filter-operator-select');
-			expect(operatorSelect.querySelector('input')).toBeDisabled();
+			expect(operatorSelect.querySelector('button')).toBeDisabled();
 		}
 	});
 
@@ -446,18 +446,18 @@ describe('FilterConditions.vue', () => {
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-left').querySelector('input'),
 		).toHaveValue('quz');
-		expect(
-			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is not equal to');
+		expect(within(conditions[0]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is not equal to',
+		);
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('qux');
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-left').querySelector('input'),
 		).toHaveValue(5);
-		expect(
-			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is greater than');
+		expect(within(conditions[1]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is greater than',
+		);
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue(6);
