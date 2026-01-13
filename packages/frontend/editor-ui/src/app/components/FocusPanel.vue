@@ -103,10 +103,13 @@ const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = ref(false);
 const isDisplayed = ref(true);
+let displayResolutionGeneration = 0;
 
 watch(
 	resolvedParameter,
 	async () => {
+		const currentGeneration = ++displayResolutionGeneration;
+
 		if (!resolvedParameter.value) {
 			isDisabled.value = false;
 			isDisplayed.value = true;
@@ -116,7 +119,7 @@ watch(
 		const parentPath = resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.');
 
 		// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
-		isDisabled.value =
+		const disabled =
 			!!resolvedParameter.value.parameter.disabledOptions &&
 			(await nodeSettingsParameters.shouldDisplayNodeParameter(
 				resolvedParameter.value.node.parameters,
@@ -126,13 +129,19 @@ watch(
 				'disabledOptions',
 			));
 
-		isDisplayed.value = await nodeSettingsParameters.shouldDisplayNodeParameter(
+		const displayed = await nodeSettingsParameters.shouldDisplayNodeParameter(
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
 			parentPath,
 			'displayOptions',
 		);
+
+		// Only update if this is still the latest resolution request
+		if (currentGeneration === displayResolutionGeneration) {
+			isDisabled.value = disabled;
+			isDisplayed.value = displayed;
+		}
 	},
 	{ immediate: true },
 );

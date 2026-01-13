@@ -416,10 +416,12 @@ const expressionDisplayValue = computed(() => {
 });
 
 const dependentParametersValues = ref<string | null>(null);
+let dependentParametersResolutionGeneration = 0;
 
 watch(
 	[() => ndvStore.activeNode?.parameters, () => props.parameter, () => props.path],
 	async () => {
+		const currentGeneration = ++dependentParametersResolutionGeneration;
 		const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 		if (loadOptionsDependsOn === undefined) {
@@ -439,9 +441,14 @@ watch(
 				returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 			}
 
-			dependentParametersValues.value = returnValues.join('|');
+			// Only update if this is still the latest resolution request
+			if (currentGeneration === dependentParametersResolutionGeneration) {
+				dependentParametersValues.value = returnValues.join('|');
+			}
 		} catch {
-			dependentParametersValues.value = null;
+			if (currentGeneration === dependentParametersResolutionGeneration) {
+				dependentParametersValues.value = null;
+			}
 		}
 	},
 	{ immediate: true },

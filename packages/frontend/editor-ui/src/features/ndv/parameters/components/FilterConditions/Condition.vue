@@ -73,15 +73,21 @@ const isEmpty = computed(() => {
 
 const conditionResult = ref<ConditionResult>({ status: 'resolve_error' });
 let conditionResolutionPromise: Promise<void> = Promise.resolve();
+let conditionResolutionGeneration = 0;
 
 watch(
 	[condition, () => props.options],
 	async () => {
+		const currentGeneration = ++conditionResolutionGeneration;
 		conditionResolutionPromise = (async () => {
-			conditionResult.value = await resolveCondition({
+			const result = await resolveCondition({
 				condition: condition.value,
 				options: props.options,
 			});
+			// Only update if this is still the latest resolution request
+			if (currentGeneration === conditionResolutionGeneration) {
+				conditionResult.value = result;
+			}
 		})();
 		await conditionResolutionPromise;
 	},

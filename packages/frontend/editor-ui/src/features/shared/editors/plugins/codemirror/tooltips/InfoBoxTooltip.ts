@@ -150,7 +150,12 @@ function getCompletion(
 	for (const source of sources) {
 		const result = source(context);
 
-		// Skip async results - tooltips require synchronous results
+		// Skip async completion sources - tooltips require synchronous results because
+		// they are computed on hover/selection change and need to appear immediately.
+		// This means tooltips won't be shown for completions that require async resolution
+		// (e.g., dynamically resolved expressions). This is an acceptable trade-off since
+		// the completion suggestions themselves will still work, only the hover tooltip
+		// documentation will be unavailable for those items.
 		if (result instanceof Promise) {
 			continue;
 		}

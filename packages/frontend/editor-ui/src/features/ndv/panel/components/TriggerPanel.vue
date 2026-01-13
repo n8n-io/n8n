@@ -130,10 +130,13 @@ const isWebhookNode = computed(() => {
 
 const webhookHttpMethod = ref<string | undefined>(undefined);
 const webhookTestUrl = ref<string | undefined>(undefined);
+let webhookResolutionGeneration = 0;
 
 watch(
 	[node, nodeType],
 	async () => {
+		const currentGeneration = ++webhookResolutionGeneration;
+
 		if (!node.value || !nodeType.value?.webhooks?.length) {
 			webhookHttpMethod.value = undefined;
 			webhookTestUrl.value = undefined;
@@ -146,17 +149,22 @@ watch(
 			false,
 		);
 
-		if (Array.isArray(httpMethod)) {
-			webhookHttpMethod.value = httpMethod.join(', ');
-		} else {
-			webhookHttpMethod.value = httpMethod as string | undefined;
-		}
-
-		webhookTestUrl.value = await workflowHelpers.getWebhookUrl(
+		const testUrl = await workflowHelpers.getWebhookUrl(
 			nodeType.value.webhooks[0],
 			node.value,
 			'test',
 		);
+
+		// Only update if this is still the latest resolution request
+		if (currentGeneration === webhookResolutionGeneration) {
+			if (Array.isArray(httpMethod)) {
+				webhookHttpMethod.value = httpMethod.join(', ');
+			} else {
+				webhookHttpMethod.value = httpMethod as string | undefined;
+			}
+
+			webhookTestUrl.value = testUrl;
+		}
 	},
 	{ immediate: true },
 );

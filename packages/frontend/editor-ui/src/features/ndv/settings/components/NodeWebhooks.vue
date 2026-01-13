@@ -68,6 +68,7 @@ interface WebhookResolvedData {
 }
 
 const resolvedWebhookData = ref<Map<number, WebhookResolvedData>>(new Map());
+let webhookResolutionGeneration = 0;
 
 const visibleWebhookUrls = computed(() => {
 	return webhooksNode.value.filter((_, index) => {
@@ -80,6 +81,7 @@ const visibleWebhookUrls = computed(() => {
 watch(
 	[webhooksNode, showUrlFor, () => props.node],
 	async () => {
+		const currentGeneration = ++webhookResolutionGeneration;
 		const newData = new Map<number, WebhookResolvedData>();
 
 		for (let index = 0; index < webhooksNode.value.length; index++) {
@@ -144,7 +146,10 @@ watch(
 			});
 		}
 
-		resolvedWebhookData.value = newData;
+		// Only update if this is still the latest resolution request
+		if (currentGeneration === webhookResolutionGeneration) {
+			resolvedWebhookData.value = newData;
+		}
 	},
 	{ immediate: true },
 );
