@@ -27,6 +27,9 @@ import type { WorkflowState } from './workflow-state';
 const PROMPT_IS_TOO_LARGE_ERROR =
 	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';
 
+const WORKFLOW_TOO_COMPLEX_ERROR =
+	'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.';
+
 /**
  * Type for the state snapshot with properly typed values
  */
@@ -283,13 +286,37 @@ export class WorkflowBuilderAgent {
 
 		// If it's not an abort error, check for GraphRecursionError
 		if (error instanceof GraphRecursionError) {
-			throw new ApplicationError(
-				'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
-			);
+			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+		}
+
+		// Check for 401 expired token errors (typically from long-running generations)
+		if (this.isTokenExpiredError(error)) {
+			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Re-throw any other errors
 		throw error;
+	}
+
+	/**
+	 * Checks if the error is a 401 expired token error from the LLM provider proxy.
+	 * This typically occurs during very long-running workflow generations when
+	 * the AI assistant service proxy token expires.
+	 *
+	 * We specifically check for LangChain's MODEL_AUTHENTICATION error code to ensure
+	 * we only catch authentication errors from the LLM provider, not unrelated 401s.
+	 */
+	private isTokenExpiredError(error: unknown): boolean {
+		const LC_MODEL_AUTHENTICATION_ERROR = 'MODEL_AUTHENTICATION';
+
+		return (
+			!!error &&
+			typeof error === 'object' &&
+			'lc_error_code' in error &&
+			error.lc_error_code === LC_MODEL_AUTHENTICATION_ERROR &&
+			'status' in error &&
+			error.status === 401
+		);
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {
