@@ -1,153 +1,90 @@
 # Test Plan: supply-error.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2026-01-11
+**Date:** 2026-01-13
 **Coverage Target:** ≥95% all metrics
 **Test File:** `supply-error.test.ts`
 
-## 1. Code Analysis
+## Code Surface
+**Exports:** `SupplyError` (class)
+**Dependencies:**
+- `SupplyRequestBase` (need to mock concrete implementation)
+- `Date.now()` (mock for deterministic latency)
+- `INode` (mock for asError())
+**Branches:**
+- 4 conditionals in `throwIfInvalid()` (agentRequestId, supplyRequestId, reason empty checks, code range)
+**ESLint Considerations:**
+- Type assertions needed: `as SupplyRequestBase` for mock, `as INode` for mock
+- Import order: types before implementations
+- Mock setup for abstract base requires concrete test types
 
-### Exports
-- `SupplyError` class - Structured error for supply operations
+## Test Cases
 
-### Code Paths
-- Constructor: Lines 27-34 (request ID propagation, latency calculation, error properties)
-- `asLogMetadata()`: Lines 36-44 (return LogMetadata with error details)
-- `asDataObject()`: Lines 46-52 (return IDataObject without requestId)
-- `asError()`: Lines 60-62 (convert to NodeOperationError)
+### SupplyError
 
-### Branches
-- None (straight-line code)
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-01 | should copy agentRequestId from request | Line 36, property assignment |
+| BL-02 | should copy supplyRequestId from request | Line 37, property assignment |
+| BL-03 | should calculate latencyMs from request timestamp | Line 39, Date.now() - requestedAt |
+| BL-04 | should set code from constructor parameter | Line 40, code assignment |
+| BL-05 | should set reason from constructor parameter | Line 41, reason assignment |
+| BL-06 | should set isRetriable from constructor parameter | Line 42, isRetriable assignment |
+| BL-07 | should return complete log metadata | Lines 66-73, asLogMetadata() |
+| BL-08 | should return minimal data object | Lines 83-87, asDataObject() |
+| BL-09 | should convert to NodeOperationError | Line 98, asError() |
+| BL-10 | should pass validation with all valid fields | Line 54, throwIfInvalid() happy path |
 
-### Edge Cases
-- Error code handling: Various error codes (HTTP status, custom codes)
-- Retriable vs non-retriable errors: Boolean flag affects retry logic
-- Latency calculation: Time to failure measurement
-- NodeOperationError conversion: Integration with n8n error system
-- Request ID propagation: Tracing through error path
+#### Edge Cases (EC-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should handle different HTTP status codes | Lines 40, various codes |
+| EC-02 | should calculate different latencies for different timestamps | Line 39, multiple constructions |
+| EC-03 | should preserve exact IDs from request | Lines 36-37, no transformation |
+| EC-04 | should handle zero latency (same timestamp) | Line 39, edge case |
+| EC-05 | should handle large latency values | Line 39, old timestamp |
+| EC-06 | should handle isRetriable true and false | Line 42, boolean values |
+| EC-07 | should handle boundary HTTP codes (100, 599) | Line 56, range validation edges |
 
-### Dependencies to Mock
-- `SupplyRequestBase` - mock request with requestId and requestedAt
-- `Date.now()` - mock for deterministic latency tests
-- `INode` - mock n8n node for asError() method
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should throw Error if agentRequestId is empty | Line 54, first condition |
+| EH-02 | should throw Error if agentRequestId is whitespace | Line 54, trim() === '' |
+| EH-03 | should throw Error if supplyRequestId is empty | Line 55, second condition |
+| EH-04 | should throw Error if supplyRequestId is whitespace | Line 55, trim() === '' |
+| EH-05 | should throw Error if reason is empty | Line 56, third condition |
+| EH-06 | should throw Error if reason is whitespace | Line 56, trim() === '' |
+| EH-07 | should throw RangeError if code is below 100 | Line 57, code < 100 |
+| EH-08 | should throw RangeError if code is above 599 | Line 57, code > 599 |
+| EH-09 | should throw Error if agentRequestId is undefined | Line 54, !agentRequestId |
+| EH-10 | should throw Error if supplyRequestId is undefined | Line 55, !supplyRequestId |
+| EH-11 | should throw Error if reason is undefined | Line 56, !reason |
+| EH-12 | should allow construction without validation | Constructor doesn't validate |
 
-## 2. Test Cases
+## Implementation Notes
 
-### BL-XX: Business Logic (Happy Paths)
+### Mock Setup
+- Mock `Date.now()` for deterministic latency testing
+- Create mock `SupplyRequestBase` instances with known IDs and timestamp
+- Create mock `INode` for asError() testing
 
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| BL-01 | should create error with request ID from request | Line 28, ID propagation | HIGH |
-| BL-02 | should calculate latency from request to error | Line 30, latency calculation | HIGH |
-| BL-03 | should store error code and reason | Lines 31-32, error properties | HIGH |
-| BL-04 | should store retriable flag | Line 33, retry logic flag | HIGH |
-| BL-05 | should return log metadata with all error details | Lines 37-43 | HIGH |
-| BL-06 | should return data object without requestId | Lines 47-51 | HIGH |
-| BL-07 | should convert to NodeOperationError with reason | Lines 60-62 | HIGH |
+### Coverage Focus
+- Constructor: all 6 property assignments, latencyMs calculation
+- throwIfInvalid: all 4 validation branches (3 field checks + code range)
+- asLogMetadata: returns all 6 fields
+- asDataObject: returns 3 fields (code, reason, latencyMs)
+- asError: creates NodeOperationError with reason
+- Edge cases: HTTP code boundaries, latency extremes, boolean values
 
-### EC-XX: Edge Cases (Boundaries & Unusual Inputs)
-
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| EC-01 | should handle zero latency when error occurs immediately | Line 30, edge case | MEDIUM |
-| EC-02 | should handle large latency values | Line 30, boundary | LOW |
-| EC-03 | should handle HTTP status error codes (4xx, 5xx) | Line 31, common codes | MEDIUM |
-| EC-04 | should handle custom error codes | Line 31, non-HTTP codes | MEDIUM |
-| EC-05 | should handle very long error reasons | Line 32, string length | LOW |
-| EC-06 | should implement ITraceable interface correctly | Type checking | MEDIUM |
-| EC-07 | should implement IDataProvider interface correctly | Type checking | MEDIUM |
-| EC-08 | should create retriable and non-retriable errors | Line 33, both states | HIGH |
-
-### EH-XX: Error Handling (Validation & Failures)
-
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| EH-01 | should handle negative error codes | Line 31, invalid codes | MEDIUM |
-| EH-02 | should handle zero error code | Line 31, edge case | LOW |
-| EH-03 | should handle empty reason string | Line 32, empty input | MEDIUM |
-
-## 3. Mock Strategy
-
-### SupplyRequestBase Mock
-```typescript
-const mockRequest = {
-  requestId: 'test-request-id-123',
-  requestedAt: 1000000000000,
-} as SupplyRequestBase;
-```
-
-### Date.now() Mock
-```typescript
-jest.spyOn(Date, 'now').mockReturnValue(1000000001500); // 1500ms later
-```
-
-### INode Mock
-```typescript
-const mockNode = {
-  id: 'node-123',
-  name: 'Test Node',
-  type: 'n8n-nodes-base.testNode',
-  typeVersion: 1,
-  position: [0, 0],
-  parameters: {},
-} as INode;
-```
-
-## 4. Test Structure
-
-```
-describe('SupplyError')
-├── describe('business logic')
-│   ├── [BL-01] request ID propagation
-│   ├── [BL-02] latency calculation
-│   ├── [BL-03] error code and reason storage
-│   ├── [BL-04] retriable flag storage
-│   ├── [BL-05] log metadata format
-│   ├── [BL-06] data object format (no requestId)
-│   └── [BL-07] NodeOperationError conversion
-├── describe('edge cases')
-│   ├── [EC-01] zero latency
-│   ├── [EC-02] large latency values
-│   ├── [EC-03] HTTP status codes
-│   ├── [EC-04] custom error codes
-│   ├── [EC-05] long error reasons
-│   ├── [EC-06] ITraceable interface
-│   ├── [EC-07] IDataProvider interface
-│   └── [EC-08] retriable vs non-retriable
-└── describe('error handling')
-    ├── [EH-01] negative error codes
-    ├── [EH-02] zero error code
-    └── [EH-03] empty reason string
-```
-
-## 5. Coverage Goals
-
-**Line Coverage:** 100% (all lines)
-**Branch Coverage:** 100% (no branches)
-**Function Coverage:** 100% (constructor + 3 methods)
-**Statement Coverage:** 100%
-
-## 6. Implementation Notes
-
-- Use `jest.spyOn(Date, 'now')` for deterministic timing tests
-- Mock `SupplyRequestBase` with minimal required properties
-- Mock `INode` for `asError()` method testing
-- Test both retriable (true) and non-retriable (false) error scenarios
-- Verify `asDataObject()` excludes `requestId` (security consideration)
-- Test various error code ranges (HTTP 4xx, 5xx, custom codes)
-- Verify `asError()` creates proper NodeOperationError with reason
-
-## 7. Risk Assessment
-
-**High Risk Areas:**
-- Request ID propagation (critical for error tracing)
-- Retriable flag (affects retry logic and workflow behavior)
-- Latency calculation (must be accurate for monitoring)
-
-**Medium Risk Areas:**
-- NodeOperationError conversion (affects n8n error display)
-- Log metadata completeness (affects debugging)
-- Data object format (affects error reporting)
-
-**Low Risk Areas:**
-- Error code/reason storage (straightforward assignment)
+## Success Criteria
+- [x] Test plan created with author and date
+- [x] All exports identified and planned
+- [x] All branches covered (100%)
+- [x] All error paths tested
+- [x] ESLint considerations documented
+- [ ] Coverage ≥95% (statements, branches, functions, lines)
+- [ ] All tests pass
+- [ ] No ESLint errors
+- [ ] TypeScript compiles

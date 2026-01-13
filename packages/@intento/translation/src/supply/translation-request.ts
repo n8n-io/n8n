@@ -1,3 +1,4 @@
+import type { AgentRequestBase } from 'intento-core';
 import { SupplyRequestBase } from 'intento-core';
 import type { ISegment } from 'intento-segmentation';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
@@ -7,8 +8,8 @@ export class TranslationRequest extends SupplyRequestBase {
 	readonly to: string;
 	readonly from?: string;
 
-	constructor(segments: ISegment[], to: string, from?: string) {
-		super();
+	constructor(request: AgentRequestBase, segments: ISegment[], to: string, from?: string) {
+		super(request);
 
 		this.segments = segments;
 		this.to = to;
@@ -18,7 +19,9 @@ export class TranslationRequest extends SupplyRequestBase {
 	}
 
 	throwIfInvalid(): void {
-		if (!this.to || this.to.trim() === '') throw new Error('targetLanguage is required');
+		if (!this.to || this.to.trim() === '') throw new Error('"to" is required');
+		if (this.segments.length === 0) throw new Error('"segments" must contain at least one segment to translate.');
+		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -32,7 +35,6 @@ export class TranslationRequest extends SupplyRequestBase {
 
 	asDataObject(): IDataObject {
 		return {
-			...super.asDataObject(),
 			from: this.from,
 			to: this.to,
 			segments: this.segments,

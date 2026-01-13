@@ -8,76 +8,67 @@ import { SplitRequest } from 'supply/split-request';
 import type { SplitResponse } from 'supply/split-response';
 
 /**
- * Base class for suppliers that split text into segments and merge segments back.
+ * Abstract base for segmentation suppliers handling split and merge operations.
  *
- * Handles routing between split and merge operations, providing default merge
- * implementation using position-based segment grouping. Subclasses implement
- * executeSplit() with domain-specific segmentation logic.
+ * Delegates to executeSplit() for splitting text into segments, and provides default
+ * executeMerge() implementation that reassembles segments by position ordering.
+ * Subclasses must implement executeSplit() for supplier-specific splitting logic.
  */
 export abstract class SegmentsSupplierBase extends SupplierBase<SplitRequest | MergeRequest, SplitResponse | MergeResponse> {
 	constructor(descriptor: IDescriptor, connection: IntentoConnectionType, functions: IFunctions) {
 		super(descriptor, connection, functions);
 	}
 
-	/**
-	 * Routes requests to appropriate split or merge handler.
-	 *
-	 * Type exhaustiveness enforced by TypeScript - bugDetected() throws if
-	 * request type expands without adding corresponding handler.
-	 *
-	 * @param signal - Abort signal for cancellation propagation to handlers
-	 * @throws Never returns on unsupported type - bugDetected() always throws
-	 */
 	protected async execute(request: SplitRequest | MergeRequest, signal: AbortSignal): Promise<SplitResponse | MergeResponse | SupplyError> {
+		signal.throwIfAborted();
 		if (request instanceof SplitRequest) return await this.executeSplit(request, signal);
 		if (request instanceof MergeRequest) return await this.executeMerge(request, signal);
-		this.tracer.bugDetected(this.descriptor.name, `Unsupported request type: ${(request as object).constructor.name}`, { request });
+		// NOTE: bugDetected throws error - this line never returns
+		this.tracer.bugDetected(this.constructor.name, `Unsupported request type: ${(request as object).constructor.name}`, { request });
 	}
 
 	/**
-	 * Splits text into segments using domain-specific logic.
+	 * Splits text into segments using supplier-specific logic.
 	 *
-	 * Implementations must respect segmentLimit and maintain segment ordering
-	 * for correct merge reconstruction. Each segment must include textPosition
-	 * and segmentPosition for proper reassembly.
-	 *
-	 * @param signal - Abort signal to check for cancellation during split
+	 * @param request - Split request with text items and segment limit
+	 * @param signal - Abort signal for cancellation
+	 * @returns Split response with segments or error if splitting fails
 	 */
 	protected abstract executeSplit(request: SplitRequest, signal: AbortSignal): Promise<SplitResponse | SupplyError>;
 
 	/**
-	 * Merges segments back into complete text items by position.
+	 * Merges segments back into text items using default concatenation strategy.
 	 *
-	 * Groups segments by textPosition, concatenates in segmentPosition order.
-	 * Creates shallow copy of segments array to avoid mutating frozen request.
+	 * Sorts segments by textPosition then segmentPosition to preserve original order.
+	 * Concatenates segments with same textPosition to reconstruct each text item.
+	 * Override this method for custom merge logic (e.g., adding delimiters).
 	 *
-	 * @param signal - Abort signal checked before merge starts
+	 * @param request - Merge request with segments to reassemble
+	 * @param signal - Abort signal for cancellation
+	 * @returns Merge response with reassembled text items
 	 */
 	protected async executeMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeResponse | SupplyError> {
 		signal.throwIfAborted();
 
-		let message = `${this.descriptor.symbol} Merging ${request.segments.length} segment(s)...`;
-		this.tracer.debug(message, request.asLogMetadata());
+		this.tracer.debug(`Merging ${request.segments.length} segment(s)...`, request.asLogMetadata());
 
-		// NOTE: Shallow copy prevents mutation of readonly segments array from frozen MergeRequest
+		// NOTE: Sort by textPosition first, then segmentPosition to preserve original ordering
 		const sorted = [...request.segments].sort((a, b) => {
 			if (a.textPosition !== b.textPosition) return a.textPosition - b.textPosition;
 			return a.segmentPosition - b.segmentPosition;
 		});
 
-		// NOTE: Map preserves insertion order, ensuring textPosition order matches segment sort
 		const textItems = new Map<number, string>();
 
-		for (const translation of sorted) {
-			const text = textItems.get(translation.textPosition);
-			textItems.set(translation.textPosition, text ? text + translation.text : translation.text);
+		for (const segment of sorted) {
+			const text = textItems.get(segment.textPosition);
+			textItems.set(segment.textPosition, text ? text + segment.text : segment.text);
 		}
 
 		const text = Array.from(textItems.values());
 		const response = new MergeResponse(request, text);
 
-		message = `${this.descriptor.symbol} Merged ${sorted.length} segments into ${text.length} text item(s).`;
-		this.tracer.info(message, response.asLogMetadata());
+		this.tracer.info(`Merged ${sorted.length} segments into ${text.length} text item(s).`, response.asLogMetadata());
 		return await Promise.resolve(response);
 	}
 }

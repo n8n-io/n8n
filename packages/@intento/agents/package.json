@@ -1,0 +1,41 @@
+{
+  "name": "intento-agents",
+  "version": "1.0.0",
+  "description": "Agents functionality of intento extension for n8n",
+  "main": "dist/index",
+  "types": "dist/index.d.ts",
+
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
+    "test": "jest --coverage",
+    "test:unit": "jest --coverage",
+    "test:dev": "jest --watch"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:^",
+    "n8n-workflow": "workspace:^",
+    "intento-core": "workspace:^",
+    "intento-segmentation": "workspace:^",
+    "intento-translation": "workspace:^"
+  },
+  "dependencies": {
+    "@echogarden/icu-segmentation-wasm": "^0.2.2",
+    "@echogarden/text-segmentation": "^0.4.1",
+    "n8n-workflow": "workspace:^",
+    "intento-core": "workspace:^",
+    "intento-segmentation": "workspace:^",
+    "intento-translation": "workspace:^"
+  }
+}

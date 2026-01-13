@@ -365,6 +365,31 @@ importers:
         specifier: ^8.1.4
         version: 8.1.4
 
+  packages/@intento/agents:
+    dependencies:
+      '@echogarden/icu-segmentation-wasm':
+        specifier: ^0.2.2
+        version: 0.2.2
+      '@echogarden/text-segmentation':
+        specifier: ^0.4.1
+        version: 0.4.1(@echogarden/icu-segmentation-wasm@0.2.2)
+      intento-core:
+        specifier: workspace:^
+        version: link:../core
+      intento-segmentation:
+        specifier: workspace:^
+        version: link:../segmentation
+      intento-translation:
+        specifier: workspace:^
+        version: link:../translation
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:^
+        version: link:../../@n8n/typescript-config
+
   packages/@intento/core:
     dependencies:
       n8n-core:
@@ -386,6 +411,9 @@ importers:
 
   packages/@intento/nodes-base:
     dependencies:
+      intento-agents:
+        specifier: workspace:*
+        version: link:../agents
       intento-core:
         specifier: workspace:*
         version: link:../core

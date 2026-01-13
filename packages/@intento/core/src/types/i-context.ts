@@ -1,11 +1,20 @@
 import type { ITraceable } from 'types/i-traceable';
-import type { IValidatable } from 'types/i-validatable';
 
 /**
- * Base interface for n8n node context objects that support validation and logging.
+ * Context interface for configuration objects with validation capability.
  *
- * Combines validation capabilities (throwIfInvalid) with traceability (asLogMetadata)
- * for comprehensive error reporting. All context implementations must provide both
- * validation logic and log metadata extraction.
+ * Implementations must provide validation logic via throwIfInvalid() called by ContextFactory
+ * after instantiation to catch configuration errors before execution begins.
  */
-export interface IContext extends IValidatable, ITraceable {}
+export interface IContext extends ITraceable {
+	/**
+	 * Validates context instance state and throws if invalid.
+	 *
+	 * Called by ContextFactory after construction to fail fast on bad configuration.
+	 * Must check required fields and validate boundary constraints.
+	 *
+	 * @throws Error if required fields missing
+	 * @throws RangeError if values outside valid boundaries
+	 */
+	throwIfInvalid(): void;
+}

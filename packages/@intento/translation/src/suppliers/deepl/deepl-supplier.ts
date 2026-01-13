@@ -33,13 +33,13 @@ export class DeeplSupplier extends TranslationSupplierBase {
 			this.functions,
 			DeeplDescriptor.credentials!,
 			options,
-		)) as { translations: Array<{ text: string; detected_source_language?: string }> };
+		)) as { translations: Array<{ text: string; detected_source_language: string }> };
 
 		const translations = response.translations.map((item, index) => ({
 			textPosition: request.segments[index].textPosition,
 			segmentPosition: request.segments[index].segmentPosition,
 			text: item.text,
-			detectedLanguage: item.detected_source_language?.toLowerCase(),
+			detectedLanguage: item.detected_source_language.toLowerCase(),
 		}));
 		return new TranslationResponse(request, translations);
 	}

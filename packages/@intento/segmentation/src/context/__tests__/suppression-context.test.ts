@@ -134,7 +134,7 @@ describe('suppression-context', () => {
 					const context = new SuppressionContext(true, undefined);
 
 					// ACT & ASSERT
-					expect(() => context.throwIfInvalid()).toThrow('Suppression list must be provided when suppression is enabled.');
+					expect(() => context.throwIfInvalid()).toThrow('"list" must be provided when suppression is enabled.');
 				});
 			});
 		});

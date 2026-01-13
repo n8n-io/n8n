@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:dev": "pnpm typecheck && pnpm lint:fix && pnpm build && pnpm test",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",

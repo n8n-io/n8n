@@ -365,7 +365,7 @@ describe('ExecutionContext', () => {
 		it('[EH-01] should throw Error if maxAttempts is null', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(null as unknown as number, 5000, 0.2, 10000);
-			expect(() => context.throwIfInvalid()).toThrow('maxAttempts is required for ExecutionContext');
+			expect(() => context.throwIfInvalid()).toThrow('"maxAttempts" is required');
 		});
 
 		it('[EH-02] should use default value when maxAttempts is undefined', () => {
@@ -380,7 +380,7 @@ describe('ExecutionContext', () => {
 		it('[EH-03] should throw Error if maxDelayMs is null', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, null as unknown as number, 0.2, 10000);
-			expect(() => context.throwIfInvalid()).toThrow('maxDelayMs is required for ExecutionContext');
+			expect(() => context.throwIfInvalid()).toThrow('"maxDelayMs" is required');
 		});
 
 		it('[EH-04] should use default value when maxDelayMs is undefined', () => {
@@ -395,7 +395,7 @@ describe('ExecutionContext', () => {
 		it('[EH-05] should throw Error if maxJitter is null', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, null as unknown as number, 10000);
-			expect(() => context.throwIfInvalid()).toThrow('maxJitter is required for ExecutionContext');
+			expect(() => context.throwIfInvalid()).toThrow('"maxJitter" is required');
 		});
 
 		it('[EH-06] should use default value when maxJitter is undefined', () => {
@@ -410,7 +410,7 @@ describe('ExecutionContext', () => {
 		it('[EH-07] should throw Error if timeoutMs is null', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, 0.2, null as unknown as number);
-			expect(() => context.throwIfInvalid()).toThrow('timeoutMs is required for ExecutionContext');
+			expect(() => context.throwIfInvalid()).toThrow('"timeoutMs" is required');
 		});
 
 		it('[EH-08] should use default value when timeoutMs is undefined', () => {
@@ -426,56 +426,56 @@ describe('ExecutionContext', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(0, 5000, 0.2, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxAttempts must be at least 1');
+			expect(() => context.throwIfInvalid()).toThrow('"maxAttempts" must be at least 1');
 		});
 
 		it('[EH-10] should throw RangeError if maxAttempts > 50', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(51, 5000, 0.2, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxAttempts must be at most 50');
+			expect(() => context.throwIfInvalid()).toThrow('"maxAttempts" must be at most 50');
 		});
 
 		it('[EH-11] should throw RangeError if maxDelayMs < 100', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 99, 0.2, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxDelayMs must be at least 100');
+			expect(() => context.throwIfInvalid()).toThrow('"maxDelayMs" must be at least 100');
 		});
 
 		it('[EH-12] should throw RangeError if maxDelayMs > 60000', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 60001, 0.2, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxDelayMs must be at most 60000');
+			expect(() => context.throwIfInvalid()).toThrow('"maxDelayMs" must be at most 60000');
 		});
 
 		it('[EH-13] should throw RangeError if maxJitter < 0.1', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, 0.09, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxJitter must be at least 0.1');
+			expect(() => context.throwIfInvalid()).toThrow('"maxJitter" must be at least 0.1');
 		});
 
 		it('[EH-14] should throw RangeError if maxJitter > 0.9', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, 0.91, 10000);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('maxJitter must be at most 0.9');
+			expect(() => context.throwIfInvalid()).toThrow('"maxJitter" must be at most 0.9');
 		});
 
 		it('[EH-15] should throw RangeError if timeoutMs < 1000', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, 0.2, 999);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('timeoutMs must be at least 1000');
+			expect(() => context.throwIfInvalid()).toThrow('"timeoutMs" must be at least 1000');
 		});
 
 		it('[EH-16] should throw RangeError if timeoutMs > 600000', () => {
 			// ACT & ASSERT
 			const context = new ExecutionContext(5, 5000, 0.2, 600001);
 			expect(() => context.throwIfInvalid()).toThrow(RangeError);
-			expect(() => context.throwIfInvalid()).toThrow('timeoutMs must be at most 600000');
+			expect(() => context.throwIfInvalid()).toThrow('"timeoutMs" must be at most 600000');
 		});
 
 		it('[EH-17] should throw RangeError if attempt < 0', () => {

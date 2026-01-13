@@ -14,12 +14,12 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 		this.descriptor = descriptor;
 	}
 
-	protected async execute(request: TranslationRequest, signal?: AbortSignal): Promise<TranslationResponse | SupplyError> {
-		signal?.throwIfAborted();
+	protected async execute(request: TranslationRequest, signal: AbortSignal): Promise<TranslationResponse | SupplyError> {
+		signal.throwIfAborted();
+
 		const from = !request.from || request.from === '' ? 'auto' : request.from.toLowerCase();
 		const to = request.to.toLowerCase();
-		let message = `${this.descriptor.symbol} Translating ${request.segments.length} segment(s) from '${from}' to '${to}'...`;
-		this.tracer.debug(message, request.asLogMetadata());
+		this.tracer.debug(`Translating ${request.segments.length} segment(s) from '${from}' to '${to}'...`, request.asLogMetadata());
 		// check if translation is needed
 		if (request.segments.length === 0) return this.nothingToTranslate(request);
 		if (from === to) return this.sameLanguage(request, from);
@@ -30,8 +30,7 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 		if (toNeedCheck && !this.descriptor.knownLanguages.to.has(to)) return this.unknownLanguage(request, 'to');
 		// Proceed with translation
 		const result = await this.translate(request, signal);
-		message = `${this.descriptor.symbol} ${request.segments.length} segments have been translated from ${from} to ${to}.`;
-		this.tracer.info(message, result.asLogMetadata());
+		this.tracer.info(`Translated ${request.segments.length} segments from ${from} to ${to}.`, result.asLogMetadata());
 		return result;
 	}
 
@@ -65,13 +64,13 @@ export abstract class TranslationSupplierBase extends SupplierBase<TranslationRe
 	protected onError(request: TranslationRequest, error: Error): SupplyError {
 		if (error instanceof NodeApiError) {
 			const code = Number.parseInt(error.httpCode ?? '0');
-			const reason = `${this.descriptor.symbol} Failed to supply because of an API error: ${error.httpCode} - ${error.message || 'Unknown API error'}`;
+			const reason = `🔌 Provider API error. Details: ${error.httpCode} - ${error.message || 'Unknown API error'}`;
 			const result = new SupplyError(request, code, reason, code >= 500 || code === 429);
 			this.tracer.info(reason, { result: result.asLogMetadata(), error });
 			return result;
 		}
 		if (error instanceof NodeOperationError) {
-			const reason = `${this.descriptor.symbol} Encountered an operational error: ${error.message || 'Unknown node error'}. Please check your node configuration.`;
+			const reason = `🔌 Provider operation error. Please check your node configuration. Details: ${error.message || 'Unknown node error'}.`;
 			const result = new SupplyError(request, 404, reason, false);
 			this.tracer.warn(reason, { result: result.asLogMetadata(), error });
 			return result;

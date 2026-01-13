@@ -6,10 +6,10 @@ import type { TranslationRequest } from 'supply/translation-request';
 import type { ITranslation } from 'types/*';
 
 export class TranslationResponse extends SupplyResponseBase {
-	readonly from?: string;
-	readonly to: string;
 	readonly segments: ISegment[];
 	readonly translations: ITranslation[];
+	readonly to: string;
+	readonly from?: string;
 
 	constructor(request: TranslationRequest, translations: ITranslation[]) {
 		super(request);
@@ -17,10 +17,13 @@ export class TranslationResponse extends SupplyResponseBase {
 		this.to = request.to;
 		this.segments = request.segments;
 		this.translations = translations;
+
+		Object.freeze(this);
 	}
 
 	throwIfInvalid(): void {
-		if (this.translations.length !== this.segments.length) throw new Error('Number of translations does not match number of segments');
+		if (this.translations.length !== this.segments.length) throw new Error(`"translations" must contain ${this.segments.length} items`);
+		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -28,16 +31,17 @@ export class TranslationResponse extends SupplyResponseBase {
 			...super.asLogMetadata(),
 			from: this.from,
 			to: this.to,
+			segmentsCount: this.segments.length,
 			translationCount: this.translations.length,
 		};
 	}
 
 	asDataObject(): IDataObject {
 		return {
-			...super.asDataObject(),
 			from: this.from,
 			to: this.to,
-			translation: this.translations,
+			segments: this.segments,
+			translations: this.translations,
 		};
 	}
 }

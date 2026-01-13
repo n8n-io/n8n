@@ -64,12 +64,13 @@ export class SplitContext implements IContext {
 	 * @throws Error if batchSize not in [1, 500] or segmentSize not in [200, 5000]
 	 */
 	throwIfInvalid(): void {
-		if (this.batchSize < SPLIT.BOUNDARIES.BATCH_SIZE.min) throw new Error(`batchSize must be at least ${SPLIT.BOUNDARIES.BATCH_SIZE.min}`);
-		if (this.batchSize > SPLIT.BOUNDARIES.BATCH_SIZE.max) throw new Error(`batchSize must be at most ${SPLIT.BOUNDARIES.BATCH_SIZE.max}`);
+		if (this.batchSize < SPLIT.BOUNDARIES.BATCH_SIZE.min)
+			throw new Error(`"batchSize" must be at least ${SPLIT.BOUNDARIES.BATCH_SIZE.min}`);
+		if (this.batchSize > SPLIT.BOUNDARIES.BATCH_SIZE.max) throw new Error(`"batchSize" must be at most ${SPLIT.BOUNDARIES.BATCH_SIZE.max}`);
 		if (this.segmentSize < SPLIT.BOUNDARIES.SEGMENT_SIZE.min)
-			throw new Error(`segmentSize must be at least ${SPLIT.BOUNDARIES.SEGMENT_SIZE.min}`);
+			throw new Error(`"segmentSize" must be at least ${SPLIT.BOUNDARIES.SEGMENT_SIZE.min}`);
 		if (this.segmentSize > SPLIT.BOUNDARIES.SEGMENT_SIZE.max)
-			throw new Error(`segmentSize must be at most ${SPLIT.BOUNDARIES.SEGMENT_SIZE.max}`);
+			throw new Error(`"segmentSize" must be at most ${SPLIT.BOUNDARIES.SEGMENT_SIZE.max}`);
 	}
 
 	/**

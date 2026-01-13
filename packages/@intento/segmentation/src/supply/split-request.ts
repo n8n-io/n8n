@@ -1,40 +1,40 @@
-import type { Text } from 'intento-core';
+import type { AgentRequestBase } from 'intento-core';
 import { SupplyRequestBase } from 'intento-core';
 import type { LogMetadata, IDataObject } from 'n8n-workflow';
 
 /**
- * Request to split text into segments with maximum character limit.
+ * Request for splitting text into segments with specified limit per item.
  *
- * Used in translation workflows to divide long text into manageable segments
- * that respect the segmentLimit constraint for downstream processing.
+ * Used by segmentation suppliers to split large texts before translation.
+ * Each text item processed independently to preserve context boundaries.
  */
 export class SplitRequest extends SupplyRequestBase {
-	readonly text: Text;
+	readonly text: string[];
 	readonly segmentLimit: number;
 	readonly from?: string;
 
-	constructor(text: Text, segmentLimit: number, from?: string) {
-		super();
+	/**
+	 * Creates immutable split request with text items and segment limit.
+	 *
+	 * @param request - Parent agent request for correlation tracking
+	 * @param text - Text items to split (must contain at least one item)
+	 * @param segmentLimit - Maximum segments per text item (must be positive)
+	 * @param from - Optional source language code for context-aware splitting
+	 */
+	constructor(request: AgentRequestBase, text: string[], segmentLimit: number, from?: string) {
+		super(request);
 
 		this.text = text;
 		this.segmentLimit = segmentLimit;
 		this.from = from;
 
-		this.throwIfInvalid();
-
 		Object.freeze(this);
 	}
 
-	/**
-	 * Validates that segmentLimit is a positive integer.
-	 *
-	 * Ensures segments can be meaningfully created and prevents infinite loops
-	 * or invalid processing in downstream split operations.
-	 *
-	 * @throws Error if segmentLimit is not a positive integer
-	 */
 	throwIfInvalid(): void {
-		if (!Number.isInteger(this.segmentLimit) || this.segmentLimit <= 0) throw new Error('Segment limit must be more than zero.');
+		if (this.text.length === 0) throw new Error('"text" must contain at least one item.');
+		if (this.segmentLimit <= 0) throw new Error('"segmentLimit" must be a positive number.');
+		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -48,7 +48,6 @@ export class SplitRequest extends SupplyRequestBase {
 
 	asDataObject(): IDataObject {
 		return {
-			...super.asDataObject(),
 			text: this.text,
 			segmentLimit: this.segmentLimit,
 			from: this.from,

@@ -170,7 +170,7 @@ describe('split-context', () => {
 					const context = new SplitContext(0, 1000);
 
 					// ACT & ASSERT
-					expect(() => context.throwIfInvalid()).toThrow('batchSize must be at least 1');
+					expect(() => context.throwIfInvalid()).toThrow('"batchSize" must be at least 1');
 				});
 
 				it('[EH-06] should throw with descriptive message for batchSize max', () => {
@@ -178,7 +178,7 @@ describe('split-context', () => {
 					const context = new SplitContext(501, 1000);
 
 					// ACT & ASSERT
-					expect(() => context.throwIfInvalid()).toThrow('batchSize must be at most 500');
+					expect(() => context.throwIfInvalid()).toThrow('"batchSize" must be at most 500');
 				});
 
 				it('[EH-07] should throw with descriptive message for segmentSize min', () => {
@@ -186,7 +186,7 @@ describe('split-context', () => {
 					const context = new SplitContext(50, 199);
 
 					// ACT & ASSERT
-					expect(() => context.throwIfInvalid()).toThrow('segmentSize must be at least 200');
+					expect(() => context.throwIfInvalid()).toThrow('"segmentSize" must be at least 200');
 				});
 
 				it('[EH-08] should throw with descriptive message for segmentSize max', () => {
@@ -194,7 +194,7 @@ describe('split-context', () => {
 					const context = new SplitContext(50, 5001);
 
 					// ACT & ASSERT
-					expect(() => context.throwIfInvalid()).toThrow('segmentSize must be at most 5000');
+					expect(() => context.throwIfInvalid()).toThrow('"segmentSize" must be at most 5000');
 				});
 			});
 		});

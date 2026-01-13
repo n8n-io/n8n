@@ -1,23 +1,35 @@
+import type { AgentRequestBase } from 'intento-core';
 import { SupplyRequestBase } from 'intento-core';
-import type { LogMetadata, IDataObject } from 'n8n-workflow';
+import type { IDataObject, LogMetadata } from 'n8n-workflow';
 
 import type { ISegment } from 'types/*';
 
 /**
- * Request to merge segments back into complete text items.
+ * Request for merging text segments back into complete text items.
  *
- * Used in translation workflows to reconstruct full text from translated segments,
- * reversing the split operation by combining segments based on their textPosition.
+ * Used by segmentation suppliers to reassemble split segments after translation.
+ * Segments must maintain textPosition ordering for correct reassembly.
  */
 export class MergeRequest extends SupplyRequestBase {
 	readonly segments: ISegment[];
 
-	constructor(segments: ISegment[]) {
-		super();
+	/**
+	 * Creates immutable merge request with segments to reassemble.
+	 *
+	 * @param request - Parent agent request for correlation tracking
+	 * @param segments - Segments to merge (must contain at least one item)
+	 */
+	constructor(request: AgentRequestBase, segments: ISegment[]) {
+		super(request);
 
 		this.segments = segments;
 
 		Object.freeze(this);
+	}
+
+	throwIfInvalid(): void {
+		if (this.segments.length === 0) throw new Error('"segments" must contain at least one item.');
+		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -28,7 +40,6 @@ export class MergeRequest extends SupplyRequestBase {
 	}
 	asDataObject(): IDataObject {
 		return {
-			...super.asDataObject(),
 			segments: this.segments,
 		};
 	}

@@ -1,249 +1,389 @@
-import type { Text } from 'intento-core';
+import { AgentRequestBase } from 'intento-core';
+import type { IDataObject } from 'n8n-workflow';
 
 import { SplitRequest } from '../split-request';
 
 /**
  * Tests for SplitRequest
  * @author Claude Sonnet 4.5
- * @date 2026-01-11
+ * @date 2026-01-13
  */
 
+// Test implementations
+class MockAgentRequest extends AgentRequestBase {
+	asDataObject(): IDataObject {
+		return {
+			agentRequestId: this.agentRequestId,
+			requestedAt: this.requestedAt,
+		};
+	}
+}
+
 describe('SplitRequest', () => {
-	describe('business logic', () => {
-		it('[BL-01] should create request with single text string', () => {
-			// ARRANGE
-			const text: Text = 'Hello world';
-			const segmentLimit = 100;
+	let mockAgentRequest: MockAgentRequest;
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+	beforeEach(() => {
+		mockAgentRequest = new MockAgentRequest();
+	});
 
-			// ASSERT
-			expect(request.text).toBe(text);
-			expect(request.segmentLimit).toBe(segmentLimit);
-			expect(request.from).toBeUndefined();
+	describe('constructor', () => {
+		describe('business logic', () => {
+			it('[BL-01] should create request with all parameters', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const segmentLimit = 5000;
+				const from = 'en';
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, segmentLimit, from);
+
+				// ASSERT
+				expect(request.text).toEqual(text);
+				expect(request.text).toBe(text);
+				expect(request.segmentLimit).toBe(segmentLimit);
+				expect(request.from).toBe(from);
+			});
+
+			it('[BL-02] should create request without optional from parameter', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const segmentLimit = 5000;
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, segmentLimit);
+
+				// ASSERT
+				expect(request.text).toEqual(text);
+				expect(request.segmentLimit).toBe(segmentLimit);
+				expect(request.from).toBeUndefined();
+			});
+
+			it('[BL-03] should inherit agentRequestId from parent request', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
+
+				// ASSERT
+				expect(request.agentRequestId).toBe(mockAgentRequest.agentRequestId);
+			});
+
+			it('[BL-04] should generate unique supplyRequestId', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+
+				// ACT
+				const request1 = new SplitRequest(mockAgentRequest, text, 5000);
+				const request2 = new SplitRequest(mockAgentRequest, text, 5000);
+
+				// ASSERT
+				expect(request1.supplyRequestId).toBeDefined();
+				expect(request2.supplyRequestId).toBeDefined();
+				expect(request1.supplyRequestId).not.toBe(request2.supplyRequestId);
+			});
+
+			it('[BL-05] should capture requestedAt timestamp', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const beforeTime = Date.now();
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
+
+				// ASSERT
+				const afterTime = Date.now();
+				expect(request.requestedAt).toBeGreaterThanOrEqual(beforeTime);
+				expect(request.requestedAt).toBeLessThanOrEqual(afterTime);
+			});
+
+			it('[BL-06] should set readonly properties correctly', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const segmentLimit = 5000;
+				const from = 'en';
+				const request = new SplitRequest(mockAgentRequest, text, segmentLimit, from);
+
+				// ACT & ASSERT
+				expect(() => {
+					// @ts-expect-error Testing readonly property
+					request.text = [];
+				}).toThrow();
+				expect(() => {
+					// @ts-expect-error Testing readonly property
+					request.segmentLimit = 1000;
+				}).toThrow();
+				expect(() => {
+					// @ts-expect-error Testing readonly property
+					request.from = 'ru';
+				}).toThrow();
+			});
+
+			it('[BL-07] should freeze object after construction', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
+
+				// ASSERT
+				expect(Object.isFrozen(request)).toBe(true);
+			});
 		});
 
-		it('[BL-02] should create request with text array', () => {
-			// ARRANGE
-			const text: Text = ['First text', 'Second text'];
-			const segmentLimit = 100;
+		describe('edge cases', () => {
+			it('[EC-01] should handle single text item', () => {
+				// ARRANGE
+				const text = ['Single item'];
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ASSERT
-			expect(request.text).toBe(text);
-			expect(request.segmentLimit).toBe(segmentLimit);
-			expect(request.from).toBeUndefined();
-		});
+				// ASSERT
+				expect(request.text).toHaveLength(1);
+				expect(request.text[0]).toBe('Single item');
+			});
 
-		it('[BL-03] should create request with all parameters including from', () => {
-			// ARRANGE
-			const text: Text = 'Test text';
-			const segmentLimit = 100;
-			const from = 'en';
+			it('[EC-02] should handle multiple text items', () => {
+				// ARRANGE
+				const text = ['Text 1', 'Text 2', 'Text 3'];
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit, from);
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ASSERT
-			expect(request.text).toBe(text);
-			expect(request.segmentLimit).toBe(segmentLimit);
-			expect(request.from).toBe(from);
-		});
+				// ASSERT
+				expect(request.text).toHaveLength(3);
+				expect(request.text).toEqual(text);
+			});
 
-		it('[BL-04] should create request without from parameter', () => {
-			// ARRANGE
-			const text: Text = 'Test text';
-			const segmentLimit = 100;
+			it('[EC-03] should handle segmentLimit = 1', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, 1);
 
-			// ASSERT
-			expect(request.from).toBeUndefined();
-		});
+				// ASSERT
+				expect(request.segmentLimit).toBe(1);
+			});
 
-		it('[BL-05] should freeze request object after construction', () => {
-			// ARRANGE
-			const text: Text = 'Test text';
-			const segmentLimit = 100;
+			it('[EC-04] should handle large segmentLimit', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const largeLimit = 10000;
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, text, largeLimit);
 
-			// ASSERT
-			expect(Object.isFrozen(request)).toBe(true);
-		});
+				// ASSERT
+				expect(request.segmentLimit).toBe(largeLimit);
+			});
 
-		it('[BL-06] should inherit from SupplyRequestBase', () => {
-			// ARRANGE
-			const text: Text = 'Test text';
-			const segmentLimit = 100;
+			it('[EC-05] should handle from parameter with language code', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const languageCodes = ['en', 'ru', 'de', 'fr', 'es'];
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT & ASSERT
+				for (const code of languageCodes) {
+					const request = new SplitRequest(mockAgentRequest, text, 5000, code);
+					expect(request.from).toBe(code);
+				}
+			});
 
-			// ASSERT
-			expect(request.requestId).toBeDefined();
-			expect(typeof request.requestId).toBe('string');
-			expect(request.requestedAt).toBeDefined();
-			expect(typeof request.requestedAt).toBe('number');
-		});
+			it('[EC-06] should handle undefined from parameter explicitly', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
 
-		it('[BL-07] should include text count in log metadata', () => {
-			// ARRANGE
-			const text: Text = ['First', 'Second', 'Third'];
-			const segmentLimit = 100;
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT
+				const request1 = new SplitRequest(mockAgentRequest, text, 5000, undefined);
+				const request2 = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ACT
-			const metadata = request.asLogMetadata();
-
-			// ASSERT
-			expect(metadata.textCount).toBe(3);
-			expect(metadata.segmentLimit).toBe(100);
-			expect(metadata.requestId).toBe(request.requestId);
-			expect(metadata.requestedAt).toBe(request.requestedAt);
-		});
-
-		it('[BL-08] should include all fields in data object', () => {
-			// ARRANGE
-			const text: Text = 'Test text';
-			const segmentLimit = 100;
-			const from = 'en';
-			const request = new SplitRequest(text, segmentLimit, from);
-
-			// ACT
-			const dataObject = request.asDataObject();
-
-			// ASSERT
-			expect(dataObject.text).toBe(text);
-			expect(dataObject.segmentLimit).toBe(segmentLimit);
-			expect(dataObject.from).toBe(from);
-			expect(dataObject.requestId).toBe(request.requestId);
-			expect(dataObject.requestedAt).toBe(request.requestedAt);
+				// ASSERT
+				expect(request1.from).toBeUndefined();
+				expect(request2.from).toBeUndefined();
+			});
 		});
 	});
 
-	describe('edge cases', () => {
-		it('[EC-01] should handle segmentLimit of 1', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 1;
+	describe('throwIfInvalid', () => {
+		describe('error handling', () => {
+			it('[EH-01] should throw if text array is empty', () => {
+				// ARRANGE
+				const emptyText: string[] = [];
+				const request = new SplitRequest(mockAgentRequest, emptyText, 5000);
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT & ASSERT
+				expect(() => request.throwIfInvalid()).toThrow('"text" must contain at least one item.');
+			});
 
-			// ASSERT
-			expect(request.segmentLimit).toBe(1);
-		});
+			it('[EH-02] should throw with correct message for empty text', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, [], 5000);
 
-		it('[EC-02] should handle large segmentLimit', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 10000;
+				// ACT & ASSERT
+				expect(() => request.throwIfInvalid()).toThrow(Error);
+				expect(() => request.throwIfInvalid()).toThrow(/text/);
+				expect(() => request.throwIfInvalid()).toThrow(/at least one item/);
+			});
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+			it('[EH-03] should throw if segmentLimit is zero', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const request = new SplitRequest(mockAgentRequest, text, 0);
 
-			// ASSERT
-			expect(request.segmentLimit).toBe(10000);
-		});
+				// ACT & ASSERT
+				expect(() => request.throwIfInvalid()).toThrow('"segmentLimit" must be a positive number.');
+			});
 
-		it('[EC-03] should handle empty text array', () => {
-			// ARRANGE
-			const text: Text = [];
-			const segmentLimit = 100;
+			it('[EH-04] should throw if segmentLimit is negative', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const request = new SplitRequest(mockAgentRequest, text, -1);
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+				// ACT & ASSERT
+				expect(() => request.throwIfInvalid()).toThrow('"segmentLimit" must be a positive number.');
+			});
 
-			// ASSERT
-			expect(request.text).toEqual([]);
-			expect(request.asLogMetadata().textCount).toBe(0);
-		});
+			it('[EH-05] should throw with correct message for invalid segmentLimit', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const request = new SplitRequest(mockAgentRequest, text, -5);
 
-		it('[EC-04] should handle single character text string', () => {
-			// ARRANGE
-			const text: Text = 'a';
-			const segmentLimit = 100;
+				// ACT & ASSERT
+				expect(() => request.throwIfInvalid()).toThrow(Error);
+				expect(() => request.throwIfInvalid()).toThrow(/segmentLimit/);
+				expect(() => request.throwIfInvalid()).toThrow(/positive number/);
+			});
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit);
+			it('[EH-06] should call super.throwIfInvalid for parent validation', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ASSERT
-			expect(request.text).toBe('a');
-			expect(request.asLogMetadata().textCount).toBe(1);
-		});
+				// Spy on parent's throwIfInvalid to verify it's called
+				const parentThrowIfInvalid = jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(request)), 'throwIfInvalid');
 
-		it('[EC-05] should preserve from parameter value', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 100;
-			const from = 'es';
+				// ACT
+				request.throwIfInvalid();
 
-			// ACT
-			const request = new SplitRequest(text, segmentLimit, from);
+				// ASSERT
+				expect(parentThrowIfInvalid).toHaveBeenCalled();
 
-			// ASSERT
-			expect(request.from).toBe('es');
-			expect(request.asLogMetadata().from).toBe('es');
-			expect(request.asDataObject().from).toBe('es');
+				// Cleanup
+				parentThrowIfInvalid.mockRestore();
+			});
+
+			it('[EH-07] should allow construction without validation', () => {
+				// ARRANGE
+				const emptyText: string[] = [];
+
+				// ACT
+				const request = new SplitRequest(mockAgentRequest, emptyText, -1);
+
+				// ASSERT - should not throw during construction
+				expect(request).toBeDefined();
+				expect(request.text).toEqual(emptyText);
+				expect(request.segmentLimit).toBe(-1);
+			});
 		});
 	});
 
-	describe('error handling', () => {
-		it('[EH-01] should throw if segmentLimit is zero', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 0;
+	describe('asLogMetadata', () => {
+		describe('metadata & data', () => {
+			it('[MD-01] should return log metadata with textCount', () => {
+				// ARRANGE
+				const text = ['Text 1', 'Text 2', 'Text 3'];
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ACT & ASSERT
-			expect(() => new SplitRequest(text, segmentLimit)).toThrow('Segment limit must be more than zero.');
+				// ACT
+				const metadata = request.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.textCount).toBe(3);
+			});
+
+			it('[MD-02] should return log metadata with segmentLimit', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const segmentLimit = 5000;
+				const request = new SplitRequest(mockAgentRequest, text, segmentLimit);
+
+				// ACT
+				const metadata = request.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.segmentLimit).toBe(segmentLimit);
+			});
+
+			it('[MD-03] should return log metadata with from when provided', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const from = 'en';
+				const request = new SplitRequest(mockAgentRequest, text, 5000, from);
+
+				// ACT
+				const metadata = request.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.from).toBe(from);
+			});
+
+			it('[MD-04] should include parent metadata in log output', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
+
+				// ACT
+				const metadata = request.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.agentRequestId).toBe(mockAgentRequest.agentRequestId);
+				expect(metadata.supplyRequestId).toBe(request.supplyRequestId);
+				expect(metadata.requestedAt).toBe(request.requestedAt);
+			});
 		});
+	});
 
-		it('[EH-02] should throw if segmentLimit is negative', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = -5;
+	describe('asDataObject', () => {
+		describe('metadata & data', () => {
+			it('[MD-05] should return data object with text array', () => {
+				// ARRANGE
+				const text = ['Text 1', 'Text 2'];
+				const request = new SplitRequest(mockAgentRequest, text, 5000);
 
-			// ACT & ASSERT
-			expect(() => new SplitRequest(text, segmentLimit)).toThrow('Segment limit must be more than zero.');
-		});
+				// ACT
+				const data = request.asDataObject();
 
-		it('[EH-03] should throw if segmentLimit is decimal', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 1.5;
+				// ASSERT
+				expect(data.text).toEqual(text);
+			});
 
-			// ACT & ASSERT
-			expect(() => new SplitRequest(text, segmentLimit)).toThrow('Segment limit must be more than zero.');
-		});
+			it('[MD-06] should return data object with segmentLimit', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const segmentLimit = 5000;
+				const request = new SplitRequest(mockAgentRequest, text, segmentLimit);
 
-		it('[EH-04] should include descriptive error message', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 0;
+				// ACT
+				const data = request.asDataObject();
 
-			// ACT & ASSERT
-			expect(() => new SplitRequest(text, segmentLimit)).toThrow(/must be more than zero/);
-		});
+				// ASSERT
+				expect(data.segmentLimit).toBe(segmentLimit);
+			});
 
-		it('[EH-05] should throw before freezing object', () => {
-			// ARRANGE
-			const text: Text = 'Test';
-			const segmentLimit = 0;
-			let request: SplitRequest | undefined;
+			it('[MD-07] should return data object with from when provided', () => {
+				// ARRANGE
+				const text = ['Hello world.'];
+				const from = 'en';
+				const request = new SplitRequest(mockAgentRequest, text, 5000, from);
 
-			// ACT & ASSERT
-			expect(() => {
-				request = new SplitRequest(text, segmentLimit);
-			}).toThrow();
+				// ACT
+				const data = request.asDataObject();
 
-			// Verify object was never created/frozen
-			expect(request).toBeUndefined();
+				// ASSERT
+				expect(data.from).toBe(from);
+			});
 		});
 	});
 });

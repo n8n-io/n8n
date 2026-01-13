@@ -120,36 +120,36 @@ export class ExecutionContext implements IContext {
 	}
 
 	private validateRequired(): void {
-		if (this.maxAttempts === null || this.maxAttempts === undefined) throw new Error('maxAttempts is required for ExecutionContext');
-		if (this.maxDelayMs === null || this.maxDelayMs === undefined) throw new Error('maxDelayMs is required for ExecutionContext');
-		if (this.maxJitter === null || this.maxJitter === undefined) throw new Error('maxJitter is required for ExecutionContext');
-		if (this.timeoutMs === null || this.timeoutMs === undefined) throw new Error('timeoutMs is required for ExecutionContext');
+		if (this.maxAttempts === null || this.maxAttempts === undefined) throw new Error('"maxAttempts" is required');
+		if (this.maxDelayMs === null || this.maxDelayMs === undefined) throw new Error('"maxDelayMs" is required');
+		if (this.maxJitter === null || this.maxJitter === undefined) throw new Error('"maxJitter" is required');
+		if (this.timeoutMs === null || this.timeoutMs === undefined) throw new Error('"timeoutMs" is required');
 	}
 
 	private validateBoundaries(): void {
 		if (this.maxAttempts < EXECUTION.BOUNDARIES.MAX_ATTEMPTS.min)
-			throw new RangeError(`maxAttempts must be at least ${EXECUTION.BOUNDARIES.MAX_ATTEMPTS.min}, but got ${this.maxAttempts}`);
+			throw new RangeError(`"maxAttempts" must be at least ${EXECUTION.BOUNDARIES.MAX_ATTEMPTS.min}, but got ${this.maxAttempts}`);
 
 		if (this.maxAttempts > EXECUTION.BOUNDARIES.MAX_ATTEMPTS.max)
-			throw new RangeError(`maxAttempts must be at most ${EXECUTION.BOUNDARIES.MAX_ATTEMPTS.max}, but got ${this.maxAttempts}`);
+			throw new RangeError(`"maxAttempts" must be at most ${EXECUTION.BOUNDARIES.MAX_ATTEMPTS.max}, but got ${this.maxAttempts}`);
 
 		if (this.maxDelayMs < EXECUTION.BOUNDARIES.MAX_DELAY_MS.min)
-			throw new RangeError(`maxDelayMs must be at least ${EXECUTION.BOUNDARIES.MAX_DELAY_MS.min}, but got ${this.maxDelayMs}`);
+			throw new RangeError(`"maxDelayMs" must be at least ${EXECUTION.BOUNDARIES.MAX_DELAY_MS.min}, but got ${this.maxDelayMs}`);
 
 		if (this.maxDelayMs > EXECUTION.BOUNDARIES.MAX_DELAY_MS.max)
-			throw new RangeError(`maxDelayMs must be at most ${EXECUTION.BOUNDARIES.MAX_DELAY_MS.max}, but got ${this.maxDelayMs}`);
+			throw new RangeError(`"maxDelayMs" must be at most ${EXECUTION.BOUNDARIES.MAX_DELAY_MS.max}, but got ${this.maxDelayMs}`);
 
 		if (this.maxJitter < EXECUTION.BOUNDARIES.MAX_JITTER.min)
-			throw new RangeError(`maxJitter must be at least ${EXECUTION.BOUNDARIES.MAX_JITTER.min}, but got ${this.maxJitter}`);
+			throw new RangeError(`"maxJitter" must be at least ${EXECUTION.BOUNDARIES.MAX_JITTER.min}, but got ${this.maxJitter}`);
 
 		if (this.maxJitter > EXECUTION.BOUNDARIES.MAX_JITTER.max)
-			throw new RangeError(`maxJitter must be at most ${EXECUTION.BOUNDARIES.MAX_JITTER.max}, but got ${this.maxJitter}`);
+			throw new RangeError(`"maxJitter" must be at most ${EXECUTION.BOUNDARIES.MAX_JITTER.max}, but got ${this.maxJitter}`);
 
 		if (this.timeoutMs < EXECUTION.BOUNDARIES.TIMEOUT_MS.min)
-			throw new RangeError(`timeoutMs must be at least ${EXECUTION.BOUNDARIES.TIMEOUT_MS.min}, but got ${this.timeoutMs}`);
+			throw new RangeError(`"timeoutMs" must be at least ${EXECUTION.BOUNDARIES.TIMEOUT_MS.min}, but got ${this.timeoutMs}`);
 
 		if (this.timeoutMs > EXECUTION.BOUNDARIES.TIMEOUT_MS.max)
-			throw new RangeError(`timeoutMs must be at most ${EXECUTION.BOUNDARIES.TIMEOUT_MS.max}, but got ${this.timeoutMs}`);
+			throw new RangeError(`"timeoutMs" must be at most ${EXECUTION.BOUNDARIES.TIMEOUT_MS.max}, but got ${this.timeoutMs}`);
 	}
 
 	asLogMetadata(): Record<string, unknown> {

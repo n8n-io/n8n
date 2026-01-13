@@ -39,13 +39,15 @@
     "n8n-workflow": "workspace:*",
     "intento-core": "workspace:*",
     "intento-segmentation": "workspace:*",
-    "intento-translation": "workspace:*"
+    "intento-translation": "workspace:*",
+    "intento-agents": "workspace:*"
   },
   "dependencies": {
     "n8n-workflow": "workspace:*",
     "n8n-core": "workspace:*",
     "intento-core": "workspace:*",
     "intento-segmentation": "workspace:*",
-    "intento-translation": "workspace:*"
+    "intento-translation": "workspace:*",
+    "intento-agents": "workspace:*"
   }
 }

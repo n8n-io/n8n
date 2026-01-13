@@ -1,4 +1,5 @@
 import type { INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SupplyError } from '../supply-error';
 import type { SupplyRequestBase } from '../supply-request-base';
@@ -6,296 +7,440 @@ import type { SupplyRequestBase } from '../supply-request-base';
 /**
  * Tests for SupplyError
  * @author Claude Sonnet 4.5
- * @date 2026-01-11
+ * @date 2026-01-13
  */
+
 describe('SupplyError', () => {
-	let mockRequest: SupplyRequestBase;
-	let mockNode: INode;
-	let dateNowSpy: jest.SpyInstance;
+	let mockDateNow: jest.SpyInstance;
 
 	beforeEach(() => {
-		dateNowSpy = jest.spyOn(Date, 'now');
-
-		mockRequest = {
-			requestId: 'test-request-id-123',
-			requestedAt: 1000000000000,
-		} as SupplyRequestBase;
-
-		mockNode = {
-			id: 'node-123',
-			name: 'Test Node',
-			type: 'n8n-nodes-base.testNode',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		} as INode;
+		mockDateNow = jest.spyOn(Date, 'now');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
-		dateNowSpy.mockRestore();
+		mockDateNow.mockRestore();
 	});
 
 	describe('business logic', () => {
-		it('[BL-01] should create error with request ID from request', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001500);
+		it('[BL-01] should copy agentRequestId from request', () => {
+			const agentRequestId = '00000000-0000-0000-0000-000000000001';
+			const mockRequest = {
+				agentRequestId,
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 500, 'Internal Server Error', false);
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
-			expect(error.requestId).toBe('test-request-id-123');
+			expect(error.agentRequestId).toBe(agentRequestId);
 		});
 
-		it('[BL-02] should calculate latency from request to error', () => {
-			// ARRANGE - Request at 1000000000000, error at 1000000001500 (1500ms later)
-			dateNowSpy.mockReturnValue(1000000001500);
+		it('[BL-02] should copy supplyRequestId from request', () => {
+			const supplyRequestId = '00000000-0000-0000-0000-000000000002';
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 500, 'Internal Server Error', false);
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
+			expect(error.supplyRequestId).toBe(supplyRequestId);
+		});
+
+		it('[BL-03] should calculate latencyMs from request timestamp', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
 			expect(error.latencyMs).toBe(1500);
 		});
 
-		it('[BL-03] should store error code and reason', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[BL-04] should set code from constructor parameter', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 404, 'Resource not found', false);
+			const error = new SupplyError(mockRequest, 408, 'Test error', false);
 
-			// ASSERT
-			expect(error.code).toBe(404);
-			expect(error.reason).toBe('Resource not found');
+			expect(error.code).toBe(408);
 		});
 
-		it('[BL-04] should store retriable flag', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[BL-05] should set reason from constructor parameter', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const retriableError = new SupplyError(mockRequest, 503, 'Service Unavailable', true);
-			const nonRetriableError = new SupplyError(mockRequest, 400, 'Bad Request', false);
+			const error = new SupplyError(mockRequest, 500, 'Custom error message', false);
 
-			// ASSERT
-			expect(retriableError.isRetriable).toBe(true);
-			expect(nonRetriableError.isRetriable).toBe(false);
+			expect(error.reason).toBe('Custom error message');
 		});
 
-		it('[BL-05] should return log metadata with all error details', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000002000);
+		it('[BL-06] should set isRetriable from constructor parameter', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 429, 'Rate limit exceeded', true);
-			const metadata = error.asLogMetadata();
+			const errorRetriable = new SupplyError(mockRequest, 500, 'Test error', true);
+			const errorNonRetriable = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
-			expect(metadata).toEqual({
-				requestId: 'test-request-id-123',
-				code: 429,
-				reason: 'Rate limit exceeded',
+			expect(errorRetriable.isRetriable).toBe(true);
+			expect(errorNonRetriable.isRetriable).toBe(false);
+		});
+
+		it('[BL-07] should return complete log metadata', () => {
+			const agentRequestId = '00000000-0000-0000-0000-000000000001';
+			const supplyRequestId = '00000000-0000-0000-0000-000000000002';
+			const mockRequest = {
+				agentRequestId,
+				supplyRequestId,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 408, 'Timeout error', true);
+
+			expect(error.asLogMetadata()).toEqual({
+				agentRequestId,
+				supplyRequestId,
+				code: 408,
+				reason: 'Timeout error',
 				isRetriable: true,
-				latencyMs: 2000,
+				latencyMs: 1500,
 			});
 		});
 
-		it('[BL-06] should return data object without requestId', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000003500);
+		it('[BL-08] should return minimal data object', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 500, 'Internal Error', false);
-			const dataObject = error.asDataObject();
+			const error = new SupplyError(mockRequest, 499, 'Abort error', false);
 
-			// ASSERT
-			expect(dataObject).toEqual({
-				code: 500,
-				reason: 'Internal Error',
-				latencyMs: 3500,
+			expect(error.asDataObject()).toEqual({
+				code: 499,
+				reason: 'Abort error',
+				latencyMs: 1500,
 			});
-			expect(dataObject).not.toHaveProperty('requestId');
-			expect(dataObject).not.toHaveProperty('isRetriable');
 		});
 
-		it('[BL-07] should convert to NodeOperationError with reason', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
-			const error = new SupplyError(mockRequest, 500, 'Database connection failed', false);
+		it('[BL-09] should convert to NodeOperationError', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			const mockNode = { name: 'TestNode', type: 'test' } as INode;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
+			const error = new SupplyError(mockRequest, 500, 'Operation failed', false);
 			const nodeError = error.asError(mockNode);
 
-			// ASSERT
-			expect(nodeError).toBeDefined();
-			expect(nodeError.message).toContain('Database connection failed');
-			expect(nodeError.node).toBe(mockNode);
+			expect(nodeError).toBeInstanceOf(NodeOperationError);
+			expect(nodeError.message).toContain('Operation failed');
+		});
+
+		it('[BL-10] should pass validation with all valid fields', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Valid error', false);
+
+			expect(() => error.throwIfInvalid()).not.toThrow();
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should handle zero latency when error occurs immediately', () => {
-			// ARRANGE - Same timestamp for request and error
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EC-01] should handle different HTTP status codes', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 400, 'Immediate error', false);
+			const error408 = new SupplyError(mockRequest, 408, 'Timeout', false);
+			const error499 = new SupplyError(mockRequest, 499, 'Abort', false);
+			const error500 = new SupplyError(mockRequest, 500, 'Server error', false);
 
-			// ASSERT
+			expect(error408.code).toBe(408);
+			expect(error499.code).toBe(499);
+			expect(error500.code).toBe(500);
+		});
+
+		it('[EC-02] should calculate different latencies for different timestamps', () => {
+			const mockRequest1 = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			const mockRequest2 = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 500,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error1 = new SupplyError(mockRequest1, 500, 'Error 1', false);
+			const error2 = new SupplyError(mockRequest2, 500, 'Error 2', false);
+
+			expect(error1.latencyMs).toBe(1500);
+			expect(error2.latencyMs).toBe(2000);
+		});
+
+		it('[EC-03] should preserve exact IDs from request', () => {
+			const agentRequestId = '12345678-abcd-ef01-2345-67890abcdef0';
+			const supplyRequestId = '98765432-fedc-ba10-9876-543210fedcba';
+			const mockRequest = {
+				agentRequestId,
+				supplyRequestId,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
+			expect(error.agentRequestId).toBe(agentRequestId);
+			expect(error.supplyRequestId).toBe(supplyRequestId);
+		});
+
+		it('[EC-04] should handle zero latency (same timestamp)', () => {
+			const timestamp = 5000;
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: timestamp,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(timestamp);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
 			expect(error.latencyMs).toBe(0);
 		});
 
-		it('[EC-02] should handle large latency values', () => {
-			// ARRANGE - 48 hours later (172800000 ms)
-			const twoDaysLater = mockRequest.requestedAt + 172800000;
-			dateNowSpy.mockReturnValue(twoDaysLater);
+		it('[EC-05] should handle large latency values', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			const largeTimestamp = 1000 + 3600000; // 1 hour later
+			mockDateNow.mockReturnValue(largeTimestamp);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 504, 'Gateway Timeout', true);
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
-			expect(error.latencyMs).toBe(172800000);
+			expect(error.latencyMs).toBe(3600000);
 		});
 
-		it('[EC-03] should handle HTTP status error codes (4xx, 5xx)', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[EC-06] should handle isRetriable true and false', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error400 = new SupplyError(mockRequest, 400, 'Bad Request', false);
-			const error401 = new SupplyError(mockRequest, 401, 'Unauthorized', false);
-			const error404 = new SupplyError(mockRequest, 404, 'Not Found', false);
-			const error500 = new SupplyError(mockRequest, 500, 'Internal Error', true);
-			const error503 = new SupplyError(mockRequest, 503, 'Service Unavailable', true);
+			const retriableError = new SupplyError(mockRequest, 500, 'Retriable', true);
+			const nonRetriableError = new SupplyError(mockRequest, 500, 'Non-retriable', false);
 
-			// ASSERT
-			expect(error400.code).toBe(400);
-			expect(error401.code).toBe(401);
-			expect(error404.code).toBe(404);
-			expect(error500.code).toBe(500);
-			expect(error503.code).toBe(503);
+			expect(retriableError.isRetriable).toBe(true);
+			expect(nonRetriableError.isRetriable).toBe(false);
 		});
 
-		it('[EC-04] should handle custom error codes', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[EC-07] should handle boundary HTTP codes (100, 599)', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const customError1 = new SupplyError(mockRequest, 1001, 'Custom validation error', false);
-			const customError2 = new SupplyError(mockRequest, 9999, 'Custom system error', true);
+			const error100 = new SupplyError(mockRequest, 100, 'Continue', false);
+			const error599 = new SupplyError(mockRequest, 599, 'Network error', false);
 
-			// ASSERT
-			expect(customError1.code).toBe(1001);
-			expect(customError2.code).toBe(9999);
-		});
-
-		it('[EC-05] should handle very long error reasons', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
-			const longReason = 'A'.repeat(1000);
-
-			// ACT
-			const error = new SupplyError(mockRequest, 500, longReason, false);
-
-			// ASSERT
-			expect(error.reason).toBe(longReason);
-			expect(error.reason.length).toBe(1000);
-		});
-
-		it('[EC-06] should implement ITraceable interface correctly', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
-
-			// ACT
-			const error = new SupplyError(mockRequest, 500, 'Error', false);
-
-			// ASSERT - Verify interface method exists and returns correct type
-			expect(error.asLogMetadata).toBeDefined();
-			expect(typeof error.asLogMetadata).toBe('function');
-
-			const metadata = error.asLogMetadata();
-			expect(metadata).toHaveProperty('requestId');
-			expect(metadata).toHaveProperty('latencyMs');
-		});
-
-		it('[EC-07] should implement IDataProvider interface correctly', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
-
-			// ACT
-			const error = new SupplyError(mockRequest, 500, 'Error', false);
-
-			// ASSERT - Verify interface method exists and returns correct type
-			expect(error.asDataObject).toBeDefined();
-			expect(typeof error.asDataObject).toBe('function');
-
-			const dataObject = error.asDataObject();
-			expect(dataObject).toHaveProperty('code');
-			expect(dataObject).toHaveProperty('reason');
-			expect(dataObject).toHaveProperty('latencyMs');
-		});
-
-		it('[EC-08] should create retriable and non-retriable errors', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
-
-			// ACT - Common retriable errors
-			const rateLimitError = new SupplyError(mockRequest, 429, 'Rate Limit', true);
-			const serviceUnavailable = new SupplyError(mockRequest, 503, 'Service Down', true);
-			const timeout = new SupplyError(mockRequest, 504, 'Timeout', true);
-
-			// ACT - Common non-retriable errors
-			const badRequest = new SupplyError(mockRequest, 400, 'Bad Request', false);
-			const unauthorized = new SupplyError(mockRequest, 401, 'Unauthorized', false);
-			const notFound = new SupplyError(mockRequest, 404, 'Not Found', false);
-
-			// ASSERT
-			expect(rateLimitError.isRetriable).toBe(true);
-			expect(serviceUnavailable.isRetriable).toBe(true);
-			expect(timeout.isRetriable).toBe(true);
-
-			expect(badRequest.isRetriable).toBe(false);
-			expect(unauthorized.isRetriable).toBe(false);
-			expect(notFound.isRetriable).toBe(false);
+			expect(() => error100.throwIfInvalid()).not.toThrow();
+			expect(() => error599.throwIfInvalid()).not.toThrow();
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should handle negative error codes', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[EH-01] should throw Error if agentRequestId is empty', () => {
+			const mockRequest = {
+				agentRequestId: '' as `${string}-${string}-${string}-${string}-${string}`,
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, -1, 'System error', false);
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
-			expect(error.code).toBe(-1);
-			expect(error.reason).toBe('System error');
+			expect(() => error.throwIfInvalid()).toThrow('"agentRequestId" is required');
 		});
 
-		it('[EH-02] should handle zero error code', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[EH-02] should throw Error if agentRequestId is whitespace', () => {
+			const mockRequest = {
+				agentRequestId: '   ' as `${string}-${string}-${string}-${string}-${string}`,
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
-			const error = new SupplyError(mockRequest, 0, 'Unknown error', false);
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
 
-			// ASSERT
-			expect(error.code).toBe(0);
+			expect(() => error.throwIfInvalid()).toThrow('"agentRequestId" is required');
 		});
 
-		it('[EH-03] should handle empty reason string', () => {
-			// ARRANGE
-			dateNowSpy.mockReturnValue(1000000001000);
+		it('[EH-03] should throw Error if supplyRequestId is empty', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '' as `${string}-${string}-${string}-${string}-${string}`,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
 
-			// ACT
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-04] should throw Error if supplyRequestId is whitespace', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '   ' as `${string}-${string}-${string}-${string}-${string}`,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-05] should throw Error if reason is empty', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
 			const error = new SupplyError(mockRequest, 500, '', false);
 
-			// ASSERT
-			expect(error.reason).toBe('');
-			expect(error.code).toBe(500);
+			expect(() => error.throwIfInvalid()).toThrow('"reason" is required');
+		});
+
+		it('[EH-06] should throw Error if reason is whitespace', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, '   ', false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"reason" is required');
+		});
+
+		it('[EH-07] should throw RangeError if code is below 100', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 99, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow(RangeError);
+			expect(() => error.throwIfInvalid()).toThrow('"code" must be a valid HTTP status code (100-599)');
+		});
+
+		it('[EH-08] should throw RangeError if code is above 599', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 600, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow(RangeError);
+			expect(() => error.throwIfInvalid()).toThrow('"code" must be a valid HTTP status code (100-599)');
+		});
+
+		it('[EH-09] should throw Error if agentRequestId is undefined', () => {
+			const mockRequest = {
+				agentRequestId: undefined as unknown as string,
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"agentRequestId" is required');
+		});
+
+		it('[EH-10] should throw Error if supplyRequestId is undefined', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: undefined as unknown as string,
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, 'Test error', false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-11] should throw Error if reason is undefined', () => {
+			const mockRequest = {
+				agentRequestId: '00000000-0000-0000-0000-000000000001',
+				supplyRequestId: '00000000-0000-0000-0000-000000000002',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			const error = new SupplyError(mockRequest, 500, undefined as unknown as string, false);
+
+			expect(() => error.throwIfInvalid()).toThrow('"reason" is required');
+		});
+
+		it('[EH-12] should allow construction without validation', () => {
+			const mockRequest = {
+				agentRequestId: '',
+				supplyRequestId: '',
+				requestedAt: 1000,
+			} as SupplyRequestBase;
+			mockDateNow.mockReturnValue(2500);
+
+			expect(() => new SupplyError(mockRequest, 99, '', false)).not.toThrow();
 		});
 	});
 });

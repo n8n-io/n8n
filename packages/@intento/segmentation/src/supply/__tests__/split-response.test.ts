@@ -1,237 +1,362 @@
-import { mock } from 'jest-mock-extended';
+import { AgentRequestBase } from 'intento-core';
+import type { IDataObject } from 'n8n-workflow';
 
 import type { ISegment } from '../../types/i-segment';
-import type { SplitRequest } from '../split-request';
+import { SplitRequest } from '../split-request';
 import { SplitResponse } from '../split-response';
 
 /**
  * Tests for SplitResponse
  * @author Claude Sonnet 4.5
- * @date 2026-01-11
+ * @date 2026-01-13
  */
 
-type WritableSplitRequest = {
-	-readonly [K in keyof SplitRequest]: SplitRequest[K];
-};
+// Test implementations
+class MockAgentRequest extends AgentRequestBase {
+	asDataObject(): IDataObject {
+		return {
+			agentRequestId: this.agentRequestId,
+			requestedAt: this.requestedAt,
+		};
+	}
+}
 
 describe('SplitResponse', () => {
-	const createSegment = (textPos: number, segmentPos: number, text: string): ISegment => ({
-		textPosition: textPos,
-		segmentPosition: segmentPos,
-		text,
+	let mockAgentRequest: MockAgentRequest;
+	let splitRequest: SplitRequest;
+
+	beforeEach(() => {
+		mockAgentRequest = new MockAgentRequest();
+		splitRequest = new SplitRequest(mockAgentRequest, ['Hello world.'], 5000);
 	});
 
-	const createMockRequest = (text: string | string[]): SplitRequest => {
-		const mockRequest = mock<SplitRequest>() as unknown as WritableSplitRequest;
-		mockRequest.text = text;
-		return mockRequest as unknown as SplitRequest;
-	};
+	describe('constructor', () => {
+		describe('business logic', () => {
+			it('[BL-01] should create response with text from request', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
 
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-	describe('business logic', () => {
-		it('[BL-01] should create response with single text string', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Hello world');
-			const segments = [createSegment(0, 0, 'Hello world')];
+				// ASSERT
+				expect(response.text).toEqual(['Hello world.']);
+				expect(response.text).toBe(splitRequest.text);
+			});
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
+			it('[BL-02] should create response with provided segments', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'How are you?', textPosition: 0, segmentPosition: 1 },
+				];
 
-			// ASSERT
-			expect(response.text).toBe('Hello world');
-			expect(response.segments).toEqual(segments);
-			expect(response.segments.length).toBe(1);
-		});
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-		it('[BL-02] should create response with text array', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['First text', 'Second text']);
-			const segments = [createSegment(0, 0, 'First text'), createSegment(1, 0, 'Second text')];
+				// ASSERT
+				expect(response.segments).toEqual(segments);
+				expect(response.segments).toBe(segments);
+			});
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
+			it('[BL-03] should set readonly properties correctly', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ASSERT
-			expect(response.text).toEqual(['First text', 'Second text']);
-			expect(response.segments).toEqual(segments);
-			expect(response.segments.length).toBe(2);
-		});
+				// ACT & ASSERT
+				expect(() => {
+					// @ts-expect-error Testing readonly property
+					response.text = [];
+				}).toThrow();
+				expect(() => {
+					// @ts-expect-error Testing readonly property
+					response.segments = [];
+				}).toThrow();
+			});
 
-		it('[BL-03] should freeze response object after construction', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Test');
-			const segments = [createSegment(0, 0, 'Test')];
+			it('[BL-04] should freeze response object', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ASSERT
-			expect(Object.isFrozen(response)).toBe(true);
-		});
+				// ASSERT
+				expect(Object.isFrozen(response)).toBe(true);
+			});
 
-		it('[BL-04] should inherit from SupplyResponseBase', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Test');
-			const segments = [createSegment(0, 0, 'Test')];
+			it('[BL-05] should copy agentRequestId from request via super', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ASSERT
-			expect(response.asLogMetadata).toBeDefined();
-			expect(response.asDataObject).toBeDefined();
-			expect(typeof response.asLogMetadata).toBe('function');
-			expect(typeof response.asDataObject).toBe('function');
-		});
+				// ASSERT
+				expect(response.agentRequestId).toBe(mockAgentRequest.agentRequestId);
+			});
 
-		it('[BL-05] should include segments and text count in log metadata', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['Text 1', 'Text 2', 'Text 3']);
-			const segments = [createSegment(0, 0, 'Text 1'), createSegment(1, 0, 'Text 2'), createSegment(2, 0, 'Text 3')];
+			it('[BL-06] should copy supplyRequestId from request via super', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-			const metadata = response.asLogMetadata();
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ASSERT
-			expect(metadata.segmentsCount).toBe(3);
-			expect(metadata.textCount).toBe(3);
-		});
+				// ASSERT
+				expect(response.supplyRequestId).toBe(splitRequest.supplyRequestId);
+			});
 
-		it('[BL-06] should include segments and text in data object', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Hello');
-			const segments = [createSegment(0, 0, 'Hello')];
+			it('[BL-07] should calculate latencyMs from request via super', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
 
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-			const dataObject = response.asDataObject();
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ASSERT
-			expect(dataObject.text).toBe('Hello');
-			expect(dataObject.segments).toEqual(segments);
-		});
-	});
-
-	describe('edge cases', () => {
-		it('[EC-01] should handle empty string in text array', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['', 'Non-empty']);
-			const segments = [createSegment(0, 0, ''), createSegment(1, 0, 'Non-empty')];
-
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-
-			// ASSERT
-			expect(response.text).toEqual(['', 'Non-empty']);
-			expect(response.segments).toEqual(segments);
-		});
-
-		it('[EC-02] should handle single segment for single text', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Short text');
-			const segments = [createSegment(0, 0, 'Short text')];
-
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-
-			// ASSERT
-			expect(response.segments.length).toBe(1);
-			expect(response.text).toBe('Short text');
-		});
-
-		it('[EC-03] should handle multiple segments per text item', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Long text with multiple sentences');
-			const segments = [createSegment(0, 0, 'Long text'), createSegment(0, 1, 'with multiple sentences')];
-
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-
-			// ASSERT
-			expect(response.segments.length).toBe(2);
-			expect(response.segments[0].textPosition).toBe(0);
-			expect(response.segments[1].textPosition).toBe(0);
-		});
-
-		it('[EC-04] should calculate text count as 1 for string type', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Single string');
-			const segments = [createSegment(0, 0, 'Single string')];
-
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-			const metadata = response.asLogMetadata();
-
-			// ASSERT
-			expect(metadata.textCount).toBe(1);
-		});
-
-		it('[EC-05] should calculate text count from array length', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['One', 'Two', 'Three', 'Four']);
-			const segments = [createSegment(0, 0, 'One'), createSegment(1, 0, 'Two'), createSegment(2, 0, 'Three'), createSegment(3, 0, 'Four')];
-
-			// ACT
-			const response = new SplitResponse(mockRequest, segments);
-			const metadata = response.asLogMetadata();
-
-			// ASSERT
-			expect(metadata.textCount).toBe(4);
+				// ASSERT
+				expect(response.latencyMs).toBeGreaterThanOrEqual(0);
+				expect(typeof response.latencyMs).toBe('number');
+			});
 		});
 	});
 
-	describe('error handling', () => {
-		it('[EH-01] should throw if segments empty for single text', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Some text');
-			const segments: ISegment[] = [];
+	describe('throwIfInvalid', () => {
+		describe('edge cases', () => {
+			it('[EC-01] should handle equal segments and text count (minimum valid)', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2'], 5000);
+				const segments: ISegment[] = [
+					{ text: 'Text 1', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Text 2', textPosition: 1, segmentPosition: 0 },
+				];
+				const response = new SplitResponse(request, segments);
 
-			// ACT & ASSERT
-			expect(() => new SplitResponse(mockRequest, segments)).toThrow(
-				'Segments response must contain at least 1 segment(s) - one per input text item.',
-			);
+				// ACT & ASSERT
+				expect(() => response.throwIfInvalid()).not.toThrow();
+			});
+
+			it('[EC-02] should handle more segments than text items', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'How are you?', textPosition: 0, segmentPosition: 1 },
+					{ text: 'Good morning.', textPosition: 0, segmentPosition: 2 },
+				];
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ACT & ASSERT
+				expect(() => response.throwIfInvalid()).not.toThrow();
+			});
+
+			it('[EC-03] should handle single text item with single segment', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
+
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ASSERT
+				expect(response.text).toHaveLength(1);
+				expect(response.segments).toHaveLength(1);
+				expect(() => response.throwIfInvalid()).not.toThrow();
+			});
+
+			it('[EC-04] should handle single text item with multiple segments', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'How are you?', textPosition: 0, segmentPosition: 1 },
+				];
+
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ASSERT
+				expect(response.text).toHaveLength(1);
+				expect(response.segments).toHaveLength(2);
+				expect(() => response.throwIfInvalid()).not.toThrow();
+			});
+
+			it('[EC-05] should handle multiple text items with segments', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2', 'Text 3'], 5000);
+				const segments: ISegment[] = [
+					{ text: 'Text 1', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Text 2', textPosition: 1, segmentPosition: 0 },
+					{ text: 'Text 3 part 1', textPosition: 2, segmentPosition: 0 },
+					{ text: 'Text 3 part 2', textPosition: 2, segmentPosition: 1 },
+				];
+
+				// ACT
+				const response = new SplitResponse(request, segments);
+
+				// ASSERT
+				expect(response.text).toHaveLength(3);
+				expect(response.segments).toHaveLength(4);
+				expect(() => response.throwIfInvalid()).not.toThrow();
+			});
+
+			it('[EC-06] should preserve segment positions from split operation', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'First sentence.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Second sentence.', textPosition: 0, segmentPosition: 1 },
+				];
+
+				// ACT
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ASSERT
+				expect(response.segments[0].textPosition).toBe(0);
+				expect(response.segments[0].segmentPosition).toBe(0);
+				expect(response.segments[1].textPosition).toBe(0);
+				expect(response.segments[1].segmentPosition).toBe(1);
+			});
 		});
 
-		it('[EH-02] should throw if segments fewer than text array items', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['Text 1', 'Text 2', 'Text 3']);
-			const segments = [createSegment(0, 0, 'Text 1'), createSegment(1, 0, 'Text 2')];
+		describe('error handling', () => {
+			it('[EH-01] should throw if segments.length < text.length', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2', 'Text 3'], 5000);
+				const segments: ISegment[] = [
+					{ text: 'Text 1', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Text 2', textPosition: 1, segmentPosition: 0 },
+				];
+				const response = new SplitResponse(request, segments);
 
-			// ACT & ASSERT
-			expect(() => new SplitResponse(mockRequest, segments)).toThrow(
-				'Segments response must contain at least 3 segment(s) - one per input text item.',
-			);
+				// ACT & ASSERT
+				expect(() => response.throwIfInvalid()).toThrow();
+			});
+
+			it('[EH-02] should throw with descriptive error message including expected count', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2'], 5000);
+				const segments: ISegment[] = [{ text: 'Text 1', textPosition: 0, segmentPosition: 0 }];
+				const response = new SplitResponse(request, segments);
+
+				// ACT & ASSERT
+				expect(() => response.throwIfInvalid()).toThrow('"segments" must contain at least 2 segment(s).');
+			});
+
+			it('[EH-03] should throw for empty segments with non-empty text', () => {
+				// ARRANGE
+				const segments: ISegment[] = [];
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ACT & ASSERT
+				expect(() => response.throwIfInvalid()).toThrow('"segments" must contain at least 1 segment(s).');
+			});
+
+			it('[EH-04] should call super.throwIfInvalid for parent validation', () => {
+				// ARRANGE - Create request with invalid supplyRequestId to trigger parent validation
+				const invalidRequest = {
+					...splitRequest,
+					supplyRequestId: '', // Invalid - will trigger parent validation
+					throwIfInvalid() {
+						if (!this.supplyRequestId) throw new Error('"supplyRequestId" must not be empty');
+					},
+				};
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
+				const response = new SplitResponse(invalidRequest as unknown as SplitRequest, segments); // ACT & ASSERT
+				expect(() => response.throwIfInvalid()).toThrow('"supplyRequestId"');
+			});
+
+			it('[EH-05] should allow construction without validation', () => {
+				// ARRANGE
+				const segments: ISegment[] = []; // Invalid - fewer segments than text items
+
+				// ACT & ASSERT - Should not throw during construction
+				expect(() => new SplitResponse(splitRequest, segments)).not.toThrow();
+			});
 		});
+	});
 
-		it('[EH-03] should include expected count in error message', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest(['A', 'B', 'C', 'D', 'E']);
-			const segments: ISegment[] = [];
+	describe('asLogMetadata', () => {
+		describe('metadata & data', () => {
+			it('[MD-01] should return log metadata with segmentsCount', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'How are you?', textPosition: 0, segmentPosition: 1 },
+				];
+				const response = new SplitResponse(splitRequest, segments);
 
-			// ACT & ASSERT
-			expect(() => new SplitResponse(mockRequest, segments)).toThrow('at least 5 segment(s)');
+				// ACT
+				const metadata = response.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.segmentsCount).toBe(2);
+			});
+
+			it('[MD-02] should return log metadata with textCount', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2', 'Text 3'], 5000);
+				const segments: ISegment[] = [
+					{ text: 'Text 1', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Text 2', textPosition: 1, segmentPosition: 0 },
+					{ text: 'Text 3', textPosition: 2, segmentPosition: 0 },
+				];
+				const response = new SplitResponse(request, segments);
+
+				// ACT
+				const metadata = response.asLogMetadata();
+
+				// ASSERT
+				expect(metadata.textCount).toBe(3);
+			});
+
+			it('[MD-03] should include parent metadata in log output', () => {
+				// ARRANGE
+				const segments: ISegment[] = [{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 }];
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ACT
+				const metadata = response.asLogMetadata();
+
+				// ASSERT
+				expect(metadata).toHaveProperty('agentRequestId');
+				expect(metadata).toHaveProperty('supplyRequestId');
+				expect(metadata).toHaveProperty('latencyMs');
+				expect(metadata.agentRequestId).toBe(mockAgentRequest.agentRequestId);
+			});
 		});
+	});
 
-		it('[EH-04] should throw before freezing object', () => {
-			// ARRANGE
-			const mockRequest = createMockRequest('Test');
-			const segments: ISegment[] = [];
+	describe('asDataObject', () => {
+		describe('metadata & data', () => {
+			it('[MD-04] should return data object with text array', () => {
+				// ARRANGE
+				const request = new SplitRequest(mockAgentRequest, ['Text 1', 'Text 2'], 5000);
+				const segments: ISegment[] = [
+					{ text: 'Text 1', textPosition: 0, segmentPosition: 0 },
+					{ text: 'Text 2', textPosition: 1, segmentPosition: 0 },
+				];
+				const response = new SplitResponse(request, segments);
 
-			// ACT & ASSERT
-			let response: SplitResponse | undefined;
-			try {
-				response = new SplitResponse(mockRequest, segments);
-			} catch (error) {
-				// Expected error
-			}
+				// ACT
+				const data = response.asDataObject();
 
-			// If response was created, it would be frozen
-			// But error should prevent object creation entirely
-			expect(response).toBeUndefined();
+				// ASSERT
+				expect(data.text).toEqual(['Text 1', 'Text 2']);
+			});
+
+			it('[MD-05] should return data object with segments array', () => {
+				// ARRANGE
+				const segments: ISegment[] = [
+					{ text: 'Hello world.', textPosition: 0, segmentPosition: 0 },
+					{ text: 'How are you?', textPosition: 0, segmentPosition: 1 },
+				];
+				const response = new SplitResponse(splitRequest, segments);
+
+				// ACT
+				const data = response.asDataObject();
+
+				// ASSERT
+				expect(data.segments).toEqual(segments);
+				expect(data.segments).toHaveLength(2);
+			});
 		});
 	});
 });

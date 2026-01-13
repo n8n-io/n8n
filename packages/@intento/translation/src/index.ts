@@ -1,6 +1,3 @@
-// intento-translation/agents
-export * from 'agents/*';
-
 // intento-translation/supply
 export * from 'supply/*';
 

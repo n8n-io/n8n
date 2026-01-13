@@ -1,590 +1,486 @@
 import 'reflect-metadata';
 
 import { mock } from 'jest-mock-extended';
-
-import type { IFunctions } from 'types/*';
+import type { INode, LogMetadata } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { Tracer } from '../../tracing/tracer';
 import type { IContext } from '../../types/i-context';
-import { ContextFactory, CONTEXT_PARAMETER, mapTo } from '../context-factory';
+import type { IFunctions } from '../../types/i-functions';
+import { CONTEXT_PARAMETER, ContextFactory, mapTo } from '../context-factory';
 
 /**
  * Tests for ContextFactory
  * @author Claude Sonnet 4.5
- * @date 2026-01-11
+ * @date 2026-01-13
  */
 
-// Test context implementations
-class SimpleContext implements IContext {
-	constructor(
-		public value1: string,
-		public value2: number,
-	) {}
-
-	throwIfInvalid(): void {}
-
-	asLogMetadata(): Record<string, unknown> {
-		return { value1: this.value1, value2: this.value2 };
-	}
-}
-
-class InvalidContext implements IContext {
-	constructor(public value: string) {}
-
-	throwIfInvalid(): void {
-		throw new Error('Validation failed');
-	}
-
-	asLogMetadata(): Record<string, unknown> {
-		return { value: this.value };
-	}
-}
-
-class ThreeParamContext implements IContext {
-	constructor(
-		public param1: string,
-		public param2: number,
-		public param3: boolean,
-	) {}
-
-	throwIfInvalid(): void {}
-
-	asLogMetadata(): Record<string, unknown> {
-		return { param1: this.param1, param2: this.param2, param3: this.param3 };
-	}
-}
-
-describe('CONTEXT_PARAMETER', () => {
-	describe('business logic', () => {
-		it('[BL-01] should export unique Symbol', () => {
-			// ASSERT
-			expect(typeof CONTEXT_PARAMETER).toBe('symbol');
-			expect(CONTEXT_PARAMETER).toBe(CONTEXT_PARAMETER);
-			expect(CONTEXT_PARAMETER).not.toBe(Symbol('intento:context_parameter'));
-		});
-	});
-});
-
-describe('mapTo', () => {
-	let getMetadataSpy: jest.SpyInstance;
-	let defineMetadataSpy: jest.SpyInstance;
-
-	beforeEach(() => {
-		getMetadataSpy = jest.spyOn(Reflect, 'getMetadata');
-		defineMetadataSpy = jest.spyOn(Reflect, 'defineMetadata');
-	});
-
-	afterEach(() => {
-		jest.restoreAllMocks();
-	});
-
-	describe('business logic', () => {
-		it('[BL-02] should store flat parameter mapping', () => {
-			// ARRANGE
-			getMetadataSpy.mockReturnValue(undefined);
-			const decorator = mapTo('test_key');
-			const target = {};
-
-			// ACT
-			decorator(target, undefined, 0);
-
-			// ASSERT
-			expect(defineMetadataSpy).toHaveBeenCalledWith(CONTEXT_PARAMETER, ['test_key'], target);
-		});
-
-		it('[BL-03] should store collection parameter mapping', () => {
-			// ARRANGE
-			getMetadataSpy.mockReturnValue(undefined);
-			const decorator = mapTo('nested_key', 'collection_name');
-			const target = {};
-
-			// ACT
-			decorator(target, undefined, 0);
-
-			// ASSERT
-			expect(defineMetadataSpy).toHaveBeenCalledWith(CONTEXT_PARAMETER, ['collection_name.nested_key'], target);
-		});
-
-		it('[BL-04] should accumulate metadata for multiple parameters', () => {
-			// ARRANGE
-			getMetadataSpy.mockReturnValue(['existing_key']);
-			const decorator = mapTo('new_key');
-			const target = {};
-
-			// ACT
-			decorator(target, undefined, 0);
-
-			// ASSERT
-			expect(defineMetadataSpy).toHaveBeenCalledWith(CONTEXT_PARAMETER, ['new_key', 'existing_key'], target);
-		});
-
-		it('[BL-05] should preserve parameter order (left-to-right)', () => {
-			// ARRANGE
-			getMetadataSpy.mockReturnValueOnce(undefined).mockReturnValueOnce(['key1']);
-
-			const decorator1 = mapTo('key1');
-			const decorator2 = mapTo('key2');
-			const target = {};
-
-			// ACT - Decorators execute bottom-to-top
-			decorator1(target, undefined, 0);
-			decorator2(target, undefined, 1);
-
-			// ASSERT
-			expect(defineMetadataSpy).toHaveBeenNthCalledWith(1, CONTEXT_PARAMETER, ['key1'], target);
-			expect(defineMetadataSpy).toHaveBeenNthCalledWith(2, CONTEXT_PARAMETER, ['key2', 'key1'], target);
-		});
-	});
-
-	describe('edge cases', () => {
-		it('[EC-01] should handle missing existing metadata (first param)', () => {
-			// ARRANGE
-			getMetadataSpy.mockReturnValue(null);
-			const decorator = mapTo('first_key');
-			const target = {};
-
-			// ACT
-			decorator(target, undefined, 0);
-
-			// ASSERT
-			expect(defineMetadataSpy).toHaveBeenCalledWith(CONTEXT_PARAMETER, ['first_key'], target);
-		});
-	});
-});
-
 describe('ContextFactory', () => {
-	let mockFunctions: ReturnType<typeof mock<IFunctions>>;
-	let mockTracer: ReturnType<typeof mock<Tracer>>;
-	let getMetadataSpy: jest.SpyInstance;
+	let mockTracer: Tracer;
+	let mockFunctions: IFunctions;
+	let mockNode: INode;
 
 	beforeEach(() => {
-		mockFunctions = mock<IFunctions>();
+		mockNode = mock<INode>({ name: 'TestNode' });
 		mockTracer = mock<Tracer>();
-		getMetadataSpy = jest.spyOn(Reflect, 'getMetadata');
+		mockFunctions = mock<IFunctions>();
+
+		// Setup tracer mocks
+		mockTracer.debug = jest.fn();
+		mockTracer.info = jest.fn();
+		mockTracer.bugDetected = jest.fn((where: string, error: string): never => {
+			throw new NodeOperationError(mockNode, `Bug detected at '${where}': ${error}`);
+		}) as jest.MockedFunction<(where: string, error: string, extension?: LogMetadata) => never>;
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
-	describe('read', () => {
+	describe('mapTo() decorator', () => {
 		describe('business logic', () => {
-			it('[BL-06] should create valid context from node parameters', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key1', 'key2'];
-					if (key === 'design:paramtypes') return [String, Number];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation((key: string) => {
-					if (key === 'key1') return 'test_value';
-					if (key === 'key2') return 42;
-					throw new Error('Parameter not found');
-				});
-
-				// ACT
-				const result = ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+			it('[BL-01] should store parameter key in metadata', () => {
+				// ARRANGE & ACT
+				class TestContext {
+					constructor(@mapTo('testKey') _param: string) {}
+				}
 
 				// ASSERT
-				expect(result).toBeInstanceOf(SimpleContext);
-				expect(result.value1).toBe('test_value');
-				expect(result.value2).toBe(42);
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toEqual(['testKey']);
 			});
 
-			it('[BL-07] should extract flat parameters correctly', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['flat_key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('flat_value');
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+			it('[BL-02] should accumulate metadata for multiple parameters', () => {
+				// ARRANGE & ACT
+				class TestContext {
+					constructor(@mapTo('param1') _p1: string, @mapTo('param2') _p2: number, @mapTo('param3') _p3: boolean) {}
+				}
 
 				// ASSERT
-				expect(mockFunctions.getNodeParameter).toHaveBeenCalledWith('flat_key', 0, undefined, { extractValue: true });
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toHaveLength(3);
+				expect(metadata).toEqual(['param1', 'param2', 'param3']);
 			});
 
-			it('[BL-08] should extract collection parameters correctly', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['collection.nested_key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('nested_value');
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+			it('[BL-03] should support nested collection parameters', () => {
+				// ARRANGE & ACT
+				class TestContext {
+					constructor(@mapTo('nested_key', 'parent_collection') _param: string) {}
+				}
 
 				// ASSERT
-				expect(mockFunctions.getNodeParameter).toHaveBeenCalledWith('collection.nested_key', 0, undefined, { extractValue: true });
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toEqual(['parent_collection.nested_key']);
 			});
 
-			it('[BL-09] should call throwIfInvalid on created instance', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('value');
-
-				const throwIfInvalidSpy = jest.spyOn(SimpleContext.prototype, 'throwIfInvalid');
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+			it('[BL-04] should support flat parameters without collection', () => {
+				// ARRANGE & ACT
+				class TestContext {
+					constructor(@mapTo('flat_key') _param: string) {}
+				}
 
 				// ASSERT
-				expect(throwIfInvalidSpy).toHaveBeenCalled();
-			});
-
-			it('[BL-10] should return validated context instance', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key1', 'key2'];
-					if (key === 'design:paramtypes') return [String, Number];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation((key: string) => {
-					if (key === 'key1') return 'value1';
-					if (key === 'key2') return 123;
-					throw new Error('Not found');
-				});
-
-				// ACT
-				const result = ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(result).toBeDefined();
-				expect(result).toBeInstanceOf(SimpleContext);
-				expect(result.value1).toBe('value1');
-				expect(result.value2).toBe(123);
-			});
-
-			it('[BL-11] should log debug messages during creation', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('value');
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Reading context'));
-				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('created successfully'));
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toEqual(['flat_key']);
 			});
 		});
 
 		describe('edge cases', () => {
-			it('[EC-02] should use undefined for missing node parameters', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['missing_key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
-					throw new Error('Parameter not found');
-				});
-
-				// ACT
-				const result = ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(result.value1).toBeUndefined();
-			});
-
-			it('[EC-03] should trigger default parameter values', () => {
-				// ARRANGE
-				class ContextWithDefaults implements IContext {
-					constructor(public value: string = 'default_value') {}
-					throwIfInvalid(): void {}
-					asLogMetadata() {
-						return { value: this.value };
-					}
+			it('[EC-01] should handle first parameter (no existing metadata)', () => {
+				// ARRANGE & ACT
+				class TestContext {
+					constructor(@mapTo('firstParam') _param: string) {}
 				}
 
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
-					throw new Error('Not found');
-				});
-
-				// ACT
-				const result = ContextFactory.read(ContextWithDefaults, mockFunctions, mockTracer);
-
 				// ASSERT
-				expect(result.value).toBe('default_value');
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toBeDefined();
+				expect(metadata).toEqual(['firstParam']);
 			});
 
-			it('[EC-04] should handle 3+ parameters in correct order', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key1', 'key2', 'key3'];
-					if (key === 'design:paramtypes') return [String, Number, Boolean];
-					return undefined;
-				});
+			it('[EC-02] should maintain left-to-right parameter order', () => {
+				// ARRANGE & ACT - Decorators execute bottom-to-top, prepend maintains order
+				class TestContext {
+					constructor(@mapTo('first') _p1: string, @mapTo('second') _p2: string, @mapTo('third') _p3: string) {}
+				}
 
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation((key: string) => {
-					if (key === 'key1') return 'first';
-					if (key === 'key2') return 42;
-					if (key === 'key3') return true;
-					throw new Error('Not found');
-				});
-
-				// ACT
-				const result = ContextFactory.read(ThreeParamContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(result.param1).toBe('first');
-				expect(result.param2).toBe(42);
-				expect(result.param3).toBe(true);
+				// ASSERT - Order should match constructor parameter order
+				const metadata = Reflect.getMetadata(CONTEXT_PARAMETER, TestContext) as string[];
+				expect(metadata).toEqual(['first', 'second', 'third']);
 			});
 		});
 
 		describe('error handling', () => {
-			it('[EH-01] should call bugDetected if no metadata found', () => {
-				// ARRANGE
-				getMetadataSpy.mockReturnValue(undefined);
+			it('[EH-01] should handle undefined _propertyKey parameter', () => {
+				// ARRANGE & ACT - Parameter decorators receive undefined for propertyKey
+				const decorator = mapTo('testKey');
+				const target = {};
 
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No mapping metadata'));
-			});
-
-			it('[EH-02] should call bugDetected if metadata not array', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return 'not_an_array';
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				// ACT & ASSERT
-				expect(() => ContextFactory.read(SimpleContext, mockFunctions, mockTracer)).toThrow();
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No mapping metadata'));
-			});
-
-			it('[EH-03] should call bugDetected if metadata length zero', () => {
-				// ARRANGE
-				getMetadataSpy.mockReturnValue([]);
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No mapping metadata'));
-			});
-
-			it('[EH-04] should call bugDetected if no type metadata', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return undefined;
-					return undefined;
-				});
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No type metadata found'));
-			});
-
-			it('[EH-05] should call bugDetected if type metadata not array', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return 'not_an_array';
-					return undefined;
-				});
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No type metadata found'));
-			});
-
-			it('[EH-06] should call bugDetected if paramTypes length zero', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [];
-					return undefined;
-				});
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('No type metadata found'));
-			});
-
-			it('[EH-07] should call bugDetected if metadata/paramTypes mismatch', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key1', 'key2'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('SimpleContext', expect.stringContaining('Partial metadata mapping'));
-			});
-
-			it('[EH-08] should call bugDetected on context validation failure', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('value');
-
-				// ACT
-				ContextFactory.read(InvalidContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('InvalidContext', expect.any(Error), expect.any(Object));
-			});
-
-			it('[EH-09] should include context metadata in bugDetected call', () => {
-				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('test_value');
-
-				// ACT
-				ContextFactory.read(InvalidContext, mockFunctions, mockTracer);
-
-				// ASSERT
-				expect(mockTracer.bugDetected).toHaveBeenCalledWith('InvalidContext', expect.any(Error), { value: 'test_value' });
+				// ASSERT - Should not throw
+				expect(() => {
+					decorator(target, undefined, 0);
+				}).not.toThrow();
 			});
 		});
 	});
 
-	describe('getNodeParameter', () => {
+	describe('ContextFactory.read()', () => {
 		describe('business logic', () => {
-			it('[BL-12] should extract parameter with extractValue option', () => {
+			it('[BL-05] should create valid context with all parameters', () => {
 				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['test_key'];
-					if (key === 'design:paramtypes') return [String];
+				mockFunctions.getNodeParameter = jest.fn((key: string) => {
+					if (key === 'param1') return 'value1';
+					if (key === 'param2') return 42;
 					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('test_value');
+				}) as unknown as IFunctions['getNodeParameter'];
 
 				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+				const context = ContextFactory.read(TestContextMultiParam, mockFunctions, mockTracer);
 
 				// ASSERT
-				expect(mockFunctions.getNodeParameter).toHaveBeenCalledWith('test_key', 0, undefined, { extractValue: true });
+				expect(context.param1).toBe('value1');
+				expect(context.param2).toBe(42);
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Reading context') as string);
+				expect(mockTracer.info).toHaveBeenCalledWith(expect.stringContaining('created successfully') as string);
 			});
 
-			it('[BL-13] should return parameter value on success', () => {
+			it('[BL-06] should extract parameters in correct order', () => {
 				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('expected_value');
+				const extractedKeys: string[] = [];
+				mockFunctions.getNodeParameter = jest.fn((key: string) => {
+					extractedKeys.push(key);
+					return key === 'param1' ? 'value1' : 42;
+				}) as unknown as IFunctions['getNodeParameter'];
 
 				// ACT
-				const result = ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+				ContextFactory.read(TestContextMultiParam, mockFunctions, mockTracer);
 
-				// ASSERT
-				expect(result.value1).toBe('expected_value');
+				// ASSERT - Parameters extracted in constructor order
+				expect(extractedKeys).toEqual(['param1', 'param2']);
 			});
 
-			it('[BL-14] should log debug on successful fetch', () => {
+			it('[BL-07] should call throwIfInvalid after instantiation', () => {
 				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
+				mockFunctions.getNodeParameter = jest.fn(() => '') as unknown as IFunctions['getNodeParameter'];
+				const throwIfInvalidSpy = jest.spyOn(TestContextValidation.prototype, 'throwIfInvalid');
 
-				(mockFunctions.getNodeParameter as jest.Mock).mockReturnValue('value');
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(TestContextValidation, mockFunctions, mockTracer);
+				}).toThrow('Validation failed');
+
+				expect(throwIfInvalidSpy).toHaveBeenCalled();
+				throwIfInvalidSpy.mockRestore();
+			});
+
+			it('[BL-08] should log debug messages during extraction', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => 'value') as unknown as IFunctions['getNodeParameter'];
 
 				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+				ContextFactory.read(TestContextSingleParam, mockFunctions, mockTracer);
 
 				// ASSERT
-				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Fetching node parameter'));
-				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('has been fetched'));
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Reading context') as string);
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Fetching node parameter') as string);
+			});
+
+			it('[BL-09] should log info on successful creation', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => 'value') as unknown as IFunctions['getNodeParameter'];
+
+				// ACT
+				ContextFactory.read(TestContextSingleParam, mockFunctions, mockTracer);
+
+				// ASSERT
+				expect(mockTracer.info).toHaveBeenCalledWith(expect.stringContaining('Valid context') as string);
+				expect(mockTracer.info).toHaveBeenCalledWith(expect.stringContaining('created successfully') as string);
 			});
 		});
 
 		describe('edge cases', () => {
-			it('[EC-05] should return undefined when parameter missing', () => {
+			it('[EC-03] should handle context with optional parameters', () => {
 				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['missing_key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
+				mockFunctions.getNodeParameter = jest.fn((key: string) => {
+					if (key === 'required') return 'value';
 					throw new Error('Parameter not found');
-				});
+				}) as unknown as IFunctions['getNodeParameter'];
 
 				// ACT
-				const result = ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+				const context = ContextFactory.read(TestContextOptional, mockFunctions, mockTracer);
 
 				// ASSERT
-				expect(result.value1).toBeUndefined();
+				expect(context.required).toBe('value');
+				expect(context.optional).toBeUndefined();
 			});
 
-			it('[EC-06] should log debug on fetch failure', () => {
+			it('[EC-04] should handle context with default parameter values', () => {
 				// ARRANGE
-				getMetadataSpy.mockImplementation((key) => {
-					if (key === CONTEXT_PARAMETER) return ['missing_key'];
-					if (key === 'design:paramtypes') return [String];
-					return undefined;
-				});
-
-				(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
+				mockFunctions.getNodeParameter = jest.fn(() => {
 					throw new Error('Parameter not found');
 				});
 
 				// ACT
-				ContextFactory.read(SimpleContext, mockFunctions, mockTracer);
+				const context = ContextFactory.read(TestContextWithDefaults, mockFunctions, mockTracer);
+
+				// ASSERT - Defaults should apply when undefined returned
+				expect(context.paramWithDefault).toBe('default');
+			});
+		});
+
+		describe('error handling', () => {
+			it('[EH-02] should throw if no metadata found', () => {
+				// ARRANGE
+				class NoDecoratorContext implements IContext {
+					constructor(_param: string) {}
+					throwIfInvalid(): void {}
+					asLogMetadata(): LogMetadata {
+						return {};
+					}
+				}
+
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(NoDecoratorContext, mockFunctions, mockTracer);
+				}).toThrow('Bug detected');
+				expect(mockTracer.bugDetected).toHaveBeenCalledWith('NoDecoratorContext', expect.stringContaining('No mapping metadata') as string);
+			});
+
+			it('[EH-03] should throw if metadata array is empty', () => {
+				// ARRANGE
+				class EmptyMetadataContext implements IContext {
+					constructor(_param: string) {}
+					throwIfInvalid(): void {}
+					asLogMetadata(): LogMetadata {
+						return {};
+					}
+				}
+				Reflect.defineMetadata(CONTEXT_PARAMETER, [], EmptyMetadataContext);
+
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(EmptyMetadataContext, mockFunctions, mockTracer);
+				}).toThrow('Bug detected');
+				expect(mockTracer.bugDetected).toHaveBeenCalledWith(
+					'EmptyMetadataContext',
+					expect.stringContaining('No mapping metadata') as string,
+				);
+			});
+
+			it('[EH-04] should throw if paramTypes not found', () => {
+				// ARRANGE
+				class NoParamTypesContext implements IContext {
+					constructor(@mapTo('param') _param: string) {}
+					throwIfInvalid(): void {}
+					asLogMetadata(): LogMetadata {
+						return {};
+					}
+				}
+				// Clear design:paramtypes metadata to simulate missing emitDecoratorMetadata
+				Reflect.deleteMetadata('design:paramtypes', NoParamTypesContext);
+
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(NoParamTypesContext, mockFunctions, mockTracer);
+				}).toThrow('Bug detected');
+				expect(mockTracer.bugDetected).toHaveBeenCalledWith(
+					'NoParamTypesContext',
+					expect.stringContaining('No type metadata found') as string,
+				);
+			});
+
+			it('[EH-05] should throw if paramTypes array is empty', () => {
+				// ARRANGE
+				class EmptyParamTypesContext implements IContext {
+					constructor(@mapTo('param') _param: string) {}
+					throwIfInvalid(): void {}
+					asLogMetadata(): LogMetadata {
+						return {};
+					}
+				}
+				Reflect.defineMetadata('design:paramtypes', [], EmptyParamTypesContext);
+
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(EmptyParamTypesContext, mockFunctions, mockTracer);
+				}).toThrow('Bug detected');
+				expect(mockTracer.bugDetected).toHaveBeenCalledWith(
+					'EmptyParamTypesContext',
+					expect.stringContaining('No type metadata found') as string,
+				);
+			});
+
+			it('[EH-06] should throw if metadata count mismatches params', () => {
+				// ARRANGE
+				class MismatchContext implements IContext {
+					constructor(@mapTo('param1') _p1: string, _p2: string) {}
+					throwIfInvalid(): void {}
+					asLogMetadata(): LogMetadata {
+						return {};
+					}
+				}
+
+				// ACT & ASSERT - One param has decorator, one doesn't
+				expect(() => {
+					ContextFactory.read(MismatchContext, mockFunctions, mockTracer);
+				}).toThrow('Bug detected');
+				expect(mockTracer.bugDetected).toHaveBeenCalledWith(
+					'MismatchContext',
+					expect.stringContaining('Partial metadata mapping') as string,
+				);
+			});
+
+			it('[EH-07] should throw if context validation fails', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => '') as unknown as IFunctions['getNodeParameter'];
+
+				// ACT & ASSERT
+				expect(() => {
+					ContextFactory.read(TestContextValidation, mockFunctions, mockTracer);
+				}).toThrow('Validation failed');
+			});
+		});
+	});
+
+	describe('ContextFactory.getNodeParameter()', () => {
+		describe('business logic', () => {
+			it('[BL-10] should extract parameter value with extractValue option', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => 'extractedValue') as unknown as IFunctions['getNodeParameter'];
+
+				// ACT
+				ContextFactory.read(TestContextSingleParam, mockFunctions, mockTracer);
 
 				// ASSERT
-				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('has not been fetched'));
+				expect(mockFunctions.getNodeParameter).toHaveBeenCalledWith('param1', 0, undefined, {
+					extractValue: true,
+				});
+			});
+
+			it('[BL-11] should log debug before and after extraction', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => 'value') as unknown as IFunctions['getNodeParameter'];
+
+				// ACT
+				ContextFactory.read(TestContextSingleParam, mockFunctions, mockTracer);
+
+				// ASSERT
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('Fetching node parameter') as string);
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('has been fetched') as string);
+			});
+		});
+
+		describe('edge cases', () => {
+			it('[EC-05] should return undefined for missing parameter', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn((key: string) => {
+					if (key === 'required') return 'value';
+					throw new Error('Parameter not found');
+				}) as unknown as IFunctions['getNodeParameter'];
+
+				// ACT
+				const context = ContextFactory.read(TestContextOptional, mockFunctions, mockTracer);
+
+				// ASSERT
+				expect(context.optional).toBeUndefined();
+			});
+
+			it('[EC-06] should handle dot notation for nested parameters', () => {
+				// ARRANGE
+				mockFunctions.getNodeParameter = jest.fn(() => 'nestedValue') as unknown as IFunctions['getNodeParameter'];
+
+				// ACT
+				ContextFactory.read(TestContextWithCollection, mockFunctions, mockTracer);
+
+				// ASSERT
+				expect(mockFunctions.getNodeParameter).toHaveBeenCalledWith('collection.nestedParam', 0, undefined, { extractValue: true });
+			});
+		});
+
+		describe('error handling', () => {
+			it('[EH-08] should catch and log parameter extraction failure', () => {
+				// ARRANGE
+				const error = new Error('Extraction failed');
+				mockFunctions.getNodeParameter = jest.fn(() => {
+					throw error;
+				});
+
+				// ACT
+				const context = ContextFactory.read(TestContextOptional, mockFunctions, mockTracer);
+
+				// ASSERT - Should not throw, returns undefined instead
+				expect(context.required).toBeUndefined();
+				expect(mockTracer.debug).toHaveBeenCalledWith(expect.stringContaining('has not been fetched') as string);
 			});
 		});
 	});
 });
+
+// Test Context Classes - Defined at module level so decorators execute once
+class TestContextSingleParam implements IContext {
+	constructor(@mapTo('param1') readonly param1: string) {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {}
+	asLogMetadata(): LogMetadata {
+		return { param1: this.param1 };
+	}
+}
+
+class TestContextMultiParam implements IContext {
+	constructor(
+		@mapTo('param1') readonly param1: string,
+		@mapTo('param2') readonly param2: number,
+	) {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {}
+	asLogMetadata(): LogMetadata {
+		return { param1: this.param1, param2: this.param2 };
+	}
+}
+
+class TestContextWithCollection implements IContext {
+	constructor(@mapTo('nestedParam', 'collection') readonly nestedParam: string) {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {}
+	asLogMetadata(): LogMetadata {
+		return { nestedParam: this.nestedParam };
+	}
+}
+
+class TestContextOptional implements IContext {
+	constructor(
+		@mapTo('required') readonly required: string,
+		@mapTo('optional') readonly optional?: string,
+	) {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {}
+	asLogMetadata(): LogMetadata {
+		return { required: this.required, optional: this.optional };
+	}
+}
+
+class TestContextWithDefaults implements IContext {
+	constructor(@mapTo('paramWithDefault') readonly paramWithDefault: string = 'default') {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {}
+	asLogMetadata(): LogMetadata {
+		return { paramWithDefault: this.paramWithDefault };
+	}
+}
+
+class TestContextValidation implements IContext {
+	constructor(@mapTo('param') readonly param: string) {
+		Object.freeze(this);
+	}
+	throwIfInvalid(): void {
+		if (!this.param) throw new Error('Validation failed');
+	}
+	asLogMetadata(): LogMetadata {
+		return { param: this.param };
+	}
+}

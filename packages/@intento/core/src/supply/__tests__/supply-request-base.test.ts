@@ -1,232 +1,280 @@
-import { SupplyRequestBase } from '../supply-request-base';
+import type { IDataObject } from 'n8n-workflow';
 
-/**
- * Concrete implementation of SupplyRequestBase for testing purposes.
- * SupplyRequestBase is abstract and meant to be extended by domain-specific requests.
- */
-class TestSupplyRequest extends SupplyRequestBase {
-	constructor() {
-		super();
-	}
-}
+import type { AgentRequestBase } from '../../agents/agent-request-base';
+import { SupplyRequestBase } from '../supply-request-base';
 
 /**
  * Tests for SupplyRequestBase
  * @author Claude Sonnet 4.5
- * @date 2026-01-11
+ * @date 2026-01-13
  */
+
+// Concrete test implementation of abstract SupplyRequestBase
+class TestSupplyRequest extends SupplyRequestBase {
+	asDataObject(): IDataObject {
+		return { test: 'data' };
+	}
+}
+
 describe('SupplyRequestBase', () => {
-	let dateNowSpy: jest.SpyInstance;
-	let randomUUIDSpy: jest.SpyInstance;
+	let mockCryptoRandomUUID: jest.SpyInstance;
+	let mockDateNow: jest.SpyInstance;
 
 	beforeEach(() => {
-		dateNowSpy = jest.spyOn(Date, 'now');
-		randomUUIDSpy = jest.spyOn(crypto, 'randomUUID');
+		mockCryptoRandomUUID = jest.spyOn(crypto, 'randomUUID');
+		mockDateNow = jest.spyOn(Date, 'now');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
-		dateNowSpy.mockRestore();
-		randomUUIDSpy.mockRestore();
+		mockCryptoRandomUUID.mockRestore();
+		mockDateNow.mockRestore();
 	});
 
 	describe('business logic', () => {
-		it('[BL-01] should generate unique request ID using crypto.randomUUID', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('test-uuid-123');
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[BL-01] should copy agentRequestId from parent request', () => {
+			const agentRequestId = '00000000-0000-0000-0000-000000000001';
+			const mockParentRequest = { agentRequestId } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const request = new TestSupplyRequest();
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT
-			expect(request.requestId).toBe('test-uuid-123');
-			expect(randomUUIDSpy).toHaveBeenCalledTimes(1);
+			expect(request.agentRequestId).toBe(agentRequestId);
 		});
 
-		it('[BL-02] should capture timestamp at construction time', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid-1');
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[BL-02] should generate unique supplyRequestId', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			const expectedUuid = '00000000-0000-0000-0000-000000000002';
+			mockCryptoRandomUUID.mockReturnValue(expectedUuid as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const request = new TestSupplyRequest();
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT
-			expect(request.requestedAt).toBe(1000000000000);
-			expect(dateNowSpy).toHaveBeenCalledTimes(1);
+			expect(request.supplyRequestId).toBe(expectedUuid);
+			expect(mockCryptoRandomUUID).toHaveBeenCalledTimes(1);
 		});
 
-		it('[BL-03] should return log metadata with requestId and requestedAt', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid-metadata');
-			dateNowSpy.mockReturnValue(1234567890000);
+		it('[BL-03] should capture current timestamp', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			const expectedTimestamp = 5000;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(expectedTimestamp);
 
-			// ACT
-			const request = new TestSupplyRequest();
-			const metadata = request.asLogMetadata();
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT
-			expect(metadata).toEqual({
-				requestId: 'uuid-metadata',
-				requestedAt: 1234567890000,
+			expect(request.requestedAt).toBe(expectedTimestamp);
+			expect(mockDateNow).toHaveBeenCalledTimes(1);
+		});
+
+		it('[BL-04] should set readonly agentRequestId', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			// TypeScript readonly is compile-time only, verify property exists and is set
+			expect(request.agentRequestId).toBe('00000000-0000-0000-0000-000000000001');
+			expect(Object.keys(request)).toContain('agentRequestId');
+		});
+
+		it('[BL-05] should set readonly supplyRequestId', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			// TypeScript readonly is compile-time only, verify property exists and is set
+			expect(request.supplyRequestId).toBe('00000000-0000-0000-0000-000000000002');
+			expect(Object.keys(request)).toContain('supplyRequestId');
+		});
+
+		it('[BL-06] should set readonly requestedAt', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			// TypeScript readonly is compile-time only, verify property exists and is set
+			expect(request.requestedAt).toBe(1000);
+			expect(Object.keys(request)).toContain('requestedAt');
+		});
+
+		it('[BL-07] should return complete log metadata', () => {
+			const agentRequestId = '00000000-0000-0000-0000-000000000001';
+			const supplyRequestId = '00000000-0000-0000-0000-000000000002';
+			const mockParentRequest = { agentRequestId } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue(supplyRequestId as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(5000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(request.asLogMetadata()).toEqual({
+				agentRequestId,
+				supplyRequestId,
+				requestedAt: 5000,
 			});
 		});
 
-		it('[BL-04] should return data object with requestId and requestedAt', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid-data');
-			dateNowSpy.mockReturnValue(9876543210000);
+		it('[BL-08] should pass validation with valid fields', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const request = new TestSupplyRequest();
-			const dataObject = request.asDataObject();
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT
-			expect(dataObject).toEqual({
-				requestId: 'uuid-data',
-				requestedAt: 9876543210000,
-			});
-		});
-
-		it('[BL-05] should generate different IDs for multiple instances', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValueOnce('uuid-first').mockReturnValueOnce('uuid-second').mockReturnValueOnce('uuid-third');
-			dateNowSpy.mockReturnValue(1000000000000);
-
-			// ACT
-			const request1 = new TestSupplyRequest();
-			const request2 = new TestSupplyRequest();
-			const request3 = new TestSupplyRequest();
-
-			// ASSERT
-			expect(request1.requestId).toBe('uuid-first');
-			expect(request2.requestId).toBe('uuid-second');
-			expect(request3.requestId).toBe('uuid-third');
-			expect(randomUUIDSpy).toHaveBeenCalledTimes(3);
-		});
-
-		it('[BL-06] should capture different timestamps for sequential constructions', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid');
-			dateNowSpy.mockReturnValueOnce(1000000000000).mockReturnValueOnce(1000000001000).mockReturnValueOnce(1000000002000);
-
-			// ACT
-			const request1 = new TestSupplyRequest();
-			const request2 = new TestSupplyRequest();
-			const request3 = new TestSupplyRequest();
-
-			// ASSERT
-			expect(request1.requestedAt).toBe(1000000000000);
-			expect(request2.requestedAt).toBe(1000000001000);
-			expect(request3.requestedAt).toBe(1000000002000);
-			expect(request1.requestedAt).toBeLessThan(request2.requestedAt);
-			expect(request2.requestedAt).toBeLessThan(request3.requestedAt);
+			expect(() => request.throwIfInvalid()).not.toThrow();
 		});
 	});
 
 	describe('edge cases', () => {
-		it('[EC-01] should generate valid UUID format (RFC 4122)', () => {
-			// ARRANGE
-			const validUUID = '550e8400-e29b-41d4-a716-446655440000';
-			randomUUIDSpy.mockReturnValue(validUUID);
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EC-01] should generate different supplyRequestIds for multiple instances', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			const uuid1 = '00000000-0000-0000-0000-000000000002';
+			const uuid2 = '00000000-0000-0000-0000-000000000003';
+			mockCryptoRandomUUID
+				.mockReturnValueOnce(uuid1 as `${string}-${string}-${string}-${string}-${string}`)
+				.mockReturnValueOnce(uuid2 as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const request = new TestSupplyRequest();
+			const request1 = new TestSupplyRequest(mockParentRequest);
+			const request2 = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT
-			expect(request.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+			expect(request1.supplyRequestId).toBe(uuid1);
+			expect(request2.supplyRequestId).toBe(uuid2);
+			expect(request1.supplyRequestId).not.toBe(request2.supplyRequestId);
 		});
 
-		it('[EC-02] should implement ITraceable interface correctly', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid');
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EC-02] should capture different timestamps for multiple instances', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			const timestamp1 = 1000;
+			const timestamp2 = 2000;
+			mockDateNow.mockReturnValueOnce(timestamp1).mockReturnValueOnce(timestamp2);
 
-			// ACT
-			const request = new TestSupplyRequest();
+			const request1 = new TestSupplyRequest(mockParentRequest);
+			const request2 = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT - Verify interface method exists and returns correct type
-			expect(request.asLogMetadata).toBeDefined();
-			expect(typeof request.asLogMetadata).toBe('function');
-
-			const metadata = request.asLogMetadata();
-			expect(metadata).toHaveProperty('requestId');
-			expect(metadata).toHaveProperty('requestedAt');
+			expect(request1.requestedAt).toBe(timestamp1);
+			expect(request2.requestedAt).toBe(timestamp2);
+			expect(request1.requestedAt).not.toBe(request2.requestedAt);
 		});
 
-		it('[EC-03] should implement IDataProvider interface correctly', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid');
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EC-03] should preserve exact agentRequestId from parent', () => {
+			const specialId = '12345678-abcd-ef01-2345-67890abcdef0';
+			const mockParentRequest = { agentRequestId: specialId } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const request = new TestSupplyRequest();
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT - Verify interface method exists and returns correct type
-			expect(request.asDataObject).toBeDefined();
-			expect(typeof request.asDataObject).toBe('function');
-
-			const dataObject = request.asDataObject();
-			expect(dataObject).toHaveProperty('requestId');
-			expect(dataObject).toHaveProperty('requestedAt');
+			expect(request.agentRequestId).toBe(specialId);
 		});
 
-		it('[EC-04] should create instances with timestamps in chronological order', () => {
-			// ARRANGE
-			randomUUIDSpy.mockReturnValue('uuid');
-			let timestamp = 1000000000000;
-			dateNowSpy.mockImplementation(() => {
-				timestamp += 100;
-				return timestamp;
-			});
+		it('[EC-04] should preserve exact UUID from crypto.randomUUID()', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			const specialUuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+			mockCryptoRandomUUID.mockReturnValue(specialUuid as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const requests = Array.from({ length: 5 }, () => new TestSupplyRequest());
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT - Each timestamp should be greater than the previous
-			for (let i = 1; i < requests.length; i++) {
-				expect(requests[i].requestedAt).toBeGreaterThan(requests[i - 1].requestedAt);
-			}
+			expect(request.supplyRequestId).toBe(specialUuid);
+		});
+
+		it('[EC-05] should preserve exact timestamp from Date.now()', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			const specialTimestamp = 1234567890123;
+			mockDateNow.mockReturnValue(specialTimestamp);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(request.requestedAt).toBe(specialTimestamp);
+		});
+
+		it('[EC-06] should handle special characters in agentRequestId', () => {
+			const specialId = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
+			const mockParentRequest = { agentRequestId: specialId } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(request.agentRequestId).toBe(specialId);
+			expect(() => request.throwIfInvalid()).not.toThrow();
 		});
 	});
 
 	describe('error handling', () => {
-		it('[EH-01] should handle rapid successive instantiations', () => {
-			// ARRANGE
-			const uuids = ['uuid-1', 'uuid-2', 'uuid-3', 'uuid-4', 'uuid-5'];
-			randomUUIDSpy.mockImplementation(() => uuids.shift() as string);
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EH-01] should throw Error if agentRequestId is empty', () => {
+			const mockParentRequest = { agentRequestId: '' as `${string}-${string}-${string}-${string}-${string}` } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT - Create multiple instances rapidly
-			const requests = Array.from({ length: 5 }, () => new TestSupplyRequest());
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT - All should have unique IDs even with same timestamp
-			const ids = requests.map((r) => r.requestId);
-			const uniqueIds = new Set(ids);
-			expect(uniqueIds.size).toBe(5);
-			expect(requests.every((r) => r.requestedAt === 1000000000000)).toBe(true);
+			expect(() => request.throwIfInvalid()).toThrow('"agentRequestId" is required');
 		});
 
-		it('[EH-02] should maintain UUID format consistency across instances', () => {
-			// ARRANGE
-			const validUUIDs = [
-				'550e8400-e29b-41d4-a716-446655440000',
-				'6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-				'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-			];
-			randomUUIDSpy.mockImplementation(() => validUUIDs.shift() as string);
-			dateNowSpy.mockReturnValue(1000000000000);
+		it('[EH-02] should throw Error if agentRequestId is whitespace', () => {
+			const mockParentRequest = { agentRequestId: '   ' as `${string}-${string}-${string}-${string}-${string}` } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
 
-			// ACT
-			const requests = Array.from({ length: 3 }, () => new TestSupplyRequest());
+			const request = new TestSupplyRequest(mockParentRequest);
 
-			// ASSERT - All should match UUID format
-			const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-			requests.forEach((request) => {
-				expect(request.requestId).toMatch(uuidRegex);
-			});
+			expect(() => request.throwIfInvalid()).toThrow('"agentRequestId" is required');
+		});
+
+		it('[EH-03] should throw Error if supplyRequestId is empty', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(() => request.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-04] should throw Error if supplyRequestId is whitespace', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('   ' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(() => request.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-05] should throw Error if agentRequestId is undefined', () => {
+			const mockParentRequest = { agentRequestId: undefined as unknown as string } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('00000000-0000-0000-0000-000000000002' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(() => request.throwIfInvalid()).toThrow('"agentRequestId" is required');
+		});
+
+		it('[EH-06] should throw Error if supplyRequestId is undefined', () => {
+			const mockParentRequest = { agentRequestId: '00000000-0000-0000-0000-000000000001' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue(undefined as unknown as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			const request = new TestSupplyRequest(mockParentRequest);
+
+			expect(() => request.throwIfInvalid()).toThrow('"supplyRequestId" is required');
+		});
+
+		it('[EH-07] should allow construction without validation', () => {
+			const mockParentRequest = { agentRequestId: '' } as AgentRequestBase;
+			mockCryptoRandomUUID.mockReturnValue('' as `${string}-${string}-${string}-${string}-${string}`);
+			mockDateNow.mockReturnValue(1000);
+
+			expect(() => new TestSupplyRequest(mockParentRequest)).not.toThrow();
 		});
 	});
 });

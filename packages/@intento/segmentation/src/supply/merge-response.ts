@@ -1,45 +1,40 @@
 import { SupplyResponseBase } from 'intento-core';
-import type { LogMetadata, IDataObject } from 'n8n-workflow';
+import type { IDataObject, LogMetadata } from 'n8n-workflow';
 
 import type { MergeRequest } from 'supply/merge-request';
 import type { ISegment } from 'types/*';
 
 /**
- * Response containing merged text reconstructed from segments.
+ * Response from merging text segments back into complete text items.
  *
- * Validates that the number of merged text items matches the expected count
- * based on segment textPosition values (zero-based indices). Each unique
- * textPosition should produce exactly one merged text item.
+ * Contains reassembled text array where textPosition determines array index.
+ * Validates text array size matches highest textPosition + 1 to prevent data loss.
  */
 export class MergeResponse extends SupplyResponseBase {
 	readonly segments: ISegment[];
 	readonly text: string[];
 
+	/**
+	 * Creates immutable merge response with reassembled text items.
+	 *
+	 * @param request - Originating merge request containing segments for correlation
+	 * @param text - Reassembled text items (array length must equal max textPosition + 1)
+	 */
 	constructor(request: MergeRequest, text: string[]) {
 		super(request);
 
 		this.text = text;
 		this.segments = request.segments;
 
-		this.throwIfInvalid();
-
 		Object.freeze(this);
 	}
 
-	/**
-	 * Validates that merged text count matches expected count from segments.
-	 *
-	 * Ensures correspondence between input segments and output text by verifying
-	 * text.length equals the number of unique text positions. Since textPosition
-	 * is zero-based (0, 1, 2...), expected count is max textPosition + 1.
-	 *
-	 * @throws Error if text count doesn't match expected count from segments
-	 */
 	throwIfInvalid(): void {
-		if (this.segments.length === 0 && this.text.length === 0) return;
+		if (this.segments.length === 0) throw new Error('"segments" must contain at least one item.');
+		if (this.text.length === 0) throw new Error('"text" must contain at least one item.');
 		const textCount = Math.max(...this.segments.map((segment) => segment.textPosition));
-		if (this.text.length !== textCount + 1)
-			throw new Error(`Text length ${this.text.length} does not match expected count ${textCount + 1} - one per input text item`);
+		if (this.text.length !== textCount + 1) throw new Error(`"text" must contain exactly ${textCount + 1} items.`);
+		super.throwIfInvalid();
 	}
 
 	asLogMetadata(): LogMetadata {
@@ -51,7 +46,6 @@ export class MergeResponse extends SupplyResponseBase {
 	}
 	asDataObject(): IDataObject {
 		return {
-			...super.asDataObject(),
 			segments: this.segments,
 			text: this.text,
 		};

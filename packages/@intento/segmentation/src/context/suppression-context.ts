@@ -40,7 +40,7 @@ export class SuppressionContext implements IContext {
 	}
 
 	throwIfInvalid(): void {
-		if (this.enabled && !this.list) throw new Error('Suppression list must be provided when suppression is enabled.');
+		if (this.enabled && !this.list) throw new Error('"list" must be provided when suppression is enabled.');
 	}
 
 	asLogMetadata(): LogMetadata {

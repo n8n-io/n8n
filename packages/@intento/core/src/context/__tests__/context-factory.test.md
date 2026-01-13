@@ -1,203 +1,171 @@
 # Test Plan: context-factory.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2026-01-11
+**Date:** 2026-01-13
 **Coverage Target:** ≥95% all metrics
 **Test File:** `context-factory.test.ts`
 
 ## Code Surface
-
 **Exports:**
 - `CONTEXT_PARAMETER` - Symbol for metadata key
 - `mapTo()` - Parameter decorator function
 - `ContextFactory` - Static factory class with `read()` method
 
 **Dependencies:**
-- `Reflect.getMetadata()` / `Reflect.defineMetadata()` - Needs mocking for metadata access
-- `IFunctions.getNodeParameter()` - Mock n8n functions interface
-- `Tracer` - Mock tracer for debug/error logging
-- Context constructors with `@mapTo` decorators - Test implementations needed
+- `reflect-metadata` - For decorator metadata storage/retrieval
+- `Tracer` - For logging and error reporting (needs mocking)
+- `IFunctions` - n8n execution context (needs mocking)
+- `IContext` - Interface for context validation
 
 **Branches:**
-- `mapTo()`: 1 conditional (collection ternary)
-- `ContextFactory.read()`: 4 conditionals (metadata checks, validation)
-- `getNodeParameter()`: 1 try/catch
+- `mapTo()`: 1 ternary (collection provided or not) = 2 branches
+- `ContextFactory.read()`: 3 if statements (meta validation, paramTypes validation, length comparison) = 6 branches
+- `getNodeParameter()`: 1 try/catch = 2 branches
+- Total: 10 branches to cover
 
-**Edge Cases:**
-- Missing metadata (no decorators applied)
-- Empty metadata array
-- Partial metadata (decorator count mismatch)
-- Missing TypeScript type metadata (emitDecoratorMetadata disabled)
-- Parameter not found in n8n node
-- Context validation failure
-- Decorator parameter order preservation (3+ parameters)
-- Collection vs flat parameter extraction
-
-**Mock Strategies:**
-- Use `jest.spyOn(Reflect, 'getMetadata')` for metadata reading
-- Use `jest.spyOn(Reflect, 'defineMetadata')` for decorator testing
-- Mock `IFunctions` with `jest-mock-extended`
-- Mock `Tracer` with `jest-mock-extended`, verify `bugDetected()` calls
-- Create test context classes with `@mapTo` decorators
+**ESLint Considerations:**
+- File-level disable needed: `@typescript-eslint/no-unsafe-assignment` (Reflect.getMetadata returns any)
+- Type assertions needed: Reflect.getMetadata returns (cast to string[])
+- Mock type safety: Use `mock<Tracer>()` and `mock<IFunctions>()`
+- Import order: reflect-metadata → jest-mock-extended → types → implementation
 
 ## Test Cases
-
-### CONTEXT_PARAMETER Symbol
-
-#### Business Logic (BL-XX)
-| ID | Test Name | Coverage Target |
-|----|-----------|-----------------|
-| BL-01 | should export unique Symbol | Symbol uniqueness |
 
 ### mapTo() Decorator
 
 #### Business Logic (BL-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-02 | should store flat parameter mapping | Line 38-40, no collection |
-| BL-03 | should store collection parameter mapping | Line 38-40, with collection |
-| BL-04 | should accumulate metadata for multiple parameters | Line 38-40, prepend behavior |
-| BL-05 | should preserve parameter order (left-to-right) | Decorator execution order |
+| BL-01 | should store parameter key in metadata | Lines 37-41, basic decorator functionality |
+| BL-02 | should accumulate metadata for multiple parameters | Lines 37-41, metadata array building |
+| BL-03 | should support nested collection parameters | Line 39, collection ternary left branch |
+| BL-04 | should support flat parameters without collection | Line 39, collection ternary right branch |
 
 #### Edge Cases (EC-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-01 | should handle missing existing metadata (first param) | Line 37, nullish coalescing |
+| EC-01 | should handle first parameter (no existing metadata) | Line 38, empty array fallback |
+| EC-02 | should maintain left-to-right parameter order | Line 39, prepend logic verification |
+
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should handle undefined _propertyKey parameter | Line 36, parameter decorator signature |
 
 ### ContextFactory.read()
 
 #### Business Logic (BL-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-06 | should create valid context from node parameters | Lines 68-88, happy path |
-| BL-07 | should extract flat parameters correctly | getNodeParameter without dots |
-| BL-08 | should extract collection parameters correctly | getNodeParameter with dots |
-| BL-09 | should call throwIfInvalid on created instance | Line 81 |
-| BL-10 | should return validated context instance | Line 87 return |
-| BL-11 | should log debug messages during creation | tracer.debug calls |
+| BL-05 | should create valid context with all parameters | Lines 81-99, complete happy path |
+| BL-06 | should extract parameters in correct order | Line 96, args mapping |
+| BL-07 | should call throwIfInvalid after instantiation | Line 98, validation call |
+| BL-08 | should log debug messages during extraction | Lines 81, 84, 99, tracer debug calls |
+| BL-09 | should log info on successful creation | Line 98, tracer info call |
 
 #### Edge Cases (EC-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-02 | should use undefined for missing node parameters | getNodeParameter catch block |
-| EC-03 | should trigger default parameter values | Constructor defaults with undefined |
-| EC-04 | should handle 3+ parameters in correct order | Parameter ordering |
+| EC-03 | should handle context with optional parameters | Line 96, undefined parameter values |
+| EC-04 | should handle context with default parameter values | Constructor defaults with undefined |
 
 #### Error Handling (EH-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should call bugDetected if no metadata found | Lines 70-72, empty array |
-| EH-02 | should call bugDetected if metadata not array | Lines 70-72, wrong type |
-| EH-03 | should call bugDetected if metadata length zero | Lines 70-72, empty array |
-| EH-04 | should call bugDetected if no type metadata | Lines 75-77, emitDecoratorMetadata check |
-| EH-05 | should call bugDetected if type metadata not array | Lines 75-77, wrong type |
-| EH-06 | should call bugDetected if paramTypes length zero | Lines 75-77, empty array |
-| EH-07 | should call bugDetected if metadata/paramTypes mismatch | Lines 78-79 |
-| EH-08 | should call bugDetected on context validation failure | Lines 82-84, throwIfInvalid throws |
-| EH-09 | should include context metadata in bugDetected call | Line 83, asLogMetadata |
+| EH-02 | should throw if no metadata found | Lines 84-85, meta array check left |
+| EH-03 | should throw if metadata array is empty | Lines 84-85, meta length check right |
+| EH-04 | should throw if paramTypes not found | Lines 88-89, paramTypes array check left |
+| EH-05 | should throw if paramTypes array is empty | Lines 88-89, paramTypes length check right |
+| EH-06 | should throw if metadata count mismatches params | Lines 92-93, length comparison |
+| EH-07 | should throw if context validation fails | Line 98, throwIfInvalid() throws |
 
-### getNodeParameter()
+### ContextFactory.getNodeParameter()
 
 #### Business Logic (BL-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-12 | should extract parameter with extractValue option | Line 105, functions.getNodeParameter |
-| BL-13 | should return parameter value on success | Line 106 return |
-| BL-14 | should log debug on successful fetch | tracer.debug calls |
+| BL-10 | should extract parameter value with extractValue option | Lines 113-115, try block success |
+| BL-11 | should log debug before and after extraction | Lines 112, 114, tracer debug calls |
 
 #### Edge Cases (EC-XX)
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-05 | should return undefined when parameter missing | Lines 108-110, catch block |
-| EC-06 | should log debug on fetch failure | Line 110, tracer.debug in catch |
+| EC-05 | should return undefined for missing parameter | Lines 117-119, catch block |
+| EC-06 | should handle dot notation for nested parameters | Line 113, collection.key format |
 
-## Mock Setup Details
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-08 | should catch and log parameter extraction failure | Lines 117-119, catch error handling |
 
-### Test Context Classes
+## Mock Setup Requirements
+
+**Tracer Mock:**
 ```typescript
-// Simple test context with flat parameters
-class SimpleContext implements IContext {
-  constructor(
-    @mapTo('key1') public value1: string,
-    @mapTo('key2') public value2: number
-  ) {}
-  throwIfInvalid(): void {}
-  asLogMetadata() { return { value1: this.value1, value2: this.value2 }; }
-}
-
-// Complex context with collection parameters
-class ComplexContext implements IContext {
-  constructor(
-    @mapTo('nested_key', 'collection_name') public nested: string,
-    @mapTo('flat_key') public flat: string
-  ) {}
-  throwIfInvalid(): void {}
-  asLogMetadata() { return { nested: this.nested, flat: this.flat }; }
-}
-
-// Invalid context that throws on validation
-class InvalidContext implements IContext {
-  constructor(@mapTo('key') public value: string) {}
-  throwIfInvalid(): void { throw new Error('Validation failed'); }
-  asLogMetadata() { return { value: this.value }; }
-}
-```
-
-### Reflect Metadata Mocking
-```typescript
-jest.spyOn(Reflect, 'getMetadata')
-  .mockImplementation((key, target) => {
-    if (key === CONTEXT_PARAMETER) return ['key1', 'key2'];
-    if (key === 'design:paramtypes') return [String, Number];
-    return undefined;
-  });
-```
-
-### IFunctions Mocking
-```typescript
-const mockFunctions = mock<IFunctions>();
-mockFunctions.getNodeParameter.mockImplementation((key) => {
-  if (key === 'key1') return 'value1';
-  if (key === 'key2') return 42;
-  throw new Error('Parameter not found');
+const mockTracer = mock<Tracer>();
+mockTracer.debug.mockImplementation(() => {});
+mockTracer.info.mockImplementation(() => {});
+mockTracer.bugDetected.mockImplementation((where: string, error: string): never => {
+  throw new NodeOperationError(mock<INode>(), `Bug detected at '${where}': ${error}`);
 });
 ```
 
-### Tracer Mocking
+**IFunctions Mock:**
 ```typescript
-const mockTracer = mock<Tracer>();
-// Verify bugDetected was called
-expect(mockTracer.bugDetected).toHaveBeenCalledWith(
-  expect.stringContaining('SimpleContext'),
-  expect.any(Error),
-  expect.any(Object)
-);
+const mockFunctions = mock<IFunctions>();
+mockFunctions.getNodeParameter.mockImplementation((key: string) => {
+  // Return test data based on key
+});
 ```
 
-## Coverage Goals
+**Test Context Class:**
+```typescript
+class TestContext implements IContext {
+  constructor(
+    @mapTo('param1') public readonly param1: string,
+    @mapTo('param2', 'collection') public readonly param2: number
+  ) {
+    Object.freeze(this);
+  }
 
-- **Statements:** ≥95%
-- **Branches:** 100% (all conditionals tested)
-- **Functions:** 100% (mapTo, read, getNodeParameter)
-- **Lines:** ≥95%
+  throwIfInvalid(): void {
+    if (!this.param1) throw new Error('param1 required');
+  }
 
-## Risk Areas
+  asLogMetadata(): LogMetadata {
+    return { param1: this.param1, param2: this.param2 };
+  }
+}
+```
 
-1. **Reflection API behavior** - Metadata might not be properly stored/retrieved
-2. **Decorator execution order** - Bottom-to-top execution must preserve parameter order
-3. **Type metadata availability** - Depends on emitDecoratorMetadata compiler option
-4. **Error propagation** - bugDetected should be called but never throw from read()
-5. **Parameter extraction** - Collection dot notation must be handled correctly
+## Coverage Strategy
+
+**Line Coverage:**
+- All 41 lines must be executed at least once
+- Focus on: decorator logic (37-41), validation checks (84-93), parameter extraction (96, 112-119)
+
+**Branch Coverage:**
+- mapTo collection ternary: Test both with/without collection (BL-03, BL-04)
+- Metadata validation: Test non-array and empty array separately (EH-02, EH-03)
+- ParamTypes validation: Test non-array and empty array separately (EH-04, EH-05)
+- Try/catch in getNodeParameter: Test success and failure (BL-10, EH-08)
+
+**Function Coverage:**
+- mapTo decorator function: All BL-01 through EC-02
+- ContextFactory.read: All BL-05 through EH-07
+- getNodeParameter: All BL-10 through EH-08
+
+**Statement Coverage:**
+- Every statement in each function must execute
+- Special attention to throw statements (require bugDetected mock)
 
 ## Success Criteria
-
 - [x] Test plan created with author and date
-- [x] All exports identified and planned
-- [x] All branches covered (100%)
-- [x] All error paths tested
-- [x] Mock strategies documented
-- [x] Coverage ≥95% (statements, branches, functions, lines)
+- [x] All exports identified and planned (CONTEXT_PARAMETER, mapTo, ContextFactory)
+- [x] All branches mapped to test cases (10 branches → 25 tests)
+- [x] All error paths planned (8 error handling tests)
+- [x] ESLint considerations documented (unsafe-assignment, type assertions)
+- [x] Mock requirements specified (Tracer, IFunctions, TestContext)
+- [x] Coverage strategy defined for ≥95% all metrics
 - [x] Tests implemented in context-factory.test.ts
-- [x] All tests passing (29/29 tests)
-- [x] TypeScript/ESLint compliance verified
-- [x] 100% coverage achieved: 32/32 statements, 15/15 branches, 5/5 functions, 31/31 lines
+- [x] All tests passing with 100% coverage (25/25 tests, 100% all metrics)

@@ -1,4 +1,7 @@
-import { CONTEXT_TRANSLATION, TranslationAgent } from 'intento-translation';
+import { TranslationAgent, TranslationAgentDescriptor } from 'intento-agents';
+import { TranslationAgentRequest } from 'intento-agents/dist/translation/translation-agent-request';
+import { ContextFactory, Tracer } from 'intento-core';
+import { CONTEXT_TRANSLATION, TranslationContext } from 'intento-translation';
 import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -52,7 +55,9 @@ export class TranslationAgentV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const signal = this.getExecutionCancelSignal() ?? new AbortController().signal;
-		const agent = await TranslationAgent.initializeAgent(this, signal);
-		return await agent.run(signal);
+		const tracer = new Tracer(TranslationAgentDescriptor, this);
+		const context = ContextFactory.read<TranslationContext>(TranslationContext, this, tracer);
+		const request = new TranslationAgentRequest(context);
+		return await new TranslationAgent(this).run(request, signal);
 	}
 }

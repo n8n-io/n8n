@@ -1,207 +1,148 @@
 # Test Plan: echogarden-supplier.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2026-01-12
+**Date:** 2026-01-13
 **Coverage Target:** ≥95% all metrics
 **Test File:** `echogarden-supplier.test.ts`
 
 ## Code Surface
-
-**Exports:** `EchoGardenSupplier` class
+**Exports:** EchoGardenSupplier (class extending SegmentsSupplierBase)
 **Dependencies:**
-- `@echogarden/icu-segmentation-wasm` (ICUSegmentation.initialize)
-- `@echogarden/text-segmentation` (segmentText)
-- `intento-core` (ContextFactory, IFunctions, Tracer)
-- `n8n-workflow` (NodeConnectionTypes)
-- `SuppressionContext`, `EchoGardenDescriptor`, `SplitRequest`, `SplitResponse`, `SegmentsSupplierBase`
+- ICUSegmentation.initialize() (WASM module)
+- segmentText() from @echogarden/text-segmentation
+- ContextFactory.read() for SuppressionContext
+- IFunctions (n8n workflow functions)
+- Tracer (logging)
 
 **Branches:**
-- Line 48: `Array.isArray(request.text)`
-- Line 49: `this.context.enabled && this.context.list`
-- Line 54: `signal.throwIfAborted()`
-- Line 55: `text[i].length === 0`
-- Line 56: `text[i].length < request.segmentLimit`
-- Line 86: `ICUSegmentation.initialize()` success/failure
-- Line 108: `potentialSegment.length <= segmentLimit`
-- Line 112: `currentSegment.length > 0` (first occurrence)
-- Line 115: `currentSegment.length > 0` (second occurrence)
+- L36: text length < segmentLimit (pass through)
+- L30: context.enabled && context.list (suppression array)
+- L53-59: ICU initialization promise (success/failure)
+- L75-80: segmentText loop (accumulation logic)
+- L76: potentialSegment <= segmentLimit (accumulation condition)
+- L79: currentSegment.length > 0 (push segment)
+- L82: currentSegment.length > 0 (push final)
 
 **ESLint Considerations:**
-- Mock types for IFunctions, ICUSegmentation, segmentText
-- Use jest-mock-extended for type-safe mocks
-- Import order: external → types → implementation
+- Need type assertions for mock setups
+- Import ordering: external → intento → local
+- Mock IFunctions with proper type safety
+
+## Test Strategy
+
+### Testing Approach
+1. **Mock ICU & segmentText**: Control sentence splitting behavior
+2. **Mock IFunctions**: Provide workflow context
+3. **Mock ContextFactory**: Control suppression context
+4. **Spy on tracer**: Verify logging calls
+5. **Test initialization**: Singleton pattern and error recovery
+6. **Test segmentation**: Text passthrough and splitting logic
+7. **Test accumulation**: Sentence combining with limits
+
+### Key Test Scenarios
+- Short text (< limit) passes through unchanged
+- Long text splits at sentence boundaries
+- Sentences accumulate until limit reached
+- Single sentence exceeding limit becomes standalone
+- Empty suppressions list handled
+- ICU initialization failure recovery
+- Abort signal handling
 
 ## Test Cases
 
 ### EchoGardenSupplier
 
 #### Business Logic (BL-XX)
-
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| BL-01 | should create supplier instance with frozen state | Constructor lines 23-29 |
-| BL-02 | should initialize ICU on first split request | Lines 84-92, singleton pattern |
-| BL-03 | should handle single text item as string | Line 48 right branch (not array) |
-| BL-04 | should handle text array with multiple items | Line 48 left branch (is array) |
-| BL-05 | should skip text items shorter than segment limit | Lines 56-59 |
-| BL-06 | should segment text exceeding limit | Lines 61-64 |
-| BL-07 | should apply suppressions when enabled | Lines 49, 102 (context.enabled = true) |
-| BL-08 | should skip suppressions when disabled | Line 49 (context.enabled = false) |
-| BL-09 | should combine sentences until limit reached | Lines 107-111 |
-| BL-10 | should preserve atomic sentence exceeding limit | Lines 112-114 |
-| BL-11 | should push final currentSegment | Line 115 |
-| BL-12 | should assign correct textPosition and segmentPosition | Lines 58, 63 |
+| BL-01 | should construct with IFunctions and read context | Lines 29-34, constructor |
+| BL-02 | should pass through text shorter than limit | Lines 36-39, early return |
+| BL-03 | should split long text into segments | Lines 42-44, segmentation path |
+| BL-04 | should use empty suppressions when context disabled | Line 30, false branch |
+| BL-05 | should use context suppressions when enabled | Line 30, true branch |
+| BL-06 | should log debug at split start | Lines 32-33, initial log |
+| BL-07 | should log debug after split complete | Line 47, completion log |
+| BL-08 | should preserve textPosition across segments | Line 43, position tracking |
+| BL-09 | should assign sequential segmentPosition | Line 43, segment numbering |
+| BL-10 | should initialize ICU on first call | Lines 53-58, initialization |
 
 #### Edge Cases (EC-XX)
-
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EC-01 | should skip empty text items | Line 55 |
-| EC-02 | should handle text with single sentence | segmentText single iteration |
-| EC-03 | should handle text with no sentences | segmentText empty result |
-| EC-04 | should reuse ICU initialization across instances | Singleton behavior |
-| EC-05 | should handle suppressions as empty list when null | Line 49 fallback to [] |
-| EC-06 | should handle optional language parameter | Line 102 from?: string |
-
-#### Integration Tests (IT-XX) - Language Groups
-
-| ID | Test Name | Coverage Target | Language Sample |
-|----|-----------|-----------------|-----------------|
-| IT-01 | should segment Cyrillic text (Russian) | Full integration | "Это первое предложение. Это второе предложение." |
-| IT-02 | should segment Latin text (English) | Full integration | "This is first sentence. This is second sentence." |
-| IT-03 | should segment CJK text (Chinese) | Full integration | "这是第一句。这是第二句。" |
-| IT-04 | should segment CJK text (Japanese) | Full integration | "これは最初の文です。これは二番目の文です。" |
-| IT-05 | should segment RTL text (Arabic) | Full integration | "هذه الجملة الأولى. هذه الجملة الثانية." |
-| IT-06 | should segment RTL text (Hebrew) | Full integration | "זה המשפט הראשון. זה המשפט השני." |
-| IT-07 | should segment mixed Latin-Cyrillic | Full integration | "Hello мир. World привет." |
-| IT-08 | should handle abbreviations with suppressions (English) | Full integration | "Dr. Smith works at Inc. Company." |
-| IT-09 | should segment long multi-sentence text with limit | Full integration | 500+ char text with 100 char limit |
-| IT-10 | should preserve sentence integrity in mixed scripts | Full integration | "Test测试. Another另一个." |
-| IT-11 | should segment Thai text without explicit punctuation | Full integration | "นี่คือประโยคแรก นี่คือประโยคที่สอง" |
-| IT-12 | should segment Khmer text without explicit punctuation | Full integration | "នេះគឺជាប្រយោគមួយ ប្រយោគមួយទៀតនៅទីនេះ" |
-| IT-13 | should segment Burmese text without explicit punctuation | Full integration | "ဒါပထမစာကြောင်းပါ ဒါဒုတိယစာကြောင်းပါ" |
-| IT-14 | should segment Japanese text with implicit boundaries | Full integration | "これはテストです それから別のテストです" |
-| IT-15 | should segment Chinese text without punctuation marks | Full integration | "这是第一句 这是第二句" |
-| IT-16 | should segment HTML with tags and preserve structure | Full integration | "<p>First sentence.</p><div>Second sentence.</div>" |
-| IT-17 | should segment XML with attributes | Full integration | "<node attr='value'>First sentence.</node><node>Second.</node>" |
-| IT-18 | should segment JSON strings without breaking structure | Full integration | '{"text": "First sentence. Second sentence."}' |
-| IT-19 | should segment Markdown with formatting | Full integration | "# Heading. **Bold text.** Regular text." |
-| IT-20 | should segment text with code blocks | Full integration | "Text before. `code snippet`. Text after." |
-| IT-21 | should segment text with placeholders | Full integration | "Hello {name}. Welcome to {place}. Enjoy." |
-| IT-22 | should segment text with variables | Full integration | "Value is {{var1}}. Result is {{var2}}." |
-| IT-23 | should segment text with URLs | Full integration | "Visit https://example.com. Read more there." |
-| IT-24 | should segment text with email addresses | Full integration | "Contact admin@example.com. Or support@test.org." |
-| IT-25 | should segment HTML entities | Full integration | "First &amp; second. Third &lt; fourth." |
-| IT-26 | should preserve multiple spaces between sentences | Full integration | "Sentence one.  Multiple spaces.   More text." |
-| IT-27 | should handle leading/trailing whitespace | Full integration | "  Текст с пробелами.  " (Russian) |
-| IT-28 | should segment newlines and paragraphs | Full integration | "First paragraph.\n\nSecond paragraph.\nThird line." |
-| IT-29 | should handle tab characters | Full integration | "文本与\t制表符。\t更多文本。" (Chinese) |
-| IT-30 | should not split on decimal numbers | Full integration | "The value is 3.14. And 2.71 is another." |
-| IT-31 | should handle thousands separators | Full integration | "Стоимость 1,234.56. Всего: 9,876,543 единиц." (Russian) |
-| IT-32 | should preserve version numbers | Full integration | "バージョン 2.0.1。リリース v3.14.159 昨日。" (Japanese) |
-| IT-33 | should handle date formats | Full integration | "Date: 01.12.2026. Also 12/01/2026 works. تاريخ: 2026/01/12." (Mixed) |
-| IT-34 | should not split on time formats | Full integration | "Meeting at 14:30. Or 2:30 p.m. today." |
-| IT-35 | should handle common abbreviations | Full integration | "Dr. Smith and Prof. Johnson. They met at U.S.A. Inc." |
-| IT-36 | should preserve acronyms with periods | Full integration | "Др. Иванов работает в США. ООН поддержала." (Russian) |
-| IT-37 | should handle technical acronyms | Full integration | "API v2.0 released. REST API updated. GraphQL too." |
-| IT-38 | should preserve initials | Full integration | "המחבר ש.י. עגנון כתב. ח.נ. ביאליק הסכים." (Hebrew RTL) |
-| IT-39 | should segment numbered lists | Full integration | "خطوات: 1. الخطوة الأولى. 2. الخطوة الثانية. 3. الخطوة الأخيرة." (Arabic RTL) |
-| IT-40 | should handle lettered lists | Full integration | "Options: a) First choice. b) Second option. c) Last one." |
-| IT-41 | should preserve bullet points | Full integration | "项目：• 第一项。• 第二项。• 第三项。" (Chinese) |
-| IT-42 | should handle quoted sentences | Full integration | "He said 'Hello world.' Then left. She replied 'Goodbye.'" |
-| IT-43 | should preserve nested quotes | Full integration | "Она сказала: 'Он сказал: «Привет».' Вчера." (Russian) |
-| IT-44 | should segment dialog attribution | Full integration | "「こんにちは」と彼は言った。「元気ですか」と彼女は尋ねた。" (Japanese) |
-| IT-45 | should handle ellipsis | Full integration | "Wait... Something's wrong. Really... Think about it." |
-| IT-46 | should preserve em dash | Full integration | "החלק הראשון—הערה חשובה—ממשיך כאן. סיום." (Hebrew RTL) |
-| IT-47 | should handle parentheses mid-sentence | Full integration | "Текст (с примечанием). Еще (другое примечание) здесь." (Russian) |
-| IT-48 | should handle question/exclamation combos | Full integration | "Really?! Are you sure?! Wow!" |
-| IT-49 | should preserve phone numbers | Full integration | "Call +1-555-123-4567. Or (555) 123.4567 works." |
-| IT-50 | should handle file paths | Full integration | "See file.txt. Or /path/to/file.json for details." |
-| IT-51 | should preserve currency symbols | Full integration | "Costs €99.99. Also £50.00 and ¥1000 available." |
-| IT-52 | should handle mathematical expressions | Full integration | "Formula: a+b=c. Also x²+y²=z² applies." |
-| IT-53 | should preserve chemical formulas | Full integration | "الماء هو H₂O. ثاني أكسيد الكربون: CO₂. صيغة." (Arabic RTL) |
-| IT-54 | should preserve untranslatable terms | Full integration | "Product name SuperApp™. Version MacroTool® 3.0." |
-| IT-55 | should handle mixed RTL/LTR | Full integration | "English text עברית text العربية continues." |
-| IT-56 | should segment mixed CJK/Latin | Full integration | "日本語 text with English. 中文 mixed content." |
-| IT-57 | should handle sentence-ending abbreviations | Full integration | "Company: Apple Inc. Location: USA. Founded: 1976." |
-| IT-58 | should preserve contractions | Full integration | "It's working. They're done. Won't stop. Can't fail." |
-| IT-59 | should handle CAT tool tags | Full integration | "Text <g id='1'>with tags</g>. More <x id='2'/> content." |
-| IT-60 | should preserve placeholders with numbers | Full integration | "Welcome {0}. Your score: {1}. Rank: {2}." |
-| IT-61 | should handle printf-style formatting | Full integration | "Hello %s. Value: %d. Percent: %.2f done." |
-| IT-62 | should preserve ICU MessageFormat | Full integration | "You have {count, plural, one {# item} other {# items}}." |
-| IT-63 | should handle non-breaking spaces | Full integration | "Company Name. Another Company." (NBSP U+00A0) |
-| IT-64 | should preserve very long sentence | Full integration | Russian 500+ char sentence |
-| IT-65 | should combine multiple short sentences | Full integration | "Hi. OK. Yes. No. Maybe. Sure. Fine. Good. Great. Done." |
-| IT-66 | should handle alternating long/short | Full integration | "Short. This is a longer sentence with more content. Brief." |
-| IT-67 | should segment Thai without punctuation | Full integration | "นี่คือประโยคแรก นี่คือประโยคที่สอง นี่คือประโยคที่สาม" |
-| IT-68 | should segment Khmer without punctuation | Full integration | "នេះជាប្រយោគទីមួយ នេះជាប្រយោគទីពីរ នេះជាប្រយោគទីបី" |
-| IT-69 | should segment Burmese without punctuation | Full integration | "ဒါပထမစာကြောင်း ဒါဒုတိယစာကြောင်း ဒါတတိယစာကြောင်း" |
-| IT-70 | should segment Lao without punctuation | Full integration | "ນີ້ແມ່ນປະໂຫຍກທຳອິດ ນີ້ແມ່ນປະໂຫຍກທີສອງ ນີ້ແມ່ນປະໂຫຍກທີສາມ" |
+| EC-01 | should handle multiple text items | Lines 35-44, loop iteration |
+| EC-02 | should handle empty text array | Line 35, zero iterations |
+| EC-03 | should handle text exactly at limit | Line 36, boundary condition |
+| EC-04 | should accumulate sentences until limit | Lines 75-80, accumulation loop |
+| EC-05 | should push segment on overflow | Lines 79-80, overflow handling |
+| EC-06 | should handle final segment after loop | Line 82, final push |
+| EC-07 | should handle single sentence exceeding limit | Lines 79-80, standalone segment |
+| EC-08 | should handle empty sentences array | Lines 75-82, zero iterations |
+| EC-09 | should reuse ICU initialization promise | Line 53, singleton pattern |
 
 #### Error Handling (EH-XX)
-
 | ID | Test Name | Coverage Target |
 |----|-----------|-----------------|
-| EH-01 | should reset icuInitialized on initialization failure | Lines 88-91 catch block |
-| EH-02 | should throw error from ICU initialization | Line 91 throw |
-| EH-03 | should respect abort signal at method start | Line 43 signal.throwIfAborted() |
-| EH-04 | should respect abort signal in loop | Line 54 signal.throwIfAborted() |
-| EH-05 | should propagate segmentText errors | Error handling in segmentText call |
+| EH-01 | should throw on abort signal before split | Line 25, signal check |
+| EH-02 | should throw on abort signal during loop | Line 35, per-item check |
+| EH-03 | should reset ICU on initialization failure | Lines 56-59, error handling |
+| EH-04 | should log error on ICU failure | Line 57, error logging |
+| EH-05 | should re-throw ICU initialization error | Line 59, error propagation |
 
-## Mock Setup Requirements
+#### Metadata & Data (MD-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| MD-01 | should include suppression count in log | Line 32, log message |
+| MD-02 | should include segment count in log | Line 47, result log |
+| MD-03 | should pass request metadata to tracer | Line 33, metadata |
+| MD-04 | should pass response metadata to tracer | Line 47, metadata |
 
-### IFunctions Mock
+## Implementation Notes
+
+### Mock Setup Pattern
 ```typescript
-{
-  getNodeParameter: jest.fn(),
-  getNode: jest.fn().mockReturnValue({ name: 'Test Node' }),
-  getExecutionId: jest.fn().mockReturnValue('test-exec-id'),
-  // ... other required properties
+// Mock ICUSegmentation
+jest.mock('@echogarden/icu-segmentation-wasm', () => ({
+  initialize: jest.fn(),
+}));
+
+// Mock segmentText
+jest.mock('@echogarden/text-segmentation', () => ({
+  segmentText: jest.fn(),
+}));
+
+// Mock ContextFactory
+jest.spyOn(ContextFactory, 'read').mockReturnValue(mockContext);
+```
+
+### Test Class Pattern
+```typescript
+// Access protected executeSplit via public test method
+class TestEchoGardenSupplier extends EchoGardenSupplier {
+  async testExecuteSplit(request: SplitRequest, signal: AbortSignal) {
+    return await this.executeSplit(request, signal);
+  }
 }
 ```
 
-### ICUSegmentation Mock
+### Sentence Segmentation Mock
 ```typescript
-jest.mock('@echogarden/icu-segmentation-wasm', () => ({
-  initialize: jest.fn()
-}));
+// Control sentence splitting behavior
+const mockSegmentText = segmentText as jest.MockedFunction<typeof segmentText>;
+mockSegmentText.mockResolvedValue({
+  sentences: [
+    { text: 'First sentence. ' },
+    { text: 'Second sentence.' },
+  ],
+});
 ```
-
-### segmentText Mock
-```typescript
-jest.mock('@echogarden/text-segmentation', () => ({
-  segmentText: jest.fn()
-}));
-```
-
-### ContextFactory Mock
-- Mock to return SuppressionContext with controlled enabled/list values
-
-## Coverage Strategy
-
-**Target Metrics:** ≥95% for statements, branches, functions, lines
-
-**Critical Paths:**
-1. Constructor → executeSplit → initializeICU → segmentText (happy path)
-2. ICU initialization failure → reset → retry (error recovery)
-3. Abort signal handling (cancellation)
-4. All language scripts (integration tests)
-
-**Branch Coverage:**
-- Array check: test both string and array inputs
-- Context check: test enabled=true/false, list=null/array
-- Length checks: test <limit, =limit, >limit
-- Empty check: test empty strings
-- Sentence combining: test all branches in segmentText loop
 
 ## Success Criteria
-
 - [x] Test plan created with author and date
-- [x] All exports identified and planned
-- [x] All branches covered (100%)
-- [x] All error paths tested
-- [x] Integration tests for 6+ language groups (Cyrillic, Latin, CJK, RTL, Mixed)
+- [x] All exports identified and planned (1 class)
+- [x] All branches covered (7 branches mapped)
+- [x] All error paths tested (5 error scenarios)
 - [x] ESLint considerations documented
-- [ ] Implementation achieves ≥95% coverage (all metrics)
+- [ ] Coverage ≥95% (statements, branches, functions, lines)
 - [ ] All tests pass
-- [ ] `pnpm lint:fix` and `pnpm build` succeed
+- [ ] No TypeScript errors
+- [ ] No ESLint errors

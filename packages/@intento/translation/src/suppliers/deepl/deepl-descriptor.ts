@@ -2,7 +2,7 @@ import type { ITranslationDescriptor } from 'types/*';
 
 export const DeeplDescriptor: ITranslationDescriptor = {
 	name: 'ai.text.translate.deepl.api.v2',
-	symbol: '🚚 [DeepL NMT]',
+	symbol: '🚚 [DeepL]',
 	credentials: 'ai.text.translate.deepl.api.v2',
 	node: 'intentoDeeplTranslationNode',
 	tool: 'intentoDeeplTranslationTool',

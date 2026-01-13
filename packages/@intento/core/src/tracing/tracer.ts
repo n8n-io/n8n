@@ -1,106 +1,107 @@
 import type { INode, Logger, LogMetadata } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IFunctions } from 'types/*';
+import type { IDescriptor, IFunctions } from 'types/*';
 import { Pipeline } from 'utils/*';
 
 /**
- * Provides structured logging with distributed tracing support for n8n workflow nodes.
+ * Distributed tracing and logging utility for n8n workflow execution.
  *
- * Automatically extracts or generates a traceId that persists across pipeline execution,
- * enabling request correlation across multiple nodes. All log methods include execution
- * context (traceId, nodeId, workflowId, executionId) for observability.
+ * Provides structured logging with consistent metadata (traceId, workflowId, executionId)
+ * across agent and supplier operations. Manages traceId lifecycle: extracts from pipeline,
+ * generates when missing, and persists in workflow custom data for correlation.
+ *
+ * Frozen after construction to prevent accidental modification during execution.
  */
 export class Tracer {
+	private readonly functions: IFunctions;
+	private readonly log: Logger;
+
+	readonly symbol: string;
 	readonly node: INode;
-	readonly log: Logger;
 	readonly traceId: string;
 	readonly workflowId: string;
 	readonly executionId: string;
 
 	/**
-	 * Creates a tracer instance with automatic traceId resolution.
+	 * Initializes tracer with workflow context and resolves traceId.
 	 *
-	 * TraceId resolution strategy:
-	 * 1. Check execution customData for existing traceId
-	 * 2. Extract from pipeline data (all upstream nodes)
-	 * 3. Generate new UUID if not found
+	 * Extracts traceId from: 1) custom data (if exists), 2) pipeline outputs, 3) generates new UUID.
+	 * Stores resolved traceId in workflow custom data for downstream nodes.
+	 * All properties frozen after construction to ensure immutability during execution.
 	 *
-	 * The resolved traceId is stored in customData for downstream nodes.
-	 *
-	 * @param functions - n8n execution context providing workflow, node, and execution metadata
+	 * @param descriptor - Agent/supplier metadata for log symbol identification
+	 * @param functions - n8n execution context providing logger, workflow, and execution metadata
 	 */
-	constructor(functions: IFunctions) {
+	constructor(descriptor: IDescriptor, functions: IFunctions) {
 		this.log = functions.logger;
+		this.functions = functions;
+
+		this.symbol = descriptor.symbol;
 		this.node = functions.getNode();
+		// NOTE: Non-null assertion safe - workflow ID always present during node execution
 		this.workflowId = functions.getWorkflow().id!;
 		this.executionId = functions.getExecutionId();
-		this.traceId = Tracer.getTraceId(functions, this.log);
+		this.traceId = this.getTraceId();
+
+		// NOTE: Freeze prevents accidental mutation during execution
 		Object.freeze(this);
 	}
 
 	/**
-	 * Logs debug-level message with execution context metadata.
+	 * Logs debug message with workflow execution metadata.
 	 *
-	 * @param message - Log message
-	 * @param extension - Optional additional metadata to merge with execution context
+	 * @param message - Debug message to log
+	 * @param extension - Optional additional metadata to merge with base context
 	 */
 	debug(message: string, extension?: LogMetadata): void {
-		this.log.debug(message, this.getLogMetadata(extension));
+		this.log.debug(`${this.symbol} ${message}`, this.getLogMetadata(extension));
 	}
 
 	/**
-	 * Logs info-level message with execution context metadata.
+	 * Logs info message with workflow execution metadata.
 	 *
-	 * @param message - Log message
-	 * @param extension - Optional additional metadata to merge with execution context
+	 * @param message - Info message to log
+	 * @param extension - Optional additional metadata to merge with base context
 	 */
 	info(message: string, extension?: LogMetadata): void {
-		this.log.info(message, this.getLogMetadata(extension));
+		this.log.info(`${this.symbol} ${message}`, this.getLogMetadata(extension));
 	}
 
 	/**
-	 * Logs warning-level message with execution context metadata.
+	 * Logs warning message with workflow execution metadata.
 	 *
-	 * @param message - Log message
-	 * @param extension - Optional additional metadata to merge with execution context
+	 * @param message - Warning message to log
+	 * @param extension - Optional additional metadata to merge with base context
 	 */
 	warn(message: string, extension?: LogMetadata): void {
-		this.log.warn(message, this.getLogMetadata(extension));
+		this.log.warn(`${this.symbol} ${message}`, this.getLogMetadata(extension));
 	}
 
 	/**
-	 * Logs error-level message with execution context metadata.
+	 * Logs error message with workflow execution metadata.
 	 *
-	 * @param message - Log message
-	 * @param extension - Optional additional metadata to merge with execution context
+	 * @param message - Error message to log
+	 * @param extension - Optional additional metadata to merge with base context
 	 */
 	error(message: string, extension?: LogMetadata): void {
-		this.log.error(message, this.getLogMetadata(extension));
+		this.log.error(`${this.symbol} ${message}`, this.getLogMetadata(extension));
 	}
 
 	/**
-	 * Reports a developer bug and throws NodeOperationError to halt execution.
+	 * Logs bug detection and throws NodeOperationError to halt execution.
 	 *
-	 * Use this for bugs that should be caught during development (decorator misuse,
-	 * invalid configuration, incorrect API usage), not for runtime errors like network
-	 * failures or invalid user input.
+	 * Used for developer errors that indicate incorrect code logic, not runtime failures.
+	 * Logs error with full context before throwing to ensure bug is captured in logs.
 	 *
-	 * All error messages are prefixed with 🐞 [BUG] for easy identification in logs.
-	 *
-	 * @param where - Location identifier (function/method name) for debugging
-	 * @param error - Error object or message describing the bug
-	 * @param extension - Optional additional metadata to merge with execution context
-	 * @throws NodeOperationError always - execution cannot continue after bug detection
+	 * @param where - Class or method name where bug detected (for debugging)
+	 * @param error - Bug description (what went wrong)
+	 * @param extension - Optional additional metadata for bug context
+	 * @throws NodeOperationError Always throws to halt workflow execution
 	 */
-	bugDetected(where: string, error: Error | string, extension?: LogMetadata): never {
-		const message = `🐞 [BUG] at '${where}'. Node ${this.node.name} thrown error: ${typeof error === 'string' ? error : error.message}`;
-		const meta = {
-			where,
-			...(typeof error === 'string' ? { message: error } : { error }),
-			...(extension ?? {}),
-		};
-		this.log.error(message, meta);
+	bugDetected(where: string, error: string, extension?: LogMetadata): never {
+		const message = `Bug detected at '${where}': ${error}`;
+		this.error(message, extension);
 		throw new NodeOperationError(this.node, message);
 	}
 
@@ -115,119 +116,111 @@ export class Tracer {
 	}
 
 	/**
-	 * Resolves or generates a traceId for distributed tracing.
+	 * Resolves traceId for workflow execution using 3-tier strategy.
 	 *
-	 * Resolution order:
-	 * 1. Check customData for existing traceId (fast path for chained nodes)
-	 * 2. Extract from pipeline input data (for first node after external trigger)
-	 * 3. Generate new UUID (for workflow start)
+	 * Resolution order: 1) custom data (cached from earlier nodes), 2) pipeline outputs,
+	 * 3) generate new UUID. Caches resolved/generated traceId in custom data for reuse.
 	 *
-	 * @param functions - n8n execution context
-	 * @param log - Logger instance for tracing the resolution process
-	 * @returns Resolved or generated traceId
+	 * @returns Resolved or newly generated traceId for this execution
 	 */
-	private static getTraceId(functions: IFunctions, log: Logger): string {
-		const logMeta = {
-			nodeName: functions.getNode().name,
-			workflowId: functions.getWorkflow().id!,
-			executionId: functions.getExecutionId(),
-		};
-		log.debug('🧭 [Tracer] Getting traceId ...', logMeta);
+	private getTraceId(): string {
+		this.debug('Getting traceId ...');
 
-		log.debug('🧭 [Tracer] Checking custom data for traceId ...', logMeta);
-		let traceId = this.getCustomData(functions);
+		// NOTE: Check custom data first - fastest path for subsequent nodes
+		let traceId = this.getCustomData();
 		if (traceId) {
-			log.debug(`🧭 [Tracer] Found traceId in custom data: ${traceId}`, logMeta);
+			this.info(`Found traceId in custom data: ${traceId}`);
 			return traceId;
 		}
 
-		log.debug('🧭 [Tracer] Extracting traceIds from pipeline ...', logMeta);
-		const uniqueIds: string[] = this.getFromPipeline(functions);
+		this.debug('Extracting traceIds from pipeline ...');
+		const uniqueIds: string[] = this.getFromPipeline();
 
-		// NOTE: Multiple traceIds indicate parallel branches or joins - we use the first one to maintain a single trace
+		// NOTE: Switch handles 3 cases: none (generate), one (use), multiple (use first + warn)
 		switch (uniqueIds.length) {
 			case 0: {
 				traceId = crypto.randomUUID();
-				log.debug(`🧭 [Tracer] No traceId found in pipeline. Generated new traceId: ${traceId}`, logMeta);
+				this.warn(`No traceId found in pipeline. Generated new traceId: ${traceId}`);
 				break;
 			}
 			case 1:
 				traceId = uniqueIds[0];
-				log.debug(`🧭 [Tracer] Found single traceId in pipeline: ${traceId}`, logMeta);
+				this.info(`Found single traceId in pipeline: ${traceId}`);
 				break;
 			default: {
+				// NOTE: Use first traceId when multiple found - likely split/merge scenario
 				traceId = uniqueIds[0];
-				const meta = { traceIds: uniqueIds, ...logMeta };
-				log.warn(`🧭 [Tracer] Multiple traceIds found in pipeline. Using the first one: ${traceId}`, meta);
+				this.warn(`Multiple traceIds found in pipeline. Using the first one: ${traceId}`, { traceIds: uniqueIds });
 				break;
 			}
 		}
 
-		// NOTE: Store traceId in customData so downstream nodes can retrieve it without re-scanning pipeline
-		log.debug('🧭 [Tracer] Remembering traceId in custom data...', logMeta);
-		this.rememberTraceId(functions, traceId);
+		this.debug('Remembering traceId in custom data...', { traceId });
+		this.rememberTraceId(traceId);
 		return traceId;
 	}
 
 	/**
-	 * Extracts unique traceIds from all pipeline input data.
+	 * Extracts unique traceIds from all upstream node outputs in pipeline.
 	 *
-	 * Scans all input items across all pipeline branches, looking for `json.traceId` fields.
-	 * Returns deduplicated array of found traceIds.
+	 * Scans pipeline for json.traceId fields, returns deduplicated array.
+	 * Empty array indicates no upstream nodes set traceId (first node scenario).
 	 *
-	 * @param functions - n8n execution context
-	 * @returns Array of unique traceIds found in pipeline data
+	 * @returns Array of unique traceIds found in pipeline (empty if none)
 	 */
-	private static getFromPipeline(functions: IFunctions): string[] {
-		const pipeline = Pipeline.readPipeline(functions);
+	private getFromPipeline(): string[] {
+		const pipeline = Pipeline.readPipeline(this.functions);
 		const traceIds: string[] = [];
 
-		// NOTE: Pipeline structure is { [nodeName]: [items] }, we scan all items from all upstream nodes
+		// NOTE: Iterate all nodes in pipeline, checking each output item for traceId
 		for (const [, values] of Object.entries(pipeline)) {
 			for (const body of values as Array<Record<string, Record<string, unknown>>>) {
+				// NOTE: Type guard ensures traceId is string before adding to array
 				if (body.json?.traceId && typeof body.json.traceId === 'string') {
 					traceIds.push(body.json.traceId);
 				}
 			}
 		}
 
+		// NOTE: Deduplicate traceIds - multiple nodes may output same traceId
 		return Array.from(new Set(traceIds));
 	}
 
 	/**
-	 * Retrieves traceId from execution customData if present.
+	 * Retrieves traceId from workflow execution custom data cache.
 	 *
-	 * CustomData is a Map-like object that persists across node executions within a single workflow run.
+	 * Custom data persists across all nodes in execution, enabling traceId reuse.
+	 * Returns undefined if custom data unavailable or traceId not cached.
 	 *
-	 * @param functions - n8n execution context
-	 * @returns TraceId string if found and valid, undefined otherwise
+	 * @returns Cached traceId or undefined if not found
 	 */
-	private static getCustomData(functions: IFunctions): string | undefined {
-		const data = functions.getWorkflowDataProxy(0);
+	private getCustomData(): string | undefined {
+		const data = this.functions.getWorkflowDataProxy(0);
 		const execution = data.$execution as Record<string, unknown>;
 		const customData = execution.customData as Map<string, unknown> | undefined;
 
-		// NOTE: customData may not be available in all execution contexts (e.g., test environments)
+		// NOTE: Defensive check - customData may not be initialized or may be wrong type
 		if (!customData || typeof customData.get !== 'function') return undefined;
 
 		const traceId = customData.get('traceId');
+		// NOTE: Type guard ensures traceId is string - could be set to any type
 		return typeof traceId === 'string' ? traceId : undefined;
 	}
 
 	/**
-	 * Stores traceId in execution customData for downstream node access.
+	 * Stores traceId in workflow execution custom data for downstream nodes.
 	 *
-	 * Fails silently if customData is unavailable (e.g., in test environments).
+	 * Enables traceId reuse across all nodes in execution without passing through pipeline.
+	 * Silently fails if custom data unavailable (non-critical operation).
 	 *
-	 * @param functions - n8n execution context
-	 * @param traceId - TraceId to store
+	 * @param traceId - TraceId to cache for downstream nodes
 	 */
-	private static rememberTraceId(functions: IFunctions, traceId: string): void {
-		const data = functions.getWorkflowDataProxy(0);
+	private rememberTraceId(traceId: string): void {
+		const data = this.functions.getWorkflowDataProxy(0);
 		const execution = data.$execution as Record<string, unknown>;
 		const customData = execution.customData as Map<string, unknown> | undefined;
 
-		// NOTE: customData may not be available in all execution contexts (e.g., test environments)
+		// NOTE: Silently return if custom data unavailable - non-critical cache operation
 		if (!customData || typeof customData.set !== 'function') return;
 
 		customData.set('traceId', traceId);

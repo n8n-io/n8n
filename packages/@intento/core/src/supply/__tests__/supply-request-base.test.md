@@ -1,126 +1,89 @@
 # Test Plan: supply-request-base.ts
 
 **Author:** Claude Sonnet 4.5
-**Date:** 2026-01-11
+**Date:** 2026-01-13
 **Coverage Target:** ≥95% all metrics
 **Test File:** `supply-request-base.test.ts`
 
-## 1. Code Analysis
+## Code Surface
+**Exports:** `SupplyRequestBase` (abstract class)
+**Dependencies:**
+- `AgentRequestBase` (need to mock concrete implementation)
+- `crypto.randomUUID()` (mock for deterministic UUID)
+- `Date.now()` (mock for deterministic timestamp)
+**Branches:**
+- 2 conditionals in `throwIfInvalid()` (agentRequestId, supplyRequestId empty checks)
+**ESLint Considerations:**
+- Type assertions needed: `as AgentRequestBase` for mock
+- Import order: types before implementations
+- Mock setup for abstract class requires concrete test implementation
 
-### Exports
-- `SupplyRequestBase` class - Abstract base class for supply requests
+## Test Cases
 
-### Code Paths
-- Constructor: Lines 16-19 (UUID generation, timestamp capture)
-- `asLogMetadata()`: Lines 22-27 (return LogMetadata object)
-- `asDataObject()`: Lines 29-34 (return IDataObject)
+### SupplyRequestBase
 
-### Branches
-- None (straight-line code)
+#### Business Logic (BL-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| BL-01 | should copy agentRequestId from parent request | Line 28, property assignment |
+| BL-02 | should generate unique supplyRequestId | Line 29, crypto.randomUUID() |
+| BL-03 | should capture current timestamp | Line 30, Date.now() |
+| BL-04 | should set readonly agentRequestId | Line 14, readonly property |
+| BL-05 | should set readonly supplyRequestId | Line 15, readonly property |
+| BL-06 | should set readonly requestedAt | Line 16, readonly property |
+| BL-07 | should return complete log metadata | Lines 50-54, asLogMetadata() |
+| BL-08 | should pass validation with valid fields | Line 40, throwIfInvalid() happy path |
 
-### Edge Cases
-- UUID generation: Must be unique across instances
-- Timestamp capture: Must reflect construction time accurately
-- Immutability: readonly properties should not be modifiable
-- Inheritance: abstract class extended by domain-specific requests
-- Interface compliance: implements ITraceable and IDataProvider
+#### Edge Cases (EC-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EC-01 | should generate different supplyRequestIds for multiple instances | Line 29, UUID uniqueness |
+| EC-02 | should capture different timestamps for multiple instances | Line 30, timestamp variation |
+| EC-03 | should preserve exact agentRequestId from parent | Line 28, no transformation |
+| EC-04 | should preserve exact UUID from crypto.randomUUID() | Line 29, exact value |
+| EC-05 | should preserve exact timestamp from Date.now() | Line 30, exact value |
+| EC-06 | should handle special characters in agentRequestId | Line 28, UUID with special chars |
 
-### Dependencies to Mock
-- `crypto.randomUUID()` - mock for deterministic UUID generation
-- `Date.now()` - mock for deterministic timestamp tests
+#### Error Handling (EH-XX)
+| ID | Test Name | Coverage Target |
+|----|-----------|-----------------|
+| EH-01 | should throw Error if agentRequestId is empty | Line 40, first condition |
+| EH-02 | should throw Error if agentRequestId is whitespace | Line 40, trim() === '' |
+| EH-03 | should throw Error if supplyRequestId is empty | Line 41, second condition |
+| EH-04 | should throw Error if supplyRequestId is whitespace | Line 41, trim() === '' |
+| EH-05 | should throw Error if agentRequestId is undefined | Line 40, !agentRequestId |
+| EH-06 | should throw Error if supplyRequestId is undefined | Line 41, !supplyRequestId |
+| EH-07 | should allow construction without validation | Constructor doesn't validate |
 
-## 2. Test Cases
+## Implementation Notes
 
-### BL-XX: Business Logic (Happy Paths)
-
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| BL-01 | should generate unique request ID using crypto.randomUUID | Line 17, UUID generation | HIGH |
-| BL-02 | should capture timestamp at construction time | Line 19, timestamp capture | HIGH |
-| BL-03 | should return log metadata with requestId and requestedAt | Lines 23-26 | HIGH |
-| BL-04 | should return data object with requestId and requestedAt | Lines 30-33 | HIGH |
-| BL-05 | should generate different IDs for multiple instances | UUID uniqueness | HIGH |
-| BL-06 | should capture different timestamps for sequential constructions | Timestamp ordering | MEDIUM |
-
-### EC-XX: Edge Cases (Boundaries & Unusual Inputs)
-
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| EC-01 | should generate valid UUID format (RFC 4122) | Line 17, format validation | MEDIUM |
-| EC-02 | should implement ITraceable interface correctly | Type checking | MEDIUM |
-| EC-03 | should implement IDataProvider interface correctly | Type checking | MEDIUM |
-| EC-04 | should create instances with timestamps in chronological order | Timestamp logic | LOW |
-
-### EH-XX: Error Handling (Validation & Failures)
-
-| ID | Test Name | Coverage Target | Priority |
-|----|-----------|-----------------|----------|
-| EH-01 | should handle rapid successive instantiations | UUID/timestamp collision | MEDIUM |
-| EH-02 | should maintain UUID format consistency across instances | UUID validation | LOW |
-
-## 3. Mock Strategy
-
-### crypto.randomUUID() Mock
+### Concrete Test Class
 ```typescript
-jest.spyOn(crypto, 'randomUUID')
-  .mockReturnValueOnce('uuid-1')
-  .mockReturnValueOnce('uuid-2');
+class TestSupplyRequest extends SupplyRequestBase {
+  asDataObject() { return { test: 'data' }; }
+}
 ```
 
-### Date.now() Mock
-```typescript
-jest.spyOn(Date, 'now')
-  .mockReturnValueOnce(1000000000000)
-  .mockReturnValueOnce(1000000001000);
-```
+### Mock Setup
+- Mock `crypto.randomUUID()` for deterministic UUID testing
+- Mock `Date.now()` for deterministic timestamp testing
+- Create mock `AgentRequestBase` instances with known agentRequestId
 
-## 4. Test Structure
+### Coverage Focus
+- Constructor: agentRequestId copy, supplyRequestId generation, requestedAt capture
+- throwIfInvalid: empty, whitespace, missing for both IDs
+- asLogMetadata: returns all 3 fields correctly
+- Readonly properties: verify cannot be reassigned (property descriptor check)
+- UUID uniqueness: multiple instances generate different IDs
+- Timestamp capture: multiple instances capture different times
 
-```
-describe('SupplyRequestBase')
-├── describe('business logic')
-│   ├── [BL-01] UUID generation
-│   ├── [BL-02] timestamp capture
-│   ├── [BL-03] log metadata format
-│   ├── [BL-04] data object format
-│   ├── [BL-05] unique IDs across instances
-│   └── [BL-06] different timestamps for sequential constructions
-├── describe('edge cases')
-│   ├── [EC-01] UUID format validation
-│   ├── [EC-02] ITraceable interface
-│   ├── [EC-03] IDataProvider interface
-│   └── [EC-04] chronological timestamp ordering
-└── describe('error handling')
-    ├── [EH-01] rapid successive instantiations
-    └── [EH-02] UUID format consistency
-
-```
-
-## 5. Coverage Goals
-
-**Line Coverage:** 100% (all lines)
-**Branch Coverage:** 100% (no branches)
-**Function Coverage:** 100% (constructor + 2 methods)
-**Statement Coverage:** 100%
-
-## 6. Implementation Notes
-
-- Use `jest.spyOn(crypto, 'randomUUID')` for controlled UUID generation
-- Use `jest.spyOn(Date, 'now')` for deterministic timing tests
-- Test abstract class by creating a concrete test implementation
-- Verify UUID format matches RFC 4122 (8-4-4-4-12 pattern)
-- Test interface implementations return correct types
-- Test base class behavior that subclasses depend on
-
-## 7. Risk Assessment
-
-**High Risk Areas:**
-- UUID uniqueness (critical for request tracing)
-- Timestamp accuracy (affects latency calculations)
-
-**Medium Risk Areas:**
-- Interface contract compliance (affects all consumers)
-- Abstract class instantiation (test via concrete subclass)
-
-**Low Risk Areas:**
-- Simple object transformations (straightforward logic)
+## Success Criteria
+- [x] Test plan created with author and date
+- [x] All exports identified and planned
+- [x] All branches covered (100%)
+- [x] All error paths tested
+- [x] ESLint considerations documented
+- [ ] Coverage ≥95% (statements, branches, functions, lines)
+- [ ] All tests pass
+- [ ] No ESLint errors
+- [ ] TypeScript compiles
