@@ -559,6 +559,27 @@ describe('FixedCollectionParameterNew.vue', () => {
 		});
 	});
 
+	describe('multipleValues=false fixedCollection', () => {
+		it('renders values correctly', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						typeOptions: { multipleValues: false },
+					},
+					values: { values: { outputKey: 'My Custom Value' } },
+					nodeValues: { parameters: { rules: { values: { outputKey: 'My Custom Value' } } } },
+				},
+			});
+
+			await waitFor(() => {
+				const input = getByTestId('parameter-item').querySelector('input') as HTMLInputElement;
+				expect(input?.value).toBe('My Custom Value');
+			});
+		});
+	});
+
 	describe('hideOptionalFields mode', () => {
 		const hideOptionalFieldsProps: Props = {
 			parameter: {
