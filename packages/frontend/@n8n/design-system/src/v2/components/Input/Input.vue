@@ -303,7 +303,6 @@ defineExpose({ focus, blur, select });
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);
-	box-shadow: 0 0 0 0px var(--color--secondary--tint-2);
 	gap: var(--spacing--3xs);
 }
 
