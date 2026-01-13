@@ -319,6 +319,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
+		Container.get(LoadNodesAndCredentials).releaseTypes();
+
 		const editorUrl = this.getEditorUrl();
 
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);

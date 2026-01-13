@@ -56,6 +56,8 @@ describe('WorkflowBuilderService', () => {
 				nodes: mockNodeTypeDescriptions,
 				credentials: [],
 			},
+			postProcessLoaders: jest.fn().mockResolvedValue(undefined),
+			releaseTypes: jest.fn(),
 		} as unknown as LoadNodesAndCredentials;
 
 		mockLicense = mock<License>();
