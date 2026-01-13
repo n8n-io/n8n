@@ -33,23 +33,6 @@ export interface JudgePanelResult {
 	timing?: JudgePanelTiming;
 }
 
-export interface GenerationResult extends JudgePanelResult {
-	workflow: SimpleWorkflow;
-}
-
-export interface MultiGenerationAggregation {
-	/** Generation correctness: (# passing generations) / total generations */
-	generationCorrectness: number;
-	/** Average diagnostic score across all generations */
-	aggregatedDiagnosticScore: number;
-	/** Number of generations that passed majority vote */
-	passingGenerations: number;
-	/** Total number of generations run */
-	totalGenerations: number;
-	/** Detailed results for each generation */
-	generationDetails: GenerationResult[];
-}
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -71,8 +54,6 @@ export function getMajorityThreshold(numJudges: number): number {
 // ============================================================================
 
 export interface JudgePanelOptions {
-	/** Generation index (1-based) for metadata */
-	generationIndex?: number;
 	/** Experiment name for metadata */
 	experimentName?: string;
 	/** Optional limiter for LLM calls (shared across harness) */
@@ -99,12 +80,16 @@ export async function runJudgePanel(
 	numJudges: number,
 	options?: JudgePanelOptions,
 ): Promise<JudgePanelResult> {
-	const { generationIndex, experimentName, llmCallLimiter, timeoutMs } = options ?? {};
+	const { experimentName, llmCallLimiter, timeoutMs } = options ?? {};
 	const panelStartTime = Date.now();
 
-	// Get LangChain callbacks from the current traceable context
-	// This bridges LangSmith's traceable() context to LangChain's callback system
-	const callbacks = await getLangchainCallbacks();
+	// Bridge LangSmith traceable context to LangChain callbacks (undefined if not tracing)
+	let callbacks: Awaited<ReturnType<typeof getLangchainCallbacks>> | undefined;
+	try {
+		callbacks = await getLangchainCallbacks();
+	} catch {
+		callbacks = undefined;
+	}
 
 	// Run all judges in parallel, tracking timing for each
 	const judgeTimings: number[] = [];
@@ -118,7 +103,6 @@ export async function runJudgePanel(
 					runName: `judge_${judgeIndex + 1}`,
 					metadata: {
 						...(experimentName && { experiment_name: experimentName }),
-						...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
 					},
 					callbacks,
 				};
@@ -165,30 +149,5 @@ export function aggregateJudgeResults(
 		primaryPasses,
 		majorityPass,
 		avgDiagnosticScore,
-	};
-}
-
-// ============================================================================
-// Multi-Generation Aggregation
-// ============================================================================
-
-/**
- * Aggregate results across multiple generations.
- */
-export function aggregateGenerations(
-	generationResults: GenerationResult[],
-): MultiGenerationAggregation {
-	const totalGenerations = generationResults.length;
-	const passingGenerations = generationResults.filter((g) => g.majorityPass).length;
-	const generationCorrectness = passingGenerations / totalGenerations;
-	const aggregatedDiagnosticScore =
-		generationResults.reduce((sum, g) => sum + g.avgDiagnosticScore, 0) / totalGenerations;
-
-	return {
-		generationCorrectness,
-		aggregatedDiagnosticScore,
-		passingGenerations,
-		totalGenerations,
-		generationDetails: generationResults,
 	};
 }
