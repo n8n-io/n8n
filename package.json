@@ -94,6 +94,7 @@
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
+      "@smithy/config-resolver": "^4.4.0",
       "@types/node": "^20.17.50",
       "axios": "1.12.0",
       "chokidar": "4.0.3",
