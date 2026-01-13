@@ -129,7 +129,7 @@ const handleClick = async () => {
 	transition: all 0.2s ease;
 
 	&:hover {
-		background-color: var(--color--neutral-900);
+		background-color: var(--color--foreground--tint-2);
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	}

@@ -50,6 +50,8 @@ const openVideo = () => {
 
 	&:hover {
 		border-color: var(--color--foreground--shade-1);
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
 		.playButton {
 			transform: translate(-50%, -50%) scale(1.1);
@@ -100,7 +102,7 @@ const openVideo = () => {
 	height: 0;
 	border-style: solid;
 	border-width: 10px 0 10px 18px;
-	border-color: transparent transparent transparent #ff0000;
+	border-color: transparent transparent transparent #f00;
 	margin-left: 4px;
 }
 
