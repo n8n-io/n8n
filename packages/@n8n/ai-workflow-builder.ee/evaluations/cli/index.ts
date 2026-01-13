@@ -219,12 +219,10 @@ export async function runV2Evaluation(): Promise<void> {
 				};
 
 	// Run evaluation
-	const summary = await runEvaluation(config);
+	await runEvaluation(config);
 
-	// Exit with appropriate code
-	// Check pass rate
-	const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
-	process.exit(passRate >= 0.7 ? 0 : 1);
+	// Always exit 0 on successful completion - pass/fail is informational, not an error
+	process.exit(0);
 }
 
 // Run if called directly

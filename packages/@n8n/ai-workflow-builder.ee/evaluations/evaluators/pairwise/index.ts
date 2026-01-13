@@ -4,7 +4,12 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 import { runJudgePanel, type EvalCriteria } from './judge-panel';
 import { PAIRWISE_METRICS } from './metrics';
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
+import type {
+	DisplayLine,
+	EvaluationContext,
+	Evaluator,
+	Feedback,
+} from '../../harness/harness-types';
 
 /**
  * Options for creating a pairwise evaluator.
@@ -93,12 +98,23 @@ export function createPairwiseEvaluator(
 					judge.violations.length > 0
 						? judge.violations.map((v) => `[${v.rule}] ${v.justification}`).join('; ')
 						: undefined;
+
+				// Pre-format display lines for verbose logging
+				const displayLines: DisplayLine[] = [];
+				if (judge.violations.length > 0) {
+					for (const v of judge.violations) {
+						displayLines.push({ text: `[${v.rule}]`, color: 'yellow' });
+						displayLines.push({ text: v.justification, color: 'red' });
+					}
+				}
+
 				feedback.push({
 					evaluator: 'pairwise',
 					metric: `judge${i + 1}`,
 					score: judge.primaryPass ? 1 : 0,
 					kind: 'detail',
 					comment: violationSummary,
+					details: displayLines.length > 0 ? { displayLines } : undefined,
 				});
 			}
 
