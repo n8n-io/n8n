@@ -4,7 +4,7 @@ properties:
     type: string
     description: Name of the data table
     minLength: 1
-    maxLength: 255
+    maxLength: 128
   columns:
     type: array
     description: Column definitions for the table
