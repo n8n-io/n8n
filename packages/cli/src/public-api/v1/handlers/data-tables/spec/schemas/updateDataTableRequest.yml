@@ -4,6 +4,6 @@ properties:
     type: string
     description: New name for the data table
     minLength: 1
-    maxLength: 255
+    maxLength: 128
 required:
   - name

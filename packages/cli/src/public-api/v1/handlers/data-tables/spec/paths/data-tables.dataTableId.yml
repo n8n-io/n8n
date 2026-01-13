@@ -28,7 +28,7 @@ patch:
   tags:
     - DataTable
   summary: Update a data table
-  description: Update a data table's name or description.
+  description: Update a data table's name.
   operationId: update-data-table
   parameters:
     - $ref: '../schemas/parameters/dataTableId.yml'
