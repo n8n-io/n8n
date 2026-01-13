@@ -11,7 +11,7 @@ test.describe('Access Control', () => {
 
 	test('should block access to unshared workflow with 403', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const member = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates workflow
@@ -41,7 +41,7 @@ test.describe('Access Control', () => {
 
 		// Owner creates credential
 		const credName = `Owner Notion ${nanoid(8)}`;
-		const credential = await api.credentials.createCredential({
+		await api.credentials.createCredential({
 			name: credName,
 			type: 'notionApi',
 			data: { apiKey: 'owner-key' },
@@ -135,7 +135,7 @@ test.describe('Access Control', () => {
 		n8n,
 	}) => {
 		// Create users
-		const member = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const admin = await api.publicApi.createUser({ role: 'global:admin' });
 
 		// Member creates credential
@@ -169,7 +169,7 @@ test.describe('Access Control', () => {
 
 	test('should allow admin to share credential they do not own', async ({ api, n8n }) => {
 		// Create users
-		const member1 = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const member2 = await api.publicApi.createUser({ role: 'global:member' });
 		const admin = await api.publicApi.createUser({ role: 'global:admin' });
 
@@ -209,7 +209,7 @@ test.describe('Access Control', () => {
 
 	test('should show admin their own email in sharing dropdown', async ({ api, n8n }) => {
 		// Create users
-		const member = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const admin = await api.publicApi.createUser({ role: 'global:admin' });
 
 		// Member creates credential
@@ -239,7 +239,7 @@ test.describe('Access Control', () => {
 
 	test('should allow global owner to execute workflows owned by others', async ({ api, n8n }) => {
 		// Create users
-		const member = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const owner = await api.publicApi.createUser({ role: 'global:admin' });
 
 		// Member creates workflow

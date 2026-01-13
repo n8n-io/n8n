@@ -15,7 +15,7 @@ test.describe('Credential Sharing', () => {
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates credential
-		const ownerPage = await n8n.start.withUser(owner);
+		await n8n.start.withUser(owner);
 		const credName = `Notion API ${nanoid(8)}`;
 		const credential = await api.credentials.createCredential({
 			name: credName,
@@ -34,7 +34,7 @@ test.describe('Credential Sharing', () => {
 
 	test('should allow sharee to use shared credential in workflow', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates and shares credential
@@ -58,7 +58,7 @@ test.describe('Credential Sharing', () => {
 
 	test('should auto-test shared credential when opened by sharee', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates and shares credential
@@ -82,7 +82,7 @@ test.describe('Credential Sharing', () => {
 
 	test('should share credential with multiple users', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const sharee1 = await api.publicApi.createUser({ role: 'global:member' });
 		const sharee2 = await api.publicApi.createUser({ role: 'global:member' });
 

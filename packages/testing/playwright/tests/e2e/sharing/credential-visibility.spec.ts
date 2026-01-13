@@ -57,7 +57,7 @@ test.describe('Credential Visibility', () => {
 
 	test('should show own and shared credentials in personal project', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const member = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates credential and shares it
@@ -93,7 +93,7 @@ test.describe('Credential Visibility', () => {
 
 	test('should only show own credentials in shared workflow for member', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const member = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates credential and workflow
@@ -146,7 +146,7 @@ test.describe('Credential Visibility', () => {
 	}) => {
 		// Create users (owner is global admin)
 		const globalOwner = await api.publicApi.createUser({ role: 'global:admin' });
-		const member1 = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 		const member2 = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Members create credentials
@@ -206,7 +206,7 @@ test.describe('Credential Visibility', () => {
 	}) => {
 		// Create users
 		const globalOwner = await api.publicApi.createUser({ role: 'global:admin' });
-		const member = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' });
 
 		// Member creates credential
 		const memberCredName = `Member Notion ${nanoid(8)}`;
@@ -252,7 +252,7 @@ test.describe('Credential Visibility', () => {
 		await userPage.navigate.toCredentials(teamProject.projectId);
 		await userPage.projectTabs.clickCredentialsTab();
 		const teamCredName = `Team Notion ${nanoid(8)}`;
-		const teamCredential = await api.credentials.createCredential({
+		await api.credentials.createCredential({
 			name: teamCredName,
 			type: 'notionApi',
 			data: { apiKey: 'team-key' },

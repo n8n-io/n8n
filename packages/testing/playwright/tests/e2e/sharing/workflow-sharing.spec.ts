@@ -11,7 +11,7 @@ test.describe('Workflow Sharing', () => {
 
 	test('should share workflow with another user', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' }); // owner
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates workflow
@@ -34,7 +34,7 @@ test.describe('Workflow Sharing', () => {
 
 	test('should allow sharee to edit shared workflow', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' }); // owner
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates workflow
@@ -65,7 +65,7 @@ test.describe('Workflow Sharing', () => {
 
 	test('should show shared workflow to sharee but not other workflows', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' }); // owner
 		const sharee = await api.publicApi.createUser({ role: 'global:member' });
 
 		// Owner creates two workflows
@@ -98,7 +98,7 @@ test.describe('Workflow Sharing', () => {
 
 	test('should share workflow with multiple users', async ({ api, n8n }) => {
 		// Create users
-		const owner = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' }); // owner
 		const sharee1 = await api.publicApi.createUser({ role: 'global:member' });
 		const sharee2 = await api.publicApi.createUser({ role: 'global:member' });
 
@@ -126,8 +126,8 @@ test.describe('Workflow Sharing', () => {
 
 	test('should allow owner to see all workflows', async ({ api, n8n }) => {
 		// Create users
-		const member1 = await api.publicApi.createUser({ role: 'global:member' });
-		const member2 = await api.publicApi.createUser({ role: 'global:member' });
+		await api.publicApi.createUser({ role: 'global:member' }); // member1
+		await api.publicApi.createUser({ role: 'global:member' }); // member2
 		const owner = await api.publicApi.createUser({ role: 'global:admin' });
 
 		// Members create workflows
