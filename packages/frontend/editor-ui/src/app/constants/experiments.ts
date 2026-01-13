@@ -64,8 +64,6 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = createExperiment('057_ai_builder_multi_agent');
-
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -77,7 +75,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
 	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
-	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
