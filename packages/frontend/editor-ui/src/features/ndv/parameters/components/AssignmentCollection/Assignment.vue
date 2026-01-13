@@ -140,13 +140,13 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 	valueInputHovered.value = hovered;
 };
 
-const onValueDrop = (droppedExpression: string) => {
+const onValueDrop = async (droppedExpression: string) => {
 	if (props.disableType) {
 		return;
 	}
 
 	const droppedValue = removeExpressionPrefix(droppedExpression);
-	assignment.value.type = typeFromExpression(droppedValue);
+	assignment.value.type = await typeFromExpression(droppedValue);
 
 	if (!assignment.value.name) {
 		assignment.value.name = propertyNameFromExpression(droppedValue);

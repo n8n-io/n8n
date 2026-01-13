@@ -10,6 +10,7 @@ import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import { computed, nextTick, ref } from 'vue';
 import Assignment from './Assignment.vue';
+import { flushPromises } from '@vue/test-utils';
 
 vi.mock('vue-router');
 
@@ -34,8 +35,9 @@ const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 describe('Assignment.vue', () => {
 	beforeEach(cleanup);
 
-	afterEach(() => {
+	afterEach(async () => {
 		vi.clearAllMocks();
+		await flushPromises();
 	});
 
 	it('can edit name, type and value', async () => {
@@ -118,7 +120,7 @@ describe('Assignment.vue', () => {
 	});
 
 	it('should not auto-change type when disableType is true', async () => {
-		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(42);
 
 		const { emitted } = renderComponent({
 			props: {
@@ -146,7 +148,7 @@ describe('Assignment.vue', () => {
 	});
 
 	it('should auto-change type when dropping a value', async () => {
-		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(42);
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(42);
 
 		const { emitted } = renderComponent({
 			props: {
@@ -166,9 +168,12 @@ describe('Assignment.vue', () => {
 			},
 		});
 
-		const events = emitted('update:model-value');
-		const lastEvent = events.at(-1);
-		expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
+		// Wait for async type inference to complete
+		await waitFor(() => {
+			const events = emitted('update:model-value');
+			const lastEvent = events.at(-1);
+			expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
+		});
 
 		spy.mockRestore();
 	});

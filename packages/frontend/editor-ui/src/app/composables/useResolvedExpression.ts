@@ -56,7 +56,7 @@ export function useResolvedExpression({
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
-	function resolve(ctx?: ExpressionLocalResolveContext): Result<unknown, Error> {
+	async function resolve(ctx?: ExpressionLocalResolveContext): Promise<Result<unknown, Error>> {
 		const expressionString = toValue(expression);
 
 		if (!isExpression.value || typeof expressionString !== 'string') {
@@ -78,12 +78,12 @@ export function useResolvedExpression({
 		};
 
 		try {
-			const resolvedValue = resolveExpression(
+			const resolvedValue = (await resolveExpression(
 				expressionString,
 				undefined,
 				options,
 				toValue(stringifyObject) ?? true,
-			) as unknown;
+			)) as unknown;
 
 			return createResultOk(resolvedValue);
 		} catch (error) {
@@ -93,9 +93,9 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
-	function updateExpression() {
+	async function updateExpression() {
 		if (isExpression.value) {
-			const resolved = resolve(expressionLocalResolveCtx.value);
+			const resolved = await resolve(expressionLocalResolveCtx.value);
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
 			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
 		} else {

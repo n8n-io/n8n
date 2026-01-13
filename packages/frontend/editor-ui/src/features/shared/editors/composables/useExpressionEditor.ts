@@ -96,7 +96,7 @@ export const useExpressionEditor = ({
 
 	const emitChanges = debounce(onChange, 300);
 
-	const updateSegments = (): void => {
+	const updateSegments = async (): Promise<void> => {
 		const state = editor.value?.state;
 		if (!state) return;
 
@@ -126,12 +126,13 @@ export const useExpressionEditor = ({
 			rawSegments.push(newSegment);
 		});
 
-		segments.value = rawSegments.reduce<Segment[]>((acc, segment) => {
+		const resolvedSegments: Segment[] = [];
+		for (const segment of rawSegments) {
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, targetItem.value);
-				acc.push({
+				const { resolved, error, fullError } = await resolve(text, targetItem.value);
+				resolvedSegments.push({
 					kind: 'resolvable',
 					from,
 					to,
@@ -143,14 +144,12 @@ export const useExpressionEditor = ({
 					state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
 					error: fullError,
 				});
-
-				return acc;
+			} else {
+				resolvedSegments.push({ kind: 'plaintext', from, to, plaintext: text });
 			}
+		}
 
-			acc.push({ kind: 'plaintext', from, to, plaintext: text });
-
-			return acc;
-		}, []);
+		segments.value = resolvedSegments;
 		if (
 			segments.value.length === 1 &&
 			segments.value[0]?.kind === 'resolvable' &&
@@ -335,7 +334,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, target: TargetItem | null) {
+	async function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -344,7 +343,7 @@ export const useExpressionEditor = ({
 
 		try {
 			if (expressionLocalResolveContext.value) {
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, {
+				result.resolved = await workflowHelpers.resolveExpression('=' + resolvable, undefined, {
 					...expressionLocalResolveContext.value,
 					additionalKeys: toValue(additionalData),
 				});
@@ -367,7 +366,11 @@ export const useExpressionEditor = ({
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
 					};
 				}
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
+				result.resolved = await workflowHelpers.resolveExpression(
+					'=' + resolvable,
+					undefined,
+					opts,
+				);
 			}
 		} catch (error) {
 			const hasRunData =

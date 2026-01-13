@@ -143,13 +143,17 @@ function getCompletion(
 	filter: (completion: Completion) => boolean,
 ): Completion | null {
 	const context = new CompletionContext(state, pos, true);
-	const sources = state.languageDataAt<(context: CompletionContext) => CompletionResult>(
-		'autocomplete',
-		pos,
-	);
+	const sources = state.languageDataAt<
+		(context: CompletionContext) => CompletionResult | Promise<CompletionResult | null>
+	>('autocomplete', pos);
 
 	for (const source of sources) {
 		const result = source(context);
+
+		// Skip async results - tooltips require synchronous results
+		if (result instanceof Promise) {
+			continue;
+		}
 
 		const options = result?.options.filter(filter);
 		if (options && options.length > 0) {

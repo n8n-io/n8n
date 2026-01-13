@@ -248,37 +248,55 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	return props.modelValue?.value ?? '';
 });
 
-const urlValue = computed(() => {
-	if (isListMode.value && typeof props.modelValue === 'object') {
-		return props.modelValue?.cachedResultUrl ?? null;
-	}
+const urlValue = ref<string | null>(null);
 
-	if (selectedMode.value === 'url') {
-		if (
-			props.isValueExpression &&
-			typeof props.expressionComputedValue === 'string' &&
-			props.expressionComputedValue.startsWith('http')
-		) {
-			return props.expressionComputedValue;
+watch(
+	[
+		isListMode,
+		() => props.modelValue,
+		selectedMode,
+		() => props.isValueExpression,
+		() => props.expressionComputedValue,
+		valueToDisplay,
+		currentMode,
+	],
+	async () => {
+		if (isListMode.value && typeof props.modelValue === 'object') {
+			urlValue.value = props.modelValue?.cachedResultUrl ?? null;
+			return;
 		}
 
-		if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
-			return valueToDisplay.value;
+		if (selectedMode.value === 'url') {
+			if (
+				props.isValueExpression &&
+				typeof props.expressionComputedValue === 'string' &&
+				props.expressionComputedValue.startsWith('http')
+			) {
+				urlValue.value = props.expressionComputedValue;
+				return;
+			}
+
+			if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
+				urlValue.value = valueToDisplay.value;
+				return;
+			}
 		}
-	}
 
-	if (currentMode.value.url) {
-		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
-		if (typeof value === 'string') {
-			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = workflowHelpers.resolveExpression(expression);
+		if (currentMode.value.url) {
+			const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+			if (typeof value === 'string') {
+				const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
+				const resolved = await workflowHelpers.resolveExpression(expression);
 
-			return typeof resolved === 'string' ? resolved : null;
+				urlValue.value = typeof resolved === 'string' ? resolved : null;
+				return;
+			}
 		}
-	}
 
-	return null;
-});
+		urlValue.value = null;
+	},
+	{ immediate: true },
+);
 
 const currentRequestParams = computed(() => {
 	return {
@@ -776,10 +794,10 @@ async function loadResources() {
 			});
 		}
 
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
 		const requestParams: ResourceLocatorRequestDto = {

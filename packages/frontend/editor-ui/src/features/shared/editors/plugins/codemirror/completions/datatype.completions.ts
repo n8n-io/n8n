@@ -68,7 +68,9 @@ import type { TargetNodeParameterContext } from '@/Interface';
 /**
  * Resolution-based completions offered according to datatype.
  */
-export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
+export async function datatypeCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
@@ -94,23 +96,27 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
-		const resolved = attempt(
-			(): Resolved =>
-				resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext?.nodeName),
-			(error) => {
-				if (!isPairedItemIntermediateNodesError(error)) {
-					return null;
-				}
+		let resolved: Resolved | null = null;
+		try {
+			resolved = await resolveAutocompleteExpression(
+				`={{ ${base} }}`,
+				targetNodeParameterContext?.nodeName,
+			);
+		} catch (error) {
+			if (!isPairedItemIntermediateNodesError(error)) {
+				return null;
+			}
 
-				// Fallback on first item to provide autocomplete when intermediate nodes have not run
-				return attempt(() =>
-					resolveAutocompleteExpression(
-						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-						targetNodeParameterContext?.nodeName,
-					),
+			// Fallback on first item to provide autocomplete when intermediate nodes have not run
+			try {
+				resolved = await resolveAutocompleteExpression(
+					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					targetNodeParameterContext?.nodeName,
 				);
-			},
-		);
+			} catch {
+				return null;
+			}
+		}
 
 		if (resolved === null) return null;
 
@@ -129,7 +135,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = await explicitDataTypeOptions(word.text, targetNodeParameterContext);
 		from = word.to;
 	}
 
@@ -191,25 +197,24 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 	return matches;
 }
 
-function explicitDataTypeOptions(
+async function explicitDataTypeOptions(
 	expression: string,
 	targetNodeParameterContext?: TargetNodeParameterContext,
-): AliasCompletion[] {
-	return attempt(
-		() => {
-			const resolved = resolveAutocompleteExpression(
-				`={{ ${expression} }}`,
-				targetNodeParameterContext?.nodeName,
-			);
-			return datatypeOptions({
-				resolved,
-				base: expression,
-				tail: '',
-				transformLabel: (label) => '.' + label,
-			});
-		},
-		() => [],
-	);
+): Promise<AliasCompletion[]> {
+	try {
+		const resolved = await resolveAutocompleteExpression(
+			`={{ ${expression} }}`,
+			targetNodeParameterContext?.nodeName,
+		);
+		return datatypeOptions({
+			resolved,
+			base: expression,
+			tail: '',
+			transformLabel: (label) => '.' + label,
+		});
+	} catch {
+		return [];
+	}
 }
 
 function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {

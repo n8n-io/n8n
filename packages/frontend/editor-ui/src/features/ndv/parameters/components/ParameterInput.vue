@@ -415,30 +415,37 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
+const dependentParametersValues = ref<string | null>(null);
 
-	if (loadOptionsDependsOn === undefined) {
-		return null;
-	}
+watch(
+	[() => ndvStore.activeNode?.parameters, () => props.parameter, () => props.path],
+	async () => {
+		const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
-	// Get the resolved parameter values of the current node
-	const currentNodeParameters = ndvStore.activeNode?.parameters;
-	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
-
-		const returnValues: string[] = [];
-		for (let parameterPath of loadOptionsDependsOn) {
-			parameterPath = resolveRelativePath(props.path, parameterPath);
-
-			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+		if (loadOptionsDependsOn === undefined) {
+			dependentParametersValues.value = null;
+			return;
 		}
 
-		return returnValues.join('|');
-	} catch {
-		return null;
-	}
-});
+		// Get the resolved parameter values of the current node
+		const currentNodeParameters = ndvStore.activeNode?.parameters;
+		try {
+			const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+
+			const returnValues: string[] = [];
+			for (let parameterPath of loadOptionsDependsOn) {
+				parameterPath = resolveRelativePath(props.path, parameterPath);
+
+				returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+			}
+
+			dependentParametersValues.value = returnValues.join('|');
+		} catch {
+			dependentParametersValues.value = null;
+		}
+	},
+	{ immediate: true },
+);
 
 const getStringInputType = computed(() => {
 	if (getTypeOption('password') === true) {
@@ -722,10 +729,10 @@ async function loadRemoteParameterOptions() {
 
 	try {
 		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 

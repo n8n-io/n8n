@@ -1251,8 +1251,8 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);

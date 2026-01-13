@@ -49,16 +49,6 @@ const urlOptions = computed(() => [
 	},
 ]);
 
-const visibleWebhookUrls = computed(() => {
-	return webhooksNode.value.filter((webhook) => {
-		if (typeof webhook.ndvHideUrl === 'string') {
-			return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
-		}
-
-		return !webhook.ndvHideUrl;
-	});
-});
-
 const webhooksNode = computed(() => {
 	if (props.nodeTypeDescription?.webhooks === undefined) {
 		return [];
@@ -68,6 +58,115 @@ const webhooksNode = computed(() => {
 		(webhookData) => webhookData.restartWebhook !== true,
 	);
 });
+
+// Store resolved webhook data
+interface WebhookResolvedData {
+	url: string;
+	httpMethod: string;
+	isMethodVisible: boolean;
+	isVisible: boolean;
+}
+
+const resolvedWebhookData = ref<Map<number, WebhookResolvedData>>(new Map());
+
+const visibleWebhookUrls = computed(() => {
+	return webhooksNode.value.filter((_, index) => {
+		const data = resolvedWebhookData.value.get(index);
+		return data?.isVisible ?? false;
+	});
+});
+
+// Resolve webhook data asynchronously
+watch(
+	[webhooksNode, showUrlFor, () => props.node],
+	async () => {
+		const newData = new Map<number, WebhookResolvedData>();
+
+		for (let index = 0; index < webhooksNode.value.length; index++) {
+			const webhook = webhooksNode.value[index];
+
+			// Check visibility
+			let isVisible = !webhook.ndvHideUrl;
+			if (typeof webhook.ndvHideUrl === 'string') {
+				const hideUrl = await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+				isVisible = !hideUrl;
+			}
+
+			// Get URL
+			let url = '';
+			if (props.node) {
+				url = await workflowHelpers.getWebhookUrl(
+					webhook,
+					props.node,
+					isProductionOnly.value ? 'production' : showUrlFor.value,
+				);
+			}
+
+			// Check if method is visible
+			let isMethodVisible = !webhook.ndvHideMethod;
+			try {
+				const method = await workflowHelpers.getWebhookExpressionValue(
+					webhook,
+					'httpMethod',
+					false,
+				);
+				if (Array.isArray(method) && method.length !== 1) {
+					isMethodVisible = false;
+				} else if (typeof webhook.ndvHideMethod === 'string') {
+					const hideMethod = await workflowHelpers.getWebhookExpressionValue(
+						webhook,
+						'ndvHideMethod',
+					);
+					isMethodVisible = !hideMethod;
+				}
+			} catch (error) {
+				// Keep default isMethodVisible
+			}
+
+			// Get HTTP method
+			let httpMethod = '';
+			try {
+				const method = await workflowHelpers.getWebhookExpressionValue(
+					webhook,
+					'httpMethod',
+					false,
+				);
+				httpMethod = Array.isArray(method) ? method[0] : (method as string);
+			} catch (error) {
+				// Keep empty httpMethod
+			}
+
+			newData.set(index, {
+				url,
+				httpMethod,
+				isMethodVisible,
+				isVisible,
+			});
+		}
+
+		resolvedWebhookData.value = newData;
+	},
+	{ immediate: true },
+);
+
+function getWebhookIndex(webhook: IWebhookDescription): number {
+	return webhooksNode.value.indexOf(webhook);
+}
+
+function getWebhookUrlDisplay(webhook: IWebhookDescription): string {
+	const index = getWebhookIndex(webhook);
+	return resolvedWebhookData.value.get(index)?.url ?? '';
+}
+
+function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
+	const index = getWebhookIndex(webhook);
+	return resolvedWebhookData.value.get(index)?.isMethodVisible ?? false;
+}
+
+function getWebhookHttpMethod(webhook: IWebhookDescription): string {
+	const index = getWebhookIndex(webhook);
+	return resolvedWebhookData.value.get(index)?.httpMethod ?? '';
+}
 
 const baseText = computed(() => {
 	const nodeType = props.nodeTypeDescription?.name;
@@ -136,40 +235,6 @@ function copyWebhookUrl(webhookData: IWebhookDescription): void {
 		pane: 'parameters',
 		type: `${showUrlFor.value} url`,
 	});
-}
-
-function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
-	if (props.node) {
-		return workflowHelpers.getWebhookUrl(
-			webhookData,
-			props.node,
-			isProductionOnly.value ? 'production' : showUrlFor.value,
-		);
-	}
-	return '';
-}
-
-function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
-	try {
-		const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-		if (Array.isArray(method) && method.length !== 1) {
-			return false;
-		}
-	} catch (error) {}
-
-	if (typeof webhook.ndvHideMethod === 'string') {
-		return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
-	}
-
-	return !webhook.ndvHideMethod;
-}
-
-function getWebhookHttpMethod(webhook: IWebhookDescription): string {
-	const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-	if (Array.isArray(method)) {
-		return method[0];
-	}
-	return method;
 }
 
 watch(
