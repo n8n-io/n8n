@@ -427,8 +427,8 @@ export class McpClientTool implements INodeType {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
 					const schema: JSONSchema7 = tool.inputSchema;
-					// When additionalProperties is explicitly false, filter to schema-defined properties.
-					// Otherwise (true or omitted), pass all arguments through
+					// When additionalProperties is not explicitly true, filter to schema-defined properties.
+					// Otherwise, pass all arguments through
 					const sanitizedToolArguments: IDataObject =
 						schema.additionalProperties !== true
 							? pick(toolArguments, Object.keys(schema.properties ?? {}))
