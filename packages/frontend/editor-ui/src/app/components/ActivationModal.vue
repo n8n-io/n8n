@@ -7,7 +7,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	VIEWS,
-	IS_DRAFT_PUBLISH_ENABLED,
 } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useUIStore } from '@/app/stores/ui.store';
