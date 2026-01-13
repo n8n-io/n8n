@@ -1,0 +1,158 @@
+name: 'Util: Claude Task Runner'
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description - what should Claude do?'
+        required: true
+        type: string
+
+jobs:
+  run-claude-task:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: master
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'echo "Skipping build - Claude will build if needed"'
+
+      - name: Create working branch
+        run: |
+          BRANCH_NAME="claude/task-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Configure git author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          # Set git author to the user who triggered the workflow
+          USER_DATA=$(gh api "/users/$ACTOR")
+          USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
+          USER_ID=$(echo "$USER_DATA" | jq -r '.id')
+          USER_EMAIL="${USER_ID}+${ACTOR}@users.noreply.github.com"
+          git config user.name "$USER_NAME"
+          git config user.email "$USER_EMAIL"
+          # Export for Claude action to use
+          {
+            echo "GIT_AUTHOR_NAME=$USER_NAME"
+            echo "GIT_AUTHOR_EMAIL=$USER_EMAIL"
+            echo "GIT_COMMITTER_NAME=$USER_NAME"
+            echo "GIT_COMMITTER_EMAIL=$USER_EMAIL"
+          } >> "$GITHUB_ENV"
+          echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
+
+      - name: Prepare Claude prompt
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+        run: |
+          # Build the prompt with task and pointer to templates
+          {
+            echo 'CLAUDE_PROMPT<<EOF'
+            echo "# Task"
+            echo "$INPUT_TASK"
+            echo ""
+            echo "# Guidelines"
+            echo "Check .github/claude-templates/ for relevant guides before starting."
+            echo "Read any templates that match your task type (e.g., security-fix.md for CVE fixes)."
+            echo ""
+            echo "# Instructions"
+            echo "1. Read relevant templates from .github/claude-templates/ first"
+            echo "2. Complete the task described above"
+            echo "3. Follow the guidelines from the templates"
+            echo "4. Make commits as you work with descriptive messages"
+            echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
+            echo "6. Ensure code passes linting and type checks before finishing"
+            echo "7. When done, output a PR title on a single line starting with 'PR_TITLE:' (e.g. 'PR_TITLE: fix: Update smithy dependency to resolve CVE')"
+            echo ""
+            echo "# Token Optimization"
+            echo "When running lint/typecheck, suppress verbose output:"
+            echo "  pnpm lint 2>&1 | tail -30"
+            echo "  pnpm typecheck 2>&1 | tail -30"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Run Claude
+        id: claude
+        uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          prompt: ${{ env.CLAUDE_PROMPT }}
+          claude_args: |
+            --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite
+
+      - name: Extract PR title
+        env:
+          CLAUDE_CONCLUSION: ${{ steps.claude.outputs.conclusion }}
+        run: |
+          # Extract PR title from Claude's output (looks for PR_TITLE: prefix)
+          PR_TITLE=$(echo "$CLAUDE_CONCLUSION" | sed -n 's/.*PR_TITLE:\s*//p' | head -1)
+          if [ -z "$PR_TITLE" ]; then
+            PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
+          fi
+          echo "PR_TITLE=$PR_TITLE" >> "$GITHUB_ENV"
+          echo "Extracted PR title: $PR_TITLE"
+
+      - name: Push branch and create PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          INPUT_TASK: ${{ inputs.task }}
+          TRIGGERED_BY: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if ! git diff --quiet master; then
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+            git push -u origin "$BRANCH_NAME"
+
+            {
+              echo "## Summary"
+              echo "Automated task completed by Claude."
+              echo ""
+              echo "### Task Description"
+              echo "$INPUT_TASK"
+              echo ""
+              echo "### Generated by"
+              echo "[Workflow Run #${{ github.run_id }}]($RUN_URL)"
+              echo ""
+              echo "---"
+              echo "*Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*"
+            } > /tmp/pr-body.md
+
+            gh pr create --title "$PR_TITLE" --body-file /tmp/pr-body.md --base master
+          else
+            echo "::notice::No changes made by Claude. Skipping PR creation."
+          fi
+
+      - name: Summary
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+        run: |
+          {
+            echo "## Claude Task Runner Summary"
+            echo ""
+            echo "**Task:** $INPUT_TASK"
+            echo "**Branch:** $BRANCH_NAME"
+          } >> "$GITHUB_STEP_SUMMARY"
