@@ -73,7 +73,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate query parameters using DTO (convert to strings first)
 				const payload = PublicApiListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
@@ -118,7 +117,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate request body using DTO
 				const payload = AddDataTableRowsDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
@@ -149,7 +147,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate request body using DTO
 				const payload = UpdateDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
@@ -182,7 +179,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate request body using DTO
 				const payload = UpsertDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
@@ -215,7 +211,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate query parameters using DTO (convert to strings first)
 				const payload = DeleteDataTableRowsDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({

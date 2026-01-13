@@ -84,7 +84,6 @@ export class ListDataTableContentQueryDto extends Z.class({
 	search: z.string().optional(),
 }) {}
 
-// Public API version using offset/limit
 export class PublicApiListDataTableContentQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	offset: publicApiPaginationSchema.offset,

@@ -73,7 +73,6 @@ export = {
 		validCursor,
 		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
 			try {
-				// Validate query parameters using DTO (convert to strings first)
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
@@ -83,12 +82,10 @@ export = {
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				// Get user's personal project
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,
 				);
 
-				// Add projectId to filter
 				const providedFilter = filter ?? {};
 				const result = await Container.get(DataTableService).getManyAndCount({
 					skip: offset,
@@ -115,7 +112,6 @@ export = {
 		apiKeyHasScope('dataTable:create'),
 		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
 			try {
-				// Validate request body using DTO
 				const payload = CreateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
@@ -123,7 +119,6 @@ export = {
 					});
 				}
 
-				// Get user's personal project
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,
 				);
@@ -172,7 +167,6 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				// Validate request body using DTO
 				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
@@ -184,7 +178,6 @@ export = {
 
 				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
 
-				// Fetch and return the updated entity
 				const result = await Container.get(DataTableRepository).findOne({
 					where: { id: dataTableId, project: { id: projectId } },
 					relations: ['project', 'columns'],

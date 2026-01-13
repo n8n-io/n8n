@@ -40,7 +40,6 @@ export const paginationSchema = {
 
 export class PaginationDto extends Z.class(paginationSchema) {}
 
-// Public API uses offset/limit instead of skip/take
 const offsetValidator = z
 	.string()
 	.optional()

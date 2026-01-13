@@ -67,7 +67,6 @@ export class ListDataTableQueryDto extends Z.class({
 	sortBy: sortByValidator,
 }) {}
 
-// Public API version using offset/limit
 export class PublicApiListDataTableQueryDto extends Z.class({
 	...publicApiPaginationSchema,
 	filter: filterValidator,
