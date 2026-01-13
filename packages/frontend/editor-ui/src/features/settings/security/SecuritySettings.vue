@@ -8,12 +8,14 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
-import N8nCallout from '@n8n/design-system/components/N8nCallout';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
+const message = useMessage();
 
 const { state, isLoading } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
@@ -23,10 +25,29 @@ const { state, isLoading } = useAsyncState(async () => {
 const personalSpacePublishing = computed({
 	get: () => state.value ?? false,
 	set: async (value: boolean) => {
+		if (!value) {
+			const confirmDisablingPublishing = await promptConfirmDisablingPersonalSpacePublishing();
+			if (confirmDisablingPublishing !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+
 		state.value = value;
 		await updatePublishingSetting(value);
 	},
 });
+
+async function promptConfirmDisablingPersonalSpacePublishing() {
+	const confirmAction = await message.confirm(
+		i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.message'),
+		i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.headline'),
+		{
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			confirmButtonText: i18n.baseText('generic.confirm'),
+		},
+	);
+	return confirmAction;
+}
 
 async function updatePublishingSetting(value: boolean) {
 	try {
@@ -61,9 +82,6 @@ async function updatePublishingSetting(value: boolean) {
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
 		</N8nHeading>
 
-		<N8nCallout theme="warning">
-			{{ i18n.baseText('settings.security.personalSpace.publishing.warning') }}
-		</N8nCallout>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true">
@@ -99,6 +117,7 @@ async function updatePublishingSetting(value: boolean) {
 	flex-shrink: 0;
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
+	max-width: 600px;
 }
 
 .settingsContainerInfo {
