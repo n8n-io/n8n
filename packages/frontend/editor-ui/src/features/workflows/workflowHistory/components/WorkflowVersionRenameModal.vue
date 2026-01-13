@@ -44,7 +44,15 @@ const data = ref<{
 }>({
 	workflowId: '',
 	versionId: '',
-	version: {} as WorkflowHistory,
+	version: {
+		versionId: '',
+		authors: '',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		workflowPublishHistory: [],
+		name: null,
+		description: null,
+	},
 });
 
 const isSaveDisabled = computed(() => {

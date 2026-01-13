@@ -152,24 +152,24 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const version = await this.workflowHistoryRepository.findOne({
-			where: {
-				workflowId: workflow.id,
-				versionId,
-			},
-		});
+		// Use a transaction to ensure atomicity
+		return await this.workflowHistoryRepository.manager.transaction(async (transactionManager) => {
+			const version = await transactionManager.findOne(WorkflowHistory, {
+				where: {
+					workflowId: workflow.id,
+					versionId,
+				},
+			});
 
-		if (!version) {
-			throw new WorkflowHistoryVersionNotFoundError('');
-		}
+			if (!version) {
+				throw new WorkflowHistoryVersionNotFoundError('');
+			}
 
-		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
+			// Update the version
+			Object.assign(version, updateData);
 
-		return await this.workflowHistoryRepository.findOne({
-			where: {
-				workflowId,
-				versionId,
-			},
+			// Save and return the updated entity
+			return await transactionManager.save(WorkflowHistory, version);
 		});
 	}
 
