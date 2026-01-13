@@ -12,6 +12,10 @@ const EMPTY_CONTEXT = b.objectExpression([
 	b.property('init', b.identifier('process'), b.objectExpression([])),
 ]);
 
+const SAFE_GLOBAL = b.objectExpression([]);
+
+const SAFE_THIS = b.sequenceExpression([b.literal(0), EMPTY_CONTEXT]);
+
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
  * Returns true for obj.$ or obj.nested.$ but false for bare $ or other expression contexts.
@@ -53,10 +57,12 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 	return isPropertyDollar && !isObjectDollar && isObjectValid;
 };
 
+const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
+
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
  */
-export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
+export const ThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 	astVisit(ast, {
 		visitCallExpression(path) {
 			const { node } = path;
@@ -112,6 +118,44 @@ export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 			]);
 			path.replace(boundFunction);
 			return false;
+		},
+
+		visitIdentifier(path) {
+			this.traverse(path);
+			const { node } = path;
+
+			if (GLOBAL_IDENTIFIERS.has(node.name)) {
+				const parent: unknown = path.parent;
+				const isPropertyName =
+					typeof parent === 'object' &&
+					parent !== null &&
+					'name' in parent &&
+					parent.name === 'property';
+
+				if (!isPropertyName) path.replace(SAFE_GLOBAL);
+			}
+		},
+
+		visitThisExpression(path) {
+			this.traverse(path);
+
+			/**
+			 * Replace `this` with a safe context object.
+			 * This prevents arrow functions from accessing the real global context:
+			 *
+			 * ```js
+			 * (() => this?.process)()  // becomes (() => (0, { process: {} })?.process)()
+			 * ```
+			 *
+			 * Arrow functions don't have their own `this` binding - they inherit from
+			 * the outer lexical scope. Without this fix, `this` inside an arrow function
+			 * would resolve to the Node.js global object, exposing process.env and other
+			 * sensitive data.
+			 *
+			 * We use SAFE_THIS (a sequence expression) instead of EMPTY_CONTEXT directly
+			 * to ensure the object literal is unambiguously parsed as an expression.
+			 */
+			path.replace(SAFE_THIS);
 		},
 	});
 };
