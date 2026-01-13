@@ -92,6 +92,22 @@ export async function readFoldersFromSourceControlFile(file: string): Promise<Ex
 	}
 }
 
+export async function readDataTablesFromSourceControlFile(
+	file: string,
+): Promise<ExportableDataTable[]> {
+	try {
+		return jsonParse<ExportableDataTable[]>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: [],
+		});
+	} catch (error) {
+		// Return fallback if file not found
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return [];
+		}
+		throw error;
+	}
+}
+
 export function sourceControlFoldersExistCheck(
 	folders: string[],
 	createIfNotExists = true,
@@ -317,6 +333,10 @@ export function isDataTableModified(
 	remoteDt: ExportableDataTable,
 ): boolean {
 	if (localDt.name !== remoteDt.name) {
+		return true;
+	}
+
+	if (localDt.projectId !== remoteDt.projectId) {
 		return true;
 	}
 

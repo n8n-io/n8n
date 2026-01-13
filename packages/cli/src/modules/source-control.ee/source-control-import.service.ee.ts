@@ -1139,6 +1139,10 @@ export class SourceControlImportService {
 		return await this.importVariables(importedVariables, valueOverrides);
 	}
 
+	private isValidColumnType(type: string): type is 'string' | 'number' | 'boolean' | 'date' {
+		return ['string', 'number', 'boolean', 'date'].includes(type);
+	}
+
 	async importDataTablesFromWorkFolder(candidate: SourceControlledFile, userId: string) {
 		const importedDataTables = jsonParse<ExportableDataTable[]>(
 			await fsReadFile(candidate.file, { encoding: 'utf8' }),
@@ -1222,10 +1226,17 @@ export class SourceControlImportService {
 				// Upsert columns
 				const columnEntities = [];
 				for (const column of dataTable.columns) {
+					if (!this.isValidColumnType(column.type)) {
+						this.logger.warn(
+							`Invalid column type "${column.type}" in data table ${dataTable.name}, column ${column.name}. Skipping column.`,
+						);
+						continue;
+					}
+
 					const columnEntity = await this.dataTableColumnRepository.save({
 						id: column.id,
 						name: column.name,
-						type: column.type as 'string' | 'number' | 'boolean' | 'date',
+						type: column.type,
 						index: column.index,
 						dataTable: { id: dataTable.id },
 					});
@@ -1373,12 +1384,11 @@ export class SourceControlImportService {
 		if (candidates.length === 0) {
 			return;
 		}
-		const candidateIds = candidates.map((c) => c.id);
 
-		// Columns will be cascade deleted when data table is deleted
-		await this.dataTableRepository.delete({
-			id: In(candidateIds),
-		});
+		// Use deleteDataTable to properly delete both the entity and physical table
+		for (const candidate of candidates) {
+			await this.dataTableRepository.deleteDataTable(candidate.id);
+		}
 	}
 
 	async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {

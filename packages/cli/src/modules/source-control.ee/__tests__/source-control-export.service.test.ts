@@ -680,6 +680,7 @@ describe('SourceControlExportService', () => {
 					],
 					createdAt: new Date('2024-01-01'),
 					updatedAt: new Date('2024-01-02'),
+					project: { id: 'project1' },
 				},
 				{
 					id: 'dt2',
@@ -688,13 +689,19 @@ describe('SourceControlExportService', () => {
 					columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
 					createdAt: new Date('2024-01-03'),
 					updatedAt: new Date('2024-01-04'),
+					project: { id: 'project2' },
 				},
 			];
 
 			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
+			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
+				mock<Project>({ id: 'project1' }),
+				mock<Project>({ id: 'project2' }),
+			]);
+			fsReadFile.mockRejectedValue({ code: 'ENOENT' });
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder();
+			const result = await service.exportDataTablesToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(2);
@@ -732,7 +739,7 @@ describe('SourceControlExportService', () => {
 			dataTableRepository.find.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder();
+			const result = await service.exportDataTablesToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -745,7 +752,7 @@ describe('SourceControlExportService', () => {
 			dataTableRepository.find.mockRejectedValue(new Error('Database error'));
 
 			// Act & Assert
-			await expect(service.exportDataTablesToWorkFolder()).rejects.toThrow(
+			await expect(service.exportDataTablesToWorkFolder(globalAdminContext)).rejects.toThrow(
 				'Failed to export data tables to work folder',
 			);
 		});

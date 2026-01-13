@@ -413,7 +413,7 @@ export class SourceControlService {
 			const dataTablesChanges = filterByType(filesToPush, 'datatable')[0];
 			if (dataTablesChanges) {
 				filesToBePushed.add(dataTablesChanges.file);
-				await this.sourceControlExportService.exportDataTablesToWorkFolder();
+				await this.sourceControlExportService.exportDataTablesToWorkFolder(context);
 			}
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);

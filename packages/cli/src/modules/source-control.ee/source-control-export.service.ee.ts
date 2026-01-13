@@ -36,6 +36,7 @@ import {
 	getProjectExportPath,
 	getVariablesPath,
 	getWorkflowExportPath,
+	readDataTablesFromSourceControlFile,
 	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
@@ -239,12 +240,31 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportDataTablesToWorkFolder(): Promise<ExportResult> {
+	async exportDataTablesToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const dataTables = await this.dataTableRepository.find({
-				relations: ['columns'],
+				relations: ['columns', 'project'],
+				select: {
+					id: true,
+					name: true,
+					projectId: true,
+					createdAt: true,
+					updatedAt: true,
+					columns: {
+						id: true,
+						name: true,
+						type: true,
+						index: true,
+					},
+					project: {
+						id: true,
+					},
+				},
+				where:
+					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
+
 			if (dataTables.length === 0) {
 				return {
 					count: 0,
@@ -252,7 +272,22 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
+
+			const allowedProjects =
+				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+
 			const fileName = getDataTablesPath(this.gitFolder);
+
+			const existingDataTables = await readDataTablesFromSourceControlFile(fileName);
+
+			// keep all data tables that are not accessible by the current user
+			// if allowedProjects is undefined, all data tables are accessible by the current user
+			const dataTablesToKeepUnchanged = context.hasAccessToAllProjects()
+				? []
+				: existingDataTables.filter((table) => {
+						return !allowedProjects.some((project) => project.id === table.projectId);
+					});
+
 			const exportableDataTables = dataTables.map((table) => ({
 				id: table.id,
 				name: table.name,
@@ -266,7 +301,10 @@ export class SourceControlExportService {
 				createdAt: table.createdAt.toISOString(),
 				updatedAt: table.updatedAt.toISOString(),
 			}));
-			await fsWriteFile(fileName, JSON.stringify(exportableDataTables, null, 2));
+
+			const allDataTables = dataTablesToKeepUnchanged.concat(exportableDataTables);
+
+			await fsWriteFile(fileName, JSON.stringify(allDataTables, null, 2));
 			return {
 				count: exportableDataTables.length,
 				folder: this.gitFolder,
