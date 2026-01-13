@@ -1443,7 +1443,22 @@ export function useCanvasOperations() {
 				editableWorkflowObject.value,
 				candidate.name,
 			);
-			downstream.forEach((name) => candidateNames.add(name));
+			downstream
+				// Filter the downstream nodes to find candidates that need to be shifted right.
+				.filter((name) => {
+					const node = workflowsStore.getNodeByName(name);
+					if (!node) {
+						return false;
+					}
+					const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+
+					// Check if the current node visually overlaps with, or is entirely to the right of,
+					// the new insertion point (insertX).
+					const overlapsOrIsToTheRight = nodeRightEdge > insertX || node.position[0] >= insertX;
+
+					return overlapsOrIsToTheRight;
+				})
+				.forEach((name) => candidateNames.add(name));
 		}
 
 		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
@@ -2929,6 +2944,7 @@ export function useCanvasOperations() {
 		cutNodes,
 		duplicateNodes,
 		getNodesToSave,
+		getNodesToShift,
 		revertDeleteNode,
 		addConnections,
 		createConnection,
