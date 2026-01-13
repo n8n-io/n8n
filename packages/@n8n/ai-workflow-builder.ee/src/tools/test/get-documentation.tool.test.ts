@@ -4,7 +4,7 @@ import type { Command } from '@langchain/langgraph';
 
 import { createGetDocumentationTool, DocumentationType } from '@/tools/get-documentation.tool';
 import { WorkflowTechnique } from '@/types/categorization';
-import { RecommendationCategory } from '@/types/recommendation-category';
+import { RecommendationCategory } from '@/types/node-recommendations';
 
 /**
  * Helper to extract the message content from a Command response

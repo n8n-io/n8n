@@ -1,5 +1,7 @@
-import type { NodeRecommendationDocument } from '../../../types/node-recommendations';
-import { RecommendationCategory } from '../../../types/recommendation-category';
+import {
+	type NodeRecommendationDocument,
+	RecommendationCategory,
+} from '@/types/node-recommendations';
 
 export const textManipulationRecommendation: NodeRecommendationDocument = {
 	category: RecommendationCategory.TEXT_MANIPULATION,

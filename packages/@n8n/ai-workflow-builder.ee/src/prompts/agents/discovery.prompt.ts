@@ -5,6 +5,7 @@
  * the user's request. Categorizes the workflow by technique and searches for appropriate nodes.
  */
 
+import { RecommendationCategory } from '@/types';
 import {
 	TechniqueDescription,
 	WorkflowTechnique,
@@ -290,20 +291,12 @@ const CRITICAL_RULES = `- NEVER ask clarifying questions
 - PREFER native n8n nodes (especially Edit Fields) over Code node`;
 
 const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in get_documentation requests:
-- User wants AI capabilities but doesn't specify exact nodes/providers
 - User mentions generic tasks like "generate image", "transcribe audio", "analyze text"
-- User mentions AI but no specific model (OpenAI, Anthropic, etc.)
+- The user's request falls within one of the node recommendation categories: ${Object.values(RecommendationCategory).join(', ')}
 
 Do NOT request node_recommendations when:
 - User explicitly names a provider (e.g., "use Claude", "with OpenAI", "using Gemini")
-- User specifies exact node names
-- Task doesn't involve AI/ML capabilities
-
-Categories for node_recommendations:
-- text_manipulation: summarization, analysis, extraction, classification, chat, content creation
-- image_generation: generate, analyze, edit, describe images
-- video_generation: create videos from text or images
-- audio_generation: text-to-speech, transcription, translation`;
+- User specifies exact node names`;
 
 const RESTRICTIONS = `- Output text commentary between tool calls
 - Include bestPractices or categorization in submit_discovery_results

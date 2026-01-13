@@ -9,9 +9,9 @@ import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
 import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
 import {
-	RecommendationCategory,
 	type RecommendationCategoryType,
-} from '@/types/recommendation-category';
+	RecommendationCategory,
+} from '@/types/node-recommendations';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 /**
