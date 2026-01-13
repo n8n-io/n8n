@@ -51,6 +51,7 @@ export {
 	setSafeObjectProperty,
 	isDomainAllowed,
 	isCommunityPackageName,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
