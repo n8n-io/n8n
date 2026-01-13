@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import type { ChatMessageId } from '@n8n/api-types';
@@ -8,9 +8,11 @@ import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system'
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { isEditable, isRegenerable } from '../chat.utils';
 
 const i18n = useI18n();
 const router = useRouter();
+const workflowsStore = useWorkflowsStore();
 
 const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
 	message: ChatMessage;
@@ -30,14 +32,13 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
-const showExecutionUrl = computed(() => {
-	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
-});
-
 const executionUrl = computed(() => {
-	if (!showExecutionUrl.value) return undefined;
-
-	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+	if (
+		workflowsStore.canViewWorkflows &&
+		message.type === 'ai' &&
+		message.provider === 'n8n' &&
+		message.executionId
+	) {
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: message.workflowId, executionId: message.executionId },
@@ -45,6 +46,9 @@ const executionUrl = computed(() => {
 	}
 	return undefined;
 });
+
+const canEdit = computed(() => isEditable(message));
+const canRegenerate = computed(() => isRegenerable(message));
 
 function handleEdit() {
 	emit('edit');
@@ -80,7 +84,7 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canEdit" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
@@ -92,7 +96,7 @@ function handleReadAloud() {
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canRegenerate" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"

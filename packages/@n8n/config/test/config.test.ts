@@ -279,7 +279,6 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: true,
 		},
 		sentry: {
 			backendDsn: '',
@@ -408,8 +407,17 @@ describe('GlobalConfig', () => {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
+		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 100,
+			compactingMinimumAgeHours: 3,
+			compactingTimeWindowHours: 2,
+			compactOnStartUp: false,
+			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 		},
 	};
 
@@ -438,6 +446,7 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
+
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -517,7 +526,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 
