@@ -28,6 +28,7 @@ export class CanvasComposer {
 	 * Copy selected nodes and verify success toast
 	 */
 	async copySelectedNodesWithToast(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.copyNodes();
 		await this.n8n.notifications.waitForNotificationAndClose('Copied to clipboard');
 	}
@@ -36,6 +37,7 @@ export class CanvasComposer {
 	 * Select all nodes and copy them
 	 */
 	async selectAllAndCopy(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.selectAll();
 		await this.copySelectedNodesWithToast();
 	}
@@ -163,26 +165,19 @@ export class CanvasComposer {
 	}
 
 	/**
-	 * Save workflow and wait for URL to be updated with the workflow ID.
+	 * Wait for workflow save to complete and URL to be updated with the workflow ID.
 	 * Use this when you need the workflow URL/ID immediately after saving.
 	 * @returns The workflow URL after save
 	 */
-	async saveWorkflowAndWaitForUrl(): Promise<string> {
+	async waitForWorkflowSaveAndUrl(): Promise<string> {
 		const isNewWorkflow = this.n8n.page.url().includes('/workflow/new');
 
 		if (isNewWorkflow) {
-			const responsePromise = this.n8n.page.waitForResponse(
-				(response) =>
-					response.url().includes('/rest/workflows') &&
-					response.request().method() === 'POST' &&
-					response.status() === 200,
-			);
-			await this.n8n.canvas.saveWorkflow();
-			await responsePromise;
+			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 			// Wait for URL to update after response
 			await this.n8n.page.waitForURL(/\/workflow\/[a-zA-Z0-9]+$/);
 		} else {
-			await this.n8n.canvas.saveWorkflow();
+			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 		}
 
 		return this.n8n.page.url();

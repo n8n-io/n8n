@@ -23,6 +23,8 @@ import { Telemetry } from '@/telemetry';
 export class WorkflowBuilderService {
 	private service: AiWorkflowBuilderService | undefined;
 
+	private client: AiAssistantClient | undefined;
+
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
@@ -36,19 +38,23 @@ export class WorkflowBuilderService {
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
 		if (!this.service) {
-			let client: AiAssistantClient | undefined;
-
 			// Create AiAssistantClient if baseUrl is configured
 			const baseUrl = this.config.aiAssistant.baseUrl;
 			if (baseUrl) {
 				const licenseCert = await this.license.loadCertStr();
 				const consumerId = this.license.getConsumerId();
 
-				client = new AiAssistantClient({
+				this.client = new AiAssistantClient({
 					licenseCert,
 					consumerId,
 					baseUrl,
 					n8nVersion: N8N_VERSION,
+					instanceId: this.instanceSettings.instanceId,
+				});
+
+				// Register for license certificate updates
+				this.license.onCertRefresh((cert) => {
+					this.client?.updateLicenseCert(cert);
 				});
 			}
 
@@ -75,10 +81,11 @@ export class WorkflowBuilderService {
 
 			this.service = new AiWorkflowBuilderService(
 				nodeTypeDescriptions,
-				client,
+				this.client,
 				this.logger,
 				this.instanceSettings.instanceId,
 				this.urlService.getInstanceBaseUrl(),
+				N8N_VERSION,
 				onCreditsUpdated,
 				onTelemetryEvent,
 			);
@@ -108,5 +115,14 @@ export class WorkflowBuilderService {
 	async getBuilderInstanceCredits(user: IUser) {
 		const service = await this.getService();
 		return await service.getBuilderInstanceCredits(user);
+	}
+
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		messageId: string,
+	): Promise<boolean> {
+		const service = await this.getService();
+		return await service.truncateMessagesAfter(workflowId, user, messageId);
 	}
 }

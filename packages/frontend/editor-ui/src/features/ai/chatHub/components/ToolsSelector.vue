@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import type { INode } from 'n8n-workflow';
 import { computed, onMounted } from 'vue';
-import { TOOLS_SELECTOR_MODAL_KEY } from '../constants';
 import { useI18n } from '@n8n/i18n';
 
-const { selected, transparentBg = false } = defineProps<{
+const {
+	selected,
+	transparentBg = false,
+	disabledTooltip,
+} = defineProps<{
 	disabled: boolean;
 	selected: INode[];
 	transparentBg?: boolean;
+	disabledTooltip?: string;
 }>();
 
 const emit = defineEmits<{
-	select: [INode[]];
+	click: [MouseEvent];
 }>();
 
-const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
@@ -41,41 +43,32 @@ const toolsLabel = computed(() => {
 onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
 });
-
-const handleSelect = (tools: INode[]) => {
-	emit('select', tools);
-};
-
-const onClick = () => {
-	uiStore.openModalWithData({
-		name: TOOLS_SELECTOR_MODAL_KEY,
-		data: { selected, onConfirm: handleSelect },
-	});
-};
 </script>
 
 <template>
-	<N8nButton
-		type="secondary"
-		native-type="button"
-		:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
-		:disabled="disabled"
-		:icon="toolCount > 0 ? undefined : 'plus'"
-		@click="onClick"
-	>
-		<span v-if="toolCount" :class="$style.iconStack">
-			<NodeIcon
-				v-for="(nodeType, i) in displayToolNodeTypes"
-				:key="`${nodeType?.name}-${i}`"
-				:style="{ zIndex: displayToolNodeTypes.length - i }"
-				:node-type="nodeType"
-				:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
-				:circle="true"
-				:size="12"
-			/>
-		</span>
-		{{ toolsLabel }}
-	</N8nButton>
+	<N8nTooltip :content="disabledTooltip" :disabled="!disabledTooltip" placement="top">
+		<N8nButton
+			type="secondary"
+			native-type="button"
+			:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
+			:disabled="disabled"
+			:icon="toolCount > 0 ? undefined : 'plus'"
+			@click="emit('click', $event)"
+		>
+			<span v-if="toolCount" :class="$style.iconStack">
+				<NodeIcon
+					v-for="(nodeType, i) in displayToolNodeTypes"
+					:key="`${nodeType?.name}-${i}`"
+					:style="{ zIndex: displayToolNodeTypes.length - i }"
+					:node-type="nodeType"
+					:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
+					:circle="true"
+					:size="12"
+				/>
+			</span>
+			{{ toolsLabel }}
+		</N8nButton>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>

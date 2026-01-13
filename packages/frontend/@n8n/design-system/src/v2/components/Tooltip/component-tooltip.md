@@ -18,12 +18,9 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `disabled?: boolean` - When `true`, prevents the tooltip from showing.
 - `showAfter?: number` - Delay in milliseconds before showing tooltip after trigger is hovered. Default: `0`
 - `visible?: boolean` - Manual control of tooltip visibility (programmatic show/hide).
-- `popperClass?: string` - Custom CSS class name for the tooltip popper element.
 - `enterable?: boolean` - Whether the mouse can enter the tooltip content area. Default: `true`
-- `popperOptions?: object` - Popper.js configuration object for advanced positioning control.
 - `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
-- `offset?: number` - Offset of the tooltip from the trigger element (in pixels).
-- `showArrow?: boolean` - Whether to show the tooltip arrow. Default: `true`
+- `offset?: number` - Offset of the tooltip from the trigger element (in pixels). Default: `6`
 
 **Slots**
 
@@ -106,23 +103,6 @@ const showTooltip = () => {
     <button @click="showTooltip">
       Click to show tooltip for 2 seconds
     </button>
-  </N8nTooltip>
-</template>
-```
-
-**Custom popper class:**
-```typescript
-<script setup lang="ts">
-import { N8nTooltip } from '@n8n/design-system'
-</script>
-
-<template>
-  <N8nTooltip
-    content="Styled tooltip"
-    popper-class="custom-tooltip-class"
-    placement="top"
-  >
-    <span>Hover for custom styled tooltip</span>
   </N8nTooltip>
 </template>
 ```

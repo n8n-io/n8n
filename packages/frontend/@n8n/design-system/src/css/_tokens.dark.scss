@@ -60,6 +60,13 @@
 		var(--assistant--color--highlight-1) 100%
 	);
 
+	// AI Chat text and icon colors
+	--assistant--color--text--subtle: var(--color--neutral-250);
+	--assistant--icon-color--subtle: var(--color--neutral-250);
+	--assistant--color--text: var(--color--neutral-white);
+	--assistant--color--text--user-bubble: #f0f3f9;
+	--assistant--color--background--user-bubble: var(--color--neutral-800);
+
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--neutral-950);
 	--lm-chat--bot--color--background: var(--color--neutral-850);
@@ -69,19 +76,12 @@
 
 	// Canvas
 	--canvas--color--background: var(--color--neutral-950);
-	--canvas--color--background--h: 0;
-	--canvas--color--background--s: 0%;
-	--canvas--color--background--l: 9%;
-	--canvas--dot--color: var(--color--neutral-600);
+	--canvas--dot--color: var(--color--neutral-700);
 	--canvas--read-only-line--color: var(--color--neutral-900);
 	--canvas--color--selected: var(--color--white-alpha-400);
 	--canvas--color--selected-transparent: var(--canvas--color--selected);
-	--canvas--label--color--background: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	--canvas--label--color: var(--color--neutral-500);
+	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
 	--node--color--background: var(--color--neutral-850);
@@ -114,7 +114,7 @@
 
 	// NodeIcon
 	--node--icon--color--neutral: var(--color--neutral-200);
-	--node--icon--color--black: var(--color--neutral-50);
+	--node--icon--color--black: var(--color--neutral-200);
 	--node--icon--color--blue: #898fff;
 	--node--icon--color--light-blue: #58abff;
 	--node--icon--color--dark-blue: #7ba7ff;
@@ -222,6 +222,19 @@
 	--button--color--text--highlight--disabled: var(--color--neutral-600);
 	--button--border-color--highlight--disabled: transparent;
 
+	// Button highlight-fill
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
+	--button--border-color--highlight-fill: transparent;
+	--button--color--background--highlight-fill: var(--color--background);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
+	--button--border-color--highlight-fill--hover-active-focus: transparent;
+	--button--color--background--highlight-fill--hover: var(--color--background);
+	--button--color--background--highlight-fill--active-focus: var(--color--background);
+	--button--outline-color--highlight-fill--focus: var(--color--neutral-700);
+	--button--color--text--highlight-fill--disabled: var(--color--neutral-600);
+	--button--border-color--highlight-fill--disabled: transparent;
+	--button--color--background--highlight-fill--disabled: var(--color--background);
+
 	// Button success, warning, danger
 	--button--color--text--danger: var(--color--neutral-white);
 	--button--border-color--danger: transparent;
@@ -295,7 +308,7 @@
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-900);
 	--dialog--overlay--color--background: var(--color--slate-alpha-700);
-	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
+	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
 
 	// Avatar
 	--avatar--color--text: var(--color--neutral-white);

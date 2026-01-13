@@ -31,22 +31,22 @@ const inputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 // Size class mapping
 const sizes: Record<Input2Size, string> = {
-	xlarge: $style.XLarge,
-	large: $style.Large,
-	medium: $style.Medium,
-	small: $style.Small,
-	mini: $style.Mini,
+	xlarge: $style.xlarge,
+	large: $style.large,
+	medium: $style.medium,
+	small: $style.small,
+	mini: $style.mini,
 };
 
 const sizeClass = computed(() => sizes[props.size]);
 
 // Classes for password type (PostHog privacy)
 const containerClasses = computed(() => [
-	$style.InputContainer,
+	$style.inputContainer,
 	sizeClass.value,
 	{
-		[$style.Disabled]: props.disabled,
-		[$style.Focused]: isFocused.value,
+		[$style.disabled]: props.disabled,
+		[$style.focused]: isFocused.value,
 		'ph-no-capture': props.type === 'password',
 	},
 ]);
@@ -238,7 +238,7 @@ defineExpose({ focus, blur, select });
 <template>
 	<div :class="containerClasses">
 		<!-- Prefix slot -->
-		<span v-if="$slots.prefix" :class="$style.Prefix">
+		<span v-if="$slots.prefix" :class="$style.prefix">
 			<slot name="prefix" />
 		</span>
 
@@ -248,7 +248,7 @@ defineExpose({ focus, blur, select });
 			ref="inputRef"
 			:type="type"
 			:value="modelValue ?? ''"
-			:class="$style.Input"
+			:class="$style.input"
 			:placeholder="placeholder"
 			:disabled="disabled"
 			:maxlength="maxlength"
@@ -264,7 +264,7 @@ defineExpose({ focus, blur, select });
 			v-else
 			ref="inputRef"
 			:value="modelValue ?? ''"
-			:class="[$style.Input, $style.Textarea]"
+			:class="[$style.input, $style.textarea]"
 			:placeholder="placeholder"
 			:disabled="disabled"
 			:rows="autosize ? undefined : rows"
@@ -278,7 +278,7 @@ defineExpose({ focus, blur, select });
 		/>
 
 		<!-- Suffix slot -->
-		<span v-if="$slots.suffix" :class="$style.Suffix">
+		<span v-if="$slots.suffix" :class="$style.suffix">
 			<slot name="suffix" />
 		</span>
 
@@ -286,7 +286,7 @@ defineExpose({ focus, blur, select });
 		<button
 			v-if="showClearButton"
 			type="button"
-			:class="$style.ClearButton"
+			:class="$style.clearButton"
 			tabindex="-1"
 			@click="onClear"
 		>
@@ -296,7 +296,7 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module>
-.InputContainer {
+.inputContainer {
 	display: inline-flex;
 	align-items: center;
 	width: 100%;
@@ -309,53 +309,53 @@ defineExpose({ focus, blur, select });
 	gap: var(--spacing--3xs);
 }
 
-.InputContainer:hover:not(.Disabled) {
+.inputContainer:hover:not(.disabled) {
 	border-color: var(--color--foreground--shade-1);
 }
 
-.Focused {
+.focused {
 	border-color: var(--color--secondary);
 	box-shadow: 0 0 0 2px var(--color--secondary--tint-2);
 }
 
-.Disabled {
+.disabled {
 	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
 	opacity: 0.6;
 }
 
 /* Size variants */
-.XLarge {
+.xlarge {
 	min-height: 48px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--md);
 }
 
-.Large {
+.large {
 	min-height: 40px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--sm);
 }
 
-.Medium {
+.medium {
 	min-height: 36px;
 	padding: 0 var(--spacing--2xs);
 	font-size: var(--font-size--sm);
 }
 
-.Small {
+.small {
 	min-height: 28px;
 	padding: 0 var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 }
 
-.Mini {
+.mini {
 	min-height: 22px;
 	padding: 0 var(--spacing--3xs);
 	font-size: var(--font-size--3xs);
 }
 
-.Input {
+.input {
 	flex: 1;
 	min-width: 0;
 	border: none;
@@ -367,30 +367,30 @@ defineExpose({ focus, blur, select });
 	padding: 0;
 }
 
-.Input::placeholder {
+.input::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.Input:disabled {
+.input:disabled {
 	cursor: not-allowed;
 	color: var(--color--text--tint-1);
 }
 
-.Textarea {
+.textarea {
 	resize: vertical;
 	line-height: var(--line-height--md);
 	padding: var(--spacing--2xs) 0;
 }
 
-.Prefix,
-.Suffix {
+.prefix,
+.suffix {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
 	color: var(--color--text--tint-1);
 }
 
-.ClearButton {
+.clearButton {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -404,11 +404,11 @@ defineExpose({ focus, blur, select });
 	transition: color 0.2s;
 }
 
-.ClearButton:hover {
+.clearButton:hover {
 	color: var(--color--text--shade-1);
 }
 
-.ClearButton:focus {
+.clearButton:focus {
 	outline: none;
 }
 </style>

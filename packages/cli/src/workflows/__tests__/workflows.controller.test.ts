@@ -1,21 +1,26 @@
-import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, IExecutionResponse, CredentialsEntity, User } from '@n8n/db';
+import type { CreateWorkflowDto, ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	IExecutionResponse,
+	CredentialsEntity,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { WorkflowsController } from '../workflows.controller';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { License } from '@/license';
-import type { WorkflowRequest } from '../workflow.request';
 import type { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowsController } from '../workflows.controller';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('axios');
 
@@ -25,9 +30,11 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
 		jest.clearAllMocks();
 	});
 
@@ -158,7 +165,7 @@ describe('WorkflowsController', () => {
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 
-		it('should throw NotFoundError when no successful execution exists', async () => {
+		it('should return null when no successful execution exists', async () => {
 			/**
 			 * Arrange
 			 */
@@ -168,11 +175,14 @@ describe('WorkflowsController', () => {
 			controller.executionService = executionService;
 
 			/**
-			 * Act & Assert
+			 * Act
 			 */
-			await expect(controller.getLastSuccessfulExecution(req, res, workflowId)).rejects.toThrow(
-				NotFoundError,
-			);
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeNull();
 			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
 		});
 	});
@@ -184,13 +194,13 @@ describe('WorkflowsController', () => {
 				 * Arrange
 				 */
 				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
 					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
 				});
 
 				const mockGlobalCredential = mock<CredentialsEntity>({
@@ -222,6 +232,9 @@ describe('WorkflowsController', () => {
 					throw new BadRequestError('Stopping execution for test');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -229,11 +242,14 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert
 				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
 
 				/**
 				 * Assert - Verify credentials were fetched with includeGlobal: true
@@ -252,13 +268,13 @@ describe('WorkflowsController', () => {
 				 * Arrange
 				 */
 				const mockUser = mock<User>({ id: 'user-123' });
-				const mockRequest = mock<WorkflowRequest.Create>({
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
 					user: mockUser,
-					body: {
-						name: 'Test Workflow',
-						nodes: [],
-						connections: {},
-					},
 				});
 
 				const mockGlobalCredential = mock<CredentialsEntity>({
@@ -278,6 +294,9 @@ describe('WorkflowsController', () => {
 					throw new Error('User does not have access');
 				});
 
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
 				controller.credentialsService = credentialsService;
 				controller.enterpriseWorkflowService = enterpriseWorkflowService;
 				controller.license = license;
@@ -285,12 +304,15 @@ describe('WorkflowsController', () => {
 				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
 				controller.tagRepository = mock();
 				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
 
 				/**
 				 * Act & Assert
 				 */
-				await expect(controller.create(mockRequest)).rejects.toThrow(BadRequestError);
-				await expect(controller.create(mockRequest)).rejects.toThrow(
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
 

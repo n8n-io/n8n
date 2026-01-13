@@ -8,6 +8,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 } from '@utils/descriptions';
@@ -95,10 +96,18 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		...promptTypeOptions,
+		...promptTypeOptionsDeprecated,
 		displayOptions: {
 			hide: {
-				'@version': [1, 1.1, 1.2, 1.3],
+				'@version': [{ _cnd: { lte: 1.3 } }, { _cnd: { gte: 1.8 } }],
+			},
+		},
+	},
+	{
+		...promptTypeOptions,
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.8 } }],
 			},
 		},
 	},

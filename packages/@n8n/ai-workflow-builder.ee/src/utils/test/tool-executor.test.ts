@@ -52,6 +52,8 @@ describe('tool-executor', () => {
 			validationHistory: [],
 			techniqueCategories: [],
 			previousSummary: 'EMPTY',
+			templateIds: [],
+			cachedTemplates: [],
 		});
 
 		// Helper to create mock tool
@@ -815,6 +817,67 @@ describe('tool-executor', () => {
 			expect(result.techniqueCategories).toBeDefined();
 			expect(result.techniqueCategories).toHaveLength(4);
 			expect(result.techniqueCategories).toEqual([...categories1, ...categories2]);
+		});
+
+		it('should collect cachedTemplates from tool state updates', async () => {
+			const templates1 = [
+				{
+					name: 'Template 1',
+					workflow: { nodes: [], connections: {}, name: 'Template 1' },
+				},
+			];
+			const templates2 = [
+				{
+					name: 'Template 2',
+					workflow: { nodes: [], connections: {}, name: 'Template 2' },
+				},
+			];
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Examples', tool_call_id: 'call-1' })],
+					cachedTemplates: templates1,
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'More Examples', tool_call_id: 'call-2' })],
+					cachedTemplates: templates2,
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'examples_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'examples_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['examples_tool_1', mockTool1],
+				['examples_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.cachedTemplates).toBeDefined();
+			// Should have 2 templates collected
+			expect(result.cachedTemplates).toHaveLength(2);
 		});
 	});
 });

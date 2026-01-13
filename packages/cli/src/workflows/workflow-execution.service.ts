@@ -25,6 +25,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -47,6 +48,7 @@ export class WorkflowExecutionService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly executionDataService: ExecutionDataService,
+		private readonly eventService: EventService,
 	) {}
 
 	async runWorkflow(
@@ -101,6 +103,9 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		// Check whether this workflow is active.
+		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
+
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -110,11 +115,12 @@ export class WorkflowExecutionService {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
+		let data: IWorkflowExecutionDataProcess | undefined;
+
 		// Case 1: Partial execution to a destination node, and we have enough runData to start the execution.
 		if (isPartialExecution(payload)) {
 			if (this.partialExecutionFulfilsPreconditions(payload)) {
-				// All we need to to do is run the workflow.
-				const executionId = await this.workflowRunner.run({
+				data = {
 					destinationNode: payload.destinationNode,
 					executionMode: 'manual',
 					runData: payload.runData,
@@ -124,11 +130,10 @@ export class WorkflowExecutionService {
 					userId: user.id,
 					dirtyNodeNames: payload.dirtyNodeNames,
 					agentRequest: payload.agentRequest,
-				});
-
-				return { executionId };
+				};
+			} else {
+				payload = upgradeToFullManualExecutionFromUnknownTrigger(payload);
 			}
-			payload = upgradeToFullManualExecutionFromUnknownTrigger(payload);
 		}
 
 		// Case 2: Full execution from a known trigger.
@@ -146,13 +151,13 @@ export class WorkflowExecutionService {
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode: payload.destinationNode,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };
 			}
 
-			// We don't need a webhook, so we can just execute.
-			const executionId = await this.workflowRunner.run({
+			data = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -161,8 +166,7 @@ export class WorkflowExecutionService {
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
-			});
-			return { executionId };
+			};
 		}
 
 		// Case 3: Full execution from an unknown trigger.
@@ -184,12 +188,13 @@ export class WorkflowExecutionService {
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };
 			}
 
-			const executionId = await this.workflowRunner.run({
+			data = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -198,7 +203,45 @@ export class WorkflowExecutionService {
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
-			});
+			};
+		}
+
+		if (data) {
+			const offloadingManualExecutionsInQueueMode =
+				this.globalConfig.executions.mode === 'queue' &&
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+
+			/**
+			 * Historically, manual executions in scaling mode ran in the main process,
+			 * so some execution details were never persisted in the database.
+			 *
+			 * Currently, manual executions in scaling mode are offloaded to workers,
+			 * so we persist all details to give workers full access to them.
+			 */
+			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+				data.executionData = createRunExecutionData({
+					startData: {
+						startNodes: data.startNodes,
+						destinationNode: data.destinationNode,
+					},
+					resultData: {
+						pinData: data.pinData,
+						// Set this to null so `createRunExecutionData` doesn't initialize it.
+						// Otherwise this would be treated as a partial execution.
+						runData: data.runData ?? null,
+					},
+					manualData: {
+						userId: data.userId,
+						dirtyNodeNames: data.dirtyNodeNames,
+						triggerToStartFrom: data.triggerToStartFrom,
+					},
+					// Set this to null so `createRunExecutionData` doesn't initialize it.
+					// Otherwise this would be treated as a resumed execution after waiting.
+					executionData: null,
+				});
+			}
+
+			const executionId = await this.workflowRunner.run(data);
 			return { executionId };
 		}
 
@@ -208,23 +251,31 @@ export class WorkflowExecutionService {
 	}
 
 	async executeChatWorkflow(
+		user: User,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
-		user: User,
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		const data: IWorkflowExecutionDataProcess = {
+			userId: user.id,
 			executionMode,
 			workflowData,
-			userId: user.id,
 			executionData,
 			streamingEnabled,
 			httpResponse,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
+
+		this.eventService.emit('workflow-executed', {
+			user: { id: user.id },
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'chat',
+		});
 
 		return {
 			executionId,
@@ -239,11 +290,23 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.findOneBy({ id: workflowId });
+			const workflowData = await this.workflowRepository.get(
+				{ id: workflowId },
+				{ relations: ['activeVersion'] },
+			);
 			if (workflowData === null) {
-				// The error workflow could not be found
+				// The workflow could not be found
 				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
+					{ workflowId },
+				);
+				return;
+			}
+
+			if (workflowData.activeVersion === null) {
+				// The workflow is not active
+				this.logger.error(
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
 					{ workflowId },
 				);
 				return;
@@ -254,9 +317,9 @@ export class WorkflowExecutionService {
 				id: workflowId,
 				name: workflowData.name,
 				nodeTypes: this.nodeTypes,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: workflowData.activeVersion !== null,
+				nodes: workflowData.activeVersion.nodes,
+				connections: workflowData.activeVersion.connections,
+				active: true,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});
@@ -366,7 +429,14 @@ export class WorkflowExecutionService {
 				projectId: runningProject.id,
 			};
 
-			await this.workflowRunner.run(runData);
+			const executionId = await this.workflowRunner.run(runData);
+
+			this.eventService.emit('workflow-executed', {
+				workflowId,
+				workflowName: workflowData.name,
+				executionId,
+				source: 'error',
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(

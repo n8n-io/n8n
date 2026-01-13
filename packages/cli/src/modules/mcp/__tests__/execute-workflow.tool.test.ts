@@ -738,7 +738,7 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				// Call through the tool handler to test telemetry
-				await tool.handler({ workflowId: 'error-tracking' }, {} as any);
+				await tool.handler({ workflowId: 'error-tracking', inputs: undefined }, {} as any);
 
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User called mcp tool',

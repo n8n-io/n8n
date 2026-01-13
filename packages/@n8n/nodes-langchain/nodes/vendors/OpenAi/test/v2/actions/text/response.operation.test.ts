@@ -8,7 +8,7 @@ import * as transport from '../../../../transport';
 import * as helpers from '../../../../v2/actions/text/helpers/responses';
 import { execute } from '../../../../v2/actions/text/response.operation';
 import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
-import type { Tool } from 'langchain/tools';
+import type { Tool } from '@langchain/classic/tools';
 
 jest.mock('../../../../transport');
 jest.mock('../../../../v2/actions/text/helpers/responses');

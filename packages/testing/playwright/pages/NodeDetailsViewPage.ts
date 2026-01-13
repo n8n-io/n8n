@@ -47,7 +47,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
@@ -225,10 +225,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.webhook-url').textContent();
 	}
 
-	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
-	}
-
 	async clearExpressionEditor(parameterName?: string) {
 		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
@@ -275,16 +271,12 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.locator('.param-options').click();
+		await this.page.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
 		await this.selectFromVisibleDropdown(optionName);
-	}
-
-	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
@@ -626,6 +618,12 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.fill(value);
 	}
 
+	/** Waits for parameter input debounce (100ms) to flush. */
+	async waitForDebounce(): Promise<void> {
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(150);
+	}
+
 	async clickGetBackToCanvas(): Promise<void> {
 		await this.clickBackToCanvasButton();
 	}
@@ -757,7 +755,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.page.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
@@ -865,6 +863,17 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async addItemToFixedCollection(collectionName: string) {
 		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+	}
+
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
 	}
 
 	async clickParameterItemAction(actionText: string) {

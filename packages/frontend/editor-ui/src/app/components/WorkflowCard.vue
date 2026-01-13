@@ -11,7 +11,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -90,6 +89,7 @@ const emit = defineEmits<{
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 	];
 }>();
@@ -108,7 +108,6 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
-
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
@@ -134,10 +133,6 @@ const projectPermissions = computed(
 const canCreateWorkflow = computed(
 	() => globalPermissions.value.create ?? projectPermissions.value.create,
 );
-
-const showFolders = computed(() => {
-	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
-});
 
 const showCardBreadcrumbs = computed(() => {
 	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
@@ -197,9 +192,9 @@ const actions = computed(() => {
 	// TODO: add test to verify that moving a readonly card is not possible
 	if (
 		!props.readOnly &&
+		props.areFoldersEnabled &&
 		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
-		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
 	) {
 		items.push({
@@ -270,6 +265,10 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.type !== ProjectTypes.Team &&
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
+
+const isWorkflowPublished = computed(() => {
+	return props.data.activeVersionId !== null;
+});
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -346,6 +345,7 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
@@ -491,21 +491,6 @@ function moveResource() {
 	});
 }
 
-const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
-	emit('workflow:active-toggle', value);
-	// Show notification if MCP access was removed due to deactivation
-	if (!value.active && props.isMcpEnabled && isAvailableInMCP.value) {
-		// Reset the local MCP toggle status to null to use props data
-		mcpToggleStatus.value = null;
-
-		toast.showToast({
-			title: locale.baseText('mcp.workflowDeactivated.title'),
-			message: locale.baseText('mcp.workflowDeactivated.message'),
-			type: 'info',
-		});
-	}
-};
-
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {
 		await router.push(item.href);
@@ -528,27 +513,20 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<N8nTooltip
-				:content="data.description"
-				:disabled="!data.description"
-				data-test-id="workflow-card-name-tooltip"
-				:popper-class="$style['description-popper']"
+			<N8nText
+				tag="h2"
+				bold
+				:class="{
+					[$style.cardHeading]: true,
+					[$style.cardHeadingArchived]: data.isArchived,
+				}"
+				data-test-id="workflow-card-name"
 			>
-				<N8nText
-					tag="h2"
-					bold
-					:class="{
-						[$style.cardHeading]: true,
-						[$style.cardHeadingArchived]: data.isArchived,
-					}"
-					data-test-id="workflow-card-name"
-				>
-					{{ data.name }}
-					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-						{{ locale.baseText('workflows.item.readonly') }}
-					</N8nBadge>
-				</N8nText>
-			</N8nTooltip>
+				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
@@ -627,17 +605,16 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<WorkflowActivator
-					v-else
-					class="mr-s"
-					:is-archived="data.isArchived"
-					:workflow-active="data.active"
-					:workflow-id="data.id"
-					:workflow-permissions="workflowPermissions"
-					data-test-id="workflow-card-activator"
-					@update:workflow-active="onWorkflowActiveToggle"
-				/>
-
+				<div
+					v-else-if="isWorkflowPublished"
+					:class="$style.publishIndicator"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
+				</div>
 				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
@@ -731,6 +708,28 @@ const tags = computed(
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.publishIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-left: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
+
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
+	}
+}
+
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

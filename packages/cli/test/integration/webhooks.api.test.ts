@@ -1,9 +1,8 @@
 import { testDb, mockInstance, createActiveWorkflow } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { IWorkflowDb, User } from '@n8n/db';
 import { readFileSync } from 'fs';
 import {
 	type INode,
-	type IWorkflowBase,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -74,7 +73,7 @@ describe('Webhook API', () => {
 		parameters: {},
 		webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
 	};
-	const workflowData = { active: true, nodes: [node] } as IWorkflowBase;
+	const workflowData = { active: true, nodes: [node] } as Partial<IWorkflowDb>;
 
 	const nodeTypes = mockInstance(NodeTypes);
 	nodeTypes.getByName.mockReturnValue(nodeInstance);

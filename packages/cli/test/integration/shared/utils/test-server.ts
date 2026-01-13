@@ -10,7 +10,6 @@ import request from 'supertest';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
@@ -129,7 +128,6 @@ export const setupTestServer = ({
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
-		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
 		testServer.license.mockLicenseState(Container.get(LicenseState));
@@ -228,7 +226,7 @@ export const setupTestServer = ({
 					}
 
 					case 'sourceControl':
-						await import('@/environments.ee/source-control/source-control.controller.ee');
+						await import('@/modules/source-control.ee/source-control.controller.ee');
 						break;
 
 					case 'community-packages':

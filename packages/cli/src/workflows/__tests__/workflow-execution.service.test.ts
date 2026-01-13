@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import {
 	NodeConnectionTypes,
@@ -14,6 +15,7 @@ import {
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
+import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -84,6 +86,7 @@ describe('WorkflowExecutionService', () => {
 		nodeTypes,
 		mock(),
 		workflowRunner,
+		mock(),
 		mock(),
 		mock(),
 		mock(),
@@ -335,6 +338,67 @@ describe('WorkflowExecutionService', () => {
 			expect(callArgs.executionMode).toBe('manual');
 			expect(result).toEqual({ executionId });
 		});
+
+		test('should pass workflowIsActive to testWebhooks.needsWebhook', async () => {
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const testWebhooks = mock<TestWebhooks>();
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			const telegramTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'Telegram Trigger',
+				type: 'n8n-nodes-base.telegramTrigger',
+			};
+			const activeWorkflowData = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'version-123',
+				isArchived: false,
+				nodes: [telegramTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			workflowRepositoryMock.isActive.mockResolvedValue(true);
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				testWebhooks,
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+				workflowData: activeWorkflowData,
+				triggerToStartFrom: { name: telegramTrigger.name },
+			};
+
+			testWebhooks.needsWebhook.mockRejectedValue(
+				new Error(
+					'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+				),
+			);
+
+			await expect(service.executeManually(runPayload, user)).rejects.toThrow(
+				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+			);
+
+			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowIsActive: true,
+				}),
+			);
+		});
 	});
 
 	describe('selectPinnedTrigger()', () => {
@@ -468,6 +532,113 @@ describe('WorkflowExecutionService', () => {
 		});
 	});
 
+	describe('offloading manual executions to workers', () => {
+		let originalOffloadManualExecutionsToWorkers: string | undefined;
+		let globalConfigMock: GlobalConfig;
+		let workflowRunnerMock: MockProxy<WorkflowRunner>;
+		let service: WorkflowExecutionService;
+
+		beforeEach(() => {
+			originalOffloadManualExecutionsToWorkers = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+			globalConfigMock = mock<GlobalConfig>({ executions: { mode: 'queue' } });
+			workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfigMock,
+				mock(),
+				mock(),
+				mock(),
+			);
+		});
+
+		afterEach(() => {
+			if (originalOffloadManualExecutionsToWorkers === undefined) {
+				delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			} else {
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
+			}
+			jest.clearAllMocks();
+		});
+
+		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
+			// ACT
+			await service.executeManually(
+				{
+					workflowData: mock<IWorkflowBase>({ nodes: [] }),
+					triggerToStartFrom: executeWorkflowTriggerNode,
+				} satisfies WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
+				mock<User>({ id: 'user-id' }),
+			);
+
+			// ASSERT
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
+		});
+
+		test('when receiving `runData`, should preserve it in `executionData` for partial execution', async () => {
+			// ARRANGE
+			const runData = {
+				[webhookNode.name]: [
+					{
+						startTime: 123,
+						executionTime: 456,
+						source: [],
+						executionIndex: 0,
+					},
+				],
+			};
+			const connections = { ...createMainConnection(hackerNewsNode.name, webhookNode.name) };
+
+			jest
+				.spyOn(nodeTypes, 'getByNameAndVersion')
+				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+
+			// ACT
+			await service.executeManually(
+				{
+					workflowData: mock<IWorkflowBase>({ nodes: [hackerNewsNode, webhookNode], connections }),
+					runData,
+					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					dirtyNodeNames: [],
+				} satisfies WorkflowRequest.PartialManualExecutionToDestinationPayload,
+				mock<User>({ id: 'user-id' }),
+			);
+
+			// ASSERT
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			expect(callArgs.executionData?.resultData?.runData).toEqual(runData);
+		});
+
+		test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
+			// ACT
+			await service.executeManually(
+				{
+					workflowData: mock<IWorkflowBase>({ nodes: [] }),
+					triggerToStartFrom: executeWorkflowTriggerNode,
+				} satisfies WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
+				mock<User>({ id: 'user-id' }),
+			);
+
+			// ASSERT
+			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+			// Should have executionData at top level with startData and manualData
+			expect(callArgs.executionData).toBeDefined();
+			expect(callArgs.executionData?.startData).toBeDefined();
+			expect(callArgs.executionData?.manualData).toBeDefined();
+			// But nested executionData.executionData should be undefined
+			expect(callArgs.executionData?.executionData).toBeUndefined();
+		});
+	});
+
 	describe('executeErrorWorkflow()', () => {
 		test('should call `WorkflowRunner.run()` with correct parameters', async () => {
 			const workflowErrorData: IWorkflowErrorData = {
@@ -503,17 +674,21 @@ describe('WorkflowExecutionService', () => {
 				id: 'error-workflow-id',
 				name: 'Error Workflow',
 				active: false,
-				activeVersionId: null,
+				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
 				nodes: [errorTriggerNode],
 				connections: {},
 				createdAt: new Date(),
 				updatedAt: new Date(),
+				activeVersion: {
+					nodes: [errorTriggerNode],
+					connections: {},
+				},
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.findOneBy.mockResolvedValue(errorWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const service = new WorkflowExecutionService(
 				mock(),
@@ -524,6 +699,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 			);

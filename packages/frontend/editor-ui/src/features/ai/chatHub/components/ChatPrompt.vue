@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { providerDisplayNames, TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
+import { useUIStore } from '@/app/stores/ui.store';
+import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 
-const { selectedModel, selectedTools, issue } = defineProps<{
-	isResponding: boolean;
+const { selectedModel, selectedTools, messagingState } = defineProps<{
+	messagingState: MessagingState;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
-	issue: 'missingCredentials' | 'missingAgent' | null;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
 }>();
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 	selectModel: [];
 	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
+	editAgent: [agentId: string];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
@@ -37,6 +39,7 @@ const attachments = ref<File[]>([]);
 
 const toast = useToast();
 const i18n = useI18n();
+const uiStore = useUIStore();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -56,6 +59,12 @@ const placeholder = computed(() => {
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
+
+const acceptedMimeTypes = computed(() =>
+	createMimeTypes(selectedModel?.metadata.inputModalities ?? []),
+);
+
+const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
@@ -106,22 +115,18 @@ function handleSubmitForm() {
 	if (trimmed) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
-		message.value = '';
-		committedSpokenMessage.value = '';
-		attachments.value = [];
 	}
 }
 
 function handleKeydownTextarea(e: KeyboardEvent) {
 	const trimmed = message.value.trim();
 
+	speechInput.stop();
+
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
-		message.value = '';
-		committedSpokenMessage.value = '';
-		attachments.value = [];
 	}
 }
 
@@ -160,12 +165,28 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools(tools: INode[]) {
-	emit('selectTools', tools);
+function onSelectTools() {
+	if (selectedModel?.model.provider === 'custom-agent') {
+		emit('editAgent', selectedModel.model.agentId);
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: selectedTools,
+			onConfirm: (newTools: INode[]) => emit('selectTools', newTools),
+		},
+	});
 }
 
 defineExpose({
 	focus: () => inputRef.value?.focus(),
+	reset: () => {
+		message.value = '';
+		committedSpokenMessage.value = '';
+		attachments.value = [];
+	},
 	setText: (text: string) => {
 		message.value = text;
 	},
@@ -179,7 +200,7 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<N8nText v-if="issue === 'missingAgent'" :class="$style.callout">
+			<N8nText v-if="messagingState === 'missingAgent'" :class="$style.callout">
 				<I18nT
 					:keypath="
 						isNewSession
@@ -200,7 +221,10 @@ defineExpose({
 					</template>
 				</I18nT>
 			</N8nText>
-			<N8nText v-else-if="issue === 'missingCredentials' && llmProvider" :class="$style.callout">
+			<N8nText
+				v-else-if="messagingState === 'missingCredentials' && llmProvider"
+				:class="$style.callout"
+			>
 				<I18nT
 					:keypath="
 						isNewSession
@@ -228,6 +252,7 @@ defineExpose({
 				ref="fileInputRef"
 				type="file"
 				:class="$style.fileInput"
+				:accept="acceptedMimeTypes"
 				multiple
 				@change="handleFileSelect"
 			/>
@@ -239,7 +264,7 @@ defineExpose({
 						:key="index"
 						:file="file"
 						:is-previewable="true"
-						:is-removable="true"
+						:is-removable="messagingState === 'idle'"
 						@remove="removeAttachment"
 					/>
 				</div>
@@ -252,32 +277,45 @@ defineExpose({
 					autocomplete="off"
 					:autosize="{ minRows: 1, maxRows: 6 }"
 					autofocus
-					:disabled="!!issue"
+					:disabled="messagingState !== 'idle'"
 					@keydown="handleKeydownTextarea"
 				/>
 
 				<div :class="$style.footer">
-					<div v-if="isToolsSelectable" :class="$style.tools">
+					<div :class="$style.tools">
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
-							:disabled="!!issue || isResponding"
+							:disabled="messagingState !== 'idle' || !isToolsSelectable"
+							:disabled-tooltip="
+								isToolsSelectable
+									? undefined
+									: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+							"
 							transparent-bg
-							@select="onSelectTools"
+							@click="onSelectTools"
 						/>
 					</div>
 					<div :class="$style.actions">
-						<N8nIconButton
-							v-if="selectedModel?.allowFileUploads"
-							native-type="button"
-							type="secondary"
-							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"
-							:disabled="!!issue || isResponding"
-							icon="paperclip"
-							icon-size="large"
-							text
-							@click.stop="onAttach"
-						/>
+						<N8nTooltip
+							:content="
+								!canUploadFiles
+									? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
+									: i18n.baseText('chatHub.chat.prompt.button.attach')
+							"
+							:disabled="canUploadFiles && messagingState === 'idle'"
+							placement="top"
+						>
+							<N8nIconButton
+								native-type="button"
+								type="secondary"
+								:disabled="messagingState !== 'idle' || !canUploadFiles"
+								icon="paperclip"
+								icon-size="large"
+								text
+								@click.stop="onAttach"
+							/>
+						</N8nTooltip>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
 							native-type="button"
@@ -287,17 +325,18 @@ defineExpose({
 									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
 							"
 							type="secondary"
-							:disabled="!!issue || isResponding"
+							:disabled="messagingState !== 'idle'"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
 							icon-size="large"
 							@click.stop="onMic"
 						/>
 						<N8nIconButton
-							v-if="!isResponding"
+							v-if="messagingState !== 'receiving'"
 							native-type="submit"
-							:disabled="!!issue || !message.trim()"
+							:disabled="messagingState !== 'idle' || !message.trim()"
 							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
+							:loading="messagingState === 'waitingFirstChunk'"
 							icon="arrow-up"
 							icon-size="large"
 							@click.stop

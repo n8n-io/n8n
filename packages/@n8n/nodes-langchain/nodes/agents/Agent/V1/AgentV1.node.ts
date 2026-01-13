@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -320,20 +320,6 @@ export class AgentV1 implements INodeType {
 					},
 				},
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Get started faster with our',
-					name: 'preBuiltAgentsCallout',
-					type: 'callout',
-					typeOptions: {
-						calloutAction: {
-							label: 'pre-built agents',
-							icon: 'bot',
-							type: 'openPreBuiltAgentsCollection',
-						},
-					},
-					default: '',
-				},
-				{
 					displayName:
 						"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",
 					name: 'deprecated',
@@ -374,7 +360,7 @@ export class AgentV1 implements INodeType {
 					default: 'toolsAgent',
 				},
 				{
-					...promptTypeOptions,
+					...promptTypeOptionsDeprecated,
 					displayOptions: {
 						hide: {
 							'@version': [{ _cnd: { lte: 1.2 } }],

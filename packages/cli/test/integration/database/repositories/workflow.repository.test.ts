@@ -3,13 +3,16 @@ import {
 	createWorkflowWithHistory,
 	createActiveWorkflow,
 	createManyActiveWorkflows,
-	createWorkflowWithActiveVersion,
 	createWorkflow,
 	testDb,
+	getWorkflowById,
+	setActiveVersion,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
 
@@ -19,80 +22,108 @@ describe('WorkflowRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowDependency', 'WorkflowEntity', 'WorkflowHistory']);
+		await testDb.truncate([
+			'WorkflowDependency',
+			'WorkflowEntity',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 	});
 
-	describe('activateAll', () => {
-		it('should activate all workflows', async () => {
+	describe('publishVersion', () => {
+		it('should publish a specific workflow version', async () => {
 			//
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflows = await Promise.all([
-				createWorkflowWithTriggerAndHistory(),
-				createWorkflowWithTriggerAndHistory(),
-			]);
-			expect(workflows[0].activeVersionId).toBeNull();
-			expect(workflows[1].activeVersionId).toBeNull();
+			const workflow = await createWorkflowWithTriggerAndHistory();
+			const targetVersionId = 'custom-version-123';
+			await createWorkflowHistoryItem(workflow.id, { versionId: targetVersionId });
 
 			//
 			// ACT
 			//
-			await workflowRepository.activateAll();
+			await workflowRepository.publishVersion(workflow.id, targetVersionId);
 
 			//
 			// ASSERT
 			//
-			const workflow1 = await workflowRepository.findOne({
-				where: { id: workflows[0].id },
-			});
-			const workflow2 = await workflowRepository.findOne({
-				where: { id: workflows[1].id },
-			});
+			const updatedWorkflow = await getWorkflowById(workflow.id);
 
-			expect(workflow1?.activeVersionId).toBe(workflows[0].versionId);
-			expect(workflow2?.activeVersionId).toBe(workflows[1].versionId);
+			expect(updatedWorkflow?.activeVersionId).toBe(targetVersionId);
+			expect(updatedWorkflow?.active).toBe(true);
 		});
 
-		it('should not change activeVersionId for already-active workflows', async () => {
+		it('should update activeVersionId when publishing an already published workflow', async () => {
 			//
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const activeVersionId = 'old-active-version-id';
-
-			// Create workflow with different active and current versions
-			const workflow = await createWorkflowWithActiveVersion(activeVersionId, {});
-			const currentVersionId = workflow.versionId;
-
-			expect(workflow.active).toBe(true);
-			expect(workflow.activeVersionId).toBe(activeVersionId);
-			expect(workflow.versionId).toBe(currentVersionId);
+			const workflow = await createActiveWorkflow();
+			const newVersionId = 'new-version-id';
+			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 			//
 			// ACT
 			//
-			await workflowRepository.activateAll();
+			await workflowRepository.publishVersion(workflow.id, newVersionId);
 
 			//
 			// ASSERT
 			//
-			// activeVersionId should remain unchanged
-			const after = await workflowRepository.findOne({
-				where: { id: workflow.id },
-			});
+			const updatedWorkflow = await getWorkflowById(workflow.id);
 
-			expect(after?.activeVersionId).toBe(activeVersionId); // Unchanged
-			expect(after?.versionId).toBe(currentVersionId);
+			expect(updatedWorkflow?.activeVersionId).toBe(newVersionId);
+			expect(updatedWorkflow?.active).toBe(true);
+			expect(updatedWorkflow?.versionId).toBe(workflow.versionId);
+		});
+
+		it('should throw error when version does not exist for workflow', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory();
+			const nonExistentVersionId = 'non-existent-version';
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(
+				workflowRepository.publishVersion(workflow.id, nonExistentVersionId),
+			).rejects.toThrow(
+				`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}".`,
+			);
+		});
+
+		it('should publish current version when versionId is not provided', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory();
+
+			//
+			// ACT
+			//
+			await workflowRepository.publishVersion(workflow.id);
+
+			//
+			// ASSERT
+			//
+			const updatedWorkflow = await getWorkflowById(workflow.id);
+
+			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
+			expect(updatedWorkflow?.active).toBe(true);
 		});
 	});
 
-	describe('deactivateAll', () => {
-		it('should deactivate all workflows and clear activeVersionId', async () => {
+	describe('unpublishAll', () => {
+		it('should unpublish all workflows and clear activeVersionId', async () => {
 			//
 			// ARRANGE
 			//
@@ -106,7 +137,7 @@ describe('WorkflowRepository', () => {
 			//
 			// ACT
 			//
-			await workflowRepository.deactivateAll();
+			await workflowRepository.unpublishAll();
 			//
 			// ASSERT
 			//
@@ -234,6 +265,25 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(count).toBe(2);
+		});
+	});
+
+	describe('isActive()', () => {
+		it('should return `true` for active workflow in storage', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			const workflow = await createWorkflowWithHistory();
+			await setActiveVersion(workflow.id, workflow.versionId);
+
+			await expect(workflowRepository.isActive(workflow.id)).resolves.toBe(true);
+		});
+
+		it('should return `false` for inactive workflow in storage', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			const workflow = await createWorkflowWithHistory();
+
+			await expect(workflowRepository.isActive(workflow.id)).resolves.toBe(false);
 		});
 	});
 
