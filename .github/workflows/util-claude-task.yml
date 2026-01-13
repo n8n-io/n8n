@@ -7,16 +7,6 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
-      create_pr:
-        description: 'Create PR after completing task'
-        required: false
-        type: boolean
-        default: true
-      base_branch:
-        description: 'Base branch for PR'
-        required: false
-        type: string
-        default: 'master'
 
 jobs:
   run-claude-task:
@@ -26,44 +16,33 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write
 
     steps:
       - name: Generate App Token
         id: app-token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-          ref: ${{ inputs.base_branch }}
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: 'echo "Skipping build - Claude will build if needed"'
 
-      - name: Generate branch name
-        id: branch
-        shell: bash
-        env:
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-        run: |
-          echo "name=claude/task-${RUN_ID}-${RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
-
       - name: Create working branch
-        shell: bash
         run: |
-          git checkout -b "${{ steps.branch.outputs.name }}"
+          BRANCH_NAME="claude/task-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH_NAME"
 
       - name: Configure git author
-        id: git-author
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
@@ -85,8 +64,6 @@ jobs:
           echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
 
       - name: Prepare Claude prompt
-        id: prompt
-        shell: bash
         env:
           INPUT_TASK: ${{ inputs.task }}
         run: |
@@ -126,74 +103,46 @@ jobs:
           claude_args: |
             --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite
 
-      - name: Push branch
-        shell: bash
-        env:
-          INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
-          BRANCH_NAME: ${{ steps.branch.outputs.name }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          # Configure git to use app token for push
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          # Check if there are any commits to push
-          if git log "origin/$INPUT_BASE_BRANCH..HEAD" --oneline | grep -q .; then
-            git push -u origin "$BRANCH_NAME"
-            echo "CHANGES_MADE=true" >> "$GITHUB_ENV"
-          else
-            echo "No commits were made by Claude"
-            echo "CHANGES_MADE=false" >> "$GITHUB_ENV"
-          fi
-
-      - name: Create Pull Request
-        if: inputs.create_pr && env.CHANGES_MADE == 'true'
-        shell: bash
+      - name: Push branch and create PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           INPUT_TASK: ${{ inputs.task }}
-          INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
-          BRANCH_NAME: ${{ steps.branch.outputs.name }}
           TRIGGERED_BY: ${{ github.actor }}
           CLAUDE_CONCLUSION: ${{ steps.claude.outputs.conclusion }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push -u origin "$BRANCH_NAME"
+
           # Extract PR title from Claude's output (looks for PR_TITLE: prefix)
           PR_TITLE=$(echo "$CLAUDE_CONCLUSION" | grep -oP 'PR_TITLE:\s*\K.*' | head -1 || echo "")
-
-          # Fallback to generic title if Claude didn't provide one
           if [ -z "$PR_TITLE" ]; then
             PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
           fi
 
-          # Create PR with task description in body
-          gh pr create \
-            --title "$PR_TITLE" \
-            --body "## Summary
-          Automated task completed by Claude.
+          {
+            echo "## Summary"
+            echo "Automated task completed by Claude."
+            echo ""
+            echo "### Task Description"
+            echo "$INPUT_TASK"
+            echo ""
+            echo "### Generated by"
+            echo "[Workflow Run #${{ github.run_id }}]($RUN_URL)"
+            echo ""
+            echo "---"
+            echo "*Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*"
+          } > /tmp/pr-body.md
 
-          ### Task Description
-          $INPUT_TASK
-
-          ### Generated by
-          [Workflow Run #${{ github.run_id }}]($RUN_URL)
-
-          ---
-          *Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*" \
-            --base "$INPUT_BASE_BRANCH"
+          gh pr create --title "$PR_TITLE" --body-file /tmp/pr-body.md --base master
 
       - name: Summary
-        shell: bash
         env:
           INPUT_TASK: ${{ inputs.task }}
-          INPUT_CREATE_PR: ${{ inputs.create_pr }}
-          BRANCH_NAME: ${{ steps.branch.outputs.name }}
         run: |
           {
             echo "## Claude Task Runner Summary"
             echo ""
             echo "**Task:** $INPUT_TASK"
             echo "**Branch:** $BRANCH_NAME"
-            echo "**Changes Made:** $CHANGES_MADE"
-            if [ "$CHANGES_MADE" == "true" ] && [ "$INPUT_CREATE_PR" == "true" ]; then
-              echo "**PR Created:** Yes (Draft)"
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
