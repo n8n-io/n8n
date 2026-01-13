@@ -126,28 +126,29 @@ export const useExpressionEditor = ({
 			rawSegments.push(newSegment);
 		});
 
-		const resolvedSegments: Segment[] = [];
-		for (const segment of rawSegments) {
-			const { from, to, text, token } = segment;
+		// Resolve all segments in parallel for better performance
+		const resolvedSegments: Segment[] = await Promise.all(
+			rawSegments.map(async (segment) => {
+				const { from, to, text, token } = segment;
 
-			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = await resolve(text, targetItem.value);
-				resolvedSegments.push({
-					kind: 'resolvable',
-					from,
-					to,
-					resolvable: text,
-					// TODO:
-					// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
-					// This fixes that but as as TODO we should figure out why this is happening
-					resolved: String(resolved),
-					state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
-					error: fullError,
-				});
-			} else {
-				resolvedSegments.push({ kind: 'plaintext', from, to, plaintext: text });
-			}
-		}
+				if (token === 'Resolvable') {
+					const { resolved, error, fullError } = await resolve(text, targetItem.value);
+					return {
+						kind: 'resolvable' as const,
+						from,
+						to,
+						resolvable: text,
+						// TODO:
+						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
+						// This fixes that but as as TODO we should figure out why this is happening
+						resolved: String(resolved),
+						state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
+						error: fullError,
+					};
+				}
+				return { kind: 'plaintext' as const, from, to, plaintext: text };
+			}),
+		);
 
 		segments.value = resolvedSegments;
 		if (
