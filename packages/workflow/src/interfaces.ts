@@ -453,7 +453,18 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
-export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+export type IHttpRequestMethods =
+	| 'DELETE'
+	| 'GET'
+	| 'PATCH'
+	| 'POST'
+	| 'PUT'
+	| 'PROPFIND'
+	| 'MKCOL'
+	| 'MOVE'
+	| 'COPY'
+	| 'REPORT'
+	| 'HEAD';
 
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
