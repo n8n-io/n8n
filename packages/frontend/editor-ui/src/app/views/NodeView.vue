@@ -602,7 +602,6 @@ function onTidyUp(
 		trackEvents?: boolean;
 		trackHistory?: boolean;
 		trackBulk?: boolean;
-		onComplete?: () => void;
 	},
 ) {
 	tidyUp(event, options);

@@ -117,7 +117,6 @@ const emit = defineEmits<{
 			trackEvents?: boolean;
 			trackHistory?: boolean;
 			trackBulk?: boolean;
-			onComplete?: () => void;
 		},
 	];
 	'toggle:focus-panel': [];

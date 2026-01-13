@@ -192,7 +192,6 @@ export type CanvasEventBusEvents = {
 		trackEvents?: boolean;
 		trackHistory?: boolean;
 		trackBulk?: boolean;
-		onComplete?: () => void;
 	};
 	'create:sticky': never;
 };
