@@ -1514,6 +1514,103 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" preserves explicitly added options with all default values (GitHub case)',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'additionalParameters',
+							displayName: 'Additional Parameters',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'author',
+									displayName: 'Author',
+									values: [
+										{
+											name: 'name',
+											displayName: 'Name',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'email',
+											displayName: 'Email',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+								{
+									name: 'branch',
+									displayName: 'Branch',
+									values: [
+										{
+											name: 'branch',
+											displayName: 'Branch',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						additionalParameters: {
+							author: {
+								name: '',
+								email: '',
+							},
+							branch: {
+								branch: '',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+				},
+			},
 			// Remember it is correct that default strings get returned here even when returnDefaults
 			// is set to false because if they would not, there would be no way to know which value
 			// got added and which one not.
