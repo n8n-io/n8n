@@ -118,6 +118,16 @@
  * Edges
  */
 
+// Fix: Ensure nodes layer is always above edges layer
+// This prevents edge interaction zones from blocking clicks to plus buttons when zoomed
+.vue-flow__edges {
+	z-index: 0;
+}
+
+.vue-flow__nodes {
+	z-index: 1;
+}
+
 .vue-flow__edges:has(.bring-to-front),
 .vue-flow__edge-label.selected {
 	z-index: 1 !important;
