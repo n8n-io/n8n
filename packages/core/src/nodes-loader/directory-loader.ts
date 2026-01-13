@@ -123,8 +123,13 @@ export abstract class DirectoryLoader {
 	/** Reload types from source if they were released from memory */
 	async ensureTypesLoaded() {
 		if (this.typesReleased) {
-			await this.loadAll();
 			this.typesReleased = false;
+			try {
+				await this.loadAll();
+			} catch (error) {
+				this.typesReleased = true;
+				throw error;
+			}
 		}
 	}
 
