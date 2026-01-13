@@ -15,6 +15,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -30,7 +31,6 @@ import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import { WebhookService } from '@/webhooks/webhook.service';
-import { INode } from 'n8n-workflow';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
