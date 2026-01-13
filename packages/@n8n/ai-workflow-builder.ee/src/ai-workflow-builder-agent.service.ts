@@ -178,16 +178,14 @@ export class AiWorkflowBuilderService {
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
-			onGenerationSuccess: async () => {
-				await this.onGenerationSuccess(user, authHeaders);
-			},
 			runMetadata: {
 				n8nVersion: this.n8nVersion,
 				featureFlags: featureFlags ?? {},
 			},
+			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
 		});
 
-		return agent;
+		return { agent };
 	}
 
 	private async onGenerationSuccess(
@@ -214,7 +212,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.id, payload.featureFlags);
+		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
@@ -222,7 +220,7 @@ export class AiWorkflowBuilderService {
 			yield output;
 		}
 
-		// After the stream completes, track telemetry
+		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
 				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
