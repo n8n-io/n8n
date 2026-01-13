@@ -166,7 +166,6 @@ export async function runV2Evaluation(): Promise<void> {
 			evaluators.push(
 				createPairwiseEvaluator(env.llm, {
 					numJudges: args.numJudges,
-					numGenerations: args.numGenerations,
 				}),
 			);
 			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
@@ -179,8 +178,6 @@ export async function runV2Evaluation(): Promise<void> {
 			break;
 	}
 
-	// Build context - include generateWorkflow for multi-gen pairwise
-	const isMultiGen = args.suite === 'pairwise' && args.numGenerations > 1;
 	const llmCallLimiter = pLimit(args.concurrency);
 
 	const baseConfig = {
@@ -190,7 +187,7 @@ export async function runV2Evaluation(): Promise<void> {
 		logger,
 		outputDir: args.outputDir,
 		timeoutMs: args.timeoutMs,
-		context: isMultiGen ? { generateWorkflow, llmCallLimiter } : { llmCallLimiter },
+		context: { llmCallLimiter },
 	};
 
 	const config: RunConfig =
@@ -210,9 +207,7 @@ export async function runV2Evaluation(): Promise<void> {
 							args.suite === 'pairwise'
 								? {
 										numJudges: args.numJudges,
-										numGenerations: args.numGenerations,
-										scoringMethod:
-											args.numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
+										scoringMethod: 'hierarchical',
 									}
 								: undefined,
 					},

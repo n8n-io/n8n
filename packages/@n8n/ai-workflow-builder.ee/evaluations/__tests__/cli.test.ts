@@ -88,7 +88,6 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 		dos: undefined,
 		donts: undefined,
 		numJudges: 3,
-		numGenerations: 1,
 		experimentName: undefined,
 		repetitions: 1,
 		concurrency: 4,
@@ -276,9 +275,9 @@ describe('CLI', () => {
 				// Verify numJudges was passed correctly
 				const callArgs = mockCreatePairwiseEvaluator.mock.calls[0] as [
 					unknown,
-					{ numJudges: number; numGenerations: number },
+					{ numJudges: number },
 				];
-				expect(callArgs[1]).toEqual({ numJudges: 5, numGenerations: 1 });
+				expect(callArgs[1]).toEqual({ numJudges: 5 });
 				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
 				expect(mockCreateLLMJudgeEvaluator).not.toHaveBeenCalled();
 			});

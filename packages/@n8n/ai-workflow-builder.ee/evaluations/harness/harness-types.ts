@@ -22,11 +22,6 @@ export interface EvaluationContext {
 	/** Optional reference workflows for similarity-based checks (best match wins) */
 	referenceWorkflows?: SimpleWorkflow[];
 	/**
-	 * Optional generator for multi-generation evaluations.
-	 * When present, pairwise evaluator can generate multiple workflows from the same prompt.
-	 */
-	generateWorkflow?: (prompt: string) => Promise<SimpleWorkflow>;
-	/**
 	 * Optional limiter for LLM-bound work (generation + evaluators).
 	 * When provided, treat it as the global knob for overall parallel LLM calls.
 	 */
@@ -36,11 +31,6 @@ export interface EvaluationContext {
 	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
 	 */
 	timeoutMs?: number;
-	/**
-	 * Optional LangSmith client for explicit trace context binding.
-	 * When provided, evaluators can use it to ensure traces attach to the correct parent.
-	 */
-	langsmithClient?: LangsmithClient;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
