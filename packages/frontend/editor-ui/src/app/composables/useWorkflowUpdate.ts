@@ -1,7 +1,7 @@
 /**
  * Composable for updating workflows with new data from the AI Builder.
  * Handles update-in-place logic: updates existing nodes by ID, adds new nodes,
- * removes stale nodes, handles renames, and preserves pinned data.
+ * removes stale nodes, and handles renames.
  */
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
@@ -15,7 +15,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IConnections, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -42,20 +42,6 @@ export function useWorkflowUpdate() {
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
 	const canvasOperations = useCanvasOperations();
-
-	/**
-	 * Capture pinned data by node ID (not name) to survive renames
-	 */
-	function capturePinnedDataById(): Map<string, INodeExecutionData[]> {
-		const pinnedDataById = new Map<string, INodeExecutionData[]>();
-		workflowsStore.allNodes.forEach((node) => {
-			const pinData = workflowsStore.workflow.pinData?.[node.name];
-			if (pinData) {
-				pinnedDataById.set(node.id, pinData);
-			}
-		});
-		return pinnedDataById;
-	}
 
 	/**
 	 * Categorize nodes into those to update, add, or remove
@@ -87,32 +73,50 @@ export function useWorkflowUpdate() {
 	}
 
 	/**
-	 * Update existing nodes in place, handling renames via workflow.renameNode()
+	 * Update existing nodes in place, handling renames via canvasOperations.renameNode()
+	 * which properly updates pinData, nodeMetadata, runData, etc.
 	 */
-	function updateExistingNodes(nodesToUpdate: Array<{ existing: INodeUi; updated: INode }>): void {
+	async function updateExistingNodes(
+		nodesToUpdate: Array<{ existing: INodeUi; updated: INode }>,
+	): Promise<void> {
 		if (nodesToUpdate.length === 0) return;
 
+		// Track successful renames (nodeId -> newName)
+		const renamedNodes = new Map<string, string>();
+
+		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
+		for (const { existing, updated } of nodesToUpdate) {
+			if (existing.name !== updated.name) {
+				const success = await canvasOperations.renameNode(existing.name, updated.name, {
+					trackHistory: true,
+					trackBulk: false,
+					showErrorToast: false,
+				});
+				if (success) {
+					renamedNodes.set(existing.id, updated.name);
+				}
+			}
+		}
+
+		// Then update other node properties on the (possibly renamed) nodes
 		const workflow = workflowsStore.cloneWorkflowObject();
 
 		for (const { existing, updated } of nodesToUpdate) {
-			const node = workflow.nodes[existing.name];
+			// Use new name only if rename succeeded, otherwise use old name
+			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
+			const node = workflow.nodes[nodeName];
 			if (!node) continue;
 
-			// Update node properties, preserving position
+			// Update node properties, preserving position and current name
 			Object.assign(node, {
 				...updated,
 				position: existing.position,
-				name: existing.name, // Keep old name until rename
+				name: nodeName, // Keep actual name (old if rename failed)
 			});
-
-			// Apply rename if name changed (updates connections/expressions)
-			if (existing.name !== updated.name) {
-				workflow.renameNode(existing.name, updated.name);
-			}
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
-				workflowState.resetParametersLastUpdatedAt(updated.name);
+				workflowState.resetParametersLastUpdatedAt(nodeName);
 			}
 		}
 
@@ -219,21 +223,6 @@ export function useWorkflowUpdate() {
 	}
 
 	/**
-	 * Restore pinned data by node ID to current node names
-	 */
-	function restorePinnedData(pinnedDataById: Map<string, INodeExecutionData[]>): void {
-		workflowsStore.allNodes.forEach((node) => {
-			const savedPinData = pinnedDataById.get(node.id);
-			if (savedPinData) {
-				workflowsStore.workflow.pinData = {
-					...workflowsStore.workflow.pinData,
-					[node.name]: savedPinData,
-				};
-			}
-		});
-	}
-
-	/**
 	 * Set default credentials for nodes without credentials
 	 */
 	function applyDefaultCredentials(nodes: INode[]): void {
@@ -312,15 +301,13 @@ export function useWorkflowUpdate() {
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
 		try {
-			const pinnedDataById = capturePinnedDataById();
 			const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
 
-			updateExistingNodes(nodesToUpdate);
+			await updateExistingNodes(nodesToUpdate);
 			removeStaleNodes(nodesToRemove);
 			const addedNodes = await addNewNodes(nodesToAdd);
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
-			restorePinnedData(pinnedDataById);
 			applyDefaultCredentials(workflowData.nodes ?? []);
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 

@@ -9,7 +9,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import type { INodeExecutionData } from 'n8n-workflow';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
@@ -41,6 +40,7 @@ const mockCanvasOperations = vi.hoisted(() => ({
 	addNodes: vi.fn().mockResolvedValue([]),
 	deleteConnection: vi.fn(),
 	addConnections: vi.fn().mockResolvedValue(undefined),
+	renameNode: vi.fn().mockResolvedValue(true),
 }));
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn(() => mockCanvasOperations),
@@ -78,7 +78,6 @@ describe('useWorkflowUpdate', () => {
 			name: DEFAULT_NEW_WORKFLOW_NAME,
 			nodes: [],
 			connections: {},
-			pinData: {},
 		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},
@@ -215,7 +214,7 @@ describe('useWorkflowUpdate', () => {
 		});
 
 		describe('node renaming', () => {
-			it('should handle node renames via workflow.renameNode()', async () => {
+			it('should handle node renames via canvasOperations.renameNode()', async () => {
 				const existingNode = createTestNode({
 					id: 'node-1',
 					name: 'Old Name',
@@ -223,11 +222,11 @@ describe('useWorkflowUpdate', () => {
 
 				workflowsStore.allNodes = [existingNode];
 
-				const mockRenameNode = vi.fn();
+				// After rename, cloneWorkflowObject returns node with new name
 				const mockWorkflowObject = {
-					nodes: { 'Old Name': { ...existingNode } },
+					nodes: { 'New Name': { ...existingNode, name: 'New Name' } },
 					connectionsBySourceNode: {},
-					renameNode: mockRenameNode,
+					renameNode: vi.fn(),
 				};
 				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
 
@@ -247,7 +246,88 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(mockRenameNode).toHaveBeenCalledWith('Old Name', 'New Name');
+				expect(mockCanvasOperations.renameNode).toHaveBeenCalledWith('Old Name', 'New Name', {
+					trackHistory: true,
+					trackBulk: false,
+					showErrorToast: false,
+				});
+			});
+
+			it('should not call renameNode when node name is unchanged', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Same Name',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'Same Name': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Same Name', // No rename
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.renameNode).not.toHaveBeenCalled();
+			});
+
+			it('should use old name when rename fails', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Old Name',
+					parameters: { url: 'http://example.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				// Rename fails
+				mockCanvasOperations.renameNode.mockResolvedValueOnce(false);
+
+				// Workflow still has node under old name since rename failed
+				const mockWorkflowObject = {
+					nodes: { 'Old Name': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'New Name', // Attempted rename
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { url: 'http://updated.com' },
+						},
+					],
+					connections: {},
+				});
+
+				// Should still update node properties under old name
+				expect(workflowsStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(setNodesCall[0].name).toBe('Old Name');
+				expect(setNodesCall[0].parameters.url).toBe('http://updated.com');
 			});
 		});
 
@@ -320,57 +400,6 @@ describe('useWorkflowUpdate', () => {
 				});
 
 				expect(mockWorkflowState.resetParametersLastUpdatedAt).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('pinned data preservation', () => {
-			it('should preserve pinned data by node ID across updates', async () => {
-				const pinnedData: INodeExecutionData[] = [{ json: { test: 'data' } }];
-				const existingNode = createTestNode({
-					id: 'node-1',
-					name: 'Old Name',
-				}) as INodeUi;
-
-				workflowsStore.allNodes = [existingNode];
-				workflowsStore.workflow.pinData = { 'Old Name': pinnedData };
-
-				const mockWorkflowObject = {
-					nodes: { 'Old Name': { ...existingNode } },
-					connectionsBySourceNode: {},
-					renameNode: vi.fn(),
-				};
-				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
-
-				// After update, simulate allNodes returning the renamed node
-				let callCount = 0;
-				Object.defineProperty(workflowsStore, 'allNodes', {
-					get: () => {
-						callCount++;
-						if (callCount > 1) {
-							return [{ ...existingNode, name: 'New Name' }];
-						}
-						return [existingNode];
-					},
-				});
-
-				const { updateWorkflow } = useWorkflowUpdate();
-
-				await updateWorkflow({
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'New Name', // Renamed
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					connections: {},
-				});
-
-				// Pinned data should be restored under the new name
-				expect(workflowsStore.workflow.pinData?.['New Name']).toEqual(pinnedData);
 			});
 		});
 
