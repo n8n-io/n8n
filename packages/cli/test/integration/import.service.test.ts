@@ -15,6 +15,8 @@ import {
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -58,7 +60,6 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
-			mock(),
 		);
 	});
 
@@ -241,5 +242,67 @@ describe('ImportService', () => {
 		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
 
 		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
+	});
+
+	test('should always create a record in workflow history', async () => {
+		const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+
+		const workflowToImport = newWorkflow();
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const workflowHistory = await workflowHistoryRepository.findOne({
+			where: {
+				workflowId: workflowToImport.id,
+				versionId: workflowToImport.versionId,
+			},
+		});
+
+		expect(workflowHistory).toBeDefined();
+		expect(workflowHistory?.versionId).toBe(workflowToImport.versionId);
+	});
+
+	test('should create a record in workflow publish history if active version is the latest version', async () => {
+		const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+
+		// Create an active workflow
+		const workflowToImport = newWorkflow();
+		workflowToImport.active = true;
+		workflowToImport.activeVersionId = workflowToImport.versionId!;
+
+		const expectedVersion = workflowToImport.activeVersionId;
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const publishHistory = await workflowPublishHistoryRepository.findOne({
+			where: {
+				workflowId: workflowToImport.id,
+				versionId: expectedVersion,
+				event: 'deactivated',
+			},
+		});
+
+		expect(publishHistory).toBeDefined();
+		expect(publishHistory?.versionId).toBe(expectedVersion);
+	});
+
+	test('should not create a record in workflow publish history if active version is different from the latest version', async () => {
+		const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+
+		// Create an active workflow
+		const workflowToImport = newWorkflow();
+		workflowToImport.active = true;
+		workflowToImport.activeVersionId = 'some-version';
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const publishHistory = await workflowPublishHistoryRepository.findOne({
+			where: {
+				workflowId: workflowToImport.id,
+				event: 'deactivated',
+			},
+		});
+
+		expect(publishHistory).toBeNull();
 	});
 });

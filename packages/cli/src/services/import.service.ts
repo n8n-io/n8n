@@ -7,7 +7,8 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
-	WorkflowPublishHistoryRepository,
+	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager } from '@n8n/typeorm';
@@ -57,7 +58,6 @@ export class ImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async initRecords() {
@@ -88,15 +88,18 @@ export class ImportService {
 		const insertedWorkflows: IWorkflowBase[] = [];
 		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
-			for (const workflow of workflows) {
-				if (workflow.active || workflow.activeVersionId) {
-					await this.workflowPublishHistoryRepository.addRecord({
-						workflowId: workflow.id,
-						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
-						event: 'deactivated',
-						userId: null,
-					});
+			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
+			// Upsert all workflows
+			for (const workflow of workflows) {
+				workflow.versionId = workflow.versionId ?? uuid();
+				const wasActive = workflow.active || workflow.activeVersionId;
+				// Only add publish history if activeVersionId matches the current versionId
+				// If they differ, we don't have the history for the old active version
+				const shouldAddPublishHistory =
+					wasActive && workflow.activeVersionId === workflow.versionId;
+
+				if (wasActive) {
 					workflow.active = false;
 					workflow.activeVersionId = null;
 
@@ -108,6 +111,10 @@ export class ImportService {
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
+
+				if (shouldAddPublishHistory) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: workflow.versionId });
+				}
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
@@ -130,6 +137,35 @@ export class ImportService {
 						'workflowId',
 					]);
 				}
+			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				await tx.upsert(
+					WorkflowHistory,
+					{
+						versionId: workflow.versionId,
+						workflowId: workflow.id,
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						authors: 'import',
+						name: workflow.name,
+						description: workflow.description,
+						autosaved: false,
+					},
+					['versionId'],
+				);
+			}
+
+			// Add publish history records for workflows that were deactivated
+			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
+				await tx.insert(WorkflowPublishHistory, {
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId: null,
+				});
 			}
 		});
 
