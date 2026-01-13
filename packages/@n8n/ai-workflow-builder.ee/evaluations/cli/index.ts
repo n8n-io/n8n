@@ -34,7 +34,11 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
+import {
+	consumeGenerator,
+	getChatPayload,
+	getTracingCallbacks,
+} from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
@@ -42,7 +46,8 @@ import { setupTestEnvironment, createAgent } from '../support/environment';
 
 /**
  * Create a workflow generator function.
- * NOTE: Don't pass a tracer - LangSmith tracing is handled via traceable() in the runner.
+ * LangSmith tracing is handled via traceable() in the runner.
+ * We bridge the trace context to LangChain via getTracingCallbacks().
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -51,6 +56,7 @@ function createWorkflowGenerator(
 ): (prompt: string) => Promise<SimpleWorkflow> {
 	return async (prompt: string): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
+		const callbacks = await getTracingCallbacks();
 
 		const agent = createAgent({
 			parsedNodeTypes,
@@ -67,6 +73,8 @@ function createWorkflowGenerator(
 					featureFlags,
 				}),
 				EVAL_USERS.LANGSMITH,
+				undefined, // abortSignal
+				callbacks,
 			),
 		);
 
