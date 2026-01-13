@@ -1,0 +1,290 @@
+<script setup lang="ts">
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { openTemplateWorkflowOnNodeView } from '@/features/workflows/templates/utils/templateActions';
+import { N8nButton, N8nHeading, N8nSpinner } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/app/constants';
+import HorizontalGallery from '../components/HorizontalGallery.vue';
+import ResourceCenterHeader from '../components/ResourceCenterHeader.vue';
+import TemplateCard from '../components/TemplateCard.vue';
+import VideoThumbCard from '../components/VideoThumbCard.vue';
+import {
+	courses,
+	featuredTemplateIds,
+	inspirationVideos,
+	learningVideos,
+	quickStartTemplateIds,
+} from '../data/resourceCenterData';
+import { useResourceCenterStore } from '../stores/resourceCenter.store';
+
+const i18n = useI18n();
+const router = useRouter();
+const externalHooks = useExternalHooks();
+const templatesStore = useTemplatesStore();
+const resourceCenterStore = useResourceCenterStore();
+
+const templates = ref<ITemplatesWorkflowFull[]>([]);
+const quickStartTemplates = ref<ITemplatesWorkflowFull[]>([]);
+const isLoadingTemplates = ref(false);
+const isLoadingQuickStart = ref(false);
+
+const handleQuickStartImport = async (templateId: number, workflowName: string) => {
+	resourceCenterStore.trackQuickStartImport(templateId, workflowName);
+	await openTemplateWorkflowOnNodeView({
+		externalHooks,
+		templateId: templateId.toString(),
+		templatesStore,
+		router,
+	});
+};
+
+const handleCourseClick = (courseId: string, courseTitle: string, url: string) => {
+	resourceCenterStore.trackCourseClick(courseId, courseTitle);
+	window.open(url, '_blank');
+};
+
+const handleSeeMore = async (sectionKey: string) => {
+	resourceCenterStore.trackSectionSeeMore(sectionKey);
+	await router.push({ name: VIEWS.RESOURCE_CENTER_SECTION, params: { sectionId: sectionKey } });
+};
+
+const handleViewAllTemplates = () => {
+	resourceCenterStore.trackSectionSeeMore('all-templates');
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+};
+
+const loadTemplates = async () => {
+	if (featuredTemplateIds.length === 0) return;
+
+	isLoadingTemplates.value = true;
+	try {
+		templates.value = await resourceCenterStore.loadTemplates(featuredTemplateIds);
+	} finally {
+		isLoadingTemplates.value = false;
+	}
+};
+
+const loadQuickStartTemplates = async () => {
+	if (quickStartTemplateIds.length === 0) return;
+
+	isLoadingQuickStart.value = true;
+	try {
+		quickStartTemplates.value = await resourceCenterStore.loadTemplates(quickStartTemplateIds);
+	} finally {
+		isLoadingQuickStart.value = false;
+	}
+};
+
+onMounted(() => {
+	resourceCenterStore.trackResourceCenterView();
+	void loadTemplates();
+	void loadQuickStartTemplates();
+});
+</script>
+
+<template>
+	<div :class="$style.container">
+		<div :class="$style.content">
+			<!-- Header -->
+			<ResourceCenterHeader>
+				<N8nHeading tag="h1" :bold="true" :class="$style.title">
+					{{ i18n.baseText('experiments.resourceCenter.title') }}
+				</N8nHeading>
+			</ResourceCenterHeader>
+
+			<!-- Getting Started Section -->
+			<section :class="$style.mainSection">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
+						{{ i18n.baseText('experiments.resourceCenter.gettingStarted.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.sectionContent">
+					<!-- QuickStart Workflows -->
+					<HorizontalGallery :title="i18n.baseText('experiments.resourceCenter.quickStart.title')">
+						<template #actions />
+						<template v-if="isLoadingQuickStart">
+							<div :class="$style.loading">
+								<N8nSpinner size="small" />
+							</div>
+						</template>
+						<template v-else>
+							<TemplateCard
+								v-for="template in quickStartTemplates"
+								:key="template.id"
+								:template="template"
+								variant="noSetup"
+								:on-click-override="() => handleQuickStartImport(template.id, template.name)"
+							/>
+						</template>
+					</HorizontalGallery>
+
+					<!-- Template Libraries -->
+					<HorizontalGallery
+						v-if="templates.length > 0 || isLoadingTemplates"
+						:title="i18n.baseText('experiments.resourceCenter.templatePreviews.title')"
+					>
+						<template #actions>
+							<N8nButton text :class="$style.textButton" @click="handleViewAllTemplates">
+								{{ i18n.baseText('experiments.resourceCenter.viewAllTemplates') }}
+							</N8nButton>
+						</template>
+						<template v-if="isLoadingTemplates">
+							<div :class="$style.loading">
+								<N8nSpinner size="small" />
+							</div>
+						</template>
+						<template v-else>
+							<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
+						</template>
+					</HorizontalGallery>
+				</div>
+			</section>
+
+			<!-- Learn Anything Section -->
+			<section :class="$style.mainSection">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
+						{{ i18n.baseText('experiments.resourceCenter.learnAnything.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.sectionContent">
+					<!-- Official Courses -->
+					<HorizontalGallery :title="i18n.baseText('experiments.resourceCenter.courses.title')">
+						<template v-if="courses.length > 4" #actions>
+							<N8nButton text :class="$style.textButton" @click="handleSeeMore('courses')">
+								{{ i18n.baseText('experiments.resourceCenter.seeMore') }}
+							</N8nButton>
+						</template>
+						<VideoThumbCard
+							v-for="course in courses"
+							:key="course.id"
+							:video="{
+								videoId: course.id,
+								title: course.title,
+								description: course.description,
+								thumbnailUrl: course.thumbnailUrl,
+							}"
+							@click="handleCourseClick(course.id, course.title, course.url)"
+						/>
+					</HorizontalGallery>
+
+					<!-- Learning Videos -->
+					<HorizontalGallery
+						:title="i18n.baseText('experiments.resourceCenter.youtubeLearn.title')"
+					>
+						<template v-if="learningVideos.length > 4" #actions>
+							<N8nButton text :class="$style.textButton" @click="handleSeeMore('learning-videos')">
+								{{ i18n.baseText('experiments.resourceCenter.seeMore') }}
+							</N8nButton>
+						</template>
+						<VideoThumbCard v-for="video in learningVideos" :key="video.videoId" :video="video" />
+					</HorizontalGallery>
+				</div>
+			</section>
+
+			<!-- Get Inspired Section -->
+			<section :class="$style.mainSection">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
+						{{ i18n.baseText('experiments.resourceCenter.getInspired.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.sectionContent">
+					<!-- Inspiration Videos -->
+					<HorizontalGallery
+						:title="i18n.baseText('experiments.resourceCenter.youtubeInspiration.title')"
+					>
+						<template v-if="inspirationVideos.length > 4" #actions>
+							<N8nButton
+								text
+								:class="$style.textButton"
+								@click="handleSeeMore('inspiration-videos')"
+							>
+								{{ i18n.baseText('experiments.resourceCenter.seeMore') }}
+							</N8nButton>
+						</template>
+						<VideoThumbCard
+							v-for="video in inspirationVideos"
+							:key="video.videoId"
+							:video="video"
+						/>
+					</HorizontalGallery>
+				</div>
+			</section>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.container {
+	display: block;
+	width: 100%;
+	max-width: var(--content-container--width);
+}
+
+.content {
+	width: 100%;
+	padding: 0 var(--spacing--2xl) var(--spacing--lg) var(--spacing--2xl);
+}
+
+.title {
+	font-family: 'DM Sans', var(--font-family);
+	font-size: var(--font-size--md);
+	letter-spacing: -0.02em;
+	color: var(--color--text);
+	margin: 0;
+}
+
+.mainSection {
+	margin-bottom: var(--spacing--3xl);
+	min-width: 0;
+	width: 100%;
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.sectionHeader {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--md);
+}
+
+.sectionTitle {
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: -0.01em;
+	color: var(--color--text);
+	margin: 0;
+}
+
+.sectionContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xl);
+	min-width: 0;
+	width: 100%;
+}
+
+.textButton {
+	color: var(--color--text) !important;
+	cursor: pointer !important;
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--lg);
+}
+</style>

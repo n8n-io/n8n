@@ -51,6 +51,7 @@ import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
@@ -76,6 +77,7 @@ const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
+const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -114,6 +116,8 @@ const isTemplatesExperimentEnabled = computed(() => {
 	);
 });
 
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
+
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -121,6 +125,15 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+	},
+	{
+		// Resource Center - replaces Templates when experiment is enabled
+		id: 'resource-center',
+		icon: 'book-open',
+		label: i18n.baseText('experiments.resourceCenter.sidebar'),
+		position: 'bottom',
+		available: isResourceCenterEnabled.value,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
@@ -131,7 +144,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!isTemplatesExperimentEnabled.value,
+			!isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
@@ -140,7 +154,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 	},
 	{
 		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
@@ -152,7 +169,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -165,7 +183,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
