@@ -92,17 +92,14 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 
 	test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
-		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
+		await openBuilderAndClickSuggestion(n8n, 'Daily weather report');
 
 		await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
 
-		// Wait for streaming to start (assistant begins responding)
-		await expect(n8n.aiAssistant.getChatMessagesAssistant().first()).toBeVisible({
-			timeout: 30000,
-		});
-
-		// Click the stop button (send button becomes stop button during streaming)
+		// Wait for stop button to be enabled (streaming has started)
 		const stopButton = n8n.aiAssistant.getSendMessageButton();
+		await expect(stopButton).toBeEnabled({ timeout: 30000 });
+
 		await stopButton.click();
 
 		// Verify "Task aborted" message appears (search by text, not test-id)
