@@ -140,7 +140,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { queryByTestId } = renderComponent();
 
-			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-active-version-info')).not.toBeInTheDocument();
 		});
 
 		it('should show active version indicator when there is an active version', () => {
@@ -148,7 +148,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 		});
 
 		it('should use latest activation date from workflowPublishHistory when available', () => {
@@ -199,8 +199,26 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		});
+
+		it('should show active version indicator when user does not have workflow:publish permission but workflow is currently published', () => {
+			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 		});
 	});
 
