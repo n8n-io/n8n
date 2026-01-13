@@ -2,15 +2,24 @@
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nButton } from '@n8n/design-system';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
+import { useBuilderStore } from '../../builder.store';
 
-const { requestPermission, recordDismissal } = useBrowserNotifications();
+const { requestPermission, recordDismissal, resetMetadata } = useBrowserNotifications();
 const i18n = useI18n();
+const builderStore = useBuilderStore();
 
 async function onNotifyClick() {
-	await requestPermission();
+	const { permission } = await requestPermission();
+
+	if (permission === 'denied' || permission === 'granted') {
+		resetMetadata();
+	}
+
+	builderStore.trackWorkflowBuilderJourney('browser_notification_accept');
 }
 
 function onDismissClick() {
+	builderStore.trackWorkflowBuilderJourney('browser_notification_dismiss');
 	recordDismissal();
 }
 </script>

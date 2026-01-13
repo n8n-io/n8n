@@ -79,6 +79,12 @@ const shouldShowNotificationBanner = computed(() => {
 	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
 });
 
+watch(shouldShowNotificationBanner, (isShown) => {
+	if (isShown) {
+		builderStore.trackWorkflowBuilderJourney('browser_notification_ask_permission');
+	}
+});
+
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',

@@ -51,7 +51,11 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
 	| 'field_focus_placeholder_in_ndv'
 	| 'no_placeholder_values_left'
-	| 'revert_version_from_builder';
+	| 'revert_version_from_builder'
+	| 'browser_notification_ask_permission'
+	| 'browser_notification_accept'
+	| 'browser_notification_dismiss'
+	| 'browser_generation_done_notified';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -59,6 +63,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	revert_user_message_id?: string;
 	revert_version_id?: string;
 	no_versions_reverted?: number;
+	completion_type?: 'workflow-ready' | 'input-needed';
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -299,6 +304,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 
 		if (notification) {
+			trackWorkflowBuilderJourney('browser_generation_done_notified', {
+				completion_type: completionType,
+			});
+
 			notification.onclick = () => {
 				window.focus();
 				notification.close();
