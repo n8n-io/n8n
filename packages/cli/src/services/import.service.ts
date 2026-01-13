@@ -68,6 +68,8 @@ export class ImportService {
 	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
 		await this.initRecords();
 
+		const { manager: dbManager } = this.credentialsRepository;
+
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
 				this.toNewCredentialFormat(node);
@@ -80,13 +82,16 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
+			// Only remove if the workflow already exists in the database
 			if (workflow.id) {
-				await this.activeWorkflowManager.remove(workflow.id);
+				const exists = await dbManager.existsBy(WorkflowEntity, { id: workflow.id });
+				if (exists) {
+					await this.activeWorkflowManager.remove(workflow.id);
+				}
 			}
 		}
 
 		const insertedWorkflows: IWorkflowBase[] = [];
-		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
 			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
