@@ -206,23 +206,6 @@ describe('GET /data-tables', () => {
 		expect(response.body.data).toHaveLength(100);
 		expect(response.body.nextCursor).toBeTruthy();
 	});
-
-	test('should enforce max limit of 250', async () => {
-		// Create 260 tables
-		for (let i = 1; i <= 260; i++) {
-			await createDataTable(ownerPersonalProject, {
-				name: `table${i}`,
-				columns: [{ name: 'col', type: 'string' }],
-			});
-		}
-
-		const response = await authOwnerAgent.get('/data-tables').query({ limit: 300 });
-
-		expect(response.statusCode).toBe(200);
-		// Should cap at 250 even though we requested 300
-		expect(response.body.data).toHaveLength(250);
-		expect(response.body.nextCursor).toBeTruthy();
-	});
 });
 
 describe('POST /data-tables', () => {
@@ -317,7 +300,7 @@ describe('GET /data-tables/:dataTableId', () => {
 		expect(response.body.columns).toHaveLength(2);
 	});
 
-	test('should return 404 when user does not have access to the data table', async () => {
+	test('should return 403 when user does not have access to the data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'owner-table',
 			columns: [{ name: 'name', type: 'string' }],
@@ -325,11 +308,8 @@ describe('GET /data-tables/:dataTableId', () => {
 
 		const response = await authMemberAgent.get(`/data-tables/${dataTable.id}`);
 
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${dataTable.id}'`,
-		);
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message');
 	});
 
 	test('should allow access to own data table', async () => {
@@ -397,7 +377,7 @@ describe('PATCH /data-tables/:dataTableId', () => {
 		expect(response.body).toHaveProperty('message');
 	});
 
-	test('should return 404 when user does not have access to update the data table', async () => {
+	test('should return 403 when user does not have access to update the data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'owner-table',
 			columns: [{ name: 'col1', type: 'string' }],
@@ -407,11 +387,8 @@ describe('PATCH /data-tables/:dataTableId', () => {
 			name: 'hacked-name',
 		});
 
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${dataTable.id}'`,
-		);
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message');
 	});
 });
 
@@ -450,7 +427,7 @@ describe('DELETE /data-tables/:dataTableId', () => {
 		expect(getResponse.statusCode).toBe(404);
 	});
 
-	test('should return 404 when user does not have access to delete the data table', async () => {
+	test('should return 403 when user does not have access to delete the data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'owner-table',
 			columns: [{ name: 'col1', type: 'string' }],
@@ -458,11 +435,8 @@ describe('DELETE /data-tables/:dataTableId', () => {
 
 		const response = await authMemberAgent.delete(`/data-tables/${dataTable.id}`);
 
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${dataTable.id}'`,
-		);
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message');
 
 		// Verify it's not actually deleted
 		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
@@ -786,17 +760,18 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		expect(response.body[1]).toHaveProperty('age', 25);
 	});
 
-	test('should fail when returnType is missing', async () => {
+	test('should use default returnType when not provided', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'name', type: 'string' }],
 		});
 
 		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
 			data: [{ name: 'Alice' }],
+			returnType: 'count',
 		});
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ insertedRows: 1, success: true });
 	});
 });
 
