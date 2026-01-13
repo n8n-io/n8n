@@ -368,7 +368,12 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean, keyFilePath?: string) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
 		// Read custom encryption key from file if provided
@@ -386,7 +391,11 @@ export class ImportService {
 		}
 
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir, customEncryptionKey);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
