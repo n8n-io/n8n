@@ -65,7 +65,6 @@ export const configureInputs = (parameters: { options?: { memoryConnection?: boo
 	const inputs = [
 		{
 			type: 'main',
-			displayName: 'User Response',
 		},
 	];
 	if (parameters.options?.memoryConnection) {
