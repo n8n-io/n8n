@@ -51,6 +51,7 @@ import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	getModelMetadata,
 	NODE_NAMES,
+	PERSISTENT_MEMORY_MIN_VERSION,
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,
 	TOOLS_AGENT_NODE_MIN_VERSION,
@@ -1135,6 +1136,7 @@ Respond the title only:`,
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
+		turnId: string | null,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	): Promise<PreparedChatWorkflow> {
@@ -1145,6 +1147,8 @@ Respond the title only:`,
 				model.workflowId,
 				message,
 				attachments,
+				turnId,
+				history,
 				trx,
 				executionMetadata,
 			);
@@ -1281,6 +1285,8 @@ Respond the title only:`,
 		workflowId: string,
 		message: string,
 		attachments: IBinaryData[],
+		turnId: string | null,
+		history: ChatHubMessage[],
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
@@ -1365,9 +1371,37 @@ Respond the title only:`,
 			},
 		});
 
+		// Inject turnId and previousTurnIds into any supported memory nodes.
+		// - "turnId" is a correlation ID generated before workflow execution starts.
+		// - "previousTurnIds" contains the turnIds of all AI messages in the conversation history,
+		//   used to load memory.
+		// All memory entries created during this turn will be linked by turnId.
+		// On regeneration / edits a new turnId gets generated
+		// -> new memory (including the replayed previous human message) is saved with the new ID
+		// -> old superseded memory gets excluded from memory loads as those turnIds are not in
+		//    "previousTurnIds"
+		const nodes = workflow.activeVersion.nodes.map((node) => {
+			const isMemoryWithChatHubHistorySupport =
+				node.type === MEMORY_BUFFER_WINDOW_NODE_TYPE &&
+				node.typeVersion >= PERSISTENT_MEMORY_MIN_VERSION &&
+				node.parameters['persistentMemory'] !== false;
+
+			if (isMemoryWithChatHubHistorySupport) {
+				return {
+					...node,
+					parameters: {
+						...node.parameters,
+						turnId,
+						previousTurnIds: this.extractPreviousTurnIds(history),
+					},
+				};
+			}
+			return node;
+		});
+
 		const workflowData: IWorkflowBase = {
 			...workflow,
-			nodes: workflow.activeVersion.nodes,
+			nodes,
 			connections: workflow.activeVersion.connections,
 			// Force saving data on successful executions for custom agent workflows
 			// to be able to read the results after execution.
@@ -1382,6 +1416,17 @@ Respond the title only:`,
 			executionData,
 			responseMode,
 		};
+	}
+
+	private extractPreviousTurnIds(history: ChatHubMessage[]): string[] {
+		const seen = new Set<string>();
+		return history.reduce<string[]>((acc, m) => {
+			if (m.type === 'ai' && m.turnId && !seen.has(m.turnId)) {
+				seen.add(m.turnId);
+				acc.push(m.turnId);
+			}
+			return acc;
+		}, []);
 	}
 
 	private buildArtifactContext(history: ChatHubMessage[]): string {

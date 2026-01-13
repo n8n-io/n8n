@@ -67,13 +67,21 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 
 	async existsById(id: string, userId: string, trx?: EntityManager): Promise<boolean> {
 		const em = trx ?? this.manager;
-		return await em.exists(ChatHubSession, { where: { id, ownerId: userId } });
+		const session = await em.findOne(ChatHubSession, {
+			where: { id },
+			select: ['id', 'ownerId'],
+		});
+
+		if (!session) return false;
+
+		// Require userId to match the session owner
+		return session.ownerId === userId;
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
-		return await em.findOne(ChatHubSession, {
-			where: { id, ownerId: userId },
+		const session = await em.findOne(ChatHubSession, {
+			where: { id },
 			relations: {
 				messages: true,
 				agent: true,
@@ -82,6 +90,15 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 				},
 			},
 		});
+
+		if (!session) return null;
+
+		// Require userId to match the session owner
+		if (session.ownerId !== userId) {
+			return null;
+		}
+
+		return session;
 	}
 
 	async deleteAll(trx?: EntityManager) {

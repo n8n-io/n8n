@@ -28,6 +28,7 @@ import {
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 } from './utils/binary-helper-functions';
+import { getChatMemoryHelperFunctions } from './utils/chat-hub-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
@@ -93,6 +94,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getChatMemoryHelperFunctions(additionalData, workflow, node, mode),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),

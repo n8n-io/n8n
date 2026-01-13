@@ -79,6 +79,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		content,
 		model,
 		retryOfMessageId,
+		turnId,
 		status,
 	}: {
 		id: ChatMessageId;
@@ -89,6 +90,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		executionId?: string;
 		retryOfMessageId: ChatMessageId | null;
 		editOfMessageId?: ChatMessageId;
+		turnId?: ChatMessageId | null;
 		status?: ChatHubMessageStatus;
 	}) {
 		await this.createChatMessage({
@@ -101,6 +103,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			status,
 			content,
 			retryOfMessageId,
+			turnId: turnId ?? null,
 			...model,
 		});
 	}
@@ -117,6 +120,11 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 	async deleteChatMessage(id: ChatMessageId, trx?: EntityManager) {
 		const em = trx ?? this.manager;
 		return await em.delete(ChatHubMessage, { id });
+	}
+
+	async deleteBySessionId(sessionId: ChatSessionId, trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		return await em.delete(ChatHubMessage, { sessionId });
 	}
 
 	async getManyBySessionId(sessionId: string, trx?: EntityManager) {
