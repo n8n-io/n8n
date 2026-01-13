@@ -17,3 +17,5 @@ export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
 export type * from './interfaces';
 export * from './node-execute-functions';
 export { NodeExecuteFunctions };
+
+export { CUSTOM_NODES_PACKAGE_NAME } from './nodes-loader/constants';

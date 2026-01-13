@@ -258,6 +258,7 @@ export class CredentialsController {
 			newCredentialData.isGlobal = isGlobal;
 		}
 
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
@@ -329,28 +330,28 @@ const goToUpgrade = () => {
 	<div :class="$style.execListWrapper">
 		<slot />
 		<div :class="$style.execListHeaderControls">
-			<ExecutionsFilter
-				:workflows="workflows"
-				class="execFilter"
-				@filter-changed="onFilterChanged"
+			<ConcurrentExecutionsHeader
+				v-if="showConcurrencyHeader"
+				:running-executions-count="concurrentTotal"
+				:concurrency-cap="settingsStore.concurrency"
+				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				@go-to-upgrade="goToUpgrade"
 			/>
-
-			<div style="margin-left: auto">
-				<ConcurrentExecutionsHeader
-					v-if="showConcurrencyHeader"
-					:running-executions-count="concurrentTotal"
-					:concurrency-cap="settingsStore.concurrency"
-					:is-cloud-deployment="settingsStore.isCloudDeployment"
-					@go-to-upgrade="goToUpgrade"
+			<ElCheckbox
+				v-else
+				v-model="executionsStore.autoRefresh"
+				data-test-id="execution-auto-refresh-checkbox"
+				@update:model-value="onAutoRefreshToggle($event)"
+			>
+				{{ i18n.baseText('executionsList.autoRefresh') }}
+			</ElCheckbox>
+			<div :class="$style.execHeaderRight">
+				<ExecutionStopAllText :executions="props.executions" />
+				<ExecutionsFilter
+					:workflows="workflows"
+					class="execFilter"
+					@filter-changed="onFilterChanged"
 				/>
-				<ElCheckbox
-					v-else
-					v-model="executionsStore.autoRefresh"
-					data-test-id="execution-auto-refresh-checkbox"
-					@update:model-value="onAutoRefreshToggle($event)"
-				>
-					{{ i18n.baseText('executionsList.autoRefresh') }}
-				</ElCheckbox>
 			</div>
 		</div>
 		<div :class="$style.execList">
@@ -489,6 +490,13 @@ const goToUpgrade = () => {
 .execTable {
 	height: 100%;
 	flex: 0 1 auto;
+}
+
+.execHeaderRight {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+	gap: var(--spacing--sm);
 }
 </style>
 

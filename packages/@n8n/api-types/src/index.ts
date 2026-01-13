@@ -18,6 +18,7 @@ export {
 	type ChatHubN8nModel,
 	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
+	type ChatHubModuleSettings,
 	chatHubProviderSchema,
 	chatHubLLMProviderSchema,
 	type ChatHubProvider,
@@ -46,7 +47,9 @@ export {
 	type ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
-	type EnrichedStructuredChunk,
+	type AgentIconOrEmoji,
+	agentIconOrEmojiSchema,
+	type MessageChunk,
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
@@ -133,6 +136,11 @@ export type {
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
+
+export {
+	WorkflowExecutionStatusSchema,
+	type WorkflowExecutionStatus,
+} from './schemas/workflow-execution-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
 

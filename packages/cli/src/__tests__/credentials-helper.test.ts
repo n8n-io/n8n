@@ -12,14 +12,15 @@ import type {
 	INodeProperties,
 	INodeTypes,
 	INodeCredentialsDetails,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
@@ -340,6 +341,7 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				'oAuth2Api',
 				newOauthTokenData,
+				{} as IWorkflowExecuteAdditionalData,
 			);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
@@ -456,6 +458,7 @@ describe('CredentialsHelper', () => {
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
 				mockAdditionalData.workflowSettings,
+				false, // canUseExternalSecrets
 			);
 			expect(result).toEqual(resolvedData);
 		});
@@ -475,6 +478,7 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(mockAdditionalData.executionContext);
+			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should pass workflowSettings from additionalData to resolver', async () => {
@@ -492,6 +496,7 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[3]).toBe(mockAdditionalData.workflowSettings);
+			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should skip resolution when credentialResolutionProvider is not set', async () => {
@@ -538,7 +543,7 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should handle missing executionContext gracefully', async () => {
+		test('should skip resolution when executionContext is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
 
@@ -547,7 +552,7 @@ describe('CredentialsHelper', () => {
 				executionContext: undefined,
 			};
 
-			await credentialsHelper.getDecrypted(
+			const result = await credentialsHelper.getDecrypted(
 				additionalDataWithoutContext,
 				nodeCredentials,
 				credentialType,
@@ -556,8 +561,37 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
-			expect(call[2]).toBeUndefined();
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution when credentials context is missing', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+
+			const additionalDataWithoutCredentials = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutCredentials,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Resolution should not happen when credentials context is missing
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
 		test('should handle missing workflowSettings gracefully', async () => {
@@ -579,7 +613,9 @@ describe('CredentialsHelper', () => {
 			);
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
-			expect(call[3]).toBeUndefined();
+			expect(call[2]).toBe(additionalDataWithoutSettings.executionContext);
+			expect(call[3]).toBeUndefined(); // workflowSettings
+			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 	});
 });

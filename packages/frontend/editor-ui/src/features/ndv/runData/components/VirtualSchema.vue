@@ -286,6 +286,12 @@ const nodeSchema = asyncComputed(async () => {
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (nodeType?.group.includes('trigger')) {
+		return createResultError(new Error('Trigger nodes do not have schema previews'));
+	}
+
 	const {
 		type,
 		typeVersion,
@@ -409,15 +415,21 @@ watch(
 	},
 );
 
-// Collapse all nodes except the first
+// Collapse all nodes except the first, collapse all binary data items
 const unwatchItems = watch(items, (newItems) => {
-	if (newItems.length < 2) return;
-	closedNodes.value = new Set(
-		newItems
-			.filter((item) => item.type === 'header')
-			.slice(1)
-			.map((item) => item.id),
-	);
+	const headers =
+		newItems.length < 2
+			? []
+			: newItems
+					.filter((item) => item.type === 'header')
+					.slice(1)
+					.map((item) => item.id);
+
+	const binaries = newItems
+		.filter((item) => item.type === 'item' && item.binaryData)
+		.map((item) => item.id);
+
+	closedNodes.value = new Set(headers.concat(binaries));
 	unwatchItems();
 });
 
