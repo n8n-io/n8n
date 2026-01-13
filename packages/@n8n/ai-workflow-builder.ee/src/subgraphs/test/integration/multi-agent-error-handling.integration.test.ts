@@ -25,7 +25,7 @@ import { createErrorMetadata } from '@/types/coordination';
 import type { SimpleWorkflow } from '@/types/workflow';
 import { determineStateAction, handleClearErrorState } from '@/utils/state-modifier';
 
-import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
+import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes';
 
 describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 	let llm: BaseChatModel;
