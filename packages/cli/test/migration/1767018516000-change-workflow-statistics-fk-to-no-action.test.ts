@@ -205,10 +205,6 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 	it('should preserve statistics after workflow deletion (no FK constraint) and CASCADE after rollback', async () => {
 		// Debug: Check schema BEFORE migration
 		const contextBefore = createTestMigrationContext(dataSource);
-		const schemaBefore = await contextBefore.queryRunner.query(
-			"SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'",
-		);
-		console.log('Schema BEFORE migration:', JSON.stringify(schemaBefore, null, 2));
 		await contextBefore.queryRunner.release();
 
 		// Run the actual migration
@@ -217,12 +213,6 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		// Create context AFTER migration runs (since runSingleMigration reinitializes the connection)
 		dataSource = Container.get(DataSource);
 		let context = createTestMigrationContext(dataSource);
-
-		// Debug: Check if FK constraint exists
-		const schema = await context.queryRunner.query(
-			"SELECT sql FROM sqlite_master WHERE type='table' AND name='workflow_statistics'",
-		);
-		console.log('Schema AFTER migration:', JSON.stringify(schema, null, 2));
 
 		// Test that statistics are preserved when workflow is deleted (no FK constraint behavior)
 		const testWorkflowId = nanoid();
@@ -424,6 +414,184 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		await context.queryRunner.query(
 			`DELETE FROM ${statsTable} WHERE ${workflowIdCol} = ${placeholder}`,
 			[workflowId],
+		);
+		await deleteWorkflow(context, workflowId);
+
+		await context.queryRunner.release();
+	});
+
+	it('should delete orphaned statistics during rollback before restoring FK constraint', async () => {
+		// The database is already in post-migration state from the previous test
+		// We need to rollback first, then run the migration again
+		await undoLastSingleMigration();
+		await runSingleMigration(MIGRATION_NAME);
+
+		// Create context AFTER migration runs
+		dataSource = Container.get(DataSource);
+		let context = createTestMigrationContext(dataSource);
+
+		// Create workflows with statistics using unique stat names to avoid conflicts
+		const orphanedWorkflowId1 = nanoid();
+		const orphanedWorkflowId2 = nanoid();
+		const keepWorkflowId = nanoid();
+		const uniqueStatName1 = `orphan_stat_1_${nanoid()}`;
+		const uniqueStatName2 = `orphan_stat_2_${nanoid()}`;
+		const uniqueStatName3 = `keep_stat_${nanoid()}`;
+
+		await insertTestWorkflow(context, orphanedWorkflowId1, 'Workflow to Delete 1');
+		await insertTestWorkflow(context, orphanedWorkflowId2, 'Workflow to Delete 2');
+		await insertTestWorkflow(context, keepWorkflowId, 'Workflow to Keep');
+
+		await insertWorkflowStatisticsWithName(
+			context,
+			orphanedWorkflowId1,
+			uniqueStatName1,
+			100,
+			'Workflow to Delete 1',
+		);
+		await insertWorkflowStatisticsWithName(
+			context,
+			orphanedWorkflowId2,
+			uniqueStatName2,
+			200,
+			'Workflow to Delete 2',
+		);
+		await insertWorkflowStatisticsWithName(
+			context,
+			keepWorkflowId,
+			uniqueStatName3,
+			300,
+			'Workflow to Keep',
+		);
+
+		// Delete some workflows to create orphaned statistics
+		await deleteWorkflow(context, orphanedWorkflowId1);
+		await deleteWorkflow(context, orphanedWorkflowId2);
+
+		// Verify orphaned statistics still exist after workflow deletion (no FK constraint)
+		const beforeRollback1 = await getWorkflowStatisticsByName(context, uniqueStatName1);
+		expect(beforeRollback1).toHaveLength(1);
+		expect(beforeRollback1[0].workflowId).toBe(orphanedWorkflowId1);
+
+		const beforeRollback2 = await getWorkflowStatisticsByName(context, uniqueStatName2);
+		expect(beforeRollback2).toHaveLength(1);
+		expect(beforeRollback2[0].workflowId).toBe(orphanedWorkflowId2);
+
+		// Verify non-orphaned statistics still exist
+		const beforeRollbackKeep = await getWorkflowStatistics(context, keepWorkflowId);
+		expect(beforeRollbackKeep).toHaveLength(1);
+
+		await context.queryRunner.release();
+
+		// Rollback the migration - orphaned statistics should be deleted
+		await undoLastSingleMigration();
+
+		// Create new context after rollback
+		dataSource = Container.get(DataSource);
+		context = createTestMigrationContext(dataSource);
+
+		// Verify orphaned statistics were deleted during rollback (workflowName column no longer exists)
+		const statsTable = context.escape.tableName('workflow_statistics');
+		const nameCol = context.escape.columnName('name');
+		const workflowIdCol = context.escape.columnName('workflowId');
+		const placeholder = getParamPlaceholder(context);
+
+		const afterRollback1 = await context.queryRunner.query(
+			`SELECT ${workflowIdCol} as "workflowId" FROM ${statsTable} WHERE ${nameCol} = ${placeholder}`,
+			[uniqueStatName1],
+		);
+		expect(afterRollback1).toHaveLength(0);
+
+		const afterRollback2 = await context.queryRunner.query(
+			`SELECT ${workflowIdCol} as "workflowId" FROM ${statsTable} WHERE ${nameCol} = ${placeholder}`,
+			[uniqueStatName2],
+		);
+		expect(afterRollback2).toHaveLength(0);
+
+		// Verify non-orphaned statistics still exist after rollback
+		const afterRollbackKeep = await getWorkflowStatistics(context, keepWorkflowId);
+		expect(afterRollbackKeep).toHaveLength(1);
+		expect(afterRollbackKeep[0].workflowId).toBe(keepWorkflowId);
+		expect(afterRollbackKeep[0].count).toBe(300);
+
+		// Cleanup - reuse the existing variable declarations
+		await context.queryRunner.query(
+			`DELETE FROM ${statsTable} WHERE ${workflowIdCol} = ${placeholder}`,
+			[keepWorkflowId],
+		);
+		await deleteWorkflow(context, keepWorkflowId);
+
+		await context.queryRunner.release();
+	});
+
+	it('should reset overflowing values to 0 during rollback before converting BIGINT to INTEGER (PostgreSQL only)', async () => {
+		// Run the migration to enable BIGINT columns
+		await runSingleMigration(MIGRATION_NAME);
+
+		// Create context AFTER migration runs
+		dataSource = Container.get(DataSource);
+		let context = createTestMigrationContext(dataSource);
+
+		// Skip this test for SQLite - SQLite handles INTEGER overflow differently
+		if (!context.isPostgres) {
+			await context.queryRunner.release();
+			return;
+		}
+
+		const workflowId = nanoid();
+		const testWorkflowName = 'Overflow Test Workflow';
+		const uniqueStatName = `overflow_stat_${nanoid()}`;
+
+		await insertTestWorkflow(context, workflowId, testWorkflowName);
+
+		// Insert statistics with values exceeding INTEGER max (2147483647)
+		const tableName = context.escape.tableName('workflow_statistics');
+		const workflowIdColumn = context.escape.columnName('workflowId');
+		const nameColumn = context.escape.columnName('name');
+		const countColumn = context.escape.columnName('count');
+		const rootCountColumn = context.escape.columnName('rootCount');
+		const latestEventColumn = context.escape.columnName('latestEvent');
+		const workflowNameColumn = context.escape.columnName('workflowName');
+
+		const overflowValue = '3000000000'; // Exceeds INTEGER max
+		const placeholders = getParamPlaceholders(context, 6);
+		await context.queryRunner.query(
+			`INSERT INTO ${tableName} (${workflowIdColumn}, ${nameColumn}, ${countColumn}, ${rootCountColumn}, ${latestEventColumn}, ${workflowNameColumn}) VALUES (${placeholders})`,
+			[workflowId, uniqueStatName, overflowValue, overflowValue, new Date(), testWorkflowName],
+		);
+
+		// Verify the large values were inserted
+		const placeholder = getParamPlaceholder(context);
+		const beforeRollback = await context.queryRunner.query(
+			`SELECT ${countColumn} as "count", ${rootCountColumn} as "rootCount" FROM ${tableName} WHERE ${nameColumn} = ${placeholder}`,
+			[uniqueStatName],
+		);
+		expect(beforeRollback).toHaveLength(1);
+		expect(Number(beforeRollback[0].count)).toBeGreaterThan(2147483647);
+		expect(Number(beforeRollback[0].rootCount)).toBeGreaterThan(2147483647);
+
+		await context.queryRunner.release();
+
+		// Rollback the migration - should reset overflowing values to 0 on PostgreSQL
+		await undoLastSingleMigration();
+
+		// Create new context after rollback
+		dataSource = Container.get(DataSource);
+		context = createTestMigrationContext(dataSource);
+
+		// Verify values were reset to 0 on PostgreSQL (preventing overflow errors)
+		const afterRollback = await context.queryRunner.query(
+			`SELECT ${countColumn} as "count", ${rootCountColumn} as "rootCount" FROM ${tableName} WHERE ${nameColumn} = ${placeholder}`,
+			[uniqueStatName],
+		);
+		expect(afterRollback).toHaveLength(1);
+		expect(afterRollback[0].count).toBe(0);
+		expect(afterRollback[0].rootCount).toBe(0);
+
+		// Cleanup
+		await context.queryRunner.query(
+			`DELETE FROM ${tableName} WHERE ${nameColumn} = ${placeholder}`,
+			[uniqueStatName],
 		);
 		await deleteWorkflow(context, workflowId);
 

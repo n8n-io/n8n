@@ -4,7 +4,6 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * SQLite does not support ALTER TABLE to modify foreign key constraints or primary keys.
  * We need to recreate the table with the new structure:
  * - Add auto-incrementing id as primary key
- * - Make workflowId nullable
  * - Add workflowName to preserve workflow identity after deletion
  * - Remove foreign key constraint to allow keeping statistics for deleted workflows
  * - Add unique index on (workflowId, name)
@@ -20,7 +19,7 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 				"count" INTEGER DEFAULT 0,
 				"latestEvent" DATETIME,
 				"name" VARCHAR(128) NOT NULL,
-				"workflowId" VARCHAR(36),
+				"workflowId" VARCHAR(36) NOT NULL,
 				"workflowName" VARCHAR(128),
 				"rootCount" INTEGER DEFAULT 0
 			)
@@ -49,11 +48,6 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		// Delete any orphaned statistics rows (workflowId IS NULL) before restoring composite primary key
-		await queryRunner.query(
-			`DELETE FROM "${tablePrefix}workflow_statistics" WHERE "workflowId" IS NULL`,
-		);
-
 		// Create new table with original composite primary key and CASCADE foreign key
 		await queryRunner.query(`
 			CREATE TABLE "${tablePrefix}TMP_workflow_statistics" (
@@ -67,10 +61,21 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 			)
 		`);
 
-		// Copy data from old table (excluding orphaned rows already deleted)
+		// Delete orphaned statistics before table recreation
+		await queryRunner.query(`
+			DELETE FROM "${tablePrefix}workflow_statistics"
+			WHERE "workflowId" NOT IN (SELECT "id" FROM "${tablePrefix}workflow_entity")
+		`);
+
+		// Copy data from old table (orphaned rows already deleted above)
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}TMP_workflow_statistics" ("count", "latestEvent", "name", "workflowId", "rootCount")
-			SELECT "count", "latestEvent", "name", "workflowId", "rootCount"
+			SELECT
+				"count",
+				"latestEvent",
+				"name",
+				"workflowId",
+				"rootCount"
 			FROM "${tablePrefix}workflow_statistics"
 		`);
 
