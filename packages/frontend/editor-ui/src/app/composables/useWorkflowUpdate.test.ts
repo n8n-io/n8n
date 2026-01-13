@@ -87,7 +87,7 @@ describe('useWorkflowUpdate', () => {
 		});
 		workflowsStore.setNodes = vi.fn();
 		workflowsStore.setConnections = vi.fn();
-		workflowsStore.getNodeByName = vi.fn();
+		workflowsStore.nodesByName = {};
 
 		builderStore.setBuilderMadeEdits = vi.fn();
 
@@ -514,8 +514,8 @@ describe('useWorkflowUpdate', () => {
 				});
 				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([mockCredential]);
 
-				const existingNodeInStore = { ...nodeWithoutCreds, parameters: {} };
-				workflowsStore.getNodeByName = vi.fn().mockReturnValue(existingNodeInStore);
+				const existingNodeInStore = { ...nodeWithoutCreds, parameters: {} } as INodeUi;
+				workflowsStore.nodesByName = { 'HTTP Request': existingNodeInStore };
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -530,12 +530,16 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not override existing credentials', async () => {
+				const existingCredentials = { httpBasicAuth: { id: 'existing-cred', name: 'Existing' } };
 				const nodeWithCreds = createTestNode({
 					id: 'node-1',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
-					credentials: { httpBasicAuth: { id: 'existing-cred', name: 'Existing' } },
+					credentials: existingCredentials,
 				});
+
+				const storeNode = { ...nodeWithCreds, parameters: {} } as INodeUi;
+				workflowsStore.nodesByName = { 'HTTP Request': storeNode };
 
 				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 					credentials: [{ name: 'httpBasicAuth' }],
@@ -551,8 +555,8 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				// getNodeByName should not be called because node already has credentials
-				expect(workflowsStore.getNodeByName).not.toHaveBeenCalled();
+				// Credentials should remain unchanged
+				expect(storeNode.credentials).toEqual(existingCredentials);
 			});
 		});
 

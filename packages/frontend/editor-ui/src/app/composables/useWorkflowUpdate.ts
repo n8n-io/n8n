@@ -237,23 +237,24 @@ export function useWorkflowUpdate() {
 	 * Set default credentials for nodes without credentials
 	 */
 	function applyDefaultCredentials(nodes: INode[]): void {
-		nodes.forEach((node) => {
-			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
-			if (hasCredentials) return;
+		const { nodesByName } = workflowsStore;
 
-			const nodeType = nodeTypesStore.getNodeType(node.type);
-			if (!nodeType?.credentials) return;
+		// Filter to nodes without credentials, then map to store nodes
+		const nodesNeedingCredentials = nodes
+			.filter((node) => !node.credentials || Object.keys(node.credentials).length === 0)
+			.map((node) => nodesByName[node.name])
+			.filter((storeNode): storeNode is INodeUi => storeNode !== undefined);
 
-			// Try to find and set the first available credential
+		for (const storeNode of nodesNeedingCredentials) {
+			const nodeType = nodeTypesStore.getNodeType(storeNode.type);
+			if (!nodeType?.credentials) continue;
+
 			for (const credentialConfig of nodeType.credentials) {
 				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
 				if (!credentials || credentials.length === 0) continue;
 
 				const credential = credentials[0];
-				const existingNode = workflowsStore.getNodeByName(node.name);
-				if (!existingNode) continue;
-
-				existingNode.credentials = {
+				storeNode.credentials = {
 					[credential.type]: {
 						id: credential.id,
 						name: credential.name,
@@ -263,12 +264,12 @@ export function useWorkflowUpdate() {
 				const authField = getMainAuthField(nodeType);
 				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
 				if (authField && authType) {
-					existingNode.parameters[authField.name] = authType.value;
+					storeNode.parameters[authField.name] = authType.value;
 				}
 
 				break;
 			}
-		});
+		}
 	}
 
 	/**
