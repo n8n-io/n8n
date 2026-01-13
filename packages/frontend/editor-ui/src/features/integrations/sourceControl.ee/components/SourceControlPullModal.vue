@@ -207,24 +207,29 @@ const otherFiles = computed(() => {
 const otherFilesText = computed(() => {
 	const parts: string[] = [];
 
-	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables]?.length) {
-		parts.push(
-			`Variables (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables].length})`,
-		);
+	const variables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables];
+	if (variables?.length) {
+		parts.push(`Variables (${variables.length})`);
 	}
-	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable]?.length) {
-		parts.push(
-			`Data tables (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable].length})`,
-		);
+
+	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable];
+	if (dataTables?.length) {
+		parts.push(`Data tables (${dataTables.length})`);
 	}
-	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags]?.length) {
-		parts.push(`Tags (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags].length})`);
+
+	const tags = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags];
+	if (tags?.length) {
+		parts.push(`Tags (${tags.length})`);
 	}
-	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders]?.length) {
-		parts.push(`Folders (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders].length})`);
+
+	const folders = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders];
+	if (folders?.length) {
+		parts.push(`Folders (${folders.length})`);
 	}
-	if (groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project]?.length) {
-		parts.push(`Projects (${groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project].length})`);
+
+	const projects = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project];
+	if (projects?.length) {
+		parts.push(`Projects (${projects.length})`);
 	}
 
 	return parts.join(', ');
