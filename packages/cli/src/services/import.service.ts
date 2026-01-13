@@ -92,12 +92,14 @@ export class ImportService {
 
 			// Upsert all workflows
 			for (const workflow of workflows) {
-				workflow.versionId = workflow.versionId ?? uuid();
 				const wasActive = workflow.active || workflow.activeVersionId;
 				// Only add publish history if activeVersionId matches the current versionId
 				// If they differ, we don't have the history for the old active version
 				const shouldAddPublishHistory =
 					wasActive && workflow.activeVersionId === workflow.versionId;
+
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
 
 				if (wasActive) {
 					workflow.active = false;
@@ -142,20 +144,13 @@ export class ImportService {
 			// Always create workflow history for the current version
 			// This is needed to be able to activate the workflow later
 			for (const workflow of insertedWorkflows) {
-				await tx.upsert(
-					WorkflowHistory,
-					{
-						versionId: workflow.versionId,
-						workflowId: workflow.id,
-						nodes: workflow.nodes,
-						connections: workflow.connections,
-						authors: 'import',
-						name: workflow.name,
-						description: workflow.description,
-						autosaved: false,
-					},
-					['versionId'],
-				);
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					authors: 'import',
+				});
 			}
 
 			// Add publish history records for workflows that were deactivated

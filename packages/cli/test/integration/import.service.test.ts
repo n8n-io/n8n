@@ -6,6 +6,7 @@ import {
 	newWorkflow,
 	testDb,
 	createActiveWorkflow,
+	createWorkflowWithHistory,
 } from '@n8n/backend-test-utils';
 import { DatabaseConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -37,8 +38,18 @@ describe('ImportService', () => {
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 
+	let workflowRepository: WorkflowRepository;
+	let sharedWorkflowRepository: SharedWorkflowRepository;
+	let workflowHistoryRepository: WorkflowHistoryRepository;
+	let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+
 	beforeAll(async () => {
 		await testDb.init();
+
+		workflowRepository = Container.get(WorkflowRepository);
+		sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+		workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 
 		owner = await createOwner();
 		ownerPersonalProject = await getPersonalProject(owner);
@@ -100,7 +111,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
+		const dbSharing = await sharedWorkflowRepository.findOneOrFail({
 			where: {
 				workflowId: workflowToImport.id,
 				projectId: ownerPersonalProject.id,
@@ -183,7 +194,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -204,7 +215,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -223,7 +234,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -245,50 +256,46 @@ describe('ImportService', () => {
 	});
 
 	test('should always create a record in workflow history', async () => {
-		const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
-
 		const workflowToImport = newWorkflow();
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const workflowHistory = await workflowHistoryRepository.findOne({
+		const workflowHistoryRecords = await workflowHistoryRepository.find({
 			where: {
 				workflowId: workflowToImport.id,
-				versionId: workflowToImport.versionId,
 			},
 		});
 
-		expect(workflowHistory).toBeDefined();
-		expect(workflowHistory?.versionId).toBe(workflowToImport.versionId);
+		expect(workflowHistoryRecords).toHaveLength(1);
+		expect(workflowHistoryRecords[0].versionId).toBeDefined();
+		expect(workflowHistoryRecords[0].authors).toBe('import');
+		expect(workflowHistoryRecords[0].nodes).toEqual(workflowToImport.nodes);
+		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
 	});
 
 	test('should create a record in workflow publish history if active version is the latest version', async () => {
-		const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-
 		// Create an active workflow
 		const workflowToImport = newWorkflow();
 		workflowToImport.active = true;
 		workflowToImport.activeVersionId = workflowToImport.versionId!;
 
-		const expectedVersion = workflowToImport.activeVersionId;
-
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const publishHistory = await workflowPublishHistoryRepository.findOne({
+		// Get the workflow to find the new versionId that was generated
+		const importedWorkflow = await getWorkflowById(workflowToImport.id);
+
+		const publishHistoryRecords = await workflowPublishHistoryRepository.find({
 			where: {
 				workflowId: workflowToImport.id,
-				versionId: expectedVersion,
 				event: 'deactivated',
 			},
 		});
 
-		expect(publishHistory).toBeDefined();
-		expect(publishHistory?.versionId).toBe(expectedVersion);
+		expect(publishHistoryRecords).toHaveLength(1);
+		expect(publishHistoryRecords[0].versionId).toBe(importedWorkflow?.versionId);
 	});
 
 	test('should not create a record in workflow publish history if active version is different from the latest version', async () => {
-		const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-
 		// Create an active workflow
 		const workflowToImport = newWorkflow();
 		workflowToImport.active = true;
@@ -296,13 +303,37 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const publishHistory = await workflowPublishHistoryRepository.findOne({
+		const publishHistoryRecords = await workflowPublishHistoryRepository.find({
 			where: {
 				workflowId: workflowToImport.id,
 				event: 'deactivated',
 			},
 		});
 
-		expect(publishHistory).toBeNull();
+		expect(publishHistoryRecords).toHaveLength(0);
+	});
+
+	test('should always generate a new versionId when importing, ensuring proper history ordering', async () => {
+		const initialWorkflow = await createWorkflowWithHistory();
+		const originalVersionId = initialWorkflow.versionId;
+
+		// Import the same workflow again (simulating re-import)
+		const workflowToReimport = await getWorkflowById(initialWorkflow.id);
+		if (!workflowToReimport) fail('Expected to find workflow');
+
+		await importService.importWorkflows([workflowToReimport], ownerPersonalProject.id);
+
+		const historyRecords = await workflowHistoryRepository.find({
+			where: { workflowId: initialWorkflow.id },
+			order: { createdAt: 'ASC' },
+		});
+
+		expect(historyRecords).toHaveLength(2);
+		expect(historyRecords[0].versionId).toBe(originalVersionId);
+		expect(historyRecords[1].versionId).not.toBe(originalVersionId);
+
+		// Verify the workflow now has the new versionId
+		const updatedWorkflow = await getWorkflowById(initialWorkflow.id);
+		expect(updatedWorkflow?.versionId).toBe(historyRecords[1].versionId);
 	});
 });
