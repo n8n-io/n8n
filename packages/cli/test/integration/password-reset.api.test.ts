@@ -20,6 +20,8 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { RateLimitService } from '@/services/rate-limit.service';
+import { RedisClientService } from '@/services/redis-client.service';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -33,6 +35,9 @@ let member: User;
 
 const externalHooks = mockInstance(ExternalHooks);
 const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
+
+mockInstance(RedisClientService, { isConnected: () => false });
+
 const testServer = setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 let authService: AuthService;
@@ -300,5 +305,133 @@ describe('POST /change-password', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('POST /forgot-password - Rate Limiting', () => {
+	let rateLimitService: RateLimitService;
+
+	beforeEach(() => {
+		rateLimitService = Container.get(RateLimitService);
+	});
+
+	test('should enforce per-email rate limiting', async () => {
+		const testEmail = owner.email;
+
+		// Make 3 requests (should all succeed)
+		for (let i = 0; i < 3; i++) {
+			const response = await testServer.authlessAgent
+				.post('/forgot-password')
+				.send({ email: testEmail });
+
+			expect(response.statusCode).toBe(200);
+		}
+
+		// 4th request should be silently blocked (still returns 200 for security)
+		const response = await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: testEmail });
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify that the rate limit was actually hit
+		const emailRateLimitKey = `password-reset:email:${testEmail.toLowerCase()}`;
+		const status = await rateLimitService.get({
+			key: emailRateLimitKey,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(status.allowed).toBe(false);
+	});
+
+	test('should track rate limits separately for different emails', async () => {
+		const email1 = owner.email;
+		const email2 = member.email;
+
+		// Make 3 requests for email1
+		for (let i = 0; i < 3; i++) {
+			await testServer.authlessAgent.post('/forgot-password').send({ email: email1 });
+		}
+
+		// Verify email1 is rate limited
+		const email1Key = `password-reset:email:${email1.toLowerCase()}`;
+		const email1Status = await rateLimitService.get({
+			key: email1Key,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(email1Status.allowed).toBe(false);
+
+		// email2 should not be limited
+		const response = await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: email2 });
+
+		expect(response.statusCode).toBe(200);
+
+		const email2Key = `password-reset:email:${email2.toLowerCase()}`;
+		const email2Status = await rateLimitService.get({
+			key: email2Key,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(email2Status.allowed).toBe(true);
+	});
+
+	test('should normalize email to lowercase for rate limiting', async () => {
+		const email = owner.email;
+		const emailUpperCase = email.toUpperCase();
+		const emailMixedCase = email.charAt(0).toUpperCase() + email.slice(1).toLowerCase();
+
+		// Make requests with different casing
+		await testServer.authlessAgent.post('/forgot-password').send({ email });
+		await testServer.authlessAgent.post('/forgot-password').send({ email: emailUpperCase });
+		await testServer.authlessAgent.post('/forgot-password').send({ email: emailMixedCase });
+
+		// All should count towards the same limit
+		const emailKey = `password-reset:email:${email.toLowerCase()}`;
+		const status = await rateLimitService.get({
+			key: emailKey,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(status.remaining).toBe(0);
+	});
+
+	test('should not increment rate limit if user does not exist', async () => {
+		const nonExistentEmail = 'nonexistent@test.com';
+
+		await testServer.authlessAgent.post('/forgot-password').send({ email: nonExistentEmail });
+
+		// Rate limit should not be incremented for non-existent users
+		const emailKey = `password-reset:email:${nonExistentEmail.toLowerCase()}`;
+		const status = await rateLimitService.get({
+			key: emailKey,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(status.remaining).toBe(3); // Should still have all attempts remaining
+	});
+
+	test('should increment rate limit even if email sending fails', async () => {
+		// Mock mailer to fail
+		jest.spyOn(mailer, 'passwordReset').mockRejectedValueOnce(new Error('Email sending failed'));
+
+		const testEmail = owner.email;
+
+		try {
+			await testServer.authlessAgent.post('/forgot-password').send({ email: testEmail });
+		} catch {
+			// Expect error
+		}
+
+		// Rate limit IS incremented even when email fails (to prevent retry-bombing)
+		const emailKey = `password-reset:email:${testEmail.toLowerCase()}`;
+		const status = await rateLimitService.get({
+			key: emailKey,
+			limit: 3,
+			windowMs: 60 * 60 * 1000,
+		});
+		expect(status.remaining).toBe(2); // One attempt was consumed
 	});
 });

@@ -22,6 +22,7 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
+import { RateLimitService } from '@/services/rate-limit.service';
 import { UserService } from '@/services/user.service';
 import {
 	isOidcCurrentAuthenticationMethod,
@@ -42,12 +43,13 @@ export class PasswordResetController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly rateLimitService: RateLimitService,
 	) {}
 
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
+	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3, windowMs: 60 * 60 * 1000 } })
 	async forgotPassword(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -104,6 +106,25 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
+		// Check and consume per-email rate limit (3 requests per hour per email)
+		// Only after validating the user exists to avoid email enumeration
+		const emailRateLimitKey = `password-reset:email:${email.toLowerCase()}`;
+		const rateLimitStatus = await this.rateLimitService.tryConsume({
+			key: emailRateLimitKey,
+			limit: 3,
+			windowMs: 60 * 60 * 1000, // 1 hour
+		});
+
+		if (!rateLimitStatus.allowed) {
+			this.logger.warn('Password reset rate limit exceeded for email', {
+				email,
+				remaining: rateLimitStatus.remaining,
+				resetAt: rateLimitStatus.resetAt,
+			});
+
+			return;
+		}
+
 		const url = this.authService.generatePasswordResetUrl(user);
 
 		const { id, firstName } = user;
@@ -119,6 +140,7 @@ export class PasswordResetController {
 				messageType: 'Reset password',
 				publicApi: false,
 			});
+
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`, error);
 			}
@@ -137,7 +159,10 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and user ID.
 	 */
-	@Get('/resolve-password-token', { skipAuth: true })
+	@Get('/resolve-password-token', {
+		skipAuth: true,
+		rateLimit: { limit: 5, windowMs: 60 * 60 * 1000 },
+	})
 	async resolvePasswordToken(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -162,7 +187,7 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password', { skipAuth: true })
+	@Post('/change-password', { skipAuth: true, rateLimit: { limit: 5, windowMs: 60 * 60 * 1000 } })
 	async changePassword(
 		req: AuthlessRequest,
 		res: Response,

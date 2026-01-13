@@ -12,6 +12,7 @@ export const LOG_SCOPES = [
 	'pruning',
 	'pubsub',
 	'push',
+	'rate-limit',
 	'redis',
 	'scaling',
 	'waiting-executions',
@@ -125,6 +126,7 @@ export class LoggingConfig {
 	 * - `workflow-activation`
 	 * - `insights`
 	 * - `chat-hub`
+	 * - `rate-limit`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
