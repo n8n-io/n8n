@@ -1,0 +1,1706 @@
+
+> n8n-monorepo@2.4.0 build /home/runner/_work/n8n/n8n
+> turbo run build
+
+
+Attention:
+Turborepo now collects completely anonymous telemetry regarding usage.
+This information is used to shape the Turborepo roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://turborepo.com/docs/telemetry
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-html, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/syslog-client, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running build in 47 packages
+• Remote caching enabled
+::group::@n8n/di:build
+cache hit, replaying logs c987f25bd3427150
+
+> @n8n/di@0.10.0 build /home/runner/_work/n8n/n8n/packages/@n8n/di
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/vitest-config:build
+cache hit, replaying logs af783850bd4383f2
+
+> @n8n/vitest-config@1.5.0 build /home/runner/_work/n8n/n8n/packages/@n8n/vitest-config
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/codemirror-lang:build
+cache hit, replaying logs c52ca8ab399b8b3a
+
+> @n8n/codemirror-lang@0.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/codemirror-lang
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/client-oauth2:build
+cache hit, replaying logs d4969738230d11b8
+
+> @n8n/client-oauth2@1.0.0-rc.0 build /home/runner/_work/n8n/n8n/packages/@n8n/client-oauth2
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/codemirror-lang-html:build
+cache hit, replaying logs ca64352b36d3cb64
+
+> @n8n/codemirror-lang-html@1.1.0 build /home/runner/_work/n8n/n8n/packages/@n8n/codemirror-lang-html
+> cm-buildhelper src/html.ts
+
+::endgroup::
+::group::@n8n/syslog-client:build
+cache hit, replaying logs 310c7f33e916fc7a
+
+> @n8n/syslog-client@1.1.0 build /home/runner/_work/n8n/n8n/packages/@n8n/syslog-client
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/json-schema-to-zod:build
+cache hit, replaying logs 845103c820ff2955
+
+> @n8n/json-schema-to-zod@1.6.0 build /home/runner/_work/n8n/n8n/packages/@n8n/json-schema-to-zod
+> rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/json-schema-to-zod@1.6.0 build:types /home/runner/_work/n8n/n8n/packages/@n8n/json-schema-to-zod
+> tsc -p tsconfig.types.json
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/json-schema-to-zod@1.6.0 build:cjs /home/runner/_work/n8n/n8n/packages/@n8n/json-schema-to-zod
+> tsc -p tsconfig.cjs.json && node postcjs.cjs
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/json-schema-to-zod@1.6.0 build:esm /home/runner/_work/n8n/n8n/packages/@n8n/json-schema-to-zod
+> tsc -p tsconfig.esm.json && node postesm.cjs
+
+::endgroup::
+::group::@n8n/errors:build
+cache hit, replaying logs 7d3d7b98f8535267
+
+> @n8n/errors@0.5.0 build /home/runner/_work/n8n/n8n/packages/@n8n/errors
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/permissions:build
+cache hit, replaying logs 1b37e6ba33465ad0
+
+> @n8n/permissions@0.47.0 build /home/runner/_work/n8n/n8n/packages/@n8n/permissions
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/extension-sdk:build
+cache hit, replaying logs 22e38d055dee62d1
+
+> @n8n/extension-sdk@0.9.0 build /home/runner/_work/n8n/n8n/packages/@n8n/extension-sdk
+> pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/extension-sdk@0.9.0 clean /home/runner/_work/n8n/n8n/packages/@n8n/extension-sdk
+> rimraf dist
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/@n8n/extension-sdk/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/index.ts, src/schema.ts[39m
+[34mℹ[39m entry: [34msrc/backend/define.ts, src/backend/index.ts, src/backend/types.ts[39m
+[34mℹ[39m entry: [34msrc/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.common.json[39m
+[34mℹ[39m tsconfig: [34mtsconfig.backend.json[39m
+[34mℹ[39m tsconfig: [34mtsconfig.frontend.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mschema.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mschema2.cjs.map  [2m2.62 kB[22m [2m│ gzip: 0.86 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mschema2.cjs      [2m0.90 kB[22m [2m│ gzip: 0.39 kB[22m
+[34mℹ[39m [33m[CJS][39m 4 files, total: 3.76 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mdefine.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mtypes.cjs[22m        [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine2.cjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine2.cjs      [2m0.29 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m 5 files, total: 0.86 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mdefine.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mtypes.cjs[22m        [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine2.cjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine2.cjs      [2m0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m 5 files, total: 0.87 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mschema.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mschema2.mjs.map  [2m2.59 kB[22m [2m│ gzip: 0.86 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mschema2.mjs      [2m0.70 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m      [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mschema.d.mts[22m[39m     [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mschema2.d.mts[39m    [2m2.37 kB[22m [2m│ gzip: 0.49 kB[22m
+[34mℹ[39m [34m[ESM][39m 7 files, total: 6.13 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m    [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mschema.d.cts[22m[39m   [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mschema2.d.cts[39m  [2m2.37 kB[22m [2m│ gzip: 0.49 kB[22m
+[34mℹ[39m [33m[CJS][39m 3 files, total: 2.65 kB
+[32m✔[39m Build complete in [32m6878ms[39m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mdefine.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mtypes.mjs[22m        [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine2.mjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine2.mjs      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mindex.d.mts[22m[39m      [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mtypes.d.mts[22m[39m      [2m0.19 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mdefine.d.mts[22m[39m     [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mtypes2.d.mts[39m     [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mdefine2.d.mts[39m    [2m0.27 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m 10 files, total: 1.94 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mdefine.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mtypes.mjs[22m        [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine2.mjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine2.mjs      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mindex.d.mts[22m[39m      [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mtypes.d.mts[22m[39m      [2m0.20 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mdefine.d.mts[22m[39m     [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mtypes2.d.mts[39m     [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mdefine2.d.mts[39m    [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m 10 files, total: 2.18 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mindex.d.cts[22m[39m    [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mtypes.d.cts[22m[39m    [2m0.19 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mdefine.d.cts[22m[39m   [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mtypes2.d.cts[39m   [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mdefine2.d.cts[39m  [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m 5 files, total: 1.22 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mindex.d.cts[22m[39m    [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mtypes.d.cts[22m[39m    [2m0.20 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mdefine.d.cts[22m[39m   [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mtypes2.d.cts[39m   [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mdefine2.d.cts[39m  [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m 5 files, total: 1.45 kB
+[32m✔[39m Build complete in [32m6884ms[39m
+[32m✔[39m Build complete in [32m6884ms[39m
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/extension-sdk@0.9.0 create-json-schema /home/runner/_work/n8n/n8n/packages/@n8n/extension-sdk
+> tsx scripts/create-json-schema.ts
+
+::endgroup::
+::group::@n8n/constants:build
+cache hit, replaying logs 1fa96ac5a67380f7
+
+> @n8n/constants@0.16.0 build /home/runner/_work/n8n/n8n/packages/@n8n/constants
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/imap:build
+cache hit, replaying logs db313879bf51b32d
+
+> @n8n/imap@0.16.0 build /home/runner/_work/n8n/n8n/packages/@n8n/imap
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/codemirror-lang-sql:build
+cache hit, replaying logs defcebe7f62d068f
+
+> @n8n/codemirror-lang-sql@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/codemirror-lang-sql
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/stylelint-config:build
+cache hit, replaying logs c3914fd7eb7e9fe8
+
+> @n8n/stylelint-config@0.0.1 build /home/runner/_work/n8n/n8n/packages/@n8n/stylelint-config
+> tsc
+
+::endgroup::
+::group::@n8n/n8n-benchmark:build
+cache hit, replaying logs fa345657f0354118
+ WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/n8n-benchmark@2.0.0 build /home/runner/_work/n8n/n8n/packages/@n8n/benchmark
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/eslint-plugin-community-nodes:build
+cache hit, replaying logs 37cb06ab38730d59
+
+> @n8n/eslint-plugin-community-nodes@0.7.0 build /home/runner/_work/n8n/n8n/packages/@n8n/eslint-plugin-community-nodes
+> tsc --project tsconfig.build.json
+
+::endgroup::
+::group::@n8n/config:build
+cache hit, replaying logs 39dfeb61d8080366
+
+> @n8n/config@2.3.0 build /home/runner/_work/n8n/n8n/packages/@n8n/config
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/eslint-config:build
+cache hit, replaying logs 7385b3b54194d1f8
+
+> @n8n/eslint-config@0.0.1 build /home/runner/_work/n8n/n8n/packages/@n8n/eslint-config
+> tsc
+
+::endgroup::
+::group::@n8n/n8n-extension-insights:build
+cache hit, replaying logs b460f7e50bbee10d
+
+> @n8n/n8n-extension-insights@0.11.0 build /home/runner/_work/n8n/n8n/packages/extensions/insights
+> pnpm cleanup && pnpm run "/^build:.*/"
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../../@n8n/benchmark                     |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/n8n-extension-insights@0.11.0 cleanup /home/runner/_work/n8n/n8n/packages/extensions/insights
+> rimraf dist
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../../@n8n/benchmark                     |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+::endgroup::
+::group::@n8n/node-cli:build
+cache hit, replaying logs 5287e9877d0f8009
+
+> @n8n/node-cli@0.17.0 build /home/runner/_work/n8n/n8n/packages/@n8n/node-cli
+> tsc -p tsconfig.build.json && pnpm copy-templates
+
+../../..                                 |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+../benchmark                             |  WARN  Unsupported engine: wanted: {"node":">=22.16"} (current: {"node":"v20.19.5","pnpm":"10.22.0"})
+
+> @n8n/node-cli@0.17.0 copy-templates /home/runner/_work/n8n/n8n/packages/@n8n/node-cli
+> node scripts/copy-templates.mjs
+
+::endgroup::
+::group::@n8n/composables:build
+cache hit, replaying logs 3dd2c235efe44c24
+
+> @n8n/composables@1.13.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/composables
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/frontend/@n8n/composables/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museDeviceSupport.cjs[22m                  [2m1.76 kB[22m [2m│ gzip: 0.70 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museShortKeyPress.cjs[22m                  [2m0.64 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museThrottleWithReactiveDelay.cjs[22m      [2m0.61 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22museDeviceSupport.cjs.map              [2m2.58 kB[22m [2m│ gzip: 1.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22museShortKeyPress.cjs.map              [2m1.26 kB[22m [2m│ gzip: 0.64 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22museThrottleWithReactiveDelay.cjs.map  [2m0.88 kB[22m [2m│ gzip: 0.49 kB[22m
+[34mℹ[39m [33m[CJS][39m 6 files, total: 7.73 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museDeviceSupport.d.cts[22m[39m              [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museShortKeyPress.d.cts[22m[39m              [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.cts[22m[39m  [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [33m[CJS][39m 3 files, total: 1.18 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museDeviceSupport.mjs[22m                  [2m1.68 kB[22m [2m│ gzip: 0.69 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museShortKeyPress.mjs[22m                  [2m0.57 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museThrottleWithReactiveDelay.mjs[22m      [2m0.56 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22museDeviceSupport.mjs.map              [2m2.62 kB[22m [2m│ gzip: 1.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22museShortKeyPress.mjs.map              [2m1.27 kB[22m [2m│ gzip: 0.64 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22museThrottleWithReactiveDelay.mjs.map  [2m0.89 kB[22m [2m│ gzip: 0.48 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museDeviceSupport.d.mts[22m[39m                [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museShortKeyPress.d.mts[22m[39m                [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.mts[22m[39m    [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m 9 files, total: 8.78 kB
+[32m✔[39m Build complete in [32m2794ms[39m
+::endgroup::
+::group::@n8n/utils:build
+cache hit, replaying logs 29117d4d5f61ec1e
+
+> @n8n/utils@1.22.0 build /home/runner/_work/n8n/n8n/packages/@n8n/utils
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/@n8n/utils/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/assert.ts, src/event-bus.ts, src/event-queue.ts, src/index.ts, src/retry.ts, src/files/path.ts, src/files/sanitize.ts, src/number/smartDecimal.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/sort/sortByProperty.ts, src/string/truncate.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                       [2m 1.37 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/sublimeSearch.cjs[22m        [2m 0.18 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mstring/truncate.cjs[22m             [2m 0.17 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/reRankSearchResults.cjs[22m  [2m 0.15 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msort/sortByProperty.cjs[22m         [2m 0.13 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-queue.cjs[22m                 [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mnumber/smartDecimal.cjs[22m         [2m 0.12 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mfiles/sanitize.cjs[22m              [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-bus.cjs[22m                   [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mfiles/path.cjs[22m                  [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1massert.cjs[22m                      [2m 0.09 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mretry.cjs[22m                       [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msublimeSearch.cjs.map           [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msublimeSearch.cjs               [2m 5.53 kB[22m [2m│ gzip: 1.80 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus2.cjs.map              [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msanitize.cjs.map                [2m 2.91 kB[22m [2m│ gzip: 1.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mtruncate.cjs.map                [2m 2.60 kB[22m [2m│ gzip: 1.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mretry2.cjs.map                  [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msanitize.cjs                    [2m 1.91 kB[22m [2m│ gzip: 0.90 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue2.cjs.map            [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mtruncate.cjs                    [2m 1.67 kB[22m [2m│ gzip: 0.70 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mretry2.cjs                      [2m 1.54 kB[22m [2m│ gzip: 0.71 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mreRankSearchResults.cjs.map     [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus2.cjs                  [2m 1.11 kB[22m [2m│ gzip: 0.52 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue2.cjs                [2m 1.10 kB[22m [2m│ gzip: 0.53 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msortByProperty.cjs.map          [2m 0.67 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mreRankSearchResults.cjs         [2m 0.65 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msmartDecimal.cjs.map            [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msortByProperty.cjs              [2m 0.47 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22massert2.cjs.map                 [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msmartDecimal.cjs                [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mpath.cjs                        [2m 0.37 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mpath.cjs.map                    [2m 0.36 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22massert2.cjs                     [2m 0.32 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [33m[CJS][39m 34 files, total: 45.45 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                       [2m0.91 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-bus.d.cts[22m[39m                   [2m0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.cts[22m[39m        [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mstring/truncate.d.cts[22m[39m             [2m0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.cts[22m[39m  [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-queue.d.cts[22m[39m                 [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msort/sortByProperty.d.cts[22m[39m         [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mfiles/sanitize.d.cts[22m[39m              [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mfiles/path.d.cts[22m[39m                  [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.cts[22m[39m         [2m0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1massert.d.cts[22m[39m                      [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mretry.d.cts[22m[39m                       [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevent-bus2.d.cts[39m                  [2m0.99 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msublimeSearch.d.cts[39m               [2m0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mreRankSearchResults.d.cts[39m         [2m0.37 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtruncate.d.cts[39m                    [2m0.31 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mretry2.d.cts[39m                      [2m0.28 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevent-queue2.d.cts[39m                [2m0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msortByProperty.d.cts[39m              [2m0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msanitize.d.cts[39m                    [2m0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msmartDecimal.d.cts[39m                [2m0.20 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32massert2.d.cts[39m                     [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mpath.d.cts[39m                        [2m0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m 23 files, total: 5.49 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                         [2m 0.86 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/sublimeSearch.mjs[22m          [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mstring/truncate.mjs[22m               [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/reRankSearchResults.mjs[22m    [2m 0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-queue.mjs[22m                   [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msort/sortByProperty.mjs[22m           [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mfiles/sanitize.mjs[22m                [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mfiles/path.mjs[22m                    [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-bus.mjs[22m                     [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mnumber/smartDecimal.mjs[22m           [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1massert.mjs[22m                        [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mretry.mjs[22m                         [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msublimeSearch.mjs.map             [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msublimeSearch.mjs                 [2m 5.33 kB[22m [2m│ gzip: 1.75 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus2.mjs.map                [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msanitize.mjs.map                  [2m 2.91 kB[22m [2m│ gzip: 1.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mtruncate.mjs.map                  [2m 2.60 kB[22m [2m│ gzip: 1.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mretry2.mjs.map                    [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msanitize.mjs                      [2m 1.82 kB[22m [2m│ gzip: 0.84 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue2.mjs.map              [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mtruncate.mjs                      [2m 1.47 kB[22m [2m│ gzip: 0.65 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mretry2.mjs                        [2m 1.45 kB[22m [2m│ gzip: 0.67 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mreRankSearchResults.mjs.map       [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus2.mjs                    [2m 1.02 kB[22m [2m│ gzip: 0.47 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue2.mjs                  [2m 1.00 kB[22m [2m│ gzip: 0.48 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msortByProperty.mjs.map            [2m 0.67 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msmartDecimal.mjs.map              [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mreRankSearchResults.mjs           [2m 0.55 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22massert2.mjs.map                   [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msortByProperty.mjs                [2m 0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mpath.mjs.map                      [2m 0.36 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msmartDecimal.mjs                  [2m 0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mpath.mjs                          [2m 0.27 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22massert2.mjs                       [2m 0.24 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                       [2m 0.91 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-bus.d.mts[22m[39m                   [2m 0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.mts[22m[39m        [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mstring/truncate.d.mts[22m[39m             [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.mts[22m[39m  [2m 0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-queue.d.mts[22m[39m                 [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msort/sortByProperty.d.mts[22m[39m         [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mfiles/sanitize.d.mts[22m[39m              [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mfiles/path.d.mts[22m[39m                  [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.mts[22m[39m         [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1massert.d.mts[22m[39m                      [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mretry.d.mts[22m[39m                       [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevent-bus2.d.mts[39m                  [2m 0.99 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msublimeSearch.d.mts[39m               [2m 0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mreRankSearchResults.d.mts[39m         [2m 0.37 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtruncate.d.mts[39m                    [2m 0.31 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mretry2.d.mts[39m                      [2m 0.28 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevent-queue2.d.mts[39m                [2m 0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msortByProperty.d.mts[39m              [2m 0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msanitize.d.mts[39m                    [2m 0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msmartDecimal.d.mts[39m                [2m 0.20 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32massert2.d.mts[39m                     [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mpath.d.mts[39m                        [2m 0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m 57 files, total: 48.74 kB
+[32m✔[39m Build complete in [32m2731ms[39m
+::endgroup::
+::group::n8n-workflow:build
+cache hit, replaying logs 82e35bfe13f39a51
+
+> n8n-workflow@2.4.0 build /home/runner/_work/n8n/n8n/packages/workflow
+> tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+
+::endgroup::
+::group::@n8n/stores:build
+cache hit, replaying logs c858f2b5e262cdca
+
+> @n8n/stores@2.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/stores
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/frontend/@n8n/stores/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museRootStore.cjs[22m              [2m5.68 kB[22m [2m│ gzip: 1.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museAgentRequestStore.cjs[22m      [2m1.90 kB[22m [2m│ gzip: 0.57 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mmetaTagConfig.cjs[22m             [2m0.23 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mconstants.cjs[22m                 [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                     [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22museRootStore.cjs.map          [2m9.94 kB[22m [2m│ gzip: 2.19 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22museAgentRequestStore.cjs.map  [2m3.72 kB[22m [2m│ gzip: 1.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants2.cjs.map            [2m2.13 kB[22m [2m│ gzip: 0.98 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig2.cjs.map        [2m1.85 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants2.cjs                [2m1.57 kB[22m [2m│ gzip: 0.83 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig2.cjs            [2m1.34 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [33m[CJS][39m 11 files, total: 28.57 kB
+[33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` may not be a valid syntax with the `cjs` output format.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/useRootStore.ts:8:34 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m8 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mV[0m[38;5;249mU[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mP[0m[38;5;249m_[0m[38;5;249mU[0m[38;5;249mR[0m[38;5;249mL[0m[38;5;249m_[0m[38;5;249mB[0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mI[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m;[0m
+ [38;5;240m  │[0m                                  ─────┬─────  
+ [38;5;240m  │[0m                                       ╰─────── This `import.meta` will be replaced with an empty object (`{}`) automatically. If this is desired, you can suppress this warning by adding `transform.define: { 'import.meta': {} }`. If `import.meta` needs to be kept as-is, you need to set the output format to `esm`.
+[38;5;246m───╯[0m
+
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museRootStore.mjs[22m              [2m 5.43 kB[22m [2m│ gzip: 1.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museAgentRequestStore.mjs[22m      [2m 1.86 kB[22m [2m│ gzip: 0.55 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mmetaTagConfig.mjs[22m             [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mconstants.mjs[22m                 [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                     [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22museRootStore.mjs.map          [2m10.02 kB[22m [2m│ gzip: 2.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22museAgentRequestStore.mjs.map  [2m 3.73 kB[22m [2m│ gzip: 1.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants2.mjs.map            [2m 2.13 kB[22m [2m│ gzip: 0.98 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig2.mjs.map        [2m 1.85 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants2.mjs                [2m 1.49 kB[22m [2m│ gzip: 0.77 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig2.mjs            [2m 1.12 kB[22m [2m│ gzip: 0.46 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museRootStore.d.mts[22m[39m            [2m 7.48 kB[22m [2m│ gzip: 0.93 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museAgentRequestStore.d.mts[22m[39m    [2m 2.51 kB[22m [2m│ gzip: 0.50 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mmetaTagConfig.d.mts[22m[39m           [2m 0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mconstants.d.mts[22m[39m               [2m 0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                   [2m 0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mconstants2.d.mts[39m              [2m 1.96 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [34m[ESM][39m 17 files, total: 40.31 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museRootStore.d.cts[22m[39m          [2m7.48 kB[22m [2m│ gzip: 0.93 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museAgentRequestStore.d.cts[22m[39m  [2m2.51 kB[22m [2m│ gzip: 0.50 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mmetaTagConfig.d.cts[22m[39m         [2m0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mconstants.d.cts[22m[39m             [2m0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                 [2m0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mconstants2.d.cts[39m            [2m1.96 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [33m[CJS][39m 6 files, total: 12.39 kB
+[32m✔[39m Build complete in [32m3488ms[39m
+::endgroup::
+::group::@n8n/i18n:build
+cache hit, replaying logs 6a77e89917f89d5b
+
+> @n8n/i18n@2.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/i18n
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m       [2m348.07 kB[22m [2m│ gzip: 78.78 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m       [2m  0.29 kB[22m [2m│ gzip:  0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m       [2m  0.00 kB[22m [2m│ gzip:  0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mindex.cjs.map   [2m440.94 kB[22m [2m│ gzip: 89.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs.map  [2m  3.42 kB[22m [2m│ gzip:  1.35 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs      [2m  2.69 kB[22m [2m│ gzip:  1.02 kB[22m
+[34mℹ[39m [33m[CJS][39m 6 files, total: 795.42 kB
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m       [2m347.67 kB[22m [2m│ gzip: 78.77 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.mjs[22m       [2m  0.22 kB[22m [2m│ gzip:  0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.mjs[22m       [2m  0.01 kB[22m [2m│ gzip:  0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mindex.mjs.map   [2m440.85 kB[22m [2m│ gzip: 89.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs.map  [2m  3.42 kB[22m [2m│ gzip:  1.35 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs      [2m  2.27 kB[22m [2m│ gzip:  0.96 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m     [2m225.00 kB[22m [2m│ gzip: 30.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.mts[22m[39m     [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.mts[22m[39m     [2m  0.20 kB[22m [2m│ gzip:  0.14 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes2.d.mts[39m    [2m213.07 kB[22m [2m│ gzip: 29.25 kB[22m
+[34mℹ[39m [34m[ESM][39m 10 files, total: 1233.17 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m   [2m225.00 kB[22m [2m│ gzip: 30.31 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m   [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m   [2m  0.20 kB[22m [2m│ gzip:  0.14 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes2.d.cts[39m  [2m213.07 kB[22m [2m│ gzip: 29.25 kB[22m
+[34mℹ[39m [33m[CJS][39m 4 files, total: 438.74 kB
+[32m✔[39m Build complete in [32m5839ms[39m
+::endgroup::
+::group::@n8n/decorators:build
+cache hit, replaying logs 46ede937249d1990
+
+> @n8n/decorators@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/decorators
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/design-system:build
+cache hit, replaying logs 502884924ea22b05
+
+> @n8n/design-system@2.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system
+> vite build
+
+[36mrolldown-vite v7.3.1 [32mbuilding client environment for production...[36m[39m
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[2Ktransforming...✓ 2799 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/design-system.css          147.92 kB │ gzip:  22.83 kB
+dist/en-DcMbzJDO.js               0.08 kB │ gzip:   0.08 kB
+dist/en-Dl4S1HtJ.js               5.99 kB │ gzip:   2.00 kB
+dist/n8n-design-system.es.js  2,023.78 kB │ gzip: 492.64 kB
+[2Ktransforming...✓ 2799 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/design-system.css           147.92 kB │ gzip:  22.83 kB
+dist/n8n-design-system.umd.js  1,517.24 kB │ gzip: 430.00 kB
+[32m✓ built in 7.29s[39m
+::endgroup::
+::group::@n8n/api-types:build
+cache hit, replaying logs 461896b98ee2ac82
+
+> @n8n/api-types@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/api-types
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/backend-common:build
+cache hit, replaying logs 495963612952f9f2
+
+> @n8n/backend-common@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/backend-common
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/chat:build
+cache hit, replaying logs b6192b3152b148ed
+
+> @n8n/chat@1.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/chat
+> pnpm build:vite && pnpm build:bundle
+
+
+> @n8n/chat@1.4.0 build:vite /home/runner/_work/n8n/n8n/packages/frontend/@n8n/chat
+> cross-env vite build
+
+[36mrolldown-vite v7.3.1 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2899 modules transformed.
+rendering chunks...
+[33m[plugin builtin:vite-reporter] 
+(!) /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+[39m
+
+[vite:dts] Start generate declaration files...
+[vite:dts] Declaration files built in 15526ms.
+
+computing gzip size...
+dist/chat.css     65.49 kB │ gzip:   9.98 kB
+dist/chat.es.js  952.94 kB │ gzip: 246.37 kB
+[2Ktransforming...✓ 2899 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/chat.css      65.49 kB │ gzip:   9.98 kB
+dist/chat.umd.js  699.35 kB │ gzip: 215.44 kB
+[32m✓ built in 20.73s[39m
+
+> @n8n/chat@1.4.0 build:bundle /home/runner/_work/n8n/n8n/packages/frontend/@n8n/chat
+> cross-env INCLUDE_VUE=true vite build
+
+[36mrolldown-vite v7.3.1 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2902 modules transformed.
+rendering chunks...
+[33m[plugin builtin:vite-reporter] 
+(!) /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+[39m
+
+[vite:dts] Start generate declaration files...
+[vite:dts] Declaration files built in 10179ms.
+
+computing gzip size...
+dist/chat.css              65.49 kB │ gzip:   9.98 kB
+dist/chat.bundle.es.js  1,040.57 kB │ gzip: 274.64 kB
+[2Ktransforming...✓ 2902 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/chat.css             65.49 kB │ gzip:   9.98 kB
+dist/chat.bundle.umd.js  705.64 kB │ gzip: 236.55 kB
+[32m✓ built in 13.85s[39m
+::endgroup::
+::group::@n8n/ai-workflow-builder:build
+cache hit, replaying logs 0ab98e395dbfb1f9
+
+> @n8n/ai-workflow-builder@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/ai-workflow-builder.ee
+> tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/storybook:build
+cache hit, replaying logs 4351a879fa9fca70
+
+> @n8n/storybook@0.0.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/storybook
+> storybook build
+
+
+[90m┌[39m  Building storybook v10.1.11
+[90m│[39m
+[32m◇[39m  Cleaning outputDir: [36mstorybook-static[39m
+[90m│[39m
+[32m◇[39m  Loading presets
+[90m│[39m
+[32m◇[39m  Building manager..
+[90m│[39m
+[34m●[39m  Building preview..
+[90m│[39m  [43mVite[49m [36mrolldown-vite v7.3.1 [32mbuilding client environment for[39m
+[90m│[39m  [32mproduction...[36m[39m
+[90m│[39m
+[34m●[39m  Copying static files: [36m../design-system/assets[39m at [36mstorybook-static[39m
+[2Ktransforming...✓ 3171 modules transformed.
+rendering chunks...
+[90m│[39m
+[33m▲[39m  [43mVite[49m [33m[plugin builtin:vite-reporter]
+[90m│[39m  (!)
+[90m│[39m  /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+[90m│[39m  is dynamically imported by
+[90m│[39m  /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts
+[90m│[39m  but also statically imported by
+[90m│[39m  /home/runner/_work/n8n/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts,
+[90m│[39m  dynamic import will not move module into another chunk.
+[90m│[39m  [39m
+computing gzip size...
+storybook-static/assets/logo-icon-SDmEDBuY.svg                             4.35 kB │ gzip:   1.87 kB
+storybook-static/iframe.html                                              18.25 kB │ gzip:   5.12 kB
+storybook-static/assets/element-icons-B-tDfklg.woff                       28.20 kB
+storybook-static/assets/element-icons-_lZGOqcG.ttf                        55.95 kB
+storybook-static/assets/CommitMonoVariable-ytizKI8U.woff2                 86.76 kB
+storybook-static/assets/InterVariable-DiVDrmQJ.woff2                     352.24 kB
+storybook-static/assets/InterVariable-Italic-FCBEiFp6.woff2              387.97 kB
+storybook-static/assets/Breadcrumbs-rwFJc4gB.css                           0.06 kB │ gzip:   0.08 kB
+storybook-static/assets/VariableTable-BkPiz1oM.css                         0.09 kB │ gzip:   0.10 kB
+storybook-static/assets/spacing-O4x-lAvX.css                               0.40 kB │ gzip:   0.22 kB
+storybook-static/assets/ColorCircles-C0OqYJ6K.css                          0.41 kB │ gzip:   0.26 kB
+storybook-static/assets/App-D4yyYKKr.css                                  29.83 kB │ gzip:   5.76 kB
+storybook-static/assets/iframe-9K014VmO.css                              401.60 kB │ gzip:  55.73 kB
+storybook-static/assets/chunk-CYSK6WYR-ZE_JYyiT.js                         0.10 kB │ gzip:   0.09 kB
+storybook-static/assets/formatter-QJ4M4OGQ-rqDKuL2_.js                     0.13 kB │ gzip:   0.13 kB
+storybook-static/assets/theming-9iACeRfY.js                                0.17 kB │ gzip:   0.13 kB
+storybook-static/assets/DateRangePicker.stories-Br5oZy1n.js                0.30 kB │ gzip:   0.21 kB
+storybook-static/assets/react-WPYKatmU.js                                  0.41 kB │ gzip:   0.26 kB
+storybook-static/assets/Pulse.stories-CyTFit5R.js                          0.52 kB │ gzip:   0.32 kB
+storybook-static/assets/BetaTag.stories-BVaQnl76.js                        0.60 kB │ gzip:   0.35 kB
+storybook-static/assets/components-BRygPcp0.js                             0.61 kB │ gzip:   0.35 kB
+storybook-static/assets/BlinkingCursor.stories-5jfBLoxM.js                 0.64 kB │ gzip:   0.36 kB
+storybook-static/assets/Tag.stories-ePTGDsC2.js                            0.66 kB │ gzip:   0.38 kB
+storybook-static/assets/float.stories-ClzK9WC5.js                          0.67 kB │ gzip:   0.28 kB
+storybook-static/assets/Avatar.stories-Sy1MmOf2.js                         0.70 kB │ gzip:   0.42 kB
+storybook-static/assets/KeyboardShortcut.stories-BAlXxQSW.js               0.72 kB │ gzip:   0.40 kB
+storybook-static/assets/Spinner.stories-_--AF18c.js                        0.73 kB │ gzip:   0.42 kB
+storybook-static/assets/BlockUi.stories-RSZdiPES.js                        0.75 kB │ gzip:   0.43 kB
+storybook-static/assets/Badge.stories-4CEBY41q.js                          0.77 kB │ gzip:   0.43 kB
+storybook-static/assets/Text.stories-Cw3Nng6J.js                           0.83 kB │ gzip:   0.46 kB
+storybook-static/assets/Heading.stories-CDwHeRAV.js                        0.85 kB │ gzip:   0.46 kB
+storybook-static/assets/Link.stories-DtaTmYg0.js                           0.85 kB │ gzip:   0.50 kB
+storybook-static/assets/Loading.stories-Di9tJott.js                        0.85 kB │ gzip:   0.46 kB
+storybook-static/assets/InfoAccordion.stories-BmyWNR4Q.js                  0.87 kB │ gzip:   0.49 kB
+storybook-static/assets/CircleLoader.stories-Gr27iTbA.js                   0.91 kB │ gzip:   0.45 kB
+storybook-static/assets/spacing.stories-Cd3SHGss.js                        0.99 kB │ gzip:   0.43 kB
+storybook-static/assets/AssistantAvatar.stories-dFYV0FZC.js                1.01 kB │ gzip:   0.40 kB
+storybook-static/assets/InputLabel.stories-C2XKkirC.js                     1.03 kB │ gzip:   0.49 kB
+storybook-static/assets/Checkbox.stories-Du0YwJOT.js                       1.09 kB │ gzip:   0.57 kB
+storybook-static/assets/FormInput.stories-Clnu8upj.js                      1.11 kB │ gzip:   0.57 kB
+storybook-static/assets/lists.stories-BIWJEJhW.js                          1.15 kB │ gzip:   0.35 kB
+storybook-static/assets/Tags.stories-BV_n_7d3.js                           1.18 kB │ gzip:   0.47 kB
+storybook-static/assets/preload-helper-CEJlJDXQ.js                         1.21 kB │ gzip:   0.69 kB
+storybook-static/assets/border.stories-Dm-QOi9R.js                         1.22 kB │ gzip:   0.49 kB
+storybook-static/assets/InfoTip.stories-sWWrTHkk.js                        1.23 kB │ gzip:   0.48 kB
+storybook-static/assets/InlineTextEdit.stories-HTEvZjRn.js                 1.24 kB │ gzip:   0.47 kB
+storybook-static/assets/UserSelect.stories-C85y5bm5.js                     1.26 kB │ gzip:   0.67 kB
+storybook-static/assets/SelectableList.stories-C7WIFdv1.js                 1.26 kB │ gzip:   0.61 kB
+storybook-static/assets/Pagination.stories-CYap3Ymf.js                     1.28 kB │ gzip:   0.52 kB
+storybook-static/assets/ActionToggle.stories-CJOQ7LS4.js                   1.32 kB │ gzip:   0.66 kB
+storybook-static/assets/VariableTable-L35jav74.js                          1.34 kB │ gzip:   0.77 kB
+storybook-static/assets/ColorPicker.stories-t2ZPFPyV.js                    1.36 kB │ gzip:   0.66 kB
+storybook-static/assets/FormBox.stories-CO2CPKrF.js                        1.38 kB │ gzip:   0.73 kB
+storybook-static/assets/Sticky.stories-Dhq0Mnw3.js                         1.39 kB │ gzip:   0.66 kB
+storybook-static/assets/UsersList.stories-DkKAKvFQ.js                      1.40 kB │ gzip:   0.69 kB
+storybook-static/assets/NavigationDropdown.stories-DXJnsxfM.js             1.40 kB │ gzip:   0.62 kB
+storybook-static/assets/Sizes-D_-2JOV9.js                                  1.44 kB │ gzip:   0.81 kB
+storybook-static/assets/IconPicker.stories-BreSxo3d.js                     1.48 kB │ gzip:   0.70 kB
+storybook-static/assets/ResizeableSticky.stories-k-0857ix.js               1.49 kB │ gzip:   0.67 kB
+storybook-static/assets/AskAssistantButton.stories-CRmUbi0Y.js             1.50 kB │ gzip:   0.57 kB
+storybook-static/assets/UserInfo.stories-DmsAXFRy.js                       1.54 kB │ gzip:   0.54 kB
+storybook-static/assets/Datatable.stories-CAA-NvcV.js                      1.61 kB │ gzip:   0.65 kB
+storybook-static/assets/Tooltip.stories-DvMn6B4Z.js                        1.67 kB │ gzip:   0.66 kB
+storybook-static/assets/ColorCircles-Cib0uUe5.js                           1.75 kB │ gzip:   0.98 kB
+storybook-static/assets/RadioButtons.stories-DC3Ek4Rt.js                   1.77 kB │ gzip:   0.69 kB
+storybook-static/assets/FormInputs.stories-5VQ-IvZ5.js                     1.81 kB │ gzip:   0.91 kB
+storybook-static/assets/AssistantText.stories-Dg-XWLQi.js                  1.83 kB │ gzip:   0.50 kB
+storybook-static/assets/fonts.stories-BT5_90xQ.js                          1.94 kB │ gzip:   0.58 kB
+storybook-static/assets/Tree.stories-C5W0QbDx.js                           1.97 kB │ gzip:   0.87 kB
+storybook-static/assets/NodeIcon.stories-gsMvmQPY.js                       2.00 kB │ gzip:   0.62 kB
+storybook-static/assets/InlineAskAssistantButton.stories-DUGHpQXU.js       2.03 kB │ gzip:   0.56 kB
+storybook-static/assets/Alert.stories-I5JUxGe4.js                          2.51 kB │ gzip:   0.75 kB
+storybook-static/assets/AssistantIcon.stories-e6MHeZeg.js                  2.70 kB │ gzip:   0.61 kB
+storybook-static/assets/Logo.stories-C_1hpDBC.js                           2.78 kB │ gzip:   0.65 kB
+storybook-static/assets/RecycleScroller.stories-DOK-yfpb.js                2.83 kB │ gzip:   1.01 kB
+storybook-static/assets/NodeCreatorNode.stories-tpQy0c_R.js                2.98 kB │ gzip:   0.87 kB
+storybook-static/assets/Markdown.stories-BYQXG6Su.js                       2.99 kB │ gzip:   1.16 kB
+storybook-static/assets/ActionDropdown.stories-C4dmgJ7x.js                 3.11 kB │ gzip:   0.94 kB
+storybook-static/assets/ExternalLink.stories-Zuiw2OPG.js                   3.14 kB │ gzip:   0.68 kB
+storybook-static/assets/ResizeWrapper.stories-ZdYt6UqO.js                  3.16 kB │ gzip:   1.10 kB
+storybook-static/assets/ActionBox.stories-Mjx0Nnoe.js                      3.18 kB │ gzip:   1.07 kB
+storybook-static/assets/Card.stories-Bw8rSps2.js                           3.20 kB │ gzip:   0.79 kB
+storybook-static/assets/UserStack.stories-XXJCqZxU.js                      3.27 kB │ gzip:   0.68 kB
+storybook-static/assets/Callout.stories-L-shi-28.js                        3.66 kB │ gzip:   0.92 kB
+storybook-static/assets/Tabs.stories-Cq6XugzA.js                           3.80 kB │ gzip:   0.94 kB
+storybook-static/assets/Notice.stories-CjaUv4DZ.js                         3.94 kB │ gzip:   0.95 kB
+storybook-static/assets/IconTextButton.stories-8TLrsS12.js                 4.26 kB │ gzip:   0.86 kB
+storybook-static/assets/colors.stories-i0jDSPNQ.js                         4.38 kB │ gzip:   0.78 kB
+storybook-static/assets/Checkbox.stories-pVzGP771.js                       4.61 kB │ gzip:   1.17 kB
+storybook-static/assets/MenuItem.stories-ZxBhCEvh.js                       4.63 kB │ gzip:   0.94 kB
+storybook-static/assets/IconButton.stories-BtRX_uac.js                     4.69 kB │ gzip:   0.84 kB
+storybook-static/assets/Select.stories-CILf78eK.js                         5.20 kB │ gzip:   1.10 kB
+storybook-static/assets/spacing.stories-Bv0uJ5fL.js                        5.22 kB │ gzip:   1.21 kB
+storybook-static/assets/InputNumber.stories-C1fWEH9R.js                    5.67 kB │ gzip:   0.86 kB
+storybook-static/assets/colorsprimitives.stories-DXoSMULt.js               5.84 kB │ gzip:   0.94 kB
+storybook-static/assets/Input.stories-Be107xCQ.js                          6.15 kB │ gzip:   1.02 kB
+storybook-static/assets/TableHeaderControlsButton.stories-PjlH_sRV.js      7.04 kB │ gzip:   1.10 kB
+storybook-static/assets/Pagination.stories-C5oXDmZ-.js                     7.04 kB │ gzip:   1.80 kB
+storybook-static/assets/N8nPromptInputSuggestions.stories-CQ2FdJ5W.js      7.64 kB │ gzip:   1.15 kB
+storybook-static/assets/Popover.stories-BySWJ8Il.js                        7.66 kB │ gzip:   1.27 kB
+storybook-static/assets/CodeDiff.stories-Lf9reEk3.js                       8.72 kB │ gzip:   1.43 kB
+storybook-static/assets/Dropdown.stories-t9ItN1xQ.js                       9.20 kB │ gzip:   1.44 kB
+storybook-static/assets/Input.stories-XMRy63le.js                         10.21 kB │ gzip:   1.24 kB
+storybook-static/assets/CommandBar.stories-DhtGR7qX.js                    10.36 kB │ gzip:   2.17 kB
+storybook-static/assets/Breadcrumbs.stories-BeJ1GME1.js                   11.47 kB │ gzip:   2.38 kB
+storybook-static/assets/InputNumber.stories-ClF4ynTb.js                   14.31 kB │ gzip:   1.52 kB
+storybook-static/assets/Select.stories-CDO8PiZc.js                        15.25 kB │ gzip:   2.26 kB
+storybook-static/assets/Loading.stories-8c-t5NT9.js                       16.01 kB │ gzip:   1.91 kB
+storybook-static/assets/Button.stories-Cgt6YG6m.js                        16.49 kB │ gzip:   1.41 kB
+storybook-static/assets/Icon.stories-C5aH_ppL.js                          18.69 kB │ gzip:   1.51 kB
+storybook-static/assets/Tooltip.stories-Bu7eqZ1M.js                       18.73 kB │ gzip:   2.01 kB
+storybook-static/assets/N8nSendStopButton.stories-C_42FrCK.js             18.83 kB │ gzip:   2.44 kB
+storybook-static/assets/SuggestedActions.stories-B5S75j-i.js              20.67 kB │ gzip:   2.55 kB
+storybook-static/assets/chunk-P4F4UVXX-BHFpsWsW.js                        20.68 kB │ gzip:   6.87 kB
+storybook-static/assets/CollapsiblePanel.stories-DTsmGd44.js              22.26 kB │ gzip:   2.02 kB
+storybook-static/assets/N8nScrollArea.stories-BUpge_tD.js                 26.02 kB │ gzip:   2.05 kB
+storybook-static/assets/N8nPromptInput.stories-CDu1xH2Y.js                27.16 kB │ gzip:   3.17 kB
+storybook-static/vite-inject-mocker-entry.js                              27.77 kB │ gzip:   9.53 kB
+storybook-static/assets/matchers-DMFSMG2O-CjH-3KWq.js                     28.58 kB │ gzip:   9.46 kB
+storybook-static/assets/Color-ASIRERSW-ImaRs1Is.js                        30.53 kB │ gzip:  11.32 kB
+storybook-static/assets/WithTooltip-IO6J4KBT-fPVI1Jex.js                  33.06 kB │ gzip:  11.46 kB
+storybook-static/assets/AskAssistantChat.stories-262f8qeR.js              33.91 kB │ gzip:   7.07 kB
+storybook-static/assets/DropdownMenu.stories-BZOrEeEN.js                  50.89 kB │ gzip:   6.78 kB
+storybook-static/assets/theming-BvVm615T.js                               53.51 kB │ gzip:  20.43 kB
+storybook-static/assets/App.stories-DTI-5Qj3.js                           73.60 kB │ gzip:  24.15 kB
+storybook-static/assets/syntaxhighlighter-IQDEPFLK-B-bkqb1K.js            75.44 kB │ gzip:  26.93 kB
+storybook-static/assets/chunk-45UGUKRX-CTrndFw2.js                       132.87 kB │ gzip:  43.15 kB
+storybook-static/assets/DocsRenderer-GHJI37HO-E_9FcCki.js                175.83 kB │ gzip:  54.33 kB
+storybook-static/assets/components-BrKpNmdS.js                           436.32 kB │ gzip: 134.08 kB
+storybook-static/assets/axe-nD1B6CPc.js                                  523.55 kB │ gzip: 142.79 kB
+storybook-static/assets/iframe-DapZS2_Z.js                             3,122.61 kB │ gzip: 930.48 kB
+[90m│[39m
+[33m▲[39m  [43mVite[49m [33m[plugin builtin:vite-reporter]
+[90m│[39m  (!) Some chunks are larger than 500 kB after minification. Consider:
+[90m│[39m  - Using dynamic import() to code-split the application
+[90m│[39m  - Use build.rollupOptions.output.manualChunks to improve chunking:
+[90m│[39m  ]8;;https://rollupjs.org/configuration-options/#output-manualchunkshttps://rollupjs.org/configuration-options/#output-manualchunks]8;;
+[90m│[39m  - Adjust chunk size limit for this warning via
+[90m│[39m  build.chunkSizeWarningLimit.[39m
+[90m│[39m  [43mVite[49m [32m✓ built in 7.65s[39m
+[90m│[39m
+[32m◇[39m  Output directory:
+[90m│[39m  /home/runner/_work/n8n/n8n/packages/frontend/@n8n/storybook/storybook-static
+[90m│[39m
+[90m└[39m  Storybook build completed successfully
+
+::endgroup::
+::group::@n8n/rest-api-client:build
+cache hit, replaying logs 443bd2f22eb610d7
+
+> @n8n/rest-api-client@2.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/@n8n/rest-api-client
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[34mℹ[39m Using tsdown config: [4m/home/runner/_work/n8n/n8n/packages/frontend/@n8n/rest-api-client/tsdown.config.ts[24m
+[34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/breaking-changes.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/consent.ts, src/api/credentialResolvers.ts, src/api/ctas.ts, src/api/dynamic-banners.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                     [2m 9.98 kB[22m [2m│ gzip: 1.89 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/index.cjs[22m                 [2m 9.43 kB[22m [2m│ gzip: 1.76 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/users.cjs[22m                 [2m 1.26 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/nodeTypes.cjs[22m             [2m 0.86 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/breaking-changes.cjs[22m      [2m 0.78 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/externalSecrets.ee.cjs[22m    [2m 0.68 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/credentialResolvers.cjs[22m   [2m 0.63 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m                     [2m 0.61 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/eventbus.ee.cjs[22m           [2m 0.56 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/sso.cjs[22m                   [2m 0.53 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/templates.cjs[22m             [2m 0.51 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/consent.cjs[22m               [2m 0.50 kB[22m [2m│ gzip: 0.26 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/communityNodes.cjs[22m        [2m 0.48 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/cloudPlans.cjs[22m            [2m 0.48 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/usage.cjs[22m                 [2m 0.37 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ldap.cjs[22m                  [2m 0.36 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/mfa.cjs[22m                   [2m 0.35 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/roles.cjs[22m                 [2m 0.35 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/api-keys.cjs[22m              [2m 0.35 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflowHistory.cjs[22m       [2m 0.32 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/dynamic-banners.cjs[22m       [2m 0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/provisioning.cjs[22m          [2m 0.24 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/versions.cjs[22m              [2m 0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/prompts.cjs[22m               [2m 0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/third-party-licenses.cjs[22m  [2m 0.19 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/module-settings.cjs[22m       [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/orchestration.cjs[22m         [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/npsSurvey.cjs[22m             [2m 0.15 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ui.cjs[22m                    [2m 0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ctas.cjs[22m                  [2m 0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/events.cjs[22m                [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/settings.cjs[22m              [2m 0.13 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/webhooks.cjs[22m              [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/execution.cjs[22m             [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/tags.cjs[22m                  [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflows.cjs[22m             [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m                     [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs.map                [2m13.07 kB[22m [2m│ gzip: 4.24 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22musers.cjs.map                 [2m 8.97 kB[22m [2m│ gzip: 1.88 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs                    [2m 8.86 kB[22m [2m│ gzip: 2.85 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates.cjs.map             [2m 6.30 kB[22m [2m│ gzip: 1.70 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22musers.cjs                     [2m 5.68 kB[22m [2m│ gzip: 0.88 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes.cjs.map             [2m 4.67 kB[22m [2m│ gzip: 1.32 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes.cjs                 [2m 3.77 kB[22m [2m│ gzip: 0.84 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msso.cjs.map                   [2m 2.84 kB[22m [2m│ gzip: 0.77 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans.cjs.map            [2m 2.79 kB[22m [2m│ gzip: 1.01 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee.cjs.map    [2m 2.64 kB[22m [2m│ gzip: 0.70 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mldap.cjs.map                  [2m 2.63 kB[22m [2m│ gzip: 0.90 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msso.cjs                       [2m 2.52 kB[22m [2m│ gzip: 0.49 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates.cjs                 [2m 2.50 kB[22m [2m│ gzip: 0.59 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory.cjs.map       [2m 2.47 kB[22m [2m│ gzip: 0.81 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee.cjs.map           [2m 2.33 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee.cjs        [2m 2.31 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcredentialResolvers.cjs.map   [2m 2.30 kB[22m [2m│ gzip: 0.62 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes.cjs.map        [2m 2.11 kB[22m [2m│ gzip: 0.82 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mversions.cjs.map              [2m 2.05 kB[22m [2m│ gzip: 0.78 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcredentialResolvers.cjs       [2m 2.00 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee.cjs               [2m 1.94 kB[22m [2m│ gzip: 0.50 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa.cjs.map                   [2m 1.88 kB[22m [2m│ gzip: 0.61 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22musage.cjs.map                 [2m 1.80 kB[22m [2m│ gzip: 0.64 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes.cjs            [2m 1.76 kB[22m [2m│ gzip: 0.57 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mroles.cjs.map                 [2m 1.76 kB[22m [2m│ gzip: 0.60 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys.cjs.map              [2m 1.75 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans.cjs                [2m 1.69 kB[22m [2m│ gzip: 0.43 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa.cjs                       [2m 1.63 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/breaking-changes.cjs.map  [2m 1.56 kB[22m [2m│ gzip: 0.62 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22musage.cjs                     [2m 1.52 kB[22m [2m│ gzip: 0.42 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mroles.cjs                     [2m 1.49 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mldap.cjs                      [2m 1.47 kB[22m [2m│ gzip: 0.40 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys.cjs                  [2m 1.41 kB[22m [2m│ gzip: 0.39 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory.cjs           [2m 1.21 kB[22m [2m│ gzip: 0.38 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mprompts.cjs.map               [2m 1.16 kB[22m [2m│ gzip: 0.53 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning.cjs.map          [2m 1.08 kB[22m [2m│ gzip: 0.46 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/consent.cjs.map           [2m 0.96 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/dynamic-banners.cjs.map   [2m 0.94 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mversions.cjs                  [2m 0.88 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mprompts.cjs                   [2m 0.85 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning.cjs              [2m 0.73 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks.cjs.map              [2m 0.73 kB[22m [2m│ gzip: 0.42 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mui.cjs.map                    [2m 0.66 kB[22m [2m│ gzip: 0.40 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings.cjs.map       [2m 0.56 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration.cjs.map         [2m 0.56 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses.cjs.map  [2m 0.55 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey.cjs.map             [2m 0.55 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msettings.cjs.map              [2m 0.52 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses.cjs      [2m 0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration.cjs             [2m 0.47 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevents.cjs.map                [2m 0.46 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mctas.cjs.map                  [2m 0.45 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mui.cjs                        [2m 0.44 kB[22m [2m│ gzip: 0.29 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey.cjs                 [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings.cjs           [2m 0.41 kB[22m [2m│ gzip: 0.27 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks.cjs                  [2m 0.39 kB[22m [2m│ gzip: 0.27 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mevents.cjs                    [2m 0.39 kB[22m [2m│ gzip: 0.27 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mctas.cjs                      [2m 0.38 kB[22m [2m│ gzip: 0.26 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22msettings.cjs                  [2m 0.37 kB[22m [2m│ gzip: 0.26 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi.cjs                       [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[34mℹ[39m [33m[CJS][39m 97 files, total: 152.71 kB
+[33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` may not be a valid syntax with the `cjs` output format.
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/utils.ts:112:3 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m112 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m.[0m[38;5;249mN[0m[38;5;249mO[0m[38;5;249mD[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mE[0m[38;5;249mN[0m[38;5;249mV[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m=[0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mp[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m'[0m[38;5;249m [0m[38;5;249m&[0m[38;5;249m&[0m
+ [38;5;240m    │[0m        ─────┬─────  
+ [38;5;240m    │[0m             ╰─────── This `import.meta` will be replaced with an empty object (`{}`) automatically. If this is desired, you can suppress this warning by adding `transform.define: { 'import.meta': {} }`. If `import.meta` needs to be kept as-is, you need to set the output format to `esm`.
+[38;5;246m─────╯[0m
+
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                       [2m 6.64 kB[22m [2m│ gzip: 1.79 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/index.mjs[22m                   [2m 6.30 kB[22m [2m│ gzip: 1.64 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/users.mjs[22m                   [2m 0.89 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/breaking-changes.mjs[22m        [2m 0.69 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/nodeTypes.mjs[22m               [2m 0.63 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/externalSecrets.ee.mjs[22m      [2m 0.44 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/consent.mjs[22m                 [2m 0.44 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/credentialResolvers.mjs[22m     [2m 0.42 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.mjs[22m                       [2m 0.41 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/eventbus.ee.mjs[22m             [2m 0.40 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/sso.mjs[22m                     [2m 0.38 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/templates.mjs[22m               [2m 0.35 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/communityNodes.mjs[22m          [2m 0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/cloudPlans.mjs[22m              [2m 0.33 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/usage.mjs[22m                   [2m 0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ldap.mjs[22m                    [2m 0.27 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/dynamic-banners.mjs[22m         [2m 0.27 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/roles.mjs[22m                   [2m 0.26 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/mfa.mjs[22m                     [2m 0.25 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/api-keys.mjs[22m                [2m 0.24 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflowHistory.mjs[22m         [2m 0.22 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/provisioning.mjs[22m            [2m 0.18 kB[22m [2m│ gzip: 0.11 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/versions.mjs[22m                [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/prompts.mjs[22m                 [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/third-party-licenses.mjs[22m    [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/orchestration.mjs[22m           [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ui.mjs[22m                      [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/module-settings.mjs[22m         [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/npsSurvey.mjs[22m               [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ctas.mjs[22m                    [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/events.mjs[22m                  [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/settings.mjs[22m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/webhooks.mjs[22m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/execution.mjs[22m               [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/tags.mjs[22m                    [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflows.mjs[22m               [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.mjs[22m                       [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs.map                  [2m13.01 kB[22m [2m│ gzip: 4.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22musers.mjs.map                   [2m 8.93 kB[22m [2m│ gzip: 1.87 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs                      [2m 6.52 kB[22m [2m│ gzip: 2.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates.mjs.map               [2m 6.28 kB[22m [2m│ gzip: 1.70 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes.mjs.map               [2m 4.64 kB[22m [2m│ gzip: 1.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22musers.mjs                       [2m 3.26 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msso.mjs.map                     [2m 2.81 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans.mjs.map              [2m 2.77 kB[22m [2m│ gzip: 1.00 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee.mjs.map      [2m 2.61 kB[22m [2m│ gzip: 0.70 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mldap.mjs.map                    [2m 2.61 kB[22m [2m│ gzip: 0.89 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory.mjs.map         [2m 2.45 kB[22m [2m│ gzip: 0.80 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes.mjs                   [2m 2.44 kB[22m [2m│ gzip: 0.73 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee.mjs.map             [2m 2.31 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcredentialResolvers.mjs.map     [2m 2.27 kB[22m [2m│ gzip: 0.62 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes.mjs.map          [2m 2.04 kB[22m [2m│ gzip: 0.80 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mversions.mjs.map                [2m 1.99 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa.mjs.map                     [2m 1.85 kB[22m [2m│ gzip: 0.61 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22musage.mjs.map                   [2m 1.77 kB[22m [2m│ gzip: 0.63 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mroles.mjs.map                   [2m 1.73 kB[22m [2m│ gzip: 0.60 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys.mjs.map                [2m 1.73 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates.mjs                   [2m 1.66 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/breaking-changes.mjs.map    [2m 1.53 kB[22m [2m│ gzip: 0.60 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msso.mjs                         [2m 1.46 kB[22m [2m│ gzip: 0.39 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee.mjs          [2m 1.44 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcredentialResolvers.mjs         [2m 1.25 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee.mjs                 [2m 1.20 kB[22m [2m│ gzip: 0.42 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes.mjs              [2m 1.17 kB[22m [2m│ gzip: 0.50 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mprompts.mjs.map                 [2m 1.13 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning.mjs.map            [2m 1.05 kB[22m [2m│ gzip: 0.46 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans.mjs                  [2m 0.97 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa.mjs                         [2m 0.95 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/consent.mjs.map             [2m 0.94 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/dynamic-banners.mjs.map     [2m 0.94 kB[22m [2m│ gzip: 0.50 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22musage.mjs                       [2m 0.92 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mroles.mjs                       [2m 0.90 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mldap.mjs                        [2m 0.88 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory.mjs             [2m 0.84 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys.mjs                    [2m 0.83 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks.mjs.map                [2m 0.71 kB[22m [2m│ gzip: 0.41 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mui.mjs.map                      [2m 0.64 kB[22m [2m│ gzip: 0.40 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mversions.mjs                    [2m 0.62 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mprompts.mjs                     [2m 0.59 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses.mjs.map    [2m 0.54 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings.mjs.map         [2m 0.54 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration.mjs.map           [2m 0.54 kB[22m [2m│ gzip: 0.35 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey.mjs.map               [2m 0.53 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msettings.mjs.map                [2m 0.50 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning.mjs                [2m 0.50 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mctas.mjs.map                    [2m 0.45 kB[22m [2m│ gzip: 0.31 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevents.mjs.map                  [2m 0.44 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration.mjs               [2m 0.36 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses.mjs        [2m 0.35 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mui.mjs                          [2m 0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey.mjs                   [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings.mjs             [2m 0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks.mjs                    [2m 0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mevents.mjs                      [2m 0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22msettings.mjs                    [2m 0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mctas.mjs                        [2m 0.26 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi.mjs                         [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                     [2m 9.12 kB[22m [2m│ gzip: 2.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/index.d.mts[22m[39m                 [2m 8.70 kB[22m [2m│ gzip: 2.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/users.d.mts[22m[39m                 [2m 1.39 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/templates.d.mts[22m[39m             [2m 1.12 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/breaking-changes.d.mts[22m[39m      [2m 0.77 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.mts[22m[39m       [2m 0.75 kB[22m [2m│ gzip: 0.40 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.mts[22m[39m             [2m 0.63 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/consent.d.mts[22m[39m               [2m 0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.mts[22m[39m       [2m 0.52 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.mts[22m[39m           [2m 0.48 kB[22m [2m│ gzip: 0.21 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/sso.d.mts[22m[39m                   [2m 0.45 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.mts[22m[39m    [2m 0.44 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.mts[22m[39m                     [2m 0.43 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.mts[22m[39m            [2m 0.43 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/credentialResolvers.d.mts[22m[39m   [2m 0.41 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ldap.d.mts[22m[39m                  [2m 0.37 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/communityNodes.d.mts[22m[39m        [2m 0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/mfa.d.mts[22m[39m                   [2m 0.29 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/usage.d.mts[22m[39m                 [2m 0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/versions.d.mts[22m[39m              [2m 0.26 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/roles.d.mts[22m[39m                 [2m 0.25 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/api-keys.d.mts[22m[39m              [2m 0.23 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflows.d.mts[22m[39m             [2m 0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/provisioning.d.mts[22m[39m          [2m 0.22 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/prompts.d.mts[22m[39m               [2m 0.20 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.mts[22m[39m  [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/orchestration.d.mts[22m[39m         [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ui.d.mts[22m[39m                    [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/module-settings.d.mts[22m[39m       [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.mts[22m[39m             [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ctas.d.mts[22m[39m                  [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/events.d.mts[22m[39m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/settings.d.mts[22m[39m              [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/webhooks.d.mts[22m[39m              [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.mts[22m[39m                     [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/tags.d.mts[22m[39m                  [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/execution.d.mts[22m[39m             [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musers.d.mts[39m                     [2m 5.67 kB[22m [2m│ gzip: 1.28 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtemplates.d.mts[39m                 [2m 4.26 kB[22m [2m│ gzip: 1.08 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mutils2.d.mts[39m                    [2m 2.20 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnodeTypes.d.mts[39m                 [2m 2.05 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcloudPlans.d.mts[39m                [2m 1.94 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mldap.d.mts[39m                      [2m 1.75 kB[22m [2m│ gzip: 0.62 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflowHistory.d.mts[39m           [2m 1.69 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msso.d.mts[39m                       [2m 1.38 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mversions.d.mts[39m                  [2m 1.31 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32meventbus.ee.d.mts[39m               [2m 1.29 kB[22m [2m│ gzip: 0.42 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mexternalSecrets.ee.d.mts[39m        [2m 1.29 kB[22m [2m│ gzip: 0.39 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcredentialResolvers.d.mts[39m       [2m 1.26 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflows.d.mts[39m                 [2m 1.25 kB[22m [2m│ gzip: 0.47 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmfa.d.mts[39m                       [2m 0.94 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mapi-keys.d.mts[39m                  [2m 0.92 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcommunityNodes.d.mts[39m            [2m 0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musage.d.mts[39m                     [2m 0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mroles.d.mts[39m                     [2m 0.87 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mprovisioning.d.mts[39m              [2m 0.68 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mprompts.d.mts[39m                   [2m 0.53 kB[22m [2m│ gzip: 0.27 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mwebhooks.d.mts[39m                  [2m 0.47 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mui.d.mts[39m                        [2m 0.36 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmodule-settings.d.mts[39m           [2m 0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnpsSurvey.d.mts[39m                 [2m 0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msettings.d.mts[39m                  [2m 0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mthird-party-licenses.d.mts[39m      [2m 0.28 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32morchestration.d.mts[39m             [2m 0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mctas.d.mts[39m                      [2m 0.25 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevents.d.mts[39m                    [2m 0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtags.d.mts[39m                      [2m 0.21 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes2.d.mts[39m                    [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mindex2.d.mts[39m                    [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [34m[ESM][39m 166 files, total: 191.82 kB
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                     [2m9.12 kB[22m [2m│ gzip: 2.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/index.d.cts[22m[39m                 [2m8.70 kB[22m [2m│ gzip: 2.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/users.d.cts[22m[39m                 [2m1.39 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/templates.d.cts[22m[39m             [2m1.12 kB[22m [2m│ gzip: 0.33 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/breaking-changes.d.cts[22m[39m      [2m0.77 kB[22m [2m│ gzip: 0.32 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.cts[22m[39m       [2m0.75 kB[22m [2m│ gzip: 0.40 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.cts[22m[39m             [2m0.63 kB[22m [2m│ gzip: 0.24 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/consent.d.cts[22m[39m               [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.cts[22m[39m       [2m0.52 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.cts[22m[39m           [2m0.48 kB[22m [2m│ gzip: 0.21 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/sso.d.cts[22m[39m                   [2m0.45 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.cts[22m[39m    [2m0.44 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m                     [2m0.43 kB[22m [2m│ gzip: 0.23 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.cts[22m[39m            [2m0.43 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/credentialResolvers.d.cts[22m[39m   [2m0.41 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ldap.d.cts[22m[39m                  [2m0.37 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/communityNodes.d.cts[22m[39m        [2m0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/mfa.d.cts[22m[39m                   [2m0.29 kB[22m [2m│ gzip: 0.17 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/usage.d.cts[22m[39m                 [2m0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/versions.d.cts[22m[39m              [2m0.26 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/roles.d.cts[22m[39m                 [2m0.25 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/api-keys.d.cts[22m[39m              [2m0.23 kB[22m [2m│ gzip: 0.14 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflows.d.cts[22m[39m             [2m0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/provisioning.d.cts[22m[39m          [2m0.22 kB[22m [2m│ gzip: 0.12 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/prompts.d.cts[22m[39m               [2m0.20 kB[22m [2m│ gzip: 0.13 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.cts[22m[39m  [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/orchestration.d.cts[22m[39m         [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ui.d.cts[22m[39m                    [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/module-settings.d.cts[22m[39m       [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.cts[22m[39m             [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ctas.d.cts[22m[39m                  [2m0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/events.d.cts[22m[39m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/settings.d.cts[22m[39m              [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/webhooks.d.cts[22m[39m              [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m                     [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/tags.d.cts[22m[39m                  [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/execution.d.cts[22m[39m             [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musers.d.cts[39m                     [2m5.67 kB[22m [2m│ gzip: 1.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtemplates.d.cts[39m                 [2m4.26 kB[22m [2m│ gzip: 1.08 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mutils2.d.cts[39m                    [2m2.20 kB[22m [2m│ gzip: 0.79 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnodeTypes.d.cts[39m                 [2m2.05 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcloudPlans.d.cts[39m                [2m1.94 kB[22m [2m│ gzip: 0.76 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mldap.d.cts[39m                      [2m1.75 kB[22m [2m│ gzip: 0.62 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflowHistory.d.cts[39m           [2m1.69 kB[22m [2m│ gzip: 0.58 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msso.d.cts[39m                       [2m1.38 kB[22m [2m│ gzip: 0.45 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mversions.d.cts[39m                  [2m1.31 kB[22m [2m│ gzip: 0.51 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32meventbus.ee.d.cts[39m               [2m1.29 kB[22m [2m│ gzip: 0.42 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mexternalSecrets.ee.d.cts[39m        [2m1.29 kB[22m [2m│ gzip: 0.39 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcredentialResolvers.d.cts[39m       [2m1.26 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflows.d.cts[39m                 [2m1.25 kB[22m [2m│ gzip: 0.47 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmfa.d.cts[39m                       [2m0.94 kB[22m [2m│ gzip: 0.37 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mapi-keys.d.cts[39m                  [2m0.92 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcommunityNodes.d.cts[39m            [2m0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musage.d.cts[39m                     [2m0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mroles.d.cts[39m                     [2m0.87 kB[22m [2m│ gzip: 0.34 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mprovisioning.d.cts[39m              [2m0.68 kB[22m [2m│ gzip: 0.30 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mprompts.d.cts[39m                   [2m0.53 kB[22m [2m│ gzip: 0.27 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mwebhooks.d.cts[39m                  [2m0.47 kB[22m [2m│ gzip: 0.28 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mui.d.cts[39m                        [2m0.36 kB[22m [2m│ gzip: 0.25 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmodule-settings.d.cts[39m           [2m0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnpsSurvey.d.cts[39m                 [2m0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msettings.d.cts[39m                  [2m0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mthird-party-licenses.d.cts[39m      [2m0.28 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32morchestration.d.cts[39m             [2m0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mctas.d.cts[39m                      [2m0.25 kB[22m [2m│ gzip: 0.19 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevents.d.cts[39m                    [2m0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtags.d.cts[39m                      [2m0.21 kB[22m [2m│ gzip: 0.16 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes2.d.cts[39m                    [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mindex2.d.cts[39m                    [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[34mℹ[39m [33m[CJS][39m 69 files, total: 66.40 kB
+[32m✔[39m Build complete in [32m2970ms[39m
+::endgroup::
+::group::n8n-editor-ui:build
+cache hit, replaying logs b5722fbd7ee7e25a
+
+> n8n-editor-ui@2.4.0 build /home/runner/_work/n8n/n8n/packages/frontend/editor-ui
+> cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+`optimizeDeps.rollupOptions` / `ssr.optimizeDeps.rollupOptions` is deprecated. Use `optimizeDeps.rolldownOptions` instead. Note that this option may be set by a plugin. Set VITE_DEPRECATION_TRACE=1 to see where it is called.
+[33mYou or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.[39m
+[36mrolldown-vite v7.3.1 [32mbuilding client environment for production...[36m[39m
+[33mWarning: Invalid input options (1 issue found)
+- For the "inject". Invalid key: Expected never but received "inject". [0m
+<script src="/{{BASE_PATH}}/static/base-path.js"> in "/index.html" can't be bundled without type="module" attribute
+<script src="/{{BASE_PATH}}/static/posthog.init.js"> in "/index.html" can't be bundled without type="module" attribute
+
+/{{BASE_PATH}}/static/prefers-color-scheme.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[33m[plugin builtin:vite-import-glob] Invalid glob pattern: `@n8n/i18n/locales/*.json` in file 'src/app/dev/i18nHmr.ts'. Glob patterns must start with:
+  • '/' for absolute paths from project root
+  • './' or '../' for relative paths
+  • '**/' for recursive matching from project root
+  • '#' for subpath imports (with '*' wildcard)[39m
+[33m[plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/home/runner/_work/n8n/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/home/runner/_work/n8n/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[2Ktransforming...✓ 6800 modules transformed.
+rendering chunks...
+[33m[plugin builtin:vite-reporter] 
+(!) /home/runner/_work/n8n/n8n/packages/frontend/editor-ui/src/features/ndv/parameters/components/Collection/CollectionParameter.vue is dynamically imported by /home/runner/_work/n8n/n8n/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue?vue&type=script&setup=true&lang.ts but also statically imported by /home/runner/_work/n8n/n8n/packages/frontend/editor-ui/src/features/ndv/parameters/components/MultipleParameter.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
+[39m
+[36m[vite-plugin-static-copy][39m [32mCopied 2 items.[39m
+computing gzip size...
+dist/index.html                                                         13.66 kB │ gzip:   2.55 kB
+dist/assets/sqlite3-opfs-async-proxy-BrtqH9Si.js                        15.79 kB
+dist/assets/element-icons-B-tDfklg.woff                                 28.20 kB
+dist/assets/element-icons-_lZGOqcG.ttf                                  55.95 kB
+dist/assets/CommitMonoVariable-ytizKI8U.woff2                           86.76 kB
+dist/assets/doppler-B__k0MeW.webp                                      315.06 kB
+dist/assets/InterVariable-DiVDrmQJ.woff2                               352.24 kB
+dist/assets/sqlite3-worker1-bundler-friendly-BvaOkVlV.js               363.07 kB
+dist/assets/worker-BnP12nj7.js                                         377.24 kB
+dist/assets/InterVariable-Italic-FCBEiFp6.woff2                        387.97 kB
+dist/assets/sqlite3-DBpDb1lf.wasm                                      856.44 kB │ gzip: 396.48 kB
+dist/assets/typescript.worker-BsjcPQZq.js                           10,626.01 kB
+dist/assets/EntityNotFound-D6gi5ngN.css                                  0.19 kB │ gzip:   0.16 kB
+dist/assets/EntityUnAuthorised-D3XTbU6Y.css                              0.19 kB │ gzip:   0.16 kB
+dist/assets/ProjectRolesView-CZqQ656d.css                                0.26 kB │ gzip:   0.17 kB
+dist/assets/SeverityTag-C0hCvHeU.css                                     0.27 kB │ gzip:   0.15 kB
+dist/assets/MigrationRuleDetail-4tgkxxhX.css                             0.42 kB │ gzip:   0.28 kB
+dist/assets/NDVEmptyState-Bho0_Ev8.css                                   0.52 kB │ gzip:   0.28 kB
+dist/assets/AnimatedSpinner-CoP6Lyme.css                                 0.57 kB │ gzip:   0.19 kB
+dist/assets/ProjectRoleView-Ds9qdhh9.css                                 0.86 kB │ gzip:   0.42 kB
+dist/assets/ResolversView-Bl6WIGF0.css                                   1.02 kB │ gzip:   0.43 kB
+dist/assets/MigrationRules-wMqorxjv.css                                  1.42 kB │ gzip:   0.50 kB
+dist/assets/RunDataHtml-Bu3RZcuV.css                                     2.53 kB │ gzip:   0.46 kB
+dist/assets/CredentialIcon-bZrcXcyJ.css                                  2.56 kB │ gzip:   0.47 kB
+dist/assets/NodeIcon-zqTc5h-V.css                                        2.62 kB │ gzip:   0.50 kB
+dist/assets/TextWithHighlights-BgbTzzK2.css                              2.63 kB │ gzip:   0.51 kB
+dist/assets/KeyboardShortcutTooltip-pRLqnHdh.css                         2.65 kB │ gzip:   0.52 kB
+dist/assets/RunDataJsonActions-CZx7rSSE.css                              2.65 kB │ gzip:   0.52 kB
+dist/assets/ChatLayout-C5Cltxb6.css                                      2.66 kB │ gzip:   0.54 kB
+dist/assets/SlideTransition-Bv5Vx35L.css                                 2.69 kB │ gzip:   0.51 kB
+dist/assets/FolderBreadcrumbs-eBFopiOp.css                               2.69 kB │ gzip:   0.53 kB
+dist/assets/InsightsPaywall-CE5W3W4m.css                                 2.70 kB │ gzip:   0.56 kB
+dist/assets/Draggable-DfBtatxg.css                                       2.72 kB │ gzip:   0.55 kB
+dist/assets/ExternalSecretsProviderConnectionSwitch-dpp96SMy.css         2.74 kB │ gzip:   0.56 kB
+dist/assets/ModelByIdSelectorModal-CF6s_557.css                          2.86 kB │ gzip:   0.60 kB
+dist/assets/ErrorView-D2OMvGTk.css                                       2.93 kB │ gzip:   0.62 kB
+dist/assets/NodeCreation-CKa3G1zA.css                                    2.93 kB │ gzip:   0.65 kB
+dist/assets/SelectedItemsInfo-DDbNnY7M.css                               2.96 kB │ gzip:   0.64 kB
+dist/assets/WorkflowExecutionsLandingPage-DMldlKod.css                   2.97 kB │ gzip:   0.63 kB
+dist/assets/CredentialSelectorModal-CKQNdS8g.css                         3.05 kB │ gzip:   0.63 kB
+dist/assets/TemplatesCollectionView-klb8FT9y.css                         3.06 kB │ gzip:   0.66 kB
+dist/assets/SigninView-BQgsTN8o.css                                      3.07 kB │ gzip:   0.68 kB
+dist/assets/TemplateCard-DxDBlS6p.css                                    3.10 kB │ gzip:   0.67 kB
+dist/assets/SetupWorkflowFromTemplateView-CU2iGJTa.css                   3.10 kB │ gzip:   0.68 kB
+dist/assets/SettingsExternalSecrets-CaiOf7cD.css                         3.10 kB │ gzip:   0.65 kB
+dist/assets/WorkflowPreview-CYpzxJej.css                                 3.17 kB │ gzip:   0.72 kB
+dist/assets/AgentEditorModal-9v5_7c4M.css                                3.22 kB │ gzip:   0.68 kB
+dist/assets/ChatPersonalAgentsView-BiiyFIRl.css                          3.22 kB │ gzip:   0.70 kB
+dist/assets/SettingsLdapView-BuamZyhu.css                                3.26 kB │ gzip:   0.70 kB
+dist/assets/ProviderSettingsModal-D_yY-993.css                           3.26 kB │ gzip:   0.66 kB
+dist/assets/ChatAgentAvatar-D94COYC_.css                                 3.27 kB │ gzip:   0.68 kB
+dist/assets/ProjectBreadcrumb-CAEDvzuN.css                               3.27 kB │ gzip:   0.71 kB
+dist/assets/DataTableView-ByKnlVtU.css                                   3.28 kB │ gzip:   0.78 kB
+dist/assets/TemplatesWorkflowView-CBjRBbmw.css                           3.29 kB │ gzip:   0.74 kB
+dist/assets/RunDataSearch-BvNE3iVy.css                                   3.29 kB │ gzip:   0.72 kB
+dist/assets/WorkflowExecutionsInfoAccordion-CEOvJ-SX.css                 3.32 kB │ gzip:   0.74 kB
+dist/assets/ResourceFiltersDropdown-Cma1Lj9J.css                         3.32 kB │ gzip:   0.70 kB
+dist/assets/WorkflowLocation-6rp_-CuW.css                                3.33 kB │ gzip:   0.72 kB
+dist/assets/InsightsTableWorkflows-D20Yb7ZW.css                          3.35 kB │ gzip:   0.77 kB
+dist/assets/useTelemetryContext-BpnKRIT7.css                             3.38 kB │ gzip:   0.74 kB
+dist/assets/ChatWorkflowAgentsView-BBfu-g98.css                          3.41 kB │ gzip:   0.76 kB
+dist/assets/ProjectCardBadge-XPHWNQHG.css                                3.41 kB │ gzip:   0.76 kB
+dist/assets/ProjectIcon-DT95ZcDW.css                                     3.50 kB │ gzip:   0.72 kB
+dist/assets/SettingsPersonalView-DEpYU3TT.css                            3.50 kB │ gzip:   0.82 kB
+dist/assets/BaseLayout-DSY3m74K.css                                      3.58 kB │ gzip:   0.78 kB
+dist/assets/ToolsSelectorModal-B2z9ibQ0.css                              3.63 kB │ gzip:   0.73 kB
+dist/assets/ChatFile-DP6aSB_w.css                                        3.63 kB │ gzip:   0.85 kB
+dist/assets/CopyInput-BiDmlr9B.css                                       3.84 kB │ gzip:   0.90 kB
+dist/assets/RunDataParsedAiContent-CvjNCtpG.css                          3.95 kB │ gzip:   0.75 kB
+dist/assets/evaluation-CGxdCHrN.css                                      4.12 kB │ gzip:   0.92 kB
+dist/assets/SettingsSourceControl-DEs9MNB6.css                           4.19 kB │ gzip:   0.92 kB
+dist/assets/OAuthConsentView-CXZbBKS5.css                                4.44 kB │ gzip:   0.95 kB
+dist/assets/TagsDropdown-Do1UB2LF.css                                    4.95 kB │ gzip:   1.12 kB
+dist/assets/InsightsDashboard-CttFeZVb.css                               5.35 kB │ gzip:   1.39 kB
+dist/assets/TemplateDetails-DfyKyMyy.css                                 5.40 kB │ gzip:   0.65 kB
+dist/assets/banners-UK5wWFEI.css                                         5.44 kB │ gzip:   0.67 kB
+dist/assets/CommunityNodeUpdateInfo-kPDiipF5.css                         5.52 kB │ gzip:   0.69 kB
+dist/assets/MCPConnectWorkflowsModal-CS2q8ice.css                        5.67 kB │ gzip:   0.75 kB
+dist/assets/SettingsChatHubView-zBt63VWY.css                             5.72 kB │ gzip:   0.75 kB
+dist/assets/AuthView-Dg9ZkCud.css                                        5.80 kB │ gzip:   0.80 kB
+dist/assets/Modal-DNkRJkUt.css                                           5.90 kB │ gzip:   0.81 kB
+dist/assets/TemplatesView-iSPzXjQB.css                                   5.92 kB │ gzip:   0.82 kB
+dist/assets/SettingsLayout-BGgvOkr0.css                                  5.97 kB │ gzip:   0.84 kB
+dist/assets/SettingsLogStreamingView-xo-rTSA0.css                        6.02 kB │ gzip:   0.91 kB
+dist/assets/CredentialsView-BDOl2A0w.css                                 6.03 kB │ gzip:   0.90 kB
+dist/assets/InsightsSummary-CnaRV949.css                                 6.17 kB │ gzip:   1.35 kB
+dist/assets/ProjectSharing-5AaqsE7p.css                                  6.19 kB │ gzip:   0.86 kB
+dist/assets/CredentialPicker-CWT-qPMn.css                                6.25 kB │ gzip:   0.96 kB
+dist/assets/AddDataTableModal-CZuODwEx.css                               6.36 kB │ gzip:   1.30 kB
+dist/assets/ProjectHeader-DMoL829v.css                                   6.43 kB │ gzip:   1.00 kB
+dist/assets/SettingsCommunityNodesView-m7kLUpJK.css                      6.49 kB │ gzip:   0.98 kB
+dist/assets/useCustomAgent-D8Sw5vcC.css                                  6.57 kB │ gzip:   1.05 kB
+dist/assets/MainSidebarHeader-DrEZoF8C.css                               6.60 kB │ gzip:   0.99 kB
+dist/assets/SettingsApiView-Dtl_N9mK.css                                 6.64 kB │ gzip:   1.05 kB
+dist/assets/RunDataJson-LufoUTRy.css                                     7.26 kB │ gzip:   1.10 kB
+dist/assets/Alert-BA2uuWjw.css                                           7.28 kB │ gzip:   1.11 kB
+dist/assets/SetupTemplateFormStep-n3VY06cx.css                           8.25 kB │ gzip:   0.83 kB
+dist/assets/NodeDetailsViewV2-CgELKnqG.css                               8.30 kB │ gzip:   1.47 kB
+dist/assets/TestRunDetailView-CVGty0j0.css                               8.39 kB │ gzip:   1.49 kB
+dist/assets/ProjectVariables-CVX3Lygi.css                                8.87 kB │ gzip:   1.06 kB
+dist/assets/SettingsUsersView-CfJcVjkl.css                               9.32 kB │ gzip:   1.15 kB
+dist/assets/SkeletonAgentCard-zoEiPx0y.css                               9.64 kB │ gzip:   1.14 kB
+dist/assets/ProjectSettings-vir6puPd.css                                 9.72 kB │ gzip:   1.17 kB
+dist/assets/SettingsUsageAndPlan-CX3b3V8W.css                            9.83 kB │ gzip:   1.22 kB
+dist/assets/TemplateList-CNUtq0N7.css                                   10.03 kB │ gzip:   1.21 kB
+dist/assets/VirtualSchema-CrsaQlbY.css                                  10.45 kB │ gzip:   2.29 kB
+dist/assets/ExecutionsView-D5X7zhxf.css                                 11.17 kB │ gzip:   1.08 kB
+dist/assets/SettingsSso-DPkEVc10.css                                    11.98 kB │ gzip:   1.16 kB
+dist/assets/RunDataTable-BHEO7axq.css                                   12.05 kB │ gzip:   2.08 kB
+dist/assets/EvaluationsView-CmcDUAS_.css                                12.06 kB │ gzip:   1.28 kB
+dist/assets/EvaluationsRootView-D22182Fd.css                            12.34 kB │ gzip:   1.30 kB
+dist/assets/useLogsTreeExpand-nZMKe2ps.css                              12.61 kB │ gzip:   1.84 kB
+dist/assets/ExecutionsTime-BNPL8OYf.css                                 12.67 kB │ gzip:   1.38 kB
+dist/assets/ResourcesListLayout-BhnhvHiw.css                            13.20 kB │ gzip:   1.45 kB
+dist/assets/NodeDetailsView-Dy4A-9xj.css                                13.82 kB │ gzip:   1.64 kB
+dist/assets/FixedCollectionParameter-COuGvpZ8.css                       15.17 kB │ gzip:   1.60 kB
+dist/assets/WorkflowExecutionsPreview-BkXT82z5.css                      15.45 kB │ gzip:   1.94 kB
+dist/assets/WorkflowHistory-dUpsKg3Z.css                                15.94 kB │ gzip:   1.84 kB
+dist/assets/ChatLayout-D-hWKn7w.css                                     16.32 kB │ gzip:   1.64 kB
+dist/assets/AppSidebar-qYnACKTG.css                                     16.32 kB │ gzip:   1.62 kB
+dist/assets/WorkflowExecutionsView-DG7ADJ0A.css                         16.58 kB │ gzip:   1.83 kB
+dist/assets/NodeView-Xwcu11Wh.css                                       18.82 kB │ gzip:   2.08 kB
+dist/assets/TemplatesSearchView-BfT0LMil.css                            19.49 kB │ gzip:   1.94 kB
+dist/assets/WorkerView-dRylOW7G.css                                     22.85 kB │ gzip:   1.49 kB
+dist/assets/TriggerPanel-BjsM2DGf.css                                   25.58 kB │ gzip:   2.65 kB
+dist/assets/WorkflowLayout-kxEtcGfF.css                                 28.43 kB │ gzip:   2.26 kB
+dist/assets/DataTableDetailsView-CV4twGRm.css                           30.20 kB │ gzip:   2.76 kB
+dist/assets/SettingsMCPView-DIdodQTu.css                                31.21 kB │ gzip:   2.16 kB
+dist/assets/ChatView-BxNM2b5Y.css                                       32.21 kB │ gzip:   3.47 kB
+dist/assets/NodeSettings-BIOqhOCE.css                                   40.04 kB │ gzip:   3.70 kB
+dist/assets/WorkflowsView-0_qNZeIx.css                                  40.83 kB │ gzip:   3.14 kB
+dist/assets/RunData-CA8VWciJ.css                                        48.47 kB │ gzip:   4.13 kB
+dist/assets/NodeCreator-039HRrqJ.css                                    72.85 kB │ gzip:   4.77 kB
+dist/assets/LogsPanel-Ca8kVF-E.css                                      74.29 kB │ gzip:   5.54 kB
+dist/assets/CanvasRunWorkflowButton-D_Rqnskj.css                       110.70 kB │ gzip:   7.20 kB
+dist/assets/ParameterInputList-Bc2h6PLc.css                            191.97 kB │ gzip:  13.13 kB
+dist/assets/src-CUiJtOrW.css                                           453.91 kB │ gzip:  31.48 kB
+dist/assets/index-D3My0k-3.css                                         711.52 kB │ gzip:  68.00 kB
+dist/assets/en-C4tPMX0d.js                                               0.08 kB │ gzip:   0.08 kB
+dist/assets/sourceControl.eventBus-CeJSfnVS.js                           0.14 kB │ gzip:   0.12 kB
+dist/assets/RunDataHtml-DmFKYqiH.js                                      0.19 kB │ gzip:   0.15 kB
+dist/assets/core-BxRDLFxe.js                                             0.20 kB │ gzip:   0.16 kB
+dist/assets/_plugin-vue_export-helper-DltO58Gh.js                        0.22 kB │ gzip:   0.16 kB
+dist/assets/smartDecimal-B4J_EWKV.js                                     0.23 kB │ gzip:   0.17 kB
+dist/assets/auth.eventBus-DyknQmr4.js                                    0.27 kB │ gzip:   0.15 kB
+dist/assets/sortByProperty-TykrAIkG.js                                   0.28 kB │ gzip:   0.20 kB
+dist/assets/RunDataParsedAiContent-SWUVdfWu.js                           0.53 kB │ gzip:   0.29 kB
+dist/assets/fileUtils-Zcokvrjq.js                                        0.60 kB │ gzip:   0.35 kB
+dist/assets/AuthLayout-DyI5HpMV.js                                       0.63 kB │ gzip:   0.35 kB
+dist/assets/SlideTransition-BA20hcFU.js                                  0.65 kB │ gzip:   0.39 kB
+dist/assets/retry-Bx29QVMH.js                                            0.68 kB │ gzip:   0.35 kB
+dist/assets/mcp.constants-B7VHhn6A.js                                    0.69 kB │ gzip:   0.36 kB
+dist/assets/orderBy-DrTob45i.js                                          0.73 kB │ gzip:   0.36 kB
+dist/assets/useIntersectionObserver-BPARrqbu.js                          0.77 kB │ gzip:   0.36 kB
+dist/assets/useExecutionData-BCCnwWnI.js                                 0.83 kB │ gzip:   0.37 kB
+dist/assets/pickBy-DQk4QJbH.js                                           0.83 kB │ gzip:   0.40 kB
+dist/assets/VueMarkdown-B71RsK7m.js                                      0.85 kB │ gzip:   0.45 kB
+dist/assets/EnterpriseEdition.ee-D4Ln_36F.js                             0.85 kB │ gzip:   0.47 kB
+dist/assets/VirtualSchema-B39OYuGK.js                                    1.02 kB │ gzip:   0.50 kB
+dist/assets/useMcp-CNr77LzL.js                                           1.07 kB │ gzip:   0.49 kB
+dist/assets/SignoutView-BO64Nybw.js                                      1.18 kB │ gzip:   0.62 kB
+dist/assets/userRoleProvisioning.store-TGv8fsg7.js                       1.25 kB │ gzip:   0.45 kB
+dist/assets/RunDataHtml-CYbI-dRU.js                                      1.43 kB │ gzip:   0.68 kB
+dist/assets/EmptySharedSectionActionBox-CwKcXHgp.js                      1.45 kB │ gzip:   0.73 kB
+dist/assets/useClipboard-C3F6zv7f.js                                     1.52 kB │ gzip:   0.70 kB
+dist/assets/DefaultLayout-L2VYNiXh.js                                    1.56 kB │ gzip:   0.76 kB
+dist/assets/CollectionParameter-D_NMRsVc.js                              1.58 kB │ gzip:   0.73 kB
+dist/assets/useTelemetryContext-2GVE_Pvc.js                              1.60 kB │ gzip:   0.71 kB
+dist/assets/AnimatedSpinner-D5L1zkgz.js                                  1.70 kB │ gzip:   0.62 kB
+dist/assets/InsightsChartFailed-B8N0UQ4-.js                              1.77 kB │ gzip:   0.85 kB
+dist/assets/PushConnectionTracker-CAgHhdLV.js                            1.81 kB │ gzip:   0.81 kB
+dist/assets/InsightsChartTotal-diBix1DB.js                               1.89 kB │ gzip:   0.86 kB
+dist/assets/constants-8ADJ-l8u.js                                        1.89 kB │ gzip:   0.78 kB
+dist/assets/KeyboardShortcutTooltip-C3i5_8C6.js                          1.93 kB │ gzip:   0.78 kB
+dist/assets/apiKeys.store-DXQrkQtB.js                                    1.94 kB │ gzip:   0.69 kB
+dist/assets/dateFormatter-Cyb9wpFR.js                                    1.98 kB │ gzip:   0.68 kB
+dist/assets/insights.constants-CmJlCs94.js                               2.00 kB │ gzip:   0.72 kB
+dist/assets/InsightsChartFailureRate-DC9D60WK.js                         2.00 kB │ gzip:   0.93 kB
+dist/assets/chunk-r2Y0G7H8.js                                            2.02 kB │ gzip:   0.89 kB
+dist/assets/SeverityTag-BCsMU8e0.js                                      2.07 kB │ gzip:   0.88 kB
+dist/assets/WorkflowTagsDropdown-BBrwPfr4.js                             2.11 kB │ gzip:   0.86 kB
+dist/assets/templateTransforms-CDz2BA-u.js                               2.15 kB │ gzip:   0.64 kB
+dist/assets/AnnotationTagsDropdown.ee-MrGA6KAf.js                        2.17 kB │ gzip:   0.88 kB
+dist/assets/usePageRedirectionHelper-DqAvw90h.js                         2.24 kB │ gzip:   0.78 kB
+dist/assets/InsightsChartAverageRuntime-Dz7jWASS.js                      2.24 kB │ gzip:   1.03 kB
+dist/assets/SamlOnboarding-DE8usxOR.js                                   2.29 kB │ gzip:   1.00 kB
+dist/assets/InsightsChartTimeSaved-lhMXHRKU.js                           2.30 kB │ gzip:   1.06 kB
+dist/assets/WorkflowOnboardingView-a6uC7102.js                           2.35 kB │ gzip:   0.94 kB
+dist/assets/roles.store-OAU9o4AM.js                                      2.37 kB │ gzip:   0.79 kB
+dist/assets/nodeTransforms-4eNmFthg.js                                   2.46 kB │ gzip:   0.78 kB
+dist/assets/ProjectIcon-D0tNqPy3.js                                      2.51 kB │ gzip:   1.01 kB
+dist/assets/InsightsPaywall-BXpLugnj.js                                  2.56 kB │ gzip:   0.98 kB
+dist/assets/SelectedItemsInfo-DbVRr7rH.js                                2.57 kB │ gzip:   0.94 kB
+dist/assets/DemoLayout-DlkUVkS_.js                                       2.59 kB │ gzip:   1.11 kB
+dist/assets/ErrorView-vw_XsY_v.js                                        2.64 kB │ gzip:   1.04 kB
+dist/assets/EntityUnAuthorised-CX7wpkdU.js                               2.75 kB │ gzip:   1.14 kB
+dist/assets/useKeybindings-DV3uAjTT.js                                   2.83 kB │ gzip:   1.14 kB
+dist/assets/BaseLayout-DpmRUa1z.js                                       2.87 kB │ gzip:   0.89 kB
+dist/assets/useCredentialResolvers-DdxPsmiV.js                           2.89 kB │ gzip:   0.93 kB
+dist/assets/TemplatesView-C9v8J4Gz.js                                    2.94 kB │ gzip:   0.97 kB
+dist/assets/EntityNotFound-B4_pleX8.js                                   2.96 kB │ gzip:   1.05 kB
+dist/assets/templateActions-tIekWkNi.js                                  3.02 kB │ gzip:   1.02 kB
+dist/assets/TextWithHighlights-tkBetLTe.js                               3.03 kB │ gzip:   1.11 kB
+dist/assets/insights.store-CrH2v-zx.js                                   3.03 kB │ gzip:   0.90 kB
+dist/assets/NodeIcon-BpfxyY_b.js                                         3.04 kB │ gzip:   1.05 kB
+dist/assets/ForgotMyPasswordView-cqezaukd.js                             3.14 kB │ gzip:   1.25 kB
+dist/assets/SetupView-DjZcncOn.js                                        3.14 kB │ gzip:   1.18 kB
+dist/assets/CopyInput-DoI6CDPb.js                                        3.17 kB │ gzip:   1.21 kB
+dist/assets/CredentialIcon-CWOuPEO1.js                                   3.23 kB │ gzip:   1.13 kB
+dist/assets/useExecutionHelpers-vQSwXMJ6.js                              3.24 kB │ gzip:   1.07 kB
+dist/assets/useCalloutHelpers-oyoLnPVD.js                                3.24 kB │ gzip:   1.15 kB
+dist/assets/SetupWorkflowCredentialsButton-B4XfG8Nf.js                   3.29 kB │ gzip:   1.27 kB
+dist/assets/DataTableActions-DhOE1WvE.js                                 3.53 kB │ gzip:   1.22 kB
+dist/assets/ChatAgentAvatar-D8WBUYXB.js                                  3.61 kB │ gzip:   1.37 kB
+dist/assets/ProjectBreadcrumb-CS0EWRyh.js                                3.70 kB │ gzip:   1.29 kB
+dist/assets/_initCloneObject-C5QS4ld-.js                                 3.73 kB │ gzip:   1.14 kB
+dist/assets/usage.store-9fRzDGtx.js                                      4.12 kB │ gzip:   1.24 kB
+dist/assets/insights.utils-B0scSivw.js                                   4.12 kB │ gzip:   1.30 kB
+dist/assets/Alert-C3Dz6G9y.js                                            4.18 kB │ gzip:   1.34 kB
+dist/assets/WorkflowExecutionsLandingPage-BNLJ5Oj8.js                    4.19 kB │ gzip:   1.40 kB
+dist/assets/nodeIcon-rmmr6CCC.js                                         4.23 kB │ gzip:   1.27 kB
+dist/assets/externalSecrets.ee.store-C-zwvdHg.js                         4.23 kB │ gzip:   1.27 kB
+dist/assets/chartjs.utils-D_Wuhj6p.js                                    4.29 kB │ gzip:   1.06 kB
+dist/assets/TimeAgo-rXDsajfo.js                                          4.30 kB │ gzip:   1.63 kB
+dist/assets/col-DEBnF3aL.js                                              4.33 kB │ gzip:   1.34 kB
+dist/assets/SignupView-u2LcE9fd.js                                       4.38 kB │ gzip:   1.53 kB
+dist/assets/AuthView-B15hE9xD.js                                         4.51 kB │ gzip:   1.53 kB
+dist/assets/Draggable-BgC74mQc.js                                        4.53 kB │ gzip:   1.52 kB
+dist/assets/mcp.store-9PGiFU7i.js                                        4.57 kB │ gzip:   1.34 kB
+dist/assets/dist-DrHvYZdj.js                                             4.60 kB │ gzip:   1.52 kB
+dist/assets/ChangePasswordView-CqwTH-ta.js                               4.62 kB │ gzip:   1.60 kB
+dist/assets/chatPanel.store-CoVwJyBs.js                                  4.66 kB │ gzip:   1.35 kB
+dist/assets/TemplateCard-dh8Zgb15.js                                     4.70 kB │ gzip:   1.77 kB
+dist/assets/ModelByIdSelectorModal-CeyjjQBm.js                           4.73 kB │ gzip:   1.64 kB
+dist/assets/useExecutionDebugging-jbeqy2JY.js                            4.80 kB │ gzip:   1.71 kB
+dist/assets/ChatLayout-DeAs1RyI.js                                       4.89 kB │ gzip:   1.84 kB
+dist/assets/useBugReporting-CumkWp2M.js                                  4.91 kB │ gzip:   1.97 kB
+dist/assets/ChatFile-DH9iplNo.js                                         4.96 kB │ gzip:   1.51 kB
+dist/assets/SettingsLayout-CS7Ah0IE.js                                   4.99 kB │ gzip:   1.65 kB
+dist/assets/useSettingsItems-Dc3iGE2O.js                                 4.99 kB │ gzip:   1.27 kB
+dist/assets/utils-DyhuLsgf.js                                            5.09 kB │ gzip:   1.71 kB
+dist/assets/dateformat-DqegO0le.js                                       5.30 kB │ gzip:   1.99 kB
+dist/assets/useWorkflowsCache-BE17Nwur.js                                5.30 kB │ gzip:   1.44 kB
+dist/assets/RunDataSearch-D8K-lq5z.js                                    5.37 kB │ gzip:   1.94 kB
+dist/assets/sso.store-Axv-0Ge4.js                                        5.51 kB │ gzip:   1.35 kB
+dist/assets/useDebounce-CzGpKfgK.js                                      5.60 kB │ gzip:   1.76 kB
+dist/assets/ChatWorkflowAgentsView-BhQsoso8.js                           5.71 kB │ gzip:   1.94 kB
+dist/assets/canvas.utils-pkr0ygeI.js                                     5.80 kB │ gzip:   1.65 kB
+dist/assets/CredentialSelectorModal-B76nGIFh.js                          6.00 kB │ gzip:   1.79 kB
+dist/assets/en-PrU4QUr7.js                                               6.04 kB │ gzip:   2.02 kB
+dist/assets/TemplateDetails-CDhW6AP2.js                                  6.54 kB │ gzip:   1.79 kB
+dist/assets/logStreaming.store-C2m9uk7p.js                               6.75 kB │ gzip:   1.74 kB
+dist/assets/ResourceFiltersDropdown-CHQTLQta.js                          6.84 kB │ gzip:   2.15 kB
+dist/assets/useGlobalEntityCreation-6FhZvlhU.js                          6.98 kB │ gzip:   1.84 kB
+dist/assets/Modal-M2o1Ro5k.js                                            7.14 kB │ gzip:   2.27 kB
+dist/assets/ChatPersonalAgentsView-C2ksfEqD.js                           7.18 kB │ gzip:   2.24 kB
+dist/assets/WorkflowPreview-RjDppjAB.js                                  7.21 kB │ gzip:   2.10 kB
+dist/assets/TemplatesWorkflowView-BZD6shYL.js                            7.28 kB │ gzip:   2.27 kB
+dist/assets/WorkflowLocation-DLtXmWMS.js                                 7.28 kB │ gzip:   1.57 kB
+dist/assets/banners.store-BpdbU8Be.js                                    7.29 kB │ gzip:   2.33 kB
+dist/assets/executions.store-DZ8-NYTa.js                                 7.49 kB │ gzip:   1.91 kB
+dist/assets/versions.store-BFw07Sj7.js                                   7.53 kB │ gzip:   2.27 kB
+dist/assets/TemplatesCollectionView-QTh9qY4_.js                          7.68 kB │ gzip:   2.38 kB
+dist/assets/RunDataParsedAiContent-Be_fCoJ_.js                           7.68 kB │ gzip:   2.50 kB
+dist/assets/FolderBreadcrumbs-BAeJPIC3.js                                7.82 kB │ gzip:   2.31 kB
+dist/assets/usePinnedData-igjUM1Oy.js                                    8.07 kB │ gzip:   2.38 kB
+dist/assets/TagsDropdown-6JC1m9a7.js                                     8.08 kB │ gzip:   2.61 kB
+dist/assets/WorkflowExecutionsInfoAccordion-9JzTHoH2.js                  8.35 kB │ gzip:   2.21 kB
+dist/assets/SkeletonAgentCard-B_Hkmuql.js                                8.39 kB │ gzip:   2.31 kB
+dist/assets/folders.store-CLTrIp-i.js                                    8.41 kB │ gzip:   2.29 kB
+dist/assets/dataTable.store-AGQLd8Vm.js                                  8.90 kB │ gzip:   2.26 kB
+dist/assets/RunDataJson-B0LLMEtB.js                                      9.06 kB │ gzip:   2.89 kB
+dist/assets/ProjectCardBadge-BidkWI-G.js                                 9.06 kB │ gzip:   2.29 kB
+dist/assets/InsightsTableWorkflows-DfGc-YOw.js                           9.32 kB │ gzip:   2.88 kB
+dist/assets/radio-BIurTF2p.js                                            9.40 kB │ gzip:   2.50 kB
+dist/assets/ResolversView-DNi-hF3g.js                                    9.41 kB │ gzip:   2.62 kB
+dist/assets/collaboration.store-B7U1UwBW.js                              9.52 kB │ gzip:   2.27 kB
+dist/assets/NodeCreation-CclPMDWj.js                                     9.59 kB │ gzip:   3.02 kB
+dist/assets/OAuthConsentView-YlfRk1p1.js                                 9.78 kB │ gzip:   2.64 kB
+dist/assets/ProjectRolesView-DFbLcxRg.js                                 9.84 kB │ gzip:   2.93 kB
+dist/assets/useActions-8j4mlp4r.js                                       9.91 kB │ gzip:   2.90 kB
+dist/assets/InsightsSummary-DHlhlEF2.js                                 10.55 kB │ gzip:   3.09 kB
+dist/assets/SettingsExternalSecrets-DIHul6Uc.js                         11.00 kB │ gzip:   3.03 kB
+dist/assets/MCPConnectWorkflowsModal--Qn_WFSg.js                        11.20 kB │ gzip:   3.43 kB
+dist/assets/evaluation.constants-DhVKAgaH.js                            11.39 kB │ gzip:   3.72 kB
+dist/assets/SetupTemplateFormStep-BB7vJuaS.js                           11.58 kB │ gzip:   3.20 kB
+dist/assets/personalizedTemplatesV3.store-hVAVAYw7.js                   11.79 kB │ gzip:   3.09 kB
+dist/assets/CommunityNodeUpdateInfo-DKq-e_Oc.js                         11.79 kB │ gzip:   3.24 kB
+dist/assets/ProjectSharing-BmLwd_v7.js                                  11.84 kB │ gzip:   3.16 kB
+dist/assets/SetupWorkflowFromTemplateView-DgGN4C5u.js                   11.89 kB │ gzip:   3.32 kB
+dist/assets/SettingsChatHubView-D0w6WWyZ.js                             12.02 kB │ gzip:   3.30 kB
+dist/assets/DataTableView-Cm5NtJJm.js                                   12.06 kB │ gzip:   3.40 kB
+dist/assets/MigrationRuleDetail-DvNpejxD.js                             12.35 kB │ gzip:   3.65 kB
+dist/assets/TemplateList-BUfq7sSa.js                                    12.82 kB │ gzip:   3.09 kB
+dist/assets/ProviderSettingsModal--Nk0NbZi.js                           13.05 kB │ gzip:   3.16 kB
+dist/assets/CredentialPicker-pkuuIjfs.js                                13.11 kB │ gzip:   3.36 kB
+dist/assets/SigninView-BIBeIfDQ.js                                      13.40 kB │ gzip:   3.83 kB
+dist/assets/dialog-DsP3j4xD.js                                          13.65 kB │ gzip:   4.07 kB
+dist/assets/SettingsApiView-Bju7EtZF.js                                 13.78 kB │ gzip:   3.80 kB
+dist/assets/MigrationRules-BWsGWjz5.js                                  14.11 kB │ gzip:   3.06 kB
+dist/assets/AgentEditorModal-gZE4tGLs.js                                14.36 kB │ gzip:   3.59 kB
+dist/assets/ToolsSelectorModal-Cn_3DZFD.js                              15.02 kB │ gzip:   3.86 kB
+dist/assets/pushConnection.store-tK2gBYtE.js                            15.61 kB │ gzip:   4.47 kB
+dist/assets/SettingsPersonalView-Bej73YtG.js                            16.56 kB │ gzip:   3.96 kB
+dist/assets/SettingsCommunityNodesView-CZAflUEE.js                      16.67 kB │ gzip:   4.14 kB
+dist/assets/ProjectRoleView-B4mBoAT9.js                                 16.93 kB │ gzip:   4.09 kB
+dist/assets/ExternalSecretsProviderConnectionSwitch.ee-BdBIg-_f.js      16.98 kB │ gzip:   8.25 kB
+dist/assets/SettingsLogStreamingView-DqMjXyX7.js                        17.22 kB │ gzip:   4.43 kB
+dist/assets/TestRunDetailView-BxxjBcXr.js                               17.94 kB │ gzip:   4.45 kB
+dist/assets/MainSidebarHeader-ClREMeI-.js                               18.16 kB │ gzip:   4.26 kB
+dist/assets/SettingsUsageAndPlan-Ba8fUFvA.js                            18.18 kB │ gzip:   4.40 kB
+dist/assets/EvaluationsView-BWOd5BGc.js                                 18.42 kB │ gzip:   4.84 kB
+dist/assets/aiTemplatesStarterCollection.store-DSTX2bzR.js              19.69 kB │ gzip:   5.07 kB
+dist/assets/ProjectVariables-Cr9RJsAQ.js                                20.38 kB │ gzip:   5.44 kB
+dist/assets/assistant.store-CZvnYHqE.js                                 20.77 kB │ gzip:   5.09 kB
+dist/assets/CredentialsView-DYMPS1yh.js                                 20.97 kB │ gzip:   5.74 kB
+dist/assets/ChatLayout-DkIqVsbv.js                                      21.26 kB │ gzip:   5.50 kB
+dist/assets/InsightsDashboard-CXKv_hH-.js                               21.92 kB │ gzip:   5.84 kB
+dist/assets/readyToRun.store-rnrRVbbf.js                                22.34 kB │ gzip:   6.12 kB
+dist/assets/usePushConnection-8mD5kQDC.js                               23.49 kB │ gzip:   5.52 kB
+dist/assets/EvaluationsRootView-ikw6p_4t.js                             23.71 kB │ gzip:   4.93 kB
+dist/assets/useCustomAgent-NIiJILpG.js                                  23.73 kB │ gzip:   6.41 kB
+dist/assets/ProjectHeader-C7KyJdiw.js                                   24.49 kB │ gzip:   5.66 kB
+dist/assets/buttons.esm-ClgDt63y.js                                     24.52 kB │ gzip:   7.46 kB
+dist/assets/SettingsSourceControl-BrdiJ4Zs.js                           24.70 kB │ gzip:   4.80 kB
+dist/assets/useRunWorkflow-BI2s8ahT.js                                  24.84 kB │ gzip:   6.58 kB
+dist/assets/ExecutionsTime-BZUzhyeu.js                                  24.90 kB │ gzip:   5.10 kB
+dist/assets/merge-Dbt8t6jk.js                                           27.11 kB │ gzip:   5.68 kB
+dist/assets/WorkerView-DpzPJL8n.js                                      27.22 kB │ gzip:   5.99 kB
+dist/assets/ResourcesListLayout-CN5OljUS.js                             27.49 kB │ gzip:   6.74 kB
+dist/assets/WorkflowExecutionsPreview-JIgr0HSa.js                       27.87 kB │ gzip:   5.95 kB
+dist/assets/RunDataTable-tEZexo0K.js                                    31.73 kB │ gzip:   7.71 kB
+dist/assets/AppSidebar-CANsRejN.js                                      33.07 kB │ gzip:   7.49 kB
+dist/assets/chat.store-DhN6Vswm.js                                      33.76 kB │ gzip:   7.48 kB
+dist/assets/WorkflowExecutionsView-CxsUfviA.js                          34.00 kB │ gzip:   7.74 kB
+dist/assets/SettingsUsersView-4-LMstCF.js                               34.52 kB │ gzip:   7.51 kB
+dist/assets/ExecutionsView-C4EUR5SQ.js                                  36.10 kB │ gzip:   7.84 kB
+dist/assets/xml-BqwtrjQ2.js                                             37.19 kB │ gzip:   7.70 kB
+dist/assets/CalendarDate-CRQoybHy.js                                    37.38 kB │ gzip:   7.79 kB
+dist/assets/vue-json-pretty-yQFaTulu.js                                 38.13 kB │ gzip:  10.64 kB
+dist/assets/core-CluDKzdT.js                                            38.16 kB │ gzip:  10.82 kB
+dist/assets/useLogsTreeExpand-B1ZxMpoJ.js                               38.75 kB │ gzip:   9.99 kB
+dist/assets/NodeDetailsViewV2-ab54AGH1.js                               38.81 kB │ gzip:   9.62 kB
+dist/assets/ProjectSettings-C2B-zYgv.js                                 38.88 kB │ gzip:   8.17 kB
+dist/assets/WorkflowHistory-nVPPf_k7.js                                 39.86 kB │ gzip:   8.32 kB
+dist/assets/readyToRunWorkflows.store-qXfqBjGE.js                       40.26 kB │ gzip:  10.26 kB
+dist/assets/NodeDetailsView-B6L4J0NH.js                                 43.39 kB │ gzip:  10.14 kB
+dist/assets/TemplatesSearchView-D3iFzhJE.js                             44.11 kB │ gzip:  10.36 kB
+dist/assets/SettingsMCPView-EcHzJAGo.js                                 47.35 kB │ gzip:   9.26 kB
+dist/assets/SettingsSso-Dl1Vyz7l.js                                     50.45 kB │ gzip:   9.66 kB
+dist/assets/semver-nhxYpYGB.js                                          50.92 kB │ gzip:  11.16 kB
+dist/assets/TriggerPanel-BK3XtCHL.js                                    56.87 kB │ gzip:  12.27 kB
+dist/assets/exports-Ca-3p1Gh.js                                         61.33 kB │ gzip:  15.85 kB
+dist/assets/AddDataTableModal-BbXi0ZZX.js                               61.72 kB │ gzip:  14.49 kB
+dist/assets/ChatView-DTbx88Ig.js                                        64.56 kB │ gzip:  14.24 kB
+dist/assets/FixedCollectionParameter-CorxadoW.js                        70.38 kB │ gzip:  13.06 kB
+dist/assets/SettingsLdapView-Bug_LQ6M.js                                70.80 kB │ gzip:  14.26 kB
+dist/assets/useCanvasOperations-DAW3p5qW.js                             77.30 kB │ gzip:  17.24 kB
+dist/assets/NodeSettings-DmiBQZt2.js                                    82.16 kB │ gzip:  17.80 kB
+dist/assets/WorkflowLayout-DdK0BRsN.js                                  82.53 kB │ gzip:  19.04 kB
+dist/assets/VirtualSchema-Dp3Ji-BT.js                                   87.46 kB │ gzip:  22.96 kB
+dist/assets/LogsPanel-C5BfTPjd.js                                       96.07 kB │ gzip:  21.79 kB
+dist/assets/NodeCreator-bTIIsijO.js                                     98.17 kB │ gzip:  20.23 kB
+dist/assets/_baseOrderBy-CjIEkxS9.js                                   104.51 kB │ gzip:  29.63 kB
+dist/assets/NodeView-DGR7vNNw.js                                       105.24 kB │ gzip:  23.90 kB
+dist/assets/nodeCreator.store-C_iLpQSo.js                              112.46 kB │ gzip:  21.28 kB
+dist/assets/router-aGugcPmO.js                                         118.10 kB │ gzip:  27.42 kB
+dist/assets/WorkflowsView-DfnF6hXN.js                                  130.14 kB │ gzip:  24.34 kB
+dist/assets/table-pa8iiM0e.js                                          134.47 kB │ gzip:  32.90 kB
+dist/assets/vue-DpS1lAYM.js                                            156.85 kB │ gzip:  39.01 kB
+dist/assets/date-picker-BjhTd3WJ.js                                    157.58 kB │ gzip:  32.35 kB
+dist/assets/RunDataJsonActions-CSygfS5B.js                             178.64 kB │ gzip:  38.07 kB
+dist/assets/vue.runtime.esm-bundler-XtMkEjzB.js                        280.61 kB │ gzip:  70.32 kB
+dist/assets/languageModules-CaIox4bJ.js                                297.51 kB │ gzip:  83.29 kB
+dist/assets/useImportCurlCommand-Bi1CKNrl.js                           313.71 kB │ gzip:  63.42 kB
+dist/assets/chart-DHt0naGD.js                                          348.60 kB │ gzip:  85.91 kB
+dist/assets/sanitize-html-BZLAzrVX.js                                  409.65 kB │ gzip: 103.66 kB
+dist/assets/CanvasRunWorkflowButton-CabHzyd4.js                        452.36 kB │ gzip: 103.06 kB
+dist/assets/_MapCache-B2txRbka.js                                      535.11 kB │ gzip: 120.64 kB
+dist/assets/NDVEmptyState-BHmcuM0u.js                                  727.42 kB │ gzip: 183.67 kB
+dist/assets/users.store-Co2oxM-3.js                                  1,022.23 kB │ gzip: 244.97 kB
+dist/assets/RunData-BNyfR45N.js                                      1,063.11 kB │ gzip: 266.15 kB
+dist/assets/index-VXrJitcC.js                                        1,181.89 kB │ gzip: 244.19 kB
+dist/assets/es-DJRhTGTg.js                                           1,190.50 kB │ gzip: 324.96 kB
+dist/assets/ParameterInputList-BxDwAwtl.js                           1,438.59 kB │ gzip: 354.74 kB
+dist/assets/DataTableDetailsView-hwVJdEB3.js                         1,589.87 kB │ gzip: 355.20 kB
+dist/assets/src-Bw0gaDrU.js                                          2,149.83 kB │ gzip: 462.08 kB
+dist/assets/constants-CSsLaM5u.js                                    2,858.64 kB │ gzip: 552.07 kB
+[33m[33m[EVAL] Warning:[0m Use of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+      [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1195:37 [38;5;246m][0m
+      [38;5;246m│[0m
+ [38;5;246m1195 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mM[0m[38;5;249m_[0m[38;5;249mC[0m[38;5;249mO[0m[38;5;249mN[0m[38;5;249mS[0m[38;5;249mT[0m[38;5;249mS[0m[38;5;249m[[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+ [38;5;240m     │[0m                                     ──┬─  
+ [38;5;240m     │[0m                                       ╰─── Use of direct `eval` here.
+ [38;5;240m     │[0m 
+ [38;5;240m     │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m──────╯[0m
+[39m
+[33m[33m[EVAL] Warning:[0m Use of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+      [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1221:39 [38;5;246m][0m
+      [38;5;246m│[0m
+ [38;5;246m1221 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mE[0m[38;5;249mx[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249ms[0m[38;5;249m[[0m[38;5;249mn[0m[38;5;249ma[0m[38;5;249mm[0m[38;5;249me[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+ [38;5;240m     │[0m                                       ──┬─  
+ [38;5;240m     │[0m                                         ╰─── Use of direct `eval` here.
+ [38;5;240m     │[0m 
+ [38;5;240m     │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m──────╯[0m
+[39m
+[32m✓ built in 15.39s[39m
+::endgroup::
+::group::n8n-core:build
+cache miss, executing 44f55beab75585a6
+
+> n8n-core@2.4.0 build /home/runner/_work/n8n/n8n/packages/core
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+
+::endgroup::
+::group::n8n-node-dev:build
+cache miss, executing 64af3601895d343f
+
+> n8n-node-dev@2.4.0 build /home/runner/_work/n8n/n8n/packages/node-dev
+> tsc --noEmit
+
+::endgroup::
+::group::@n8n/task-runner:build
+cache miss, executing 6a8e9b0c170268f0
+
+> @n8n/task-runner@2.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/task-runner
+> tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/db:build
+cache miss, executing ad9653b6781cee7b
+
+> @n8n/db@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/db
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::@n8n/backend-test-utils:build
+cache miss, executing 9961bd606afa6342
+
+> @n8n/backend-test-utils@1.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/backend-test-utils
+> tsc -p tsconfig.build.json
+
+::endgroup::
+::group::n8n-nodes-base:build
+cache miss, executing 72acd081f5c8ea7e
+
+> n8n-nodes-base@2.4.0 build /home/runner/_work/n8n/n8n/packages/nodes-base
+> tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+
+
+> n8n-nodes-base@2.4.0 copy-nodes-json /home/runner/_work/n8n/n8n/packages/nodes-base
+> node scripts/copy-nodes-json.js .
+
+Default locale set to: [35men[0m
+No translation required - Skipping translations build...
+::endgroup::
+::group::@n8n/n8n-nodes-langchain:build
+cache miss, executing 96c91c27360c513f
+
+> @n8n/n8n-nodes-langchain@2.4.0 build /home/runner/_work/n8n/n8n/packages/@n8n/nodes-langchain
+> tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+
+
+> @n8n/n8n-nodes-langchain@2.4.0 copy-nodes-json /home/runner/_work/n8n/n8n/packages/@n8n/nodes-langchain
+> node ../../nodes-base/scripts/copy-nodes-json.js .
+
+
+> @n8n/n8n-nodes-langchain@2.4.0 copy-tokenizer-json /home/runner/_work/n8n/n8n/packages/@n8n/nodes-langchain
+> node scripts/copy-tokenizer-json.js .
+
+Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+::endgroup::
+::group::n8n:build
+cache miss, executing 5d7036799ec62867
+
+> n8n@2.4.0 build /home/runner/_work/n8n/n8n/packages/cli
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+
+
+> n8n@2.4.0 build:data /home/runner/_work/n8n/n8n/packages/cli
+> node scripts/build.mjs
+
+::endgroup::
+
+ Tasks:    42 successful, 42 total
+Cached:    34 cached, 42 total
+  Time:    1m7.982s 
+
