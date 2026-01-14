@@ -20,6 +20,7 @@ import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { TEST_TEMPLATE_WITH_MODULES } from './test_constants';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -425,10 +426,16 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		});
 	};
 
+	const getTestTemplateWithModules = (): IWorkflowTemplate => {
+		return TEST_TEMPLATE_WITH_MODULES;
+	};
+
 	const getFixedWorkflowTemplate = async (
-		templateId: string,
+		_templateId: string,
 	): Promise<IWorkflowTemplate | undefined> => {
-		const template = await getWorkflowTemplate(templateId);
+		// TODO: Replace with actual template fetching once modules feature is complete
+		// const template = await getWorkflowTemplate(_templateId);
+		const template = getTestTemplateWithModules();
 		if (template?.workflow?.nodes) {
 			template.workflow.nodes = getNodesWithNormalizedPosition(
 				template.workflow.nodes,

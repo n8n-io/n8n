@@ -165,6 +165,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowTags = computed(() => workflow.value.tags as string[]);
 
+	const workflowModules = computed(() => workflow.value.modules ?? []);
+
 	const allWorkflows = computed(() =>
 		Object.values(workflowsById.value).sort((a, b) => a.name.localeCompare(b.name)),
 	);
@@ -1369,6 +1371,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
+	function setModules(value: IWorkflowDb['modules']): void {
+		workflow.value.modules = value;
+	}
+
 	function addNode(nodeData: INodeUi): void {
 		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
 		// which listens to this function being called, when this is moved to workflowState soon
@@ -1976,6 +1982,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowChecksum,
 		workflowSettings,
 		workflowTags,
+		workflowModules,
 		allWorkflows,
 		isNewWorkflow,
 		isWorkflowSaved,
@@ -2091,6 +2098,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
+		setModules,
 		findNodeByPartialId,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,

@@ -2701,6 +2701,10 @@ export function useCanvasOperations() {
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
+		// Store modules if they exist in the template workflow
+		if ('modules' in workflow && workflow.modules) {
+			workflowsStore.setModules(workflow.modules);
+		}
 		await addNodes(convertedNodes ?? []);
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });

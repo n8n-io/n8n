@@ -18,11 +18,18 @@ export interface IWorkflowTemplateNodeCredentials {
 	[key: string]: string | INodeCredentialsDetails;
 }
 
+export interface ITemplateModule {
+	name: string;
+	description: string;
+	nodes: string[];
+}
+
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
 	workflow: Pick<WorkflowData, 'connections' | 'settings' | 'pinData'> & {
 		nodes: IWorkflowTemplateNode[];
+		modules?: ITemplateModule[];
 	};
 }
 

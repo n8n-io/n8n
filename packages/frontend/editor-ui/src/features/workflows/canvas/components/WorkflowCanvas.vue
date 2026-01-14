@@ -9,6 +9,7 @@ import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { useCanvasModules } from '../composables/useCanvasModules';
 import Canvas from './Canvas.vue';
 
 defineOptions({
@@ -55,6 +56,12 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+});
+
+const workflowModules = computed(() => props.workflow.modules ?? []);
+const { modules: mappedModules } = useCanvasModules({
+	nodes: mappedNodes,
+	modules: workflowModules,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -148,6 +155,7 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:modules="mappedModules"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"

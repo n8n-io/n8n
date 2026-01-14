@@ -256,3 +256,11 @@ export type ViewportBoundaries = {
 };
 
 export type SearchShortcut = '/' | 'ctrl+f';
+
+export interface CanvasModule {
+	name: string;
+	description: string;
+	nodeNames: string[];
+	boundingBox: BoundingBox;
+	collapsed: boolean;
+}

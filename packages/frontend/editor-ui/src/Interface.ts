@@ -44,6 +44,7 @@ import type {
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { ITemplateModule } from '@n8n/rest-api-client/api/templates';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -264,6 +265,7 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	modules?: ITemplateModule[];
 }
 
 // For workflow list we don't need the full workflow data

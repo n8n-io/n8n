@@ -13,6 +13,7 @@ import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
+	CanvasModule,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeMoveEvent,
@@ -61,6 +62,7 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import CanvasModulesLayer from './elements/modules/CanvasModulesLayer.vue';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 
@@ -132,6 +134,7 @@ const props = withDefaults(
 		id?: string;
 		nodes: CanvasNode[];
 		connections: CanvasConnection[];
+		modules?: CanvasModule[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
@@ -144,6 +147,7 @@ const props = withDefaults(
 		id: 'canvas',
 		nodes: () => [],
 		connections: () => [],
+		modules: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
@@ -1052,6 +1056,8 @@ defineExpose({
 		<slot name="canvas-background" v-bind="{ viewport }">
 			<CanvasBackground :viewport="viewport" :striped="readOnly" />
 		</slot>
+
+		<CanvasModulesLayer v-if="modules.length > 0" :modules="modules" />
 
 		<Transition name="minimap">
 			<MiniMap
