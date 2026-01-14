@@ -2,11 +2,14 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { tool } from '@langchain/core/tools';
 import {
 	checkConditions,
+	type IDisplayOptions,
 	type INode,
 	type INodeTypeDescription,
 	type INodeParameters,
-	type Logger,
 	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type Logger,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -69,6 +72,138 @@ function isHiddenByCondition(
 	}
 
 	return false;
+}
+
+/**
+ * Type guard for INodePropertyOptions.
+ * INodePropertyOptions has `name` + `value` (primitive value).
+ */
+function isINodePropertyOptions(item: unknown): item is INodePropertyOptions {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'value' in item &&
+		'name' in item &&
+		!('values' in item) // Distinguish from INodePropertyCollection
+	);
+}
+
+/**
+ * Type guard for INodePropertyCollection.
+ * INodePropertyCollection has `name` + `displayName` + `values` (array of INodeProperties).
+ */
+function isINodePropertyCollection(item: unknown): item is INodePropertyCollection {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('values' in item) || !('name' in item)) return false;
+	// After 'values' in item, TypeScript narrows to object & Record<'values', unknown>
+	return Array.isArray(item.values);
+}
+
+/**
+ * Type guard for INodeProperties.
+ * INodeProperties has `name` + `type` + `default`.
+ */
+function isINodeProperties(item: unknown): item is INodeProperties {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'type' in item &&
+		'name' in item &&
+		'default' in item
+	);
+}
+
+/**
+ * Check if an item should be hidden based on @version, resource, operation conditions.
+ * Used for nested items (options, collection values) that have their own displayOptions.
+ */
+function isItemHiddenForContext(
+	displayOptions: IDisplayOptions | undefined,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): boolean {
+	if (!displayOptions) return false;
+
+	if (isHiddenByCondition(displayOptions, '@version', nodeVersion)) return true;
+
+	const resource = currentValues.resource;
+	if (typeof resource === 'string' && isHiddenByCondition(displayOptions, 'resource', resource)) {
+		return true;
+	}
+
+	const operation = currentValues.operation;
+	if (
+		typeof operation === 'string' &&
+		isHiddenByCondition(displayOptions, 'operation', operation)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Recursively filter a property and all its nested structures.
+ * Uses for-loops with type guards for proper type narrowing without coercion.
+ */
+function filterPropertyRecursively(
+	property: INodeProperties,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): INodeProperties {
+	if (!property.options || property.options.length === 0) {
+		return property;
+	}
+
+	const { type, options } = property;
+
+	// For options/multiOptions: filter INodePropertyOptions items
+	if (type === 'options' || type === 'multiOptions') {
+		const filteredOptions: INodePropertyOptions[] = [];
+		for (const opt of options) {
+			// Type guard narrows `opt` to INodePropertyOptions inside this block
+			if (isINodePropertyOptions(opt)) {
+				if (!isItemHiddenForContext(opt.displayOptions, nodeVersion, currentValues)) {
+					filteredOptions.push(opt);
+				}
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	// For collection: filter and recurse INodeProperties items
+	if (type === 'collection') {
+		const filteredOptions: INodeProperties[] = [];
+		for (const prop of options) {
+			// Type guard narrows `prop` to INodeProperties inside this block
+			if (isINodeProperties(prop)) {
+				if (!isItemHiddenForContext(prop.displayOptions, nodeVersion, currentValues)) {
+					filteredOptions.push(filterPropertyRecursively(prop, nodeVersion, currentValues));
+				}
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	// For fixedCollection: process INodePropertyCollection items and recurse into values
+	if (type === 'fixedCollection') {
+		const filteredOptions: INodePropertyCollection[] = [];
+		for (const coll of options) {
+			// Type guard narrows `coll` to INodePropertyCollection inside this block
+			if (isINodePropertyCollection(coll)) {
+				const filteredValues: INodeProperties[] = [];
+				for (const prop of coll.values) {
+					if (!isItemHiddenForContext(prop.displayOptions, nodeVersion, currentValues)) {
+						filteredValues.push(filterPropertyRecursively(prop, nodeVersion, currentValues));
+					}
+				}
+				filteredOptions.push({ ...coll, values: filteredValues });
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	return property;
 }
 
 /**
@@ -135,8 +270,14 @@ function filterPropertiesForContext(
 	_nodeType: INodeTypeDescription,
 	currentValues: INodeParameters,
 ): INodeProperties[] {
-	return properties.filter((property) =>
-		isPropertyVisibleForContext(property, node.typeVersion, currentValues),
+	const nodeVersion = node.typeVersion;
+
+	return (
+		properties
+			// First filter root-level properties
+			.filter((property) => isPropertyVisibleForContext(property, nodeVersion, currentValues))
+			// Then recursively filter nested structures
+			.map((property) => filterPropertyRecursively(property, nodeVersion, currentValues))
 	);
 }
 
