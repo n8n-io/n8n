@@ -8,10 +8,13 @@ import type {
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
+import type {
+	MessageEventBus,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
-import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -89,7 +92,7 @@ export class MessageEventBusDestinationSentry
 				sendResult = true;
 			}
 		} catch (error) {
-			if (error.message) this.logger.debug(error.message as string);
+			this.logger.debug(`Failed to send message to Sentry destination: ${this.label}`, { error });
 			throw error;
 		}
 		return sendResult;
