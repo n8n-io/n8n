@@ -767,7 +767,6 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 
 		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
 			data: [{ name: 'Alice' }],
-			returnType: 'count',
 		});
 
 		expect(response.statusCode).toBe(200);
