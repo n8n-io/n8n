@@ -221,6 +221,7 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+	runData.pushRef = additionalData.pushRef;
 
 	const executionId = await activeExecutions.add(runData);
 
@@ -302,6 +303,7 @@ async function startExecution(
 			workflowData,
 			additionalData.userId,
 			options.parentExecution,
+			runData.pushRef,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;

@@ -65,6 +65,7 @@ export class ActiveExecutions {
 				workflowData: executionData.workflowData,
 				status: executionStatus,
 				workflowId: executionData.workflowData.id,
+				parentExecutionId: executionData.executionData?.parentExecution?.executionId,
 			};
 
 			fullExecutionData.retryOf = executionData.retryOf ?? undefined;

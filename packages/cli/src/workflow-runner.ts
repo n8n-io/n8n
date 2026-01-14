@@ -282,6 +282,7 @@ export class WorkflowRunner {
 				executionId,
 			});
 
+			additionalData.pushRef = data.pushRef;
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
 			});
