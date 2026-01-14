@@ -377,7 +377,7 @@ export const routes: RouteRecordRaw[] = [
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
-		beforeEnter: (to, from, next) => {
+		beforeEnter: (to, _from, next) => {
 			const { check } = useEnvFeatureFlag();
 			if (check.value('CRDT')) {
 				next({
@@ -394,12 +394,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow-crdt/:name/:nodeId?',
 		name: VIEWS.WORKFLOW_CRDT,
-		components: {
-			default: async () => await import('@/features/crdt/views/CRDTTestView.vue'),
-			// header: MainHeader,
-			sidebar: MainSidebar,
-			// footer: LogsPanel,
-		},
+		component: async () => await import('@/features/crdt/views/CRDTTestView.vue'),
 		meta: {
 			middleware: ['authenticated'],
 		},
