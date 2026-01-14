@@ -12,8 +12,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '../constants';
-import { OidcService } from '../oidc.service.ee';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from './constants';
+import { OidcService } from './oidc.service.ee';
 
 @RestController('/sso/oidc')
 export class OidcController {
