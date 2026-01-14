@@ -339,8 +339,13 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const pathsToAdd = this.getNodeParameter('pathsToAdd', itemIndex, '') as string;
+					const paths = pathsToAdd
+						.split(',')
+						.map((p) => p.trim())
+						.filter((p) => p.length > 0);
 
-					await git.add(pathsToAdd.split(','));
+					// Use -- separator to prevent argument injection
+					await git.add(['--', ...paths]);
 
 					returnItems.push({
 						json: {
@@ -415,10 +420,18 @@ export class Git implements INodeType {
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
-						pathsToAdd = (options.pathsToAdd as string).split(',');
+						pathsToAdd = (options.pathsToAdd as string)
+							.split(',')
+							.map((p) => p.trim())
+							.filter((p) => p.length > 0);
 					}
 
-					await git.commit(message, pathsToAdd);
+					// Use -- separator to prevent argument injection
+					if (pathsToAdd && pathsToAdd.length > 0) {
+						await git.commit(message, ['--', ...pathsToAdd]);
+					} else {
+						await git.commit(message);
+					}
 
 					returnItems.push({
 						json: {
