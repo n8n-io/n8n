@@ -2709,7 +2709,7 @@
 	"settings.usageAndPlan.license.activation.error.title": "Activation failed",
 	"settings.usageAndPlan.license.activation.success.title": "License activated",
 	"settings.usageAndPlan.license.activation.success.message": "Your {name} {type} has been successfully activated.",
-	"settings.usageAndPlan.license.activation.success.message.eula": "You have accepted the EULA and successfully activated your {name}.",
+	"settings.usageAndPlan.license.activation.success.message.eula": "You have accepted the EULA and successfully activated your {name} plan.",
 	"settings.usageAndPlan.dialog.eula.title": "Confirmation needed",
 	"settings.usageAndPlan.dialog.eula.description": "To activate your license, you must review and accept our End User License Agreement (EULA). Please confirm that you have read and agree to the terms in order to continue.",
 	"settings.usageAndPlan.dialog.eula.audit.notice": "Your acceptance will be recorded for audit purposes.",
