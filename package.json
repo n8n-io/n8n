@@ -128,7 +128,8 @@
       "jws@4": "4.0.1",
       "qs@6": "6.14.1",
       "@modelcontextprotocol/sdk": "1.25.1",
-      "langchain": "1.2.3"
+      "langchain": "1.2.3",
+      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
