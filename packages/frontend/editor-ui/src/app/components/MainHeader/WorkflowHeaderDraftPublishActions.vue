@@ -158,10 +158,8 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished = workflowsStore.workflow.activeVersion;
+		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
 		if (isWorkflowPublished) {
-			defaultConfigForNoPermission.showIndicator = true;
-			defaultConfigForNoPermission.indicatorClass = 'published';
 			return {
 				...defaultConfigForNoPermission,
 				showIndicator: true,
