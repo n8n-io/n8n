@@ -15,7 +15,7 @@ export const PREDECESSOR_OUTPUT_GUIDE: NodeTypeGuide = {
 #### AI Agent Output Structure
 AI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an "output" object:
 - Without Structured Output Parser: Use \`$json.output\` to access the response string
-- With Structured Output Parser: Use \`$json.output.fieldName\` to access parsed fields
+- With Structured Output Parser (hasOutputParser: true in node settings): Use \`$json.output.fieldName\` to access parsed fields
 - Use \`$('AI Agent').item.json.output.fieldName\` when referencing a node, instead of \`$('AI Agent').item.json.fieldName\`
 - WRONG: \`$json.summary\` → CORRECT: \`$json.output.summary\`
 
