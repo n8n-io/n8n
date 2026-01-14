@@ -1,3 +1,17 @@
+## [2.4.2](https://github.com/n8n-io/n8n/compare/n8n@2.4.1...n8n@2.4.2) (2026-01-14)
+
+
+### Bug Fixes
+
+* **editor:** Fix parameter path in multipleValues=false fixedCollection ([#24217](https://github.com/n8n-io/n8n/issues/24217)) ([e0ff758](https://github.com/n8n-io/n8n/commit/e0ff758fa8d6467ec8b4fc9e9ad23948bdb27ca0))
+* Fix security issue in @rudderstack/rudder-sdk-node via major version upgrade from 2.1.4 to 3.0.0 ([#24303](https://github.com/n8n-io/n8n/issues/24303)) ([99444d1](https://github.com/n8n-io/n8n/commit/99444d1a16dd8318146a25d0d9bf54b43a67786a))
+* Form trigger and Wait Form mode basic authentication fix for form POST request ([#23795](https://github.com/n8n-io/n8n/issues/23795)) ([74aa941](https://github.com/n8n-io/n8n/commit/74aa941a77e7c5aaaeee74d1ff0e9cf785da796e))
+* Harden Git node parameter handling ([#24241](https://github.com/n8n-io/n8n/issues/24241)) ([5391ae2](https://github.com/n8n-io/n8n/commit/5391ae23827d200fe9973f4cd63d7cdd84a7d3f4))
+* **McpClientTool Node:** Filter out tool arguments unless explicitly allowed ([#24263](https://github.com/n8n-io/n8n/issues/24263)) ([852c176](https://github.com/n8n-io/n8n/commit/852c176f0bca4ac42876d1c6740be9809557c684))
+* Regenerate form webhook ids when pasting workflow data ([#24192](https://github.com/n8n-io/n8n/issues/24192)) ([36cfe1f](https://github.com/n8n-io/n8n/commit/36cfe1feea556395925d1a048c3b881bedd5f43d))
+
+
+
 ## [2.4.1](https://github.com/n8n-io/n8n/compare/n8n@2.4.0...n8n@2.4.1) (2026-01-13)
 
 
