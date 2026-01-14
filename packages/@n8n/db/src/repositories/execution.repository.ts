@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
-	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -423,9 +422,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 
-		const updateThenFetch = async (manager: EntityManager) => {
+		return await this.manager.transaction(async (manager) => {
 			// Update status, set startedAt only if not already set (preserves original for resumed executions)
 			await manager
 				.createQueryBuilder()
@@ -438,16 +436,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				.execute();
 
 			// Fetch the actual startedAt
-			const result = await manager.findOneByOrFail(ExecutionEntity, { id: executionId });
+			const { startedAt: actualStartedAt } = await manager.findOneOrFail(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
 
-			return result.startedAt;
-		};
-
-		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-			return await updateThenFetch(this.manager);
-		}
-
-		return await this.manager.transaction(updateThenFetch);
+			return actualStartedAt;
+		});
 	}
 
 	/**
