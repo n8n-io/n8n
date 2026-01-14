@@ -4,12 +4,9 @@ import { useVueFlow } from '@vue-flow/core';
 import type { CanvasModule } from '../../../canvas.types';
 import CanvasModuleComponent from './CanvasModule.vue';
 
-defineProps<{
+const props = defineProps<{
 	modules: CanvasModule[];
-}>();
-
-const emit = defineEmits<{
-	toggleCollapse: [moduleName: string];
+	onToggleCollapse?: (moduleName: string) => void;
 }>();
 
 const { viewport } = useVueFlow();
@@ -19,8 +16,8 @@ const transformStyle = computed(() => ({
 	transformOrigin: '0 0',
 }));
 
-function onToggleCollapse(moduleName: string) {
-	emit('toggleCollapse', moduleName);
+function handleToggleCollapse(moduleName: string) {
+	props.onToggleCollapse?.(moduleName);
 }
 </script>
 
@@ -31,7 +28,7 @@ function onToggleCollapse(moduleName: string) {
 				v-for="module in modules"
 				:key="module.name"
 				:module="module"
-				@toggle-collapse="onToggleCollapse"
+				@toggle-collapse="handleToggleCollapse"
 			/>
 		</div>
 	</div>
@@ -44,8 +41,11 @@ function onToggleCollapse(moduleName: string) {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	pointer-events: none;
 	overflow: hidden;
+	/* Same z-index as vue-flow__panel (5) to ensure clicks work */
+	z-index: 5;
+	/* Allow clicks to pass through to canvas, except on interactive elements */
+	pointer-events: none;
 }
 
 .canvas-modules-viewport {
@@ -54,5 +54,6 @@ function onToggleCollapse(moduleName: string) {
 	left: 0;
 	width: 100%;
 	height: 100%;
+	pointer-events: none;
 }
 </style>

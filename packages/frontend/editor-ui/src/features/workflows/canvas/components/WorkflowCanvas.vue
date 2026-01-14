@@ -59,9 +59,23 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 });
 
 const workflowModules = computed(() => props.workflow.modules ?? []);
-const { modules: mappedModules } = useCanvasModules({
+const {
+	modules: mappedModules,
+	toggleModuleCollapsed,
+	hiddenNodeNames,
+} = useCanvasModules({
 	nodes: mappedNodes,
 	modules: workflowModules,
+});
+
+// Filter out nodes that belong to collapsed modules
+const visibleNodes = computed(() => {
+	if (hiddenNodeNames.value.size === 0) {
+		return mappedNodes.value;
+	}
+	return mappedNodes.value.filter(
+		(node) => !node.data || !hiddenNodeNames.value.has(node.data.name),
+	);
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -73,7 +87,7 @@ const { off } = onNodesInitialized(() => {
 	}
 });
 
-const mappedNodesThrottled = throttledRef(mappedNodes, 200);
+const visibleNodesThrottled = throttledRef(visibleNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 
 defineExpose({
@@ -153,9 +167,10 @@ defineExpose({
 				v-if="workflow"
 				:id="id"
 				ref="canvas"
-				:nodes="executing ? mappedNodesThrottled : mappedNodes"
+				:nodes="executing ? visibleNodesThrottled : visibleNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:modules="mappedModules"
+				:on-toggle-module-collapse="toggleModuleCollapsed"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"

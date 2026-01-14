@@ -135,6 +135,7 @@ const props = withDefaults(
 		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		modules?: CanvasModule[];
+		onToggleModuleCollapse?: (moduleName: string) => void;
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
@@ -148,6 +149,7 @@ const props = withDefaults(
 		nodes: () => [],
 		connections: () => [],
 		modules: () => [],
+		onToggleModuleCollapse: undefined,
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
@@ -1057,7 +1059,11 @@ defineExpose({
 			<CanvasBackground :viewport="viewport" :striped="readOnly" />
 		</slot>
 
-		<CanvasModulesLayer v-if="modules.length > 0" :modules="modules" />
+		<CanvasModulesLayer
+			v-if="modules.length > 0"
+			:modules="modules"
+			:on-toggle-collapse="onToggleModuleCollapse"
+		/>
 
 		<Transition name="minimap">
 			<MiniMap
