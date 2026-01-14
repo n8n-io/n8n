@@ -47,10 +47,5 @@ defineProps<{
 	display: flex;
 	flex-direction: row;
 	gap: var(--spacing--sm);
-
-	/* Hide items beyond the 4th */
-	> *:nth-child(n + 5) {
-		display: none;
-	}
 }
 </style>

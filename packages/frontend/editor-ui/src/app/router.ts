@@ -226,10 +226,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/resource-center',
 		name: VIEWS.RESOURCE_CENTER,
-		components: {
-			default: ResourceCenterView,
-			sidebar: MainSidebar,
-		},
+		component: ResourceCenterView,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -237,10 +234,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/resource-center/section/:sectionId',
 		name: VIEWS.RESOURCE_CENTER_SECTION,
-		components: {
-			default: ResourceCenterSectionView,
-			sidebar: MainSidebar,
-		},
+		component: ResourceCenterSectionView,
 		meta: {
 			middleware: ['authenticated'],
 		},

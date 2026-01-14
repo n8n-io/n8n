@@ -83,18 +83,12 @@ onMounted(() => {
 
 			<!-- Getting Started Section -->
 			<section :class="$style.mainSection">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
-						{{ i18n.baseText('experiments.resourceCenter.gettingStarted.title') }}
-					</N8nHeading>
-				</div>
-
 				<div :class="$style.sectionContent">
 					<!-- QuickStart Workflows -->
 					<HorizontalGallery :title="i18n.baseText('experiments.resourceCenter.quickStart.title')">
 						<template #actions />
 						<QuickStartCard
-							v-for="workflow in quickStartWorkflows"
+							v-for="workflow in quickStartWorkflows.slice(0, 3)"
 							:key="workflow.id"
 							:workflow="workflow"
 							@click="handleQuickStartImport(workflow.id)"
@@ -117,7 +111,11 @@ onMounted(() => {
 							</div>
 						</template>
 						<template v-else>
-							<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
+							<TemplateCard
+								v-for="template in templates.slice(0, 3)"
+								:key="template.id"
+								:template="template"
+							/>
 						</template>
 					</HorizontalGallery>
 				</div>
@@ -125,22 +123,16 @@ onMounted(() => {
 
 			<!-- Learn Anything Section -->
 			<section :class="$style.mainSection">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
-						{{ i18n.baseText('experiments.resourceCenter.learnAnything.title') }}
-					</N8nHeading>
-				</div>
-
 				<div :class="$style.sectionContent">
 					<!-- Official Courses -->
 					<HorizontalGallery :title="i18n.baseText('experiments.resourceCenter.courses.title')">
-						<template v-if="courses.length > 4" #actions>
+						<template v-if="courses.length > 3" #actions>
 							<N8nButton text :class="$style.textButton" @click="handleSeeMore('courses')">
 								{{ i18n.baseText('experiments.resourceCenter.seeMore') }}
 							</N8nButton>
 						</template>
 						<VideoThumbCard
-							v-for="course in courses"
+							v-for="course in courses.slice(0, 3)"
 							:key="course.id"
 							:video="{
 								videoId: course.id,
@@ -156,30 +148,27 @@ onMounted(() => {
 					<HorizontalGallery
 						:title="i18n.baseText('experiments.resourceCenter.youtubeLearn.title')"
 					>
-						<template v-if="learningVideos.length > 4" #actions>
+						<template v-if="learningVideos.length > 3" #actions>
 							<N8nButton text :class="$style.textButton" @click="handleSeeMore('learning-videos')">
 								{{ i18n.baseText('experiments.resourceCenter.seeMore') }}
 							</N8nButton>
 						</template>
-						<VideoThumbCard v-for="video in learningVideos" :key="video.videoId" :video="video" />
+						<VideoThumbCard
+							v-for="video in learningVideos.slice(0, 3)"
+							:key="video.videoId"
+							:video="video"
+						/>
 					</HorizontalGallery>
 				</div>
 			</section>
 
 			<!-- Get Inspired Section -->
 			<section :class="$style.mainSection">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h2" size="xlarge" :class="$style.sectionTitle">
-						{{ i18n.baseText('experiments.resourceCenter.getInspired.title') }}
-					</N8nHeading>
-				</div>
-
 				<div :class="$style.sectionContent">
-					<!-- Inspiration Videos -->
 					<HorizontalGallery
 						:title="i18n.baseText('experiments.resourceCenter.youtubeInspiration.title')"
 					>
-						<template v-if="inspirationVideos.length > 4" #actions>
+						<template v-if="inspirationVideos.length > 3" #actions>
 							<N8nButton
 								text
 								:class="$style.textButton"
@@ -189,7 +178,7 @@ onMounted(() => {
 							</N8nButton>
 						</template>
 						<VideoThumbCard
-							v-for="video in inspirationVideos"
+							v-for="video in inspirationVideos.slice(0, 3)"
 							:key="video.videoId"
 							:video="video"
 						/>
