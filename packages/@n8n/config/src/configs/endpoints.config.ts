@@ -50,7 +50,7 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS')
 	includeMessageEventBusMetrics: boolean = false;
 
-	/** Whether to include metrics for jobs in scaling mode. Not supported in multi-main setup. */
+	/** Whether to include metrics for jobs in scaling mode. In multi-main setups, only the leader collects these metrics. */
 	@Env('N8N_METRICS_INCLUDE_QUEUE_METRICS')
 	includeQueueMetrics: boolean = false;
 

@@ -75,3 +75,47 @@ export async function pollContainerHttpEndpoint(
 		} seconds. Proceeding with caution.`,
 	);
 }
+
+type ResourceQuota = { memory?: number; cpu?: number };
+
+function parseResourceQuota(
+	memoryEnvVar: string | undefined,
+	cpuEnvVar: string | undefined,
+): ResourceQuota | undefined {
+	if (!memoryEnvVar && !cpuEnvVar) {
+		return undefined;
+	}
+
+	const quota: ResourceQuota = {};
+
+	if (memoryEnvVar) {
+		const parsed = parseFloat(memoryEnvVar);
+		if (!Number.isNaN(parsed) && parsed > 0) {
+			quota.memory = Math.round(parsed * 100) / 100;
+		}
+	}
+
+	if (cpuEnvVar) {
+		const parsed = parseFloat(cpuEnvVar);
+		if (!Number.isNaN(parsed) && parsed > 0) {
+			quota.cpu = parsed;
+		}
+	}
+
+	return Object.keys(quota).length > 0 ? quota : undefined;
+}
+
+/** Parse N8N_MEMORY_LIMIT (GB) and N8N_CPU_LIMIT (cores) from env. */
+export function getResourceQuotaFromEnv(): ResourceQuota | undefined {
+	return parseResourceQuota(process.env.N8N_MEMORY_LIMIT, process.env.N8N_CPU_LIMIT);
+}
+
+/** Parse N8N_MAIN_MEMORY_LIMIT and N8N_MAIN_CPU_LIMIT from env. */
+export function getMainResourceQuotaFromEnv(): ResourceQuota | undefined {
+	return parseResourceQuota(process.env.N8N_MAIN_MEMORY_LIMIT, process.env.N8N_MAIN_CPU_LIMIT);
+}
+
+/** Parse N8N_WORKER_MEMORY_LIMIT and N8N_WORKER_CPU_LIMIT from env. */
+export function getWorkerResourceQuotaFromEnv(): ResourceQuota | undefined {
+	return parseResourceQuota(process.env.N8N_WORKER_MEMORY_LIMIT, process.env.N8N_WORKER_CPU_LIMIT);
+}
