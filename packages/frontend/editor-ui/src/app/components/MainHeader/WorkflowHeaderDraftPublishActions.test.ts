@@ -141,6 +141,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent();
 
 			expect(queryByTestId('workflow-active-version-info')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
 		});
 
 		it('should show active version indicator when there is an active version', () => {
@@ -149,6 +150,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
 
 		it('should use latest activation date from workflowPublishHistory when available', () => {
