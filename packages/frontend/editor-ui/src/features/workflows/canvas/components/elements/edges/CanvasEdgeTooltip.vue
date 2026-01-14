@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, useCssModule } from 'vue';
+import { useCssModule } from 'vue';
 import { N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
@@ -7,31 +7,18 @@ const props = defineProps<{
 }>();
 
 const $style = useCssModule();
-
-const visible = ref(false);
-
-function onMouseEnter() {
-	visible.value = true;
-}
-
-function onMouseLeave() {
-	visible.value = false;
-}
 </script>
 
 <template>
 	<div :class="$style.tooltipContainer">
 		<N8nTooltip
-			:visible="visible"
 			:content="content"
 			placement="top"
 			:teleported="false"
 			:offset="8"
 			popper-class="canvas-edge-toolbar-popper"
 		>
-			<div @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
-				<slot />
-			</div>
+			<slot />
 		</N8nTooltip>
 	</div>
 </template>

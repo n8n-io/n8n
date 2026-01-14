@@ -73,15 +73,10 @@ function onDelete() {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
-
-.addContainer {
-	position: relative;
-}
 </style>
 
 <style lang="scss">
 .canvas-edge-toolbar-button {
-	position: relative;
 	border-width: 0;
 	--button--color--text: light-dark(var(--color--neutral-700), var(--color--neutral-250));
 	--button--color--text--hover: light-dark(var(--color--neutral-850), var(--color--neutral-150));
