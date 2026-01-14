@@ -7,6 +7,8 @@ import CanvasModuleComponent from './CanvasModule.vue';
 const props = defineProps<{
 	modules: CanvasModule[];
 	onToggleCollapse?: (moduleName: string) => void;
+	onModuleDrag?: (moduleName: string, delta: { dx: number; dy: number }) => void;
+	onModuleDragEnd?: (moduleName: string) => void;
 }>();
 
 const { viewport } = useVueFlow();
@@ -16,8 +18,18 @@ const transformStyle = computed(() => ({
 	transformOrigin: '0 0',
 }));
 
+const zoom = computed(() => viewport.value.zoom);
+
 function handleToggleCollapse(moduleName: string) {
 	props.onToggleCollapse?.(moduleName);
+}
+
+function handleDrag(moduleName: string, delta: { dx: number; dy: number }) {
+	props.onModuleDrag?.(moduleName, delta);
+}
+
+function handleDragEnd(moduleName: string) {
+	props.onModuleDragEnd?.(moduleName);
 }
 </script>
 
@@ -28,7 +40,10 @@ function handleToggleCollapse(moduleName: string) {
 				v-for="module in modules"
 				:key="module.name"
 				:module="module"
+				:zoom="zoom"
 				@toggle-collapse="handleToggleCollapse"
+				@drag="handleDrag"
+				@drag-end="handleDragEnd"
 			/>
 		</div>
 	</div>

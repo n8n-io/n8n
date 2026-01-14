@@ -7,7 +7,7 @@ import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
-import type { CanvasEventBusEvents } from '../canvas.types';
+import type { CanvasEventBusEvents, CanvasNodeMoveEvent } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { useCanvasModules } from '../composables/useCanvasModules';
 import Canvas from './Canvas.vue';
@@ -15,6 +15,10 @@ import Canvas from './Canvas.vue';
 defineOptions({
 	inheritAttrs: false,
 });
+
+const emit = defineEmits<{
+	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
+}>();
 
 const props = withDefaults(
 	defineProps<{
@@ -67,6 +71,36 @@ const {
 	nodes: mappedNodes,
 	modules: workflowModules,
 });
+
+// Module drag handlers
+function handleModuleDrag(moduleName: string, delta: { dx: number; dy: number }) {
+	// Find the module to get the node names
+	const module = workflowModules.value.find((m) => m.name === moduleName);
+	if (!module) return;
+
+	// Find all mapped nodes that belong to this module and calculate their new positions
+	const positionUpdates: CanvasNodeMoveEvent[] = [];
+	for (const nodeName of module.nodes) {
+		const node = mappedNodes.value.find((n) => n.data?.name === nodeName);
+		if (node) {
+			positionUpdates.push({
+				id: node.id,
+				position: {
+					x: node.position.x + delta.dx,
+					y: node.position.y + delta.dy,
+				},
+			});
+		}
+	}
+
+	if (positionUpdates.length > 0) {
+		emit('update:nodes:position', positionUpdates);
+	}
+}
+
+function handleModuleDragEnd(_moduleName: string) {
+	// Drag end is handled - position updates were already emitted during drag
+}
 
 // Filter out nodes that belong to collapsed modules
 const visibleNodes = computed(() => {
@@ -171,6 +205,8 @@ defineExpose({
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:modules="mappedModules"
 				:on-toggle-module-collapse="toggleModuleCollapsed"
+				:on-module-drag="handleModuleDrag"
+				:on-module-drag-end="handleModuleDragEnd"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"

@@ -136,6 +136,8 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		modules?: CanvasModule[];
 		onToggleModuleCollapse?: (moduleName: string) => void;
+		onModuleDrag?: (moduleName: string, delta: { dx: number; dy: number }) => void;
+		onModuleDragEnd?: (moduleName: string) => void;
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
@@ -150,6 +152,8 @@ const props = withDefaults(
 		connections: () => [],
 		modules: () => [],
 		onToggleModuleCollapse: undefined,
+		onModuleDrag: undefined,
+		onModuleDragEnd: undefined,
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
@@ -1063,6 +1067,8 @@ defineExpose({
 			v-if="modules.length > 0"
 			:modules="modules"
 			:on-toggle-collapse="onToggleModuleCollapse"
+			:on-module-drag="onModuleDrag"
+			:on-module-drag-end="onModuleDragEnd"
 		/>
 
 		<Transition name="minimap">
