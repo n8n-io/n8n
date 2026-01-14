@@ -1,9 +1,8 @@
 import { CorsService } from '@/services/cors-service';
-import { CorsOptions, Method } from '@n8n/decorators';
+import type { CorsOptions, Method } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
-import { Logger } from '@n8n/backend-common';
 
 @Service()
 export class DynamicCredentialCorsService {
@@ -11,7 +10,6 @@ export class DynamicCredentialCorsService {
 	constructor(
 		private readonly corsService: CorsService,
 		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
-		private readonly logger: Logger,
 	) {
 		if (this.dynamicCredentialConfig.corsOrigin === null) {
 			this.defaultOptions = null;

@@ -5,10 +5,10 @@ export class DynamicCredentialsConfig {
 	/**
 	 * Comma-separated list of allowed CORS origins for dynamic credentials endpoints.
 	 * Example: 'https://app.example.com,https://admin.example.com'
-	 * When null, CORS is disabled and endpoints return 404 for preflight requests.
+	 * When empty CORS is disabled and endpoints return 404 for preflight requests.
 	 */
 	@Env('N8N_DYNAMIC_CREDENTIALS_CORS_ORIGIN')
-	corsOrigin: string | null = null;
+	corsOrigin: string = '';
 
 	/**
 	 * Whether to allow credentials (cookies, authorization headers) in CORS requests.

@@ -1,4 +1,4 @@
-import { CorsOptions } from '@n8n/decorators';
+import type { CorsOptions } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Response, Request } from 'express';
 
