@@ -37,8 +37,11 @@ export class ModuleRegistry {
 		'mcp',
 		'provisioning',
 		'breaking-changes',
+		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
+		'sso-oidc',
+		'log-streaming',
 	];
 
 	private readonly activeModules: string[] = [];
