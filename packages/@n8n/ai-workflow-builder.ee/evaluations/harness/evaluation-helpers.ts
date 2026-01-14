@@ -1,8 +1,22 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager';
+import { getLangchainCallbacks } from 'langsmith/langchain';
 import { v4 as uuid } from 'uuid';
 
 import type { LlmCallLimiter } from './harness-types';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../support/constants';
+
+/**
+ * Get LangChain callbacks that bridge the current traceable context.
+ * Returns undefined if not in a traceable context.
+ */
+export async function getTracingCallbacks(): Promise<Callbacks | undefined> {
+	try {
+		return await getLangchainCallbacks();
+	} catch {
+		return undefined;
+	}
+}
 
 export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {

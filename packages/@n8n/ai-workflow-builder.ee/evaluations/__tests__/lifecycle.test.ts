@@ -276,14 +276,14 @@ describe('Console Lifecycle', () => {
 				feedback: [
 					{
 						evaluator: 'pairwise',
-						metric: 'pairwise_generation_correctness',
-						score: 0.5,
-						comment: '1/2 generations passed',
+						metric: 'pairwise_primary',
+						score: 0,
+						comment: '1/3 judges passed',
 						kind: 'score',
 					},
 					{
 						evaluator: 'pairwise',
-						metric: 'gen2.judge2',
+						metric: 'judge2',
 						score: 0,
 						comment: '[No HTTP] Contains HTTP Request node',
 						kind: 'detail',
@@ -297,7 +297,7 @@ describe('Console Lifecycle', () => {
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
 			expect(logOutput).toContain('issues');
-			expect(logOutput).toContain('gen2.judge2');
+			expect(logOutput).toContain('judge2');
 			expect(logOutput).toContain('Contains HTTP Request node');
 		});
 

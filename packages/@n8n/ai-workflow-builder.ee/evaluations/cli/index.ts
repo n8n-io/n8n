@@ -34,7 +34,11 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
+import {
+	consumeGenerator,
+	getChatPayload,
+	getTracingCallbacks,
+} from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
@@ -42,7 +46,8 @@ import { setupTestEnvironment, createAgent } from '../support/environment';
 
 /**
  * Create a workflow generator function.
- * NOTE: Don't pass a tracer - LangSmith tracing is handled via traceable() in the runner.
+ * LangSmith tracing is handled via traceable() in the runner.
+ * We bridge the trace context to LangChain via getTracingCallbacks().
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -51,6 +56,7 @@ function createWorkflowGenerator(
 ): (prompt: string) => Promise<SimpleWorkflow> {
 	return async (prompt: string): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
+		const callbacks = await getTracingCallbacks();
 
 		const agent = createAgent({
 			parsedNodeTypes,
@@ -67,6 +73,8 @@ function createWorkflowGenerator(
 					featureFlags,
 				}),
 				EVAL_USERS.LANGSMITH,
+				undefined, // abortSignal
+				callbacks,
 			),
 		);
 
@@ -166,7 +174,6 @@ export async function runV2Evaluation(): Promise<void> {
 			evaluators.push(
 				createPairwiseEvaluator(env.llm, {
 					numJudges: args.numJudges,
-					numGenerations: args.numGenerations,
 				}),
 			);
 			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
@@ -179,8 +186,6 @@ export async function runV2Evaluation(): Promise<void> {
 			break;
 	}
 
-	// Build context - include generateWorkflow for multi-gen pairwise
-	const isMultiGen = args.suite === 'pairwise' && args.numGenerations > 1;
 	const llmCallLimiter = pLimit(args.concurrency);
 
 	const baseConfig = {
@@ -190,7 +195,7 @@ export async function runV2Evaluation(): Promise<void> {
 		logger,
 		outputDir: args.outputDir,
 		timeoutMs: args.timeoutMs,
-		context: isMultiGen ? { generateWorkflow, llmCallLimiter } : { llmCallLimiter },
+		context: { llmCallLimiter },
 	};
 
 	const config: RunConfig =
@@ -210,9 +215,7 @@ export async function runV2Evaluation(): Promise<void> {
 							args.suite === 'pairwise'
 								? {
 										numJudges: args.numJudges,
-										numGenerations: args.numGenerations,
-										scoringMethod:
-											args.numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
+										scoringMethod: 'hierarchical',
 									}
 								: undefined,
 					},
@@ -224,12 +227,10 @@ export async function runV2Evaluation(): Promise<void> {
 				};
 
 	// Run evaluation
-	const summary = await runEvaluation(config);
+	await runEvaluation(config);
 
-	// Exit with appropriate code
-	// Check pass rate
-	const passRate = summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0;
-	process.exit(passRate >= 0.7 ? 0 : 1);
+	// Always exit 0 on successful completion - pass/fail is informational, not an error
+	process.exit(0);
 }
 
 // Run if called directly

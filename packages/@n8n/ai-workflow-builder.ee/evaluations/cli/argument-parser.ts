@@ -30,7 +30,6 @@ export interface EvaluationArgs {
 	donts?: string;
 
 	numJudges: number;
-	numGenerations: number;
 
 	featureFlags?: BuilderFeatureFlags;
 }
@@ -63,7 +62,6 @@ const cliSchema = z
 		donts: z.string().min(1).optional(),
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
-		numGenerations: z.coerce.number().int().positive().max(10).default(DEFAULTS.NUM_GENERATIONS),
 
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
@@ -189,12 +187,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 
 	// Advanced
 	'--judges': { key: 'numJudges', kind: 'string', group: 'advanced', desc: 'Number of LLM judges' },
-	'--generations': {
-		key: 'numGenerations',
-		kind: 'string',
-		group: 'advanced',
-		desc: 'Workflow generations per prompt',
-	},
 };
 
 // Aliases (not shown in help)
@@ -438,7 +430,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		dos: parsed.dos,
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
-		numGenerations: parsed.numGenerations,
 		featureFlags,
 	};
 }

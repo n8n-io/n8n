@@ -207,28 +207,37 @@ The runner flushes pending trace batches before returning, so traces/results rel
 
 ```typescript
 // Inside runLangsmith():
-// IMPORTANT: Do NOT wrap target with traceable() - see "LangSmith Tracing" section below
+
+// IMPORTANT: Create traceable wrapper ONCE outside the target function
+// to avoid context leaking in concurrent scenarios. Pass params explicitly.
+const traceableGenerateWorkflow = traceable(
+  async (args: { prompt: string; genFn: Function }) => {
+    return await args.genFn(args.prompt);
+  },
+  { name: 'workflow_generation', run_type: 'chain', client: lsClient }
+);
+
 const target = async (inputs) => {
-  // Wrap inner operations with traceable() for child traces
-  const traceableGenerate = traceable(
-    async () => await generateWorkflow(prompt),
-    { name: 'workflow_generation', run_type: 'chain', client: lsClient }
-  );
-  const workflow = await traceableGenerate();
+  const { prompt } = inputs;
+  // Call the pre-created wrapper with explicit params (no closures)
+  const workflow = await traceableGenerateWorkflow({
+    prompt,
+    genFn: generateWorkflow,
+  });
   const feedback = await evaluateWithPlugins(workflow, evaluators);
   return { workflow, prompt, feedback };  // Pre-computed!
 };
 
-	// LangSmith evaluator converts internal `{ evaluator, metric }` into `{ key, score, comment? }`:
-	const feedbackExtractor = (run) => run.outputs.feedback.map(toLangsmithEvaluationResult);
+// LangSmith evaluator converts internal `{ evaluator, metric }` into `{ key, score, comment? }`:
+const feedbackExtractor = (run) => run.outputs.feedback.map(toLangsmithEvaluationResult);
 ```
 
-## LangSmith Tracing (Critical)
+## LangSmith Tracing
 
-Do this in LangSmith mode:
-
-1. **Do not** wrap the top-level `target` with `traceable()` — `evaluate()` will wrap it and wire up the run correctly.
-2. **Do** wrap inner operations with `traceable()` for child traces, and pass `client: lsClient` so child runs attach to the same project/run tree.
+- **Do not** wrap the `target` function with `traceable()` — `evaluate()` handles that automatically
+- **Do** create `traceable` wrappers **once** outside the target function (not inside concurrent code)
+- **Do** pass all parameters explicitly to avoid closure-based context leaking
+- **Do** use `getTracingCallbacks()` to bridge traceable context to LangChain calls (pass callbacks to `agent.chat()` or chain's `invoke()`)
 
 ## Available Evaluators
 
@@ -260,11 +269,10 @@ const evaluator = createPairwiseEvaluator(llm, { numJudges: 3 });
 
 **Evaluator:** `pairwise`
 
-**Metrics (v1-compatible):**
-- Single-gen: `pairwise_primary`, `pairwise_diagnostic`, `pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`
-- Multi-gen: `pairwise_generation_correctness`, `pairwise_aggregated_diagnostic`, `pairwise_generations_passed`, `pairwise_total_judge_calls`
+**Metrics:**
+`pairwise_primary`, `pairwise_diagnostic`, `pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`
 
-Additional per-judge/per-generation details may also be emitted (e.g. `judge1`, `gen1.majorityPass`).
+Additional per-judge details may also be emitted (e.g. `judge1`, `judge2`).
 
 **Context required:** `{ dos?: string, donts?: string }`
 

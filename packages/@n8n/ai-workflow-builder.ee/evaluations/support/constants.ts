@@ -24,7 +24,6 @@ export const TRACEABLE_NAMES = {
 
 export const DEFAULTS = {
 	NUM_JUDGES: 3,
-	NUM_GENERATIONS: 1,
 	EXPERIMENT_NAME: 'pairwise-evals',
 	LLM_JUDGE_EXPERIMENT_NAME: 'workflow-builder-evaluation',
 	CONCURRENCY: 5,

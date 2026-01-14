@@ -20,6 +20,7 @@ import type {
 	RunSummary,
 	EvaluationLifecycle,
 	LangsmithExampleFilters,
+	LlmCallLimiter,
 } from './harness-types.js';
 import type { EvalLogger } from './logger';
 import { createArtifactSaver, type ArtifactSaver } from './output';
@@ -745,7 +746,6 @@ async function runLangsmithEvaluateAndFlush(params: {
 
 /**
  * Run evaluation in LangSmith mode.
- * This wraps generation + evaluation in a traceable function.
  */
 async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const {
@@ -776,10 +776,32 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 	const capturedResults: ExampleResult[] | null = artifactSaver ? [] : null;
 
+	// Create traceable wrapper ONCE outside target function to avoid context leaking
+	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
+	const traceableGenerateWorkflow = traceable(
+		async (args: {
+			prompt: string;
+			genFn: (prompt: string) => Promise<SimpleWorkflow>;
+			limiter?: LlmCallLimiter;
+			genTimeoutMs?: number;
+		}): Promise<SimpleWorkflow> => {
+			return await runWithOptionalLimiter(async () => {
+				return await withTimeout({
+					promise: args.genFn(args.prompt),
+					timeoutMs: args.genTimeoutMs,
+					label: 'workflow_generation',
+				});
+			}, args.limiter);
+		},
+		{
+			name: 'workflow_generation',
+			run_type: 'chain',
+			client: lsClient,
+		},
+	);
+
 	// Create target function that does ALL work (generation + evaluation)
-	// NOTE: Do NOT wrap target with traceable() - evaluate() handles that automatically
-	// and applies critical options (on_end callback, reference_example_id, client).
-	// Only wrap inner operations with traceable() for child traces.
+	// NOTE: Do NOT wrap target with traceable() - evaluate() handles tracing automatically.
 	let targetCallCount = 0;
 	let totalExamples = 0;
 	const stats = {
@@ -802,25 +824,12 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const genStart = Date.now();
 
 		try {
-			const limiter = effectiveGlobalContext.llmCallLimiter;
-
-			// Generate workflow - wrapped in traceable for proper child trace visibility
-			const traceableGenerate = traceable(
-				async () =>
-					await runWithOptionalLimiter(async () => {
-						return await withTimeout({
-							promise: generateWorkflow(prompt),
-							timeoutMs,
-							label: 'workflow_generation',
-						});
-					}, limiter),
-				{
-					name: 'workflow_generation',
-					run_type: 'chain',
-					client: lsClient,
-				},
-			);
-			const workflow = await traceableGenerate();
+			const workflow = await traceableGenerateWorkflow({
+				prompt,
+				genFn: generateWorkflow,
+				limiter: effectiveGlobalContext.llmCallLimiter,
+				genTimeoutMs: timeoutMs,
+			});
 			const genDurationMs = Date.now() - genStart;
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
