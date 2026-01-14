@@ -36,16 +36,9 @@ export class MfaService {
 		return Array.from(Array(n)).map(() => uuid());
 	}
 
-	private async cacheMfaSettings(value: boolean) {
-		if (value) return await this.cacheService.set(MFA_CACHE_KEY, value);
-		await this.cacheService.delete(MFA_CACHE_KEY);
-	}
-
 	private async loadMFASettings() {
 		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
-		if (value) {
-			await this.cacheMfaSettings(value.value === 'true');
-		}
+		await this.cacheService.set(MFA_CACHE_KEY, value);
 	}
 
 	async enforceMFA(value: boolean) {
@@ -60,13 +53,13 @@ export class MfaService {
 			},
 			['key'],
 		);
-		await this.cacheMfaSettings(value);
+		await this.cacheService.set(MFA_CACHE_KEY, `${value}`);
 	}
 
 	async isMFAEnforced() {
 		return (
 			this.license.isMFAEnforcementLicensed() &&
-			(await this.cacheService.get(MFA_CACHE_KEY)) === true
+			(await this.cacheService.get(MFA_CACHE_KEY)) === 'true'
 		);
 	}
 

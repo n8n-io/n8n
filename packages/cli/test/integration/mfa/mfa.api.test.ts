@@ -444,7 +444,7 @@ describe('Enforce MFA', () => {
 		enforcedCache = await cacheService.get(MFA_CACHE_KEY);
 
 		expect(enforced?.value).toBe('true');
-		expect(enforcedCache).toBe(true);
+		expect(enforcedCache).toBe('true');
 
 		await settingsRepository.delete({
 			key: MFA_ENFORCE_SETTING,
@@ -462,13 +462,13 @@ describe('Enforce MFA', () => {
 			loadOnStartup: true,
 		});
 
-		await cacheService.set(MFA_CACHE_KEY, true);
+		await cacheService.set(MFA_CACHE_KEY, 'true');
 
 		let enforced = await settingsRepository.findByKey(MFA_ENFORCE_SETTING);
 		let enforcedCache = await cacheService.get(MFA_CACHE_KEY);
 
 		expect(enforced?.value).toBe('true');
-		expect(enforcedCache).toBe(true);
+		expect(enforcedCache).toBe('true');
 
 		owner.mfaEnabled = true;
 		await testServer
@@ -482,7 +482,7 @@ describe('Enforce MFA', () => {
 		enforcedCache = await cacheService.get(MFA_CACHE_KEY);
 
 		expect(enforced?.value).toBe('false');
-		expect(enforcedCache).toBe(undefined);
+		expect(enforcedCache).toBe('false');
 
 		await settingsRepository.delete({
 			key: MFA_ENFORCE_SETTING,
