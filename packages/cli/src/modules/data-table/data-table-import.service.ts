@@ -7,13 +7,14 @@ import {
 import { Service } from '@n8n/di';
 import type { DataTableColumnType, INode } from 'n8n-workflow';
 import { readFile, readdir, rm } from 'fs/promises';
+import { createReadStream } from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
+import { parse } from 'csv-parse';
 
 import { DataTableService } from './data-table.service';
 import { DataTableRepository } from './data-table.repository';
-import { CsvParserService } from './csv-parser.service';
 import { decompressFolder } from '../../utils/compression.util';
 import type { BundleManifest } from '@/workflows/workflow-export.service';
 
@@ -40,7 +41,6 @@ export class DataTableImportService {
 		private readonly logger: Logger,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly csvParserService: CsvParserService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
@@ -161,6 +161,32 @@ export class DataTableImportService {
 	}
 
 	/**
+	 * Parse CSV file from an absolute path (used for bundle imports)
+	 * This is needed because csvParserService.parseFileData expects relative paths
+	 */
+	private async parseAbsoluteCsvPath(
+		absolutePath: string,
+	): Promise<Array<Record<string, string>>> {
+		const rows: Array<Record<string, string>> = [];
+
+		return await new Promise((resolve, reject) => {
+			const parser = parse({
+				columns: true, // Use first row as headers
+				skip_empty_lines: true,
+			})
+				.on('data', (row: Record<string, string>) => {
+					rows.push(row);
+				})
+				.on('end', () => {
+					resolve(rows);
+				})
+				.on('error', reject);
+
+			createReadStream(absolutePath).on('error', reject).pipe(parser);
+		});
+	}
+
+	/**
 	 * Import a single data table from structure and CSV file
 	 */
 	async importDataTable(
@@ -191,8 +217,18 @@ export class DataTableImportService {
 
 		// Import CSV data
 		try {
-			// Parse CSV file
-			const rows = await this.csvParserService.parseFileData(csvPath, true);
+			this.logger.debug('Starting CSV data import', {
+				csvPath,
+				dataTableId: createdTable.id,
+			});
+
+			// Parse CSV file directly (can't use csvParserService.parseFileData as it expects relative paths)
+			const rows = await this.parseAbsoluteCsvPath(csvPath);
+
+			this.logger.debug('Parsed CSV file', {
+				rowCount: rows.length,
+				dataTableId: createdTable.id,
+			});
 
 			if (rows.length > 0) {
 				// Remove system columns (id, createdAt, updatedAt) from CSV data if present
@@ -200,6 +236,11 @@ export class DataTableImportService {
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					const { id, createdAt, updatedAt, ...rest } = row as Record<string, unknown>;
 					return rest as Record<string, string | number | boolean | Date | null>;
+				});
+
+				this.logger.debug('Cleaned rows, inserting into data table', {
+					cleanedRowCount: cleanedRows.length,
+					dataTableId: createdTable.id,
 				});
 
 				// Insert rows into data table
@@ -210,12 +251,19 @@ export class DataTableImportService {
 					name: uniqueName,
 					rowCount: rows.length,
 				});
+			} else {
+				this.logger.warn('No rows found in CSV file', {
+					csvPath,
+					dataTableId: createdTable.id,
+				});
 			}
 		} catch (error) {
 			this.logger.error('Failed to import CSV data for data table', {
 				dataTableId: createdTable.id,
 				name: uniqueName,
-				error,
+				csvPath,
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
 			});
 			// Continue without data - table structure is created
 		}
