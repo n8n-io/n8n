@@ -5,6 +5,8 @@ import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nIconButton } from '@n8n/design-system';
+import CanvasEdgeTooltip from './CanvasEdgeTooltip.vue';
+
 const emit = defineEmits<{
 	add: [];
 	delete: [];
@@ -35,27 +37,28 @@ function onDelete() {
 
 <template>
 	<div :class="classes" data-test-id="canvas-edge-toolbar">
-		<N8nIconButton
-			v-if="isAddButtonVisible"
-			class="canvas-edge-toolbar-button"
-			data-test-id="add-connection-button"
-			type="tertiary"
-			size="small"
-			icon-size="medium"
-			icon="plus"
-			:title="i18n.baseText('node.add')"
-			@click="onAdd"
-		/>
-		<N8nIconButton
-			data-test-id="delete-connection-button"
-			class="canvas-edge-toolbar-button"
-			type="tertiary"
-			size="small"
-			icon-size="medium"
-			icon="trash-2"
-			:title="i18n.baseText('node.delete')"
-			@click="onDelete"
-		/>
+		<CanvasEdgeTooltip v-if="isAddButtonVisible" :content="i18n.baseText('node.add')">
+			<N8nIconButton
+				class="canvas-edge-toolbar-button"
+				data-test-id="add-connection-button"
+				type="tertiary"
+				size="small"
+				icon-size="medium"
+				icon="plus"
+				@click="onAdd"
+			/>
+		</CanvasEdgeTooltip>
+		<CanvasEdgeTooltip :content="i18n.baseText('node.delete')">
+			<N8nIconButton
+				data-test-id="delete-connection-button"
+				class="canvas-edge-toolbar-button"
+				type="tertiary"
+				size="small"
+				icon-size="medium"
+				icon="trash-2"
+				@click="onDelete"
+			/>
+		</CanvasEdgeTooltip>
 	</div>
 </template>
 
@@ -70,10 +73,15 @@ function onDelete() {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
+
+.addContainer {
+	position: relative;
+}
 </style>
 
 <style lang="scss">
 .canvas-edge-toolbar-button {
+	position: relative;
 	border-width: 0;
 	--button--color--text: light-dark(var(--color--neutral-700), var(--color--neutral-250));
 	--button--color--text--hover: light-dark(var(--color--neutral-850), var(--color--neutral-150));
