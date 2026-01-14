@@ -5,14 +5,12 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
-	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -268,8 +266,6 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
 
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
-
 const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
@@ -495,21 +491,6 @@ function moveResource() {
 	});
 }
 
-const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
-	emit('workflow:active-toggle', value);
-	// Show notification if MCP access was removed due to deactivation
-	if (!value.active && props.isMcpEnabled && isAvailableInMCP.value) {
-		// Reset the local MCP toggle status to null to use props data
-		mcpToggleStatus.value = null;
-
-		toast.showToast({
-			title: locale.baseText('mcp.workflowDeactivated.title'),
-			message: locale.baseText('mcp.workflowDeactivated.message'),
-			type: 'info',
-		});
-	}
-};
-
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {
 		await router.push(item.href);
@@ -624,43 +605,16 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<WorkflowActivator
-					v-else-if="!isDraftPublishEnabled"
-					class="mr-s"
-					:is-archived="data.isArchived"
-					:workflow-active="data.active"
-					:workflow-id="data.id"
-					:workflow-permissions="workflowPermissions"
-					data-test-id="workflow-card-activator"
-					@update:workflow-active="onWorkflowActiveToggle"
-				/>
 				<div
-					v-if="isDraftPublishEnabled && !data.isArchived"
+					v-else-if="isWorkflowPublished"
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
-					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
 				</div>
-
 				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
@@ -759,36 +713,23 @@ const tags = computed(
 .publishIndicator {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	margin-left: var(--spacing--2xs);
-}
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
 
-.publishIndicatorColor {
-	color: var(--color--mint-700);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--mint-600);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--mint-600);
-		}
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
 	}
 }
 
-.notPublishedIndicatorColor {
-	color: var(--color--neutral-600);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--neutral-400);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--neutral-400);
-		}
-	}
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

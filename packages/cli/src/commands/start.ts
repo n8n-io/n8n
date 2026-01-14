@@ -43,12 +43,6 @@ const open = require('open');
 
 const flagsSchema = z.object({
 	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
-	tunnel: z
-		.boolean()
-		.describe(
-			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		)
-		.optional(),
 });
 
 @Command({
@@ -324,6 +318,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		const editorUrl = this.getEditorUrl();
 

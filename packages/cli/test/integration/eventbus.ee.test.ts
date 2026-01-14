@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
+import { mock } from 'jest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -12,19 +13,16 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-
-import { mock } from 'jest-mock-extended';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
-import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
-import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { createUser } from './shared/db/users';
@@ -37,9 +35,6 @@ jest.mock('axios');
 const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 mockedAxios.create.mockReturnValue(mockAxiosInstance);
-
-jest.mock('syslog-client');
-const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 mockInstance(Publisher);
 
@@ -92,13 +87,12 @@ mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
+	modules: ['log-streaming'],
 });
 
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
-
-	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
@@ -190,7 +184,7 @@ test('should anonymize audit message to syslog ', async () => {
 	syslogDestination.enable();
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((m, _options, _cb) => {
+	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
 		expect(o.payload).toHaveProperty('_secret');
@@ -199,7 +193,6 @@ test('should anonymize audit message to syslog ', async () => {
 			: expect(o.payload._secret).toBe('secret');
 		expect(o.payload).toHaveProperty('public');
 		expect(o.payload.public).toBe('public');
-		return syslogDestination.client;
 	});
 
 	syslogDestination.anonymizeAuditMessages = true;

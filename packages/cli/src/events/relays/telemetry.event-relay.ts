@@ -68,6 +68,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'variable-deleted': (event) => this.variableDeleted(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
+			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
@@ -315,6 +316,14 @@ export class TelemetryEventRelay extends EventRelay {
 			is_valid: isValid,
 			is_new: isNew,
 			error_message: errorMessage,
+		});
+	}
+
+	private externalSecretsProviderReloaded({
+		vaultType,
+	}: RelayEventMap['external-secrets-provider-reloaded']) {
+		this.telemetry.track('User reloaded external secrets', {
+			vault_type: vaultType,
 		});
 	}
 

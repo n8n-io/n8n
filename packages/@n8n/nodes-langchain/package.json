@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -203,7 +203,7 @@
     "@langchain/redis": "1.0.1",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/weaviate": "1.0.1",
-    "@modelcontextprotocol/sdk": "1.24.0",
+    "@modelcontextprotocol/sdk": "1.25.2",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
@@ -230,7 +230,7 @@
     "ignore": "^5.2.0",
     "js-tiktoken": "^1.0.12",
     "jsdom": "23.0.1",
-    "langchain": "1.1.1",
+    "langchain": "1.2.3",
     "@langchain/classic": "1.0.5",
     "lodash": "catalog:",
     "mammoth": "1.11.0",

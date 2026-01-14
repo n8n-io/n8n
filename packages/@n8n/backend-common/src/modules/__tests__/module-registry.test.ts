@@ -27,8 +27,11 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'log-streaming',
 		]);
 	});
 
@@ -42,8 +45,11 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'log-streaming',
 		]);
 	});
 

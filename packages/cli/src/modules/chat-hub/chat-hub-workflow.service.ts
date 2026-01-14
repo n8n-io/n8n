@@ -36,12 +36,12 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { inE2ETests } from '../../constants';
 import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { inE2ETests } from '../../constants';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -159,6 +159,8 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				// Ensure chat workflows save data on successful executions regardless of instance settings
+				// This is done to ensure generated title can be read after execution.
 				saveDataSuccessExecution: 'all',
 			};
 
