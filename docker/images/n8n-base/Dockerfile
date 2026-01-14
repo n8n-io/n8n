@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=22.22.0
 
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
