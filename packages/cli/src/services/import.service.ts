@@ -7,10 +7,11 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
-	WorkflowPublishHistoryRepository,
+	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -57,7 +58,6 @@ export class ImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async initRecords() {
@@ -67,6 +67,27 @@ export class ImportService {
 
 	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
 		await this.initRecords();
+
+		const { manager: dbManager } = this.credentialsRepository;
+
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
+		const existingWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeVersionIdByWorkflow.set(id, activeVersionId);
+				}
+			}
+		}
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -80,39 +101,43 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			if (workflow.id) {
+			// Only remove if the workflow already exists in the database and is active
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
 		const insertedWorkflows: IWorkflowBase[] = [];
-		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
+			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
+
+			// Upsert all workflows
 			for (const workflow of workflows) {
-				if (workflow.active || workflow.activeVersionId) {
-					await this.workflowPublishHistoryRepository.addRecord({
-						workflowId: workflow.id,
-						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
-						event: 'deactivated',
-						userId: null,
-					});
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
 
-					workflow.active = false;
-					workflow.activeVersionId = null;
-
+				// Always deactivate workflows on import - they need to be manually activated later
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				if (oldActiveVersionId || workflow.activeVersionId || workflow.active) {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
+				// Only add publish history if workflow was previously active
+				if (oldActiveVersionId) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
+				}
+
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
@@ -130,6 +155,28 @@ export class ImportService {
 						'workflowId',
 					]);
 				}
+			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					authors: 'import',
+				});
+			}
+
+			// Add publish history records for workflows that were deactivated
+			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
+				await tx.insert(WorkflowPublishHistory, {
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId: null,
+				});
 			}
 		});
 
@@ -321,7 +368,12 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean, keyFilePath?: string) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
 		// Read custom encryption key from file if provided
@@ -339,7 +391,11 @@ export class ImportService {
 		}
 
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir, customEncryptionKey);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);

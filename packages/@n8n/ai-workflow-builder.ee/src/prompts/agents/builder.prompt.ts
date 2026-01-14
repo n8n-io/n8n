@@ -61,8 +61,7 @@ const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Edit Fields nodes to prepare data for a node like Gmail, Slack, Telegram, or Google Sheets
 - Schedule Triggers for recurring tasks
 - Error handling for external service calls
-
-NEVER use Split In Batches nodes.`;
+`;
 
 const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
 

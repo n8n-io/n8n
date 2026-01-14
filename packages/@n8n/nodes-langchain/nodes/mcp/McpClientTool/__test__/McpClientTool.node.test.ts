@@ -431,7 +431,6 @@ describe('McpClientTool', () => {
 						inputSchema: {
 							type: 'object',
 							properties: { location: { type: 'string' } },
-							additionalProperties: false,
 						},
 					},
 				],
@@ -445,7 +444,6 @@ describe('McpClientTool', () => {
 						json: {
 							tool: 'get_weather',
 							location: 'Berlin',
-							foo: 'bar', // arbitrary field to be filtered out
 						},
 					},
 				]),
@@ -484,6 +482,77 @@ describe('McpClientTool', () => {
 				expect.anything(),
 			);
 		});
+
+		it.each([false, undefined])(
+			'should filter out tool arguments when additionalProperties is %s',
+			async (additionalProperties) => {
+				jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+					content: [{ type: 'text', text: 'Weather is sunny' }],
+				});
+				jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'get_weather',
+							description: 'Gets the weather',
+							inputSchema: {
+								type: 'object',
+								properties: { location: { type: 'string' } },
+								additionalProperties,
+							},
+						},
+					],
+				});
+
+				const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+				const mockExecuteFunctions = mock<any>({
+					getNode: jest.fn(() => mockNode),
+					getInputData: jest.fn(() => [
+						{
+							json: {
+								tool: 'get_weather',
+								location: 'Berlin',
+								foo: 'bar',
+								sessionId: '123',
+							},
+						},
+					]),
+					getNodeParameter: jest.fn((key) => {
+						const params: Record<string, any> = {
+							include: 'all',
+							includeTools: [],
+							excludeTools: [],
+							authentication: 'none',
+							sseEndpoint: 'https://test.com/sse',
+							'options.timeout': 60000,
+						};
+						return params[key];
+					}),
+				});
+
+				const result = await new McpClientTool().execute.call(mockExecuteFunctions);
+
+				expect(result).toEqual([
+					[
+						{
+							json: {
+								response: [{ type: 'text', text: 'Weather is sunny' }],
+							},
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+
+				expect(Client.prototype.callTool).toHaveBeenCalledWith(
+					{
+						name: 'get_weather',
+						arguments: { location: 'Berlin' },
+					},
+					expect.anything(),
+					expect.anything(),
+				);
+			},
+		);
 
 		it('should pass all arguments when schema has additionalProperties: true', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();

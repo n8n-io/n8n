@@ -7,6 +7,7 @@ import { isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 import { N8nIconButton } from '@n8n/design-system';
 import type { GraphNode } from '@vue-flow/core';
 import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
+import CanvasEdgeTooltip from './CanvasEdgeTooltip.vue';
 
 const emit = defineEmits<{
 	add: [];
@@ -48,31 +49,35 @@ function onDelete() {
 
 <template>
 	<div :class="classes" data-test-id="canvas-edge-toolbar">
-		<N8nIconButton
+		<CanvasEdgeTooltip
 			v-if="isAddButtonVisible"
-			class="canvas-edge-toolbar-button"
-			data-test-id="add-connection-button"
-			type="tertiary"
-			size="small"
-			icon-size="medium"
-			icon="plus"
-			:title="
+			:content="
 				type === NodeConnectionTypes.AiTool
 					? i18n.baseText('node.add-human-review-step')
 					: i18n.baseText('node.add')
 			"
-			@click="onAdd"
-		/>
-		<N8nIconButton
-			data-test-id="delete-connection-button"
-			class="canvas-edge-toolbar-button"
-			type="tertiary"
-			size="small"
-			icon-size="medium"
-			icon="trash-2"
-			:title="i18n.baseText('node.delete')"
-			@click="onDelete"
-		/>
+		>
+			<N8nIconButton
+				class="canvas-edge-toolbar-button"
+				data-test-id="add-connection-button"
+				type="tertiary"
+				size="small"
+				icon-size="medium"
+				icon="plus"
+				@click="onAdd"
+			/>
+		</CanvasEdgeTooltip>
+		<CanvasEdgeTooltip :content="i18n.baseText('node.delete')">
+			<N8nIconButton
+				data-test-id="delete-connection-button"
+				class="canvas-edge-toolbar-button"
+				type="tertiary"
+				size="small"
+				icon-size="medium"
+				icon="trash-2"
+				@click="onDelete"
+			/>
+		</CanvasEdgeTooltip>
 	</div>
 </template>
 

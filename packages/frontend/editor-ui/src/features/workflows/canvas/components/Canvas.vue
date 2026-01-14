@@ -111,7 +111,14 @@ const emit = defineEmits<{
 	'run:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
-	'tidy-up': [CanvasLayoutEvent, { trackEvents?: boolean }];
+	'tidy-up': [
+		CanvasLayoutEvent,
+		{
+			trackEvents?: boolean;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		},
+	];
 	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
@@ -787,7 +794,15 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source: payload.source }, { trackEvents: payload.trackEvents });
+	emit(
+		'tidy-up',
+		{ result, target, source: payload.source },
+		{
+			trackEvents: payload.trackEvents,
+			trackHistory: payload.trackHistory,
+			trackBulk: payload.trackBulk,
+		},
+	);
 
 	await nextTick();
 	if (applyOnSelection) {
