@@ -1748,10 +1748,11 @@ export function isToolType(
 	if (!nodeType) return false;
 	const node = nodeType.split('.').pop();
 	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		// don't check if it's hitl
 		if (includeHitl) {
 			return true;
 		}
-		return !node.endsWith('HitlTool');
+		return !isHitlToolType(nodeType);
 	}
 	return false;
 }
