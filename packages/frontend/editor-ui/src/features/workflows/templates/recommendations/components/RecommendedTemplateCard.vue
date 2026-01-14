@@ -2,10 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
-import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
+import { FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
@@ -23,7 +23,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const { getTemplateRoute, trackTemplateTileClick, trackTemplateShown } =
-	useTemplatesDataQualityStore();
+	useRecommendedTemplatesStore();
 const router = useRouter();
 const uiStore = useUIStore();
 
@@ -88,7 +88,7 @@ const trackWhenVisible = () => {
 const handleUseTemplate = async () => {
 	trackTemplateTileClick(props.template.id);
 	await router.push(getTemplateRoute(props.template.id));
-	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
+	uiStore.closeModal(FEATURED_TEMPLATES_MODAL_KEY);
 };
 
 onMounted(() => {
@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 					<NodeIcon :size="18" :stroke-width="1.5" :node-type="nodeType" />
 				</div>
 			</div>
-			<N8nText :class="$style.templateName" :bold="true">
+			<N8nText size="large" :bold="true">
 				{{ template.name }}
 			</N8nText>
 			<div v-if="template.user?.username" :class="$style.author">
@@ -204,15 +204,10 @@ onBeforeUnmount(() => {
 	margin-right: var(--spacing--3xs);
 }
 
-.templateName {
-	font-size: var(--font-size--md);
-}
-
 .author {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--sm);
 }
 
 .verified {
@@ -239,7 +234,6 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--sm);
-	font-size: var(--font-size--sm);
 }
 
 .statItem {

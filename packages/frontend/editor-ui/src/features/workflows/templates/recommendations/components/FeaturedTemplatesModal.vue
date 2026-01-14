@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
+import { FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { onMounted, ref } from 'vue';
-import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import TemplateCard from './TemplateCard.vue';
+import RecommendedTemplateCard from './RecommendedTemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 
 const uiStore = useUIStore();
 const locale = useI18n();
-const templatesStore = useTemplatesDataQualityStore();
+const templatesStore = useRecommendedTemplatesStore();
 const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const closeModal = () => {
-	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
+	uiStore.closeModal(FEATURED_TEMPLATES_MODAL_KEY);
 };
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
@@ -26,7 +26,7 @@ const isLoadingTemplates = ref(false);
 onMounted(async () => {
 	isLoadingTemplates.value = true;
 	try {
-		templates.value = await templatesStore.loadExperimentTemplates();
+		templates.value = await templatesStore.loadRecommendedTemplates();
 	} finally {
 		isLoadingTemplates.value = false;
 	}
@@ -35,7 +35,7 @@ onMounted(async () => {
 
 <template>
 	<Modal
-		:name="EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY"
+		:name="FEATURED_TEMPLATES_MODAL_KEY"
 		min-width="min(800px, 90vw)"
 		max-height="90vh"
 		@close="closeModal"
@@ -44,19 +44,17 @@ onMounted(async () => {
 		<template #header>
 			<div :class="$style.header">
 				<N8nText tag="h2" size="large" :bold="true">{{
-					locale.baseText('experiments.templatesDataQuality.modalTitle')
+					locale.baseText('templates.featured.modalTitle')
 				}}</N8nText>
 			</div>
 		</template>
 		<template #content>
 			<div v-if="isLoadingTemplates" :class="$style.loading">
 				<N8nSpinner size="small" />
-				<N8nText size="small">{{
-					locale.baseText('workflows.templatesDataQuality.loadingTemplates')
-				}}</N8nText>
+				<N8nText size="small">{{ locale.baseText('templates.featured.loading') }}</N8nText>
 			</div>
 			<div v-else :class="$style.suggestions">
-				<TemplateCard
+				<RecommendedTemplateCard
 					v-for="(template, index) in templates"
 					:key="template.id"
 					:template="template"
@@ -65,7 +63,7 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.seeMore">
 				<N8nLink :href="websiteTemplateRepositoryURL">
-					{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
+					{{ locale.baseText('templates.featured.seeMore') }}
 				</N8nLink>
 			</div>
 		</template>

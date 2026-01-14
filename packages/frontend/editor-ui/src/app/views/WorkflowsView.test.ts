@@ -110,6 +110,10 @@ describe('WorkflowsView', () => {
 		foldersStore.totalWorkflowCount = 0;
 		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
 
+		// Mock getSimplifiedLayoutVisibility to return false so ResourcesListLayout is used
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
+
 		projectPages = useProjectPages();
 	});
 
@@ -117,7 +121,7 @@ describe('WorkflowsView', () => {
 		it('for non setup user', async () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('Welcome!')).toBeVisible();
+			expect(getByText('👋 Welcome !')).toBeVisible();
 		});
 
 		it('for currentUser user', async () => {
@@ -127,7 +131,7 @@ describe('WorkflowsView', () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('Welcome John!')).toBeVisible();
+			expect(getByText('👋 Welcome John!')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -536,7 +540,7 @@ describe('Simplified Layout', () => {
 		expect(queryByTestId('resources-list-wrapper')).not.toBeInTheDocument();
 	});
 
-	it('should navigate to new workflow when Create workflow button is clicked', async () => {
+	it('should navigate to new workflow when Create workflow card is clicked', async () => {
 		const readyToRunStore = mockedStore(useReadyToRunStore);
 		const projectsStore = mockedStore(useProjectsStore);
 
@@ -546,10 +550,10 @@ describe('Simplified Layout', () => {
 		const { getByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		const createWorkflowButton = getByTestId('new-workflow-button');
-		expect(createWorkflowButton).toBeInTheDocument();
+		const createWorkflowCard = getByTestId('new-workflow-card');
+		expect(createWorkflowCard).toBeInTheDocument();
 
-		await userEvent.click(createWorkflowButton);
+		await userEvent.click(createWorkflowCard);
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 	});
