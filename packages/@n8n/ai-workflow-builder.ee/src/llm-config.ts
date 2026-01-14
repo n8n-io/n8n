@@ -177,6 +177,20 @@ export const minimaxM21 = createOpenRouterModel('minimax/minimax-m1');
 // ============================================================================
 
 /**
+ * IMPORTANT: Generation stages currently only support Anthropic models.
+ *
+ * Non-Anthropic models (OpenAI, OpenRouter) are available for evaluation/judging
+ * purposes only. Using them for generation stages (supervisor, discovery, builder,
+ * configurator, responder, parameterUpdater) will likely fail due to:
+ *
+ * 1. Prompt caching: Our prompts use Anthropic's cache_control for efficiency
+ * 2. Tool schemas: add_nodes and update_parameters tools use passthrough() schemas
+ *    which only Anthropic models handle correctly
+ *
+ * TODO: Add provider-agnostic prompt/tool support to enable non-Anthropic generation.
+ */
+
+/**
  * Available model identifiers for the eval CLI.
  * These can be used with --model, --judge-model, and per-stage model flags.
  */
