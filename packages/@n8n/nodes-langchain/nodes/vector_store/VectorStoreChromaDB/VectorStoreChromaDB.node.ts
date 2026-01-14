@@ -1,6 +1,7 @@
 import type { ChromaLibArgs } from '@langchain/community/vectorstores/chroma';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import type { Document } from '@langchain/core/documents';
+import { ChromaClient, CloudClient, type Collection } from 'chromadb';
 import {
 	NodeOperationError,
 	type INodeProperties,
@@ -10,10 +11,19 @@ import {
 	NodeApiError,
 	ApplicationError,
 } from 'n8n-workflow';
-import { ChromaClient, CloudClient, type Collection } from 'chromadb';
+
 import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
+
+interface ChromaError extends Error {
+	response?: {
+		data?: {
+			detail?: string;
+		};
+	};
+}
 
 /**
  * Gets the credential type based on what credentials are actually configured on the node
@@ -22,6 +32,13 @@ import { chromaCollectionRLC } from '../shared/descriptions';
 function getCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
 ): string {
+	try {
+		const authentication = context.getNodeParameter('authentication', 0);
+		if (typeof authentication === 'string') {
+			return authentication;
+		}
+	} catch (error) {}
+
 	const node = context.getNode();
 
 	// Check which credential type is actually configured on the node
@@ -32,8 +49,7 @@ function getCredentialType(
 		return 'chromaSelfHostedApi';
 	}
 
-	// Fallback to authentication parameter
-	return context.getNodeParameter('authentication', 0) as string;
+	return 'chromaSelfHostedApi';
 }
 
 /**
@@ -49,27 +65,29 @@ async function getChromaClient(
 
 	if (credentialType === 'chromaCloudApi') {
 		// Use CloudClient for Chroma Cloud
+		const apiKey = typeof credentials.apiKey === 'string' ? credentials.apiKey : '';
 		const config: {
 			apiKey: string;
 			tenant?: string;
 			database?: string;
 		} = {
-			apiKey: credentials.apiKey as string,
+			apiKey,
 		};
 
 		// Add optional tenant and database if provided
-		if (credentials.tenant) {
-			config.tenant = credentials.tenant as string;
+		if (typeof credentials.tenant === 'string') {
+			config.tenant = credentials.tenant;
 		}
-		if (credentials.database) {
-			config.database = credentials.database as string;
+		if (typeof credentials.database === 'string') {
+			config.database = credentials.database;
 		}
 
 		return new CloudClient(config);
 	} else {
 		// Use ChromaClient for self-hosted instances
-		const baseUrl = credentials.baseUrl as string;
-		const authentication = credentials.authentication as string;
+		const baseUrl = typeof credentials.baseUrl === 'string' ? credentials.baseUrl : '';
+		const authentication =
+			typeof credentials.authentication === 'string' ? credentials.authentication : '';
 
 		const url = new URL(baseUrl);
 
@@ -84,13 +102,13 @@ async function getChromaClient(
 			ssl: url.protocol === 'https:',
 		};
 
-		if (authentication === 'apiKey' && credentials.apiKey) {
+		if (authentication === 'apiKey' && typeof credentials.apiKey === 'string') {
 			config.headers = {
 				Authorization: `Bearer ${credentials.apiKey}`,
 			};
-		} else if (authentication === 'token' && credentials.token) {
+		} else if (authentication === 'token' && typeof credentials.token === 'string') {
 			config.headers = {
-				'X-Chroma-Token': credentials.token as string,
+				'X-Chroma-Token': credentials.token,
 			};
 		}
 
@@ -110,31 +128,32 @@ async function getChromaLibConfig(
 
 	if (credentialType === 'chromaCloudApi') {
 		// Configuration for Chroma Cloud
-		const config: ChromaLibArgs = {
-			collectionName,
-			clientParams: {
-				apiKey: credentials.apiKey as string,
-			},
+		const cloudClientParams: {
+			apiKey: string;
+			tenant?: string;
+			database?: string;
+		} = {
+			apiKey: typeof credentials.apiKey === 'string' ? credentials.apiKey : '',
 		};
 
-		if (credentials.tenant) {
-			config.clientParams = {
-				...config.clientParams,
-				tenant: credentials.tenant as string,
-			};
+		if (typeof credentials.tenant === 'string') {
+			cloudClientParams.tenant = credentials.tenant;
 		}
-		if (credentials.database) {
-			config.clientParams = {
-				...config.clientParams,
-				database: credentials.database as string,
-			};
+		if (typeof credentials.database === 'string') {
+			cloudClientParams.database = credentials.database;
 		}
+
+		const config: ChromaLibArgs = {
+			collectionName,
+			clientParams: cloudClientParams as ChromaLibArgs['clientParams'],
+		};
 
 		return config;
 	} else {
 		// Configuration for self-hosted ChromaDB
-		const baseUrl = credentials.baseUrl as string;
-		const authentication = credentials.authentication as string;
+		const baseUrl = typeof credentials.baseUrl === 'string' ? credentials.baseUrl : '';
+		const authentication =
+			typeof credentials.authentication === 'string' ? credentials.authentication : '';
 
 		const url = new URL(baseUrl);
 
@@ -149,13 +168,13 @@ async function getChromaLibConfig(
 			ssl: url.protocol === 'https:',
 		};
 
-		if (authentication === 'apiKey' && credentials.apiKey) {
+		if (authentication === 'apiKey' && typeof credentials.apiKey === 'string') {
 			clientParams.headers = {
 				Authorization: `Bearer ${credentials.apiKey}`,
 			};
-		} else if (authentication === 'token' && credentials.token) {
+		} else if (authentication === 'token' && typeof credentials.token === 'string') {
 			clientParams.headers = {
-				'X-Chroma-Token': credentials.token as string,
+				'X-Chroma-Token': credentials.token,
 			};
 		}
 
@@ -174,13 +193,13 @@ class ExtendedChroma extends Chroma {
 			if (!this.index) {
 				const clientParams = this.clientParams ?? {};
 
-				// Check if this is a Cloud configuration (has apiKey in clientParams)
-				if ('apiKey' in clientParams && clientParams.apiKey) {
+				// Check if this is a Cloud
+				if ('apiKey' in clientParams && typeof clientParams.apiKey === 'string') {
 					// Use CloudClient for Chroma Cloud
 					this.index = new CloudClient({
-						apiKey: clientParams.apiKey as string,
-						tenant: clientParams.tenant as string | undefined,
-						database: clientParams.database as string | undefined,
+						apiKey: clientParams.apiKey,
+						tenant: typeof clientParams.tenant === 'string' ? clientParams.tenant : undefined,
+						database: typeof clientParams.database === 'string' ? clientParams.database : undefined,
 					});
 				} else {
 					// Use ChromaClient for self-hosted instances
@@ -197,12 +216,17 @@ class ExtendedChroma extends Chroma {
 					...(this.collectionMetadata && { metadata: this.collectionMetadata }),
 					embeddingFunction: null,
 				});
-			} catch (err) {
-				throw new ApplicationError(`Chroma getOrCreateCollection error: ${err}`);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				throw new ApplicationError(`Chroma getOrCreateCollection error: ${message}`);
 			}
 		}
 
-		return this.collection!;
+		if (!this.collection) {
+			throw new ApplicationError('Failed to initialize Chroma collection');
+		}
+
+		return this.collection;
 	}
 
 	async similaritySearchVectorWithScore(
@@ -210,14 +234,24 @@ class ExtendedChroma extends Chroma {
 		k: number,
 		filter?: this['FilterType'],
 	): Promise<Array<[Document, number]>> {
-		const queryEmbeddings: number[][] = Array.isArray(query[0])
-			? (query as unknown as number[][])
-			: [query];
-		return await super.similaritySearchVectorWithScore(
-			queryEmbeddings as unknown as number[],
-			k,
-			filter,
-		);
+		// Handle the case where query might actually be a nested array which is usually the case.
+
+		let flatQuery: number[] = [];
+
+		if (query.length > 0 && Array.isArray(query[0])) {
+			// If the first element is an array, we need to flatten
+			for (const element of query) {
+				if (Array.isArray(element)) {
+					flatQuery.push.apply(flatQuery, element);
+				} else {
+					flatQuery.push(element);
+				}
+			}
+		} else {
+			flatQuery = query;
+		}
+
+		return await super.similaritySearchVectorWithScore(flatQuery, k, filter);
 	}
 }
 
@@ -311,15 +345,15 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 					if (Array.isArray(collections)) {
 						const results = collections.map((collection: Collection) => ({
-							name: collection.name || String(collection),
-							value: collection.name || String(collection),
+							name: collection.name,
+							value: collection.name,
 						}));
 						return { results };
 					}
 
 					return { results: [] };
 				} catch (error) {
-					const errorMessage = error?.message || String(error);
+					const errorMessage = error instanceof Error ? error.message : String(error);
 
 					// Check for connection errors
 					if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Failed to connect')) {
@@ -356,29 +390,36 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const collection = context.getNodeParameter('chromaCollection', itemIndex, '', {
 			extractValue: true,
-		}) as string;
+		});
+
+		if (typeof collection !== 'string') {
+			throw new NodeOperationError(context.getNode(), 'Collection must be a string');
+		}
 
 		try {
 			const config = await getChromaLibConfig(context, collection, itemIndex);
 			return await ExtendedChroma.fromExistingCollection(embeddings, config);
 		} catch (error) {
-			throw new NodeOperationError(
-				context.getNode(),
-				`Error connecting to ChromaDB: ${error?.message || 'Unknown error'}`,
-				{ itemIndex },
-			);
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			throw new NodeOperationError(context.getNode(), `Error connecting to ChromaDB: ${message}`, {
+				itemIndex,
+			});
 		}
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collection = context.getNodeParameter('chromaCollection', itemIndex, '', {
 			extractValue: true,
-		}) as string;
-		const options = context.getNodeParameter('options', itemIndex, {}) as {
-			clearCollection?: boolean;
-		};
+		});
 
-		if (options.clearCollection) {
+		if (typeof collection !== 'string') {
+			throw new NodeOperationError(context.getNode(), 'Collection must be a string');
+		}
+
+		const options = context.getNodeParameter('options', itemIndex, {});
+		const clearCollection = options.clearCollection === true;
+
+		if (clearCollection) {
 			try {
 				const client = await getChromaClient(context, itemIndex);
 				await client.deleteCollection({ name: collection });
@@ -394,15 +435,19 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			const config = await getChromaLibConfig(context, collection, itemIndex);
 			await ExtendedChroma.fromDocuments(documents, embeddings, config);
 		} catch (error) {
+			const chromaError = error as ChromaError;
+			const errorMessage = chromaError.message ?? 'Unknown error';
+			const detailMessage = chromaError.response?.data?.detail;
+
 			// Handle dimension mismatch error specifically
 			if (
-				error?.message?.includes('embedding with dimension') ||
-				error?.response?.data?.detail?.includes('embedding with dimension')
+				errorMessage.includes('embedding with dimension') ||
+				detailMessage?.includes('embedding with dimension')
 			) {
-				const errorMessage = error?.response?.data?.detail || error?.message || error;
+				const displayMessage = detailMessage ?? errorMessage;
 				throw new NodeOperationError(
 					context.getNode(),
-					`ChromaDB embedding dimension mismatch: ${errorMessage}`,
+					`ChromaDB embedding dimension mismatch: ${displayMessage}`,
 					{
 						itemIndex,
 						description:
@@ -412,7 +457,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			}
 			throw new NodeOperationError(
 				context.getNode(),
-				`Error inserting documents into ChromaDB: ${error?.message || 'Unknown error'}`,
+				`Error inserting documents into ChromaDB: ${errorMessage}`,
 				{ itemIndex },
 			);
 		}
