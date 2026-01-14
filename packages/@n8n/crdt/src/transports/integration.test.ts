@@ -115,7 +115,7 @@ describe('onUpdate behavior verification', () => {
  * MessageChannel which provides the same MessagePort API.
  */
 describe('Integration: UI ↔ SharedWorker ↔ Server', () => {
-	describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Engine: %s', (engine) => {
+	describe.each([CRDTEngine.yjs])('Engine: %s', (engine) => {
 		let server: WebSocketMock;
 
 		// UI side (browser tab)

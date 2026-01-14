@@ -1,6 +1,5 @@
 import {
 	MESSAGE_SYNC,
-	MESSAGE_AWARENESS,
 	MESSAGE_SUBSCRIBE,
 	MESSAGE_UNSUBSCRIBE,
 	MESSAGE_CONNECTED,
@@ -8,7 +7,6 @@ import {
 	MESSAGE_INITIAL_SYNC,
 	encodeWithDocId,
 	decodeWithDocId,
-	encodeString,
 	decodeString,
 } from '../protocol';
 import { WorkerTransport } from './worker';

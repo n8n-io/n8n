@@ -24,19 +24,12 @@
       "types": "./dist/index.d.ts",
       "import": "./src/index.ts",
       "default": "./dist/index.js"
-    },
-    "./browser": {
-      "types": "./dist/browser.d.ts",
-      "import": "./src/browser.ts",
-      "default": "./dist/browser.js"
     }
   },
   "files": [
     "dist/**/*"
   ],
   "dependencies": {
-    "@automerge/automerge": "^2.2.8",
-    "@onsetsoftware/automerge-patcher": "^0.14.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.20"
   },

@@ -92,7 +92,6 @@ export function isArrayChange(change: DeepChange): change is ArrayChangeEvent {
  * Supports standard array operations and emits change events for mutations.
  *
  * Note on bounds checking: Behavior for out-of-bounds indices may vary by provider.
- * Yjs throws RangeError for invalid indices; Automerge clamps to array bounds.
  * Use valid indices (0 <= index <= length) for consistent cross-provider behavior.
  *
  * Note on nested values: Plain JS objects/arrays stored in the array are returned as-is.
@@ -219,7 +218,6 @@ export interface CRDTProvider {
  */
 export const CRDTEngine = {
 	yjs: 'yjs',
-	automerge: 'automerge',
 } as const;
 
 export type CRDTEngine = (typeof CRDTEngine)[keyof typeof CRDTEngine];
