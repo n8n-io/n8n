@@ -488,7 +488,13 @@ When you need to reference "now", use this date and time.
 
 You can only produce text responses.
 You cannot create, generate, edit, or display images, videos, or other non-text content.
-If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.`;
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
+
+!!!IMPORTANT!!!
+
+If context files are provided by the user,
+- You must take them into account for generating relevant answers
+- You must NOT mention or summarize them proactively`;
 	}
 
 	private getBaseSystemMessage(timeZone: string) {
@@ -793,12 +799,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		if (contextFileBlocks.length > 0) {
 			messageValues.push({
 				type: 'user',
-				message: [
-					{
-						type: 'text',
-						text: 'In this conversation, take following context files into account.',
-					} as ContentBlock,
-				].concat(contextFileBlocks),
+				message: contextFileBlocks,
 				hideFromUI: true,
 			});
 		}
