@@ -6,21 +6,25 @@ import {
 	LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS,
 	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
 } from '@n8n/constants';
-import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { EventMessageTypes } from '@/eventbus';
+import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
+import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
+import type {
+	MessageEventBus,
+	MessageEventBusDestinationType,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
 
-import type { EventMessageTypes } from '../event-message-classes';
-import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
-
-export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
+export abstract class MessageEventBusDestination
+	implements MessageEventBusDestinationOptions, MessageEventBusDestinationType
+{
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
@@ -131,27 +135,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		return false;
 	}
 
-	async saveToDb() {
-		const data = {
-			id: this.getId(),
-			destination: this.serialize(),
-		};
-		const dbResult = await Container.get(EventDestinationsRepository).upsert(data, {
-			skipUpdateIfNoValuesChanged: true,
-			conflictPaths: ['id'],
-		});
-		return dbResult;
-	}
-
-	async deleteFromDb() {
-		return await MessageEventBusDestination.deleteFromDb(this.getId());
-	}
-
-	static async deleteFromDb(id: string) {
-		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
-		return dbResult;
-	}
-
 	serialize(): MessageEventBusDestinationOptions {
 		return {
 			__type: this.__type,
@@ -169,7 +152,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		return JSON.stringify(this.serialize());
 	}
 
-	close(): void | Promise<void> {
+	async close(): Promise<void> {
 		this.stopListening();
 	}
 }

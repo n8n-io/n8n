@@ -27,6 +27,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { ExecutionsConfig } from '@n8n/config';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -170,6 +171,7 @@ export class E2EController {
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -282,7 +284,7 @@ export class E2EController {
 	private async resetLogStreaming() {
 		for (const id in this.eventBus.destinations) {
 			await this.eventBus.removeDestination(id, false);
-			await this.eventBus.deleteDestination(id);
+			await this.logStreamingDestinationsService.deleteDestinationFromDb(id);
 		}
 	}
 

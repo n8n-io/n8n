@@ -22,11 +22,6 @@ export interface EvaluationContext {
 	/** Optional reference workflows for similarity-based checks (best match wins) */
 	referenceWorkflows?: SimpleWorkflow[];
 	/**
-	 * Optional generator for multi-generation evaluations.
-	 * When present, pairwise evaluator can generate multiple workflows from the same prompt.
-	 */
-	generateWorkflow?: (prompt: string) => Promise<SimpleWorkflow>;
-	/**
 	 * Optional limiter for LLM-bound work (generation + evaluators).
 	 * When provided, treat it as the global knob for overall parallel LLM calls.
 	 */
@@ -43,6 +38,15 @@ export type TestCaseContext = Omit<Partial<EvaluationContext>, 'prompt'>;
 
 /** Global context attached to a run (prompt is provided per test case). */
 export type GlobalRunContext = Omit<Partial<EvaluationContext>, 'prompt'>;
+
+/**
+ * A styled line for verbose display output.
+ * Evaluators can provide these in `details.displayLines` for custom formatting.
+ */
+export interface DisplayLine {
+	text: string;
+	color?: 'yellow' | 'red' | 'dim';
+}
 
 /**
  * What evaluators return - a single piece of feedback.
@@ -62,6 +66,12 @@ export interface Feedback {
 	 * - `detail`: unstable/verbose metrics that should not affect scoring
 	 */
 	kind: 'score' | 'metric' | 'detail';
+	/**
+	 * Optional structured details for rich display.
+	 * Evaluators can provide structured data here for better logging.
+	 * The `comment` field remains the primary text for LangSmith.
+	 */
+	details?: { displayLines?: DisplayLine[] } & Record<string, unknown>;
 }
 
 /**
