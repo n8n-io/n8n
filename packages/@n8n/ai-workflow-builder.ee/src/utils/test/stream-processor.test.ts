@@ -1463,6 +1463,61 @@ describe('stream-processor', () => {
 			const result = cleanContextTags(input);
 			expect(result).toBe('Plain text without any tags');
 		});
+
+		// AI-1894: Remove LLM internal reasoning tags
+		it('should remove LLM reasoning blocks with nested tags', () => {
+			const input = `Let me search for information.
+
+<attempt_search>
+<search_query>Slack API save for later messages</search_query>
+<search_focus>Looking for API endpoints</search_focus>
+</attempt_search>
+
+Based on what I found...`;
+			const result = cleanContextTags(input);
+			expect(result).toBe('Let me search for information.\n\nBased on what I found...');
+		});
+
+		it('should remove multiple attempt_search blocks', () => {
+			const input = `<attempt_search>
+<search_query>first query</search_query>
+</attempt_search>
+
+Some text
+
+<attempt_search>
+<search_query>second query</search_query>
+</attempt_search>`;
+			const result = cleanContextTags(input);
+			expect(result).toBe('Some text');
+		});
+
+		it('should remove attempt_completion blocks', () => {
+			const input =
+				'Here is my response<attempt_completion>internal checking</attempt_completion> and more text';
+			const result = cleanContextTags(input);
+			expect(result).toBe('Here is my response and more text');
+		});
+
+		it('should handle text with only reasoning tags', () => {
+			const input = `<attempt_search>
+<search_query>test</search_query>
+</attempt_search>`;
+			const result = cleanContextTags(input);
+			expect(result).toBe('');
+		});
+
+		it('should remove result tags', () => {
+			const input = 'Some text<result>internal result</result>more text';
+			const result = cleanContextTags(input);
+			expect(result).toBe('Some textmore text');
+		});
+
+		it('should remove query and search_type tags', () => {
+			const input = 'Text<query>search query</query><search_type>web</search_type>end';
+			const result = cleanContextTags(input);
+			expect(result).toBe('Textend');
+		});
 	});
 
 	describe('edge cases', () => {

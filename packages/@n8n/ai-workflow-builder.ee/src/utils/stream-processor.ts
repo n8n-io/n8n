@@ -144,11 +144,38 @@ function extractMessageContent(messages: MessageContent[]): string | null {
  * Remove context tags from message content that are used for AI context
  * but shouldn't be displayed to users.
  *
- * This removes the entire context block from <current_workflow_json> through
- * </current_execution_nodes_schemas>
+ * This removes:
+ * 1. The workflow context block from <current_workflow_json> through </current_execution_nodes_schemas>
+ * 2. LLM internal reasoning tags (AI-1894) - Claude sometimes outputs these XML tags
+ *    as part of its internal planning/reasoning process
  */
 export function cleanContextTags(text: string): string {
-	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+	// Remove workflow context block
+	let cleaned = text.replace(
+		/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
+		'',
+	);
+
+	// Remove LLM internal reasoning XML tags (AI-1894)
+	// These are specific tags mentioned in the issue that Claude outputs during complex reasoning
+	const reasoningTagPatterns = [
+		/<attempt_completion>[\s\S]*?<\/attempt_completion>/g,
+		/<result>[\s\S]*?<\/result>/g,
+		/<attempt_search>[\s\S]*?<\/attempt_search>/g,
+		/<query>[\s\S]*?<\/query>/g,
+		/<search_type>[\s\S]*?<\/search_type>/g,
+		/<search_query>[\s\S]*?<\/search_query>/g,
+		/<search_focus>[\s\S]*?<\/search_focus>/g,
+	];
+
+	for (const pattern of reasoningTagPatterns) {
+		cleaned = cleaned.replace(pattern, '');
+	}
+
+	// Clean up extra whitespace/newlines left behind
+	cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+	return cleaned;
 }
 
 // ============================================================================
@@ -175,9 +202,13 @@ function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput
 	const typed = update as { messages?: MessageContent[] } | undefined;
 	if (!typed?.messages?.length) return null;
 
-	const content = extractMessageContent(typed.messages);
+	const rawContent = extractMessageContent(typed.messages);
 	// Filter out empty content and workflow context artifacts
-	if (!content?.trim() || content.includes('<current_workflow_json>')) return null;
+	if (!rawContent?.trim() || rawContent.includes('<current_workflow_json>')) return null;
+
+	// Clean LLM reasoning tags from content (AI-1894)
+	const content = cleanContextTags(rawContent);
+	if (!content.trim()) return null;
 
 	const messageChunk: AgentMessageChunk = {
 		role: 'assistant',
