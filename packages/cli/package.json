@@ -114,7 +114,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "2.24.1",
     "@parcel/watcher": "^2.5.1",
-    "@rudderstack/rudder-sdk-node": "2.1.4",
+    "@rudderstack/rudder-sdk-node": "3.0.0",
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
