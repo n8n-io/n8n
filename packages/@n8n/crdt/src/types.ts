@@ -167,6 +167,13 @@ export interface CRDTDoc {
 	transact(fn: () => void): void;
 	/** Encode the full document state as a binary update */
 	encodeState(): Uint8Array;
+	/**
+	 * Encode the state vector as a compact binary representation.
+	 * State vectors are small fingerprints (~100 bytes) that represent
+	 * which updates have been applied to the document.
+	 * Useful for efficient change detection - compare vectors to check if state changed.
+	 */
+	encodeStateVector(): Uint8Array;
 	/** Apply an update (or full state) from another document */
 	applyUpdate(update: Uint8Array): void;
 	/** Subscribe to outgoing updates. Only fires for local changes (origin='local'). */

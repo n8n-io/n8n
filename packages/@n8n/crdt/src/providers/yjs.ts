@@ -317,6 +317,10 @@ class YjsDoc implements CRDTDoc {
 		return Y.encodeStateAsUpdate(this.yDoc);
 	}
 
+	encodeStateVector(): Uint8Array {
+		return Y.encodeStateVector(this.yDoc);
+	}
+
 	applyUpdate(update: Uint8Array): void {
 		// Use remote origin so undo manager doesn't track these changes
 		Y.applyUpdate(this.yDoc, update, YjsRemoteOrigin);
