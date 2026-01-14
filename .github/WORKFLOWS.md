@@ -207,7 +207,25 @@ These only run if specific files changed:
 
 | Workflow                  | Purpose                                                 |
 |---------------------------|---------------------------------------------------------|
+| `util-claude-task.yml`    | Run Claude Code to complete a task and create a PR      |
 | `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+
+#### Claude Task Runner (`util-claude-task.yml`)
+
+Runs Claude Code to complete a task, then creates a PR with the changes. Use for well-specced tasks or simple fixes. Can be triggered via GitHub UI or API.
+
+Claude reads templates from `.github/claude-templates/` for task-specific guidance. Add new templates as needed for recurring task types.
+
+**Inputs:**
+- `task` - Description of what Claude should do
+- `user_token` - GitHub PAT (PR will be authored by the token owner)
+
+**Token requirements** (fine-grained PAT):
+- Repository: `n8n-io/n8n`
+- Contents: `Read and write`
+- Pull requests: `Read and write`
+
+**Governance:** If you provide your personal PAT, you cannot approve the resulting PR. For automated/bot use cases (e.g., dependabot-style updates via n8n workflows), an app token can be used instead.
 
 ---
 
