@@ -3,12 +3,16 @@
  *
  * This module handles loading and syncing node types from the server
  * to the local SQLite database for caching.
+ *
+ * The functions accept the data worker state, allowing them to be
+ * called from within web workers while keeping the code modular.
  */
 
 import { getNodeTypes, getNodeTypeVersions } from '@n8n/rest-api-client/api/nodeTypes';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-import type { SqliteWorkerApi } from '../sqlite.worker';
+import type { DataWorkerState } from '../types';
+import { exec, query } from './query';
 
 /**
  * Generate a unique ID for a node type version
@@ -34,60 +38,62 @@ function getNodeTypeVersionsFromDescription(nodeType: INodeTypeDescription): num
 /**
  * Load node types from the server and sync with the local database
  *
- * @param sqliteWorker - The SQLite worker API (from coordinator)
+ * @param state - The data worker state
  * @param baseUrl - The base URL for API requests
  */
-export async function loadNodeTypes(
-	sqliteWorker: Pick<SqliteWorkerApi, 'query' | 'exec' | 'queryWithParams'>,
-	baseUrl: string,
-): Promise<void> {
-	console.log('[loadNodeTypes] Starting node types sync...');
+export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Promise<void> {
+	if (!state.initialized) {
+		throw new Error('[DataWorker] Database not initialized');
+	}
+
+	console.log('[DataWorker] Starting node types sync...');
 
 	// Check if the database has any node types
-	const countResult = await sqliteWorker.query('SELECT COUNT(*) as count FROM nodeTypes');
+	const countResult = await query(state, 'SELECT COUNT(*) as count FROM nodeTypes');
 	const count = countResult.rows[0]?.[0] as number;
 	const isEmpty = count === 0;
 
-	console.log(`[loadNodeTypes] Database has ${count} node types, isEmpty: ${isEmpty}`);
+	console.log(`[DataWorker] Database has ${count} node types, isEmpty: ${isEmpty}`);
 
 	if (isEmpty) {
 		// Initial load: fetch all node types and store them
-		console.log('[loadNodeTypes] Performing initial load of all node types...');
+		console.log('[DataWorker] Performing initial load of all node types...');
 		const nodeTypes: INodeTypeDescription[] = await getNodeTypes(baseUrl);
-		console.log(`[loadNodeTypes] Fetched ${nodeTypes.length} node types from server`);
+		console.log(`[DataWorker] Fetched ${nodeTypes.length} node types from server`);
 
 		// Use a transaction for better performance
-		await sqliteWorker.exec('BEGIN TRANSACTION');
+		await exec(state, 'BEGIN TRANSACTION');
 
 		try {
 			for (const nodeType of nodeTypes) {
 				const versions = getNodeTypeVersionsFromDescription(nodeType);
 				for (const version of versions) {
 					const id = getNodeTypeId(nodeType.name, version);
-					await sqliteWorker.exec(
+					await exec(
+						state,
 						`INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES ('${id}', '${JSON.stringify(nodeType).replace(/'/g, "''")}', datetime('now'))`,
 					);
 				}
 			}
 
-			await sqliteWorker.exec('COMMIT');
-			console.log('[loadNodeTypes] Initial load complete');
+			await exec(state, 'COMMIT');
+			console.log('[DataWorker] Initial load complete');
 		} catch (error) {
-			await sqliteWorker.exec('ROLLBACK');
+			await exec(state, 'ROLLBACK');
 			throw error;
 		}
 	} else {
 		// Incremental sync: check for changes
-		console.log('[loadNodeTypes] Performing incremental sync...');
+		console.log('[DataWorker] Performing incremental sync...');
 
 		const serverVersions: string[] = await getNodeTypeVersions(baseUrl);
 		const serverVersionSet = new Set(serverVersions);
-		console.log(`[loadNodeTypes] Server has ${serverVersions.length} node type versions`);
+		console.log(`[DataWorker] Server has ${serverVersions.length} node type versions`);
 
 		// Get existing node type IDs from the database
-		const existingResult = await sqliteWorker.query('SELECT id FROM nodeTypes');
+		const existingResult = await query(state, 'SELECT id FROM nodeTypes');
 		const existingIds = new Set(existingResult.rows.map((row) => row[0] as string));
-		console.log(`[loadNodeTypes] Database has ${existingIds.size} node type versions`);
+		console.log(`[DataWorker] Database has ${existingIds.size} node type versions`);
 
 		// Find added node types (in server but not in DB)
 		const addedVersions = serverVersions.filter((id) => !existingIds.has(id));
@@ -96,17 +102,17 @@ export async function loadNodeTypes(
 		const removedVersions = [...existingIds].filter((id) => !serverVersionSet.has(id));
 
 		console.log(
-			`[loadNodeTypes] Changes: ${addedVersions.length} added, ${removedVersions.length} removed`,
+			`[DataWorker] Changes: ${addedVersions.length} added, ${removedVersions.length} removed`,
 		);
 
 		// Apply changes in a transaction
 		if (addedVersions.length > 0 || removedVersions.length > 0) {
-			await sqliteWorker.exec('BEGIN TRANSACTION');
+			await exec(state, 'BEGIN TRANSACTION');
 
 			try {
 				// Remove deleted node types
 				for (const id of removedVersions) {
-					await sqliteWorker.exec(`DELETE FROM nodeTypes WHERE id = '${id}'`);
+					await exec(state, `DELETE FROM nodeTypes WHERE id = '${id}'`);
 				}
 
 				// If there are added node types, fetch all and insert the new ones
@@ -119,7 +125,8 @@ export async function loadNodeTypes(
 						for (const version of versions) {
 							const id = getNodeTypeId(nodeType.name, version);
 							if (addedSet.has(id)) {
-								await sqliteWorker.exec(
+								await exec(
+									state,
 									`INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES ('${id}', '${JSON.stringify(nodeType).replace(/'/g, "''")}', datetime('now'))`,
 								);
 							}
@@ -127,14 +134,14 @@ export async function loadNodeTypes(
 					}
 				}
 
-				await sqliteWorker.exec('COMMIT');
-				console.log('[loadNodeTypes] Incremental sync complete');
+				await exec(state, 'COMMIT');
+				console.log('[DataWorker] Incremental sync complete');
 			} catch (error) {
-				await sqliteWorker.exec('ROLLBACK');
+				await exec(state, 'ROLLBACK');
 				throw error;
 			}
 		} else {
-			console.log('[loadNodeTypes] No changes detected');
+			console.log('[DataWorker] No changes detected');
 		}
 	}
 }
@@ -142,18 +149,18 @@ export async function loadNodeTypes(
 /**
  * Get a node type from the local database
  *
- * @param sqliteWorker - The SQLite worker API
+ * @param state - The data worker state
  * @param name - Node type name
  * @param version - Node type version
  * @returns The node type description or null if not found
  */
 export async function getNodeType(
-	sqliteWorker: Pick<SqliteWorkerApi, 'query'>,
+	state: DataWorkerState,
 	name: string,
 	version: number,
 ): Promise<INodeTypeDescription | null> {
 	const id = getNodeTypeId(name, version);
-	const result = await sqliteWorker.query(`SELECT data FROM nodeTypes WHERE id = '${id}'`);
+	const result = await query(state, `SELECT data FROM nodeTypes WHERE id = '${id}'`);
 
 	if (result.rows.length === 0) {
 		return null;
@@ -166,13 +173,11 @@ export async function getNodeType(
 /**
  * Get all node types from the local database
  *
- * @param sqliteWorker - The SQLite worker API
+ * @param state - The data worker state
  * @returns Array of all node type descriptions
  */
-export async function getAllNodeTypes(
-	sqliteWorker: Pick<SqliteWorkerApi, 'query'>,
-): Promise<INodeTypeDescription[]> {
-	const result = await sqliteWorker.query('SELECT data FROM nodeTypes');
+export async function getAllNodeTypes(state: DataWorkerState): Promise<INodeTypeDescription[]> {
+	const result = await query(state, 'SELECT data FROM nodeTypes');
 
 	return result.rows.map((row) => jsonParse<INodeTypeDescription>(row[0] as string));
 }
