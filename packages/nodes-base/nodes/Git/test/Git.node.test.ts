@@ -71,7 +71,7 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).toHaveBeenCalledWith('feature');
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
 		});
 
 		it('should commit specific files when pathsToAdd is provided', async () => {
@@ -90,7 +90,9 @@ describe('Git Node', () => {
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			// Uses -- separator to prevent argument injection
 			expect(mockGit.commit).toHaveBeenCalledWith('Add specific files', [
+				'--',
 				'src/file1.js',
 				'src/file2.js',
 				'README.md',
@@ -133,7 +135,7 @@ describe('Git Node', () => {
 				'branch.feature-branch.merge',
 				'refs/heads/feature-branch',
 			);
-			expect(mockGit.commit).toHaveBeenCalledWith('commit message', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('commit message');
 		});
 
 		it('should set upstream when switching to existing branch for push operation', async () => {
@@ -346,7 +348,7 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
 		});
 
 		it('should not switch branch when empty string is provided', async () => {
@@ -359,7 +361,7 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
-			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
 		});
 	});
 
@@ -373,7 +375,8 @@ describe('Git Node', () => {
 
 			const result = await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockGit.add).toHaveBeenCalledWith(['file.txt']);
+			// Should use -- separator to prevent argument injection
+			expect(mockGit.add).toHaveBeenCalledWith(['--', 'file.txt']);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
