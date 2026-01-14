@@ -25,8 +25,8 @@ export class WorkflowStatistics {
 
 	// workflowId is kept as an orphaned reference when workflows are deleted
 	// No FK constraint in database - allows keeping statistics for deleted workflows
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
+	@Column({ type: 'varchar', length: 36 })
+	workflowId: string;
 
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	workflowName: string | null;
