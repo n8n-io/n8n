@@ -110,10 +110,15 @@ export function processHitlResponses(
 		if (approved === true) {
 			hasApprovedHitlTools = true;
 
+			const input =
+				typeof hitl.originalInput === 'object'
+					? { tool: hitl.toolName, ...hitl.originalInput }
+					: { tool: hitl.toolName, input: hitl.originalInput };
+
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: hitl.gatedToolNodeName,
-				input: { tool: hitl.toolName, ...hitl.originalInput },
+				input,
 				type: NodeConnectionTypes.AiTool,
 				id: toolId,
 				metadata: {
