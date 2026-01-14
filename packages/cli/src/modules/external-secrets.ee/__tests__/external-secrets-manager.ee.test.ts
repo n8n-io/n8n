@@ -401,6 +401,27 @@ describe('ExternalSecretsManager', () => {
 	});
 
 	describe('testProviderSettings', () => {
+		it('should connect provider before testing', async () => {
+			const dummyProvider = new DummyProvider();
+			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+			mockSettingsStore.getProvider.mockResolvedValue({
+				connected: true,
+				connectedAt: new Date(),
+				settings: {},
+			});
+
+			await manager.testProviderSettings('dummy', { key: 'value' });
+
+			// Verify connect is called with the provider before test
+			expect(mockProviderLifecycle.connect).toHaveBeenCalledWith(dummyProvider);
+		});
+
 		it('should test provider with settings', async () => {
 			const dummyProvider = new DummyProvider();
 			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
@@ -409,6 +430,7 @@ describe('ExternalSecretsManager', () => {
 				success: true,
 				provider: dummyProvider,
 			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
 			mockSettingsStore.getProvider.mockResolvedValue({
 				connected: true,
 				connectedAt: new Date(),
@@ -432,6 +454,7 @@ describe('ExternalSecretsManager', () => {
 				success: true,
 				provider: dummyProvider,
 			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
 			mockSettingsStore.getProvider.mockResolvedValue({
 				connected: false,
 				connectedAt: new Date(),
@@ -461,6 +484,27 @@ describe('ExternalSecretsManager', () => {
 			});
 		});
 
+		it('should return error state on connection failure', async () => {
+			const dummyProvider = new DummyProvider();
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({
+				success: false,
+				error: new Error('Authentication failed'),
+			});
+
+			const result = await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(result).toEqual({
+				success: false,
+				testState: 'error',
+				error: 'Authentication failed',
+			});
+		});
+
 		it('should return error state on test failure', async () => {
 			const dummyProvider = new DummyProvider();
 			jest.spyOn(dummyProvider, 'test').mockResolvedValue([false, 'Test failed']);
@@ -469,6 +513,7 @@ describe('ExternalSecretsManager', () => {
 				success: true,
 				provider: dummyProvider,
 			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
 
 			const result = await manager.testProviderSettings('dummy', { key: 'value' });
 
@@ -486,6 +531,25 @@ describe('ExternalSecretsManager', () => {
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
 				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({ success: true });
+
+			await manager.testProviderSettings('dummy', { key: 'value' });
+
+			expect(disconnectSpy).toHaveBeenCalled();
+		});
+
+		it('should disconnect provider even after connection failure', async () => {
+			const dummyProvider = new DummyProvider();
+			const disconnectSpy = jest.spyOn(dummyProvider, 'disconnect');
+
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+			mockProviderLifecycle.connect.mockResolvedValue({
+				success: false,
+				error: new Error('Connection failed'),
 			});
 
 			await manager.testProviderSettings('dummy', { key: 'value' });
