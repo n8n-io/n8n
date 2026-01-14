@@ -1,13 +1,12 @@
 import asyncio
 
 import pytest
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import patch, Mock
 
 from websockets.exceptions import InvalidStatus
 
 from src.task_runner import TaskRunner
 from src.config.task_runner_config import TaskRunnerConfig
-from src.message_types import BrokerDrain
 
 
 class TestTaskRunnerConnectionRetry:
