@@ -253,6 +253,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			user_message_id: userMessageId,
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
+			tab_visible: document.visibilityState === 'visible',
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...payload,
 			...getTodosToTrack(),

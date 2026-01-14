@@ -1456,6 +1456,23 @@ describe('AI Builder store', () => {
 
 			expect(track).not.toHaveBeenCalledWith('End of response from builder', expect.anything());
 		});
+
+		it('includes tab_visible in abort telemetry', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			await builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					tab_visible: expect.any(Boolean),
+				}),
+			);
+		});
 	});
 
 	describe('workflowTodos', () => {
