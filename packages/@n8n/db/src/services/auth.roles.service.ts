@@ -7,6 +7,7 @@ import {
 	scopeInformation,
 	PERSONAL_SPACE_PUBLISHING_SETTING_KEY,
 	PROJECT_OWNER_ROLE_SLUG,
+	PERSONAL_SPACE_SHARING_SETTING_KEY,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -109,6 +110,12 @@ export class AuthRolesService {
 		return setting?.value === 'true' || setting === null;
 	}
 
+	private async shouldPersonalOwnerHaveSharingScope(): Promise<boolean> {
+		const setting = await this.settingsRepository.findByKey(PERSONAL_SPACE_SHARING_SETTING_KEY);
+		// Default to true if setting doesn't exist (backward compatibility)
+		return setting?.value === 'true' || setting === null;
+	}
+
 	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Currently only applies to project:personalOwner role.
@@ -127,6 +134,13 @@ export class AuthRolesService {
 					`Personal space publishing is enabled - adding workflow:publish scope to ${PROJECT_OWNER_ROLE_SLUG} role`,
 				);
 				return [...defaultScopes, 'workflow:publish'];
+			}
+			const shouldHaveSharing = await this.shouldPersonalOwnerHaveSharingScope();
+			if (shouldHaveSharing) {
+				this.logger.debug(
+					`Personal space sharing is enabled - adding workflow:share and credential:share scopes to ${PROJECT_OWNER_ROLE_SLUG} role`,
+				);
+				return [...defaultScopes, 'workflow:share', 'credential:share'];
 			}
 		}
 		return defaultScopes;

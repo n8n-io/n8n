@@ -76,3 +76,4 @@ export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
 export const PERSONAL_SPACE_PUBLISHING_SETTING_KEY = 'security.personalSpacePublishing';
+export const PERSONAL_SPACE_SHARING_SETTING_KEY = 'security.personalSpaceSharing';

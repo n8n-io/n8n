@@ -1,6 +1,9 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PERSONAL_SPACE_PUBLISHING_SETTING_KEY } from '@n8n/permissions';
+import {
+	PERSONAL_SPACE_PUBLISHING_SETTING_KEY,
+	PERSONAL_SPACE_SHARING_SETTING_KEY,
+} from '@n8n/permissions';
 
 import { RoleService } from '@/services/role.service';
 
@@ -30,8 +33,32 @@ export class SecuritySettingsService {
 		}
 	}
 
+	async setPersonalSpaceSharing(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{
+				key: PERSONAL_SPACE_SHARING_SETTING_KEY,
+				value: enabled.toString(),
+				loadOnStartup: true,
+			},
+			['key'],
+		);
+
+		if (enabled) {
+			await this.roleService.addScopeToRole(this.PERSONAL_OWNER_ROLE_SLUG, 'workflow:share');
+			await this.roleService.addScopeToRole(this.PERSONAL_OWNER_ROLE_SLUG, 'credential:share');
+		} else {
+			await this.roleService.removeScopeFromRole(this.PERSONAL_OWNER_ROLE_SLUG, 'workflow:share');
+			await this.roleService.removeScopeFromRole(this.PERSONAL_OWNER_ROLE_SLUG, 'credential:share');
+		}
+	}
+
 	async isPersonalSpacePublishingEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(PERSONAL_SPACE_PUBLISHING_SETTING_KEY);
+		return row?.value === 'true' || row === null; // Default to true for backward compatibility
+	}
+
+	async isPersonalSpaceSharingEnabled(): Promise<boolean> {
+		const row = await this.settingsRepository.findByKey(PERSONAL_SPACE_SHARING_SETTING_KEY);
 		return row?.value === 'true' || row === null; // Default to true for backward compatibility
 	}
 }

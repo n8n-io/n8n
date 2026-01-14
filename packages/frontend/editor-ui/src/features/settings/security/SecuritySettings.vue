@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
 import { N8nHeading, N8nText } from '@n8n/design-system';
@@ -16,14 +16,18 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const message = useMessage();
+const pendingSecuritySettingUpdate = ref({
+	personalSpacePublishing: false,
+	personalSpaceSharing: false,
+});
 
 const { state, isLoading } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
-	return settings.personalSpacePublishing;
+	return settings;
 }, undefined);
 
 const personalSpacePublishing = computed({
-	get: () => state.value ?? false,
+	get: () => state.value?.personalSpacePublishing ?? false,
 	set: async (value: boolean) => {
 		if (!value) {
 			const confirmDisablingPublishing = await promptConfirmDisablingPersonalSpacePublishing();
@@ -32,8 +36,23 @@ const personalSpacePublishing = computed({
 			}
 		}
 
-		state.value = value;
-		await updatePublishingSetting(value);
+		pendingSecuritySettingUpdate.value.personalSpacePublishing = true;
+		await updateSecuritySettings({ personalSpacePublishing: value });
+	},
+});
+
+const personalSpaceSharing = computed({
+	get: () => state.value?.personalSpaceSharing ?? false,
+	set: async (value: boolean) => {
+		if (!value) {
+			const confirmDisablingSharing = await promptConfirmDisablingPersonalSpaceSharing();
+			if (confirmDisablingSharing !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+
+		pendingSecuritySettingUpdate.value.personalSpaceSharing = true;
+		await updateSecuritySettings({ personalSpaceSharing: value });
 	},
 });
 
@@ -49,25 +68,48 @@ async function promptConfirmDisablingPersonalSpacePublishing() {
 	return confirmAction;
 }
 
-async function updatePublishingSetting(value: boolean) {
+async function promptConfirmDisablingPersonalSpaceSharing() {
+	const confirmAction = await message.confirm(
+		i18n.baseText('settings.security.personalSpace.sharing.confirmMessage.disable.message'),
+		i18n.baseText('settings.security.personalSpace.sharing.confirmMessage.disable.headline'),
+		{
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			confirmButtonText: i18n.baseText('generic.confirm'),
+		},
+	);
+	return confirmAction;
+}
+
+async function updateSecuritySettings(updatedSetting: Partial<UpdateSecuritySettingsDto>) {
+	const { personalSpacePublishing, personalSpaceSharing } = updatedSetting;
+	const tooltipMessageNamespace = personalSpacePublishing !== undefined ? 'publishing' : 'sharing';
 	try {
 		const data: UpdateSecuritySettingsDto = {
-			personalSpacePublishing: value,
+			personalSpacePublishing: personalSpacePublishing ?? state.value!.personalSpacePublishing,
+			personalSpaceSharing: personalSpaceSharing ?? state.value!.personalSpaceSharing,
 		};
 
-		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, data);
+		state.value = await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, data);
 
+		const isEnablingSetting = Object.values(updatedSetting)[0];
+		const tooltipTitleKey = isEnablingSetting
+			? `settings.security.personalSpace.${tooltipMessageNamespace}.success.enabled`
+			: `settings.security.personalSpace.${tooltipMessageNamespace}.success.disabled`;
 		showToast({
 			type: 'success',
-			title: value
-				? i18n.baseText('settings.security.personalSpace.publishing.success.enabled')
-				: i18n.baseText('settings.security.personalSpace.publishing.success.disabled'),
+			title: i18n.baseText(tooltipTitleKey),
 			message: '',
 		});
 	} catch (error) {
-		// Revert optimistic update on error
-		state.value = !value;
-		showError(error, i18n.baseText('settings.security.personalSpace.publishing.error'));
+		showError(
+			error,
+			i18n.baseText(`settings.security.personalSpace.${tooltipMessageNamespace}.error`),
+		);
+	} finally {
+		pendingSecuritySettingUpdate.value = {
+			personalSpacePublishing: false,
+			personalSpaceSharing: false,
+		};
 	}
 }
 </script>
@@ -84,6 +126,24 @@ async function updatePublishingSetting(value: boolean) {
 
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
+				<N8nText :bold="true">{{
+					i18n.baseText('settings.security.personalSpace.sharing.title')
+				}}</N8nText>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+				</N8nText>
+			</div>
+			<div :class="$style.settingsContainerAction">
+				<ElSwitch
+					v-model="personalSpaceSharing"
+					:loading="isLoading || pendingSecuritySettingUpdate.personalSpaceSharing"
+					size="large"
+					data-test-id="security-personal-space-sharing-toggle"
+				/>
+			</div>
+		</div>
+		<div :class="$style.settingsContainer">
+			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true">
 					{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
 				</N8nText>
@@ -94,7 +154,7 @@ async function updatePublishingSetting(value: boolean) {
 			<div :class="$style.settingsContainerAction">
 				<ElSwitch
 					v-model="personalSpacePublishing"
-					:loading="isLoading"
+					:loading="isLoading || pendingSecuritySettingUpdate.personalSpaceSharing"
 					size="large"
 					data-test-id="security-personal-space-publishing-toggle"
 				/>
