@@ -2061,6 +2061,48 @@ describe('AI Builder store', () => {
 				// Should still load messages but without revertVersion (error is caught)
 				expect(builderStore.chatMessages).toHaveLength(1);
 			});
+
+			it('should restore lastUserMessageId from loaded session', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mock API to return messages with a user message
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'First user message',
+									id: 'user-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Assistant response',
+									id: 'assistant-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Second user message',
+									id: 'user-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have 3 messages
+				expect(builderStore.chatMessages).toHaveLength(3);
+
+				// lastUserMessageId should be set to the last user message ID
+				expect(builderStore.lastUserMessageId).toBe('user-msg-2');
+			});
 		});
 
 		describe('restoreToVersion', () => {
