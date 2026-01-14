@@ -26,33 +26,6 @@ interface ChromaError extends Error {
 }
 
 /**
- * Executes a function while suppressing specific ChromaDB console warnings.
- */
-async function runWithSuppressedWarnings<T>(fn: () => Promise<T>): Promise<T> {
-	const originalWarn = console.warn;
-
-	// n8n will provide the embeddings so Chroma does not need to warn about it
-	console.warn = (...args: unknown[]) => {
-		const message = args[0];
-		if (
-			typeof message === 'string' &&
-			(message.includes('Cannot instantiate a collection with the DefaultEmbeddingFunction') ||
-				message.includes('default-embed embedding function') ||
-				message.includes('No embedding function configuration found'))
-		) {
-			return;
-		}
-		originalWarn.apply(console, args);
-	};
-
-	try {
-		return await fn();
-	} finally {
-		console.warn = originalWarn;
-	}
-}
-
-/**
  * Gets the credential type based on what credentials are actually configured on the node
  * Falls back to the authentication parameter if no credentials are found
  */
@@ -370,9 +343,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			async chromaCollectionsSearch(this: ILoadOptionsFunctions) {
 				try {
 					const client = await getChromaClient(this);
-					const collections = await runWithSuppressedWarnings(
-						async () => await client.listCollections(),
-					);
+					const collections = await client.listCollections();
 
 					if (Array.isArray(collections)) {
 						const results = collections.map((collection: Collection) => ({
@@ -429,9 +400,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 		try {
 			const config = await getChromaLibConfig(context, collection, itemIndex);
-			return await runWithSuppressedWarnings(
-				async () => await ExtendedChroma.fromExistingCollection(embeddings, config),
-			);
+			return await ExtendedChroma.fromExistingCollection(embeddings, config);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			throw new NodeOperationError(context.getNode(), `Error connecting to ChromaDB: ${message}`, {
@@ -466,9 +435,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 		try {
 			const config = await getChromaLibConfig(context, collection, itemIndex);
-			await runWithSuppressedWarnings(
-				async () => await ExtendedChroma.fromDocuments(documents, embeddings, config),
-			);
+			await ExtendedChroma.fromDocuments(documents, embeddings, config);
 		} catch (error) {
 			const chromaError = error as ChromaError;
 			const errorMessage = chromaError.message ?? 'Unknown error';
