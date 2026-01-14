@@ -308,10 +308,12 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
-		workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
-			workflowUpdateData.settings ?? {},
-			this.globalConfig.executions.timeout,
-		);
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
 
 		// Check if settings actually changed
 		const settingsChanged =

@@ -3397,13 +3397,13 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 	});
 
-	test('should remove DEFAULT settings from database and keep non-default values', async () => {
+	test('should remove DEFAULT settings from database and keep non-default and not sent values', async () => {
 		const workflow = await createWorkflowWithHistory(
 			{
 				settings: {
 					errorWorkflow: 'some-workflow-id',
 					timezone: 'America/New_York',
-					saveDataErrorExecution: 'all',
+					saveDataErrorExecution: 'all', // should be kept
 					executionTimeout: 7200,
 				},
 			},
@@ -3419,7 +3419,6 @@ describe('PATCH /workflows/:workflowId', () => {
 				saveManualExecutions: 'DEFAULT',
 				saveExecutionProgress: 'DEFAULT',
 				// These should be kept (non-default)
-				saveDataErrorExecution: 'all',
 				executionTimeout: 7200,
 				callerPolicy: 'workflowsFromSameOwner',
 			},
@@ -3436,6 +3435,36 @@ describe('PATCH /workflows/:workflowId', () => {
 			executionTimeout: 7200,
 			callerPolicy: 'workflowsFromSameOwner',
 		});
+	});
+
+	test('should not wipe existing settings when updating workflow without settings field', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					errorWorkflow: 'some-workflow-id',
+					timezone: 'America/New_York',
+					saveDataErrorExecution: 'all',
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			name: 'Updated Name',
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(updatedWorkflow?.settings).toEqual({
+			errorWorkflow: 'some-workflow-id',
+			timezone: 'America/New_York',
+			saveDataErrorExecution: 'all',
+		});
+		expect(updatedWorkflow?.name).toBe('Updated Name');
 	});
 });
 
