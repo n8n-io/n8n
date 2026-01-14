@@ -3396,6 +3396,47 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(updatedWorkflow?.isArchived).toBe(false);
 		});
 	});
+
+	test('should remove DEFAULT settings from database and keep non-default values', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					errorWorkflow: 'some-workflow-id',
+					timezone: 'America/New_York',
+					saveDataErrorExecution: 'all',
+					executionTimeout: 7200,
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			settings: {
+				// These should be removed
+				errorWorkflow: 'DEFAULT',
+				timezone: 'DEFAULT',
+				saveDataSuccessExecution: 'DEFAULT',
+				saveManualExecutions: 'DEFAULT',
+				saveExecutionProgress: 'DEFAULT',
+				// These should be kept (non-default)
+				saveDataErrorExecution: 'all',
+				executionTimeout: 7200,
+				callerPolicy: 'workflowsFromSameOwner',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(updatedWorkflow?.settings).toEqual({
+			saveDataErrorExecution: 'all',
+			executionTimeout: 7200,
+			callerPolicy: 'workflowsFromSameOwner',
+		});
+	});
 });
 
 describe('POST /workflows/:workflowId/activate', () => {
