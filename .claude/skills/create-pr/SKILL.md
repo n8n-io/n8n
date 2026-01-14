@@ -124,7 +124,7 @@ fix(core): Resolve memory leak in execution engine
 fix(Slack Node): Handle rate limiting in message send
 ```
 
-### Breaking change (add `!` before `:`)
+### Breaking change (add exclamation mark before colon)
 ```
 feat(API)!: Remove deprecated v1 endpoints
 ```
@@ -149,6 +149,6 @@ The PR title must match this pattern:
 Key validation rules:
 - Type must be one of the allowed types
 - Scope is optional but must be in parentheses if present
-- `!` for breaking changes goes before `:`
+- Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
 - Summary must not end with a period
