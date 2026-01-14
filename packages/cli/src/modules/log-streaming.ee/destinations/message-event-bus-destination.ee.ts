@@ -14,15 +14,12 @@ import { v4 as uuid } from 'uuid';
 import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
 import type {
 	MessageEventBus,
-	MessageEventBusDestinationType,
 	MessageWithCallback,
 } from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
 
-export abstract class MessageEventBusDestination
-	implements MessageEventBusDestinationOptions, MessageEventBusDestinationType
-{
+export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
@@ -79,14 +76,6 @@ export abstract class MessageEventBusDestination
 		this.anonymizeAuditMessages = options.anonymizeAuditMessages ?? false;
 		if (options.credentials) this.credentials = options.credentials;
 		this.logger.debug(`${this.__type}(${this.id}) event destination constructed`);
-	}
-
-	enable() {
-		this.enabled = true;
-	}
-
-	disable() {
-		this.enabled = false;
 	}
 
 	getId() {

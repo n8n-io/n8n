@@ -6,7 +6,6 @@ import { Service } from '@n8n/di';
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -40,15 +39,6 @@ export interface MessageEventBusInitializeOptions {
 	skipRecoveryPass?: boolean;
 	workerId?: string;
 	webhookProcessorId?: string;
-}
-
-export interface MessageEventBusDestinationType {
-	getId(): string;
-	hasSubscribedToEvent(msg: EventMessageTypes): boolean;
-	receiveFromEventBus(messageWithCallback: MessageWithCallback): Promise<boolean>;
-	sendMessage(messageWithCallback: MessageWithCallback): Promise<boolean>;
-	close(): Promise<void>;
-	serialize(): MessageEventBusDestinationOptions;
 }
 
 @Service()

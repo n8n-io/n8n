@@ -10,12 +10,12 @@ import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '@/eventbus/event-message-classes/event-message-generic';
-import type { MessageEventBusDestinationType } from '@/eventbus/message-event-bus/message-event-bus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EventDestinationsRepository } from './database/repositories/event-destination.repository';
 import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';
+import { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
 
 /**
  * Service to handle all log streaming destination operations including:
@@ -25,7 +25,7 @@ import { messageEventBusDestinationFromDb } from './destinations/message-event-b
  */
 @Service()
 export class LogStreamingDestinationService {
-	private destinations: { [key: string]: MessageEventBusDestinationType } = {};
+	private destinations: { [key: string]: MessageEventBusDestination } = {};
 
 	private isListening = false;
 
@@ -67,7 +67,7 @@ export class LogStreamingDestinationService {
 	/**
 	 * Save a destination to the database
 	 */
-	async saveDestinationToDb(destination: MessageEventBusDestinationType) {
+	async saveDestinationToDb(destination: MessageEventBusDestination) {
 		const data = {
 			id: destination.getId(),
 			destination: destination.serialize(),
@@ -90,9 +90,9 @@ export class LogStreamingDestinationService {
 	 * Add a destination to the local map and save to database
 	 */
 	async addDestination(
-		destination: MessageEventBusDestinationType,
+		destination: MessageEventBusDestination,
 		notifyWorkers: boolean = true,
-	): Promise<MessageEventBusDestinationType> {
+	): Promise<MessageEventBusDestination> {
 		// Remove any existing destination with the same ID
 		await this.destinations[destination.getId()]?.close();
 
@@ -163,8 +163,7 @@ export class LogStreamingDestinationService {
 			return;
 		}
 
-		for (const destinationId of Object.keys(this.destinations)) {
-			const destination = this.destinations[destinationId];
+		for (const destination of Object.values(this.destinations)) {
 			if (destination.hasSubscribedToEvent(msg)) {
 				try {
 					// Call destination with circuit breaker protection
@@ -182,12 +181,11 @@ export class LogStreamingDestinationService {
 	 * Find destination(s) by ID
 	 */
 	async findDestination(id?: string): Promise<MessageEventBusDestinationOptions[]> {
-		let result: MessageEventBusDestinationOptions[];
-		if (id && Object.keys(this.destinations).includes(id)) {
-			result = [this.destinations[id].serialize()];
-		} else {
-			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
-		}
+		const result: MessageEventBusDestinationOptions[] = id
+			? this.destinations[id]
+				? [this.destinations[id].serialize()]
+				: []
+			: Object.values(this.destinations).map((dest) => dest.serialize());
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
@@ -214,12 +212,9 @@ export class LogStreamingDestinationService {
 	 * Check if any destination is subscribed to the given event
 	 */
 	private hasAnyDestinationSubscribedToEvent(msg: EventMessageTypes): boolean {
-		for (const destinationName of Object.keys(this.destinations)) {
-			if (this.destinations[destinationName].hasSubscribedToEvent(msg)) {
-				return true;
-			}
-		}
-		return false;
+		return Object.values(this.destinations).some((destination) =>
+			destination.hasSubscribedToEvent(msg),
+		);
 	}
 
 	/**
@@ -246,9 +241,9 @@ export class LogStreamingDestinationService {
 		}
 
 		// Close all destinations
-		for (const destinationName of Object.keys(this.destinations)) {
-			this.logger.debug(`Closing destination ${this.destinations[destinationName].getId()}...`);
-			await this.destinations[destinationName].close();
+		for (const destination of Object.values(this.destinations)) {
+			this.logger.debug(`Closing destination ${destination.getId()}...`);
+			await destination.close();
 		}
 
 		// Clear destinations map

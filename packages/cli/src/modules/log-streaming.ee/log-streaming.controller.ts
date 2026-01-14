@@ -9,10 +9,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
-import {
-	MessageEventBus,
-	MessageEventBusDestinationType,
-} from '@/eventbus/message-event-bus/message-event-bus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import {
 	isMessageEventBusDestinationSentryOptions,
@@ -23,6 +20,7 @@ import {
 	MessageEventBusDestinationSyslog,
 } from './destinations/message-event-bus-destination-syslog.ee';
 import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
+import { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 const isWithIdString = (candidate: unknown): candidate is { id: string } => {
@@ -74,7 +72,7 @@ export class EventBusController {
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
-		let result: MessageEventBusDestinationType | undefined;
+		let result: MessageEventBusDestination | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:

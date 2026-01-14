@@ -186,7 +186,7 @@ test('should anonymize audit message to syslog ', async () => {
 		testSyslogDestination.id!
 	] as MessageEventBusDestinationSyslog;
 
-	syslogDestination.enable();
+	syslogDestination.enabled = true;
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
 	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
@@ -227,7 +227,7 @@ test('should anonymize audit message to syslog ', async () => {
 					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
-					syslogDestination.disable();
+					syslogDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler006);
 					resolve(true);
 				}
@@ -246,7 +246,7 @@ test('should send message to webhook ', async () => {
 		testWebhookDestination.id!
 	] as MessageEventBusDestinationWebhook;
 
-	webhookDestination.enable();
+	webhookDestination.enabled = true;
 
 	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
@@ -261,7 +261,7 @@ test('should send message to webhook ', async () => {
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockAxiosInstance.request).toHaveBeenCalled();
-					webhookDestination.disable();
+					webhookDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);
 				}
@@ -280,7 +280,7 @@ test('should send message to sentry ', async () => {
 		testSentryDestination.id!
 	] as MessageEventBusDestinationSentry;
 
-	sentryDestination.enable();
+	sentryDestination.enabled = true;
 
 	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
@@ -301,7 +301,7 @@ test('should send message to sentry ', async () => {
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockedSentryCaptureMessage).toHaveBeenCalled();
-					sentryDestination.disable();
+					sentryDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler004);
 					resolve(true);
 				}
