@@ -689,6 +689,10 @@ export class TaskBroker {
 	 * For testing only
 	 */
 
+	stopDraining() {
+		this.isDraining = false;
+	}
+
 	getTasks() {
 		return this.tasks;
 	}
