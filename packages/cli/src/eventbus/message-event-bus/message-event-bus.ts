@@ -1,10 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
@@ -37,8 +35,6 @@ import type { EventMessageRunnerOptions } from '../event-message-classes/event-m
 import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
-import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
 import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
@@ -54,6 +50,17 @@ export interface MessageEventBusInitializeOptions {
 	webhookProcessorId?: string;
 }
 
+// TODO: remove startListening and potential close method,
+// As it should be the responsibility of the event bus to listen and close destinations
+export interface MessageEventBusDestinationType {
+	getId(): string;
+	hasSubscribedToEvent(msg: EventMessageTypes): boolean;
+	receiveFromEventBus(messageWithCallback: MessageWithCallback): Promise<boolean>;
+	startListening(): void;
+	close(): Promise<void>;
+	serialize(): MessageEventBusDestinationOptions;
+}
+
 @Service()
 // TODO: Convert to TypedEventEmitter
 // eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
@@ -63,7 +70,7 @@ export class MessageEventBus extends EventEmitter {
 	logWriter: MessageEventBusLogWriter;
 
 	destinations: {
-		[key: string]: MessageEventBusDestination;
+		[key: string]: MessageEventBusDestinationType;
 	} = {};
 
 	private pushIntervalTimer: NodeJS.Timeout;
@@ -71,7 +78,6 @@ export class MessageEventBus extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
@@ -96,21 +102,6 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		this.logger.debug('Initializing event bus...');
-
-		const savedEventDestinations = await this.eventDestinationsRepository.find({});
-		if (savedEventDestinations.length > 0) {
-			for (const destinationData of savedEventDestinations) {
-				try {
-					const destination = messageEventBusDestinationFromDb(this, destinationData);
-					if (destination) {
-						await this.addDestination(destination, false);
-					}
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					if (error.message) this.logger.debug(error.message as string);
-				}
-			}
-		}
 
 		this.logger.debug('Initializing event writer');
 		if (options?.workerId || options?.webhookProcessorId) {
@@ -235,7 +226,7 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
+	async addDestination(destination: MessageEventBusDestinationType, notifyWorkers: boolean = true) {
 		await this.removeDestination(destination.getId(), false);
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
@@ -263,12 +254,6 @@ export class MessageEventBus extends EventEmitter {
 		if (notifyWorkers) {
 			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
-	}
-
-	async deleteDestination(id: string): Promise<DeleteResult | undefined> {
-		return await this.eventDestinationsRepository.delete({
-			id,
-		});
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
