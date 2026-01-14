@@ -306,32 +306,35 @@ export class WorkflowService {
 			};
 		}
 
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+
+		// Clean up settings
+		if (workflowUpdateData.settings) {
+			const keysAllowingDefault = [
+				'errorWorkflow',
+				'timezone',
+				'saveDataErrorExecution',
+				'saveDataSuccessExecution',
+				'saveManualExecutions',
+				'saveExecutionProgress',
+			] as const;
+			for (const key of keysAllowingDefault) {
+				// Do not save the default value
+				if (workflowUpdateData.settings[key] === 'DEFAULT') {
+					delete workflowUpdateData.settings[key];
+				}
+			}
+
+			if (workflowUpdateData.settings.executionTimeout === this.globalConfig.executions.timeout) {
+				// Do not save when default got set
+				delete workflowUpdateData.settings.executionTimeout;
+			}
+		}
+
 		// Check if settings actually changed
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(workflow.settings, workflowUpdateData.settings);
-
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
-		const workflowSettings = workflowUpdateData.settings ?? {};
-		const keysAllowingDefault = [
-			'timezone',
-			'saveDataErrorExecution',
-			'saveDataSuccessExecution',
-			'saveManualExecutions',
-			'saveExecutionProgress',
-		] as const;
-		for (const key of keysAllowingDefault) {
-			// Do not save the default value
-			if (workflowSettings[key] === 'DEFAULT') {
-				delete workflowSettings[key];
-			}
-		}
-
-		if (workflowSettings.executionTimeout === this.globalConfig.executions.timeout) {
-			// Do not save when default got set
-			delete workflowSettings.executionTimeout;
-		}
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();

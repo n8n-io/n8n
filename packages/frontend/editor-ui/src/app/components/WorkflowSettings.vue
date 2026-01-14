@@ -409,7 +409,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	});
 
 	workflowsData.unshift({
-		id: undefined as unknown as string,
+		id: 'DEFAULT',
 		name: i18n.baseText('workflowSettings.noWorkflow'),
 	} as IWorkflowShortResponse);
 
@@ -644,6 +644,9 @@ onMounted(async () => {
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
+	}
+	if (workflowSettingsData.errorWorkflow === undefined) {
+		workflowSettingsData.errorWorkflow = 'DEFAULT';
 	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
