@@ -604,6 +604,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					.filter((msg) => msg.type !== 'workflow-updated');
 
 				chatMessages.value = convertedMessages;
+
+				// Restore lastUserMessageId from the loaded session for telemetry tracking
+				const lastUserMsg = [...convertedMessages]
+					.reverse()
+					.find((msg) => msg.role === 'user' && msg.type === 'text');
+				if (lastUserMsg) {
+					lastUserMessageId.value = lastUserMsg.id;
+				}
 			}
 
 			return sessions;
