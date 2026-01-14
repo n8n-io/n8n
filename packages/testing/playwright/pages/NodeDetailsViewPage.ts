@@ -867,6 +867,17 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
 	}
 
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
+	}
+
 	async clickParameterItemAction(actionText: string) {
 		await this.page.getByTestId('parameter-item').getByText(actionText).click();
 	}
