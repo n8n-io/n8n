@@ -59,7 +59,7 @@ export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
 );
 
 export const EXECUTION_LOGIC_V2_EXPERIMENT = {
-	name: 'execution_logic_v2',
+	name: '062_execution_logic_v2',
 	control: 'control',
 	variant: 'variant',
 };
