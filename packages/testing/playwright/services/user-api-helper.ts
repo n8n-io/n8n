@@ -121,18 +121,21 @@ export class UserApiHelper {
 	}
 
 	/**
-	 * Execute API calls with a specific user's context
+	 * Execute API calls with a specific user's context.
+	 * WARNING: This temporarily logs in as the specified user, which affects the shared
+	 * request context cookies. The original user's session is NOT restored automatically.
+	 * Use this only when you don't need to continue as the original user afterward,
+	 * or manually re-login as the original user after calling this.
+	 *
 	 * @param user - User to impersonate
 	 * @param fn - Function to execute with the user's API context
 	 */
 	async withUser<T>(user: TestUser, fn: (userApi: ApiHelpers) => Promise<T>): Promise<T> {
-		// Create a new API helper with fresh context
-		const userApiHelper = new (this.api.constructor as new () => ApiHelpers)();
-		
-		// Login as the specified user
-		await userApiHelper.login({ email: user.email, password: user.password });
-		
-		// Execute the fn with the user's API context
-		return await fn(userApiHelper);
+		// Reuse the same API helper but login as the specified user
+		// This will set the user's session cookies on the shared request context
+		await this.api.login({ email: user.email, password: user.password });
+
+		// Execute the fn with the api context (now logged in as the user)
+		return await fn(this.api);
 	}
 }

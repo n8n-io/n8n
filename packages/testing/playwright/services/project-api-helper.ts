@@ -30,11 +30,10 @@ export class ProjectApiHelper {
 	}
 
 	/**
-	 * Get a user's personal project
-	 * @param userId The ID of the user
-	 * @returns The user's personal project
+	 * Get the current logged-in user's personal project
+	 * @returns The current user's personal project
 	 */
-	async getPersonalProject(userId: string): Promise<Project> {
+	async getMyPersonalProject(): Promise<Project> {
 		const response = await this.api.request.get('/rest/projects');
 
 		if (!response.ok()) {
@@ -44,12 +43,10 @@ export class ProjectApiHelper {
 		const result = await response.json();
 		const projects = result.data ?? result;
 
-		const personalProject = projects.find((p: Project) => 
-			p.type === 'personal' && p.projectRelations?.some((pr: { userId: string }) => pr.userId === userId)
-		);
+		const personalProject = projects.find((p: Project) => p.type === 'personal');
 
 		if (!personalProject) {
-			throw new TestError(`Personal project not found for user ${userId}`);
+			throw new TestError('Personal project not found for current user');
 		}
 
 		return personalProject;
