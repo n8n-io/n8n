@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from unittest.mock import patch, Mock, AsyncMock
 
@@ -5,6 +7,7 @@ from websockets.exceptions import InvalidStatus
 
 from src.task_runner import TaskRunner
 from src.config.task_runner_config import TaskRunnerConfig
+from src.message_types import BrokerDrain
 
 
 class TestTaskRunnerConnectionRetry:
@@ -92,10 +95,12 @@ class TestTaskRunnerDrain:
         runner = TaskRunner(config)
         runner.can_send_offers = True
 
-        mock_task = AsyncMock()
-        runner.offers_coroutine = mock_task
+        async def wait_forever():
+            await asyncio.sleep(1000)
+
+        runner.offers_coroutine = asyncio.create_task(wait_forever())
 
         await runner._handle_drain()
 
         assert runner.can_send_offers is False
-        mock_task.cancel.assert_called_once()
+        assert runner.offers_coroutine.cancelled()
