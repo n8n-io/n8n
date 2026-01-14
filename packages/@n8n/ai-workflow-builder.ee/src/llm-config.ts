@@ -1,9 +1,14 @@
 // Different LLMConfig type for this file - specific to LLM providers
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+
 import { MAX_OUTPUT_TOKENS } from '@/constants';
 
 import { getProxyAgent } from './utils/http-proxy-agent';
 
-interface LLMProviderConfig {
+/**
+ * Configuration for LLM provider initialization.
+ */
+export interface LLMProviderConfig {
 	apiKey: string;
 	baseUrl?: string;
 	headers?: Record<string, string>;
@@ -61,7 +66,7 @@ export const gpt41 = async (config: LLMProviderConfig) => {
 export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await import('@langchain/anthropic');
 	const model = new ChatAnthropic({
-		model: 'claude-sonnet-4-5',
+		model: 'claude-sonnet-4-5-20250929',
 		apiKey: config.apiKey,
 		temperature: 0,
 		maxTokens: MAX_OUTPUT_TOKENS,
@@ -101,3 +106,154 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 
 	return model;
 };
+
+export const anthropicClaudeOpus45 = async (config: LLMProviderConfig) => {
+	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const model = new ChatAnthropic({
+		model: 'claude-opus-4-5-20251101',
+		apiKey: config.apiKey,
+		temperature: 0,
+		maxTokens: MAX_OUTPUT_TOKENS,
+		anthropicApiUrl: config.baseUrl,
+		clientOptions: {
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl),
+			},
+		},
+	});
+
+	// Remove Langchain default topP parameter since Opus 4.5 doesn't allow setting both temperature and topP
+	delete model.topP;
+
+	return model;
+};
+
+// ============================================================================
+// OpenRouter Models
+// ============================================================================
+
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+/**
+ * Creates an OpenRouter model factory for a given model name.
+ * Uses OpenAI-compatible API with OpenRouter base URL.
+ */
+function createOpenRouterModel(modelName: string) {
+	return async (config: LLMProviderConfig) => {
+		const { ChatOpenAI } = await import('@langchain/openai');
+		return new ChatOpenAI({
+			model: modelName,
+			apiKey: config.apiKey,
+			temperature: 0,
+			maxTokens: -1,
+			configuration: {
+				baseURL: OPENROUTER_BASE_URL,
+				defaultHeaders: {
+					...config.headers,
+					'HTTP-Referer': 'https://n8n.io',
+					'X-Title': 'n8n AI Workflow Builder',
+				},
+				fetchOptions: {
+					dispatcher: getProxyAgent(OPENROUTER_BASE_URL),
+				},
+			},
+		});
+	};
+}
+
+// OpenRouter model factories
+export const glm47 = createOpenRouterModel('thudm/glm-4-plus');
+export const grokCodeFast = createOpenRouterModel('x-ai/grok-3-fast');
+export const gemini3Flash = createOpenRouterModel('google/gemini-2.5-flash-preview');
+export const deepseekV32 = createOpenRouterModel('deepseek/deepseek-chat-v3-0324');
+export const grok41Fast = createOpenRouterModel('x-ai/grok-3-mini-fast');
+export const gemini3Pro = createOpenRouterModel('google/gemini-2.5-pro-preview');
+export const devstral = createOpenRouterModel('mistralai/devstral-small');
+export const minimaxM21 = createOpenRouterModel('minimax/minimax-m1');
+
+// ============================================================================
+// Model Registry
+// ============================================================================
+
+/**
+ * Available model identifiers for the eval CLI.
+ * These can be used with --model, --judge-model, and per-stage model flags.
+ */
+export type ModelId =
+	// Native models
+	| 'claude-opus-4.5'
+	| 'claude-sonnet-4.5'
+	| 'claude-haiku-4.5'
+	| 'gpt-4.1'
+	| 'gpt-4.1-mini'
+	| 'o4-mini'
+	// OpenRouter models
+	| 'glm-4.7'
+	| 'grok-code-fast'
+	| 'gemini-3-flash'
+	| 'deepseek-v3.2'
+	| 'grok-4.1-fast'
+	| 'gemini-3-pro'
+	| 'devstral'
+	| 'minimax-m2.1';
+
+/**
+ * Model factory functions mapped by model ID.
+ */
+export const MODEL_FACTORIES: Record<
+	ModelId,
+	(config: LLMProviderConfig) => Promise<BaseChatModel>
+> = {
+	// Native models
+	'claude-opus-4.5': anthropicClaudeOpus45,
+	'claude-sonnet-4.5': anthropicClaudeSonnet45,
+	'claude-haiku-4.5': anthropicHaiku45,
+	'gpt-4.1': gpt41,
+	'gpt-4.1-mini': gpt41mini,
+	'o4-mini': o4mini,
+	// OpenRouter models
+	'glm-4.7': glm47,
+	'grok-code-fast': grokCodeFast,
+	'gemini-3-flash': gemini3Flash,
+	'deepseek-v3.2': deepseekV32,
+	'grok-4.1-fast': grok41Fast,
+	'gemini-3-pro': gemini3Pro,
+	devstral,
+	'minimax-m2.1': minimaxM21,
+};
+
+/** OpenRouter model IDs for API key resolution */
+const OPENROUTER_MODELS: ModelId[] = [
+	'glm-4.7',
+	'grok-code-fast',
+	'gemini-3-flash',
+	'deepseek-v3.2',
+	'grok-4.1-fast',
+	'gemini-3-pro',
+	'devstral',
+	'minimax-m2.1',
+];
+
+/**
+ * Get the required API key environment variable for a model.
+ */
+export function getApiKeyEnvVar(modelId: ModelId): string {
+	if (OPENROUTER_MODELS.includes(modelId)) {
+		return 'OPENROUTER_API_KEY';
+	}
+	if (modelId.startsWith('gpt') || modelId.startsWith('o4')) {
+		return 'N8N_AI_OPENAI_KEY';
+	}
+	return 'N8N_AI_ANTHROPIC_KEY';
+}
+
+/**
+ * List of available model IDs for CLI help text.
+ */
+export const AVAILABLE_MODELS: ModelId[] = Object.keys(MODEL_FACTORIES) as ModelId[];
+
+/**
+ * Default model used when no model is specified.
+ */
+export const DEFAULT_MODEL: ModelId = 'claude-sonnet-4.5';

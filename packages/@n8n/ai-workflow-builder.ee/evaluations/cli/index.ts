@@ -5,7 +5,6 @@
  * Can be run directly or used as a reference for custom setups.
  */
 
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -13,6 +12,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import {
+	argsToStageModels,
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
@@ -42,7 +42,7 @@ import {
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import { setupTestEnvironment, createAgent } from '../support/environment';
+import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
 
 /**
  * Create a workflow generator function.
@@ -51,7 +51,7 @@ import { setupTestEnvironment, createAgent } from '../support/environment';
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
+	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string) => Promise<SimpleWorkflow> {
 	return async (prompt: string): Promise<SimpleWorkflow> => {
@@ -60,7 +60,7 @@ function createWorkflowGenerator(
 
 		const agent = createAgent({
 			parsedNodeTypes,
-			llm,
+			llms,
 			featureFlags,
 		});
 
@@ -149,30 +149,35 @@ export async function runV2Evaluation(): Promise<void> {
 		);
 	}
 
-	// Setup environment
+	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
 	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
-	const env = await setupTestEnvironment(logger);
+	const stageModels = argsToStageModels(args);
+	const env = await setupTestEnvironment(stageModels, logger);
 
 	// Validate LangSmith client early if langsmith backend is requested
 	if (args.backend === 'langsmith' && !env.lsClient) {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Create workflow generator (tracing handled via traceable() in runner)
-	const generateWorkflow = createWorkflowGenerator(env.parsedNodeTypes, env.llm, args.featureFlags);
+	// Create workflow generator with per-stage LLMs
+	const generateWorkflow = createWorkflowGenerator(
+		env.parsedNodeTypes,
+		env.llms,
+		args.featureFlags,
+	);
 
-	// Create evaluators based on mode
+	// Create evaluators based on mode (using judge LLM for evaluation)
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
 	switch (args.suite) {
 		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llm, env.parsedNodeTypes));
+			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
 			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 			break;
 		case 'pairwise':
 			evaluators.push(
-				createPairwiseEvaluator(env.llm, {
+				createPairwiseEvaluator(env.llms.judge, {
 					numJudges: args.numJudges,
 				}),
 			);
