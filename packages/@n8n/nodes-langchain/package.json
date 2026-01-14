@@ -203,7 +203,7 @@
     "@langchain/redis": "1.0.1",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/weaviate": "1.0.1",
-    "@modelcontextprotocol/sdk": "1.24.0",
+    "@modelcontextprotocol/sdk": "1.25.2",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
