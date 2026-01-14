@@ -65,6 +65,10 @@ export function useBaseCompletions(
 				label: `${prefix}ifEmpty()`,
 				info: i18n.baseText('codeNodeEditor.completer.$ifEmpty'),
 			},
+			{
+				label: `${prefix}evaluateExpression()`,
+				info: i18n.baseText('codeNodeEditor.completer.$evaluateExpression'),
+			},
 			{ label: `${prefix}input`, info: i18n.baseText('codeNodeEditor.completer.$input') },
 			{
 				label: `${prefix}prevNode`,

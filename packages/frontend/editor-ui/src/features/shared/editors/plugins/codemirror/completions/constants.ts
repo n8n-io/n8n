@@ -150,6 +150,33 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		),
 	},
 	{
+		label: '$evaluateExpression()',
+		section: METHODS_SECTION,
+		info: createInfoBoxRenderer(
+			{
+				name: '$evaluateExpression',
+				returnType: 'any',
+				description: i18n.baseText('codeNodeEditor.completer.$evaluateExpression'),
+				args: [
+					{
+						name: 'expression',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.$evaluateExpression.args.expression',
+						),
+						type: 'string',
+					},
+				],
+				examples: [
+					{
+						example: '$evaluateExpression("1+1")',
+						evaluated: 'e.g. 2',
+					},
+				],
+			},
+			true,
+		),
+	},
+	{
 		label: '$execution',
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
