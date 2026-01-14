@@ -233,6 +233,7 @@ import IconLucideX from '~icons/lucide/x';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
+import IconLucideShieldHalf from '~icons/lucide/shield-half';
 
 /**
  * Need to keep old icon names
@@ -644,6 +645,7 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	'shield-half': IconLucideShieldHalf,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,

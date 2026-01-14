@@ -10,7 +10,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 
-const NUMBER_OF_TEMPLATES = 6;
+export const NUMBER_OF_TEMPLATES = 6;
 
 export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', () => {
 	const telemetry = useTelemetry();

@@ -2,11 +2,15 @@
 import { onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
-import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nLink, N8nText } from '@n8n/design-system';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import {
+	useTemplatesDataQualityStore,
+	NUMBER_OF_TEMPLATES,
+} from '../stores/templatesDataQuality.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
+import SkeletonTemplateCard from './SkeletonTemplateCard.vue';
 
 const locale = useI18n();
 const templatesStore = useTemplatesDataQualityStore();
@@ -36,11 +40,8 @@ onMounted(async () => {
 			</N8nLink>
 		</div>
 
-		<div v-if="isLoadingTemplates" :class="$style.loading">
-			<N8nSpinner size="small" />
-			<N8nText size="small">
-				{{ locale.baseText('workflows.templatesDataQuality.loadingTemplates') }}
-			</N8nText>
+		<div v-if="isLoadingTemplates" :class="$style.suggestions">
+			<SkeletonTemplateCard v-for="i in NUMBER_OF_TEMPLATES" :key="i" />
 		</div>
 		<div v-else :class="$style.suggestions">
 			<TemplateCard
@@ -57,19 +58,9 @@ onMounted(async () => {
 @use '@/app/css/variables' as vars;
 
 .container {
-	max-width: vars.$breakpoint-sm;
 	width: 100%;
-	margin-top: var(--spacing--4xl);
-	padding: var(--spacing--sm);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	text-align: left;
-
-	@media (max-width: vars.$breakpoint-xs) {
-		margin-top: var(--spacing--xl);
-		padding: var(--spacing--xs);
-	}
+	margin-top: var(--spacing--xl);
 }
 
 .header {
@@ -97,7 +88,7 @@ onMounted(async () => {
 	gap: var(--spacing--md);
 	min-height: 182px;
 
-	@media (max-width: vars.$breakpoint-sm) {
+	@media (max-width: vars.$breakpoint-md) {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
@@ -105,19 +96,6 @@ onMounted(async () => {
 		grid-template-columns: 1fr;
 		gap: var(--spacing--sm);
 		min-height: auto;
-	}
-}
-
-.loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--lg);
-	color: var(--color--text--tint-1);
-
-	@media (max-width: vars.$breakpoint-xs) {
-		padding: var(--spacing--md);
 	}
 }
 </style>
