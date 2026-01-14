@@ -434,7 +434,7 @@ describe('ExecutionRepository', () => {
 			const executionId = '123';
 			const returnedStartedAt = new Date();
 
-			entityManager.findOne.mockResolvedValueOnce({ startedAt: returnedStartedAt });
+			entityManager.findOneByOrFail.mockResolvedValueOnce({ startedAt: returnedStartedAt });
 
 			const result = await executionRepository.setRunning(executionId);
 
@@ -451,9 +451,8 @@ describe('ExecutionRepository', () => {
 			expect(updateQueryBuilder.execute).toHaveBeenCalled();
 
 			// Should fetch the actual startedAt value after update
-			expect(entityManager.findOne).toHaveBeenCalledWith(ExecutionEntity, {
-				select: ['startedAt'],
-				where: { id: executionId },
+			expect(entityManager.findOneByOrFail).toHaveBeenCalledWith(ExecutionEntity, {
+				id: executionId,
 			});
 
 			expect(result).toBe(returnedStartedAt);
@@ -463,7 +462,7 @@ describe('ExecutionRepository', () => {
 			const executionId = '456';
 			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
 
-			entityManager.findOne.mockResolvedValueOnce({ startedAt: existingStartedAt });
+			entityManager.findOneByOrFail.mockResolvedValueOnce({ startedAt: existingStartedAt });
 
 			const result = await executionRepository.setRunning(executionId);
 

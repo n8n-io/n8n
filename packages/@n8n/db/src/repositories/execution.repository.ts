@@ -438,12 +438,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				.execute();
 
 			// Fetch the actual startedAt
-			const result = await manager.findOne(ExecutionEntity, {
-				select: ['startedAt'],
-				where: { id: executionId },
-			});
+			const result = await manager.findOneByOrFail(ExecutionEntity, { id: executionId });
 
-			return result?.startedAt ?? startedAt;
+			return result.startedAt;
 		};
 
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
