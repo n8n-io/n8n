@@ -240,7 +240,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -262,7 +264,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput as Element);
@@ -287,7 +291,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -310,7 +316,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
