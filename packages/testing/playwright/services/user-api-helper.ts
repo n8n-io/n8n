@@ -1,7 +1,8 @@
 import type { User } from '@n8n/api-types';
+import { request } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
-import type { ApiHelpers } from './api-helper';
+import { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
@@ -121,21 +122,27 @@ export class UserApiHelper {
 	}
 
 	/**
-	 * Execute API calls with a specific user's context.
-	 * WARNING: This temporarily logs in as the specified user, which affects the shared
-	 * request context cookies. The original user's session is NOT restored automatically.
-	 * Use this only when you don't need to continue as the original user afterward,
-	 * or manually re-login as the original user after calling this.
+	 * Execute API calls with a specific user's context using an isolated API context.
+	 * The original API context remains unchanged - no session swapping occurs.
 	 *
 	 * @param user - User to impersonate
-	 * @param fn - Function to execute with the user's API context
+	 * @param fn - Function to execute with the user's isolated API context
 	 */
 	async withUser<T>(user: TestUser, fn: (userApi: ApiHelpers) => Promise<T>): Promise<T> {
-		// Reuse the same API helper but login as the specified user
-		// This will set the user's session cookies on the shared request context
-		await this.api.login({ email: user.email, password: user.password });
+		// Create a completely isolated API context for this user
+		// Playwright uses configured baseURL by default
+		const userContext = await request.newContext();
+		const userApi = new ApiHelpers(userContext);
 
-		// Execute the fn with the api context (now logged in as the user)
-		return await fn(this.api);
+		try {
+			// Login as the specified user in the isolated context
+			await userApi.login({ email: user.email, password: user.password });
+
+			// Execute the callback with the isolated API context
+			return await fn(userApi);
+		} finally {
+			// Dispose of the isolated context
+			await userContext.dispose();
+		}
 	}
 }

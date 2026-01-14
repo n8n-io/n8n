@@ -62,13 +62,10 @@ test.describe('Credential Sharing', () => {
 			data: { apiKey: TEST_API_KEY },
 		});
 
-		// Get member's personal project (need to login as member for this)
+		// Get member's personal project (withUser uses isolated context)
 		const memberProject = await api.users.withUser(member, async (memberApi) => {
 			return await memberApi.projects.getMyPersonalProject();
 		});
-
-		// Re-login as owner to share
-		await api.signin('owner');
 
 		// Share credential with member's personal project
 		await api.credentials.shareCredential(credential.id, [memberProject.id]);
@@ -107,13 +104,10 @@ test.describe('Credential Sharing', () => {
 			data: { apiKey: TEST_API_KEY },
 		});
 
-		// Get member's personal project (need to login as member for this)
+		// Get member's personal project (withUser uses isolated context)
 		const memberProject = await api.users.withUser(member, async (memberApi) => {
 			return await memberApi.projects.getMyPersonalProject();
 		});
-
-		// Re-login as owner to share
-		await api.signin('owner');
 
 		// Share credential with member
 		await api.credentials.shareCredential(credential.id, [memberProject.id]);

@@ -202,6 +202,7 @@ test.describe('Access Control Boundaries', () => {
 		// Create workflow in test project
 		await n8n.projectTabs.clickWorkflowsTab();
 		await n8n.workflows.clickNewWorkflowCard();
+		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('Notion');
 		await n8n.canvas.getFirstAction().click();
 

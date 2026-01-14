@@ -65,13 +65,10 @@ test.describe('Workflow Sharing', () => {
 			connections: {},
 		});
 
-		// Get member's personal project (need to login as member for this)
+		// Get member's personal project (withUser automatically restores owner session)
 		const memberProject = await api.users.withUser(member, async (memberApi) => {
 			return await memberApi.projects.getMyPersonalProject();
 		});
-
-		// Re-login as owner to share
-		await api.signin('owner');
 
 		// Share workflow with member's personal project
 		await api.workflows.shareWorkflow(workflow.id, [memberProject.id]);
@@ -116,13 +113,10 @@ test.describe('Workflow Sharing', () => {
 			connections: {},
 		});
 
-		// Get member's personal project (need to login as member for this)
+		// Get member's personal project (withUser automatically restores owner session)
 		const memberProject = await api.users.withUser(member, async (memberApi) => {
 			return await memberApi.projects.getMyPersonalProject();
 		});
-
-		// Re-login as owner to share
-		await api.signin('owner');
 
 		// Share workflow with member
 		await api.workflows.shareWorkflow(workflow.id, [memberProject.id]);

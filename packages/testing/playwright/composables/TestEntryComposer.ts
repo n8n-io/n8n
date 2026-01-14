@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
 import type { TestUser } from '../services/user-api-helper';
 
@@ -98,6 +99,7 @@ export class TestEntryComposer {
 	async withUser(user: Pick<TestUser, 'email' | 'password'>): Promise<n8nPage> {
 		const browser = this.n8n.page.context().browser()!;
 		const context = await browser.newContext();
+		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
