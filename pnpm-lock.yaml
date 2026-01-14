@@ -2055,8 +2055,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       cron:
-        specifier: 3.1.7
-        version: 3.1.7
+        specifier: 4.4.0
+        version: 4.4.0
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3133,8 +3133,8 @@ importers:
         specifier: 4.0.3
         version: 4.0.3
       cron:
-        specifier: 3.1.7
-        version: 3.1.7
+        specifier: 4.4.0
+        version: 4.4.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -8698,8 +8698,8 @@ packages:
   '@types/luxon@3.2.0':
     resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
 
-  '@types/luxon@3.4.2':
-    resolution: {integrity: sha512-TifLZlFudklWlMBfhubvgqTXRzLDI5pCbGa4P8a3wPyUQSW+1xQ5eDsreP9DWHX3tjq1ke96uYG/nwundroWcA==}
+  '@types/luxon@3.7.1':
+    resolution: {integrity: sha512-H3iskjFIAn5SlJU7OuxUmTEpebK6TKB8rxZShDslBMZJ5u9S//KM1sbdAisiSrqwLQncVjnpi2OK2J51h+4lsg==}
 
   '@types/mailparser@3.4.4':
     resolution: {integrity: sha512-C6Znp2QVS25JqtuPyxj38Qh+QoFcLycdxsvcc6IZCGekhaMBzbdTXzwGzhGoYb3TfKu8IRCNV0sV1o3Od97cEQ==}
@@ -10724,8 +10724,9 @@ packages:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
 
-  cron@3.1.7:
-    resolution: {integrity: sha512-tlBg7ARsAMQLzgwqVxy8AZl/qlTc5nibqYwtNGoCrd+cV+ugI+tvZC1oT/8dFH8W455YrywGykx/KMmAqOr7Jw==}
+  cron@4.4.0:
+    resolution: {integrity: sha512-fkdfq+b+AHI4cKdhZlppHveI/mgz2qpiYxcm+t5E5TsxX7QrLS1VE0+7GENEk9z0EeGPcpSciGv6ez24duWhwQ==}
+    engines: {node: '>=18.x'}
 
   cross-env@7.0.3:
     resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
@@ -14095,6 +14096,10 @@ packages:
 
   luxon@3.5.0:
     resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
+    engines: {node: '>=12'}
+
+  luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
     engines: {node: '>=12'}
 
   lz-string@1.5.0:
@@ -25682,7 +25687,7 @@ snapshots:
 
   '@types/luxon@3.2.0': {}
 
-  '@types/luxon@3.4.2': {}
+  '@types/luxon@3.7.1': {}
 
   '@types/mailparser@3.4.4':
     dependencies:
@@ -28144,10 +28149,10 @@ snapshots:
     dependencies:
       luxon: 3.5.0
 
-  cron@3.1.7:
+  cron@4.4.0:
     dependencies:
-      '@types/luxon': 3.4.2
-      luxon: 3.4.4
+      '@types/luxon': 3.7.1
+      luxon: 3.7.2
 
   cross-env@7.0.3:
     dependencies:
@@ -32426,6 +32431,8 @@ snapshots:
   luxon@3.4.4: {}
 
   luxon@3.5.0: {}
+
+  luxon@3.7.2: {}
 
   lz-string@1.5.0: {}
 
