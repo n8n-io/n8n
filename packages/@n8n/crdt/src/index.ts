@@ -47,15 +47,32 @@ export {
 	MessagePortTransport,
 	WebSocketTransport,
 	BroadcastChannelTransport,
+	WorkerTransport,
 } from './transports';
-export type { WebSocketTransportConfig } from './transports';
+export type { WebSocketTransportConfig, WorkerTransportConfig } from './transports';
 
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';
 export { BaseSyncProvider, createSyncProvider } from './sync';
 
 // Protocol
-export { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from './protocol';
+export {
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	MESSAGE_SUBSCRIBE,
+	MESSAGE_UNSUBSCRIBE,
+	MESSAGE_CONNECTED,
+	MESSAGE_DISCONNECTED,
+	MESSAGE_INITIAL_SYNC,
+	encodeMessage,
+	decodeMessage,
+	encodeWithDocId,
+	decodeWithDocId,
+	encodeString,
+	decodeString,
+	stripDocId,
+	addDocId,
+} from './protocol';
 
 /**
  * Creates a CRDT provider based on the given configuration.
