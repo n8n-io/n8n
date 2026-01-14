@@ -240,6 +240,66 @@ describe('resource-operation-extractor', () => {
 			expect(resultV2?.resources[0].operations.map((o) => o.value)).toEqual(['getV2']);
 		});
 
+		it('should handle complex @version conditions with _cnd operators', () => {
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'item',
+					options: [{ name: 'Item', value: 'item' }],
+				},
+				{
+					displayName: 'Operation Old',
+					name: 'operation',
+					type: 'options',
+					default: 'oldOp',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { lt: 2 } }],
+						},
+					},
+					options: [{ name: 'Old Operation', value: 'oldOp' }],
+				},
+				{
+					displayName: 'Operation New',
+					name: 'operation',
+					type: 'options',
+					default: 'newOp',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2 } }],
+						},
+					},
+					options: [{ name: 'New Operation', value: 'newOp' }],
+				},
+				{
+					displayName: 'Operation Range',
+					name: 'operation',
+					type: 'options',
+					default: 'rangeOp',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { between: { from: 1.5, to: 2.5 } } }],
+						},
+					},
+					options: [{ name: 'Range Operation', value: 'rangeOp' }],
+				},
+			]);
+
+			// Version 1: should have oldOp only (lt 2)
+			const resultV1 = extractResourceOperations(nodeType, 1);
+			expect(resultV1?.resources[0].operations.map((o) => o.value)).toEqual(['oldOp']);
+
+			// Version 2: should have newOp (gte 2) and rangeOp (between 1.5-2.5)
+			const resultV2 = extractResourceOperations(nodeType, 2);
+			expect(resultV2?.resources[0].operations.map((o) => o.value)).toEqual(['newOp', 'rangeOp']);
+
+			// Version 3: should have newOp only (gte 2, but not in range 1.5-2.5)
+			const resultV3 = extractResourceOperations(nodeType, 3);
+			expect(resultV3?.resources[0].operations.map((o) => o.value)).toEqual(['newOp']);
+		});
+
 		it('should handle non-string operation values gracefully', () => {
 			const logger = createMockLogger();
 			const nodeType = createMockNodeType([
@@ -353,6 +413,87 @@ describe('resource-operation-extractor', () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.resources[0].operations).toHaveLength(0);
+		});
+
+		it('should extract operations with displayOptions.show.resource that matches', () => {
+			// This tests the Gmail-like pattern where each resource has its own operation property
+			// with displayOptions.show.resource condition
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'message',
+					options: [
+						{ name: 'Message', value: 'message' },
+						{ name: 'Draft', value: 'draft' },
+						{ name: 'Label', value: 'label' },
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'send',
+					displayOptions: {
+						show: {
+							resource: ['message'],
+						},
+					},
+					options: [
+						{ name: 'Send', value: 'send' },
+						{ name: 'Get All', value: 'getAll' },
+						{ name: 'Delete', value: 'delete' },
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: {
+						show: {
+							resource: ['draft'],
+						},
+					},
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Delete', value: 'delete' },
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: {
+						show: {
+							resource: ['label'],
+						},
+					},
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get All', value: 'getAll' },
+					],
+				},
+			]);
+
+			const result = extractResourceOperations(nodeType, 1);
+
+			expect(result).not.toBeNull();
+			expect(result?.resources).toHaveLength(3);
+
+			// Message should have send, getAll, delete
+			const messageResource = result?.resources.find((r) => r.value === 'message');
+			expect(messageResource?.operations.map((o) => o.value)).toEqual(['send', 'getAll', 'delete']);
+
+			// Draft should have create, delete
+			const draftResource = result?.resources.find((r) => r.value === 'draft');
+			expect(draftResource?.operations.map((o) => o.value)).toEqual(['create', 'delete']);
+
+			// Label should have create, getAll
+			const labelResource = result?.resources.find((r) => r.value === 'label');
+			expect(labelResource?.operations.map((o) => o.value)).toEqual(['create', 'getAll']);
 		});
 	});
 

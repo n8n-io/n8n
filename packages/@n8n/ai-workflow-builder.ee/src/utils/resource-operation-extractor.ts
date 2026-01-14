@@ -1,5 +1,5 @@
 import {
-	displayParameter,
+	checkConditions,
 	type INodeProperties,
 	type INodeTypeDescription,
 	type Logger,
@@ -30,16 +30,32 @@ export interface ResourceOperationInfo {
 }
 
 /**
- * Check if a property is visible for a specific node version.
- * Uses the core n8n-workflow displayParameter utility which handles @version conditions.
+ * Check if a property is visible for a specific node version by checking @version conditions.
+ * We check only @version instead of using displayParameter because displayParameter
+ * checks ALL displayOptions conditions (including resource), but we only want to filter
+ * by version here - resource filtering happens separately in findOperationProperties.
  */
-function isPropertyVisibleForVersion(
-	property: INodeProperties,
-	nodeVersion: number,
-	nodeType: INodeTypeDescription,
-): boolean {
-	// Use displayParameter with empty values to check @version conditions
-	return displayParameter({}, property, { typeVersion: nodeVersion }, nodeType);
+function isPropertyVisibleForVersion(property: INodeProperties, nodeVersion: number): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions means visible for all versions
+	if (!displayOptions) {
+		return true;
+	}
+
+	// Check @version in 'show' conditions - ALL show conditions must match
+	const showVersion = displayOptions.show?.['@version'];
+	if (showVersion && !checkConditions(showVersion, [nodeVersion])) {
+		return false;
+	}
+
+	// Check @version in 'hide' conditions - ANY hide condition matching means hidden
+	const hideVersion = displayOptions.hide?.['@version'];
+	if (hideVersion && checkConditions(hideVersion, [nodeVersion])) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -48,13 +64,12 @@ function isPropertyVisibleForVersion(
 function findResourceProperty(
 	properties: INodeProperties[],
 	nodeVersion: number,
-	nodeType: INodeTypeDescription,
 ): INodeProperties | undefined {
 	return properties.find(
 		(prop) =>
 			prop.name === 'resource' &&
 			prop.type === 'options' &&
-			isPropertyVisibleForVersion(prop, nodeVersion, nodeType),
+			isPropertyVisibleForVersion(prop, nodeVersion),
 	);
 }
 
@@ -65,15 +80,14 @@ function findOperationProperties(
 	properties: INodeProperties[],
 	resourceValue: string,
 	nodeVersion: number,
-	nodeType: INodeTypeDescription,
 ): INodeProperties[] {
 	return properties.filter((prop) => {
 		if (prop.name !== 'operation' || prop.type !== 'options') {
 			return false;
 		}
 
-		// Check version visibility using core displayParameter utility
-		if (!isPropertyVisibleForVersion(prop, nodeVersion, nodeType)) {
+		// Check version visibility (only @version conditions, not resource)
+		if (!isPropertyVisibleForVersion(prop, nodeVersion)) {
 			return false;
 		}
 
@@ -153,7 +167,7 @@ export function extractResourceOperations(
 	}
 
 	// Find the resource property
-	const resourceProperty = findResourceProperty(properties, nodeVersion, nodeType);
+	const resourceProperty = findResourceProperty(properties, nodeVersion);
 	if (!resourceProperty) {
 		// This is expected for most nodes - they don't follow resource/operation pattern
 		return null;
@@ -172,12 +186,7 @@ export function extractResourceOperations(
 
 	// For each resource, find its operations
 	const resources: ResourceInfo[] = resourceOptions.map((resource) => {
-		const operationProperties = findOperationProperties(
-			properties,
-			resource.value,
-			nodeVersion,
-			nodeType,
-		);
+		const operationProperties = findOperationProperties(properties, resource.value, nodeVersion);
 
 		// Merge operations from all matching operation properties
 		const allOperations: OperationInfo[] = [];

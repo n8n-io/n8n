@@ -222,6 +222,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Context is already in messages from transformInput
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
+		console.log('[DEBUG callAgent] state.messages.length:', state.messages.length);
 		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
 			applySubgraphCacheMarkers(state.messages);
@@ -235,6 +236,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			exampleCategorizations: formatExampleCategorizations(),
 		})) as AIMessage;
 
+		console.log('[DEBUG callAgent] response type:', response.getType());
+		console.log(
+			'[DEBUG callAgent] response.tool_calls:',
+			JSON.stringify(response.tool_calls, null, 2),
+		);
+
 		return { messages: [response] };
 	}
 
@@ -243,25 +250,54 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Hydrates availableResources for each node using node type definitions.
 	 */
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
+		console.log('[DEBUG formatOutput] state.messages.length:', state.messages.length);
+		console.log('[DEBUG formatOutput] state.nodesFound:', state.nodesFound);
 		const lastMessage = state.messages.at(-1);
+		console.log('[DEBUG formatOutput] lastMessage type:', lastMessage?.getType());
 		let output: z.infer<typeof discoveryOutputSchema> | undefined;
 
 		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
+			console.log(
+				'[DEBUG formatOutput] tool_calls:',
+				JSON.stringify(lastMessage.tool_calls, null, 2),
+			);
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
+				console.log(
+					'[DEBUG formatOutput] submitCall.args:',
+					JSON.stringify(submitCall.args, null, 2),
+				);
+				console.log(
+					'[DEBUG formatOutput] submitCall.args.nodesFound:',
+					submitCall.args?.nodesFound,
+				);
+				console.log('[DEBUG formatOutput] typeof nodesFound:', typeof submitCall.args?.nodesFound);
+				console.log(
+					'[DEBUG formatOutput] Array.isArray(nodesFound):',
+					Array.isArray(submitCall.args?.nodesFound),
+				);
 				output = submitCall.args as z.infer<typeof discoveryOutputSchema>;
 			}
 		}
 
 		if (!output) {
 			this.logger?.error('[Discovery] No submit tool call found in last message');
+			console.log('[DEBUG formatOutput] No output found, returning empty');
 			return {
 				nodesFound: [],
 				templateIds: [],
 			};
 		}
+
+		console.log('[DEBUG formatOutput] output:', JSON.stringify(output, null, 2));
+		console.log('[DEBUG formatOutput] output.nodesFound:', output.nodesFound);
+		console.log('[DEBUG formatOutput] typeof output.nodesFound:', typeof output.nodesFound);
+		console.log(
+			'[DEBUG formatOutput] Array.isArray(output.nodesFound):',
+			Array.isArray(output.nodesFound),
+		);
 
 		const bestPracticesTool = state.messages.find(
 			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
@@ -308,7 +344,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Should continue with tools or finish?
 	 */
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
+		console.log('[DEBUG shouldContinue] state.messages.length:', state.messages.length);
 		const lastMessage = state.messages[state.messages.length - 1];
+		console.log('[DEBUG shouldContinue] lastMessage type:', lastMessage?.getType());
 
 		if (
 			lastMessage &&
@@ -316,13 +354,22 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			lastMessage.tool_calls &&
 			lastMessage.tool_calls.length > 0
 		) {
+			console.log('[DEBUG shouldContinue] tool_calls count:', lastMessage.tool_calls.length);
 			// Check if the submit tool was called
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
+				console.log(
+					'[DEBUG shouldContinue] Found submit_discovery_results, routing to format_output',
+				);
+				console.log(
+					'[DEBUG shouldContinue] submitCall.args:',
+					JSON.stringify(submitCall.args, null, 2),
+				);
 				return 'format_output';
 			}
+			console.log('[DEBUG shouldContinue] No submit call, routing to tools');
 			return 'tools';
 		}
 

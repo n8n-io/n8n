@@ -326,7 +326,7 @@ const getPropertyValues = (
 	}
 };
 
-const checkConditions = (
+export const checkConditions = (
 	conditions: Array<NodeParameterValue | DisplayCondition>,
 	actualValues: NodeParameterValue[],
 ) => {
