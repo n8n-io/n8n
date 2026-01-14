@@ -295,8 +295,8 @@ const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in g
 - The user's request falls within one of the node recommendation categories: ${Object.values(RecommendationCategory).join(', ')}
 
 Do NOT request node_recommendations when:
-- User explicitly names a provider (e.g., "use Claude", "with OpenAI", "using Gemini")
-- User specifies exact node names`;
+- It is clear for each recommendation category what nodes the user would like to use
+- It is clear how to configure the nodes they have requested to use (e.g. what model to use for an agent)`;
 
 const RESTRICTIONS = `- Output text commentary between tool calls
 - Include bestPractices or categorization in submit_discovery_results
