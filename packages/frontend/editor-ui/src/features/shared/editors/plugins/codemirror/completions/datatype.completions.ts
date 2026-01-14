@@ -953,7 +953,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = (base: string) => {
+export const nodeRefOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1042,16 +1042,17 @@ export const nodeRefOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		sections: {},
 		recommended: ['item'],
 	});
 };
 
-export const inputOptions = (base: string) => {
+export const inputOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1114,9 +1115,10 @@ export const inputOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		recommended: ['item'],
 		sections: {},

@@ -801,7 +801,7 @@ describe('useNodeSettingsParameters', () => {
 					parameters: nodeParameters,
 				};
 
-				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				await shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
 
 				expect(resolveExpressionSpy).not.toHaveBeenCalled();
 				expect(displayParameterSpy).toHaveBeenCalledWith(

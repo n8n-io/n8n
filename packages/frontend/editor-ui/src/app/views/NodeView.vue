@@ -1275,7 +1275,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	copyWebhookUrl(id, 'test');
+	void copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1287,7 +1287,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	copyWebhookUrl(id, 'production');
+	void copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {

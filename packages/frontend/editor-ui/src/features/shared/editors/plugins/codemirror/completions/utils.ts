@@ -179,7 +179,7 @@ export async function resolveAutocompleteExpression(expression: string, contextN
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return resolveParameter(expression, {
+	return await resolveParameter(expression, {
 		...inputData,
 		contextNodeName,
 	});

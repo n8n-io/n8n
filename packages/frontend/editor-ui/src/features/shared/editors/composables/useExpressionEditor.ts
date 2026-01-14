@@ -191,7 +191,7 @@ export const useExpressionEditor = ({
 		if (viewUpdate.docChanged && !shouldIgnoreUpdate) {
 			hasChanges.value = true;
 			emitChanges(viewUpdate);
-			debouncedUpdateSegments();
+			void debouncedUpdateSegments();
 		}
 	}
 
@@ -243,7 +243,7 @@ export const useExpressionEditor = ({
 					selection.value = state.selection.ranges[0];
 					if (!newHasFocus) {
 						autocompleteStatus.value = null;
-						debouncedUpdateSegments();
+						void debouncedUpdateSegments();
 					}
 					return null;
 				}),
@@ -262,7 +262,7 @@ export const useExpressionEditor = ({
 		editor.value = new EditorView({ parent, state });
 		// Capture is needed here to prevent the browser search window to open in the inline editor
 		editor.value.dom.addEventListener('keydown', onKeyDown, { capture: true });
-		debouncedUpdateSegments();
+		void debouncedUpdateSegments();
 	});
 
 	watchEffect(() => {
@@ -312,7 +312,7 @@ export const useExpressionEditor = ({
 
 	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
-		debouncedUpdateSegments.flush();
+		void debouncedUpdateSegments.flush();
 		emitChanges.flush();
 		editor.value?.destroy();
 	});

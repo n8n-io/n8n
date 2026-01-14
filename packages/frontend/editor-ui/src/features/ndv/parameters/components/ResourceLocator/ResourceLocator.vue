@@ -433,7 +433,7 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
 	);

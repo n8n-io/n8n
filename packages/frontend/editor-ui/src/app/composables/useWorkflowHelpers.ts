@@ -71,7 +71,7 @@ export async function resolveParameter<T = IDataObject>(
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<T | null> {
 	if ('localResolve' in opts && opts.localResolve) {
-		return resolveParameterImpl(
+		return await resolveParameterImpl(
 			parameter,
 			opts.workflow,
 			opts.connections,
@@ -90,7 +90,7 @@ export async function resolveParameter<T = IDataObject>(
 
 	const workflowsStore = useWorkflowsStore();
 
-	return resolveParameterImpl(
+	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
 		workflowsStore.connectionsBySourceNode,
@@ -801,7 +801,7 @@ export function useWorkflowHelpers() {
 			}
 			return newObj;
 		}
-		return recurse(nodeParameters, '');
+		return await recurse(nodeParameters, '');
 	}
 
 	async function resolveExpression(
