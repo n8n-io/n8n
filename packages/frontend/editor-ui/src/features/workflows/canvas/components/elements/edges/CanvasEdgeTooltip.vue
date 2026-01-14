@@ -2,7 +2,7 @@
 import { useCssModule } from 'vue';
 import { N8nTooltip } from '@n8n/design-system';
 
-const props = defineProps<{
+defineProps<{
 	content: string;
 }>();
 
