@@ -81,11 +81,12 @@ export function useCanvasModules({
 			maxY = Math.max(maxY, nodeY + nodeHeight);
 		}
 
-		// Add padding and header space
+		// Add padding and header space, ensuring minimum width matches collapsed state
+		const calculatedWidth = maxX - minX + MODULE_PADDING * 2;
 		return {
 			x: minX - MODULE_PADDING,
 			y: minY - MODULE_PADDING - MODULE_HEADER_HEIGHT,
-			width: maxX - minX + MODULE_PADDING * 2,
+			width: Math.max(calculatedWidth, MODULE_COLLAPSED_WIDTH),
 			height: maxY - minY + MODULE_PADDING * 2 + MODULE_HEADER_HEIGHT,
 		};
 	}
