@@ -150,7 +150,7 @@ const onPublishButtonClick = async () => {
 const publishButtonConfig = computed(() => {
 	// Handle permission-denied state first
 	if (!props.workflowPermissions.publish) {
-		return {
+		const defaultConfigForNoPermission = {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
 			showIndicator: false,
@@ -158,6 +158,17 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
+		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
+		if (isWorkflowPublished) {
+			return {
+				...defaultConfigForNoPermission,
+				showIndicator: true,
+				showVersionInfo: true,
+				indicatorClass: 'published',
+			};
+		} else {
+			return defaultConfigForNoPermission;
+		}
 	}
 
 	// Handle new workflow state
@@ -288,7 +299,7 @@ defineExpose({
 							{{ publishButtonConfig.tooltip }} <br />
 						</template>
 						<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
-							<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span
+							<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
 							><br />{{ i18n.baseText('workflowHistory.item.active') }}
 							<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 						</template>
@@ -304,6 +315,7 @@ defineExpose({
 					<div :class="[$style.flex]">
 						<span
 							v-if="publishButtonConfig.showIndicator"
+							data-test-id="workflow-active-version-indicator"
 							:class="{
 								[$style.indicatorDot]: true,
 								[$style.indicatorPublished]: publishButtonConfig.indicatorClass === 'published',
