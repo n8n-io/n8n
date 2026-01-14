@@ -441,7 +441,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where: { id: executionId },
 			});
 
-			return actualStartedAt ?? startedAt;
+			return actualStartedAt!;
 		});
 	}
 
