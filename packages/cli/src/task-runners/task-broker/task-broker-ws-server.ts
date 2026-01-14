@@ -184,7 +184,11 @@ export class TaskBrokerWsServer {
 		this.taskBroker.startDraining();
 
 		for (const connection of this.runnerConnections.values()) {
-			connection.send(JSON.stringify({ type: 'broker:drain' }));
+			try {
+				connection.send(JSON.stringify({ type: 'broker:drain' }));
+			} catch {
+				// Connection may be closed or errored, continue notifying other runners
+			}
 		}
 
 		const start = Date.now();
