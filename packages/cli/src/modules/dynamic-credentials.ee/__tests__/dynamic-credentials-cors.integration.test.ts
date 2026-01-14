@@ -74,6 +74,10 @@ beforeEach(async () => {
 	await testDb.truncate(['CredentialsEntity', 'DynamicCredentialResolver']);
 });
 
+function randomId() {
+	return Math.random().toString(36).substring(2, 15);
+}
+
 describe('POST /credentials/:id/authorize - CORS Integration', () => {
 	let credentialId: string;
 	let resolverId: string;
@@ -82,7 +86,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 		// Create test credential
 		const credential = await credentialsRepository.save(
 			credentialsRepository.create({
-				id: uuid(),
+				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
 				data: cipher.encrypt({ clientId: 'test-client-id' }),
@@ -92,7 +96,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 
 		// Create test resolver
 		const resolver = await resolverRepository.save({
-			id: uuid(),
+			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
 			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
