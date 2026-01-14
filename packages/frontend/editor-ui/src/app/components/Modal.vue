@@ -207,12 +207,14 @@ function getCustomClass() {
 		display: flex;
 		flex-direction: column;
 		flex-grow: 1;
+		padding-inline: 0;
 	}
 
 	.modal-content {
 		overflow: hidden;
 		overflow-y: auto;
 		flex-grow: 1;
+		padding-inline: var(--spacing--lg);
 	}
 
 	&.scrollable .modal-content {
@@ -245,5 +247,6 @@ function getCustomClass() {
 
 .footer {
 	margin-top: var(--spacing--lg);
+	padding-inline: var(--spacing--lg);
 }
 </style>

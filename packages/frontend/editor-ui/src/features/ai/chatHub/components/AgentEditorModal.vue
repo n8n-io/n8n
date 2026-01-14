@@ -4,7 +4,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
@@ -22,6 +22,8 @@ import {
 	N8nIconPicker,
 	N8nInput,
 	N8nInputLabel,
+	N8nIcon,
+	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
@@ -347,6 +349,15 @@ function handleClickUploadArea() {
 	fileInputRef.value?.click();
 }
 
+function handleFileClick(index: number) {
+	if (!isEditMode.value || !props.data.agentId) {
+		return;
+	}
+
+	const url = buildAgentAttachmentUrl(useRootStore().restApiContext, props.data.agentId, index);
+	window.open(url, '_blank');
+}
+
 const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
 
@@ -374,7 +385,16 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 			</div>
 		</template>
 		<template #content>
-			<div :class="$style.content">
+			<div
+				:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
+				@dragenter="fileDrop.handleDragEnter"
+				@dragleave="fileDrop.handleDragLeave"
+				@dragover="fileDrop.handleDragOver"
+				@drop="fileDrop.handleDrop"
+			>
+				<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+					<N8nText size="large" color="text-dark">Add file to agent</N8nText>
+				</div>
 				<N8nInputLabel
 					input-name="agent-name"
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
@@ -476,34 +496,33 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						multiple
 						@change="handleFileSelect"
 					/>
-					<div
-						:class="[
-							$style.uploadArea,
-							{
-								[$style.uploadAreaDragging]: fileDrop.isDragging.value,
-							},
-						]"
-						@click="handleClickUploadArea"
-						@dragenter="fileDrop.handleDragEnter"
-						@dragleave="fileDrop.handleDragLeave"
-						@dragover="fileDrop.handleDragOver"
-						@drop="fileDrop.handleDrop"
-					>
-						<div v-if="files.length === 0" :class="$style.uploadPrompt">
-							<span :class="$style.uploadText"> Click to upload or drag and drop files </span>
+					<div :class="$style.filesContainer">
+						<div
+							v-for="(file, index) in files"
+							:key="String(index)"
+							:class="$style.fileBar"
+							@click="handleFileClick(index)"
+						>
+							<N8nIcon size="medium" icon="file" />
+							<span :class="$style.fileName">
+								{{ file.fileName }}
+							</span>
+							<N8nIconButton
+								icon="trash-2"
+								type="tertiary"
+								size="small"
+								:class="$style.removeButton"
+								@click.stop="removeFile(index)"
+							/>
 						</div>
-						<div v-else :class="$style.filesList">
-							<div v-for="(file, index) in files" :key="String(index)" :class="$style.fileItem">
-								<span :class="$style.fileName">{{ file.fileName }}</span>
-								<N8nIconButton
-									icon="trash-2"
-									type="tertiary"
-									size="small"
-									:class="$style.removeButton"
-									@click.stop="removeFile(index)"
-								/>
-							</div>
-						</div>
+						<N8nButton
+							type="tertiary"
+							icon="plus"
+							:class="$style.addFileButton"
+							@click="handleClickUploadArea"
+						>
+							Add file
+						</N8nButton>
 					</div>
 				</N8nInputLabel>
 			</div>
@@ -535,6 +554,25 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
+	position: relative;
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	pointer-events: none;
 }
 
 .input {
@@ -572,53 +610,26 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	display: none;
 }
 
-.uploadArea {
-	min-height: 100px;
-	border: var(--border-width) dashed var(--color--foreground);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--md);
-	cursor: pointer;
-	transition: all 0.2s ease;
-	background-color: var(--color--background);
-
-	&:hover {
-		border-color: var(--color--primary);
-		background-color: var(--color--background--light-2);
-	}
-}
-
-.uploadAreaDragging {
-	border-color: var(--color--primary);
-	background-color: var(--color--primary--tint-3);
-}
-
-.uploadPrompt {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--text--tint-2);
-	text-align: center;
-}
-
-.uploadText {
-	font-size: var(--font-size--sm);
-}
-
-.filesList {
+.filesContainer {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 }
 
-.fileItem {
+.fileBar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--xs);
 	background-color: var(--color--background--light-2);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
-	gap: var(--spacing--xs);
+	gap: var(--spacing--3xs);
+	cursor: pointer;
+}
+
+.addFileButton {
+	width: fit-content;
 }
 
 .fileName {
@@ -628,6 +639,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--xl);
 }
 
 .removeButton {

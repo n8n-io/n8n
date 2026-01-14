@@ -227,3 +227,11 @@ export function buildChatAttachmentUrl(
 ): string {
 	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
 }
+
+export function buildAgentAttachmentUrl(
+	context: IRestApiContext,
+	agentId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/agents/${agentId}/attachments/${attachmentIndex}`;
+}

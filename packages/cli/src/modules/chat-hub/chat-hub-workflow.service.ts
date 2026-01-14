@@ -483,18 +483,29 @@ export class ChatHubWorkflowService {
 		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+		return `
+## Date and time
+
+The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
-You can only produce text responses.
+
+## Capabilities
+
+You may *analyze* and *explain* provided multimedia contents, but you can ONLY *produce text responses*.
 You cannot create, generate, edit, or display images, videos, or other non-text content.
 If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
 
-!!!IMPORTANT!!!
+
+## Context files
 
 If context files are provided by the user,
-- You must take them into account for generating relevant answers
-- You must NOT mention or summarize them proactively`;
+- Take them into account for generating relevant answers.
+- Do NOT proactively analyze, summarize or explain them until requested.
+
+BAD: "I've received three files: [list and summary]"
+GOOD: "Hello! How can I help you?"
+`;
 	}
 
 	private getBaseSystemMessage(timeZone: string) {
