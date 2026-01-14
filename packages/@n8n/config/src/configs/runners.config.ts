@@ -75,7 +75,7 @@ export class TaskRunnersConfig {
 	 * before force-closing connections. Must be greater than or equal to 0.
 	 */
 	@Env('N8N_RUNNERS_DRAIN_TIMEOUT')
-	drainTimeout: number = 5;
+	drainTimeout: number = 30;
 
 	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
