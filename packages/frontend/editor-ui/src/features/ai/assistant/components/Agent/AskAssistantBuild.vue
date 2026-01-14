@@ -168,6 +168,7 @@ function onFeedback(feedback: RatingFeedback) {
 			feedback: feedback.feedback,
 			workflow_id: workflowsStore.workflowId,
 			session_id: builderStore.trackingSessionId,
+			user_message_id: builderStore.lastUserMessageId,
 		});
 	}
 }
