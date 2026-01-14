@@ -8,7 +8,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useToast } from '@/app/composables/useToast';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
@@ -20,7 +19,6 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const i18n = useI18n();
-const toast = useToast();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -79,9 +77,9 @@ const handleReadyToRunClick = async () => {
 			route.params.folderId as string,
 			projectId,
 		);
-	} catch (error) {
+	} catch {
 		isLoadingReadyToRun.value = false;
-		toast.showError(error, i18n.baseText('generic.error'));
+		// Error already shown by store functions
 	}
 };
 
