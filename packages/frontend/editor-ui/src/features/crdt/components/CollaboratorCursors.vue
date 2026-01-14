@@ -61,10 +61,10 @@ const inverseScale = computed(() => 1 / props.zoom);
 	position: absolute;
 	top: 0;
 	left: 0;
+	z-index: 1000;
 	display: flex;
 	align-items: flex-start;
 	gap: var(--spacing--4xs);
-	transition: transform 50ms linear;
 }
 
 .cursorIcon {

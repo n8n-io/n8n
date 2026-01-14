@@ -1,4 +1,5 @@
 import type { InjectionKey, ComputedRef } from 'vue';
+import type { EventHookOn } from '@vueuse/core';
 
 /**
  * User information for awareness display.
@@ -90,6 +91,14 @@ export interface Collaborator {
 	state: WorkflowAwarenessState;
 }
 
+/** Event payload when a collaborator's dragging state changes */
+export interface CollaboratorDraggingChange {
+	/** The collaborator who is dragging */
+	collaborator: Collaborator;
+	/** Nodes being dragged (empty array = drag ended) */
+	nodes: DraggingNode[];
+}
+
 /**
  * Return type for useWorkflowAwareness composable.
  */
@@ -135,6 +144,24 @@ export interface UseWorkflowAwarenessReturn {
 	 * Used by canvas to show real-time positions during drag.
 	 */
 	getDraggingPosition(nodeId: string): [number, number] | undefined;
+
+	/**
+	 * Reactive reverse index: nodeId -> users who have selected it.
+	 * Imperatively maintained - only updates when selections change, not on cursor moves.
+	 * Use for O(1) lookup of who is selecting a specific node.
+	 */
+	readonly nodeIdToSelectingUsers: Map<string, AwarenessUser[]>;
+
+	// --- Remote Change Events (VueUse EventHook pattern) ---
+
+	/** Subscribe to collaborator joining */
+	onCollaboratorJoin: EventHookOn<Collaborator>;
+
+	/** Subscribe to collaborator leaving */
+	onCollaboratorLeave: EventHookOn<Collaborator>;
+
+	/** Subscribe to collaborator dragging changes */
+	onDraggingChange: EventHookOn<CollaboratorDraggingChange>;
 }
 
 /**

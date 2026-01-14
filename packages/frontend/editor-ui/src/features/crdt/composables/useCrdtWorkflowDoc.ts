@@ -218,13 +218,15 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		// No hook trigger - Vue Flow already removed the node before calling this
 	}
 
-	function updateNodePosition(nodeId: string, position: [number, number]): void {
-		if (!doc) return;
+	function updateNodePositions(updates: NodePositionChange[]): void {
+		if (!doc || updates.length === 0) return;
 
 		doc.transact(() => {
-			const crdtNode = getCrdtNode(nodeId);
-			if (crdtNode) {
-				crdtNode.set('position', position);
+			for (const { nodeId, position } of updates) {
+				const crdtNode = getCrdtNode(nodeId);
+				if (crdtNode) {
+					crdtNode.set('position', position);
+				}
 			}
 		});
 	}
@@ -280,7 +282,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		addNode,
 		addNodes,
 		removeNode,
-		updateNodePosition,
+		updateNodePositions,
 		updateNodeParams,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,

@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { useUsersStore } from '@/features/settings/users/users.store';
+import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
+import { MiniMap } from '@vue-flow/minimap';
 import { computed, markRaw, onMounted, provide } from 'vue';
+import { useCanvasAwareness } from '../composables/useCanvasAwareness';
 import { useCanvasSync } from '../composables/useCanvasSync';
 import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
@@ -27,21 +30,23 @@ const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 provide(WorkflowAwarenessKey, awareness);
 
 // Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes
-const initialNodes = useCanvasSync({ doc, instance, awareness });
+const initialNodes = useCanvasSync({ doc, instance });
 
-// User colors for collaboration
-const USER_COLORS = [
-	'#e91e63',
-	'#9c27b0',
-	'#673ab7',
-	'#3f51b5',
-	'#2196f3',
-	'#00bcd4',
-	'#009688',
-	'#4caf50',
-	'#ff9800',
-	'#ff5722',
-];
+// Wire awareness ↔ Vue Flow (ephemeral state: cursors, selections, live drag)
+useCanvasAwareness({ instance, awareness });
+
+/**
+ * Generate a visually distinct color from a number using golden ratio distribution.
+ * This ensures colors are well-spaced across the hue spectrum regardless of input sequence.
+ */
+function generateUserColor(seed: number): string {
+	// Golden ratio conjugate for optimal distribution
+	const goldenRatio = 0.618033988749895;
+	// Use seed to generate a hue distributed across the spectrum
+	const hue = ((seed * goldenRatio) % 1) * 360;
+	// Fixed saturation and lightness for vibrant, readable colors
+	return `hsl(${Math.round(hue)}, 70%, 50%)`;
+}
 
 // Set up local user awareness on mount
 const usersStore = useUsersStore();
@@ -49,50 +54,52 @@ const usersStore = useUsersStore();
 onMounted(() => {
 	const currentUser = usersStore.currentUser;
 	if (currentUser && awareness.isReady.value) {
-		// Generate a color based on user ID
-		const colorIndex =
-			currentUser.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-			USER_COLORS.length;
+		// Use CRDT client ID for color - unique per browser tab
+		const clientId = awareness.clientId.value ?? 0;
 
 		awareness.setUser({
 			id: currentUser.id,
 			name: currentUser.firstName ?? currentUser.email ?? 'Anonymous',
-			color: USER_COLORS[colorIndex],
+			color: generateUserColor(clientId),
 		});
 	}
 });
-
-// Track mouse position for cursor awareness (in flow coordinates)
-instance.onPaneMouseMove((event) => {
-	if (!awareness.isReady.value) return;
-
-	// Convert screen coordinates to flow coordinates (accounts for pan/zoom)
-	const flowCoords = instance.screenToFlowCoordinate({
-		x: event.clientX,
-		y: event.clientY,
-	});
-
-	awareness.updateCursor({
-		x: flowCoords.x,
-		y: flowCoords.y,
-	});
-});
-
-function handleMouseLeave() {
-	awareness.updateCursor(null);
-}
 
 // Zoom for cursor size compensation (inverse scale)
 const zoom = computed(() => instance.viewport.value.zoom);
 </script>
 
 <template>
-	<div :class="$style.canvasWrapper" @mouseleave="handleMouseLeave">
-		<VueFlow :id="doc.workflowId" :nodes="initialNodes" :node-types="nodeTypes" fit-view-on-init>
+	<div :class="$style.canvasWrapper">
+		<VueFlow
+			:id="doc.workflowId"
+			:nodes="initialNodes"
+			:node-types="nodeTypes"
+			fit-view-on-init
+			pan-on-scroll
+			:min-zoom="0"
+			:max-zoom="4"
+		>
 			<!-- Cursors rendered inside viewport (like React Flow's edgelabel-renderer) -->
 			<template #zoom-pane>
 				<CollaboratorCursors :collaborators="awareness.collaborators" :zoom="zoom" />
 			</template>
+
+			<slot name="canvas-background" v-bind="{ viewport: instance.viewport }">
+				<CanvasBackground :viewport="instance.viewport.value" :striped="false" />
+			</slot>
+
+			<Transition name="minimap">
+				<MiniMap
+					aria-label="n8n Minimap"
+					:height="120"
+					:width="200"
+					position="bottom-left"
+					pannable
+					zoomable
+					:node-border-radius="16"
+				/>
+			</Transition>
 		</VueFlow>
 	</div>
 </template>

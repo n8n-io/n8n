@@ -96,8 +96,8 @@ export interface WorkflowDocument {
 	/** Remove a node by ID */
 	removeNode(nodeId: string): void;
 
-	/** Update node position */
-	updateNodePosition(nodeId: string, position: [number, number]): void;
+	/** Update node positions (batch) */
+	updateNodePositions(updates: NodePositionChange[]): void;
 
 	/** Update node parameters */
 	updateNodeParams(nodeId: string, params: Record<string, unknown>): void;

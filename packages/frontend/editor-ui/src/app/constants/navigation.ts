@@ -11,6 +11,7 @@ export const enum VIEWS {
 	CREDENTIALS = 'CredentialsView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
+	WORKFLOW_CRDT = 'NodeViewExistingCRDT',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',

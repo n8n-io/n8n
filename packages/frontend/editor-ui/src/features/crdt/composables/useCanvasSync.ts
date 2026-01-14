@@ -1,7 +1,6 @@
 import { onScopeDispose } from 'vue';
 import type { Node, VueFlowStore } from '@vue-flow/core';
 import type { WorkflowDocument, WorkflowNode } from '../types/workflowDocument.types';
-import type { UseWorkflowAwarenessReturn, DraggingNode } from '../types/awareness.types';
 
 /**
  * Transform WorkflowNode to Vue Flow Node format.
@@ -21,62 +20,47 @@ export interface UseCanvasSyncOptions {
 	doc: WorkflowDocument;
 	/** The Vue Flow store instance */
 	instance: VueFlowStore;
-	/** Optional awareness for real-time drag updates */
-	awareness?: UseWorkflowAwarenessReturn;
 }
 
 /**
  * Canvas sync adapter - bridges WorkflowDocument with Vue Flow.
  *
- * Handles:
+ * Handles persistent document sync:
  * - Initial nodes returned for VueFlow :nodes prop
  * - Local changes: Vue Flow events → document mutations
  * - Remote changes: document events → Vue Flow updates
- * - Ephemeral drag updates via awareness (optional)
  *
  * Only cares about positions and add/remove - parameters are hidden from Vue Flow.
+ * For ephemeral awareness sync (cursors, selections, live drag), use useCanvasAwareness.
  *
  * @example
  * ```ts
  * const doc = useCrdtWorkflowDoc({ docId: 'workflow-123' });
  * const instance = useVueFlow('workflow-123');
- * const awareness = useWorkflowAwareness({ awareness: doc.awareness });
  *
- * // Wire up sync and get initial nodes
- * const initialNodes = useCanvasSync({ doc, instance, awareness });
+ * // Wire up document sync and get initial nodes
+ * const initialNodes = useCanvasSync({ doc, instance });
  *
  * // Pass initial nodes to VueFlow
  * // <VueFlow :id="doc.workflowId" :nodes="initialNodes" fit-view-on-init />
  * ```
  */
 export function useCanvasSync(options: UseCanvasSyncOptions): Node[] {
-	const { doc, instance, awareness } = options;
+	const { doc, instance } = options;
 
 	// --- Initial nodes for Vue Flow ---
 	const initialNodes = doc.getNodes().map(toVueFlowNode);
 
 	// --- Local → Document ---
 
-	// Wire drag events to broadcast ephemeral positions via awareness
-	const unsubDrag = instance.onNodeDrag((event) => {
-		if (!awareness) return;
-
-		const draggingNodes: DraggingNode[] = event.nodes.map((node) => ({
-			nodeId: node.id,
-			position: [node.position.x, node.position.y],
-		}));
-		awareness.updateDragging(draggingNodes);
-	});
-
-	// Wire drag stop to commit positions to CRDT and clear awareness dragging
+	// Wire drag stop to commit positions to CRDT document
 	const unsubDragStop = instance.onNodeDragStop((event) => {
-		// Clear awareness dragging state
-		awareness?.updateDragging([]);
-
-		// Commit final positions to CRDT document
-		for (const node of event.nodes) {
-			doc.updateNodePosition(node.id, [node.position.x, node.position.y]);
-		}
+		// Commit final positions to CRDT document (single transaction)
+		const updates = event.nodes.map((node) => ({
+			nodeId: node.id,
+			position: [node.position.x, node.position.y] as [number, number],
+		}));
+		doc.updateNodePositions(updates);
 	});
 
 	// Wire node removal events to document
@@ -105,7 +89,6 @@ export function useCanvasSync(options: UseCanvasSyncOptions): Node[] {
 	// --- Cleanup ---
 
 	onScopeDispose(() => {
-		unsubDrag.off();
 		unsubDragStop.off();
 		unsubNodesChange.off();
 		offNodeAdded();

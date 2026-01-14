@@ -122,13 +122,17 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		nodesCache.value = nodesCache.value.filter((n) => n.id !== nodeId);
 	}
 
-	function updateNodePosition(nodeId: string, position: [number, number]): void {
-		const idx = nodesCache.value.findIndex((n) => n.id === nodeId);
-		if (idx !== -1) {
-			const updated = [...nodesCache.value];
-			updated[idx] = { ...updated[idx], position };
-			nodesCache.value = updated;
+	function updateNodePositions(updates: NodePositionChange[]): void {
+		if (updates.length === 0) return;
+
+		const updated = [...nodesCache.value];
+		for (const { nodeId, position } of updates) {
+			const idx = updated.findIndex((n) => n.id === nodeId);
+			if (idx !== -1) {
+				updated[idx] = { ...updated[idx], position };
+			}
 		}
+		nodesCache.value = updated;
 	}
 
 	function updateNodeParams(nodeId: string, params: Record<string, unknown>): void {
@@ -176,7 +180,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		addNode,
 		addNodes,
 		removeNode,
-		updateNodePosition,
+		updateNodePositions,
 		updateNodeParams,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,

@@ -1,4 +1,5 @@
 import { reactive, computed, onScopeDispose, inject } from 'vue';
+import { createEventHook } from '@vueuse/core';
 import type { CRDTAwareness, AwarenessChangeEvent, ChangeOrigin } from '@n8n/crdt/browser';
 import type {
 	AwarenessUser,
@@ -8,6 +9,7 @@ import type {
 	WorkflowAwarenessState,
 	Collaborator,
 	UseWorkflowAwarenessReturn,
+	CollaboratorDraggingChange,
 } from '../types/awareness.types';
 import { WorkflowAwarenessKey } from '../types/awareness.types';
 
@@ -57,9 +59,58 @@ export function useWorkflowAwareness(
 	// Reactive Map - mutations to entries don't trigger full re-renders
 	const collaboratorsMap = reactive(new Map<number, Collaborator>());
 
+	// Reactive reverse index: nodeId -> users selecting it
+	// Imperatively maintained - only updates when selections change, not on cursor moves
+	const nodeIdToSelectingUsers = reactive(new Map<string, AwarenessUser[]>());
+
+	/**
+	 * Update the selection index when a user's selection changes.
+	 * Only mutates the Map for nodes that actually changed.
+	 */
+	function updateSelectionIndex(
+		user: AwarenessUser,
+		oldNodeIds: string[],
+		newNodeIds: string[],
+	): void {
+		// Remove user from old selections
+		for (const nodeId of oldNodeIds) {
+			if (newNodeIds.includes(nodeId)) continue; // Still selected, skip
+			const users = nodeIdToSelectingUsers.get(nodeId);
+			if (users) {
+				const filtered = users.filter((u) => u.id !== user.id);
+				if (filtered.length === 0) {
+					nodeIdToSelectingUsers.delete(nodeId);
+				} else {
+					nodeIdToSelectingUsers.set(nodeId, filtered);
+				}
+			}
+		}
+
+		// Add user to new selections
+		for (const nodeId of newNodeIds) {
+			if (oldNodeIds.includes(nodeId)) continue; // Already tracked, skip
+			const users = nodeIdToSelectingUsers.get(nodeId) ?? [];
+			nodeIdToSelectingUsers.set(nodeId, [...users, user]);
+		}
+	}
+
+	/**
+	 * Check if two string arrays have the same elements (order-insensitive).
+	 */
+	function arraysEqual(a: string[], b: string[]): boolean {
+		if (a.length !== b.length) return false;
+		const setA = new Set(a);
+		return b.every((item) => setA.has(item));
+	}
+
 	const isReady = computed(() => awareness !== null);
 	const clientId = computed(() => awareness?.clientId ?? null);
 	const collaboratorCount = computed(() => collaboratorsMap.size + (isReady.value ? 1 : 0));
+
+	// Event hooks for awareness changes
+	const collaboratorJoinHook = createEventHook<Collaborator>();
+	const collaboratorLeaveHook = createEventHook<Collaborator>();
+	const draggingChangeHook = createEventHook<CollaboratorDraggingChange>();
 
 	// Track unsubscribe function
 	let unsubscribe: (() => void) | null = null;
@@ -75,8 +126,14 @@ export function useWorkflowAwareness(
 
 		// Handle removed clients
 		for (const cid of removed) {
-			if (cid !== myClientId) {
+			if (cid === myClientId) continue;
+
+			const existing = collaboratorsMap.get(cid);
+			if (existing) {
+				// Remove from selection index before deleting
+				updateSelectionIndex(existing.state.user, existing.state.selection.nodeIds, []);
 				collaboratorsMap.delete(cid);
+				void collaboratorLeaveHook.trigger(existing);
 			}
 		}
 
@@ -87,7 +144,11 @@ export function useWorkflowAwareness(
 			const state = awareness.getStates().get(cid);
 			if (!state) continue;
 
-			collaboratorsMap.set(cid, { clientId: cid, state: { ...state } });
+			const collaborator: Collaborator = { clientId: cid, state: { ...state } };
+			collaboratorsMap.set(cid, collaborator);
+			// Add to selection index
+			updateSelectionIndex(state.user, [], state.selection.nodeIds);
+			void collaboratorJoinHook.trigger(collaborator);
 		}
 
 		// Handle updated clients - mutate state properties in-place
@@ -96,16 +157,39 @@ export function useWorkflowAwareness(
 
 			const state = awareness.getStates().get(cid);
 			if (!state) {
-				collaboratorsMap.delete(cid);
+				const existing = collaboratorsMap.get(cid);
+				if (existing) {
+					// Remove from selection index before deleting
+					updateSelectionIndex(existing.state.user, existing.state.selection.nodeIds, []);
+					collaboratorsMap.delete(cid);
+					void collaboratorLeaveHook.trigger(existing);
+				}
 				continue;
 			}
 
 			const existing = collaboratorsMap.get(cid);
 			if (existing) {
+				// Update selection index only if selection changed (not on cursor moves)
+				const oldNodeIds = existing.state.selection.nodeIds;
+				const newNodeIds = state.selection.nodeIds;
+				if (!arraysEqual(oldNodeIds, newNodeIds)) {
+					updateSelectionIndex(existing.state.user, oldNodeIds, newNodeIds);
+				}
+
 				// Mutate in-place - Vue tracks property changes on reactive Map values
 				Object.assign(existing.state, state);
+
+				// Emit dragging change for imperative Vue Flow updates
+				void draggingChangeHook.trigger({
+					collaborator: existing,
+					nodes: state.dragging,
+				});
 			} else {
-				collaboratorsMap.set(cid, { clientId: cid, state: { ...state } });
+				const collaborator: Collaborator = { clientId: cid, state: { ...state } };
+				collaboratorsMap.set(cid, collaborator);
+				// Add to selection index
+				updateSelectionIndex(state.user, [], state.selection.nodeIds);
+				void collaboratorJoinHook.trigger(collaborator);
 			}
 		}
 	}
@@ -120,10 +204,13 @@ export function useWorkflowAwareness(
 		const myClientId = awareness.clientId;
 
 		collaboratorsMap.clear();
+		nodeIdToSelectingUsers.clear();
 		for (const [cid, state] of states) {
 			if (cid === myClientId) continue;
 			if (!state) continue;
 			collaboratorsMap.set(cid, { clientId: cid, state: { ...state } });
+			// Populate selection index
+			updateSelectionIndex(state.user, [], state.selection.nodeIds);
 		}
 	}
 
@@ -211,6 +298,10 @@ export function useWorkflowAwareness(
 		markActive,
 		updateDragging,
 		getDraggingPosition,
+		nodeIdToSelectingUsers,
+		onCollaboratorJoin: collaboratorJoinHook.on,
+		onCollaboratorLeave: collaboratorLeaveHook.on,
+		onDraggingChange: draggingChangeHook.on,
 	};
 }
 

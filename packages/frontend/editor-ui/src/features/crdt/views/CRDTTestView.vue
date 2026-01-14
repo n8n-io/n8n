@@ -2,14 +2,19 @@
 import CrdtTestContent from '../components/CrdtTestContent.vue';
 import CrdtWorkflowProvider from '../components/CrdtWorkflowProvider.vue';
 // import RestWorkflowProvider from '../components/RestWorkflowProvider.vue';
+const props = defineProps<{
+	name: string;
+}>();
 
-const workflowId = 'olaBF64OShV5q70u';
+console.log(props.name);
+
+// const workflowId = 'olaBF64OShV5q70u';
 // const test = 'ser/Rj2O3ipqLBlwS11w';
 </script>
 
 <template>
 	<div :class="$style.container">
-		<CrdtWorkflowProvider :doc-id="workflowId">
+		<CrdtWorkflowProvider :doc-id="props.name">
 			<CrdtTestContent />
 		</CrdtWorkflowProvider>
 	</div>
