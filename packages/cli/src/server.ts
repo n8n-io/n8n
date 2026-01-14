@@ -157,21 +157,6 @@ export class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
-		// OIDC
-		// ----------------------------------------
-
-		try {
-			// in the short term, we load the OIDC module here to ensure it is initialized
-			// ideally we want to migrate this to a module and be able to load it dynamically
-			// when the license changes, but that requires some refactoring
-			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-			await Container.get(OidcService).init();
-			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-		} catch (error) {
-			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
-		}
-
-		// ----------------------------------------
 		// Variables
 		// ----------------------------------------
 
