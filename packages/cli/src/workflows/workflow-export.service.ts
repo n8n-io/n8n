@@ -245,17 +245,25 @@ export class WorkflowExportService {
 
 			// Create mapping from real IDs to temporary IDs for security
 			// This prevents exposing real workflow IDs in public templates
-			const realToTempIdMap = new Map<string, string>();
-			realToTempIdMap.set(mainWorkflow.id, 'workflow_0');
+			const workflowRealToTempIdMap = new Map<string, string>();
+			workflowRealToTempIdMap.set(mainWorkflow.id, 'workflow_0');
 
 			// Map all subworkflow IDs
 			if (workflowGraph) {
 				let tempIdCounter = 1;
 				for (const [workflowId] of workflowGraph.workflows) {
 					if (workflowId === mainWorkflow.id) continue; // Skip main (already mapped)
-					realToTempIdMap.set(workflowId, `workflow_${tempIdCounter}`);
+					workflowRealToTempIdMap.set(workflowId, `workflow_${tempIdCounter}`);
 					tempIdCounter++;
 				}
+			}
+
+			// Create mapping for data table IDs (security - same reason as workflows)
+			const dataTableRealToTempIdMap = new Map<string, string>();
+			let dataTableTempCounter = 0;
+			for (const [realTableId] of dataTableExports) {
+				dataTableRealToTempIdMap.set(realTableId, `datatable_${dataTableTempCounter}`);
+				dataTableTempCounter++;
 			}
 
 			// Build manifest with temporary IDs
@@ -268,17 +276,15 @@ export class WorkflowExportService {
 			};
 
 			// Replace real IDs with temp IDs in workflows
-			const replaceWorkflowIds = (
-				workflow: WorkflowEntity,
-				tempId: string,
-			): WorkflowEntity => {
+			const replaceIds = (workflow: WorkflowEntity, workflowTempId: string): WorkflowEntity => {
 				const workflowCopy = JSON.parse(JSON.stringify(workflow)) as WorkflowEntity;
 
 				// Replace the workflow's own ID with the temp ID
-				(workflowCopy as { id: string }).id = tempId;
+				(workflowCopy as { id: string }).id = workflowTempId;
 
-				// Update Execute Workflow node references
+				// Update node references
 				for (const node of workflowCopy.nodes) {
+					// Update Execute Workflow node references
 					if (node.type === 'n8n-nodes-base.executeWorkflow') {
 						// Skip non-database sources
 						if (
@@ -303,8 +309,8 @@ export class WorkflowExportService {
 						}
 
 						// Replace with temp ID if we have a mapping
-						if (realId && realToTempIdMap.has(realId)) {
-							const tempId = realToTempIdMap.get(realId)!;
+						if (realId && workflowRealToTempIdMap.has(realId)) {
+							const tempId = workflowRealToTempIdMap.get(realId)!;
 							if (typeof node.parameters?.['workflowId'] === 'string') {
 								node.parameters['workflowId'] = tempId;
 							} else if (
@@ -316,13 +322,25 @@ export class WorkflowExportService {
 							}
 						}
 					}
+
+					// Update Data Table node references
+					if (node.type === 'n8n-nodes-base.dataTable') {
+						const dataTableId = node.parameters?.dataTableId;
+						if (dataTableId && typeof dataTableId === 'object' && 'value' in dataTableId) {
+							const realTableId = (dataTableId as { value: string }).value;
+							if (realTableId && dataTableRealToTempIdMap.has(realTableId)) {
+								(dataTableId as { value: string }).value =
+									dataTableRealToTempIdMap.get(realTableId)!;
+							}
+						}
+					}
 				}
 
 				return workflowCopy;
 			};
 
 			// Write main workflow with temp IDs
-			const mainWorkflowCopy = replaceWorkflowIds(mainWorkflow, 'workflow_0');
+			const mainWorkflowCopy = replaceIds(mainWorkflow, 'workflow_0');
 			const mainFileName = 'workflow_0.json';
 			await writeFile(
 				path.join(workflowsDir, mainFileName),
@@ -342,8 +360,8 @@ export class WorkflowExportService {
 				for (const [workflowId, workflow] of workflowGraph.workflows) {
 					if (workflowId === mainWorkflow.id) continue; // Skip main
 
-					const tempId = realToTempIdMap.get(workflowId)!;
-					const workflowCopy = replaceWorkflowIds(workflow, tempId);
+					const tempId = workflowRealToTempIdMap.get(workflowId)!;
+					const workflowCopy = replaceIds(workflow, tempId);
 					const fileName = `${tempId}.json`;
 
 					await writeFile(
@@ -355,7 +373,7 @@ export class WorkflowExportService {
 					// Collect all workflows that call this subworkflow (using temp IDs)
 					const calledBy = workflowGraph.references
 						.filter((ref) => ref.workflowId === workflowId)
-						.map((ref) => realToTempIdMap.get(ref.calledBy)!)
+						.map((ref) => workflowRealToTempIdMap.get(ref.calledBy)!)
 						.filter((id) => id !== undefined);
 
 					manifest.workflows.push({
@@ -368,29 +386,33 @@ export class WorkflowExportService {
 				}
 			}
 
-			// Write data tables
+			// Write data tables with temp IDs
 			if (dataTableExports.size > 0) {
-				for (const [tableId, dataTableExport] of dataTableExports) {
+				for (const [realTableId, dataTableExport] of dataTableExports) {
 					const { tableName, structure, csvContent } = dataTableExport;
+					const tempTableId = dataTableRealToTempIdMap.get(realTableId)!;
 
 					// Sanitize table name for filesystem
 					const sanitizedName = tableName.replace(/[^a-z0-9_-]/gi, '_');
 					const tableDir = path.join(tempDir, 'data-tables', sanitizedName);
 					await mkdir(tableDir, { recursive: true });
 
-					// Write structure.json
+					// Replace real ID with temp ID in structure
+					const structureWithTempId = { ...structure, id: tempTableId };
+
+					// Write structure.json with temp ID
 					await writeFile(
 						path.join(tableDir, 'structure.json'),
-						JSON.stringify(structure, null, 2),
+						JSON.stringify(structureWithTempId, null, 2),
 						'utf-8',
 					);
 
 					// Write data.csv
 					await writeFile(path.join(tableDir, 'data.csv'), csvContent, 'utf-8');
 
-					// Add to manifest
+					// Add to manifest with temp ID
 					manifest.dataTables.push({
-						id: tableId,
+						id: tempTableId,
 						name: tableName,
 					});
 				}

@@ -302,6 +302,11 @@ export class DataTableImportService {
 			// Find mapping for old ID
 			const mapping = idMapping.get(value);
 			if (!mapping) {
+				this.logger.warn('No mapping found for data table ID', {
+					nodeId: node.id,
+					nodeName: node.name,
+					oldValue: value,
+				});
 				continue;
 			}
 
