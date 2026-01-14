@@ -81,7 +81,7 @@ await memberPage.navigate.toWorkflows();
 **Always run before marking complete:**
 
 ```bash
-# 1. Tests pass
+# 1. Tests pass (check output for failures - piping loses exit code)
 pnpm --filter=n8n-playwright test:local <your-test> --reporter=list 2>&1 | tail -50
 
 # 2. Not flaky (required)
@@ -93,6 +93,8 @@ pnpm --filter=n8n-playwright lint 2>&1 | tail -30
 # 4. Typecheck passes
 pnpm --filter=n8n-playwright typecheck 2>&1 | tail -30
 ```
+
+**Important:** Piping through `tail` loses the exit code. Always check the output for "failed" or error messages rather than relying on exit codes.
 
 **If any fail, fix before completing.**
 
