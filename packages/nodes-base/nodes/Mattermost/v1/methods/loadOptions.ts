@@ -5,8 +5,15 @@ import { apiRequestAllItems } from '../transport';
 
 // Get all the available channels
 export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'channels';
-	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
+	let responseData;
+
+	try {
+		// Try admin endpoint first (returns all channels across teams)
+		responseData = await apiRequestAllItems.call(this, 'GET', 'channels', {});
+	} catch {
+		// Fall back to user-scoped endpoint (works for non-admin users)
+		responseData = await apiRequestAllItems.call(this, 'GET', 'users/me/channels', {});
+	}
 
 	if (responseData === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No data got returned');
