@@ -47,6 +47,14 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 	) {
 		return false;
 	}
+	// bestPractices is optional, but if present must be a string
+	if (
+		'bestPractices' in obj &&
+		obj.bestPractices !== undefined &&
+		typeof obj.bestPractices !== 'string'
+	) {
+		return false;
+	}
 	return true;
 }
 
