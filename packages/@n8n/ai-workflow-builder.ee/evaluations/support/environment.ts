@@ -15,11 +15,8 @@ import {
 	type TraceFilters,
 } from '../langsmith/trace-filters.js';
 
-/** Maximum batch size in bytes for trace uploads (2MB - reduced to avoid 403 errors) */
-const TRACE_BATCH_SIZE_LIMIT = 2_000_000;
-
-/** Number of concurrent trace batch uploads */
-const TRACE_BATCH_CONCURRENCY = 1;
+/** Maximum memory for trace queue (3GB) */
+const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
 
 export interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -91,10 +88,8 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 		// Filter large fields from traces to avoid 403 payload errors
 		hideInputs: traceFilters.filterInputs,
 		hideOutputs: traceFilters.filterOutputs,
-		// Reduce batch size and concurrency for high-volume scenarios
-		batchSizeBytesLimit: TRACE_BATCH_SIZE_LIMIT,
-		batchSizeLimit: 10, // Limit runs per batch (default 100) to avoid 403 multipart errors
-		traceBatchConcurrency: TRACE_BATCH_CONCURRENCY,
+		// Increase queue memory limit for high-concurrency evals
+		maxIngestMemoryBytes: MAX_INGEST_MEMORY_BYTES,
 	});
 
 	return { client, traceFilters };
