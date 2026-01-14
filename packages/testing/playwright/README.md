@@ -51,11 +51,27 @@ pnpm test:local --ui            # To enable UI debugging and test running mode
 ```typescript
 test('basic test', ...)                              // All modes, fully parallel
 test('postgres only @mode:postgres', ...)            // Mode-specific
-test('needs clean db @db:reset', ...)                // Sequential per worker
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
 test('proxy test @capability:proxy', ...)           // Requires proxy server capability
 ```
+
+### Worker Isolation (Fresh Database)
+If tests need a clean database state, use `test.use()` at the top level of the file with a unique capability config instead of the deprecated `@db:reset` tag:
+
+```typescript
+// my-isolated-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+// Must be top-level, not inside describe block
+test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+
+test('test with clean state', async ({ n8n }) => {
+  // Fresh container with reset database
+});
+```
+
+> **Deprecated:** `@db:reset` tag causes CI issues (separate workers, sequential execution). Use `test.use()` pattern above instead.
 
 ## Fixture Selection
 - **`base.ts`**: Standard testing with worker-scoped containers (default choice)
