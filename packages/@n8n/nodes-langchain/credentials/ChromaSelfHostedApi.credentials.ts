@@ -19,7 +19,8 @@ export class ChromaSelfHostedApi implements ICredentialType {
 			type: 'string',
 			default: 'http://localhost:8000',
 			placeholder: 'http://localhost:8000',
-			description: 'The URL of your ChromaDB instance',
+			description:
+				'The URL of your ChromaDB instance. Note that path prefixes are not supported, so the URL must point directly to the instance root.',
 		},
 		{
 			displayName: 'Authentication',
