@@ -8,6 +8,7 @@ import type { NodeConfigurationEntry } from '@/types';
 import {
 	extractResourceOperations,
 	formatResourceOperationsForPrompt,
+	createResourceCacheKey,
 	type ResourceOperationInfo,
 } from '@/utils/resource-operation-extractor';
 import type { BuilderToolBase } from '@/utils/stream-processor';
@@ -305,8 +306,17 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?
 				};
 				reporter.complete(output);
 
-				// Return success response with state updates if we fetched new templates
-				const stateUpdates = newTemplates ? { cachedTemplates: newTemplates } : undefined;
+				// Build state updates: cache resource operation info and new templates
+				const cacheKey = createResourceCacheKey(nodeName, nodeVersion);
+				const stateUpdates: Record<string, unknown> = {
+					// Cache the resource operation info (including null for nodes without resources)
+					resourceOperationCache: { [cacheKey]: resourceOperationInfo },
+				};
+
+				// Add new templates if fetched
+				if (newTemplates) {
+					stateUpdates.cachedTemplates = newTemplates;
+				}
 
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {

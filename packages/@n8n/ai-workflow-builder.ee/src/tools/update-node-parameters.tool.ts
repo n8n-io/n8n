@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
 import {
-	displayParameter,
+	checkConditions,
 	type INode,
 	type INodeTypeDescription,
 	type INodeParameters,
@@ -48,24 +48,95 @@ const updateNodeParametersSchema = z.object({
 });
 
 /**
+ * Check if a property should be hidden based on a specific condition key.
+ * Returns true if the property should be hidden, false otherwise.
+ */
+function isHiddenByCondition(
+	displayOptions: INodeProperties['displayOptions'],
+	conditionKey: string,
+	value: string | number,
+): boolean {
+	// Check 'show' condition - if specified but doesn't match, hide it
+	const showCondition = displayOptions?.show?.[conditionKey];
+	if (showCondition && !checkConditions(showCondition, [value])) {
+		return true;
+	}
+
+	// Check 'hide' condition - if specified and matches, hide it
+	const hideCondition = displayOptions?.hide?.[conditionKey];
+	if (hideCondition && checkConditions(hideCondition, [value])) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Check if a property is visible based on @version, resource, and operation conditions ONLY.
+ * Other displayOptions conditions (aggregate, mode, action, etc.) are intentionally ignored
+ * so the LLM sees all properties that could be configured for the current resource/operation.
+ *
+ * This prevents the LLM from hallucinating field structures when properties are hidden
+ * due to conditions like `displayOptions.show.aggregate: ['aggregateIndividualFields']`.
+ */
+function isPropertyVisibleForContext(
+	property: INodeProperties,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions = always visible
+	if (!displayOptions) {
+		return true;
+	}
+
+	// Check @version condition
+	if (isHiddenByCondition(displayOptions, '@version', nodeVersion)) {
+		return false;
+	}
+
+	// Resource/operation values in n8n are always strings
+	const resource = currentValues.resource;
+	const operation = currentValues.operation;
+
+	// Check resource condition
+	if (typeof resource === 'string' && isHiddenByCondition(displayOptions, 'resource', resource)) {
+		return false;
+	}
+
+	// Check operation condition
+	if (
+		typeof operation === 'string' &&
+		isHiddenByCondition(displayOptions, 'operation', operation)
+	) {
+		return false;
+	}
+
+	// All other displayOptions conditions are ignored
+	// (aggregate, mode, action, etc. - LLM should see these properties)
+	return true;
+}
+
+/**
  * Filter node properties based on the node's current context (version, resource, operation).
- * Uses the core n8n-workflow displayParameter utility which handles all displayOptions logic
- * including @version, resource, operation, action, and complex _cnd conditions.
+ * Only filters by @version, resource, and operation - other displayOptions conditions are
+ * intentionally ignored so the LLM sees all configurable properties for the current context.
  *
  * @param properties - The node's properties array
  * @param node - The node instance (for typeVersion)
- * @param nodeType - The node type description
+ * @param _nodeType - The node type description (unused, kept for API compatibility)
  * @param currentValues - Current parameter values (resource, operation, etc.)
  * @returns Filtered array of properties visible in the current context
  */
 function filterPropertiesForContext(
 	properties: INodeProperties[],
 	node: INode,
-	nodeType: INodeTypeDescription,
+	_nodeType: INodeTypeDescription,
 	currentValues: INodeParameters,
 ): INodeProperties[] {
 	return properties.filter((property) =>
-		displayParameter(currentValues, property, { typeVersion: node.typeVersion }, nodeType),
+		isPropertyVisibleForContext(property, node.typeVersion, currentValues),
 	);
 }
 
@@ -106,7 +177,6 @@ async function processParameterUpdates(
 		nodeType,
 		currentValues,
 	);
-
 	const filteredPropertiesJson = JSON.stringify(filteredProperties, null, 2);
 
 	logger?.debug('Filtered node properties for LLM context', {

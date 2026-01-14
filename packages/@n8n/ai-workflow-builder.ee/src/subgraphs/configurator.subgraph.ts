@@ -31,6 +31,7 @@ import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
+	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -214,9 +215,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Best practices only from discovery (not full nodes list)
-		if (parentState.discoveryContext?.bestPractices) {
-			contextParts.push(parentState.discoveryContext.bestPractices);
+		// 2. Discovery context - includes available resources/operations for each node type
+		if (parentState.discoveryContext) {
+			contextParts.push('=== DISCOVERY CONTEXT ===');
+			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
 		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)

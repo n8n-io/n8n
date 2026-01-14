@@ -495,6 +495,193 @@ describe('resource-operation-extractor', () => {
 			const labelResource = result?.resources.find((r) => r.value === 'label');
 			expect(labelResource?.operations.map((o) => o.value)).toEqual(['create', 'getAll']);
 		});
+
+		it('should handle hide.resource conditions on operations', () => {
+			// Tests that operations with hide.resource are excluded for matching resources
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'item',
+					options: [
+						{ name: 'Item', value: 'item' },
+						{ name: 'Deprecated', value: 'deprecated' },
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'get',
+					// This operation is hidden for 'deprecated' resource
+					displayOptions: {
+						hide: {
+							resource: ['deprecated'],
+						},
+					},
+					options: [
+						{ name: 'Get', value: 'get' },
+						{ name: 'Create', value: 'create' },
+					],
+				},
+				{
+					displayName: 'Legacy Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'legacyOp',
+					// This operation only shows for 'deprecated' resource
+					displayOptions: {
+						show: {
+							resource: ['deprecated'],
+						},
+					},
+					options: [{ name: 'Legacy Operation', value: 'legacyOp' }],
+				},
+			]);
+
+			const result = extractResourceOperations(nodeType, 1);
+
+			expect(result).not.toBeNull();
+
+			// Item should have get, create (not hidden)
+			const itemResource = result?.resources.find((r) => r.value === 'item');
+			expect(itemResource?.operations.map((o) => o.value)).toEqual(['get', 'create']);
+
+			// Deprecated should only have legacyOp (get/create are hidden)
+			const deprecatedResource = result?.resources.find((r) => r.value === 'deprecated');
+			expect(deprecatedResource?.operations.map((o) => o.value)).toEqual(['legacyOp']);
+		});
+
+		it('should handle combined @version AND resource conditions (Notion-like pattern)', () => {
+			// Simulates Notion's pattern where operations differ by both version AND resource
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'page',
+					options: [
+						{ name: 'Page', value: 'page' },
+						{ name: 'Database Page', value: 'databasePage' },
+					],
+				},
+				{
+					displayName: 'Operation V1',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: {
+						show: {
+							'@version': [1],
+							resource: ['page'],
+						},
+					},
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+				},
+				{
+					displayName: 'Operation V2',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: {
+						show: {
+							resource: ['page'],
+						},
+						hide: {
+							'@version': [1],
+						},
+					},
+					options: [
+						{ name: 'Archive', value: 'archive' },
+						{ name: 'Create', value: 'create' },
+						{ name: 'Search', value: 'search' },
+					],
+				},
+				{
+					displayName: 'Database Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: {
+						show: {
+							resource: ['databasePage'],
+						},
+					},
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Update', value: 'update' },
+					],
+				},
+			]);
+
+			// Version 1: page should have create, get
+			const resultV1 = extractResourceOperations(nodeType, 1);
+			const pageV1 = resultV1?.resources.find((r) => r.value === 'page');
+			expect(pageV1?.operations.map((o) => o.value)).toEqual(['create', 'get']);
+
+			// Version 2: page should have archive, create, search
+			const resultV2 = extractResourceOperations(nodeType, 2);
+			const pageV2 = resultV2?.resources.find((r) => r.value === 'page');
+			expect(pageV2?.operations.map((o) => o.value)).toEqual(['archive', 'create', 'search']);
+
+			// Both versions: databasePage should have create, update (no version condition)
+			const dbPageV1 = resultV1?.resources.find((r) => r.value === 'databasePage');
+			const dbPageV2 = resultV2?.resources.find((r) => r.value === 'databasePage');
+			expect(dbPageV1?.operations.map((o) => o.value)).toEqual(['create', 'update']);
+			expect(dbPageV2?.operations.map((o) => o.value)).toEqual(['create', 'update']);
+		});
+
+		it('should handle resource property with version conditions', () => {
+			// Tests that the resource property itself can be filtered by version
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource V1',
+					name: 'resource',
+					type: 'options',
+					default: 'legacy',
+					displayOptions: {
+						show: {
+							'@version': [1],
+						},
+					},
+					options: [{ name: 'Legacy', value: 'legacy' }],
+				},
+				{
+					displayName: 'Resource V2',
+					name: 'resource',
+					type: 'options',
+					default: 'modern',
+					displayOptions: {
+						hide: {
+							'@version': [1],
+						},
+					},
+					options: [
+						{ name: 'Modern', value: 'modern' },
+						{ name: 'Advanced', value: 'advanced' },
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'execute',
+					options: [{ name: 'Execute', value: 'execute' }],
+				},
+			]);
+
+			// Version 1: should only see 'legacy' resource
+			const resultV1 = extractResourceOperations(nodeType, 1);
+			expect(resultV1?.resources.map((r) => r.value)).toEqual(['legacy']);
+
+			// Version 2: should see 'modern' and 'advanced' resources
+			const resultV2 = extractResourceOperations(nodeType, 2);
+			expect(resultV2?.resources.map((r) => r.value)).toEqual(['modern', 'advanced']);
+		});
 	});
 
 	describe('formatResourceOperationsForPrompt', () => {

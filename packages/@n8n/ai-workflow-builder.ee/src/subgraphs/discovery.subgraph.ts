@@ -15,7 +15,11 @@ import {
 	formatTechniqueList,
 	formatExampleCategorizations,
 } from '@/prompts/agents/discovery.prompt';
-import { extractResourceOperations } from '@/utils/resource-operation-extractor';
+import {
+	extractResourceOperations,
+	createResourceCacheKey,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -120,6 +124,13 @@ export const DiscoverySubgraphState = Annotation.Root({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
+
+	// Cache for resource/operation info to avoid duplicate extraction
+	// Key: "nodeName:version", Value: ResourceOperationInfo or null
+	resourceOperationCache: Annotation<Record<string, ResourceOperationInfo | null>>({
+		reducer: (x, y) => ({ ...x, ...y }),
+		default: () => ({}),
+	}),
 });
 
 export interface DiscoverySubgraphConfig {
@@ -222,7 +233,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Context is already in messages from transformInput
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
-		console.log('[DEBUG callAgent] state.messages.length:', state.messages.length);
 		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
 			applySubgraphCacheMarkers(state.messages);
@@ -236,12 +246,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			exampleCategorizations: formatExampleCategorizations(),
 		})) as AIMessage;
 
-		console.log('[DEBUG callAgent] response type:', response.getType());
-		console.log(
-			'[DEBUG callAgent] response.tool_calls:',
-			JSON.stringify(response.tool_calls, null, 2),
-		);
-
 		return { messages: [response] };
 	}
 
@@ -250,71 +254,78 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Hydrates availableResources for each node using node type definitions.
 	 */
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
-		console.log('[DEBUG formatOutput] state.messages.length:', state.messages.length);
-		console.log('[DEBUG formatOutput] state.nodesFound:', state.nodesFound);
 		const lastMessage = state.messages.at(-1);
-		console.log('[DEBUG formatOutput] lastMessage type:', lastMessage?.getType());
 		let output: z.infer<typeof discoveryOutputSchema> | undefined;
 
 		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
-			console.log(
-				'[DEBUG formatOutput] tool_calls:',
-				JSON.stringify(lastMessage.tool_calls, null, 2),
-			);
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
-				console.log(
-					'[DEBUG formatOutput] submitCall.args:',
-					JSON.stringify(submitCall.args, null, 2),
-				);
-				console.log(
-					'[DEBUG formatOutput] submitCall.args.nodesFound:',
-					submitCall.args?.nodesFound,
-				);
-				console.log('[DEBUG formatOutput] typeof nodesFound:', typeof submitCall.args?.nodesFound);
-				console.log(
-					'[DEBUG formatOutput] Array.isArray(nodesFound):',
-					Array.isArray(submitCall.args?.nodesFound),
-				);
-				output = submitCall.args as z.infer<typeof discoveryOutputSchema>;
+				// Use Zod safeParse for type-safe validation instead of casting
+				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
+				if (!parseResult.success) {
+					this.logger?.error('[Discovery] Invalid discovery output schema', {
+						errors: parseResult.error.errors,
+					});
+					return {
+						nodesFound: [],
+						templateIds: [],
+					};
+				}
+				output = parseResult.data;
 			}
 		}
 
 		if (!output) {
 			this.logger?.error('[Discovery] No submit tool call found in last message');
-			console.log('[DEBUG formatOutput] No output found, returning empty');
 			return {
 				nodesFound: [],
 				templateIds: [],
 			};
 		}
 
-		console.log('[DEBUG formatOutput] output:', JSON.stringify(output, null, 2));
-		console.log('[DEBUG formatOutput] output.nodesFound:', output.nodesFound);
-		console.log('[DEBUG formatOutput] typeof output.nodesFound:', typeof output.nodesFound);
-		console.log(
-			'[DEBUG formatOutput] Array.isArray(output.nodesFound):',
-			Array.isArray(output.nodesFound),
-		);
-
 		const bestPracticesTool = state.messages.find(
 			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
 		);
 
-		// Hydrate nodesFound with availableResources from node type definitions
+		// Build lookup map for O(1) node type lookup (fixes N+1 problem)
+		const nodeTypeMap = new Map<string, INodeTypeDescription>();
+		for (const nt of this.parsedNodeTypes) {
+			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
+			for (const v of versions) {
+				nodeTypeMap.set(`${nt.name}:${v}`, nt);
+			}
+		}
+
+		// Get the resource operation cache from state
+		const existingCache = state.resourceOperationCache ?? {};
+
+		// Hydrate nodesFound with availableResources from node type definitions or cache
 		const hydratedNodesFound = output.nodesFound.map((node) => {
-			// Find the node type definition
-			const nodeType = this.parsedNodeTypes.find(
-				(nt) =>
-					nt.name === node.nodeName &&
-					(Array.isArray(nt.version)
-						? nt.version.includes(node.version)
-						: nt.version === node.version),
-			);
+			const cacheKey = createResourceCacheKey(node.nodeName, node.version);
+
+			// Check cache first (populated by node_details tool during discovery)
+			if (cacheKey in existingCache) {
+				const cached = existingCache[cacheKey];
+				if (cached) {
+					return {
+						...node,
+						availableResources: cached.resources,
+					};
+				}
+				// Cached as null means no resources for this node
+				return node;
+			}
+
+			// Cache miss - extract fresh (O(1) lookup using pre-built map)
+			const nodeType = nodeTypeMap.get(cacheKey);
 
 			if (!nodeType) {
+				this.logger?.warn('[Discovery] Node type not found during resource hydration', {
+					nodeName: node.nodeName,
+					nodeVersion: node.version,
+				});
 				return node;
 			}
 
@@ -344,9 +355,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Should continue with tools or finish?
 	 */
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
-		console.log('[DEBUG shouldContinue] state.messages.length:', state.messages.length);
 		const lastMessage = state.messages[state.messages.length - 1];
-		console.log('[DEBUG shouldContinue] lastMessage type:', lastMessage?.getType());
 
 		if (
 			lastMessage &&
@@ -354,22 +363,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			lastMessage.tool_calls &&
 			lastMessage.tool_calls.length > 0
 		) {
-			console.log('[DEBUG shouldContinue] tool_calls count:', lastMessage.tool_calls.length);
 			// Check if the submit tool was called
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
-				console.log(
-					'[DEBUG shouldContinue] Found submit_discovery_results, routing to format_output',
-				);
-				console.log(
-					'[DEBUG shouldContinue] submitCall.args:',
-					JSON.stringify(submitCall.args, null, 2),
-				);
 				return 'format_output';
 			}
-			console.log('[DEBUG shouldContinue] No submit call, routing to tools');
 			return 'tools';
 		}
 

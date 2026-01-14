@@ -42,11 +42,15 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set method to POST"
 - "Add field 'status' with value 'processed'"
 
-NOTE: For nodes with resource/operation patterns (Gmail, Notion, Google Sheets, etc.):
-- The resource and operation are already set by the Builder agent
-- Parameter filtering is automatic based on the node's current resource/operation
-- DO NOT include resource/operation changes in your instructions - focus on other parameters
-- Check the workflow JSON to see which resource/operation is already configured`;
+RESOURCE/OPERATION HANDLING:
+For nodes with resource/operation patterns (Gmail, Notion, Google Sheets, Google Drive, Slack, etc.):
+- The Builder agent has ALREADY set resource and operation - check the workflow JSON
+- Usually you should NOT change these - focus on configuring other parameters
+- If you DO need to change resource/operation (e.g., user explicitly requests it or Builder made a mistake):
+  - ONLY use values from the DISCOVERY CONTEXT section - it lists valid resource/operation combinations
+  - NEVER hallucinate or guess operation names - if it's not in discovery context, it doesn't exist
+  - Example: Notion page resource has operations: "archive", "create", "search" - NOT "get" or "read"
+- The parameter list you receive is filtered based on the current resource/operation`;
 
 const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
 
@@ -164,7 +168,8 @@ const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
-- Add commentary between tool calls - execute tools silently`;
+- Add commentary between tool calls - execute tools silently
+- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT`;
 
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `

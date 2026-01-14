@@ -59,13 +59,27 @@ export function buildDiscoveryContextBlock(
 					connectionChangingParameters.length > 0
 						? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
 						: '';
-				// Include available resources summary for nodes with resource/operation pattern
-				// Format: "resource":"op1"|"op2", "resource2":"op3"|"op4"
-				// Using quotes and pipes to avoid ambiguity if values contain special chars
-				const resourceInfo =
-					availableResources && availableResources.length > 0
-						? ` [Resources: ${availableResources.map((r) => `"${r.value}":${r.operations.map((o) => `"${o.value}"`).join('|')}`).join(', ')}]`
-						: '';
+
+				// Format resource/operation info clearly to help LLM understand the structure
+				// Each resource is listed with its valid operations
+				// Filter out __CUSTOM_API_CALL__ as it's not useful for workflow building
+				let resourceInfo = '';
+				if (availableResources && availableResources.length > 0) {
+					const filteredResources = availableResources
+						.filter((r) => r.value !== '__CUSTOM_API_CALL__')
+						.map((r) => {
+							const ops = r.operations
+								.filter((o) => o.value !== '__CUSTOM_API_CALL__')
+								.map((o) => `"${o.value}"`)
+								.join(', ');
+							return `    - resource="${r.value}" supports operations: [${ops}]`;
+						});
+
+					if (filteredResources.length > 0) {
+						resourceInfo = `\n  Available resource/operation combinations:\n${filteredResources.join('\n')}`;
+					}
+				}
+
 				parts.push(`- ${nodeName} v${version}: ${reasoning}${params}${resourceInfo}`);
 			},
 		);

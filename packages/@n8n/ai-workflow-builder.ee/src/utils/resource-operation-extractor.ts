@@ -74,6 +74,31 @@ function findResourceProperty(
 }
 
 /**
+ * Check if an operation is visible for a specific resource value.
+ * Uses checkConditions to handle both simple arrays and complex _cnd conditions.
+ */
+function isOperationVisibleForResource(prop: INodeProperties, resourceValue: string): boolean {
+	const displayOptions = prop.displayOptions;
+	if (!displayOptions) {
+		return true; // No conditions = visible for all resources
+	}
+
+	// Check show.resource - must match if specified
+	const showResource = displayOptions.show?.resource;
+	if (showResource && !checkConditions(showResource, [resourceValue])) {
+		return false;
+	}
+
+	// Check hide.resource - must NOT match if specified
+	const hideResource = displayOptions.hide?.resource;
+	if (hideResource && checkConditions(hideResource, [resourceValue])) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
  * Find 'operation' properties that match a specific resource value
  */
 function findOperationProperties(
@@ -91,15 +116,8 @@ function findOperationProperties(
 			return false;
 		}
 
-		// Check if this operation is for the specified resource
-		const displayOptions = prop.displayOptions;
-		if (!displayOptions?.show?.resource) {
-			// No resource condition means it applies to all resources
-			return true;
-		}
-
-		const resourceCondition = displayOptions.show.resource;
-		return resourceCondition.includes(resourceValue);
+		// Check resource visibility using checkConditions for proper condition handling
+		return isOperationVisibleForResource(prop, resourceValue);
 	});
 }
 
@@ -213,6 +231,14 @@ export function extractResourceOperations(
 	});
 
 	return { resources };
+}
+
+/**
+ * Create a cache key for resource/operation info lookup.
+ * Format: "nodeName:version"
+ */
+export function createResourceCacheKey(nodeName: string, version: number): string {
+	return `${nodeName}:${version}`;
 }
 
 /**
