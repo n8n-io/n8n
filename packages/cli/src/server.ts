@@ -65,6 +65,8 @@ import '@/webhooks/webhooks.controller';
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
+import { DynamicCredentialsConfig } from './modules/dynamic-credentials.ee/services/dynamic-credentials.config';
+import { DynamicCredentialService } from './modules/dynamic-credentials.ee/services/dynamic-credential.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -72,10 +74,13 @@ export class Server extends AbstractServer {
 
 	private presetCredentialsLoaded: boolean;
 
+	private dynamicCredentialsEndpointAuthToken: string;
+
 	private frontendService?: FrontendService;
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly dynamicCredentialsConfig: DynamicCredentialsConfig,
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
@@ -97,6 +102,7 @@ export class Server extends AbstractServer {
 		this.presetCredentialsLoaded = false;
 
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
+		this.dynamicCredentialsEndpointAuthToken = this.dynamicCredentialsConfig.endpointAuthToken;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
@@ -296,6 +302,8 @@ export class Server extends AbstractServer {
 			);
 		}
 
+		this.configureDynamicCredentialsRoute();
+
 		const maxAge = Time.days.toMilliseconds;
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
@@ -481,6 +489,27 @@ export class Server extends AbstractServer {
 				'@/modules/workflow-index/workflow-index.service'
 			);
 			Container.get(WorkflowIndexService).init();
+		}
+	}
+
+	private configureDynamicCredentialsRoute() {
+		if (!isEmpty(this.dynamicCredentialsEndpointAuthToken)) {
+			const dynamicCredentialsEndpointMiddleware =
+				Container.get(DynamicCredentialService).getDynamicCredentialsEndpointsMiddleware();
+			if (!dynamicCredentialsEndpointMiddleware) return;
+
+			this.app.use(
+				`/${this.restEndpoint}/workflows/:workflowId/execution-status`,
+				dynamicCredentialsEndpointMiddleware,
+			);
+			this.app.use(
+				`/${this.restEndpoint}/credentials/:id/revoke`,
+				dynamicCredentialsEndpointMiddleware,
+			);
+			this.app.use(
+				`/${this.restEndpoint}/credentials/:id/authorize`,
+				dynamicCredentialsEndpointMiddleware,
+			);
 		}
 	}
 
