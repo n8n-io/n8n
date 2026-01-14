@@ -9,8 +9,11 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
@@ -20,8 +23,6 @@ import type {
 	IBreakingChangeWorkflowRule,
 } from './types';
 import { N8N_VERSION } from '../../constants';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 interface WorkflowMetadata {
 	name: string;
@@ -200,7 +201,7 @@ export class BreakingChangeService {
 			// Load statistics separately for all workflows in this batch
 			const workflowIds = workflows.map((w) => w.id);
 			const allStatistics = await this.workflowStatisticsRepository.find({
-				where: workflowIds.map((id) => ({ workflowId: id })),
+				where: { workflowId: In(workflowIds) },
 			});
 
 			// Group statistics by workflowId
