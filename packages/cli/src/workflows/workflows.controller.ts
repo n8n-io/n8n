@@ -46,6 +46,7 @@ import { v4 as uuid } from 'uuid';
 import multer from 'multer';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowExportService } from './workflow-export.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowRequest } from './workflow.request';
@@ -124,6 +125,7 @@ export class WorkflowsController {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableExportService: DataTableExportService,
 		private readonly dataTableImportService: DataTableImportService,
+		private readonly workflowExportService: WorkflowExportService,
 	) {
 		console.log('=== WorkflowsController initialized ===');
 		console.log('dataTableExportService:', !!this.dataTableExportService);
@@ -445,43 +447,90 @@ export class WorkflowsController {
 				return {
 					workflowId: workflow.id,
 					dataTablesImported: 0,
+					workflowsImported: 1,
 				};
 			}
 
-			// Handle ZIP import with data tables
-			const { workflow: workflowData, dataTables } =
-				await this.dataTableImportService.extractWorkflowZip(tempFilePath);
+			// Handle ZIP import - detect if it's a bundle or legacy format
+			// First, try to detect if it's a bundle by checking for manifest.json
+			let isBundle = false;
+			try {
+				const bundleData = await this.dataTableImportService.extractWorkflowBundle(tempFilePath);
+				isBundle = true;
 
-			// Import data tables and build ID mapping
-			const idMapping = new Map<string, { newId: string; name: string }>();
-			for (const [oldId, tableData] of dataTables) {
-				const result = await this.dataTableImportService.importDataTable(tableData, projectId);
-				idMapping.set(oldId, { newId: result.newId, name: result.name });
+				this.logger.info('Detected workflow bundle format', {
+					workflowCount: bundleData.workflows.size,
+					dataTableCount: bundleData.dataTables.size,
+				});
+
+				// Import the bundle
+				const result = await this.dataTableImportService.importWorkflowBundle(
+					bundleData,
+					projectId,
+				);
+
+				this.logger.info('Workflow bundle imported successfully', {
+					mainWorkflowId: result.mainWorkflowId,
+					workflowsImported: result.workflowsImported,
+					dataTablesImported: result.dataTablesImported,
+				});
+
+				return {
+					workflowId: result.mainWorkflowId,
+					workflowsImported: result.workflowsImported,
+					dataTablesImported: result.dataTablesImported,
+				};
+			} catch (bundleError) {
+				// If bundle format was detected but import failed, don't fall back
+				if (isBundle) {
+					this.logger.error('Bundle import failed', {
+						error: bundleError instanceof Error ? bundleError.message : String(bundleError),
+						stack: bundleError instanceof Error ? bundleError.stack : undefined,
+					});
+					throw bundleError;
+				}
+
+				// If bundle extraction failed (not a bundle format), try legacy format
+				this.logger.debug('Not a bundle format, trying legacy format', {
+					error: bundleError instanceof Error ? bundleError.message : String(bundleError),
+				});
+
+				// Handle legacy ZIP import with single workflow
+				const { workflow: workflowData, dataTables } =
+					await this.dataTableImportService.extractWorkflowZip(tempFilePath);
+
+				// Import data tables and build ID mapping
+				const idMapping = new Map<string, { newId: string; name: string }>();
+				for (const [oldId, tableData] of dataTables) {
+					const result = await this.dataTableImportService.importDataTable(tableData, projectId);
+					idMapping.set(oldId, { newId: result.newId, name: result.name });
+				}
+
+				// Update workflow node parameters with new data table IDs
+				this.dataTableImportService.updateWorkflowDataTableReferences(workflowData, idMapping);
+
+				// Add projectId to workflow data
+				const workflowDto = workflowData as unknown as CreateWorkflowDto;
+
+				// Remove ID to generate a new one
+				delete workflowDto.id;
+
+				workflowDto.projectId = projectId;
+
+				// Create workflow using existing create method
+				const workflow = await this.create(req, undefined, workflowDto);
+
+				this.logger.info('Workflow imported with data tables (legacy format)', {
+					workflowId: workflow.id,
+					dataTableCount: dataTables.size,
+				});
+
+				return {
+					workflowId: workflow.id,
+					workflowsImported: 1,
+					dataTablesImported: dataTables.size,
+				};
 			}
-
-			// Update workflow node parameters with new data table IDs
-			this.dataTableImportService.updateWorkflowDataTableReferences(workflowData, idMapping);
-
-			// Add projectId to workflow data
-			const workflowDto = workflowData as unknown as CreateWorkflowDto;
-
-			// Remove ID to generate a new one
-			delete workflowDto.id;
-
-			workflowDto.projectId = projectId;
-
-			// Create workflow using existing create method
-			const workflow = await this.create(req, undefined, workflowDto);
-
-			this.logger.info('Workflow imported with data tables', {
-				workflowId: workflow.id,
-				dataTableCount: dataTables.size,
-			});
-
-			return {
-				workflowId: workflow.id,
-				dataTablesImported: dataTables.size,
-			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			const errorStack = error instanceof Error ? error.stack : undefined;
@@ -599,11 +648,9 @@ export class WorkflowsController {
 		res: Response,
 		@Query query: ExportWorkflowQueryDto,
 	) {
-		console.log('=== EXPORT WORKFLOW ENDPOINT CALLED ===');
 		const { workflowId } = req.params;
 		const includeDataTables = query.includeDataTables ?? false;
-		console.log('workflowId:', workflowId);
-		console.log('includeDataTables:', includeDataTables);
+		const includeSubworkflows = query.includeSubworkflows ?? false;
 
 		// Find the workflow with read permissions
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -625,25 +672,47 @@ export class WorkflowsController {
 			throw new NotFoundError(`Project for workflow "${workflowId}" not found`);
 		}
 
-		// If not including data tables, return regular JSON export
-		if (!includeDataTables) {
+		// If not including data tables or subworkflows, return regular JSON export
+		if (!includeDataTables && !includeSubworkflows) {
 			return workflow;
 		}
 
-		// Extract data table IDs from workflow
-		const dataTableIds = await this.dataTableExportService.extractDataTableIds(
-			workflow,
-			project.id,
-		);
+		// Collect subworkflows if requested
+		let workflowGraph = null;
+		if (includeSubworkflows) {
+			workflowGraph = await this.workflowExportService.collectSubworkflowDependencies(
+				workflowId,
+				req.user,
+			);
 
-		// If no data tables found, return regular JSON export
-		if (dataTableIds.length === 0) {
+			// Log warnings for inaccessible workflows
+			if (workflowGraph.errors.length > 0) {
+				this.logger.warn('Some subworkflows could not be exported', {
+					workflowId,
+					errors: workflowGraph.errors,
+				});
+			}
+		}
+
+		// Collect data tables from all workflows (main + subworkflows)
+		const allWorkflows = includeSubworkflows && workflowGraph
+			? Array.from(workflowGraph.workflows.values())
+			: [workflow];
+
+		const dataTableIds = new Set<string>();
+		for (const wf of allWorkflows) {
+			const ids = await this.dataTableExportService.extractDataTableIds(wf, project.id);
+			ids.forEach((id) => dataTableIds.add(id));
+		}
+
+		// If no data tables and no subworkflows, return regular JSON export
+		if (dataTableIds.size === 0 && !includeSubworkflows) {
 			return workflow;
 		}
 
 		// Export data tables
 		const dataTableExports = await this.dataTableExportService.exportDataTables(
-			dataTableIds,
+			Array.from(dataTableIds),
 			project.id,
 		);
 
@@ -651,9 +720,10 @@ export class WorkflowsController {
 		const tempZipPath = path.join(tmpdir(), `n8n-workflow-${workflowId}-${Date.now()}.zip`);
 
 		try {
-			// Create ZIP with workflow and data tables
-			await this.dataTableExportService.createWorkflowZipExport(
+			// Create ZIP bundle with workflow(s) and data tables
+			await this.workflowExportService.createWorkflowBundleZip(
 				workflow,
+				workflowGraph,
 				dataTableExports,
 				tempZipPath,
 			);

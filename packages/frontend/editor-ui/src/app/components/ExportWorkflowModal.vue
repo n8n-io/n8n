@@ -9,19 +9,28 @@ import { N8nButton, N8nCheckbox, N8nNotice, N8nText } from '@n8n/design-system';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const { extractDataTablesFromWorkflow, exportWorkflowAsJson, exportWorkflowWithDataTables } =
-	useWorkflowExport();
+const {
+	extractDataTablesFromWorkflow,
+	extractSubworkflowsFromWorkflow,
+	exportWorkflowAsJson,
+	exportWorkflowWithDataTables,
+} = useWorkflowExport();
 
 const includeDataTables = ref(true);
+const includeSubworkflows = ref(true);
 const isExporting = ref(false);
 const dataTables = ref<Array<{ id: string; name: string }>>([]);
+const subworkflows = ref<Array<{ id: string; name: string }>>([]);
 
 const hasDataTables = computed(() => dataTables.value.length > 0);
 const dataTableCount = computed(() => dataTables.value.length);
+const hasSubworkflows = computed(() => subworkflows.value.length > 0);
+const subworkflowCount = computed(() => subworkflows.value.length);
 
 onMounted(() => {
-	// Extract data table references from workflow
+	// Extract data table and subworkflow references from workflow
 	dataTables.value = extractDataTablesFromWorkflow();
+	subworkflows.value = extractSubworkflowsFromWorkflow();
 });
 
 const closeModal = () => {
@@ -31,8 +40,9 @@ const closeModal = () => {
 const handleExport = async () => {
 	isExporting.value = true;
 	try {
-		if (hasDataTables.value && includeDataTables.value) {
-			await exportWorkflowWithDataTables();
+		// Export as ZIP if including data tables or subworkflows
+		if ((hasDataTables.value && includeDataTables.value) || (hasSubworkflows.value && includeSubworkflows.value)) {
+			await exportWorkflowWithDataTables(includeDataTables.value, includeSubworkflows.value);
 		} else {
 			await exportWorkflowAsJson();
 		}
@@ -55,8 +65,8 @@ const handleExport = async () => {
 	>
 		<template #content>
 			<div :class="$style.content">
-				<N8nText v-if="!hasDataTables">
-					{{ i18n.baseText('exportWorkflow.noDataTables') }}
+				<N8nText v-if="!hasDataTables && !hasSubworkflows">
+					{{ i18n.baseText('exportWorkflow.noDataTablesOrSubworkflows') }}
 				</N8nText>
 
 				<template v-else>
@@ -64,30 +74,64 @@ const handleExport = async () => {
 						{{ i18n.baseText('exportWorkflow.message') }}
 					</N8nText>
 
-					<N8nNotice type="info" :class="$style.notice">
-						{{
-							i18n.baseText('exportWorkflow.dataTables.found', {
-								interpolate: { count: dataTableCount.toString() },
-							})
-						}}
-					</N8nNotice>
+					<!-- Data Tables Section -->
+					<template v-if="hasDataTables">
+						<N8nNotice type="info" :class="$style.notice">
+							{{
+								i18n.baseText('exportWorkflow.dataTables.found', {
+									interpolate: { count: dataTableCount.toString() },
+								})
+							}}
+						</N8nNotice>
 
-					<N8nCheckbox v-model="includeDataTables" :class="$style.checkbox">
-						<N8nText bold color="text-dark">
-							{{ i18n.baseText('exportWorkflow.includeDataTables') }}
-						</N8nText>
-					</N8nCheckbox>
+						<N8nCheckbox v-model="includeDataTables" :class="$style.checkbox">
+							<N8nText bold color="text-dark">
+								{{ i18n.baseText('exportWorkflow.includeDataTables') }}
+							</N8nText>
+						</N8nCheckbox>
 
-					<div v-if="includeDataTables" :class="$style.details">
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('exportWorkflow.dataTables.details') }}
-						</N8nText>
-						<ul :class="$style.tableList">
-							<li v-for="table in dataTables" :key="table.id">
-								<N8nText size="small">{{ table.name }}</N8nText>
-							</li>
-						</ul>
-					</div>
+						<div v-if="includeDataTables" :class="$style.details">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('exportWorkflow.dataTables.details') }}
+							</N8nText>
+							<ul :class="$style.tableList">
+								<li v-for="table in dataTables" :key="table.id">
+									<N8nText size="small">{{ table.name }}</N8nText>
+								</li>
+							</ul>
+						</div>
+					</template>
+
+					<!-- Subworkflows Section -->
+					<template v-if="hasSubworkflows">
+						<N8nNotice type="info" :class="$style.notice">
+							{{
+								i18n.baseText('exportWorkflow.subworkflows.found', {
+									interpolate: { count: subworkflowCount.toString() },
+								})
+							}}
+						</N8nNotice>
+
+						<N8nCheckbox v-model="includeSubworkflows" :class="$style.checkbox">
+							<N8nText bold color="text-dark">
+								{{ i18n.baseText('exportWorkflow.includeSubworkflows') }}
+							</N8nText>
+						</N8nCheckbox>
+
+						<div v-if="includeSubworkflows" :class="$style.details">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('exportWorkflow.subworkflows.warning') }}
+							</N8nText>
+							<N8nText size="small" color="text-light" :class="$style.detailsLabel">
+								{{ i18n.baseText('exportWorkflow.subworkflows.details') }}
+							</N8nText>
+							<ul :class="$style.tableList">
+								<li v-for="subworkflow in subworkflows" :key="subworkflow.id">
+									<N8nText size="small">{{ subworkflow.name }}</N8nText>
+								</li>
+							</ul>
+						</div>
+					</template>
 				</template>
 			</div>
 		</template>
@@ -132,6 +176,11 @@ const handleExport = async () => {
 .details {
 	margin-top: var(--spacing--2xs);
 	margin-left: var(--spacing--lg);
+}
+
+.detailsLabel {
+	margin-top: var(--spacing--2xs);
+	display: block;
 }
 
 .tableList {

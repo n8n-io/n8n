@@ -15,6 +15,11 @@ export interface DataTableReference {
 	mode: 'list' | 'id' | 'name';
 }
 
+export interface SubworkflowReference {
+	id: string;
+	name: string;
+}
+
 export function useWorkflowExport() {
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
@@ -59,6 +64,55 @@ export function useWorkflowExport() {
 	}
 
 	/**
+	 * Extract subworkflow references from Execute Workflow nodes
+	 */
+	function extractSubworkflowsFromWorkflow(): SubworkflowReference[] {
+		const workflow = workflowsStore.workflow;
+		const executeWorkflowNodes = workflow.nodes.filter(
+			(node) => node.type === 'n8n-nodes-base.executeWorkflow',
+		);
+
+		const subworkflowIds = new Set<string>();
+		const subworkflowReferences: SubworkflowReference[] = [];
+
+		for (const node of executeWorkflowNodes) {
+			// Skip non-database sources
+			const source = node.parameters?.source;
+			if (source === 'parameter' || source === 'localFile' || source === 'url') {
+				continue;
+			}
+
+			const workflowId = node.parameters?.workflowId;
+			let id: string | undefined;
+			let name: string | undefined;
+
+			// Handle string format (v1.0)
+			if (typeof workflowId === 'string') {
+				id = workflowId;
+			}
+			// Handle object format (v1.1+)
+			else if (workflowId && typeof workflowId === 'object') {
+				const workflowIdObj = workflowId as {
+					value?: string;
+					cachedResultName?: string;
+				};
+				id = workflowIdObj.value;
+				name = workflowIdObj.cachedResultName;
+			}
+
+			if (id && !subworkflowIds.has(id)) {
+				subworkflowIds.add(id);
+				subworkflowReferences.push({
+					id,
+					name: name || id,
+				});
+			}
+		}
+
+		return subworkflowReferences;
+	}
+
+	/**
 	 * Export workflow as JSON file
 	 */
 	async function exportWorkflowAsJson() {
@@ -90,9 +144,12 @@ export function useWorkflowExport() {
 	}
 
 	/**
-	 * Export workflow with data tables as ZIP file
+	 * Export workflow with data tables and/or subworkflows as ZIP file
 	 */
-	async function exportWorkflowWithDataTables() {
+	async function exportWorkflowWithDataTables(
+		includeDataTables: boolean = true,
+		includeSubworkflows: boolean = false,
+	) {
 		const workflowId = workflowsStore.workflowId;
 
 		if (!workflowId) {
@@ -103,7 +160,8 @@ export function useWorkflowExport() {
 		try {
 			telemetry.track('User exported workflow', {
 				workflow_id: workflowId,
-				include_data_tables: true,
+				include_data_tables: includeDataTables,
+				include_subworkflows: includeSubworkflows,
 			});
 
 			// Get browser ID from localStorage for authentication
@@ -117,7 +175,10 @@ export function useWorkflowExport() {
 			const response = await axios.get(
 				`${rootStore.restApiContext.baseUrl}/workflows/${workflowId}/export`,
 				{
-					params: { includeDataTables: true },
+					params: {
+						includeDataTables,
+						includeSubworkflows,
+					},
 					headers: {
 						'browser-id': browserId,
 						'push-ref': rootStore.restApiContext.pushRef,
@@ -133,11 +194,11 @@ export function useWorkflowExport() {
 			name = name.replace(/[^a-z0-9]/gi, '_');
 			saveAs(blob, `${name}.zip`);
 		} catch (error) {
-			toast.showError(error as Error, 'Failed to export workflow with data tables');
+			toast.showError(error as Error, 'Failed to export workflow');
 
 			// Offer fallback to JSON export
 			const shouldFallback = confirm(
-				'Export with data tables failed. Would you like to export without data tables?',
+				'Export failed. Would you like to export as JSON without data tables or subworkflows?',
 			);
 
 			if (shouldFallback) {
@@ -148,6 +209,7 @@ export function useWorkflowExport() {
 
 	return {
 		extractDataTablesFromWorkflow,
+		extractSubworkflowsFromWorkflow,
 		exportWorkflowAsJson,
 		exportWorkflowWithDataTables,
 	};

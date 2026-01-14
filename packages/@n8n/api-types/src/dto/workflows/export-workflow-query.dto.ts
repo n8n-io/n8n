@@ -6,4 +6,8 @@ export class ExportWorkflowQueryDto extends Z.class({
 		.string()
 		.transform((val) => val === 'true')
 		.optional(),
+	includeSubworkflows: z
+		.string()
+		.transform((val) => val === 'true')
+		.optional(),
 }) {}
