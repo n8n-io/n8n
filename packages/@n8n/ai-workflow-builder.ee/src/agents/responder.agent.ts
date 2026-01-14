@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
 
 import {
 	buildResponderPrompt,
@@ -150,8 +151,10 @@ export class ResponderAgent {
 
 	/**
 	 * Invoke the responder agent with the given context
+	 * @param context - Responder context with messages and workflow state
+	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
-	async invoke(context: ResponderContext): Promise<AIMessage> {
+	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
 		const agent = systemPrompt.pipe(this.llm);
 
 		const contextMessage = this.buildContextMessage(context);
@@ -159,6 +162,6 @@ export class ResponderAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return (await agent.invoke({ messages: messagesToSend })) as AIMessage;
+		return (await agent.invoke({ messages: messagesToSend }, config)) as AIMessage;
 	}
 }

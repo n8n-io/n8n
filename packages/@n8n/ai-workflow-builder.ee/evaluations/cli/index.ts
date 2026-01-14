@@ -5,6 +5,7 @@
  * Can be run directly or used as a reference for custom setups.
  */
 
+import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -34,11 +35,7 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import {
-	consumeGenerator,
-	getChatPayload,
-	getTracingCallbacks,
-} from '../harness/evaluation-helpers';
+import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
@@ -47,16 +44,16 @@ import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../su
 /**
  * Create a workflow generator function.
  * LangSmith tracing is handled via traceable() in the runner.
- * We bridge the trace context to LangChain via getTracingCallbacks().
+ * Callbacks are passed explicitly from the runner to ensure correct trace context
+ * under high concurrency (avoids AsyncLocalStorage race conditions).
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
-): (prompt: string) => Promise<SimpleWorkflow> {
-	return async (prompt: string): Promise<SimpleWorkflow> => {
+): (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow> {
+	return async (prompt: string, callbacks?: Callbacks): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
-		const callbacks = await getTracingCallbacks();
 
 		const agent = createAgent({
 			parsedNodeTypes,
