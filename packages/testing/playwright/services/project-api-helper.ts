@@ -30,26 +30,20 @@ export class ProjectApiHelper {
 	}
 
 	/**
-	 * Get the current logged-in user's personal project
+	 * Get the current logged-in user's personal project.
+	 * Uses the dedicated /rest/projects/personal endpoint which returns
+	 * only the authenticated user's personal project, not all visible personal projects.
 	 * @returns The current user's personal project
 	 */
 	async getMyPersonalProject(): Promise<Project> {
-		const response = await this.api.request.get('/rest/projects');
+		const response = await this.api.request.get('/rest/projects/personal');
 
 		if (!response.ok()) {
-			throw new TestError(`Failed to get projects: ${await response.text()}`);
+			throw new TestError(`Failed to get personal project: ${await response.text()}`);
 		}
 
 		const result = await response.json();
-		const projects = result.data ?? result;
-
-		const personalProject = projects.find((p: Project) => p.type === 'personal');
-
-		if (!personalProject) {
-			throw new TestError('Personal project not found for current user');
-		}
-
-		return personalProject;
+		return result.data ?? result;
 	}
 
 	/**

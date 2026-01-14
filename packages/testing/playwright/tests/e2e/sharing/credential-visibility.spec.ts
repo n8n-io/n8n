@@ -6,13 +6,6 @@ const TEST_API_KEY = 'test-api-key';
 
 test.describe('Credential Visibility Rules', () => {
 	test('should only show credentials from the same team project', async ({ n8n, api }) => {
-		// Enable sharing features
-		await api.enableFeature('sharing');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-		await api.setMaxTeamProjectsQuota(-1);
-
 		// Create credentials in personal project
 		await n8n.navigate.toCredentials();
 		const personalCredName = `Personal Credential ${nanoid()}`;
@@ -35,18 +28,18 @@ test.describe('Credential Visibility Rules', () => {
 		);
 
 		// Create another team project and add credential
-		const testProject = await n8n.projectComposer.createProject(`Test ${nanoid()}`);
-		await n8n.navigate.toProject(testProject.projectId);
+		const testProject = await n8n.api.projects.createProject(`Test ${nanoid()}`);
+		await n8n.navigate.toProject(testProject.id);
 		await n8n.projectTabs.clickCredentialsTab();
 		const testCredName = `Test Credential ${nanoid()}`;
 		await n8n.credentialsComposer.createFromList(
 			'Notion API',
 			{ apiKey: TEST_API_KEY },
-			{ projectId: testProject.projectId, name: testCredName },
+			{ projectId: testProject.id, name: testCredName },
 		);
 
 		// Create workflow in test project
-		await n8n.navigate.toProject(testProject.projectId);
+		await n8n.navigate.toProject(testProject.id);
 		await n8n.projectTabs.clickWorkflowsTab();
 		await n8n.workflows.clickNewWorkflowCard();
 
@@ -63,13 +56,6 @@ test.describe('Credential Visibility Rules', () => {
 	});
 
 	test('should show personal and shared credentials for members', async ({ n8n, api }) => {
-		// Enable sharing features
-		await api.enableFeature('sharing');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-
-		// Create test user
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
@@ -116,31 +102,20 @@ test.describe('Credential Visibility Rules', () => {
 	});
 
 	test('should only show own credentials in shared workflow for members', async ({ n8n, api }) => {
-		// Enable sharing features
-		await api.enableFeature('sharing');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-
-		// Create test user
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
 
-		// Owner creates a credential via UI (not shared)
 		const ownerCredName = `Owner Credential ${nanoid()}`;
 		await n8n.navigate.toCredentials();
 		await n8n.credentialsComposer.createFromList(
 			'Notion API',
 			{ apiKey: TEST_API_KEY },
-			{
-				name: ownerCredName,
-			},
+			{ name: ownerCredName },
 		);
 
-		// Owner creates workflow via API for reliable ID
 		const workflow = await api.workflows.createWorkflow({
 			name: `Test Workflow ${nanoid()}`,
 			nodes: [
@@ -156,10 +131,8 @@ test.describe('Credential Visibility Rules', () => {
 			connections: {},
 		});
 
-		// Get member's personal project and share workflow (withUser uses isolated context)
-		const memberProject = await api.users.withUser(member, async (memberApi) => {
-			return await memberApi.projects.getMyPersonalProject();
-		});
+		const memberApi = await api.users.createApiForUser(member);
+		const memberProject = await memberApi.projects.getMyPersonalProject();
 		await api.workflows.shareWorkflow(workflow.id, [memberProject.id]);
 
 		// Member creates their own credential
@@ -195,18 +168,13 @@ test.describe('Credential Visibility Rules', () => {
 		n8n,
 		api,
 	}) => {
-		// Enable sharing features
-		await api.enableFeature('sharing');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-
-		// Create test user who will create and share the workflow
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
+		// createUser switches session to new user - re-signin as owner for api.projects calls
+		await api.signin('owner');
 
 		// Member creates a credential via UI
 		const memberN8n = await n8n.start.withUser(member);
@@ -215,36 +183,28 @@ test.describe('Credential Visibility Rules', () => {
 		await memberN8n.credentialsComposer.createFromList(
 			'Notion API',
 			{ apiKey: TEST_API_KEY },
-			{
-				name: memberCredName,
-			},
+			{ name: memberCredName },
 		);
 
-		// Member creates workflow and shares with owner via API for reliable workflow ID
-		const workflow = await api.users.withUser(member, async (memberApi) => {
-			return await memberApi.workflows.createWorkflow({
-				name: `Test Workflow ${nanoid()}`,
-				nodes: [
-					{
-						id: 'manual-trigger',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [100, 200],
-						parameters: {},
-						typeVersion: 1,
-					},
-				],
-				connections: {},
-			});
+		// Member creates workflow and shares with owner
+		const memberApi = await api.users.createApiForUser(member);
+		const workflow = await memberApi.workflows.createWorkflow({
+			name: `Test Workflow ${nanoid()}`,
+			nodes: [
+				{
+					id: 'manual-trigger',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					position: [100, 200],
+					parameters: {},
+					typeVersion: 1,
+				},
+			],
+			connections: {},
 		});
 
-		// Get owner's personal project for sharing (api is still owner after withUser)
 		const ownerProject = await api.projects.getMyPersonalProject();
-
-		// Member shares workflow with owner
-		await api.users.withUser(member, async (memberApi) => {
-			await memberApi.workflows.shareWorkflow(workflow.id, [ownerProject.id]);
-		});
+		await memberApi.workflows.shareWorkflow(workflow.id, [ownerProject.id]);
 
 		// Owner creates their own credential via UI
 		await n8n.navigate.toCredentials();
@@ -280,20 +240,12 @@ test.describe('Credential Visibility Rules', () => {
 		n8n,
 		api,
 	}) => {
-		// Enable sharing features
-		await api.enableFeature('sharing');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-
-		// Create a member user
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
 
-		// Member creates a credential
 		const memberN8n = await n8n.start.withUser(member);
 		await memberN8n.navigate.toCredentials();
 		const memberCredName = `Member Credential ${nanoid()}`;

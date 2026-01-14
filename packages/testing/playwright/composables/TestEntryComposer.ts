@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
 import type { TestUser } from '../services/user-api-helper';
+import { ApiHelpers } from '../services/api-helper';
 
 /**
  * Composer for UI test entry points. All methods in this class navigate to or verify UI state.
@@ -104,5 +105,10 @@ export class TestEntryComposer {
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
 		return newN8n;
+	}
+
+	async withUserApi(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
+		const userN8n = await this.withUser(user);
+		return userN8n.api;
 	}
 }

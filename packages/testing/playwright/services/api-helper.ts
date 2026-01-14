@@ -224,6 +224,18 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
+	/**
+	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
+	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
+	 */
+	async enableProjectFeatures(): Promise<void> {
+		await this.enableFeature('sharing');
+		await this.enableFeature('folders');
+		await this.enableFeature('advancedPermissions');
+		await this.enableFeature('projectRole:admin');
+		await this.enableFeature('projectRole:editor');
+	}
+
 	async disableFeature(feature: string): Promise<void> {
 		await this.setFeature(feature, false);
 	}

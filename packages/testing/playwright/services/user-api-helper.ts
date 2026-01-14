@@ -122,27 +122,13 @@ export class UserApiHelper {
 	}
 
 	/**
-	 * Execute API calls with a specific user's context using an isolated API context.
-	 * The original API context remains unchanged - no session swapping occurs.
-	 *
-	 * @param user - User to impersonate
-	 * @param fn - Function to execute with the user's isolated API context
+	 * Create an isolated API context for a specific user.
+	 * Returns an ApiHelpers instance logged in as the specified user.
 	 */
-	async withUser<T>(user: TestUser, fn: (userApi: ApiHelpers) => Promise<T>): Promise<T> {
-		// Create a completely isolated API context for this user
-		// Playwright uses configured baseURL by default
+	async createApiForUser(user: TestUser): Promise<ApiHelpers> {
 		const userContext = await request.newContext();
 		const userApi = new ApiHelpers(userContext);
-
-		try {
-			// Login as the specified user in the isolated context
-			await userApi.login({ email: user.email, password: user.password });
-
-			// Execute the callback with the isolated API context
-			return await fn(userApi);
-		} finally {
-			// Dispose of the isolated context
-			await userContext.dispose();
-		}
+		await userApi.login({ email: user.email, password: user.password });
+		return userApi;
 	}
 }
