@@ -14615,9 +14615,6 @@ packages:
   mobx@6.12.0:
     resolution: {integrity: sha512-Mn6CN6meXEnMa0a5u6a5+RKrqRedHBhZGd15AWLk9O6uFY4KYHzImdt8JI8WODo1bjTSRnwXhJox+FCUZhCKCQ==}
 
-  mock-socket@9.3.1:
-    resolution: {integrity: sha512-qxBgB7Qa2sEQgHFjj0dSigq7fX4k6Saisd5Nelwp2q8mlbAFh5dHV9JTTlF8viYJLSSWgMCZFUom8PJcMNBoJw==}
-    engines: {node: '>= 8'}
   mocha@10.8.2:
     resolution: {integrity: sha512-VZlYo/WE8t1tstuRmqgeyBgCbJc/lEdopaa+axcKzTBJ+UIdlAB9XnmvTCAH4pwR4ElNInaedhEBmZD8iCSVEg==}
     engines: {node: '>= 14.0.0'}
@@ -14627,6 +14624,10 @@ packages:
     resolution: {integrity: sha512-L6XC3EdwT6YrIk0yXpavvLkn8h+EU+Y5UcCHKECyMbdUIxyMuZj4bX4U9e1nvnvUUvQVsV2VHQr5zLdcUkhW/g==}
     engines: {node: '>= 12.0.0'}
     hasBin: true
+
+  mock-socket@9.3.1:
+    resolution: {integrity: sha512-qxBgB7Qa2sEQgHFjj0dSigq7fX4k6Saisd5Nelwp2q8mlbAFh5dHV9JTTlF8viYJLSSWgMCZFUom8PJcMNBoJw==}
+    engines: {node: '>= 8'}
 
   mockserver-client@5.15.0:
     resolution: {integrity: sha512-t0DiypyKH60cX1L9ubUMNnJz+XxmwTYHVdFePQMUNnrwBgERcA5WNqKyuttxRMf7P/WiWO3nWHNHSlPirIFEPw==}
@@ -21649,7 +21650,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -27183,6 +27184,11 @@ snapshots:
 
   axe-core@4.7.2: {}
 
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.12.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
+
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
@@ -27191,6 +27197,14 @@ snapshots:
   axios@1.12.0:
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.12.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -33170,7 +33184,6 @@ snapshots:
 
   mobx@6.12.0: {}
 
-  mock-socket@9.3.1: {}
   mocha@10.8.2:
     dependencies:
       ansi-colors: 4.1.3
@@ -33220,6 +33233,8 @@ snapshots:
       yargs: 16.2.0
       yargs-parser: 20.2.4
       yargs-unparser: 2.0.0
+
+  mock-socket@9.3.1: {}
 
   mockserver-client@5.15.0:
     dependencies:
@@ -37370,16 +37385,17 @@ snapshots:
       typescript: 5.9.2
       vitest: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
-  vitest-websocket-mock@0.5.0(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
-    dependencies:
-      '@vitest/utils': 3.2.4
-      mock-socket: 9.3.1
-      vitest: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
   vitest-mock-extended@3.1.0(typescript@5.9.2)(vitest@4.0.16):
     dependencies:
       ts-essentials: 10.0.2(typescript@5.9.2)
       typescript: 5.9.2
       vitest: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+
+  vitest-websocket-mock@0.5.0(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
+    dependencies:
+      '@vitest/utils': 3.2.4
+      mock-socket: 9.3.1
+      vitest: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
   vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3):
     dependencies:
