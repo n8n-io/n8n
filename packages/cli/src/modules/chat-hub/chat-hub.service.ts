@@ -63,6 +63,7 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { PdfExtractorService } from './pdf-extractor.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	EXECUTION_FINISHED_STATUSES,
@@ -110,6 +111,7 @@ export class ChatHubService {
 		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly pdfExtractorService: PdfExtractorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -601,8 +603,14 @@ export class ChatHubService {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
+		// Extract text from PDF files if present
+		const pdfContext = await this.pdfExtractorService.extractTextFromFiles(agent.files);
+
 		const systemMessage =
-			agent.systemPrompt + '\n\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
+			agent.systemPrompt +
+			pdfContext +
+			'\n\n' +
+			this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,
@@ -1429,7 +1437,7 @@ export class ChatHubService {
 			);
 		} finally {
 			if (model.provider !== 'n8n') {
-				await this.deleteChatWorkflow(workflowData.id);
+				//await this.deleteChatWorkflow(workflowData.id);
 			}
 		}
 	}

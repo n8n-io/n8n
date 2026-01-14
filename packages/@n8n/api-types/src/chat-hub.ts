@@ -457,6 +457,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
 	tools: z.array(INodeSchema),
+	files: z.array(chatAttachmentSchema).default([]),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -468,6 +469,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	tools: z.array(INodeSchema).optional(),
+	files: z.array(chatAttachmentSchema).optional(),
 }) {}
 
 export interface MessageChunk {

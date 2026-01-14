@@ -75,6 +75,7 @@ export class ChatHubAgentService {
 			provider: data.provider,
 			model: data.model,
 			tools: data.tools,
+			files: data.files ?? [],
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
@@ -107,6 +108,7 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
+		if (updates.files !== undefined) updateData.files = updates.files;
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 

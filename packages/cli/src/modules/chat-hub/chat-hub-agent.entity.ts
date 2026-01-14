@@ -1,7 +1,7 @@
-import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
+import type { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
 import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
-import { INode } from 'n8n-workflow';
+import type { IBinaryData, INode } from 'n8n-workflow';
 
 export interface IChatHubAgent {
 	id: string;
@@ -16,6 +16,7 @@ export interface IChatHubAgent {
 	provider: ChatHubLLMProvider;
 	model: string;
 	tools: INode[];
+	files: IBinaryData[];
 }
 
 @Entity({ name: 'chat_hub_agents' })
@@ -90,4 +91,10 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@JsonColumn({ default: '[]' })
 	tools: INode[];
+
+	/**
+	 * The files attached to the agent as JSON `IBinaryData` definitions.
+	 */
+	@JsonColumn({ default: '[]' })
+	files: IBinaryData[];
 }

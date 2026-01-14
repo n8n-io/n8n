@@ -126,6 +126,7 @@ import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/17
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
+import { AddFilesToChatHubAgentTable1768397126397 } from '../common/1768397126397-AddFilesToChatHubAgentTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -257,6 +258,7 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowVersionIdToExecutionData1765892199653,
 	AddWorkflowPublishScopeToProjectRoles1766064542000,
 	AddChatMessageIndices1766068346315,
+	AddFilesToChatHubAgentTable1768397126397,
 ];
 
 export { sqliteMigrations };

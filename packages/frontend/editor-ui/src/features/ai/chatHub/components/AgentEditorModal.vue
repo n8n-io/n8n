@@ -15,7 +15,14 @@ import {
 	type ChatHubProvider,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputLabel,
+} from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -28,6 +35,7 @@ import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chat
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 
 const props = defineProps<{
 	modalName: string;
@@ -60,6 +68,10 @@ const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
+const files = ref<File[]>([]);
+const existingFiles = ref<Array<{ data: string; mimeType: string; fileName: string }>>([]);
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
+const canAcceptFiles = ref(true);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -131,6 +143,22 @@ watch(
 		selectedModel.value = { provider: agent.provider, model: agent.model };
 		tools.value = agent.tools || [];
 
+		// Load existing files
+		if (agent.files && agent.files.length > 0) {
+			existingFiles.value = agent.files
+				.filter(
+					(file: { data?: string; mimeType?: string; fileName?: string }) =>
+						file.data && file.mimeType && file.fileName,
+				)
+				.map((file: { data: string; mimeType: string; fileName: string }) => ({
+					data: file.data,
+					mimeType: file.mimeType,
+					fileName: file.fileName,
+				}));
+		} else {
+			existingFiles.value = [];
+		}
+
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
 		}
@@ -178,6 +206,32 @@ function onModelChange(model: ChatHubConversationModel) {
 	selectedModel.value = model;
 }
 
+async function convertFilesToBinaryData(files: File[]) {
+	const binaryDataArray = [];
+
+	for (const file of files) {
+		const base64Data = await new Promise<string>((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => {
+				const result = reader.result as string;
+				// Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+				const base64 = result.split(',')[1];
+				resolve(base64);
+			};
+			reader.onerror = reject;
+			reader.readAsDataURL(file);
+		});
+
+		binaryDataArray.push({
+			data: base64Data,
+			mimeType: file.type,
+			fileName: file.name,
+		});
+	}
+
+	return binaryDataArray;
+}
+
 async function onSave() {
 	if (!isValid.value || isSaving.value) return;
 
@@ -185,6 +239,10 @@ async function onSave() {
 	try {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
+
+		const newBinaryFiles = await convertFilesToBinaryData(files.value);
+		// Combine existing files (that weren't removed) with newly uploaded files
+		const allFiles = [...existingFiles.value, ...newBinaryFiles];
 
 		const payload = {
 			name: name.value.trim(),
@@ -194,6 +252,7 @@ async function onSave() {
 			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
 			icon: icon.value,
+			files: allFiles,
 		};
 
 		if (isEditMode.value && props.data.agentId) {
@@ -264,6 +323,39 @@ function onSelectTools() {
 		},
 	});
 }
+
+function onFilesDropped(droppedFiles: File[]) {
+	const pdfFiles = droppedFiles.filter((file) => file.type === 'application/pdf');
+	if (pdfFiles.length > 0) {
+		files.value = [...files.value, ...pdfFiles];
+	}
+}
+
+function handleFileSelect(event: Event) {
+	const target = event.target as HTMLInputElement;
+	if (target.files) {
+		const pdfFiles = Array.from(target.files).filter((file) => file.type === 'application/pdf');
+		if (pdfFiles.length > 0) {
+			files.value = [...files.value, ...pdfFiles];
+		}
+	}
+	// Reset input value to allow selecting the same file again
+	target.value = '';
+}
+
+function removeFile(index: number) {
+	files.value = files.value.filter((_, i) => i !== index);
+}
+
+function removeExistingFile(index: number) {
+	existingFiles.value = existingFiles.value.filter((_, i) => i !== index);
+}
+
+function handleClickUploadArea() {
+	fileInputRef.value?.click();
+}
+
+const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 </script>
 
 <template>
@@ -382,6 +474,58 @@ function onSelectTools() {
 						</div>
 					</N8nInputLabel>
 				</div>
+
+				<N8nInputLabel input-name="agent-files" label="Files" :required="false">
+					<input
+						ref="fileInput"
+						type="file"
+						:class="$style.fileInput"
+						accept="application/pdf"
+						multiple
+						@change="handleFileSelect"
+					/>
+					<div
+						:class="[$style.uploadArea, { [$style.uploadAreaDragging]: fileDrop.isDragging.value }]"
+						@click="handleClickUploadArea"
+						@dragenter="fileDrop.handleDragEnter"
+						@dragleave="fileDrop.handleDragLeave"
+						@dragover="fileDrop.handleDragOver"
+						@drop="fileDrop.handleDrop"
+					>
+						<div
+							v-if="files.length === 0 && existingFiles.length === 0"
+							:class="$style.uploadPrompt"
+						>
+							<span :class="$style.uploadText"> Click to upload or drag and drop PDF files </span>
+						</div>
+						<div v-else :class="$style.filesList">
+							<div
+								v-for="(file, index) in existingFiles"
+								:key="`existing-${index}`"
+								:class="$style.fileItem"
+							>
+								<span :class="$style.fileName">{{ file.fileName }}</span>
+								<N8nIconButton
+									icon="trash-2"
+									type="tertiary"
+									size="small"
+									:class="$style.removeButton"
+									@click.stop="removeExistingFile(index)"
+								/>
+							</div>
+							<div v-for="(file, index) in files" :key="`new-${index}`" :class="$style.fileItem">
+								<span :class="$style.fileName">{{ file.name }}</span>
+								<N8nIconButton
+									icon="trash-2"
+									type="tertiary"
+									size="small"
+									:class="$style.removeButton"
+									@click.stop="removeFile(index)"
+								/>
+							</div>
+						</div>
+					</div>
+				</N8nInputLabel>
 			</div>
 		</template>
 		<template #footer>
@@ -442,5 +586,71 @@ function onSelectTools() {
 	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.fileInput {
+	display: none;
+}
+
+.uploadArea {
+	min-height: 100px;
+	border: var(--border-width) dashed var(--color--foreground);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--md);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	background-color: var(--color--background);
+
+	&:hover {
+		border-color: var(--color--primary);
+		background-color: var(--color--background--light-2);
+	}
+}
+
+.uploadAreaDragging {
+	border-color: var(--color--primary);
+	background-color: var(--color--primary--tint-3);
+}
+
+.uploadPrompt {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-2);
+	text-align: center;
+}
+
+.uploadText {
+	font-size: var(--font-size--sm);
+}
+
+.filesList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.fileItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	background-color: var(--color--background--light-2);
+	border-radius: var(--radius);
+	gap: var(--spacing--xs);
+}
+
+.fileName {
+	flex: 1;
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.removeButton {
+	flex-shrink: 0;
 }
 </style>
