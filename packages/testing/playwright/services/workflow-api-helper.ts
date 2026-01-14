@@ -127,17 +127,6 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	async getWorkflow(workflowId: string) {
-		const response = await this.api.request.get(`/rest/workflows/${workflowId}`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to get workflow: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
 	async transfer(workflowId: string, destinationProjectId: string) {
 		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
 			data: { destinationProjectId },

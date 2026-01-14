@@ -62,11 +62,9 @@ test.describe('Access Control Boundaries', () => {
 			credentialName,
 		);
 
-		// Admin can access sharing tab and see sharing options
 		await adminN8n.credentials.credentialModal.changeTab('Sharing');
 		await expect(adminN8n.credentials.credentialModal.getUsersSelect()).toBeVisible();
 
-		// Admin can see users in sharing dropdown
 		await adminN8n.credentials.credentialModal.getUsersSelect().click();
 		await expect(
 			adminN8n.credentials.credentialModal.getVisibleDropdown().getByText(admin.email),
@@ -102,11 +100,9 @@ test.describe('Access Control Boundaries', () => {
 	test('should enforce project isolation for team projects', async ({ n8n, api }) => {
 		await api.setMaxTeamProjectsQuota(-1);
 
-		// Create two separate team projects
 		const devProject = await api.projects.createProject(`Development ${nanoid()}`);
 		const testProject = await api.projects.createProject(`Testing ${nanoid()}`);
 
-		// Create credential in each project
 		const devCredName = `Dev Credential ${nanoid()}`;
 		await api.credentials.createCredential({
 			name: devCredName,
@@ -123,7 +119,6 @@ test.describe('Access Control Boundaries', () => {
 			projectId: testProject.id,
 		});
 
-		// Create workflow in test project and verify only test project credentials are available
 		await n8n.navigate.toProject(testProject.id);
 		await n8n.projectTabs.clickWorkflowsTab();
 		await n8n.workflows.clickNewWorkflowCard();

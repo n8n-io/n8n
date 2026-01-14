@@ -18,10 +18,8 @@ pnpm --filter=n8n-playwright typecheck
 Always trim output: `--reporter=list 2>&1 | tail -50`
 
 ## Entry Points
-## Test Isolation
 
 All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
-Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
 
 | Method | Use Case |
 |--------|----------|
@@ -33,29 +31,23 @@ Tests run in parallel. Design tests to be fully isolated so they don't interfere
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
 
-## Multi-User Testing
+## Test Isolation
+
+Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
+
 ### Unique Identifiers
 
 Use `nanoid` for unique test data:
 
 ```typescript
-// 1. Create users via public API
-const member1 = await api.publicApi.createUser({ role: 'global:member' });
-const member2 = await api.publicApi.createUser({ role: 'global:member' });
 const credentialName = `Test Credential ${nanoid()}`;
 const workflow = await api.workflows.createWorkflow({
   name: `Test Workflow ${nanoid()}`,
 });
 ```
 
-// 2. Get isolated browser contexts
-const member1Page = await n8n.start.withUser(member1);
-const member2Page = await n8n.start.withUser(member2);
 ### Dynamic User Creation
 
-// 3. Each operates independently (no session bleeding)
-await member1Page.navigate.toWorkflows();
-await member2Page.navigate.toCredentials();
 Create users dynamically via the public API:
 
 ```typescript
@@ -66,27 +58,25 @@ const member = await api.publicApi.createUser({
 });
 ```
 
-**Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
 ### Isolated Browser Contexts
 
-## Worker Isolation (Fresh Database)
 For UI tests requiring multiple users, create isolated browser contexts:
 
-Use `test.use()` at file top-level with unique capability config:
-
 ```typescript
-// my-isolated-tests.spec.ts
-import { test, expect } from '../fixtures/base';
+// 1. Create users via public API
+const member1 = await api.publicApi.createUser({ role: 'global:member' });
+const member2 = await api.publicApi.createUser({ role: 'global:member' });
 
-// Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+// 2. Get isolated browser contexts
+const member1Page = await n8n.start.withUser(member1);
+const member2Page = await n8n.start.withUser(member2);
 
-test('test with clean state', async ({ n8n }) => {
-  // Fresh container with reset database
-});
+// 3. Each operates independently (no session bleeding)
+await member1Page.navigate.toWorkflows();
+await member2Page.navigate.toCredentials();
 ```
 
-## Anti-Patterns
+**Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
 
 | Pattern | Why | Use Instead |
 |---------|-----|-------------|
@@ -142,7 +132,6 @@ const memberN8n = await n8n.start.withUser(member);
 await memberN8n.navigate.toWorkflows();
 await expect(memberN8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
 ```
-
 ### Isolated API Contexts
 
 For API-only operations as another user, create isolated API contexts (no browser needed):
@@ -162,6 +151,22 @@ Assert by identity (name) rather than count for parallel-safe tests:
 ```typescript
 await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
 await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+```
+
+## Worker Isolation (Fresh Database)
+
+Use `test.use()` at file top-level with unique capability config:
+
+```typescript
+// my-isolated-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+// Must be top-level, not inside describe block
+test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+
+test('test with clean state', async ({ n8n }) => {
+  // Fresh container with reset database
+});
 ```
 
 ## Data Setup
@@ -196,6 +201,37 @@ test('API-only test', async ({ api }) => {
   // ...
 });
 ```
+
+## Code Style
+
+- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
+- Use `nanoid()` for unique identifiers (parallel-safe)
+- API setup over UI setup when possible (faster, more reliable)
+
+## Architecture
+
+```
+Tests (*.spec.ts)
+    ↓ uses
+Composables (*Composer.ts) - Multi-step business workflows
+    ↓ orchestrates
+Page Objects (*Page.ts) - UI interactions
+    ↓ extends
+BasePage - Common utilities
+```
+
+See `CONTRIBUTING.md` for detailed patterns and conventions.
+
+## Reference Files
+
+| Purpose | File |
+|---------|------|
+| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
+| Entry points | `composables/TestEntryComposer.ts` |
+| Page object example | `pages/CanvasPage.ts` |
+| Composable example | `composables/WorkflowComposer.ts` |
+| API helpers | `services/api-helper.ts` |
+| Capabilities | `fixtures/capabilities.ts` |
 
 ## Shard Rebalancing
 

@@ -100,23 +100,4 @@ export class UserApiHelper {
 		const users = await this.getUsers({ filter: { email } });
 		return users[0] ?? null;
 	}
-
-	/**
-	 * Get the owner user
-	 */
-	async getOwner(): Promise<TestUser> {
-		const users = await this.getUsers();
-		const ownerUser = users.find((u) => u.role === 'global:owner');
-		if (!ownerUser) {
-			throw new TestError('No owner user found');
-		}
-		return {
-			id: ownerUser.id,
-			email: ownerUser.email ?? 'owner@n8n.io',
-			password: 'n8n', // Default owner password
-			firstName: ownerUser.firstName ?? 'Owner',
-			lastName: ownerUser.lastName ?? 'User',
-			role: 'global:owner',
-		};
-	}
 }
