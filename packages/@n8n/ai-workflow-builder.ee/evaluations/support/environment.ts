@@ -4,15 +4,11 @@ import { MemorySaver } from '@langchain/langgraph';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
+
 import { loadNodesFromFile } from './load-nodes.js';
-import {
-	DEFAULT_MODEL,
-	getApiKeyEnvVar,
-	MODEL_FACTORIES,
-	type ModelId,
-} from '../../src/llm-config.js';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
-import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import type { EvalLogger } from '../harness/logger.js';
 import {
 	createTraceFilters,

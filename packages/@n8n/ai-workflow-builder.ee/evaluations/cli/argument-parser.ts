@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { z } from 'zod';
 
-import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '../../src/llm-config.js';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
+import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '@/llm-config';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
 import type { StageModels } from '../support/environment.js';
