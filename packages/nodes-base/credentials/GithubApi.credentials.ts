@@ -32,23 +32,31 @@ export class GithubApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			description: 'GitHub Personal Access Token. Supports both classic tokens and fine-grained tokens. For GitHub Trigger webhooks, ensure your token has "repo" scope (classic) or "repository_hooks: write" permission (fine-grained).',
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
+		authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=token {{$credentials?.accessToken}}',
+				Authorization: '={{ ($credentials?.accessToken && typeof $credentials.accessToken === "string" && $credentials.accessToken.startsWith("github_pat_")) ? "Bearer " + $credentials.accessToken : "token " + ($credentials?.accessToken || "") }}',
 			},
 		},
-	};
-
-	test: ICredentialTestRequest = {
+	};	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.server}}',
 			url: '/user',
 			method: 'GET',
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'login',
+					message: 'Invalid access token or insufficient permissions',
+				},
+			},
+		],
 	};
 }
