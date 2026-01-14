@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-	NODE_CREATOR_OPEN_SOURCES,
-	VIEWS,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-} from '@/app/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS, FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -18,7 +14,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 const nodeCreatorStore = useNodeCreatorStore();
@@ -28,7 +24,7 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const uiStore = useUIStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const recommendedTemplatesStore = useRecommendedTemplatesStore();
 const assistantStore = useAssistantStore();
 
 const isChatWindowOpen = computed(
@@ -65,8 +61,8 @@ async function onClickTemplatesLink() {
 		return;
 	}
 
-	if (templatesDataQualityStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
+	if (recommendedTemplatesStore.isFeatureEnabled()) {
+		uiStore.openModal(FEATURED_TEMPLATES_MODAL_KEY);
 		return;
 	}
 

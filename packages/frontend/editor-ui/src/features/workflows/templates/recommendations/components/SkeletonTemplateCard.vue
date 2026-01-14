@@ -3,7 +3,7 @@ import { N8nCard, N8nLoading } from '@n8n/design-system';
 </script>
 
 <template>
-	<N8nCard :class="$style.card">
+	<N8nCard :class="$style.card" aria-hidden="true">
 		<div :class="$style.cardContent">
 			<div :class="$style.widthRow">
 				<div :class="$style.widthBlock"><N8nLoading variant="custom" /></div>

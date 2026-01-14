@@ -9,7 +9,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	FEATURED_TEMPLATES_MODAL_KEY,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -28,7 +28,7 @@ import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
@@ -46,7 +46,7 @@ const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -77,7 +77,7 @@ const isTemplatesExperimentEnabled = computed(() => {
 	return (
 		personalizedTemplatesV2Store.isFeatureEnabled() ||
 		personalizedTemplatesV3Store.isFeatureEnabled() ||
-		templatesDataQualityStore.isFeatureEnabled()
+		recommendedTemplatesStore.isFeatureEnabled()
 	);
 });
 
@@ -282,8 +282,8 @@ const handleSelect = (key: string) => {
 				break;
 			}
 
-			if (templatesDataQualityStore.isFeatureEnabled()) {
-				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
+			if (recommendedTemplatesStore.isFeatureEnabled()) {
+				uiStore.openModal(FEATURED_TEMPLATES_MODAL_KEY);
 				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
 				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();

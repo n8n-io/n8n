@@ -31,15 +31,14 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
-import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
+import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -138,8 +137,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
-const templatesStore = useTemplatesStore();
+const recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -378,13 +376,11 @@ const projectPermissions = computed(() => {
 	);
 });
 
-const showTemplatesDataQualityInline = computed(() => {
+const showRecommendedTemplatesInline = computed(() => {
 	return (
-		templatesDataQualityStore.isFeatureEnabled() &&
+		recommendedTemplatesStore.isFeatureEnabled() &&
 		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create &&
-		settingsStore.isTemplatesEnabled &&
-		!templatesStore.hasCustomTemplatesHost
+		projectPermissions.value.workflow.create
 	);
 });
 
@@ -413,7 +409,7 @@ const emptyListDescription = computed(() => {
 });
 
 const emptyListHeading = computed(() => {
-	if (showTemplatesDataQualityInline.value) {
+	if (showRecommendedTemplatesInline.value) {
 		return i18n.baseText('workflows.empty.heading', {
 			interpolate: { name: currentUser.value.firstName ?? '' },
 		});
@@ -486,7 +482,7 @@ const hasActiveCallouts = computed(() => {
 const showStartFromScratchCard = computed(() => {
 	return (
 		!loading.value &&
-		!showTemplatesDataQualityInline.value &&
+		!showRecommendedTemplatesInline.value &&
 		!readOnlyEnv.value &&
 		projectPermissions.value.workflow.create
 	);
@@ -2039,8 +2035,8 @@ const onNameSubmit = async (name: string) => {
 				resource-type="workflows"
 			/>
 			<div v-else>
-				<div v-if="showTemplatesDataQualityInline" :class="$style.templatesContainer">
-					<TemplatesDataQualityInlineSection />
+				<div v-if="showRecommendedTemplatesInline" :class="$style.templatesContainer">
+					<RecommendedTemplatesSection />
 				</div>
 				<div v-else :class="$style.emptyStateNoTemplates" data-test-id="list-empty-state">
 					<div class="text-center mt-s">

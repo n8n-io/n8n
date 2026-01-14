@@ -5,13 +5,10 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
+import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import type { IUser } from 'n8n-workflow';
 
@@ -23,9 +20,7 @@ const i18n = useI18n();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
-const settingsStore = useSettingsStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
-const templatesStore = useTemplatesStore();
+const recommendedTemplatesStore = useRecommendedTemplatesStore();
 const bannersStore = useBannersStore();
 
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -35,16 +30,6 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
 		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
-const showTemplatesDataQualityInline = computed(() => {
-	return (
-		templatesDataQualityStore.isFeatureEnabled() &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create &&
-		settingsStore.isTemplatesEnabled &&
-		!templatesStore.hasCustomTemplatesHost
 	);
 });
 
@@ -62,8 +47,16 @@ const emptyListDescription = computed(() => {
 	}
 });
 
+const showRecommendedTemplatesInline = computed(() => {
+	return (
+		recommendedTemplatesStore.isFeatureEnabled() &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
+	);
+});
+
 const emptyStateHeading = computed(() => {
-	if (showTemplatesDataQualityInline.value) {
+	if (showRecommendedTemplatesInline.value) {
 		return i18n.baseText('workflows.empty.heading', {
 			interpolate: { name: currentUser.value.firstName ?? '' },
 		});
@@ -87,7 +80,7 @@ const containerStyle = computed(() => ({
 	<div
 		:class="[
 			$style.emptyStateLayout,
-			{ [$style.noTemplatesContent]: !showTemplatesDataQualityInline },
+			{ [$style.noTemplatesContent]: !showRecommendedTemplatesInline },
 		]"
 		:style="containerStyle"
 	>
@@ -96,28 +89,23 @@ const containerStyle = computed(() => ({
 				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
 					{{ emptyStateHeading }}
 				</N8nHeading>
-				<div v-if="showTemplatesDataQualityInline" :class="$style.actions">
+				<div v-if="showRecommendedTemplatesInline" :class="$style.actions">
 					<ReadyToRunButton />
-					<N8nButton
-						v-if="canCreateWorkflow"
-						type="primary"
-						data-test-id="new-workflow-button"
-						@click="addWorkflow"
-					>
-						{{ i18n.baseText('workflows.empty.createWorkflow') }}
+					<N8nButton type="primary" data-test-id="new-workflow-button" @click="addWorkflow">
+						{{ i18n.baseText('generic.create.workflow') }}
 					</N8nButton>
 				</div>
 			</div>
 
-			<div v-if="showTemplatesDataQualityInline" :class="$style.templatesSection">
-				<TemplatesDataQualityInlineSection />
+			<div v-if="showRecommendedTemplatesInline" :class="$style.templatesSection">
+				<RecommendedTemplatesSection />
 			</div>
 			<div v-else :class="$style.noTemplatesContent">
 				<N8nText tag="p" size="large" color="text-base">
 					{{ emptyListDescription }}
 				</N8nText>
 				<N8nCard
-					v-if="canCreateWorkflow && !showTemplatesDataQualityInline"
+					v-if="canCreateWorkflow && !showRecommendedTemplatesInline"
 					:class="$style.actionCard"
 					hoverable
 					data-test-id="new-workflow-card"

@@ -4,16 +4,13 @@ import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import {
-	useTemplatesDataQualityStore,
-	NUMBER_OF_TEMPLATES,
-} from '../stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore, NUMBER_OF_TEMPLATES } from '../recommendedTemplates.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import TemplateCard from './TemplateCard.vue';
+import RecommendedTemplateCard from './RecommendedTemplateCard.vue';
 import SkeletonTemplateCard from './SkeletonTemplateCard.vue';
 
 const locale = useI18n();
-const templatesStore = useTemplatesDataQualityStore();
+const templatesStore = useRecommendedTemplatesStore();
 const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
@@ -22,7 +19,7 @@ const isLoadingTemplates = ref(false);
 onMounted(async () => {
 	isLoadingTemplates.value = true;
 	try {
-		templates.value = await templatesStore.loadExperimentTemplates();
+		templates.value = await templatesStore.loadRecommendedTemplates();
 	} finally {
 		isLoadingTemplates.value = false;
 	}
@@ -30,13 +27,13 @@ onMounted(async () => {
 </script>
 
 <template>
-	<section :class="$style.container" data-test-id="templates-data-quality-inline">
+	<section :class="$style.container" data-test-id="recommended-templates-section">
 		<div :class="$style.header">
 			<N8nText tag="h2" size="large" :bold="true">
 				{{ locale.baseText('workflows.empty.startWithTemplate') }}
 			</N8nText>
 			<N8nLink :href="websiteTemplateRepositoryURL" :class="$style.allTemplatesLink">
-				{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
+				{{ locale.baseText('templates.featured.seeMore') }}
 			</N8nLink>
 		</div>
 
@@ -44,7 +41,7 @@ onMounted(async () => {
 			<SkeletonTemplateCard v-for="i in NUMBER_OF_TEMPLATES" :key="i" />
 		</div>
 		<div v-else :class="$style.suggestions">
-			<TemplateCard
+			<RecommendedTemplateCard
 				v-for="(template, index) in templates"
 				:key="template.id"
 				:template="template"
