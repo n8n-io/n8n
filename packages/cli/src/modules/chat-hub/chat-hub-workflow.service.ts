@@ -37,10 +37,11 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { inE2ETests } from '../../constants';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -158,6 +159,8 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				// Ensure chat workflows save data on successful executions regardless of instance settings
+				// This is done to ensure generated title can be read after execution.
 				saveDataSuccessExecution: 'all',
 			};
 
@@ -471,11 +474,10 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = DateTime.now().setZone(timeZone).toISO({
-			includeOffset: true,
-		});
+		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		return `The user's current local date and time is: ${now} (timezone: ${timeZone}).
+		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
 You can only produce text responses.
@@ -576,7 +578,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'id', value: model },
+						model,
 						options: {},
 					},
 				};

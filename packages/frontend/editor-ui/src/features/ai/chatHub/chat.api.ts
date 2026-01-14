@@ -14,7 +14,7 @@ import type {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
-	EnrichedStructuredChunk,
+	MessageChunk,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
 } from '@n8n/api-types';
@@ -33,11 +33,11 @@ export const fetchChatModelsApi = async (
 export function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
+	onMessageUpdated: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<EnrichedStructuredChunk>(
+	void streamRequest<MessageChunk>(
 		ctx,
 		'/chat/conversations/send',
 		payload,
@@ -50,17 +50,15 @@ export function sendMessageApi(
 
 export function editMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	editId: ChatMessageId,
-	payload: ChatHubEditMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
+	request: { sessionId: ChatSessionId; editId: ChatMessageId; payload: ChatHubEditMessageRequest },
+	onMessageUpdated: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<EnrichedStructuredChunk>(
+	void streamRequest<MessageChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -70,17 +68,19 @@ export function editMessageApi(
 
 export function regenerateMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	retryId: ChatMessageId,
-	payload: ChatHubRegenerateMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
+	request: {
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubRegenerateMessageRequest;
+	},
+	onMessageUpdated: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
-	void streamRequest<EnrichedStructuredChunk>(
+	void streamRequest<MessageChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,

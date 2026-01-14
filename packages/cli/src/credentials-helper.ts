@@ -43,12 +43,12 @@ import {
 } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 
 const mockNode = {
 	name: '',
@@ -358,6 +358,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		);
 		let decryptedDataOriginal = credentials.getData();
 
+		// Check if credential can use external secrets for expression resolution
+		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
+
 		/**
 		 * We skip dynamic credentials resolution when no credentials context is present.
 		 * This helps workflow developers to run workflows with static credentials.
@@ -376,6 +379,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedDataOriginal,
 				additionalData.executionContext,
 				additionalData.workflowSettings,
+				canUseExternalSecrets,
 			);
 		}
 
@@ -386,9 +390,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
-			nodeCredentials,
 			type,
 			mode,
+			canUseExternalSecrets,
 			executeData,
 			expressionResolveValues,
 		);
@@ -400,9 +404,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
-		credential: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		canUseExternalSecrets: boolean,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -455,7 +459,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.authentication = decryptedDataOriginal.authentication;
 		}
 
-		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
 		});
