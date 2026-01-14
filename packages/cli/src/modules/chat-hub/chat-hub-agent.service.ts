@@ -119,13 +119,34 @@ export class ChatHubAgentService {
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
 		if (updates.files !== undefined) {
-			const allFiles: IBinaryData[] = [];
+			const existingFiles = existingAgent.files;
+			const updatedFiles: IBinaryData[] = [];
+			const filesToDelete: IBinaryData[] = [];
+			const updateFileIds = new Set(updates.files.flatMap((f) => (f.id ? [f.id] : [])));
 
-			for (const file of updates.files) {
-				allFiles.push(await this.chatHubAttachmentService.storeAgentAttachment(id, file));
+			for (const existingFile of existingFiles) {
+				if (existingFile.id && updateFileIds.has(existingFile.id)) {
+					updatedFiles.push(existingFile);
+				} else {
+					filesToDelete.push(existingFile);
+				}
 			}
 
-			updateData.files = allFiles;
+			for (const file of updates.files) {
+				if (file.id) {
+					// Skip existing file
+					continue;
+				}
+
+				const f = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
+				updatedFiles.push(f);
+			}
+
+			if (filesToDelete.length > 0) {
+				await this.chatHubAttachmentService.deleteAttachments(filesToDelete);
+			}
+
+			updateData.files = updatedFiles;
 		}
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
