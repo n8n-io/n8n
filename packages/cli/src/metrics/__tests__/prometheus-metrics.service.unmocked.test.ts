@@ -22,16 +22,7 @@ const eventService = mock<EventService>();
 const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 const workflowRepository = mock<WorkflowRepository>();
 const app = mock<express.Application>();
-const eventBus = new MessageEventBus(
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-);
+const eventBus = new MessageEventBus(mock(), mock(), mock(), mock(), mock(), mock(), mock());
 
 describe('workflow_success_total', () => {
 	test('support workflow id labels', async () => {
