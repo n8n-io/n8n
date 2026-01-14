@@ -5,23 +5,23 @@ import { test, expect } from '../../../fixtures/base';
 const TEST_API_KEY = 'test-api-key';
 
 test.describe('Access Control Boundaries', () => {
-	test('should prevent credential editing by sharee', async ({ n8n }) => {
-		const member = await n8n.api.publicApi.createUser({
+	test('should prevent credential editing by sharee', async ({ n8n, api }) => {
+		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
 
 		const credentialName = `Owner Credential ${nanoid()}`;
-		const credential = await n8n.api.credentials.createCredential({
+		const credential = await api.credentials.createCredential({
 			name: credentialName,
 			type: 'notionApi',
 			data: { apiKey: TEST_API_KEY },
 		});
 
-		const memberPage = await n8n.start.withUser(member);
-		const memberProject = await memberPage.api.projects.getMyPersonalProject();
-		await n8n.api.credentials.shareCredential(credential.id, [memberProject.id]);
+		const memberApi = await api.createApiForUser(member);
+		const memberProject = await memberApi.projects.getMyPersonalProject();
+		await api.credentials.shareCredential(credential.id, [memberProject.id]);
 
 		const memberN8n = await n8n.start.withUser(member);
 		await memberN8n.navigate.toCredentials();
@@ -33,13 +33,13 @@ test.describe('Access Control Boundaries', () => {
 		await expect(memberN8n.credentials.credentialModal.getSaveButton()).toBeHidden();
 	});
 
-	test('should allow admin full access to credentials created by others', async ({ n8n }) => {
-		const member = await n8n.api.publicApi.createUser({
+	test('should allow admin full access to credentials created by others', async ({ n8n, api }) => {
+		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
-		const admin = await n8n.api.publicApi.createUser({
+		const admin = await api.publicApi.createUser({
 			email: `admin-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Admin',
@@ -47,7 +47,7 @@ test.describe('Access Control Boundaries', () => {
 		});
 
 		const credentialName = `Member Credential ${nanoid()}`;
-		const memberApi = await n8n.start.withUserApi(member);
+		const memberApi = await api.createApiForUser(member);
 		await memberApi.credentials.createCredential({
 			name: credentialName,
 			type: 'notionApi',
@@ -73,13 +73,13 @@ test.describe('Access Control Boundaries', () => {
 		).toBeVisible();
 	});
 
-	test('should prevent access to private workflows via direct URL', async ({ n8n }) => {
-		const member = await n8n.api.publicApi.createUser({
+	test('should prevent access to private workflows via direct URL', async ({ api }) => {
+		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
 			firstName: 'Test',
 			lastName: 'Member',
 		});
-		const workflow = await n8n.api.workflows.createWorkflow({
+		const workflow = await api.workflows.createWorkflow({
 			name: `Private Workflow ${nanoid()}`,
 			nodes: [
 				{
@@ -94,7 +94,7 @@ test.describe('Access Control Boundaries', () => {
 			connections: {},
 		});
 
-		const memberApi = await n8n.start.withUserApi(member);
+		const memberApi = await api.createApiForUser(member);
 		const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
 		expect(response.status()).toBe(403);
 	});
@@ -138,8 +138,6 @@ test.describe('Access Control Boundaries', () => {
 	});
 
 	test('should prevent sharing team project workflows', async ({ n8n, api }) => {
-		await api.setMaxTeamProjectsQuota(-1);
-
 		const teamProject = await api.projects.createProject(`Team Project ${nanoid()}`);
 		const teamWorkflow = await api.workflows.createInProject(teamProject.id, {
 			name: `Team Workflow ${nanoid()}`,

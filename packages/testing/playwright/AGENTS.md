@@ -18,8 +18,10 @@ pnpm --filter=n8n-playwright typecheck
 Always trim output: `--reporter=list 2>&1 | tail -50`
 
 ## Entry Points
+## Test Isolation
 
 All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
 
 | Method | Use Case |
 |--------|----------|
@@ -32,26 +34,43 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
 
 ## Multi-User Testing
+### Unique Identifiers
 
-For tests requiring multiple users with isolated browser sessions:
+Use `nanoid` for unique test data:
 
 ```typescript
 // 1. Create users via public API
 const member1 = await api.publicApi.createUser({ role: 'global:member' });
 const member2 = await api.publicApi.createUser({ role: 'global:member' });
+const credentialName = `Test Credential ${nanoid()}`;
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+});
+```
 
 // 2. Get isolated browser contexts
 const member1Page = await n8n.start.withUser(member1);
 const member2Page = await n8n.start.withUser(member2);
+### Dynamic User Creation
 
 // 3. Each operates independently (no session bleeding)
 await member1Page.navigate.toWorkflows();
 await member2Page.navigate.toCredentials();
+Create users dynamically via the public API:
+
+```typescript
+const member = await api.publicApi.createUser({
+  email: `member-${nanoid()}@test.com`,
+  firstName: 'Test',
+  lastName: 'Member',
+});
 ```
 
 **Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
+### Isolated Browser Contexts
 
 ## Worker Isolation (Fresh Database)
+For UI tests requiring multiple users, create isolated browser contexts:
 
 Use `test.use()` at file top-level with unique capability config:
 
@@ -115,3 +134,69 @@ See [README.md#debugging](./README.md#debugging) for detailed instructions on:
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+
+```typescript
+const member = await api.publicApi.createUser({...});
+const memberN8n = await n8n.start.withUser(member);
+
+await memberN8n.navigate.toWorkflows();
+await expect(memberN8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+```
+
+### Isolated API Contexts
+
+For API-only operations as another user, create isolated API contexts (no browser needed):
+
+```typescript
+const member = await api.publicApi.createUser({...});
+const memberApi = await api.createApiForUser(member);
+
+const memberProject = await memberApi.projects.getMyPersonalProject();
+await memberApi.credentials.createCredential({...});
+```
+
+### Identity-Based Assertions
+
+Assert by identity (name) rather than count for parallel-safe tests:
+
+```typescript
+await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
+await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+```
+
+## Data Setup
+
+Use API helpers for fast, reliable test data setup. Reserve UI interactions for testing UI behavior:
+
+```typescript
+// API for data setup
+const credential = await api.credentials.createCredential({
+  name: `Test Credential ${nanoid()}`,
+  type: 'notionApi',
+  data: { apiKey: 'test' },
+});
+
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+  nodes: [...],
+});
+
+// UI for verification
+await n8n.navigate.toCredentials();
+await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+```
+
+## Feature Enablement
+
+The `n8n` fixture automatically enables project features. For API-only tests (no `n8n` fixture), enable features explicitly:
+
+```typescript
+test('API-only test', async ({ api }) => {
+  await api.enableProjectFeatures();
+  // ...
+});
+```
+
+## Shard Rebalancing
+
+When refactoring, adding, or moving significant numbers of tests, consider rebalancing test shards to maintain even CI distribution. See `docs/ORCHESTRATION.md` for details.

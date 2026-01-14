@@ -1,8 +1,7 @@
 import type { User } from '@n8n/api-types';
-import { request } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
-import { ApiHelpers } from './api-helper';
+import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
@@ -119,16 +118,5 @@ export class UserApiHelper {
 			lastName: ownerUser.lastName ?? 'User',
 			role: 'global:owner',
 		};
-	}
-
-	/**
-	 * Create an isolated API context for a specific user.
-	 * Returns an ApiHelpers instance logged in as the specified user.
-	 */
-	async createApiForUser(user: TestUser): Promise<ApiHelpers> {
-		const userContext = await request.newContext();
-		const userApi = new ApiHelpers(userContext);
-		await userApi.login({ email: user.email, password: user.password });
-		return userApi;
 	}
 }

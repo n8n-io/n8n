@@ -46,7 +46,7 @@ test.describe('Workflow Sharing', () => {
 			connections: {},
 		});
 
-		const memberApi = await api.users.createApiForUser(member);
+		const memberApi = await api.createApiForUser(member);
 		const memberProject = await memberApi.projects.getMyPersonalProject();
 		await api.workflows.shareWorkflow(workflow.id, [memberProject.id]);
 
@@ -78,7 +78,7 @@ test.describe('Workflow Sharing', () => {
 			connections: {},
 		});
 
-		const memberApi = await api.users.createApiForUser(member);
+		const memberApi = await api.createApiForUser(member);
 		const memberProject = await memberApi.projects.getMyPersonalProject();
 		await api.workflows.shareWorkflow(workflow.id, [memberProject.id]);
 
@@ -98,8 +98,6 @@ test.describe('Workflow Sharing', () => {
 			firstName: 'Test',
 			lastName: 'Member',
 		});
-		// createUser switches session to new user - re-signin as owner
-		await api.signin('owner');
 
 		const workflow = await api.workflows.createWorkflow({
 			name: `Private Workflow ${nanoid()}`,
@@ -116,7 +114,7 @@ test.describe('Workflow Sharing', () => {
 			connections: {},
 		});
 
-		const memberApi = await api.users.createApiForUser(member);
+		const memberApi = await api.createApiForUser(member);
 		const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
 		// With project features enabled, unauthorized access returns 403 (Forbidden)
 		expect(response.status()).toBe(403);

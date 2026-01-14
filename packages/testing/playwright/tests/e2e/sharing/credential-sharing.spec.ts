@@ -45,7 +45,7 @@ test.describe('Credential Sharing', () => {
 			data: { apiKey: TEST_API_KEY },
 		});
 
-		const memberApi = await api.users.createApiForUser(member);
+		const memberApi = await api.createApiForUser(member);
 		const memberProject = await memberApi.projects.getMyPersonalProject();
 		await api.credentials.shareCredential(credential.id, [memberProject.id]);
 
@@ -71,7 +71,7 @@ test.describe('Credential Sharing', () => {
 			data: { apiKey: TEST_API_KEY },
 		});
 
-		const memberApi = await api.users.createApiForUser(member);
+		const memberApi = await api.createApiForUser(member);
 		const memberProject = await memberApi.projects.getMyPersonalProject();
 		await api.credentials.shareCredential(credential.id, [memberProject.id]);
 
