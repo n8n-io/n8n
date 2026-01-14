@@ -67,10 +67,6 @@ export const courses: Course[] = [
 	},
 ];
 
-// QuickStart Workflow IDs - These templates will be imported directly into workspace
-// TODO: Replace with actual template IDs from the n8n template library
-export const quickStartTemplateIds: number[] = [8966, 8967, 8968, 8969, 8970, 8971];
-
 // Beginner-friendly learning videos
 export const learningVideos: YouTubeVideo[] = [
 	{

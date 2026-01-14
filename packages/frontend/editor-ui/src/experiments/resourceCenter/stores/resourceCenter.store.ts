@@ -1,15 +1,20 @@
 import { RESOURCE_CENTER_EXPERIMENT, VIEWS } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { quickStartWorkflows } from '../data/quickStartWorkflows';
 
 export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const posthogStore = usePostHog();
 	const templatesStore = useTemplatesStore();
+	const workflowsStore = useWorkflowsStore();
 	const telemetry = useTelemetry();
+	const router = useRouter();
 
 	const isLoadingTemplates = ref(false);
 
@@ -65,11 +70,28 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		});
 	}
 
-	function trackQuickStartImport(templateId: number, workflowName: string) {
+	function trackQuickStartImport(quickStartId: string, workflowName: string) {
 		telemetry.track('User clicked resource center quick start', {
-			templateId,
+			quickStartId,
 			workflowName,
 			source: 'resource_center',
+		});
+	}
+
+	async function createAndOpenQuickStartWorkflow(quickStartId: string) {
+		const quickStart = quickStartWorkflows.find((w) => w.id === quickStartId);
+		if (!quickStart) return;
+
+		trackQuickStartImport(quickStartId, quickStart.name);
+
+		const createdWorkflow = await workflowsStore.createNewWorkflow({
+			...quickStart.workflow,
+			name: quickStart.name,
+		});
+
+		await router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: createdWorkflow.id },
 		});
 	}
 
@@ -123,9 +145,9 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		fetchTemplateById,
 		loadTemplates,
 		getTemplateRoute,
+		createAndOpenQuickStartWorkflow,
 		trackTemplateClick,
 		trackVideoClick,
-		trackQuickStartImport,
 		trackCourseClick,
 		trackSectionSeeMore,
 		trackResourceCenterView,

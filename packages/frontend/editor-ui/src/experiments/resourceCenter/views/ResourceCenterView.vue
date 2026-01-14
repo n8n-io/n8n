@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { openTemplateWorkflowOnNodeView } from '@/features/workflows/templates/utils/templateActions';
 import { N8nButton, N8nHeading, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
@@ -12,34 +10,26 @@ import HorizontalGallery from '../components/HorizontalGallery.vue';
 import ResourceCenterHeader from '../components/ResourceCenterHeader.vue';
 import TemplateCard from '../components/TemplateCard.vue';
 import VideoThumbCard from '../components/VideoThumbCard.vue';
+import QuickStartCard from '../components/QuickStartCard.vue';
 import {
 	courses,
 	featuredTemplateIds,
 	inspirationVideos,
 	learningVideos,
-	quickStartTemplateIds,
 } from '../data/resourceCenterData';
+import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 
 const i18n = useI18n();
 const router = useRouter();
-const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
-const quickStartTemplates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
-const isLoadingQuickStart = ref(false);
 
-const handleQuickStartImport = async (templateId: number, workflowName: string) => {
-	resourceCenterStore.trackQuickStartImport(templateId, workflowName);
-	await openTemplateWorkflowOnNodeView({
-		externalHooks,
-		templateId: templateId.toString(),
-		templatesStore,
-		router,
-	});
+const handleQuickStartImport = async (quickStartId: string) => {
+	await resourceCenterStore.createAndOpenQuickStartWorkflow(quickStartId);
 };
 
 const handleCourseClick = (courseId: string, courseTitle: string, url: string) => {
@@ -68,17 +58,6 @@ const loadTemplates = async () => {
 	}
 };
 
-const loadQuickStartTemplates = async () => {
-	if (quickStartTemplateIds.length === 0) return;
-
-	isLoadingQuickStart.value = true;
-	try {
-		quickStartTemplates.value = await resourceCenterStore.loadTemplates(quickStartTemplateIds);
-	} finally {
-		isLoadingQuickStart.value = false;
-	}
-};
-
 onMounted(() => {
 	// Reset scroll
 	setTimeout(() => {
@@ -89,7 +68,6 @@ onMounted(() => {
 
 	resourceCenterStore.trackResourceCenterView();
 	void loadTemplates();
-	void loadQuickStartTemplates();
 });
 </script>
 
@@ -115,20 +93,12 @@ onMounted(() => {
 					<!-- QuickStart Workflows -->
 					<HorizontalGallery :title="i18n.baseText('experiments.resourceCenter.quickStart.title')">
 						<template #actions />
-						<template v-if="isLoadingQuickStart">
-							<div :class="$style.loading">
-								<N8nSpinner size="small" />
-							</div>
-						</template>
-						<template v-else>
-							<TemplateCard
-								v-for="template in quickStartTemplates"
-								:key="template.id"
-								:template="template"
-								variant="noSetup"
-								:on-click-override="() => handleQuickStartImport(template.id, template.name)"
-							/>
-						</template>
+						<QuickStartCard
+							v-for="workflow in quickStartWorkflows"
+							:key="workflow.id"
+							:workflow="workflow"
+							@click="handleQuickStartImport(workflow.id)"
+						/>
 					</HorizontalGallery>
 
 					<!-- Template Libraries -->
