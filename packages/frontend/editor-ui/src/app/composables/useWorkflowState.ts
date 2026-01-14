@@ -395,6 +395,27 @@ export function useWorkflowState() {
 		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
+	/**
+	 * Update node by ID. Finds the node by ID and updates it with the provided data.
+	 * @returns `true` if the node was found and updated
+	 */
+	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => node.id === nodeId);
+		if (nodeIndex === -1) return false;
+		return updateNodeAtIndex(nodeIndex, nodeData);
+	}
+
+	/**
+	 * Reset parametersLastUpdatedAt to current timestamp for a node.
+	 * Used to mark a node as "dirty" when its parameters change.
+	 */
+	function resetParametersLastUpdatedAt(nodeName: string): void {
+		if (!ws.nodeMetadata[nodeName]) {
+			ws.nodeMetadata[nodeName] = { pristine: true };
+		}
+		ws.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
+	}
+
 	function updateNodeProperties(
 		this: WorkflowState,
 		updateInformation: INodeUpdatePropertiesInformation,
@@ -484,7 +505,9 @@ export function useWorkflowState() {
 		setNodePositionById,
 		setNodeIssue,
 		updateNodeAtIndex,
+		updateNodeById,
 		updateNodeProperties,
+		resetParametersLastUpdatedAt,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,
