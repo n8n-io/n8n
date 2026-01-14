@@ -28,22 +28,30 @@ function applyRemoveNodeOperation(
 
 	const nodesToRemove = new Set(operation.nodeIds);
 
+	// Build a set of node names to remove (connections are keyed by node name in n8n)
+	const nodeNamesToRemove = new Set<string>();
+	for (const node of workflow.nodes) {
+		if (nodesToRemove.has(node.id)) {
+			nodeNamesToRemove.add(node.name);
+		}
+	}
+
 	// Filter out removed nodes
 	const nodes = workflow.nodes.filter((node) => !nodesToRemove.has(node.id));
 
 	// Clean up connections
 	const cleanedConnections: IConnections = {};
 
-	// Copy connections, excluding those from/to removed nodes
-	for (const [sourceId, nodeConnections] of Object.entries(workflow.connections)) {
-		if (!nodesToRemove.has(sourceId)) {
-			cleanedConnections[sourceId] = {};
+	// Copy connections, excluding those from/to removed nodes (using node names)
+	for (const [sourceName, nodeConnections] of Object.entries(workflow.connections)) {
+		if (!nodeNamesToRemove.has(sourceName)) {
+			cleanedConnections[sourceName] = {};
 
 			for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
 				if (Array.isArray(outputs)) {
-					cleanedConnections[sourceId][connectionType] = outputs.map((outputConnections) => {
+					cleanedConnections[sourceName][connectionType] = outputs.map((outputConnections) => {
 						if (Array.isArray(outputConnections)) {
-							return outputConnections.filter((conn) => !nodesToRemove.has(conn.node));
+							return outputConnections.filter((conn) => !nodeNamesToRemove.has(conn.node));
 						}
 						return outputConnections;
 					});
@@ -272,6 +280,49 @@ function applySetNameOperation(
 }
 
 /**
+ * Handle 'renameNode' operation - rename a node and update all connection references
+ */
+function applyRenameNodeOperation(
+	workflow: SimpleWorkflow,
+	operation: WorkflowOperation,
+): SimpleWorkflow {
+	if (operation.type !== 'renameNode') return workflow;
+
+	const { nodeId, oldName, newName } = operation;
+
+	// 1. Update node name
+	const nodes = workflow.nodes.map((node) => {
+		if (node.id === nodeId) {
+			return { ...node, name: newName };
+		}
+		return node;
+	});
+
+	// 2. Update connections - rename source keys and target references
+	const connections: IConnections = {};
+	for (const [sourceNodeName, nodeConnections] of Object.entries(workflow.connections)) {
+		const newSourceName = sourceNodeName === oldName ? newName : sourceNodeName;
+		connections[newSourceName] = {};
+
+		for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
+			if (Array.isArray(outputs)) {
+				connections[newSourceName][connectionType] = outputs.map((outputConnections) => {
+					if (Array.isArray(outputConnections)) {
+						return outputConnections.map((conn) => ({
+							...conn,
+							node: conn.node === oldName ? newName : conn.node,
+						}));
+					}
+					return outputConnections;
+				});
+			}
+		}
+	}
+
+	return { ...workflow, nodes, connections };
+}
+
+/**
  * Map of operation types to their handler functions
  */
 const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
@@ -283,6 +334,7 @@ const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
 	mergeConnections: applyMergeConnectionsOperation,
 	removeConnection: applyRemoveConnectionOperation,
 	setName: applySetNameOperation,
+	renameNode: applyRenameNodeOperation,
 };
 
 /**
