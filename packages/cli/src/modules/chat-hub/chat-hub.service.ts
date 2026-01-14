@@ -63,7 +63,6 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { PdfExtractorService } from './pdf-extractor.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	EXECUTION_FINISHED_STATUSES,
@@ -111,7 +110,6 @@ export class ChatHubService {
 		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-		private readonly pdfExtractorService: PdfExtractorService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -196,7 +194,7 @@ export class ChatHubService {
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
 				// Store attachments to populate 'id' field via BinaryDataService
-				processedAttachments = await this.chatHubAttachmentService.store(
+				processedAttachments = await this.chatHubAttachmentService.storeMessageAttachments(
 					sessionId,
 					messageId,
 					attachments,
@@ -355,7 +353,7 @@ export class ChatHubService {
 					// Store new attachments to populate 'id' field via BinaryDataService
 					newStoredAttachments =
 						payload.newAttachments.length > 0
-							? await this.chatHubAttachmentService.store(
+							? await this.chatHubAttachmentService.storeMessageAttachments(
 									sessionId,
 									messageId,
 									payload.newAttachments,
@@ -540,6 +538,7 @@ export class ChatHubService {
 			undefined,
 			tools,
 			attachments,
+			[],
 			timeZone,
 			trx,
 		);
@@ -555,6 +554,7 @@ export class ChatHubService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		attachments: IBinaryData[],
+		contextFiles: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
 	) {
@@ -569,6 +569,7 @@ export class ChatHubService {
 			history,
 			message,
 			attachments,
+			contextFiles,
 			credentials,
 			model,
 			systemMessage,
@@ -603,14 +604,8 @@ export class ChatHubService {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
-		// Extract text from PDF files if present
-		const pdfContext = await this.pdfExtractorService.extractTextFromFiles(agent.files);
-
 		const systemMessage =
-			agent.systemPrompt +
-			pdfContext +
-			'\n\n' +
-			this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
+			agent.systemPrompt + '\n\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,
@@ -636,6 +631,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			attachments,
+			agent.files,
 			timeZone,
 			trx,
 		);
@@ -1913,7 +1909,7 @@ export class ChatHubService {
 	}
 
 	async deleteAllSessions() {
-		await this.chatHubAttachmentService.deleteAll();
+		await this.chatHubAttachmentService.deleteAllMessageAttachments();
 		const result = await this.sessionRepository.deleteAll();
 		return result;
 	}
@@ -1965,7 +1961,7 @@ export class ChatHubService {
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
 		await this.messageRepository.manager.transaction(async (trx) => {
 			await this.ensureConversation(userId, sessionId, trx);
-			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
+			await this.chatHubAttachmentService.deleteAllMessageAttachmentsBySessionId(sessionId, trx);
 			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
 		});
 	}

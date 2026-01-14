@@ -4,6 +4,7 @@ import {
 	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
 	type ChunkType,
+	type IBinaryData,
 	INodeSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -444,6 +445,7 @@ export interface ChatHubAgentDto {
 	provider: ChatHubLLMProvider;
 	model: string;
 	tools: INode[];
+	files: IBinaryData[];
 	createdAt: string;
 	updatedAt: string;
 }

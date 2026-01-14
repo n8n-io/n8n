@@ -30,15 +30,16 @@ import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
 import { jsonStringify } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
-
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type Stream from 'node:stream';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -99,32 +100,9 @@ export class ChatHubController {
 		await this.chatService.ensureConversation(req.user.id, sessionId);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
-			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
+			await this.chatAttachmentService.getMessageAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType);
-
-		if (attachmentAsStreamOrBuffer.fileSize) {
-			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
-		}
-
-		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
-			// Force download if file is not viewable
-			res.setHeader(
-				'Content-Disposition',
-				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
-			);
-		}
-
-		if (attachmentAsStreamOrBuffer.type === 'buffer') {
-			res.send(attachmentAsStreamOrBuffer.buffer);
-			return;
-		}
-
-		return await new Promise<void>((resolve, reject) => {
-			attachmentAsStreamOrBuffer.stream.on('end', resolve);
-			attachmentAsStreamOrBuffer.stream.on('error', reject);
-			attachmentAsStreamOrBuffer.stream.pipe(res);
-		});
+		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
 	}
 
 	@GlobalScope('chatHub:message')
@@ -134,7 +112,6 @@ export class ChatHubController {
 		res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	) {
-		let shouldRethrow = false;
 		try {
 			await this.chatService.sendHumanMessage(res, req.user, {
 				...payload,
@@ -147,7 +124,6 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
-					shouldRethrow = true;
 					throw error;
 				}
 
@@ -164,8 +140,8 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+
+			if (!res.writableEnded) res.end();
 		}
 	}
 
@@ -178,7 +154,6 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
-		let shouldRethrow = false;
 		try {
 			await this.chatService.editMessage(res, req.user, {
 				...payload,
@@ -193,7 +168,6 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
-					shouldRethrow = true;
 					throw error;
 				}
 
@@ -210,8 +184,8 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+
+			if (!res.writableEnded) res.end();
 		}
 	}
 
@@ -224,7 +198,6 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
-		let shouldRethrow = false;
 		try {
 			await this.chatService.regenerateAIMessage(res, req.user, {
 				...payload,
@@ -239,7 +212,6 @@ export class ChatHubController {
 
 			if (!res.headersSent) {
 				if (error instanceof ResponseError) {
-					shouldRethrow = true;
 					throw error;
 				}
 
@@ -256,8 +228,8 @@ export class ChatHubController {
 				);
 				res.flush();
 			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+
+			if (!res.writableEnded) res.end();
 		}
 	}
 
@@ -343,5 +315,66 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
+	}
+
+	@Get('/agents/:agentId/attachments/:index')
+	@GlobalScope('chatHub:message')
+	async getAgentAttachment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Param('index') index: string,
+	) {
+		const attachmentIndex = Number.parseInt(index, 10);
+
+		if (isNaN(attachmentIndex)) {
+			throw new BadRequestError('Invalid attachment index');
+		}
+
+		// Verify user has access to this agent
+		await this.chatAgentService.getAgentById(agentId, req.user.id);
+
+		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
+			await this.chatAttachmentService.getAgentAttachment(agentId, attachmentIndex);
+
+		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
+	}
+
+	/**
+	 * Common method to send attachment data to the response.
+	 * Handles setting headers and streaming/buffering the content.
+	 */
+	private async sendAttachment(
+		res: Response,
+		mimeType: string,
+		fileName: string | undefined,
+		attachmentAsStreamOrBuffer:
+			| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
+			| { type: 'stream'; stream: Stream.Readable; fileSize: number },
+	): Promise<void> {
+		res.setHeader('Content-Type', mimeType);
+
+		if (attachmentAsStreamOrBuffer.fileSize) {
+			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+		}
+
+		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+			// Force download if file is not viewable
+			res.setHeader(
+				'Content-Disposition',
+				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+			);
+		}
+
+		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			res.send(attachmentAsStreamOrBuffer.buffer);
+			return;
+		}
+
+		return await new Promise<void>((resolve, reject) => {
+			attachmentAsStreamOrBuffer.stream.on('end', resolve);
+			attachmentAsStreamOrBuffer.stream.on('error', reject);
+			attachmentAsStreamOrBuffer.stream.pipe(res);
+		});
 	}
 }

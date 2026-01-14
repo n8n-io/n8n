@@ -392,7 +392,7 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 		return '*/*';
 	}
 
-	const mimeTypes: string[] = ['text/*'];
+	const mimeTypes: string[] = ['text/*', 'application/pdf'];
 
 	for (const modality of modalities) {
 		if (modality === 'image') {

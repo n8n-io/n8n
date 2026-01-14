@@ -1,10 +1,13 @@
-import { ref, type Ref } from 'vue';
+import { ref, toValue, type MaybeRef } from 'vue';
 
-export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files: File[]) => void) {
+export function useFileDrop(
+	canAcceptFiles: MaybeRef<boolean>,
+	onFilesDropped: (files: File[]) => void,
+) {
 	const isDragging = ref(false);
 
 	function handleDragEnter(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -15,7 +18,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 	}
 
 	function handleDragLeave(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -31,7 +34,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 	}
 
 	function handleDragOver(e: DragEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -44,7 +47,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 		e.stopPropagation();
 		isDragging.value = false;
 
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 
@@ -57,7 +60,7 @@ export function useFileDrop(canAcceptFiles: Ref<boolean>, onFilesDropped: (files
 	}
 
 	function handlePaste(e: ClipboardEvent) {
-		if (!canAcceptFiles.value) {
+		if (!toValue(canAcceptFiles)) {
 			return;
 		}
 

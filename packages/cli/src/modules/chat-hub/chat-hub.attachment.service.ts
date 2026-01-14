@@ -11,22 +11,25 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
 export class ChatHubAttachmentService {
 	private readonly maxTotalSizeBytes = 200 * 1024 * 1024; // 200 MB
+	private readonly maxAgentSizeBytes = 50 * 1024 * 1024; // 50 MB per agent
 
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
+		private readonly agentRepository: ChatHubAgentRepository,
 	) {}
 
 	/**
-	 * Stores attachments through BinaryDataService.
+	 * Stores message attachments through BinaryDataService.
 	 * This populates the 'id' and other metadata for attachments. When external storage is used,
 	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
 	 */
-	async store(
+	async storeMessageAttachments(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachments: ChatAttachment[],
@@ -46,17 +49,17 @@ export class ChatHubAttachmentService {
 				);
 			}
 
-			const stored = await this.processAttachment(sessionId, messageId, attachment, buffer);
+			const stored = await this.processMessageAttachment(sessionId, messageId, attachment, buffer);
 			storedAttachments.push(stored);
 		}
 
 		return storedAttachments;
 	}
 
-	/*
-	 * Gets a specific attachment from a message by index and returns it as either buffer or stream
+	/**
+	 * Gets a specific message attachment by index and returns it as either buffer or stream
 	 */
-	async getAttachment(
+	async getMessageAttachment(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachmentIndex: number,
@@ -98,18 +101,21 @@ export class ChatHubAttachmentService {
 	}
 
 	/**
-	 * Deletes all files attached to messages in the session
+	 * Deletes all message attachments in a session
 	 */
-	async deleteAllBySessionId(sessionId: string, trx?: EntityManager): Promise<void> {
+	async deleteAllMessageAttachmentsBySessionId(
+		sessionId: string,
+		trx?: EntityManager,
+	): Promise<void> {
 		const messages = await this.messageRepository.getManyBySessionId(sessionId, trx);
 		// Attachment deletion cannot be rolled back, and the transaction doesn't cover it.
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
 	/**
-	 * Deletes all chat attachment files.
+	 * Deletes all message attachment files across all sessions
 	 */
-	async deleteAll(): Promise<void> {
+	async deleteAllMessageAttachments(): Promise<void> {
 		const messages = await this.messageRepository.find({
 			where: {
 				attachments: Not(IsNull()),
@@ -120,9 +126,6 @@ export class ChatHubAttachmentService {
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
-	/**
-	 * Deletes attachments by their binary data directly (used for rollback when message wasn't saved)
-	 */
 	async deleteAttachments(attachments: IBinaryData[]): Promise<void> {
 		await this.binaryDataService.deleteManyByBinaryDataId(
 			attachments.flatMap((attachment) => (attachment.id ? [attachment.id] : [])),
@@ -141,14 +144,88 @@ export class ChatHubAttachmentService {
 		return `data:${mimeType};base64,${base64Data}`;
 	}
 
+	/**
+	 * Gets attachment binary data as a buffer.
+	 * Used for both message and agent attachments.
+	 */
 	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
 		return await this.binaryDataService.getAsBuffer(binaryData);
 	}
 
+	async storeAgentAttachment(agentId: string, attachment: ChatAttachment): Promise<IBinaryData> {
+		const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
+
+		if (buffer.length > this.maxAgentSizeBytes) {
+			const maxSizeMB = Math.floor(this.maxAgentSizeBytes / (1024 * 1024));
+			throw new BadRequestError(`Agent attachment exceeds maximum size of ${maxSizeMB} MB`); // TODO: check total size per agent
+		}
+
+		return await this.processAgentAttachment(agentId, attachment, buffer);
+	}
+
+	async getAgentAttachment(
+		agentId: string,
+		index: number,
+	): Promise<
+		[
+			IBinaryData,
+			(
+				| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
+				| { type: 'stream'; stream: Stream.Readable; fileSize: number }
+			),
+		]
+	> {
+		const agent = await this.agentRepository.findOne({
+			where: { id: agentId },
+			select: ['files'],
+		});
+
+		if (!agent) {
+			throw new NotFoundError('Agent not found');
+		}
+
+		const attachment = agent.files[index];
+
+		if (attachment.id) {
+			const metadata = await this.binaryDataService.getMetadata(attachment.id);
+			const stream = await this.binaryDataService.getAsStream(attachment.id);
+
+			return [attachment, { type: 'stream', stream, fileSize: metadata.fileSize }];
+		}
+
+		if (attachment.data) {
+			const buffer = await this.binaryDataService.getAsBuffer(attachment);
+
+			return [attachment, { type: 'buffer', buffer, fileSize: buffer.length }];
+		}
+
+		throw new NotFoundError('Attachment has no stored file');
+	}
+
+	async deleteAgentAttachmentById(agentId: string, trx?: EntityManager): Promise<void> {
+		const em = trx ?? this.agentRepository.manager;
+		const agent = await em.findOne(this.agentRepository.target, {
+			where: { id: agentId },
+			select: ['files'],
+		});
+
+		if (agent && agent.files.length > 0) {
+			await this.deleteAttachments(agent.files);
+		}
+	}
+
+	async deleteAllAgentAttachments(): Promise<void> {
+		const agents = await this.agentRepository.find({
+			select: ['files'],
+		});
+
+		await this.deleteAttachments(agents.flatMap((agent) => agent.files));
+	}
+
 	/**
-	 * Processes a single attachment by populating metadata and storing it.
+	 * Processes a single message attachment by populating metadata and storing it.
 	 */
-	private async processAttachment(
+	private async processMessageAttachment(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachment: ChatAttachment,
@@ -170,6 +247,33 @@ export class ChatHubAttachmentService {
 				sourceType: 'chat_message_attachment',
 				pathSegments: ['chat-hub', 'sessions', sessionId, 'messages', messageId],
 				sourceId: messageId,
+			}),
+			buffer,
+			binaryData,
+		);
+	}
+
+	private async processAgentAttachment(
+		agentId: string,
+		attachment: ChatAttachment,
+		buffer: Buffer,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(attachment.fileName);
+
+		// Construct IBinaryData with all required fields
+		const binaryData: IBinaryData = {
+			data: attachment.data,
+			mimeType: attachment.mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: sanitizedFileName?.split('.').pop(),
+		};
+
+		return await this.binaryDataService.store(
+			FileLocation.ofCustom({
+				sourceType: 'chat_agent_attachment',
+				pathSegments: ['chat-hub', 'agents', agentId],
+				sourceId: agentId,
 			}),
 			buffer,
 			binaryData,

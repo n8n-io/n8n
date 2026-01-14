@@ -31,7 +31,11 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
-import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import {
+	personalAgentDefaultIcon,
+	isLlmProviderModel,
+	createMimeTypes,
+} from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
@@ -71,7 +75,6 @@ const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 const files = ref<File[]>([]);
 const existingFiles = ref<Array<{ data: string; mimeType: string; fileName: string }>>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
-const canAcceptFiles = ref(true);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -94,6 +97,10 @@ const saveButtonLabel = computed(() =>
 	isSaving.value
 		? i18n.baseText('chatHub.agent.editor.saving')
 		: i18n.baseText('chatHub.agent.editor.save'),
+);
+
+const acceptedMimeTypes = computed(() =>
+	createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? []),
 );
 
 const isValid = computed(() => {
@@ -147,10 +154,10 @@ watch(
 		if (agent.files && agent.files.length > 0) {
 			existingFiles.value = agent.files
 				.filter(
-					(file: { data?: string; mimeType?: string; fileName?: string }) =>
-						file.data && file.mimeType && file.fileName,
+					(file): file is { data: string; mimeType: string; fileName: string; id?: string } =>
+						!!file.data && !!file.mimeType && !!file.fileName,
 				)
-				.map((file: { data: string; mimeType: string; fileName: string }) => ({
+				.map((file) => ({
 					data: file.data,
 					mimeType: file.mimeType,
 					fileName: file.fileName,
@@ -324,19 +331,35 @@ function onSelectTools() {
 	});
 }
 
+function isFileTypeAccepted(file: File): boolean {
+	const accepted = acceptedMimeTypes.value;
+	if (!accepted) return false;
+	if (accepted === '*/*') return true;
+
+	const acceptedTypes = accepted.split(',').map((type) => type.trim());
+	return acceptedTypes.some((acceptedType) => {
+		if (acceptedType.endsWith('/*')) {
+			// Handle wildcards like 'image/*', 'text/*'
+			const prefix = acceptedType.slice(0, -2);
+			return file.type.startsWith(prefix + '/');
+		}
+		return file.type === acceptedType;
+	});
+}
+
 function onFilesDropped(droppedFiles: File[]) {
-	const pdfFiles = droppedFiles.filter((file) => file.type === 'application/pdf');
-	if (pdfFiles.length > 0) {
-		files.value = [...files.value, ...pdfFiles];
+	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
+	if (acceptedFiles.length > 0) {
+		files.value = [...files.value, ...acceptedFiles];
 	}
 }
 
 function handleFileSelect(event: Event) {
 	const target = event.target as HTMLInputElement;
 	if (target.files) {
-		const pdfFiles = Array.from(target.files).filter((file) => file.type === 'application/pdf');
-		if (pdfFiles.length > 0) {
-			files.value = [...files.value, ...pdfFiles];
+		const acceptedFiles = Array.from(target.files).filter((file) => isFileTypeAccepted(file));
+		if (acceptedFiles.length > 0) {
+			files.value = [...files.value, ...acceptedFiles];
 		}
 	}
 	// Reset input value to allow selecting the same file again
@@ -355,7 +378,7 @@ function handleClickUploadArea() {
 	fileInputRef.value?.click();
 }
 
-const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
 
 <template>
@@ -480,12 +503,17 @@ const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 						ref="fileInput"
 						type="file"
 						:class="$style.fileInput"
-						accept="application/pdf"
+						:accept="acceptedMimeTypes"
 						multiple
 						@change="handleFileSelect"
 					/>
 					<div
-						:class="[$style.uploadArea, { [$style.uploadAreaDragging]: fileDrop.isDragging.value }]"
+						:class="[
+							$style.uploadArea,
+							{
+								[$style.uploadAreaDragging]: fileDrop.isDragging.value,
+							},
+						]"
 						@click="handleClickUploadArea"
 						@dragenter="fileDrop.handleDragEnter"
 						@dragleave="fileDrop.handleDragLeave"
@@ -496,7 +524,7 @@ const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 							v-if="files.length === 0 && existingFiles.length === 0"
 							:class="$style.uploadPrompt"
 						>
-							<span :class="$style.uploadText"> Click to upload or drag and drop PDF files </span>
+							<span :class="$style.uploadText"> Click to upload or drag and drop files </span>
 						</div>
 						<div v-else :class="$style.filesList">
 							<div

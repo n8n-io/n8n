@@ -14,6 +14,8 @@ import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import type { IBinaryData } from 'n8n-workflow';
 
 @Service()
 export class ChatHubAgentService {
@@ -21,6 +23,7 @@ export class ChatHubAgentService {
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
@@ -63,6 +66,11 @@ export class ChatHubAgentService {
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
 		const id = uuidv4();
+		const files: IBinaryData[] = [];
+
+		for (const file of data.files) {
+			files.push(await this.chatHubAttachmentService.storeAgentAttachment(id, file));
+		}
 
 		const agent = await this.chatAgentRepository.createAgent({
 			id,
@@ -75,11 +83,13 @@ export class ChatHubAgentService {
 			provider: data.provider,
 			model: data.model,
 			tools: data.tools,
-			files: data.files ?? [],
+			files,
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
 		return agent;
+
+		// TODO: revert files on error
 	}
 
 	async updateAgent(
@@ -108,7 +118,17 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
-		if (updates.files !== undefined) updateData.files = updates.files;
+		if (updates.files !== undefined) {
+			const allFiles: IBinaryData[] = [];
+
+			for (const file of updates.files) {
+				// TODO: handle existing file differently
+				// TODO: delete remove files
+				allFiles.push(await this.chatHubAttachmentService.storeAgentAttachment(id, file));
+			}
+
+			updateData.files = allFiles;
+		}
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
@@ -123,6 +143,7 @@ export class ChatHubAgentService {
 			throw new NotFoundError('Chat agent not found');
 		}
 
+		await this.chatHubAttachmentService.deleteAgentAttachmentById(id);
 		await this.chatAgentRepository.deleteAgent(id);
 
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);

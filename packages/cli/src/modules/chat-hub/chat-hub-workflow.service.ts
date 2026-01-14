@@ -42,6 +42,7 @@ import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
+import { PdfExtractorService } from './pdf-extractor.service';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -50,6 +51,7 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly pdfService: PdfExtractorService,
 	) {}
 
 	async createChatWorkflow(
@@ -59,6 +61,7 @@ export class ChatHubWorkflowService {
 		history: ChatHubMessage[],
 		humanMessage: string,
 		attachments: IBinaryData[],
+		contextFiles: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubBaseLLMModel,
 		systemMessage: string | undefined,
@@ -81,6 +84,7 @@ export class ChatHubWorkflowService {
 				history,
 				humanMessage,
 				attachments,
+				contextFiles,
 				credentials,
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
@@ -264,6 +268,7 @@ export class ChatHubWorkflowService {
 		history,
 		humanMessage,
 		attachments,
+		contextFiles,
 		credentials,
 		model,
 		systemMessage,
@@ -274,6 +279,7 @@ export class ChatHubWorkflowService {
 		history: ChatHubMessage[];
 		humanMessage: string;
 		attachments: IBinaryData[];
+		contextFiles: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
@@ -283,7 +289,7 @@ export class ChatHubWorkflowService {
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model, contextFiles);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 
@@ -678,8 +684,13 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 	private async buildRestoreMemoryNode(
 		history: ChatHubMessage[],
 		model: ChatHubBaseLLMModel,
+		contextFiles: IBinaryData[],
 	): Promise<INode> {
-		const messageValues = await this.buildMessageValuesWithAttachments(history, model);
+		const messageValues = await this.buildMessageValuesWithAttachments(
+			history,
+			model,
+			contextFiles,
+		);
 
 		return {
 			parameters: {
@@ -700,6 +711,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 	private async buildMessageValuesWithAttachments(
 		history: ChatHubMessage[],
 		model: ChatHubBaseLLMModel,
+		contextFiles: IBinaryData[],
 	): Promise<MessageRecord[]> {
 		const metadata = getModelMetadata(model.provider, model.model);
 
@@ -713,6 +725,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 
 		const messageValues: MessageRecord[] = [];
+
 		let currentTotalSize = 0;
 
 		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
@@ -749,6 +762,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 					currentTotalSize,
 					maxTotalPayloadSize,
 					metadata,
+					'File',
 				);
 				blocks.push(block);
 				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
@@ -758,6 +772,34 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				type,
 				message: blocks,
 				hideFromUI: false,
+			});
+		}
+
+		const contextFileBlocks: ContentBlock[] = [];
+
+		for (let i = 0; i < contextFiles.length; i++) {
+			const file = contextFiles[i];
+			const block = await this.buildContentBlockForAttachment(
+				file,
+				currentTotalSize,
+				maxTotalPayloadSize,
+				metadata,
+				`Context file (${i + 1} of ${contextFiles.length})`,
+			);
+			contextFileBlocks.push(block);
+			currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+		}
+
+		if (contextFileBlocks.length > 0) {
+			messageValues.push({
+				type: 'user',
+				message: [
+					{
+						type: 'text',
+						text: 'In this conversation, take following context files into account.',
+					} as ContentBlock,
+				].concat(contextFileBlocks),
+				hideFromUI: true,
 			});
 		}
 
@@ -772,6 +814,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
 		modelMetadata: ChatModelMetadataDto,
+		prefix: string,
 	): Promise<ContentBlock> {
 		class TotalFileSizeExceededError extends Error {}
 		class UnsupportedMimeTypeError extends Error {}
@@ -791,7 +834,20 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 				return {
 					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+				};
+			}
+
+			if (attachment.mimeType === 'application/pdf') {
+				const content = await this.pdfService.extractTextFromPdf(attachment);
+
+				if (currentTotalSize + content.length > maxTotalPayloadSize) {
+					throw new TotalFileSizeExceededError();
+				}
+
+				return {
+					type: 'text',
+					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
 				};
 			}
 
@@ -812,14 +868,14 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			if (e instanceof TotalFileSizeExceededError) {
 				return {
 					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
 				};
 			}
 
 			if (e instanceof UnsupportedMimeTypeError) {
 				return {
 					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
+					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
 				};
 			}
 
