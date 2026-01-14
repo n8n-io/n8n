@@ -39,6 +39,7 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -63,7 +64,6 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import { getEasyAiWorkflowJson } from '@/features/workflows/templates/utils/workflowSamples';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -139,6 +139,7 @@ const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
+const templatesStore = useTemplatesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -165,8 +166,6 @@ type ResourcesListLayoutExpose = {
 const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
-
-const easyAICalloutVisible = ref(true);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -373,11 +372,6 @@ const statusFilterOptions = computed(() => [
 	},
 ]);
 
-const showEasyAIWorkflowCallout = computed(() => {
-	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return !easyAIWorkflowOnboardingDone;
-});
-
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
 		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
@@ -388,7 +382,9 @@ const showTemplatesDataQualityInline = computed(() => {
 	return (
 		templatesDataQualityStore.isFeatureEnabled() &&
 		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
+		projectPermissions.value.workflow.create &&
+		settingsStore.isTemplatesEnabled &&
+		!templatesStore.hasCustomTemplatesHost
 	);
 });
 
@@ -413,6 +409,18 @@ const emptyListDescription = computed(() => {
 		return i18n.baseText('workflows.empty.description.noPermission');
 	} else {
 		return i18n.baseText('workflows.empty.description');
+	}
+});
+
+const emptyListHeading = computed(() => {
+	if (showTemplatesDataQualityInline.value) {
+		return i18n.baseText('workflows.empty.heading', {
+			interpolate: { name: currentUser.value.firstName ?? '' },
+		});
+	} else {
+		return i18n.baseText('workflows.empty.headingWithIcon', {
+			interpolate: { name: currentUser.value.firstName ?? '' },
+		});
 	}
 });
 
@@ -472,6 +480,15 @@ const hasActiveCallouts = computed(() => {
 		showAIStarterCollectionCallout.value ||
 		showPersonalizedTemplates.value ||
 		showReadyToRunWorkflowsCallout.value
+	);
+});
+
+const showStartFromScratchCard = computed(() => {
+	return (
+		!loading.value &&
+		!showTemplatesDataQualityInline.value &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
 	);
 });
 
@@ -991,25 +1008,6 @@ const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
 const dismissStarterCollectionCallout = () => {
 	aiStarterTemplatesStore.dismissCallout();
 	aiStarterTemplatesStore.trackUserDismissedCallout();
-};
-
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
-};
-
-const openAIWorkflow = async (source: string) => {
-	dismissEasyAICallout();
-	telemetry.track('User clicked test AI workflow', {
-		source,
-	});
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson();
-
-	await router.push({
-		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: easyAiWorkflowJson.meta.templateId },
-		query: { fromJson: 'true', parentFolderId: route.params.folderId },
-	});
 };
 
 const onShowArchived = async () => {
@@ -2041,25 +2039,20 @@ const onNameSubmit = async (name: string) => {
 				resource-type="workflows"
 			/>
 			<div v-else>
-				<div class="text-center mt-s" data-test-id="list-empty-state">
-					<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
-						{{
-							currentUser.firstName
-								? i18n.baseText('workflows.empty.heading', {
-										interpolate: { name: currentUser.firstName },
-									})
-								: i18n.baseText('workflows.empty.heading.userNotSetup')
-						}}
-					</N8nHeading>
-					<N8nText size="large" color="text-base">
-						{{ emptyListDescription }}
-					</N8nText>
+				<div v-if="showTemplatesDataQualityInline" :class="$style.templatesContainer">
+					<TemplatesDataQualityInlineSection />
 				</div>
-				<div
-					v-if="!readOnlyEnv && projectPermissions.workflow.create"
-					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
-				>
+				<div v-else :class="$style.emptyStateNoTemplates" data-test-id="list-empty-state">
+					<div class="text-center mt-s">
+						<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
+							{{ emptyListHeading }}
+						</N8nHeading>
+						<N8nText size="large" color="text-base">
+							{{ emptyListDescription }}
+						</N8nText>
+					</div>
 					<N8nCard
+						v-if="showStartFromScratchCard"
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="new-workflow-card"
@@ -2077,66 +2070,6 @@ const onNameSubmit = async (name: string) => {
 							</N8nText>
 						</div>
 					</N8nCard>
-					<N8nCard
-						v-if="showAIStarterCollectionCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="easy-ai-workflow-card"
-						@click="createAIStarterWorkflows('card')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="gift"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.ai.starter.collection.card') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-else-if="showEasyAIWorkflowCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="easy-ai-workflow-card"
-						@click="openAIWorkflow('empty')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="bot"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.empty.easyAI') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-if="showReadyToRunWorkflowsCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="ready-to-run-workflows-card"
-						@click="handleCreateReadyToRunWorkflows('card')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="package-open"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ readyToRunWorkflowsStore.getCardText() }}
-							</N8nText>
-						</div>
-					</N8nCard>
-				</div>
-				<div v-if="showTemplatesDataQualityInline" :class="$style.templatesContainer">
-					<TemplatesDataQualityInlineSection />
 				</div>
 				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
 				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
@@ -2235,18 +2168,13 @@ const onNameSubmit = async (name: string) => {
 </template>
 
 <style lang="scss" module>
-.actionsContainer {
-	display: flex;
-	justify-content: center;
-}
-
 .templatesContainer {
 	display: flex;
 	justify-content: center;
 	width: 100%;
 
 	> section {
-		margin-top: var(--spacing--3xl);
+		margin-top: var(--spacing--2xl);
 	}
 }
 
@@ -2293,6 +2221,14 @@ const onNameSubmit = async (name: string) => {
 	svg {
 		transition: color 0.3s ease;
 	}
+}
+
+.emptyStateNoTemplates {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xl);
+	align-items: center;
+	justify-content: center;
 }
 
 .add-folder-button {

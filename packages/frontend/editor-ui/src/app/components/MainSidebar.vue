@@ -90,23 +90,23 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
-	},
-	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled and custom templates are not enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!templatesStore.hasCustomTemplatesHost &&
+			isTemplatesExperimentEnabled.value,
+	},
+	{
+		// Link to in-app templates, available if custom templates are enabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('generic.templates'),
+		position: 'bottom',
+		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -278,6 +278,10 @@ function openCommandBar(event: MouseEvent) {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
+			if (settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost) {
+				break;
+			}
+
 			if (templatesDataQualityStore.isFeatureEnabled()) {
 				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 				trackTemplatesClick(TemplateClickSource.sidebarButton);
