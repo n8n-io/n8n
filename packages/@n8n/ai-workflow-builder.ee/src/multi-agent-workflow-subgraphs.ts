@@ -19,7 +19,7 @@ import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
-import { getNextPhaseFromLog } from './utils/coordination-log';
+import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
@@ -55,6 +55,8 @@ export interface MultiAgentSubgraphConfig {
 	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
 	autoCompactThresholdTokens?: number;
 	featureFlags?: BuilderFeatureFlags;
+	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
+	onGenerationSuccess?: () => Promise<void>;
 }
 
 /**
@@ -126,6 +128,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
+		onGenerationSuccess,
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
@@ -182,6 +185,13 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					workflowJSON: state.workflowJSON,
 					previousSummary: state.previousSummary,
 				});
+
+				// Call success callback only when generation completed without errors
+				if (onGenerationSuccess && !hasErrorInLog(state.coordinationLog)) {
+					void Promise.resolve(onGenerationSuccess()).catch((error) => {
+						logger?.warn('Failed to execute onGenerationSuccess callback', { error });
+					});
+				}
 
 				return {
 					messages: [response], // Only responder adds to user messages

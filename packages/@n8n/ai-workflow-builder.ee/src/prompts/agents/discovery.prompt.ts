@@ -280,7 +280,7 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 const CRITICAL_RULES = `- NEVER ask clarifying questions
 - ALWAYS call get_best_practices first
 - THEN Call search_nodes to learn about available nodes and their inputs and outputs
-- FINALLY call get_node_details IN PARALLEL for speed to get more details about RELVANT node
+- FINALLY call get_node_details IN PARALLEL for speed to get more details about RELEVANT node
 - ALWAYS extract version number from <version> tag in node details
 - NEVER guess node versions - always use search_nodes to find exact versions
 - ONLY flag connectionChangingParameters if they appear in <input> or <output> expressions
