@@ -33,6 +33,9 @@ catalogs:
     '@codemirror/search':
       specifier: 6.5.11
       version: 6.5.11
+    '@codemirror/state':
+      specifier: 6.5.3
+      version: 6.5.3
     '@codemirror/view':
       specifier: 6.39.8
       version: 6.39.8
@@ -269,7 +272,6 @@ catalogs:
       version: 10.1.11
 
 overrides:
-  '@codemirror/state': 6.5.3
   ast-types: 0.16.1
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
@@ -703,7 +705,7 @@ importers:
         specifier: 'catalog:'
         version: 6.12.1
       '@codemirror/state':
-        specifier: 6.5.3
+        specifier: 'catalog:'
         version: 6.5.3
       '@codemirror/view':
         specifier: 'catalog:'
@@ -743,7 +745,7 @@ importers:
         specifier: 'catalog:'
         version: 6.12.1
       '@codemirror/state':
-        specifier: 6.5.3
+        specifier: 'catalog:'
         version: 6.5.3
       '@lezer/highlight':
         specifier: 'catalog:'
@@ -2712,7 +2714,7 @@ importers:
         specifier: 'catalog:'
         version: 6.5.11
       '@codemirror/state':
-        specifier: 6.5.3
+        specifier: 'catalog:'
         version: 6.5.3
       '@codemirror/view':
         specifier: 'catalog:'
@@ -7125,7 +7127,7 @@ packages:
     resolution: {integrity: sha512-hL5Sfvw3C1vgg7GolLe/uxX5T3tmgOA3ZzqlMv47zjU1ON51pzNWiVbS22oh6crYhtVhv8b3gdXwoYp++2ilHw==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
-      '@codemirror/state': 6.5.3
+      '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
 
   '@rolldown/binding-android-arm64@1.0.0-beta.50':
@@ -30556,7 +30558,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30566,7 +30568,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34993,7 +34995,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
 
