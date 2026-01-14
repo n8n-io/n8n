@@ -4,7 +4,6 @@ import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Cipher } from 'n8n-core';
-import { v4 as uuid } from 'uuid';
 import { mock } from 'jest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -201,7 +200,7 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 		// Create test credential
 		const credential = await credentialsRepository.save(
 			credentialsRepository.create({
-				id: uuid(),
+				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
 				data: cipher.encrypt({ clientId: 'test-client-id' }),
@@ -211,7 +210,7 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 
 		// Create test resolver
 		const resolver = await resolverRepository.save({
-			id: uuid(),
+			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
 			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
@@ -266,7 +265,7 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 
 	async function setupTestData() {
 		// Create a simple test workflow ID
-		workflowId = uuid();
+		workflowId = randomId();
 
 		// Register mock resolver
 		const registry = Container.get(DynamicCredentialResolverRegistry);
