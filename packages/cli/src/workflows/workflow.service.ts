@@ -308,28 +308,10 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
-		// Clean up settings
-		if (workflowUpdateData.settings) {
-			const keysAllowingDefault = [
-				'errorWorkflow',
-				'timezone',
-				'saveDataErrorExecution',
-				'saveDataSuccessExecution',
-				'saveManualExecutions',
-				'saveExecutionProgress',
-			] as const;
-			for (const key of keysAllowingDefault) {
-				// Do not save the default value
-				if (workflowUpdateData.settings[key] === 'DEFAULT') {
-					delete workflowUpdateData.settings[key];
-				}
-			}
-
-			if (workflowUpdateData.settings.executionTimeout === this.globalConfig.executions.timeout) {
-				// Do not save when default got set
-				delete workflowUpdateData.settings.executionTimeout;
-			}
-		}
+		workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+			workflowUpdateData.settings ?? {},
+			this.globalConfig.executions.timeout,
+		);
 
 		// Check if settings actually changed
 		const settingsChanged =
