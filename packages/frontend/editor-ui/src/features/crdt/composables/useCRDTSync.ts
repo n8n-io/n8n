@@ -18,7 +18,7 @@ import {
 	type AwarenessState,
 	type CRDTUndoManager,
 	type UndoStackChangeEvent,
-} from '@n8n/crdt/browser';
+} from '@n8n/crdt';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 export type CRDTSyncState = 'idle' | 'connecting' | 'ready' | 'disconnected' | 'error';

@@ -1,12 +1,8 @@
-import { AutomergeProvider } from '../providers/automerge';
 import { YjsProvider } from '../providers/yjs';
 import type { CRDTDoc, CRDTMap, CRDTUndoManager, UndoStackChangeEvent } from '../types';
 
-// Run tests for both Yjs and Automerge providers
-describe.each([
-	['Yjs', () => new YjsProvider()],
-	['Automerge', () => new AutomergeProvider()],
-])('%s UndoManager', (_name, createProvider) => {
+// Run tests for all providers
+describe.each([['Yjs', () => new YjsProvider()]])('%s UndoManager', (_name, createProvider) => {
 	let doc: CRDTDoc;
 	let map: CRDTMap<string>;
 	let undoManager: CRDTUndoManager;

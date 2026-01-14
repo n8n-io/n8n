@@ -1,6 +1,6 @@
 import { reactive, computed, onScopeDispose, inject } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { CRDTAwareness, AwarenessChangeEvent, ChangeOrigin } from '@n8n/crdt/browser';
+import type { CRDTAwareness, AwarenessChangeEvent, ChangeOrigin } from '@n8n/crdt';
 import type {
 	AwarenessUser,
 	AwarenessCursor,

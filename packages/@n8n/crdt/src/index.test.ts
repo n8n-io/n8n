@@ -14,18 +14,13 @@ describe('createCRDTProvider', () => {
 		const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 		expect(provider.name).toBe('yjs');
 	});
-
-	it('should create an Automerge provider', () => {
-		const provider = createCRDTProvider({ engine: CRDTEngine.automerge });
-		expect(provider.name).toBe('automerge');
-	});
 });
 
 /**
  * Conformance test suite - runs the same tests against both providers
  * to ensure they behave identically.
  */
-describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (engine) => {
+describe.each([CRDTEngine.yjs])('CRDT Conformance: %s', (engine) => {
 	let doc: CRDTDoc;
 	let map: CRDTMap<unknown>;
 
@@ -324,7 +319,6 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(change.value).toEqual({ position: { x: 150, y: 200 } });
 			// Note: oldValue for full object replacement may vary by provider
 			// Yjs returns {} because the Y.Map is already replaced when toJSON is called
-			// Automerge can reconstruct the old value from document history
 		});
 
 		it('should stop emitting events after unsubscribe', () => {
@@ -372,7 +366,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			const workflow = createWorkflowData(10);
 			map.set('workflow', workflow);
 
-			// Create a fresh modified version (for Automerge compatibility, don't spread from get())
+			// Create a fresh modified version
 			const updatedWorkflow = createWorkflowData(10);
 			(updatedWorkflow.nodes as Record<string, { position: { x: number; y: number } }>)[
 				'node-5'
@@ -397,7 +391,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			const changes: DeepChange[] = [];
 			map.onDeepChange((events) => changes.push(...events));
 
-			// Modify by replacing with fresh workflow (for Automerge compatibility)
+			// Modify by replacing with fresh workflow
 			const newWorkflow = createWorkflowData(3);
 			newWorkflow.name = 'Renamed Workflow';
 			map.set('workflow', newWorkflow);

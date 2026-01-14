@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import type { EventHookOn } from '@vueuse/core';
-import type { CRDTAwareness } from '@n8n/crdt/browser';
+import type { CRDTAwareness } from '@n8n/crdt';
 import type { WorkflowAwarenessState } from './awareness.types';
 
 /**

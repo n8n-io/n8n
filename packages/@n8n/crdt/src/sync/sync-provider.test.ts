@@ -8,7 +8,7 @@ import type { SyncProvider } from './types';
 /**
  * SyncProvider tests - verify sync via transport works for both engines.
  */
-describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance: %s', (engine) => {
+describe.each([CRDTEngine.yjs])('SyncProvider Conformance: %s', (engine) => {
 	let doc1: CRDTDoc;
 	let doc2: CRDTDoc;
 	let map1: CRDTMap<unknown>;
@@ -489,7 +489,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 			expect(Object.keys(initialResult.workflow.nodes).length).toBe(10);
 
 			// Edit deep nested value by replacing the whole workflow
-			// NOTE: Create a fresh object structure (don't reuse objects from get() for Automerge compatibility)
+			// NOTE: Create a fresh object structure (don't reuse objects from get())
 			const updatedWorkflow = createWorkflowData(10);
 			(updatedWorkflow.nodes as Record<string, { position: { x: number; y: number } }>)[
 				'node-5'
@@ -532,7 +532,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 			const workflow = createWorkflowData(3);
 			map1.set('workflow', workflow);
 
-			// Replace workflow with a fresh modified version (for Automerge compatibility)
+			// Replace workflow with a fresh modified version
 			const modifiedWorkflow = createWorkflowData(3);
 			modifiedWorkflow.name = 'Modified Workflow';
 			map1.set('workflow', modifiedWorkflow);

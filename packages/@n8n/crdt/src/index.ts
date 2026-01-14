@@ -1,4 +1,3 @@
-import { AutomergeProvider } from './providers/automerge';
 import { YjsProvider } from './providers/yjs';
 import { CRDTEngine } from './types';
 import type { CRDTConfig, CRDTProvider } from './types';
@@ -34,15 +33,12 @@ export { isMapChange, isArrayChange } from './types';
 
 // Awareness implementations
 export { YjsAwareness } from './awareness/yjs-awareness';
-export { AutomergeAwareness } from './awareness/automerge-awareness';
 
 // Undo manager implementations
 export { YjsUndoManager, YjsUndoManagerOrigin, YjsRemoteOrigin } from './undo/yjs-undo-manager';
-export { AutomergeUndoManager } from './undo/automerge-undo-manager';
 
 // Providers
 export { YjsProvider } from './providers/yjs';
-export { AutomergeProvider } from './providers/automerge';
 
 // Transports
 export type { SyncTransport } from './transports';
@@ -70,8 +66,6 @@ export function createCRDTProvider(config: CRDTConfig): CRDTProvider {
 	switch (config.engine) {
 		case CRDTEngine.yjs:
 			return new YjsProvider();
-		case CRDTEngine.automerge:
-			return new AutomergeProvider();
 		default: {
 			const exhaustiveCheck: never = config.engine;
 			throw new Error(`Unknown CRDT engine: ${String(exhaustiveCheck)}`);

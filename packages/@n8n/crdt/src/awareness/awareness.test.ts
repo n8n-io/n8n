@@ -13,7 +13,7 @@ interface TestAwarenessState extends AwarenessState {
  * Awareness conformance test suite - runs the same tests against both providers
  * to ensure they behave identically.
  */
-describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Awareness Conformance: %s', (engine) => {
+describe.each([CRDTEngine.yjs])('Awareness Conformance: %s', (engine) => {
 	let doc: CRDTDoc;
 	let awareness: CRDTAwareness<TestAwarenessState>;
 
@@ -535,32 +535,5 @@ describe('Awareness - Yjs specific', () => {
 		expect(typeof awareness.clientId).toBe('number');
 
 		doc.destroy();
-	});
-});
-
-describe('Awareness - Automerge specific', () => {
-	it('should implement awareness protocol compatible with Yjs', () => {
-		const yjsProvider = createCRDTProvider({ engine: CRDTEngine.yjs });
-		const amProvider = createCRDTProvider({ engine: CRDTEngine.automerge });
-
-		const yjsDoc = yjsProvider.createDoc('test-yjs');
-		const amDoc = amProvider.createDoc('test-am');
-
-		const yjsAwareness = yjsDoc.getAwareness<TestAwarenessState>();
-		const amAwareness = amDoc.getAwareness<TestAwarenessState>();
-
-		// Both should have valid clientIds
-		expect(yjsAwareness.clientId).toBeDefined();
-		expect(amAwareness.clientId).toBeDefined();
-
-		// Both should have the same API
-		yjsAwareness.setLocalState({ user: { name: 'Yjs User', color: '#ff0000' } });
-		amAwareness.setLocalState({ user: { name: 'AM User', color: '#0000ff' } });
-
-		expect(yjsAwareness.getLocalState()?.user.name).toBe('Yjs User');
-		expect(amAwareness.getLocalState()?.user.name).toBe('AM User');
-
-		yjsDoc.destroy();
-		amDoc.destroy();
 	});
 });

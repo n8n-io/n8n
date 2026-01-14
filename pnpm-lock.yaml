@@ -788,12 +788,6 @@ importers:
 
   packages/@n8n/crdt:
     dependencies:
-      '@automerge/automerge':
-        specifier: ^2.2.8
-        version: 2.2.9
-      '@onsetsoftware/automerge-patcher':
-        specifier: ^0.14.0
-        version: 0.14.0(@automerge/automerge@2.2.9)
       y-protocols:
         specifier: ^1.0.7
         version: 1.0.7(yjs@13.6.27)
@@ -3662,9 +3656,6 @@ packages:
   '@authenio/xml-encryption@2.0.2':
     resolution: {integrity: sha512-cTlrKttbrRHEw3W+0/I609A2Matj5JQaRvfLtEIGZvlN0RaPi+3ANsMeqAyCAVlH/lUIW2tmtBlSMni74lcXeg==}
     engines: {node: '>=12'}
-
-  '@automerge/automerge@2.2.9':
-    resolution: {integrity: sha512-6HM52Ops79hAQBWMg/t0MNfGOdEiXyenQjO9F1hKZq0RWDsMLpPa1SzRy/C4/4UyX67sTHuA5CwBpH34SpfZlA==}
 
   '@aws-crypto/crc32@3.0.0':
     resolution: {integrity: sha512-IzSgsrxUcsrejQbPVilIKy16kAT52EwB6zSaI+M3xxIhKh5+aldEyvI+z6erM7TCLB2BJsFrtHjp6/4/sr+3dA==}
@@ -6732,11 +6723,6 @@ packages:
 
   '@one-ini/wasm@0.2.0':
     resolution: {integrity: sha512-n+L/BvrwKUn7q5O3wHGo+CJZAqfewh38+37sk+eBzv/39lM9pPgPRd4sOZRvSRzo0ukLxzyXso4WlGj2oKZ5hA==}
-
-  '@onsetsoftware/automerge-patcher@0.14.0':
-    resolution: {integrity: sha512-WBH6GScVgmoqi12fC3SSkY13AKO+pQGMtbhKa83iiqH9HWbHVLRIV6Z2z0pwDr/2SJYv0ur5G7CGI1A30WhxIw==}
-    peerDependencies:
-      '@automerge/automerge': ^2.1.0
 
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
@@ -18889,10 +18875,6 @@ snapshots:
       escape-html: 1.0.3
       xpath: 0.0.32
 
-  '@automerge/automerge@2.2.9':
-    dependencies:
-      uuid: 9.0.1
-
   '@aws-crypto/crc32@3.0.0':
     dependencies:
       '@aws-crypto/util': 3.0.0
@@ -21650,7 +21632,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.12.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -23307,11 +23289,6 @@ snapshots:
   '@one-ini/wasm@0.1.1': {}
 
   '@one-ini/wasm@0.2.0': {}
-
-  '@onsetsoftware/automerge-patcher@0.14.0(@automerge/automerge@2.2.9)':
-    dependencies:
-      '@automerge/automerge': 2.2.9
-      is-plain-object: 5.0.0
 
   '@open-draft/deferred-promise@2.2.0': {}
 
@@ -27184,11 +27161,6 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
-    dependencies:
-      axios: 1.12.0(debug@4.4.3)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
@@ -30663,7 +30635,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30673,7 +30645,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -35110,7 +35082,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
 

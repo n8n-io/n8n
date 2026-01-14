@@ -44,7 +44,7 @@ import {
 	decodeString,
 	type CRDTDoc,
 	type CRDTMap,
-} from '@n8n/crdt/browser';
+} from '@n8n/crdt';
 
 declare const self: DedicatedWorkerGlobalScope;
 

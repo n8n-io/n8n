@@ -5,7 +5,7 @@ import type { CRDTArray, CRDTDoc, CRDTMap } from './types';
  * Sync conformance tests - verify that two docs can sync manually
  * by exchanging encoded states and updates.
  */
-describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (engine) => {
+describe.each([CRDTEngine.yjs])('Sync Conformance: %s', (engine) => {
 	let doc1: CRDTDoc;
 	let doc2: CRDTDoc;
 	let map1: CRDTMap<unknown>;

@@ -1,21 +1,14 @@
 # @n8n/crdt
 
 CRDT abstraction layer for n8n collaborative editing. Provides a unified API
-over Yjs and Automerge CRDT libraries.
-
-## Status
-
-**Phase 1 Complete** - Core data structures (Map, Array) and sync infrastructure
-are functional with **362 passing tests**.
-
-See [crdt-poc.md](./crdt-poc.md) for full documentation and roadmap.
+built on Yjs for real-time document synchronization.
 
 ## Quick Start
 
 ```typescript
 import { createCRDTProvider, CRDTEngine } from '@n8n/crdt';
 
-// Create provider (switch engine without code changes)
+// Create provider
 const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
 // Create document
@@ -163,16 +156,6 @@ const sync = createSyncProvider(doc, transport);
 await sync.start();
 // Messages automatically sync across all tabs on same channel
 ```
-
-## Provider Differences
-
-While the API is unified, some edge-case behaviors differ between providers:
-
-| Behavior | Yjs | Automerge |
-|----------|-----|-----------|
-| Array out-of-bounds index | Throws `RangeError` | Clamps to valid range |
-
-For portable code, always use valid indices (`0 <= index <= length`).
 
 ## Not Yet Implemented
 
