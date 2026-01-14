@@ -468,9 +468,12 @@ describe('AskAssistantBuild', () => {
 		const workflowJson = '{"nodes": [], "connections": {}}';
 
 		describe('when workflow-updated message exists', () => {
+			const testUserMessageId = 'test-user-message-id';
+
 			beforeEach(() => {
 				// Use $patch to ensure reactivity
 				builderStore.$patch({
+					lastUserMessageId: testUserMessageId,
 					chatMessages: [
 						{
 							id: faker.string.uuid(),
@@ -554,6 +557,7 @@ describe('AskAssistantBuild', () => {
 					expect.objectContaining({
 						feedback: feedbackText,
 						workflow_id: 'abc123',
+						user_message_id: testUserMessageId,
 					}),
 				);
 			});
