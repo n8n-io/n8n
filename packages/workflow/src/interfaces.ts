@@ -1930,7 +1930,7 @@ export type ExecuteNodeResult<T = unknown> = {
  *
  * @template T - The type of metadata associated with this result
  */
-type EngineResult<T> = ExecuteNodeResult<T>;
+export type EngineResult<T> = ExecuteNodeResult<T>;
 
 /**
  * Response structure returned from the workflow engine after execution.
