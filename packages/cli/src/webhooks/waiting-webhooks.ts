@@ -54,6 +54,14 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
+	async findAccessControlOptions() {
+		// waiting webhooks do not support cors configuration options
+		// allow all origins because waiting webhook forms are always submitted in cors mode due to sandbox CSP
+		return {
+			allowedOrigins: '*',
+		};
+	}
+
 	protected logReceivedWebhook(method: string, executionId: string) {
 		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
 	}
