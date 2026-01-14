@@ -10,6 +10,7 @@ import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { getTools, prepareMessages, preparePrompt } from '../../common';
 import type { AgentOptions, RequestResponseMetadata } from '../types';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 /**
  * Context specific to a single item's processing
@@ -36,6 +37,7 @@ export type ItemContext = {
 export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	model: BaseChatModel,
 	response?: EngineResponse<RequestResponseMetadata>,
 ): Promise<ItemContext> {
 	const steps = buildSteps(response, itemIndex);
@@ -59,7 +61,7 @@ export async function prepareItemContext(
 	}
 
 	// Prepare the prompt messages and prompt template.
-	const messages = await prepareMessages(ctx, itemIndex, {
+	const messages = await prepareMessages(ctx, itemIndex, model, {
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		outputParser,

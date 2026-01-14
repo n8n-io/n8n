@@ -14,6 +14,11 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { BinaryDataToContentBlockFnKey } from '../../agents/Agent/agents/ToolsAgent/V3/types';
+import {
+	defaultBinaryDataToContentBlock,
+	isPdfFile,
+} from '../../agents/Agent/agents/ToolsAgent/common';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -29,7 +34,7 @@ export class LmChatGoogleGemini implements INodeType {
 		name: 'lmChatGoogleGemini',
 		icon: 'file:google.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Chat Model Google Gemini',
 		defaults: {
 			name: 'Google Gemini Chat Model',
@@ -127,6 +132,7 @@ export class LmChatGoogleGemini implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googlePalmApi');
+		const version = this.getNode().typeVersion;
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {
@@ -159,6 +165,28 @@ export class LmChatGoogleGemini implements INodeType {
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
+
+		if (version >= 1.1) {
+			// Add PDF support for >= 1.1
+			model[BinaryDataToContentBlockFnKey] = async (ctx, data) => {
+				if (isPdfFile(data.mimeType)) {
+					const bufferData = data.id
+						? Buffer.from(
+								await ctx.helpers.binaryToBuffer(await ctx.helpers.getBinaryStream(data.id)),
+							).toString('base64')
+						: data.data.replace(/^base64,/, '');
+
+					return {
+						type: 'file',
+						mime_type: data.mimeType,
+						source_type: 'base64',
+						data: bufferData,
+					};
+				}
+
+				return await defaultBinaryDataToContentBlock(ctx, data);
+			};
+		}
 
 		return {
 			response: model,
