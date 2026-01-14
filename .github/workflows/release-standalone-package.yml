@@ -8,10 +8,13 @@ on:
         required: true
         type: choice
         options:
-          - '@n8n/node-cli'
+          - '@n8n/codemirror-lang'
+          - '@n8n/codemirror-lang-html'
+          - '@n8n/codemirror-lang-sql'
           - '@n8n/create-node'
-          - '@n8n/scan-community-package'
           - '@n8n/eslint-plugin-community-nodes'
+          - '@n8n/node-cli'
+          - '@n8n/scan-community-package'
 
 concurrency:
   group: release-package-${{ github.event.inputs.package }}

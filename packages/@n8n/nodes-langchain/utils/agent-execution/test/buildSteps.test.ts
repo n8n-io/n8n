@@ -51,7 +51,7 @@ describe('buildSteps', () => {
 			expect(result[0]).toMatchObject({
 				action: {
 					tool: 'Calculator',
-					toolInput: '2+2',
+					toolInput: { input: '2+2' },
 					toolCallId: 'call_123',
 					type: 'tool_call',
 				},
@@ -986,7 +986,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Tool input extraction', () => {
-		it('should extract toolInput as string from nested input property (legacy format)', () => {
+		it('should extract toolInput as object with string input property', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1020,8 +1020,8 @@ describe('buildSteps', () => {
 			const result = buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
-			// Should be a string to mimic old behavior
-			expect(result[0].action.toolInput).toBe('5*343');
+			// toolInput is always an object for type consistency with LangChain ToolCall
+			expect(result[0].action.toolInput).toEqual({ input: '5*343' });
 		});
 
 		it('should extract toolInput with multiple arguments (new format)', () => {

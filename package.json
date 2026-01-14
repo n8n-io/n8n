@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.2.0",
+  "version": "2.4.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -38,7 +38,6 @@
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
-    "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
@@ -54,12 +53,12 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
-    "@babel/preset-env": "^7.26.0",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "cross-env": "^7.0.3",
     "eslint": "catalog:",
@@ -81,7 +80,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.5.4",
+    "turbo": "2.7.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -119,7 +118,7 @@
       "form-data": "4.0.4",
       "tmp": "0.2.4",
       "nodemailer": "7.0.11",
-      "validator": "13.15.22",
+      "validator": "13.15.26",
       "zod": "3.25.67",
       "js-yaml": "4.1.1",
       "node-forge": "1.3.2",
@@ -127,7 +126,9 @@
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
-      "jws@4": "4.0.1"
+      "jws@4": "4.0.1",
+      "qs@6": "6.14.1",
+      "@smithy/config-resolver": ">=4.4.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -143,7 +144,8 @@
       "minifaker": "patches/minifaker.patch",
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
-      "v-code-diff": "patches/v-code-diff.patch"
+      "v-code-diff": "patches/v-code-diff.patch",
+      "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }
 }
