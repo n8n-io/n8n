@@ -251,7 +251,7 @@ const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
 		return '';
 	}
-	return activeVersion.value.name ?? generateVersionName(activeVersion.value.versionId);
+	return activeVersion.value.name || generateVersionName(activeVersion.value.versionId);
 });
 
 const latestPublishDate = computed(() => {
