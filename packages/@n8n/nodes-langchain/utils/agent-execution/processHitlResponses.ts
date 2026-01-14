@@ -66,7 +66,7 @@ function getApprovalStatus(
 }
 
 function getDenialMessage(toolName: string, toolId: string): string {
-	return `User rejected the tool call for ${toolName} with id ${toolId}. Please stop and ask the user for more information about why it was declined or suggest modifications to the tool call parameters. The tool is still available if needed.`;
+	return `User rejected the tool call for ${toolName} with id ${toolId}. STOP what you are doing and wait for the user to tell you how to proceed. The tool is still available if needed.`;
 }
 
 /**
