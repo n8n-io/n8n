@@ -151,7 +151,7 @@ watch(
 			resolvedWebhookData.value = newData;
 		}
 	},
-	{ immediate: true },
+	{ immediate: true, deep: true },
 );
 
 function getWebhookIndex(webhook: IWebhookDescription): number {
