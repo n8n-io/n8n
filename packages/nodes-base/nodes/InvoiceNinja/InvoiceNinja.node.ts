@@ -690,7 +690,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'archive') {
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter<string>('invoiceId', i);
 						if (apiVersion === 'v4') {
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
@@ -708,7 +708,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data || responseData;
 					}
 					if (operation === 'markSent') {
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter<string>('invoiceId', i);
 						if (apiVersion === 'v4') {
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
@@ -726,7 +726,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data || responseData;
 					}
 					if (operation === 'markPaid') {
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter<string>('invoiceId', i);
 						if (apiVersion === 'v4') {
 							// v4 doesn't have a direct mark paid endpoint, would need to create a payment
 							throw new Error('Mark Paid operation is only supported in API v5');
@@ -740,8 +740,8 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data || responseData;
 					}
 					if (operation === 'download') {
-						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const invoiceId = this.getNodeParameter<string>('invoiceId', i);
+						const binaryProperty = this.getNodeParameter<string>('binaryProperty', i);
 
 						if (apiVersion === 'v4') {
 							throw new Error('Download operation is only supported in API v5');
@@ -765,8 +765,13 @@ export class InvoiceNinja implements INodeType {
 							options,
 						);
 
+						// Validate that pdfData is a Buffer before using it
+						if (!Buffer.isBuffer(pdfData)) {
+							throw new Error('Expected PDF data to be a Buffer');
+						}
+
 						const binaryData = await this.helpers.prepareBinaryData(
-							pdfData as Buffer,
+							pdfData,
 							`invoice_${invoiceId}.pdf`,
 							'application/pdf',
 						);
