@@ -122,8 +122,6 @@ export class ChatHubAgentService {
 			const allFiles: IBinaryData[] = [];
 
 			for (const file of updates.files) {
-				// TODO: handle existing file differently
-				// TODO: delete remove files
 				allFiles.push(await this.chatHubAttachmentService.storeAgentAttachment(id, file));
 			}
 

@@ -285,6 +285,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
  * MimeType, fileType, fileExtension, and fileSize are populated server-side.
  */
 export const chatAttachmentSchema = z.object({
+	id: z.string().optional(),
 	data: z.string(),
 	mimeType: z.string(),
 	fileName: z.string(),

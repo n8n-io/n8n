@@ -44,6 +44,7 @@ import {
 	type AgentIconOrEmoji,
 	type ChatHubEditMessageRequest,
 	type ChatHubRegenerateMessageRequest,
+	type ChatAttachment,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -611,7 +612,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 
 		// Combine kept existing attachments with new attachments for optimistic UI
-		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
+		const keptExistingAttachments = keepAttachmentIndices.flatMap<ChatAttachment>((index) => {
 			const attachment = message?.attachments[index];
 			if (!attachment) return [];
 			return [
