@@ -12,29 +12,19 @@ export const PREDECESSOR_OUTPUT_GUIDE: NodeTypeGuide = {
 	content: `
 ### Referencing Output from Special Node Types
 
-#### AI Agent with Structured Output Parser
-When referencing output from an AI Agent (n8n-nodes-langchain.agent) that has a Structured Output Parser connected, the output is wrapped in an "output" object:
-- Use \`$json.output.fieldName\` instead of \`$json.fieldName\`
-- Use \`$('AI Agent').item.json.output.fieldName\` for explicit node reference
+#### AI Agent Output Structure
+AI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an "output" object:
+- Without Structured Output Parser: Use \`$json.output\` to access the response string
+- With Structured Output Parser: Use \`$json.output.fieldName\` to access parsed fields
+- Use \`$('AI Agent').item.json.output.fieldName\` when referencing a node, instead of \`$('AI Agent').item.json.fieldName\`
 - WRONG: \`$json.summary\` → CORRECT: \`$json.output.summary\`
 
 #### Webhook Node Output Structure
-Webhook nodes (n8n-nodes-base.webhook) output data in a specific structure:
-- \`$json.headers\` - HTTP request headers object
-- \`$json.params\` - URL path parameters (from routes like /users/:id)
-- \`$json.query\` - Query string parameters (?user_id=123&status=active)
-- \`$json.body\` - Request payload (JSON body, form data, etc.)
+When referencing data from a Webhook node (n8n-nodes-base.webhook), the incoming request is structured under \`$json\`:
+- \`$json.headers\` - HTTP headers, example: \`$json.headers.authorization\`
+- \`$json.params\` - URL path parameters, example route: \`/users/:id\`, access: \`$json.params.id\`
+- \`$json.query\` - Query string parameters, example URL: \`?user_id=123\`, access: \`$json.query.user_id\`
+- \`$json.body\` - Request payload, example JSON: \`{ "userName": "sam" }\`, access: \`$json.body.userName\`
 
-Examples:
-- Query parameter: \`$json.query.user_id\` (from ?user_id=123)
-- JSON body field: \`$json.body.userName\` (from POST body)
-- Header value: \`$json.headers.authorization\`
-- Path param: \`$json.params.id\` (from /users/:id route)
-
-CRITICAL: Do NOT use \`$json.fieldName\` directly for Webhook data - always specify the container (body, query, params, or headers).
-
-#### Form Trigger Output Structure
-Form Trigger nodes (n8n-nodes-base.formTrigger) output form field values at the root level:
-- Use \`$json.fieldName\` directly for form fields
-- This is different from Webhook - form data is NOT nested in \`body\``,
+CRITICAL: When referencing data from a Webhook node, do NOT use \`$json.fieldName\` directly - always specify the container (body, query, params, or headers).`,
 };
