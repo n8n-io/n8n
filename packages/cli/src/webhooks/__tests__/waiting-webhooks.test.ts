@@ -98,6 +98,13 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(ConflictError);
 	});
 
+	describe('findAccessControlOptions', () => {
+		it('should return * as allowed origins', async () => {
+			const options = await waitingWebhooks.findAccessControlOptions();
+			expect(options).toEqual({ allowedOrigins: '*' });
+		});
+	});
+
 	describe('validateSignatureInRequest', () => {
 		const EXAMPLE_HOST = 'example.com';
 		const generateValidSignature = (host = EXAMPLE_HOST) =>
