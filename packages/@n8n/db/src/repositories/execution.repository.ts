@@ -37,6 +37,7 @@ import {
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -441,7 +442,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where: { id: executionId },
 			});
 
-			return actualStartedAt!;
+			a.ok(actualStartedAt);
+			return actualStartedAt;
 		});
 	}
 
