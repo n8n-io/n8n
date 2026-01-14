@@ -179,8 +179,13 @@ function onEdgeLabelMouseLeave() {
 			@mouseenter="onEdgeLabelMouseEnter"
 			@mouseleave="onEdgeLabelMouseLeave"
 		>
-			<CanvasEdgeToolbar :type="connectionType" @add="onAdd" @delete="onDelete" />
-			<!-- <div v-else :class="$style.edgeLabel">{{ label }}</div> -->
+			<CanvasEdgeToolbar
+				v-if="renderToolbar"
+				:type="connectionType"
+				@add="onAdd"
+				@delete="onDelete"
+			/>
+			<div v-else :class="$style.edgeLabel">{{ label }}</div>
 		</div>
 	</EdgeLabelRenderer>
 </template>
