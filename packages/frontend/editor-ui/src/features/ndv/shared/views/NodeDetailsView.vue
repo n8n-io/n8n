@@ -17,7 +17,6 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
@@ -40,7 +39,6 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { ElDialog } from 'element-plus';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [
@@ -184,10 +182,7 @@ const inputNode = computed(() => {
 const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {
@@ -337,17 +332,8 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
+		e.preventDefault();
 	}
-};
-
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {

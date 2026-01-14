@@ -26,8 +26,7 @@ describe('WorkflowHistoryListItem', () => {
 
 	test.each(actionTypes)('should emit %s event', async (action) => {
 		const item = workflowHistoryDataFactory();
-		const authors = item.authors.split(', ');
-		const { queryByText, getByRole, getByTestId, container, emitted } = renderComponent({
+		const { queryByText, getByTestId, emitted } = renderComponent({
 			pinia,
 			props: {
 				item,
@@ -36,11 +35,6 @@ describe('WorkflowHistoryListItem', () => {
 				isSelected: true,
 			},
 		});
-
-		const authorsTag = container.querySelector('.el-tooltip__trigger')!;
-		expect(authorsTag).toHaveTextContent(`${authors[0]} + ${authors.length - 1}`);
-		await userEvent.hover(authorsTag);
-		expect(getByRole('tooltip')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId('action-toggle'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();

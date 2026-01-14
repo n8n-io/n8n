@@ -10,8 +10,10 @@ export const MODULE_NAMES = [
 	'mcp',
 	'provisioning',
 	'breaking-changes',
+	'source-control',
 	'dynamic-credentials',
 	'chat-hub',
+	'sso-oidc',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

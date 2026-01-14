@@ -1,51 +1,31 @@
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
+import { VIEWS } from '@/app/constants';
 import {
-	NODE_CREATOR_OPEN_SOURCES,
-	PRE_BUILT_AGENTS_EXPERIMENT,
-	PRE_BUILT_AGENTS_MODAL_KEY,
-	REGULAR_NODE_CREATOR_VIEW,
-	VIEWS,
-} from '@/app/constants';
-import {
-	getPrebuiltAgents,
 	getRagStarterWorkflowJson,
 	getSampleWorkflowByTemplateId,
 	getTutorialTemplates,
-	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 	SampleTemplates,
 } from '@/features/workflows/templates/utils/workflowSamples';
-import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
-import { useUIStore } from '@/app/stores/ui.store';
+import type { OpenTemplateElement } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
-	const postHog = usePostHog();
-	const i18n = useI18n();
 
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
-	const ndvStore = useNDVStore();
-	const nodeCreatorStore = useNodeCreatorStore();
-	const viewStacks = useViewStacks();
 	const nodeTypesStore = useNodeTypesStore();
-	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 
 	const isRagStarterCalloutVisible = computed(() => {
@@ -62,29 +42,6 @@ export function useCalloutHelpers() {
 
 		return true;
 	});
-
-	const getPreBuiltAgentNodeCreatorItems = (): OpenTemplateElement[] => {
-		const templates = getPrebuiltAgents();
-
-		return templates.map((template) => {
-			return {
-				key: template.template.meta.templateId,
-				type: 'openTemplate',
-				properties: {
-					templateId: template.template.meta.templateId,
-					title: template.name,
-					description: template.description,
-					nodes: template.nodes.flatMap((node) => {
-						const nodeType = nodeTypesStore.getNodeType(node.name, node.version);
-						if (!nodeType) {
-							return [];
-						}
-						return nodeType;
-					}),
-				},
-			};
-		});
-	};
 
 	const getTutorialTemplatesNodeCreatorItems = (): OpenTemplateElement[] => {
 		const templates = getTutorialTemplates();
@@ -109,61 +66,6 @@ export function useCalloutHelpers() {
 		});
 	};
 
-	const openPreBuiltAgentsModal = async (source: 'workflowsEmptyState' | 'workflowsList') => {
-		telemetry.track('User opened pre-built Agents collection', {
-			source,
-			node_type: null,
-			section: null,
-		});
-
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		uiStore.openModal(PRE_BUILT_AGENTS_MODAL_KEY);
-	};
-
-	const openPreBuiltAgentsCollection = async (options: {
-		telemetry: {
-			source: 'ndv' | 'nodeCreator';
-			nodeType?: string;
-			section?: string;
-		};
-		resetStacks?: boolean;
-	}) => {
-		telemetry.track('User opened pre-built Agents collection', {
-			source: options.telemetry.source,
-			node_type: options.telemetry.nodeType ?? null,
-			section: options.telemetry.section ?? null,
-		});
-
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		const items: INodeCreateElement[] = getPreBuiltAgentNodeCreatorItems();
-
-		ndvStore.unsetActiveNodeName();
-		nodeCreatorStore.setNodeCreatorState({
-			source: NODE_CREATOR_OPEN_SOURCES.TEMPLATES_CALLOUT,
-			createNodeActive: true,
-			nodeCreatorView: undefined,
-			connectionType: undefined,
-		});
-
-		await nextTick();
-
-		viewStacks.pushViewStack(
-			{
-				title: i18n.baseText('nodeCreator.preBuiltAgents.title'),
-				rootView: REGULAR_NODE_CREATOR_VIEW,
-				activeIndex: 0,
-				transitionDirection: 'in',
-				hasSearch: false,
-				preventBack: false,
-				items,
-				baselineItems: items,
-				mode: 'nodes',
-				hideActions: false,
-			},
-			{ resetStacks: options.resetStacks ?? false },
-		);
-	};
-
 	const openSampleWorkflowTemplate = (
 		templateId: string,
 		options: {
@@ -177,13 +79,6 @@ export function useCalloutHelpers() {
 		if (templateId === SampleTemplates.RagStarterTemplate) {
 			telemetry.track('User clicked on RAG callout', {
 				node_type: options.telemetry.nodeType ?? null,
-			});
-		} else if (isPrebuiltAgentTemplateId(templateId)) {
-			telemetry.track('User inserted pre-built Agent', {
-				template: templateId,
-				source: options.telemetry.source,
-				node_type: options.telemetry.nodeType ?? null,
-				section: options.telemetry.section ?? null,
 			});
 		} else if (isTutorialTemplateId(templateId)) {
 			telemetry.track('User inserted tutorial template', {
@@ -212,17 +107,6 @@ export function useCalloutHelpers() {
 		window.open(href, '_blank');
 	};
 
-	const isPreBuiltAgentsExperimentEnabled = computed(() => {
-		return postHog.isVariantEnabled(
-			PRE_BUILT_AGENTS_EXPERIMENT.name,
-			PRE_BUILT_AGENTS_EXPERIMENT.variant,
-		);
-	});
-
-	const isPreBuiltAgentsCalloutVisible = computed(() => {
-		return isPreBuiltAgentsExperimentEnabled.value;
-	});
-
 	const isCalloutDismissed = (callout: string) => {
 		return usersStore.isCalloutDismissed(callout);
 	};
@@ -240,12 +124,8 @@ export function useCalloutHelpers() {
 
 	return {
 		openSampleWorkflowTemplate,
-		openPreBuiltAgentsModal,
-		openPreBuiltAgentsCollection,
-		getPreBuiltAgentNodeCreatorItems,
 		getTutorialTemplatesNodeCreatorItems,
 		isRagStarterCalloutVisible,
-		isPreBuiltAgentsCalloutVisible,
 		isCalloutDismissed,
 		dismissCallout,
 	};

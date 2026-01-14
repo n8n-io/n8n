@@ -404,11 +404,11 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
-						const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
-						if (itemBinaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
+
+						if (binaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(binaryData.id);
 						} else {
-							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
 
 						accumulator[cur.name] = {
@@ -1120,10 +1120,13 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
+		// Only show the Split Out hint in regular workflow context, not when running as an AI Agent tool
+		// (users cannot add nodes after tools in an AI Agent context)
 		if (
 			returnItems.length === 1 &&
 			returnItems[0].json.data &&
-			Array.isArray(returnItems[0].json.data)
+			Array.isArray(returnItems[0].json.data) &&
+			!this.isToolExecution()
 		) {
 			const message =
 				'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one';
