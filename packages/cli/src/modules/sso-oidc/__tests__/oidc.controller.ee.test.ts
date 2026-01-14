@@ -10,8 +10,8 @@ import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
-import type { OidcService } from '../../oidc.service.ee';
 import { OidcController } from '../oidc.controller.ee';
+import type { OidcService } from '../oidc.service.ee';
 
 const authService = mock<AuthService>();
 const oidcService = mock<OidcService>();
