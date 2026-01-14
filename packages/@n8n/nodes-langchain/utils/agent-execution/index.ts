@@ -9,6 +9,7 @@
  */
 
 export { createEngineRequests } from './createEngineRequests';
+export { buildResponseMetadata } from './buildResponseMetadata';
 export { buildSteps } from './buildSteps';
 export { processEventStream } from './processEventStream';
 export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';

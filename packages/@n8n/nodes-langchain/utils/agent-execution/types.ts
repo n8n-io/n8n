@@ -1,5 +1,6 @@
 import type { AIMessage } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
+import type { ZodType } from 'zod';
 
 /**
  * Represents a tool call request from an LLM.
@@ -160,6 +161,8 @@ export interface ToolMetadata extends Record<string, unknown> {
 	sourceNodeName?: string;
 	/** For HITL tools, the gated tool node that will be executed after approval */
 	gatedToolNodeName?: string;
+	/** The original schema of the tool */
+	originalSchema?: ZodType;
 	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
 	isFromToolkit?: boolean;
 }

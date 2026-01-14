@@ -1,24 +1,28 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import isObject from 'lodash/isObject';
+import omit from 'lodash/omit';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { isThinkingBlock, isRedactedThinkingBlock, isGeminiThoughtSignatureBlock } from './types';
 import type {
+	HitlMetadata,
 	RequestResponseMetadata,
+	ThinkingMetadata,
 	ToolCallRequest,
 	ToolMetadata,
-	ThinkingMetadata,
-	HitlMetadata,
 } from './types';
-import omit from 'lodash/omit';
+import { isGeminiThoughtSignatureBlock, isRedactedThinkingBlock, isThinkingBlock } from './types';
 
-function hasGatedToolNodeName(
-	metadata: ToolMetadata,
+export function hasGatedToolNodeName(
+	metadata: unknown,
 ): metadata is ToolMetadata & { gatedToolNodeName: string } {
-	return typeof metadata.gatedToolNodeName === 'string';
+	return (
+		isObject(metadata) &&
+		typeof (metadata as Record<string, unknown>).gatedToolNodeName === 'string'
+	);
 }
 
-function extractHitlMetadata(
+export function extractHitlMetadata(
 	metadata: ToolMetadata,
 	toolName: string,
 	toolInput: IDataObject,
