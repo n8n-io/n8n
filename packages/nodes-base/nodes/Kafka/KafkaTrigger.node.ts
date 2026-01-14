@@ -9,7 +9,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -234,11 +234,71 @@ export class KafkaTrigger implements INodeType {
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
 
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
+		let closeFunctionWasCalled = false;
+		let isReconnecting = false;
+		let reconnectAttempts = 0;
+		const MAX_RECONNECT_DELAY = 30000;
+
 		async function closeFunction() {
-			await consumer.disconnect();
+			closeFunctionWasCalled = true;
+			try {
+				await consumer.disconnect();
+			} catch (error) {
+				// Ignore errors during intentional shutdown
+			}
 		}
+
+		const reconnect = async () => {
+			if (closeFunctionWasCalled || isReconnecting) return;
+
+			isReconnecting = true;
+			reconnectAttempts++;
+
+			// Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
+			const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
+
+			this.logger.info('Attempting to reconnect Kafka consumer', {
+				groupId,
+				topic,
+				attempt: reconnectAttempts,
+				delayMs: delay,
+			});
+
+			await sleep(delay);
+
+			try {
+				try {
+					await consumer.disconnect();
+				} catch (disconnectError) {
+					this.logger.debug('Error during disconnect (expected after crash)', {
+						error:
+							disconnectError instanceof Error ? disconnectError.message : String(disconnectError),
+					});
+				}
+
+				await startConsumer();
+
+				reconnectAttempts = 0;
+				this.logger.info('Kafka consumer reconnected successfully', { groupId, topic });
+			} catch (error) {
+				this.logger.error('Failed to reconnect Kafka consumer', {
+					error: error instanceof Error ? error.message : String(error),
+					groupId,
+					topic,
+					attempt: reconnectAttempts,
+				});
+				// Schedule next attempt after this function completes to allow flag reset
+				setTimeout(() => {
+					isReconnecting = false;
+					void reconnect();
+				}, 0);
+				return;
+			}
+
+			isReconnecting = false;
+		};
+
+		const registry = useSchemaRegistry ? new SchemaRegistry({ host: schemaRegistryUrl }) : null;
 
 		const startConsumer = async () => {
 			await consumer.connect();
@@ -254,14 +314,21 @@ export class KafkaTrigger implements INodeType {
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
-						} catch (error) {}
+						} catch (error) {
+							this.logger.debug('Failed to parse message as JSON', {
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
 					}
 
-					if (useSchemaRegistry) {
+					if (registry) {
 						try {
-							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
 							value = await registry.decode(message.value as Buffer);
-						} catch (error) {}
+						} catch (error) {
+							this.logger.warn('Failed to decode message with schema registry', {
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
 					}
 
 					if (options.returnHeaders && message.headers) {
@@ -293,6 +360,31 @@ export class KafkaTrigger implements INodeType {
 				},
 			});
 		};
+
+		consumer.on(consumer.events.CRASH, (event) => {
+			if (!closeFunctionWasCalled && !isReconnecting) {
+				this.logger.error('Kafka consumer crashed, will attempt to reconnect', {
+					error: event.payload.error.message,
+					groupId,
+					topic,
+				});
+				void reconnect();
+			}
+		});
+
+		consumer.on(consumer.events.DISCONNECT, () => {
+			if (!closeFunctionWasCalled && !isReconnecting) {
+				this.logger.warn('Kafka consumer disconnected unexpectedly', { groupId, topic });
+				void reconnect();
+			}
+		});
+
+		consumer.on(consumer.events.STOP, () => {
+			if (!closeFunctionWasCalled && !isReconnecting) {
+				this.logger.warn('Kafka consumer stopped unexpectedly', { groupId, topic });
+				void reconnect();
+			}
+		});
 
 		if (this.getMode() !== 'manual') {
 			await startConsumer();
