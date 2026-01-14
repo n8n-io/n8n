@@ -279,6 +279,7 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
+			drainTimeout: 30,
 		},
 		sentry: {
 			backendDsn: '',

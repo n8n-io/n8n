@@ -71,6 +71,13 @@ export class TaskRunnersConfig {
 	heartbeatInterval: number = 30;
 
 	/**
+	 * How long (in seconds) to wait for running tasks to complete during shutdown
+	 * before force-closing connections. Must be greater than or equal to 0.
+	 */
+	@Env('N8N_RUNNERS_DRAIN_TIMEOUT')
+	drainTimeout: number = 5;
+
+	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
 	 * Set to `true` for compatibility with modules that rely on insecure JS features.
 	 */

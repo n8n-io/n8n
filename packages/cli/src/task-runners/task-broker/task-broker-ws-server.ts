@@ -3,7 +3,7 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { jsonStringify, UserError } from 'n8n-workflow';
+import { jsonStringify, sleep, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
@@ -178,8 +178,26 @@ export class TaskBrokerWsServer {
 	}
 
 	private async stopConnectedRunners() {
-		// TODO: We should give runners some time to finish their tasks before
-		// shutting them down
+		const { drainTimeout } = this.taskTunnersConfig;
+		const drainTimeoutMs = drainTimeout * Time.seconds.toMilliseconds;
+
+		this.taskBroker.startDraining();
+
+		for (const connection of this.runnerConnections.values()) {
+			connection.send(JSON.stringify({ type: 'broker:drain' }));
+		}
+
+		const start = Date.now();
+		while (this.taskBroker.hasActiveTasks() && Date.now() - start < drainTimeoutMs) {
+			await sleep(100);
+		}
+
+		if (this.taskBroker.hasActiveTasks()) {
+			this.logger.warn(
+				`Drain timeout reached after ${drainTimeout}s, will force-shutdown with active tasks...`,
+			);
+		}
+
 		await Promise.all(
 			Array.from(this.runnerConnections.keys()).map(
 				async (id) =>

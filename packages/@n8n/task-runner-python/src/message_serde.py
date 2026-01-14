@@ -10,6 +10,7 @@ from src.constants import (
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
     BROKER_RPC_RESPONSE,
+    BROKER_DRAIN,
 )
 from src.message_types import (
     BrokerMessage,
@@ -20,6 +21,7 @@ from src.message_types import (
     BrokerTaskSettings,
     BrokerTaskCancel,
     BrokerRpcResponse,
+    BrokerDrain,
 )
 
 
@@ -108,6 +110,7 @@ MESSAGE_TYPE_MAP = {
     BROKER_TASK_SETTINGS: _parse_task_settings,
     BROKER_TASK_CANCEL: _parse_task_cancel,
     BROKER_RPC_RESPONSE: _parse_rpc_response,
+    BROKER_DRAIN: lambda _: BrokerDrain(),
 }
 
 

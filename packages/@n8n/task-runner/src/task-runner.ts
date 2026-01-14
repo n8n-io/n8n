@@ -235,6 +235,9 @@ export abstract class TaskRunner extends EventEmitter {
 			case 'broker:nodetypes':
 				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
 				break;
+			case 'broker:drain':
+				this.stopTaskOffers();
+				break;
 		}
 	}
 
