@@ -7,15 +7,19 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
 type Write = ServerResponse['write'];
+type End = ServerResponse['end'];
 
-export type ChunkTransformer = (chunk: string) => void;
+export type ChunkTransformer = (chunk: string) => Promise<string>;
 
 export function interceptResponseWrites<T extends Response>(
 	res: T,
 	transform: ChunkTransformer,
 ): T {
 	const originalWrite = res.write.bind(res) as Write;
+	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
+
+	let writeChain = Promise.resolve();
 
 	const toText = (data: string | Buffer, enc?: BufferEncoding) =>
 		Buffer.isBuffer(data) ? data.toString(enc ?? defaultEncoding) : String(data);
@@ -36,18 +40,55 @@ export function interceptResponseWrites<T extends Response>(
 			typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined,
 		);
 
-		const outputText = transform(inputText);
+		writeChain = writeChain
+			.then(async () => await transform(inputText))
+			.then((outputText) => {
+				if (!encodingOrCallback) {
+					originalWrite(outputText);
+				} else if (typeof encodingOrCallback === 'function') {
+					originalWrite(outputText, encodingOrCallback);
+				} else {
+					originalWrite(outputText, encodingOrCallback, callbackFn);
+				}
+			})
+			.catch((error: Error) => {
+				const originalCb =
+					typeof encodingOrCallback === 'function' ? encodingOrCallback : callbackFn;
+				if (originalCb) {
+					originalCb(error);
+				}
+			});
 
-		if (!encodingOrCallback) {
-			return originalWrite(outputText);
-		} else if (typeof encodingOrCallback === 'function') {
-			return originalWrite(outputText, encodingOrCallback);
-		} else {
-			return originalWrite(outputText, encodingOrCallback, callbackFn);
-		}
+		return true;
+	}
+
+	function end(): T;
+	function end(chunk: unknown, callbackFn?: () => void): T;
+	function end(chunk: unknown, encoding: BufferEncoding, callbackFn?: () => void): T;
+	function end(
+		chunkOrCallback?: unknown | (() => void),
+		encodingOrCallback?: BufferEncoding | (() => void),
+		callbackFn?: () => void,
+	): T {
+		void writeChain.then(() => {
+			if (!chunkOrCallback) {
+				originalEnd();
+			} else if (typeof chunkOrCallback === 'function') {
+				originalEnd(chunkOrCallback);
+			} else if (!encodingOrCallback) {
+				originalEnd(chunkOrCallback);
+			} else if (typeof encodingOrCallback === 'function') {
+				originalEnd(chunkOrCallback, encodingOrCallback);
+			} else {
+				originalEnd(chunkOrCallback, encodingOrCallback, callbackFn);
+			}
+		});
+
+		return res;
 	}
 
 	res.write = write;
+	res.end = end;
 
 	return res;
 }
@@ -62,10 +103,10 @@ export type AggregatedMessage = Pick<
 >;
 
 type Handlers = {
-	onBegin?: (message: AggregatedMessage) => void;
-	onItem?: (message: AggregatedMessage, delta: string) => void;
-	onEnd?: (message: AggregatedMessage) => void;
-	onError?: (message: AggregatedMessage, errText?: string) => void;
+	onBegin?: (message: AggregatedMessage) => Promise<void>;
+	onItem?: (message: AggregatedMessage, delta: string) => Promise<void>;
+	onEnd?: (message: AggregatedMessage) => Promise<void>;
+	onError?: (message: AggregatedMessage, errText?: string) => Promise<void>;
 };
 
 export function createStructuredChunkAggregator(
@@ -80,7 +121,7 @@ export function createStructuredChunkAggregator(
 
 	let previousMessageId: ChatMessageId | null = initialPreviousMessageId;
 
-	const startNew = (): AggregatedMessage => {
+	const startNew = async (): Promise<AggregatedMessage> => {
 		const message: AggregatedMessage = {
 			id: uuidv4(),
 			previousMessageId,
@@ -94,20 +135,20 @@ export function createStructuredChunkAggregator(
 			status: 'running',
 		};
 		previousMessageId = message.id;
-		onBegin?.(message);
+		await onBegin?.(message);
 		return message;
 	};
 
-	const ensureMessage = (key: MessageKey): AggregatedMessage => {
+	const ensureMessage = async (key: MessageKey): Promise<AggregatedMessage> => {
 		let message = activeByKey.get(key);
 		if (!message) {
-			message = startNew();
+			message = await startNew();
 			activeByKey.set(key, message);
 		}
 		return message;
 	};
 
-	const ingest = (chunk: StructuredChunk): AggregatedMessage => {
+	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage> => {
 		const { type, content, metadata } = chunk;
 		const key = keyOf(metadata);
 
@@ -115,30 +156,30 @@ export function createStructuredChunkAggregator(
 			if (activeByKey.has(key)) {
 				throw new Error(`Duplicate begin for key ${key}`);
 			}
-			const message = startNew();
+			const message = await startNew();
 			activeByKey.set(key, message);
 			return message;
 		}
 
 		if (type === 'item') {
-			const message = ensureMessage(key);
+			const message = await ensureMessage(key);
 			if (typeof content === 'string' && content.length) {
 				message.content += content;
-				onItem?.(message, content);
+				await onItem?.(message, content);
 			}
 			return message;
 		}
 
 		if (type === 'end') {
-			const message = ensureMessage(key);
+			const message = await ensureMessage(key);
 			message.status = 'success';
 			message.updatedAt = new Date();
 			activeByKey.delete(key);
-			onEnd?.(message);
+			await onEnd?.(message);
 			return message;
 		}
 
-		const message = ensureMessage(key);
+		const message = await ensureMessage(key);
 		message.status = 'error';
 		message.updatedAt = new Date();
 		if (typeof content === 'string') {
@@ -146,7 +187,7 @@ export function createStructuredChunkAggregator(
 		}
 
 		activeByKey.delete(key);
-		onError?.(message, content);
+		await onError?.(message, content);
 		return message;
 	};
 

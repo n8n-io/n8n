@@ -71,7 +71,7 @@ export class WorkflowsPage extends BasePage {
 
 	async deleteWorkflow(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').click();
-		await this.page.getByRole('menuitem', { name: 'Delete' }).click();
+		await this.page.getByTestId('action-delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
