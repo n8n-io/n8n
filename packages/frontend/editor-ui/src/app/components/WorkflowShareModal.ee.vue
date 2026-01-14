@@ -4,7 +4,12 @@ import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	PERSONAL_PROJECT_GOVERNANCE,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -27,6 +32,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
+import { usePostHog } from '../stores/posthog.store';
 const props = defineProps<{
 	data: {
 		id: string;
@@ -50,6 +56,7 @@ const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
+const { isFeatureEnabled } = usePostHog();
 
 const workflow = ref(
 	data.id && workflowsStore.workflowsById[data.id]
@@ -92,6 +99,25 @@ const workflowPermissions = computed(() => getResourcePermissions(workflow.value
 const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
+
+// TODO: this is not working as expected yet.
+const showInfoTextThatSharingIsDisabledForPersonalProject = computed(() => {
+	// Feature flag takes precedence - if enabled, this message is not shown
+	if (isFeatureEnabled(PERSONAL_PROJECT_GOVERNANCE.name)) {
+		return false;
+	}
+
+	if (workflow.value.homeProject?.type !== 'personal') {
+		return false;
+	}
+
+	const isOwner = workflow.value.homeProject?.id === projectsStore.personalProject?.id;
+	if (!isOwner) {
+		return false;
+	}
+
+	return !workflowPermissions.value.share;
+});
 
 const projects = computed(() =>
 	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
@@ -257,7 +283,14 @@ watch(
 			</div>
 			<div v-else :class="$style.container">
 				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="showInfoTextThatSharingIsDisabledForPersonalProject"
+					:bold="false"
+					class="mb-s"
+				>
+					{{ i18n.baseText('workflows.shareModal.info.personalSpaceSharingDisabled') }}
+				</N8nInfoTip>
+				<N8nInfoTip
+					v-else-if="!workflowPermissions.share && !isHomeTeamProject"
 					:bold="false"
 					class="mb-s"
 				>
