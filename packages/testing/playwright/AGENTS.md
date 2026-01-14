@@ -2,43 +2,110 @@
 
 ## Commands
 
-- Use `pnpm --filter=n8n-playwright test:local <file-path>` to execute tests.
-  For example: `pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts`
+```bash
+# Run tests locally
+pnpm --filter=n8n-playwright test:local <file-path>
+pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
-- Use `pnpm --filter=n8n-playwright test:container:sqlite --grep pattern` to execute the tests using test containers for particular features.
-  For example `pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email`
-	Note: This requires the docker container to be built locally using pnpm build:docker
+# Run with container capabilities (requires pnpm build:docker first)
+pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email
 
-## Code Styles
+# Lint and typecheck
+pnpm --filter=n8n-playwright lint
+pnpm --filter=n8n-playwright typecheck
+```
 
-- In writing locators, use specialized methods when available.
-  For example, prefer `page.getByRole('button')` over `page.locator('[role=button]')`.
+Always trim output: `--reporter=list 2>&1 | tail -50`
 
-## Concurrency
+## Entry Points
 
-Tests run in parallel. Use `nanoid` (not `Date.now()`) for unique identifiers.
+All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+
+| Method | Use Case |
+|--------|----------|
+| `fromHome()` | Start from home page |
+| `fromBlankCanvas()` | New workflow from scratch |
+| `fromNewProjectBlankCanvas()` | Project-scoped workflow (returns projectId) |
+| `fromNewProject()` | Project-scoped test, no canvas (returns projectId) |
+| `fromImportedWorkflow(file)` | Test pre-built workflow JSON |
+| `withUser(user)` | Isolated browser context per user |
+| `withProjectFeatures()` | Enable sharing/folders/permissions |
 
 ## Multi-User Testing
 
 For tests requiring multiple users with isolated browser sessions:
 
 ```typescript
-// 1. Create users via public API (owner's API key created automatically)
+// 1. Create users via public API
 const member1 = await api.publicApi.createUser({ role: 'global:member' });
 const member2 = await api.publicApi.createUser({ role: 'global:member' });
 
-// 2. Get isolated browser contexts for each user
+// 2. Get isolated browser contexts
 const member1Page = await n8n.start.withUser(member1);
 const member2Page = await n8n.start.withUser(member2);
 
-// 3. Test interactions between users
+// 3. Each operates independently (no session bleeding)
 await member1Page.navigate.toWorkflows();
-await member2Page.navigate.toWorkflows();
+await member2Page.navigate.toCredentials();
 ```
 
-This approach provides:
-- Full browser isolation (separate cookies, storage, state)
-- Dynamic users with unique emails (no pre-seeded dependencies)
-- Parallel-safe execution (no serial mode needed)
+**Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
 
-Avoid the legacy pattern of `n8n.api.signin('member', 0)` which reuses the same browser context and risks session state bleeding.
+## Worker Isolation (Fresh Database)
+
+Use `test.use()` at file top-level with unique capability config:
+
+```typescript
+// my-isolated-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+// Must be top-level, not inside describe block
+test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+
+test('test with clean state', async ({ n8n }) => {
+  // Fresh container with reset database
+});
+```
+
+## Anti-Patterns
+
+| Pattern | Why | Use Instead |
+|---------|-----|-------------|
+| `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
+| `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
+| `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
+| `Date.now()` for IDs | Race conditions | `nanoid()` |
+| `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
+| `.toHaveCount(N)` | Brittle | Named element assertions |
+| Raw `page.goto()` | Bypasses setup | `n8n.navigate.*` methods |
+
+## Code Style
+
+- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
+- Use `nanoid()` for unique identifiers (parallel-safe)
+- API setup over UI setup when possible (faster, more reliable)
+
+## Architecture
+
+```
+Tests (*.spec.ts)
+    ↓ uses
+Composables (*Composer.ts) - Multi-step business workflows
+    ↓ orchestrates
+Page Objects (*Page.ts) - UI interactions
+    ↓ extends
+BasePage - Common utilities
+```
+
+See `CONTRIBUTING.md` for detailed patterns and conventions.
+
+## Reference Files
+
+| Purpose | File |
+|---------|------|
+| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
+| Entry points | `composables/TestEntryComposer.ts` |
+| Page object example | `pages/CanvasPage.ts` |
+| Composable example | `composables/WorkflowComposer.ts` |
+| API helpers | `services/api-helper.ts` |
+| Capabilities | `fixtures/capabilities.ts` |

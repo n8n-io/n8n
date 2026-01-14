@@ -7,6 +7,10 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
+      user_token:
+        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
+        required: true
+        type: string
 
 jobs:
   run-claude-task:
@@ -18,17 +22,13 @@ jobs:
       issues: write
 
     steps:
-      - name: Generate App Token
-        id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+      - name: Mask user token
+        run: echo "::add-mask::${{ inputs.user_token }}"
 
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ inputs.user_token }}
           ref: master
           fetch-depth: 1
 
@@ -45,23 +45,16 @@ jobs:
 
       - name: Configure git author
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ inputs.user_token }}
         run: |
-          # Set git author to the user who triggered the workflow
-          USER_DATA=$(gh api "/users/$ACTOR")
+          # Set git author from the authenticated user (token owner)
+          USER_DATA=$(gh api user)
           USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
+          USER_LOGIN=$(echo "$USER_DATA" | jq -r '.login')
           USER_ID=$(echo "$USER_DATA" | jq -r '.id')
-          USER_EMAIL="${USER_ID}+${ACTOR}@users.noreply.github.com"
+          USER_EMAIL="${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
           git config user.name "$USER_NAME"
           git config user.email "$USER_EMAIL"
-          # Export for Claude action to use
-          {
-            echo "GIT_AUTHOR_NAME=$USER_NAME"
-            echo "GIT_AUTHOR_EMAIL=$USER_EMAIL"
-            echo "GIT_COMMITTER_NAME=$USER_NAME"
-            echo "GIT_COMMITTER_EMAIL=$USER_EMAIL"
-          } >> "$GITHUB_ENV"
           echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
 
       - name: Prepare Claude prompt
@@ -82,10 +75,9 @@ jobs:
             echo "1. Read relevant templates from .github/claude-templates/ first"
             echo "2. Complete the task described above"
             echo "3. Follow the guidelines from the templates"
-            echo "4. Make commits as you work with descriptive messages"
+            echo "4. Make commits as you work - the last commit message will be used as the PR title"
             echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
             echo "6. Ensure code passes linting and type checks before finishing"
-            echo "7. When done, output a PR title on a single line starting with 'PR_TITLE:' (e.g. 'PR_TITLE: fix: Update smithy dependency to resolve CVE')"
             echo ""
             echo "# Token Optimization"
             echo "When running lint/typecheck, suppress verbose output:"
@@ -99,17 +91,18 @@ jobs:
         uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ steps.app-token.outputs.token }}
+          github_token: ${{ inputs.user_token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
           claude_args: |
             --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite
 
       - name: Extract PR title
-        env:
-          CLAUDE_CONCLUSION: ${{ steps.claude.outputs.conclusion }}
         run: |
-          # Extract PR title from Claude's output (looks for PR_TITLE: prefix)
-          PR_TITLE=$(echo "$CLAUDE_CONCLUSION" | sed -n 's/.*PR_TITLE:\s*//p' | head -1)
+          # Use the last commit message as PR title
+          PR_TITLE=$(git log -1 --format='%s' 2>/dev/null | head -1)
+          # Strip Co-authored-by suffix if present
+          PR_TITLE="${PR_TITLE%%[Cc]o-[Aa]uthored-[Bb]y:*}"
+          PR_TITLE="${PR_TITLE%% }"
           if [ -z "$PR_TITLE" ]; then
             PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
           fi
@@ -118,7 +111,7 @@ jobs:
 
       - name: Push branch and create PR
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ inputs.user_token }}
           INPUT_TASK: ${{ inputs.task }}
           TRIGGERED_BY: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
