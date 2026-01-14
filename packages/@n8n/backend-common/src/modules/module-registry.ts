@@ -41,6 +41,7 @@ export class ModuleRegistry {
 		'dynamic-credentials',
 		'chat-hub',
 		'sso-oidc',
+		'log-streaming',
 	];
 
 	private readonly activeModules: string[] = [];
