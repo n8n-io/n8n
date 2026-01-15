@@ -6,19 +6,18 @@ import {
 	LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS,
 	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
 } from '@n8n/constants';
-import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
+import type {
+	MessageEventBus,
+	MessageWithCallback,
+} from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { CircuitBreaker } from '@/utils/circuit-breaker';
-
-import type { EventMessageTypes } from '../event-message-classes';
-import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
-import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -79,44 +78,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.logger.debug(`${this.__type}(${this.id}) event destination constructed`);
 	}
 
-	startListening() {
-		if (this.enabled) {
-			this.eventBusInstance.on(
-				this.getId(),
-				async (
-					msg: EventMessageTypes,
-					confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void,
-				) => {
-					try {
-						await this.circuitBreakerInstance.execute(async () => {
-							await this.receiveFromEventBus({ msg, confirmCallback });
-						});
-					} catch (error) {
-						this.logger.error(
-							`${this.__type}(${this.id}) event destination ${this.label} failed to send message`,
-							{ error },
-						);
-					}
-				},
-			);
-			this.logger.debug(`${this.id} listener started`);
-		}
-	}
-
-	stopListening() {
-		this.eventBusInstance.removeAllListeners(this.getId());
-	}
-
-	enable() {
-		this.enabled = true;
-		this.startListening();
-	}
-
-	disable() {
-		this.enabled = false;
-		this.stopListening();
-	}
-
 	getId() {
 		return this.id;
 	}
@@ -129,27 +90,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			}
 		}
 		return false;
-	}
-
-	async saveToDb() {
-		const data = {
-			id: this.getId(),
-			destination: this.serialize(),
-		};
-		const dbResult = await Container.get(EventDestinationsRepository).upsert(data, {
-			skipUpdateIfNoValuesChanged: true,
-			conflictPaths: ['id'],
-		});
-		return dbResult;
-	}
-
-	async deleteFromDb() {
-		return await MessageEventBusDestination.deleteFromDb(this.getId());
-	}
-
-	static async deleteFromDb(id: string) {
-		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
-		return dbResult;
 	}
 
 	serialize(): MessageEventBusDestinationOptions {
@@ -165,11 +105,20 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	abstract receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean>;
 
+	/**
+	 * Send a message to this destination with circuit breaker protection
+	 */
+	async sendMessage(emitterPayload: MessageWithCallback): Promise<boolean> {
+		return await this.circuitBreakerInstance.execute(async () => {
+			return await this.receiveFromEventBus(emitterPayload);
+		});
+	}
+
 	toString() {
 		return JSON.stringify(this.serialize());
 	}
 
-	close(): void | Promise<void> {
-		this.stopListening();
+	async close(): Promise<void> {
+		this.enabled = false;
 	}
 }

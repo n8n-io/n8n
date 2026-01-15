@@ -15,7 +15,9 @@ import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/type
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
+import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
@@ -51,6 +53,7 @@ const { handleError } = useErrorHandler({
 	titleKey: 'aiAssistant.builder.error.title',
 });
 const { onDocumentVisible } = useDocumentVisibility();
+const { canPrompt } = useBrowserNotifications();
 
 onDocumentVisible(() => {
 	builderStore.clearDoneIndicatorTitle();
@@ -60,6 +63,27 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+
+const notificationsPermissionsBannerTriggered = ref(false);
+
+watch(
+	() => builderStore.streaming,
+	(isStreaming) => {
+		if (isStreaming && canPrompt.value) {
+			notificationsPermissionsBannerTriggered.value = true;
+		}
+	},
+);
+
+const shouldShowNotificationBanner = computed(() => {
+	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
+});
+
+watch(shouldShowNotificationBanner, (isShown) => {
+	if (isShown) {
+		builderStore.trackWorkflowBuilderJourney('browser_notification_ask_permission');
+	}
+});
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -153,6 +177,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	accumulatedNodeIdsToTidyUp.value = [];
+	notificationsPermissionsBannerTriggered.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -387,6 +412,11 @@ defineExpose({
 			<template #header>
 				<slot name="header" />
 			</template>
+			<template #inputHeader>
+				<Transition name="slide">
+					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
+				</Transition>
+			</template>
 			<template #messagesFooter>
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
@@ -398,6 +428,18 @@ defineExpose({
 		</N8nAskAssistantChat>
 	</div>
 </template>
+
+<style lang="scss" scoped>
+.slide-enter-active,
+.slide-leave-active {
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.slide-enter-from,
+.slide-leave-to {
+	transform: translateY(8px);
+}
+</style>
 
 <style lang="scss" module>
 .container {

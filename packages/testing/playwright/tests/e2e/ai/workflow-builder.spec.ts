@@ -57,7 +57,8 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 		await expect(suggestions).toHaveCount(8);
 	});
 
-	// @AI team to look at this
+	// @AI team - investigated issues with this test, the replay of recorded events not working as expected
+	// doesn't appear to be matching in the correct order/some requests make it past the proxy leading to 401 error
 	test.fixme('should build workflow from suggested prompt @fixme', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
 		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
@@ -76,19 +77,23 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 		await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeVisible();
 	});
 
-	test('should display assistant messages during workflow generation', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
-		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
+	// suffers from the same issue as test above
+	test.fixme(
+		'should display assistant messages during workflow generation @fixme',
+		async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
+			await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 
-		await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
-		await n8n.aiAssistant.waitForStreamingComplete();
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
+			await n8n.aiAssistant.waitForStreamingComplete();
 
-		const assistantMessages = n8n.aiAssistant.getChatMessagesAssistant();
-		await expect(assistantMessages.first()).toBeVisible();
+			const assistantMessages = n8n.aiAssistant.getChatMessagesAssistant();
+			await expect(assistantMessages.first()).toBeVisible();
 
-		const messageCount = await assistantMessages.count();
-		expect(messageCount).toBeGreaterThan(0);
-	});
+			const messageCount = await assistantMessages.count();
+			expect(messageCount).toBeGreaterThan(0);
+		},
+	);
 
 	test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
