@@ -906,7 +906,7 @@ describe('TelemetryEventRelay', () => {
 				evaluationTriggerNodeNames: [],
 			};
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValue(largeNodeGraph);
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
 
 			const event: RelayEventMap['workflow-created'] = {
 				user: {
