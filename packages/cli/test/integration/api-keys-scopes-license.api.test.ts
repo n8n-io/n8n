@@ -10,20 +10,24 @@ import { License } from '@/license';
 
 import { createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
-
-// Setup license mock BEFORE test server initialization
-const isLicensedMock = jest.fn(() => true);
-mockInstance(License, {
-	isLicensed: isLicensedMock,
-});
+import { LicenseMocker } from './shared/license';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
+let licenseMocker: LicenseMocker;
+
+beforeAll(() => {
+	// Setup License mocker
+	licenseMocker = new LicenseMocker();
+	licenseMocker.mock(Container.get(License));
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 	// Reset to licensed by default
-	isLicensedMock.mockImplementation(() => true);
+	licenseMocker.reset();
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 describe('API Key Scopes License Enforcement', () => {
@@ -36,7 +40,7 @@ describe('API Key Scopes License Enforcement', () => {
 	describe('When feat:apiKeyScopes is NOT licensed', () => {
 		test('POST /api-keys should ignore custom scopes and assign all available scopes', async () => {
 			// Disable the API Key Scopes feature for this test
-			isLicensedMock.mockImplementationOnce(() => false);
+			licenseMocker.disable(LICENSE_FEATURES.API_KEY_SCOPES);
 
 			const expiresAt = Date.now() + 1000;
 
@@ -59,10 +63,8 @@ describe('API Key Scopes License Enforcement', () => {
 		});
 
 		test('PATCH /api-keys/:id should ignore custom scopes and assign all available scopes', async () => {
-			// Disable the API Key Scopes feature for both create and update calls
-			isLicensedMock.mockImplementation(() => false);
+			licenseMocker.disable(LICENSE_FEATURES.API_KEY_SCOPES);
 
-			// Create an API key first (it will get all available scopes)
 			const createResponse = await testServer
 				.authAgentFor(member)
 				.post('/api-keys')
@@ -70,7 +72,6 @@ describe('API Key Scopes License Enforcement', () => {
 
 			const apiKeyId = createResponse.body.data.id;
 
-			// Try to update it with a custom scope
 			const updateResponse = await testServer
 				.authAgentFor(member)
 				.patch(`/api-keys/${apiKeyId}`)
@@ -92,7 +93,6 @@ describe('API Key Scopes License Enforcement', () => {
 
 	describe('When feat:apiKeyScopes IS licensed', () => {
 		test('POST /api-keys should honor custom scopes', async () => {
-			// API Key Scopes feature is licensed by default (set in beforeEach)
 			const expiresAt = Date.now() + 1000;
 
 			const response = await testServer

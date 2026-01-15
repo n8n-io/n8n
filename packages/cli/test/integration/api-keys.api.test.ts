@@ -16,27 +16,25 @@ import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { mock } from 'jest-mock-extended';
-
-// Setup license mock BEFORE test server initialization
-const isLicensedMock = jest.fn(() => true);
-mockInstance(License, {
-	isLicensed: isLicensedMock,
-});
+import { LicenseMocker } from './shared/license';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
+let licenseMocker: LicenseMocker;
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
+
+	licenseMocker = new LicenseMocker();
+	licenseMocker.mock(Container.get(License));
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
-	// Reset the mock to return true by default for each test
-	isLicensedMock.mockImplementation(() => true);
+	licenseMocker.reset();
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 describe('When public API is disabled', () => {
