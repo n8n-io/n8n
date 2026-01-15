@@ -68,6 +68,7 @@ export const test = base.extend<
 			const config: N8NConfig = {
 				...base,
 				...override,
+				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
 				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
 			};
 
