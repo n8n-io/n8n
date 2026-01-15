@@ -4,6 +4,9 @@
  * This module provides shared database operations that can be used
  * across different modules in the data worker. It accepts the worker
  * state as a parameter to keep the code modular and testable.
+ *
+ * @note wa-sqlite namespace import for SQLite constants (SQLITE_ROW, SQLITE_INTEGER, etc.)
+ * @docs https://github.com/rhashimoto/wa-sqlite#api
  */
 
 import * as SQLite from 'wa-sqlite';

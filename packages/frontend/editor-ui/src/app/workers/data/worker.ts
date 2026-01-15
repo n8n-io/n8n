@@ -11,6 +11,10 @@
  */
 
 import * as Comlink from 'comlink';
+
+// wa-sqlite imports - see: https://github.com/rhashimoto/wa-sqlite#api
+// SQLiteESMFactory: WebAssembly module factory for SQLite
+// SQLite namespace: Contains Factory function and SQLite constants (SQLITE_OK, SQLITE_OPEN_*, etc.)
 import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs';
 import * as SQLite from 'wa-sqlite';
 import { AccessHandlePoolVFS } from 'wa-sqlite/src/examples/AccessHandlePoolVFS.js';
@@ -22,7 +26,7 @@ import {
 	queryWithParams as queryWithParamsOp,
 	close as closeOp,
 } from './operations/query';
-import type { DataWorkerState, QueryResult } from './types';
+import type { DataWorkerState, QueryResult, SQLiteAPI } from './types';
 
 export type { DataWorkerState, QueryResult, SQLiteAPI } from './types';
 
@@ -98,7 +102,7 @@ async function initialize(): Promise<void> {
 
 	try {
 		const module = await SQLiteESMFactory();
-		state.sqlite3 = SQLite.Factory(module);
+		state.sqlite3 = SQLite.Factory(module) as SQLiteAPI;
 
 		console.log('[DataWorker] Creating AccessHandlePoolVFS...');
 		state.vfs = await AccessHandlePoolVFS.create(VFS_NAME, module);
