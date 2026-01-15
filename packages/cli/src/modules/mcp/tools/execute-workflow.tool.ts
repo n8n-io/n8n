@@ -147,6 +147,20 @@ export const createExecuteWorkflowTool = (
 		} catch (er) {
 			const error = ensureError(er);
 			const isTimeout = error instanceof McpExecutionTimeoutError;
+
+			const errorInfo: Record<string, unknown> = {
+				message: error.message || 'Unknown error',
+				name: error.constructor.name,
+			};
+
+			if ('extra' in error && error.extra) {
+				errorInfo.extra = error.extra;
+			}
+			if (error.cause) {
+				errorInfo.cause =
+					error.cause instanceof Error ? error.cause.message : jsonStringify(error.cause);
+			}
+
 			const output: ExecuteWorkflowOutput = {
 				success: false,
 				executionId: isTimeout ? error.executionId : null,
@@ -157,7 +171,7 @@ export const createExecuteWorkflowTool = (
 
 			telemetryPayload.results = {
 				success: false,
-				error: isTimeout ? 'Workflow execution timed out' : error.message,
+				error: isTimeout ? 'Workflow execution timed out' : errorInfo,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 

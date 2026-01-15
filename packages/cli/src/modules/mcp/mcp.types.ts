@@ -79,7 +79,7 @@ export type UserCalledMCPToolEventPayload = {
 	results?: {
 		success: boolean;
 		data?: unknown;
-		error?: string;
+		error?: string | Record<string, unknown>;
 	};
 };
 
