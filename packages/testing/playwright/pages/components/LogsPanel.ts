@@ -1,7 +1,7 @@
 import type { Locator } from '@playwright/test';
 
-import type { ClipboardHelper } from '../../helpers/ClipboardHelper';
 import { RunDataPanel } from './RunDataPanel';
+import type { ClipboardHelper } from '../../helpers/ClipboardHelper';
 
 /**
  * Page object for the log view with configurable root element.
