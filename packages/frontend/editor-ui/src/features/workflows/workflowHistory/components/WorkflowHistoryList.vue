@@ -126,17 +126,11 @@ const onItemMounted = ({
 
 const pruneTimeDisplay = computed(() => {
 	const timeInHours = props.evaluatedPruneTimeInHours;
-
-	if (timeInHours < 24) {
-		const key = timeInHours === 1 ? 'workflowHistory.limitHour' : 'workflowHistory.limitHours';
-		return i18n.baseText(key, {
-			interpolate: { hours: String(timeInHours) },
-		});
-	} else {
-		const days = Math.round(timeInHours / 24);
-		const key = days === 1 ? 'workflowHistory.limitDay' : 'workflowHistory.limitDays';
-		return i18n.baseText(key, { interpolate: { days: String(days) } });
-	}
+	const days = Math.max(1, Math.round(timeInHours / 24));
+	return i18n.baseText('workflowHistory.limit', {
+		interpolate: { days: String(days) },
+		adjustToNumber: days,
+	});
 });
 </script>
 

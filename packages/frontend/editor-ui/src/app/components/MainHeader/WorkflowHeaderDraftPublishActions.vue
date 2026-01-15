@@ -25,6 +25,7 @@ import {
 	getLastPublishedVersion,
 	generateVersionName,
 } from '@/features/workflows/workflowHistory/utils';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import TimeAgo from '../TimeAgo.vue';
@@ -72,6 +73,7 @@ const route = useRoute();
 const toast = useToast();
 
 const autosaveStore = useWorkflowAutosaveStore();
+const workflowHistoryStore = useWorkflowHistoryStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
 
@@ -158,9 +160,23 @@ const onPublishButtonClick = async () => {
 		}
 	}
 
+	// Try to get the current version's name if it's a named draft
+	let initialVersionName: string | undefined;
+	try {
+		const currentVersion = await workflowHistoryStore.getWorkflowVersion(
+			props.id,
+			workflowsStore.workflow.versionId,
+		);
+		if (currentVersion?.name) {
+			initialVersionName = currentVersion.name;
+		}
+	} catch {
+		// If we can't fetch version details, just proceed without pre-populating
+	}
+
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
+		data: { initialVersionName },
 	});
 };
 
