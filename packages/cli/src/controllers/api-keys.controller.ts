@@ -46,11 +46,7 @@ export class ApiKeysController {
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		// If the API Key Scopes feature is not licensed, ignore custom scopes
-		// and assign all available scopes for the user's role
-		const scopes = this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
-			? body.scopes
-			: getApiKeyScopesForRole(req.user);
+		const scopes = this.resolveScopesForUser(req.user, body.scopes);
 
 		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
@@ -105,11 +101,7 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		// If the API Key Scopes feature is not licensed, ignore custom scopes
-		// and assign all available scopes for the user's role
-		const scopes = this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
-			? body.scopes
-			: getApiKeyScopesForRole(req.user);
+		const scopes = this.resolveScopesForUser(req.user, body.scopes);
 
 		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
@@ -128,5 +120,16 @@ export class ApiKeysController {
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
+	}
+
+	/**
+	 * Resolves the scopes to be used for an API key based on license status.
+	 * If the API Key Scopes feature is not licensed, returns all available scopes for the user's role.
+	 * Otherwise, returns the requested scopes.
+	 */
+	private resolveScopesForUser(user: AuthenticatedRequest['user'], requestedScopes: string[]) {
+		return this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
+			? requestedScopes
+			: getApiKeyScopesForRole(user);
 	}
 }
