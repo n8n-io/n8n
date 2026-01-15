@@ -11,7 +11,6 @@ import { QueueWorkerMaxStalledCountRule } from './queue-worker-max-stalled-count
 import { RemovedDatabaseTypesRule } from './removed-database-types.rule';
 import { RemovedNodesRule } from './removed-nodes.rule';
 import { SettingsFilePermissionsRule } from './settings-file-permissions.rule';
-import { SqliteLegacyDriverRule } from './sqlite-legacy-driver.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
 import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
@@ -40,7 +39,6 @@ const v2Rules = [
 	SettingsFilePermissionsRule,
 	TaskRunnersRule,
 	TaskRunnerDockerImageRule,
-	SqliteLegacyDriverRule,
 	BinaryDataStorageRule,
 ];
 export { v2Rules };

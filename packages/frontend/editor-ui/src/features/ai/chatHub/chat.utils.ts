@@ -10,7 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -266,11 +266,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		type: 'human',
 		name: 'User',
 		content: streaming.promptText,
-		provider: null,
-		model: null,
-		workflowId: null,
 		executionId: null,
-		agentId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -280,6 +276,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		responses: [],
 		alternatives: [],
 		attachments: streaming.attachments,
+		...flattenModel(streaming.agent.model),
 	};
 }
 
@@ -346,25 +343,13 @@ export function isLlmProviderModel(
 
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
-	providerSettings: Record<ChatHubLLMProvider, ChatProviderSettingsDto>,
+	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
 ): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
-		const settings: ChatProviderSettingsDto | undefined = isLlmProvider(provider)
-			? providerSettings[provider]
-			: undefined;
-
-		if (!settings?.enabled) {
-			continue;
-		}
-
-		const availableModels = response[provider].models.filter((providerModel) => {
-			const { model } = providerModel;
-			if (isLlmProviderModel(model) && settings.allowedModels.length > 0) {
-				return settings.allowedModels.some((allowed) => allowed.model === model.model);
-			}
-
-			return true;
-		});
+		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
+		const availableModels = response[provider].models.filter(
+			(agent) => !settings || isAllowedModel(settings, agent.model),
+		);
 
 		if (availableModels.length > 0) {
 			return availableModels[0];
@@ -372,6 +357,17 @@ export function findOneFromModelsResponse(
 	}
 
 	return undefined;
+}
+
+export function isAllowedModel(
+	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
+	model: ChatHubConversationModel,
+): boolean {
+	return (
+		enabled &&
+		(allowedModels.length === 0 ||
+			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
+	);
 }
 
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
@@ -426,7 +422,7 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 type StreamApi<T> = (
 	ctx: IRestApiContext,
 	payload: T,
-	onChunk: (data: EnrichedStructuredChunk) => void,
+	onChunk: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: unknown) => void,
 ) => void;
@@ -476,3 +472,35 @@ export function promisifyStreamingApi<T>(
 		return await promise;
 	};
 }
+
+export function createFakeAgent(
+	model: ChatHubConversationModel,
+	fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
+): ChatModelDto {
+	return {
+		model,
+		name: fallback?.name || '',
+		description: null,
+		icon: fallback?.icon ?? null,
+		createdAt: null,
+		updatedAt: null,
+		// Assume file attachment and tools are supported
+		metadata: {
+			inputModalities: ['text', 'file'],
+			capabilities: {
+				functionCalling: true,
+			},
+			available: true,
+		},
+		groupName: null,
+		groupIcon: null,
+	};
+}
+
+export const isEditable = (message: ChatMessage): boolean => {
+	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+};
+
+export const isRegenerable = (message: ChatMessage): boolean => {
+	return message.type === 'ai';
+};
