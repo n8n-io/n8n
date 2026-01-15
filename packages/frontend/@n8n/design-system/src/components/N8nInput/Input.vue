@@ -378,13 +378,10 @@ defineExpose({ focus, blur, select });
 	border: var(--input--border-width, var(--border-width))
 		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
 	background-color: var(--input--color--background, var(--color--background--light-2));
-	transition:
-		border-color 0.2s,
-		box-shadow 0.2s;
 	gap: var(--spacing--3xs);
 }
 
-.inputContainer:hover:not(.disabled) {
+.inputContainer:hover:not(.disabled, .focused) {
 	border-color: var(--color--foreground--shade-1);
 }
 
