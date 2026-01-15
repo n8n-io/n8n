@@ -338,7 +338,6 @@ export class KafkaTrigger implements INodeType {
 		const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
 			this.logger.info('Consumer is rebalancing', { payload });
 		});
-		});
 		const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
 			this.logger.error('Consumer has crashed', { error });
 		});
