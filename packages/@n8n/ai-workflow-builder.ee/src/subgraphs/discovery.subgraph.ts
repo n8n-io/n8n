@@ -265,9 +265,16 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				// Use Zod safeParse for type-safe validation instead of casting
 				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
 				if (!parseResult.success) {
-					this.logger?.error('[Discovery] Invalid discovery output schema', {
-						errors: parseResult.error.errors,
-					});
+					this.logger?.error(
+						'[Discovery] Invalid discovery output schema - returning empty results',
+						{
+							errors: parseResult.error.errors,
+							lastMessageContent:
+								typeof lastMessage?.content === 'string'
+									? lastMessage.content.substring(0, 200)
+									: JSON.stringify(lastMessage?.content)?.substring(0, 200),
+						},
+					);
 					return {
 						nodesFound: [],
 						templateIds: [],
@@ -278,7 +285,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		if (!output) {
-			this.logger?.error('[Discovery] No submit tool call found in last message');
+			this.logger?.error(
+				'[Discovery] No submit_discovery_results tool call found - agent may have stopped early',
+				{
+					messageCount: state.messages.length,
+					lastMessageType: lastMessage?.getType(),
+				},
+			);
 			return {
 				nodesFound: [],
 				templateIds: [],
@@ -289,7 +302,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
 		);
 
-		// Build lookup map for O(1) node type lookup (fixes N+1 problem)
+		// Build lookup map
 		const nodeTypeMap = new Map<string, INodeTypeDescription>();
 		for (const nt of this.parsedNodeTypes) {
 			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
@@ -376,7 +389,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// No tool calls = agent is done (or failed to call tool)
 		// In this pattern, we expect a tool call. If none, we might want to force it or just end.
 		// For now, let's treat it as an end, but ideally we'd reprompt.
-		this.logger?.warn('[Discovery Subgraph] Agent stopped without submitting results');
+		this.logger?.warn(
+			'[Discovery] Agent stopped without calling submit_discovery_results - check if LLM is producing valid tool calls',
+		);
 		return 'end';
 	}
 

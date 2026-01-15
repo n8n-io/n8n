@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
-import { NodeTypeNotFoundError, ValidationError } from '../errors';
+import { NodeTypeNotFoundError, ToolExecutionError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
@@ -13,7 +13,7 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
-import type { AddNodeOutput, ToolError } from '../types/tools';
+import type { AddNodeOutput } from '../types/tools';
 
 const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
@@ -196,25 +196,21 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
-				let toolError: ToolError;
-
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						field: error.errors[0]?.path.join('.'),
-						value: error.errors[0]?.message,
+						extra: { errors: error.errors },
 					});
-					toolError = {
-						message: validationError.message,
-						code: 'VALIDATION_ERROR',
-						details: error.errors,
-					};
-				} else {
-					toolError = {
-						message: error instanceof Error ? error.message : 'Unknown error occurred',
-						code: 'EXECUTION_ERROR',
-					};
+					reporter.error(validationError);
+					return createErrorResponse(config, validationError);
 				}
 
+				const toolError = new ToolExecutionError(
+					error instanceof Error ? error.message : 'Unknown error occurred',
+					{
+						toolName: builderToolBase.toolName,
+						cause: error instanceof Error ? error : undefined,
+					},
+				);
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);
 			}

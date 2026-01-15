@@ -248,10 +248,16 @@ export function formatResourceOperationsForPrompt(info: ResourceOperationInfo): 
 	const parts: string[] = ['<available_resources_and_operations>'];
 
 	for (const resource of info.resources) {
+		// Skip __CUSTOM_API_CALL__ resources - not useful for workflow building
+		if (resource.value === '__CUSTOM_API_CALL__') continue;
+
 		parts.push(`  Resource: ${resource.displayName} (value: "${resource.value}")`);
-		if (resource.operations.length > 0) {
+
+		// Filter out __CUSTOM_API_CALL__ operations
+		const filteredOps = resource.operations.filter((op) => op.value !== '__CUSTOM_API_CALL__');
+		if (filteredOps.length > 0) {
 			parts.push('    Operations:');
-			for (const op of resource.operations) {
+			for (const op of filteredOps) {
 				parts.push(`      - ${op.displayName} (value: "${op.value}")`);
 			}
 		} else {

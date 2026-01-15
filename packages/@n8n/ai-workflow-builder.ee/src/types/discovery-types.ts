@@ -1,19 +1,4 @@
-/**
- * Available operation for a resource
- */
-export interface DiscoveryOperationInfo {
-	value: string;
-	displayName: string;
-}
-
-/**
- * Available resource with its operations
- */
-export interface DiscoveryResourceInfo {
-	value: string;
-	displayName: string;
-	operations: DiscoveryOperationInfo[];
-}
+import type { ResourceInfo } from '../utils/resource-operation-extractor';
 
 export interface DiscoveryContext {
 	nodesFound: Array<{
@@ -42,7 +27,7 @@ export interface DiscoveryContext {
 		 *
 		 * Only present for nodes that follow the resource/operation pattern.
 		 */
-		availableResources?: DiscoveryResourceInfo[];
+		availableResources?: ResourceInfo[];
 	}>;
 	bestPractices?: string;
 }
