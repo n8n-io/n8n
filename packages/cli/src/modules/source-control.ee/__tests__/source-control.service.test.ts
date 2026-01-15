@@ -14,6 +14,7 @@ import type { SourceControlExportService } from '../source-control-export.servic
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
@@ -24,6 +25,11 @@ const mockStatusService = {
 jest.mock('@n8n/backend-common', () => ({
 	...jest.requireActual('@n8n/backend-common'),
 	isContainedWithin: jest.fn(() => true),
+}));
+
+jest.mock('../source-control-helper.ee', () => ({
+	...jest.requireActual('../source-control-helper.ee'),
+	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
 
 describe('SourceControlService', () => {
@@ -880,6 +886,174 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.resetService).toHaveBeenCalledTimes(1);
+		});
+
+		// Note: Broadcast tests have been moved to source-control-preferences.service.ee.test.ts
+		// since the broadcast now happens inside setPreferences() in the preferences service
+	});
+
+	describe('reloadConfiguration', () => {
+		beforeEach(() => {
+			gitService.resetService.mockReturnValue(undefined);
+		});
+
+		it('should reload configuration from database when triggered by pubsub', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalled();
+		});
+
+		it('should delete git folder when source control was connected but is now disconnected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, now disconnected
+			preferencesService.isSourceControlConnected = jest
+				.fn()
+				.mockReturnValueOnce(true) // wasConnected check
+				.mockReturnValueOnce(false); // isNowConnected check
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control remains connected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, still connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(true);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control was not connected before', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was not connected, still not connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should skip reload if another reload is already in progress', async () => {
+			// ARRANGE
+			let resolveFirstReload: () => void;
+			const firstReloadPromise = new Promise<void>((resolve) => {
+				resolveFirstReload = resolve;
+			});
+
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockImplementationOnce(async () => {
+					await firstReloadPromise;
+				})
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Start first reload (will block)
+			const firstReload = sourceControlService.reloadConfiguration();
+
+			// Start second reload while first is in progress
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Second reload should have been skipped (only one call to loadFromDb)
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				1,
+			);
+
+			// Clean up - resolve first reload
+			resolveFirstReload!();
+			await firstReload;
+		});
+
+		it('should allow reload after previous reload completes', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Run two reloads sequentially
+			await sourceControlService.reloadConfiguration();
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Both reloads should have completed
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				2,
+			);
+		});
+	});
+
+	describe('sanityCheck', () => {
+		beforeEach(() => {
+			// Restore the actual sanityCheck implementation for these tests
+			jest.spyOn(sourceControlService, 'sanityCheck').mockRestore();
+		});
+
+		it('should throw error when folders do not exist', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+			expect(gitService.initService).not.toHaveBeenCalled();
+		});
+
+		it('should initialize git service when folders exist but git service is not initialized', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.git = null as any;
+			gitService.initService.mockResolvedValue(undefined);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT
+			await sourceControlService.sanityCheck();
+
+			// ASSERT
+			expect(gitService.initService).toHaveBeenCalled();
+		});
+
+		it('should pass when folders exist and branch matches', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
 		});
 	});
 });

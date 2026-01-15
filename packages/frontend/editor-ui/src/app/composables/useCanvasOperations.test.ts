@@ -39,9 +39,11 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
@@ -1382,7 +1384,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('renameNode', () => {
-		it('should rename node', async () => {
+		it('should rename node and return true on success', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
@@ -1396,13 +1398,14 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, newName);
+			const result = await renameNode(oldName, newName);
 
+			expect(result).toBe(true);
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
 			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(newName, expect.any(String));
 		});
 
-		it('should not rename node when new name is same as old name', async () => {
+		it('should return false when new name is same as old name', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
@@ -1410,12 +1413,13 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, oldName);
+			const result = await renameNode(oldName, oldName);
 
+			expect(result).toBe(false);
 			expect(ndvStore.activeNodeName).toBe(oldName);
 		});
 
-		it('should show error toast when renameNode throws an error', async () => {
+		it('should show error toast and return false when renameNode throws an error', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const toast = useToast();
@@ -1435,14 +1439,39 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, newName);
+			const result = await renameNode(oldName, newName);
 
+			expect(result).toBe(false);
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				type: 'error',
 				title: errorMessage,
 				message: errorDescription,
 			});
+		});
+
+		it('should not show error toast when showErrorToast is false', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const ndvStore = mockedStore(useNDVStore);
+			const toast = useToast();
+			const oldName = 'Old Node';
+			const newName = 'New Node';
+			const errorMessage = 'Node name already exists';
+
+			const workflowObject = createTestWorkflowObject();
+			workflowObject.renameNode = vi.fn().mockImplementation(() => {
+				throw new UserError(errorMessage);
+			});
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			const { renameNode } = useCanvasOperations();
+			const result = await renameNode(oldName, newName, { showErrorToast: false });
+
+			expect(result).toBe(false);
+			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});
 
@@ -4179,6 +4208,136 @@ describe('useCanvasOperations', () => {
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
 		});
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should regenerate webhook ids for node type "%s" on pasting into canvas',
+			async (type) => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+
+				// This mock is needed for addImportedNodesToWorkflow to work
+				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				});
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'some-path',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'some-path',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+					pinData: {
+						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+					},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				// This should not throw even when nodes can't be added due to maxNodes limit
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).not.toBe('some-path');
+				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).not.toBe(
+					'some-path',
+				);
+			},
+		);
+
+		it.each([WEBHOOK_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'should not regenerate webhook ids for node type "%s" on pasting into canvas',
+			async (type) => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+
+				// This mock is needed for addImportedNodesToWorkflow to work
+				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				});
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'some-path',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'some-path',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+					pinData: {
+						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+					},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				// This should not throw even when nodes can't be added due to maxNodes limit
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].webhookId).toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).toBe('some-path');
+				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].webhookId).toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe('some-path');
+			},
+		);
 	});
 
 	describe('duplicateNodes', () => {
