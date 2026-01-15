@@ -36,25 +36,6 @@ const props = defineProps<{
 	};
 }>();
 
-const data = ref<{
-	workflowId: string;
-	versionId: string;
-	version: WorkflowHistory;
-	eventBus?: EventBus<WorkflowVersionRenameModalEventBusEvents>;
-}>({
-	workflowId: '',
-	versionId: '',
-	version: {
-		versionId: '',
-		authors: '',
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		workflowPublishHistory: [],
-		name: null,
-		description: null,
-	},
-});
-
 const isSaveDisabled = computed(() => {
 	return saving.value || versionName.value.trim().length === 0;
 });
@@ -66,8 +47,7 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	if (props.data) {
-		data.value = props.data;
+	if (props.data?.version) {
 		versionName.value = props.data.version.name || '';
 		description.value = props.data.version.description || '';
 	}
@@ -87,8 +67,8 @@ async function handleRename() {
 
 	try {
 		const updatedVersion = await workflowHistoryStore.renameVersion(
-			data.value.workflowId,
-			data.value.versionId,
+			props.data.workflowId,
+			props.data.versionId,
 			{
 				name: versionName.value,
 				description: description.value,
@@ -101,8 +81,8 @@ async function handleRename() {
 			type: 'success',
 		});
 
-		if (data.value.eventBus) {
-			data.value.eventBus.emit('renamed', {
+		if (props.data.eventBus) {
+			props.data.eventBus.emit('renamed', {
 				version: updatedVersion,
 			});
 		}
