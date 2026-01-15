@@ -12,7 +12,6 @@ import path from 'path';
 import { License } from '@/license';
 
 import {
-	SOURCE_CONTROL_DATATABLES_EXPORT_FILE,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -44,12 +43,12 @@ export function getCredentialExportPath(
 	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
 }
 
-export function getVariablesPath(gitFolder: string): string {
-	return safeJoinPath(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+export function getDataTableExportPath(dataTableId: string, dataTableExportFolder: string): string {
+	return safeJoinPath(dataTableExportFolder, `${dataTableId}.json`);
 }
 
-export function getDataTablesPath(gitFolder: string): string {
-	return safeJoinPath(gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FILE);
+export function getVariablesPath(gitFolder: string): string {
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
 }
 
 export function getTagsPath(gitFolder: string): string {

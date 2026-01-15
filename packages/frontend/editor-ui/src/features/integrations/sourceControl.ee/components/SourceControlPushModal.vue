@@ -98,10 +98,13 @@ async function loadSourceControlStatus() {
 
 		status.value = freshStatus;
 
-		// Auto-select all credentials by default (only once on load)
+		// Auto-select all credentials and data tables by default (only once on load)
 		freshStatus.forEach((file) => {
 			if (file.type === 'credential') {
 				selectedCredentials.add(file.id);
+			}
+			if (file.type === 'datatable') {
+				selectedDataTables.add(file.id);
 			}
 		});
 	} catch (error) {
@@ -222,13 +225,6 @@ const userNotices = computed(() => {
 	if (changes.value.variables.length) {
 		messages.push({
 			title: 'Variables',
-			content: 'at least one new or modified',
-		});
-	}
-
-	if (changes.value.datatable.length) {
-		messages.push({
-			title: 'Data tables',
 			content: 'at least one new or modified',
 		});
 	}
@@ -359,6 +355,8 @@ const sortedWorkflows = computed(() =>
 
 const selectedCredentials = reactive<Set<string>>(new Set());
 
+const selectedDataTables = reactive<Set<string>>(new Set());
+
 const filteredCredentials = computed(() => {
 	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
 
@@ -390,6 +388,37 @@ const sortedCredentials = computed(() =>
 	),
 );
 
+const filteredDataTables = computed(() => {
+	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+
+	return changes.value.datatable.filter((dataTable) => {
+		if (!dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
+			return false;
+		}
+
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return dataTable.project?.id === filters.value.project.id;
+		}
+
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== dataTable.status) {
+			return false;
+		}
+
+		return true;
+	});
+});
+
+const sortedDataTables = computed(() =>
+	orderBy(
+		filteredDataTables.value,
+		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+		['asc', 'desc'],
+	),
+);
+
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
 	if (!commitMessage.value.trim()) {
@@ -398,9 +427,9 @@ const isSubmitDisabled = computed(() => {
 
 	const toBePushed =
 		selectedCredentials.size +
+		selectedDataTables.size +
 		changes.value.tags.length +
 		changes.value.variables.length +
-		changes.value.datatable.length +
 		changes.value.folders.length +
 		changes.value.projects.length +
 		selectedWorkflows.size;
@@ -424,7 +453,9 @@ const selectAllIndeterminate = computed(() => {
 	return !allVisibleItemsSelected.value;
 });
 
-const selectedCount = computed(() => selectedWorkflows.size + selectedCredentials.size);
+const selectedCount = computed(
+	() => selectedWorkflows.size + selectedCredentials.size + selectedDataTables.size,
+);
 
 function onToggleSelectAll() {
 	if (allVisibleItemsSelected.value) {
@@ -490,11 +521,11 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
-	if (changes.value.datatable.length) {
+	if (selectedDataTables.size) {
 		messages.push(
 			i18n.baseText('generic.datatable', {
-				adjustToNumber: changes.value.datatable.length,
-				interpolate: { count: changes.value.datatable.length },
+				adjustToNumber: selectedDataTables.size,
+				interpolate: { count: selectedDataTables.size },
 			}),
 		);
 	}
@@ -520,7 +551,7 @@ const successNotificationMessage = () => {
 async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
-		.concat(changes.value.datatable)
+		.concat(changes.value.datatable.filter((file) => selectedDataTables.has(file.id)))
 		.concat(changes.value.credential.filter((file) => selectedCredentials.has(file.id)))
 		.concat(changes.value.folders)
 		.concat(changes.value.projects)
@@ -560,7 +591,9 @@ watch(refDebounced(search, 500), (term) => {
 });
 
 const activeTab = ref<
-	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
+	| typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const allVisibleItemsSelected = computed(() => {
@@ -589,6 +622,16 @@ const allVisibleItemsSelected = computed(() => {
 		return !notSelectedVisibleItems.size;
 	}
 
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		const dataTablesSet = new Set(sortedDataTables.value.map(({ id }) => id));
+		if (!dataTablesSet.size) {
+			return false;
+		}
+		const notSelectedVisibleItems = dataTablesSet.difference(toRaw(activeSelection.value));
+
+		return !notSelectedVisibleItems.size;
+	}
+
 	return false;
 });
 
@@ -607,6 +650,9 @@ const activeDataSource = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return changes.value.credential;
 	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return changes.value.datatable;
+	}
 	return [];
 });
 
@@ -617,6 +663,9 @@ const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return sortedCredentials.value;
 	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return sortedDataTables.value;
+	}
 	return [];
 });
 
@@ -624,8 +673,10 @@ const activeEntityLocale = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return 'generic.workflows';
 	}
-
-	return 'generic.credentials';
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return 'generic.credentials';
+	}
+	return 'generic.datatables';
 });
 
 const activeSelection = computed(() => {
@@ -634,6 +685,9 @@ const activeSelection = computed(() => {
 	}
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return selectedCredentials;
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return selectedDataTables;
 	}
 	return new Set<string>();
 });
@@ -652,6 +706,12 @@ const tabs = computed(() => {
 			selected: selectedCredentials.size,
 			total: changes.value.credential.length,
 		},
+		{
+			label: 'Data Tables',
+			value: SOURCE_CONTROL_FILE_TYPE.datatable,
+			selected: selectedDataTables.size,
+			total: changes.value.datatable.length,
+		},
 	];
 });
 
@@ -659,7 +719,13 @@ const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return i18n.baseText('workflows.noResults');
 	}
-	return i18n.baseText('credentials.noResults');
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return i18n.baseText('credentials.noResults');
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return i18n.baseText('datatables.noResults');
+	}
+	return i18n.baseText('workflows.noResults');
 });
 
 function castType(type: string): ResourceType {

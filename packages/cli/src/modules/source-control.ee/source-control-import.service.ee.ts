@@ -50,7 +50,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
-	SOURCE_CONTROL_DATATABLES_EXPORT_FILE,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
@@ -142,6 +142,8 @@ export class SourceControlImportService {
 
 	private projectExportFolder: string;
 
+	private dataTableExportFolder: string;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -176,6 +178,7 @@ export class SourceControlImportService {
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
 		this.projectExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
+		this.dataTableExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER);
 	}
 
 	async getRemoteVersionIdsFromFiles(
@@ -462,20 +465,25 @@ export class SourceControlImportService {
 		return await this.variablesService.getAllCached({ globalOnly: true });
 	}
 
-	async getRemoteDataTablesFromFile(): Promise<ExportableDataTable[]> {
-		const dataTablesFile = await glob(SOURCE_CONTROL_DATATABLES_EXPORT_FILE, {
-			cwd: this.gitFolder,
+	async getRemoteDataTablesFromFiles(): Promise<ExportableDataTable[]> {
+		const dataTableFiles = await glob('*.json', {
+			cwd: this.dataTableExportFolder,
 			absolute: true,
 		});
-		if (dataTablesFile.length > 0) {
-			return jsonParse<ExportableDataTable[]>(
-				await fsReadFile(dataTablesFile[0], { encoding: 'utf8' }),
-				{
-					fallbackValue: [],
-				},
-			);
+
+		if (dataTableFiles.length === 0) {
+			return [];
 		}
-		return [];
+
+		const remoteTables = await Promise.all(
+			dataTableFiles.map(async (file) => {
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				return jsonParse<ExportableDataTable>(fileContent, { fallbackValue: undefined });
+			}),
+		);
+
+		// Filter out undefined values from failed parses
+		return remoteTables.filter((table): table is ExportableDataTable => table !== undefined);
 	}
 
 	async getLocalDataTablesFromDb(): Promise<ExportableDataTable[]> {
@@ -1143,13 +1151,8 @@ export class SourceControlImportService {
 		return ['string', 'number', 'boolean', 'date'].includes(type);
 	}
 
-	async importDataTablesFromWorkFolder(candidate: SourceControlledFile, userId: string) {
-		const importedDataTables = jsonParse<ExportableDataTable[]>(
-			await fsReadFile(candidate.file, { encoding: 'utf8' }),
-			{ fallbackValue: [] },
-		);
-
-		if (importedDataTables.length === 0) {
+	async importDataTablesFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+		if (candidates.length === 0) {
 			return;
 		}
 
@@ -1162,8 +1165,20 @@ export class SourceControlImportService {
 
 		const result: { imported: string[] } = { imported: [] };
 
-		for (const dataTable of importedDataTables) {
+		// Import each data table from its individual file
+		for (const candidate of candidates) {
 			try {
+				this.logger.debug(`Importing data table from file ${candidate.file}`);
+				const dataTable = jsonParse<ExportableDataTable>(
+					await fsReadFile(candidate.file, { encoding: 'utf8' }),
+					{ fallbackValue: undefined },
+				);
+
+				if (!dataTable) {
+					this.logger.warn(`Failed to parse data table from file ${candidate.file}`);
+					continue;
+				}
+
 				// Use personal project as fallback if referenced project doesn't exist
 				const targetProjectId = existingProjectIds.has(dataTable.projectId)
 					? dataTable.projectId
@@ -1255,7 +1270,7 @@ export class SourceControlImportService {
 
 				result.imported.push(dataTable.name);
 			} catch (error) {
-				this.logger.error(`Failed to import data table ${dataTable.name}`, {
+				this.logger.error(`Failed to import data table ${candidate.name}`, {
 					error: ensureError(error),
 				});
 			}

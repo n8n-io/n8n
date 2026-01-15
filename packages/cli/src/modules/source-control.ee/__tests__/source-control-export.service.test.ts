@@ -667,7 +667,7 @@ describe('SourceControlExportService', () => {
 	});
 
 	describe('exportDataTablesToWorkFolder', () => {
-		it('should export data tables to work folder', async () => {
+		it('should export data tables as individual files', async () => {
 			// Arrange
 			const mockDataTables = [
 				{
@@ -693,27 +693,49 @@ describe('SourceControlExportService', () => {
 				},
 			];
 
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt2.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				},
+			];
+
 			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
 			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
 				mock<Project>({ id: 'project1' }),
 				mock<Project>({ id: 'project2' }),
 			]);
-			fsReadFile.mockRejectedValue({ code: 'ENOENT' });
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder(globalAdminContext);
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(2);
-			expect(result.files).toHaveLength(1);
-			expect(result.files[0].name).toBe('/mock/n8n/git/data_tables.json');
+			expect(result.files).toHaveLength(2);
+			expect(result.files[0].name).toBe('/mock/n8n/git/datatables/dt1.json');
+			expect(result.files[1].name).toBe('/mock/n8n/git/datatables/dt2.json');
 
-			const dataCaptor = captor<string>();
-			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/data_tables.json', dataCaptor);
-
-			const exportedData = JSON.parse(dataCaptor.value);
-			expect(exportedData).toHaveLength(2);
-			expect(exportedData[0]).toEqual({
+			// Check first file
+			const dataCaptor1 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt1.json', dataCaptor1);
+			const exportedData1 = JSON.parse(dataCaptor1.value);
+			expect(exportedData1).toEqual({
 				id: 'dt1',
 				name: 'Test Table 1',
 				projectId: 'project1',
@@ -724,7 +746,12 @@ describe('SourceControlExportService', () => {
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
-			expect(exportedData[1]).toEqual({
+
+			// Check second file
+			const dataCaptor2 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt2.json', dataCaptor2);
+			const exportedData2 = JSON.parse(dataCaptor2.value);
+			expect(exportedData2).toEqual({
 				id: 'dt2',
 				name: 'Test Table 2',
 				projectId: 'project2',
@@ -734,12 +761,12 @@ describe('SourceControlExportService', () => {
 			});
 		});
 
-		it('should return empty result when no data tables exist', async () => {
+		it('should return empty result when no candidates provided', async () => {
 			// Arrange
-			dataTableRepository.find.mockResolvedValue([]);
+			const candidates: any[] = [];
 
 			// Act
-			const result = await service.exportDataTablesToWorkFolder(globalAdminContext);
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -749,12 +776,24 @@ describe('SourceControlExportService', () => {
 
 		it('should handle export errors gracefully', async () => {
 			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
 			dataTableRepository.find.mockRejectedValue(new Error('Database error'));
 
 			// Act & Assert
-			await expect(service.exportDataTablesToWorkFolder(globalAdminContext)).rejects.toThrow(
-				'Failed to export data tables to work folder',
-			);
+			await expect(
+				service.exportDataTablesToWorkFolder(candidates, globalAdminContext),
+			).rejects.toThrow('Failed to export data tables to work folder');
 		});
 	});
 });

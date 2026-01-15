@@ -24,6 +24,7 @@ import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -31,12 +32,11 @@ import {
 } from './constants';
 import {
 	getCredentialExportPath,
-	getDataTablesPath,
+	getDataTableExportPath,
 	getFoldersPath,
 	getProjectExportPath,
 	getVariablesPath,
 	getWorkflowExportPath,
-	readDataTablesFromSourceControlFile,
 	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
@@ -62,6 +62,8 @@ export class SourceControlExportService {
 
 	private credentialExportFolder: string;
 
+	private dataTableExportFolder: string;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
@@ -83,6 +85,7 @@ export class SourceControlExportService {
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
+		this.dataTableExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER);
 	}
 
 	getWorkflowPath(workflowId: string): string {
@@ -91,6 +94,10 @@ export class SourceControlExportService {
 
 	getCredentialsPath(credentialsId: string): string {
 		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
+	}
+
+	getDataTablePath(dataTableId: string): string {
+		return getDataTableExportPath(dataTableId, this.dataTableExportFolder);
 	}
 
 	async deleteRepositoryFolder() {
@@ -240,10 +247,29 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportDataTablesToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
+	async exportDataTablesToWorkFolder(
+		candidates: SourceControlledFile[],
+		_context: SourceControlContext,
+	): Promise<ExportResult> {
 		try {
-			sourceControlFoldersExistCheck([this.gitFolder]);
+			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
+
+			if (candidates.length === 0) {
+				return {
+					count: 0,
+					folder: this.dataTableExportFolder,
+					files: [],
+				};
+			}
+
+			// Extract data table IDs from candidates
+			const candidateIds = candidates.map((candidate) => candidate.id);
+
+			// Fetch only the selected data tables
 			const dataTables = await this.dataTableRepository.find({
+				where: {
+					id: In(candidateIds),
+				},
 				relations: ['columns', 'project'],
 				select: {
 					id: true,
@@ -261,57 +287,39 @@ export class SourceControlExportService {
 						id: true,
 					},
 				},
-				where:
-					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
 
-			if (dataTables.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
+			const exportedFiles: Array<{ id: string; name: string }> = [];
+
+			// Write each data table to its own file
+			for (const table of dataTables) {
+				const exportableDataTable = {
+					id: table.id,
+					name: table.name,
+					projectId: table.projectId,
+					columns: table.columns.map((col) => ({
+						id: col.id,
+						name: col.name,
+						type: col.type,
+						index: col.index,
+					})),
+					createdAt: table.createdAt.toISOString(),
+					updatedAt: table.updatedAt.toISOString(),
 				};
+
+				const filePath = this.getDataTablePath(table.id);
+				await fsWriteFile(filePath, JSON.stringify(exportableDataTable, null, 2));
+
+				exportedFiles.push({
+					id: table.id,
+					name: filePath,
+				});
 			}
 
-			const allowedProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
-
-			const fileName = getDataTablesPath(this.gitFolder);
-
-			const existingDataTables = await readDataTablesFromSourceControlFile(fileName);
-
-			const dataTablesToKeepUnchanged = context.hasAccessToAllProjects()
-				? []
-				: existingDataTables.filter((table) => {
-						return !allowedProjects.some((project) => project.id === table.projectId);
-					});
-
-			const exportableDataTables = dataTables.map((table) => ({
-				id: table.id,
-				name: table.name,
-				projectId: table.projectId,
-				columns: table.columns.map((col) => ({
-					id: col.id,
-					name: col.name,
-					type: col.type,
-					index: col.index,
-				})),
-				createdAt: table.createdAt.toISOString(),
-				updatedAt: table.updatedAt.toISOString(),
-			}));
-
-			const allDataTables = dataTablesToKeepUnchanged.concat(exportableDataTables);
-
-			await fsWriteFile(fileName, JSON.stringify(allDataTables, null, 2));
 			return {
-				count: exportableDataTables.length,
-				folder: this.gitFolder,
-				files: [
-					{
-						id: '',
-						name: fileName,
-					},
-				],
+				count: dataTables.length,
+				folder: this.dataTableExportFolder,
+				files: exportedFiles,
 			};
 		} catch (error) {
 			this.logger.error('Failed to export data tables to work folder', { error });
