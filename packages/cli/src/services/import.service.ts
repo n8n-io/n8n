@@ -182,11 +182,8 @@ export class ImportService {
 
 		// Directly update the index for the important workflows, since they don't generate
 		// workflow-update events during import.
-		// Workflow indexing isn't supported on legacy SQLite.
-		if (!this.databaseConfig.isLegacySqlite) {
-			for (const workflow of insertedWorkflows) {
-				await this.workflowIndexService.updateIndexFor(workflow);
-			}
+		for (const workflow of insertedWorkflows) {
+			await this.workflowIndexService.updateIndexFor(workflow);
 		}
 	}
 

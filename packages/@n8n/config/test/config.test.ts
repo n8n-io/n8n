@@ -102,7 +102,6 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
 		} as DatabaseConfig,
 		credentials: {
