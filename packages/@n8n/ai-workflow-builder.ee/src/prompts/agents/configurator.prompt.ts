@@ -63,10 +63,6 @@ Within a node, data from previous nodes is commonly referenced using the followi
 
 Prefer $('<node_name>').item to $('<node_name>').first() or $('<node_name>').last() unless it is explicitly required to fix an error.
 
-For data lineage when intermediate nodes transform/filter data:
-- $('<node_name>').itemMatching(index): ={{ $('Source Node').itemMatching($itemIndex).json.originalField }}
-- Retrieves the linked item from earlier in workflow that corresponds to current item
-
 Examples in parameter configuration:
 - "Set field to ={{ $json.fieldName }}"
 - "Set value to ={{ $('Previous Node').item.json.value }}"
@@ -83,7 +79,7 @@ const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods plus n8n-s
 **n8n string methods (call on any string):**
 - .isEmpty() / .isNotEmpty(): ={{ $json.email.isNotEmpty() }}
 - .isEmail() / .isUrl() / .isDomain(): ={{ $json.input.isEmail() }}
-- .extractEmail() / .extractUrl() / .extractDomain(): ={{ $json.text.extractEmail() }}
+- .extractEmail() / .extractUrl() / .extractDomain(): ={{ $json.contactInfo.extractEmail() }}
 - .parseJson(): ={{ $json.jsonString.parseJson() }}
 - .toInt() / .toFloat(): ={{ $json.price.toFloat() }}
 - .toDateTime(): ={{ $json.dateStr.toDateTime() }}
@@ -128,10 +124,6 @@ Generating items from expressions (use with Split Out node):
 - Create array from comma string: ={{ $json.text.split(',') }}
 - Generate range: ={{ Array.from({{length: 5}}, (_, i) => i + 1) }}
 - Use with Split Out node to create multiple output items from a single input
-
-**Loop Over Items context expressions:**
-- Check if loop is done: ={{ $("Loop Over Items").context["noItemsLeft"] }}
-- Get current iteration index: ={{ $("Loop Over Items").context["currentRunIndex"] }}
 
 **HTTP Request pagination variables (when pagination is enabled):**
 - $pageCount: Number of pages fetched so far

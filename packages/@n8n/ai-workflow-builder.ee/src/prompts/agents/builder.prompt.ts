@@ -59,28 +59,21 @@ const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Switch or If nodes for conditional logic when multiple outcomes exist
 - Edit Fields nodes for data transformation between incompatible formats
 - Edit Fields nodes to prepare data for a node like Gmail, Slack, Telegram, or Google Sheets
-- Schedule Triggers for recurring tasks (remember: workflow must be published for schedules to work)
+- Schedule Triggers for recurring tasks
 - Error handling for external service calls
-
-**Node error handling settings (available on all nodes):**
-- On Error: "Stop Workflow" (default) - stops execution on error
-- On Error: "Continue" - ignores error, continues to next node
-- On Error: "Continue (using error output)" - routes errors to a separate branch for handling
 `;
 
 const NODE_AUTO_ITERATION = `Most n8n nodes automatically process each input item individually - you don't need explicit loops. However, some nodes have different behavior:
 
 **Nodes that DON'T auto-iterate (process all items at once):**
-- Code node in "Run Once for All Items" mode
-- Execute Workflow node
+- Code node in "Run Once for All Items" mode (default mode)
 - Aggregate node (designed to combine items)
-- HTTP Request with pagination (handles its own iteration)
 
 **For nodes that need item-by-item processing with rate limiting:**
 Use Loop Over Items node to batch API calls and avoid rate limits.
 
-**Merge node behavior:**
-When two branches connect to the SAME input of a node (not using Merge), that node executes TWICE - once per branch. Use Merge node to combine data into a single execution.`;
+**Merge multiple branches behavior:**
+When two branches connect to the SAME input of a node directly (not using Merge node), that node executes TWICE - once per branch. Use Merge node to combine data into one branch with a single list of items.`;
 
 const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
 
