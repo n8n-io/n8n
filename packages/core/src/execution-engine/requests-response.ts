@@ -153,7 +153,14 @@ function prepareRequestedNodesForExecution(
 			// (avoid 0 being converted to undefined by || undefined pattern)
 			runIndex: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
 			nodeRunIndex,
-			metadata: { preserveSourceOverwrite: true },
+			metadata: {
+				preserveSourceOverwrite: true,
+				preservedSourceOverwrite: executionData.metadata?.preservedSourceOverwrite ?? {
+					previousNode: parentSourceNode,
+					previousNodeOutput: parentOutputIndex,
+					previousNodeRun: parentRunIndex,
+				},
+			},
 		});
 		subNodeExecutionData.actions.push({
 			action,
@@ -192,6 +199,14 @@ function prepareRequestingNodeForResuming(
 
 		return undefined;
 	}
+	const metadata: Partial<ITaskMetadata> =
+		executionData.metadata?.preservedSourceOverwrite &&
+		executionData.metadata?.preserveSourceOverwrite
+			? {
+					preserveSourceOverwrite: true,
+					preservedSourceOverwrite: executionData.metadata.preservedSourceOverwrite,
+				}
+			: {};
 	const connectionData: IConnection = {
 		// agents always have a main input
 		type: 'ai_tool',
@@ -200,7 +215,7 @@ function prepareRequestingNodeForResuming(
 		index: 0,
 	};
 
-	return { connectionData, parentNode };
+	return { connectionData, parentNode, metadata };
 }
 
 /**
@@ -249,7 +264,7 @@ export function handleRequest({
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
 		runIndex,
 		nodeRunIndex: runIndex,
-		metadata: { nodeWasResumed: true, subNodeExecutionData },
+		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
 	});
 
 	return { nodesToBeExecuted };
