@@ -48,14 +48,22 @@ const onClose = () => {
 					{{ locale.baseText('settings.usageAndPlan.dialog.eula.description') }}
 				</N8nText>
 
+				<N8nText :class="$style.auditNotice" color="text-base" size="medium" tag="p">
+					<em>{{ locale.baseText('settings.usageAndPlan.dialog.eula.audit.notice') }}</em>
+				</N8nText>
+
 				<div :class="$style.checkboxWrapper">
 					<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
 						<span>
 							{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
 							{{ ' ' }}
-							<a :href="eulaUrl" target="_blank" rel="noopener noreferrer" data-test-id="eula-link">
-								{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}
-							</a>
+							<a
+								:href="eulaUrl"
+								target="_blank"
+								rel="noopener noreferrer"
+								data-test-id="eula-link"
+								>{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}</a
+							>.
 						</span>
 					</N8nCheckbox>
 				</div>
@@ -81,6 +89,10 @@ const onClose = () => {
 </template>
 
 <style lang="scss" module>
+.auditNotice {
+	margin-top: var(--spacing--sm);
+}
+
 .checkboxWrapper {
 	margin-top: var(--spacing--md);
 }
