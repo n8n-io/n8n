@@ -170,6 +170,7 @@ describe('rewireGraph()', () => {
 
 		expect(executorNode.parameters.query).toEqual(JSON.stringify(agentRequest.query));
 		expect(executorNode.parameters.toolName).toEqual(agentRequest.tool.name);
+		expect(executorNode.parameters.node).toEqual(tool.name);
 	});
 
 	it('rewires deeply nested tools', () => {

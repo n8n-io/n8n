@@ -108,6 +108,7 @@ function clearValues(fieldNames: string[]) {
 	for (const fieldName of fieldNames) {
 		delete values[fieldName];
 	}
+	emit('update:modelValue', values);
 }
 
 defineExpose({ getValues, getValuesWithMetadata, clearValues });
