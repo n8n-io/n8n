@@ -127,8 +127,8 @@ import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/17
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
-import { AddCredentialUseScopeToRoles1768475341537 } from '../common/1768475341537-AddCredentialUseScopeToRoles';
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { AddCredentialUseScopeToRoles1768475341537 } from '../common/1768475341537-AddCredentialUseScopeToRoles';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
