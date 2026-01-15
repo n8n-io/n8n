@@ -211,11 +211,19 @@ export function useCanvasOperations() {
 
 	function tidyUp(
 		{ result, source, target }: CanvasLayoutEvent,
-		{ trackEvents = true }: { trackEvents?: boolean } = {},
+		{
+			trackEvents = true,
+			trackHistory = true,
+			trackBulk = true,
+		}: {
+			trackEvents?: boolean;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		} = {},
 	) {
 		updateNodesPosition(
 			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk: true, trackHistory: true },
+			{ trackBulk, trackHistory },
 		);
 
 		if (trackEvents) {
@@ -315,13 +323,17 @@ export function useCanvasOperations() {
 		replaceNodeParameters(nodeId, newParameters, currentParameters);
 	}
 
+	/**
+	 * Rename a node and update all references (connections, expressions, pinData, etc.)
+	 * @returns `true` if rename succeeded, `false` if it failed or was skipped
+	 */
 	async function renameNode(
 		currentName: string,
 		newName: string,
-		{ trackHistory = false, trackBulk = true } = {},
-	) {
+		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
+	): Promise<boolean> {
 		if (currentName === newName) {
-			return;
+			return false;
 		}
 
 		if (trackHistory && trackBulk) {
@@ -335,12 +347,14 @@ export function useCanvasOperations() {
 		try {
 			workflow.renameNode(currentName, newName);
 		} catch (error) {
-			toast.showMessage({
-				type: 'error',
-				title: error.message,
-				message: error.description,
-			});
-			return;
+			if (showErrorToast) {
+				toast.showMessage({
+					type: 'error',
+					title: error.message,
+					message: error.description,
+				});
+			}
+			return false;
 		}
 
 		if (trackHistory) {
@@ -361,6 +375,8 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+
+		return true;
 	}
 
 	async function revertRenameNode(currentName: string, previousName: string) {
@@ -2324,17 +2340,14 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId if workflow already contains a node with the same webhookId
+					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const isDuplicate = Object.values(workflowsStore.workflowObject.nodes).some(
-							(n) => n.webhookId === node.webhookId,
-						);
-						if (isDuplicate) {
+						if (node.webhookId) {
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject).path) {
+							} else if ((node.parameters.options as IDataObject)?.path) {
 								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
