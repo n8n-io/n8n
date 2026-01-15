@@ -54,6 +54,8 @@ jobs:
           git remote add public https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
           git fetch public master
           git checkout public/master
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git cherry-pick "$MERGE_COMMIT"
           git push public HEAD:master
 
