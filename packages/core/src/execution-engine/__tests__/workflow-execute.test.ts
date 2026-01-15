@@ -2849,4 +2849,255 @@ describe('WorkflowExecute', () => {
 			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
 		});
 	});
+
+	describe('resolveSourceOverwrite integration', () => {
+		test('should preserve sourceOverwrite when metadata.preserveSourceOverwrite is true and item has sourceOverwrite', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const sourceOverwriteData = {
+				previousNode: 'OriginalNode',
+				previousNodeOutput: 1,
+				previousNodeRun: 2,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: sourceOverwriteData,
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					expect(items[0].pairedItem).toHaveProperty('sourceOverwrite');
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should use preservedSourceOverwrite from metadata when present', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const preservedSourceData = {
+				previousNode: 'PreservedNode',
+				previousNodeOutput: 3,
+				previousNodeRun: 4,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'DifferentNode',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object' && 'sourceOverwrite' in pairedItem) {
+						expect(pairedItem.sourceOverwrite).toEqual(preservedSourceData);
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+								preservedSourceOverwrite: preservedSourceData,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should not preserve sourceOverwrite when preserveSourceOverwrite is false', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const regularNode = createNodeData({ name: 'regular' });
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'SomeNode',
+							previousNodeOutput: 1,
+							previousNodeRun: 1,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object') {
+						expect(pairedItem).not.toHaveProperty('sourceOverwrite');
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, regularNode)
+				.addConnections({ from: trigger, to: regularNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: regularNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: false,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+	});
 });
