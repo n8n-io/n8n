@@ -1,14 +1,14 @@
 <script lang="ts" setup>
+import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { computed, markRaw, onMounted, provide } from 'vue';
+import { computed, markRaw, onMounted } from 'vue';
 import { useCanvasAwareness } from '../composables/useCanvasAwareness';
 import { useCanvasSync } from '../composables/useCanvasSync';
-import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
+import { useWorkflowAwarenessInject } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
-import { WorkflowAwarenessKey } from '../types/awareness.types';
 import CollaboratorCursors from './CollaboratorCursors.vue';
 import CrdtTestNode from './CrdtTestNode.vue';
 
@@ -23,11 +23,8 @@ const doc = useWorkflowDoc();
 // Get VueFlow instance
 const instance = useVueFlow(doc.workflowId);
 
-// Set up awareness for real-time collaboration
-const awareness = useWorkflowAwareness({ awareness: doc.awareness });
-
-// Provide awareness for child components
-provide(WorkflowAwarenessKey, awareness);
+// Inject awareness from parent (CrdtTestContent provides it)
+const awareness = useWorkflowAwarenessInject();
 
 // Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes/edges
 const { initialNodes, initialEdges } = useCanvasSync({ doc, instance });
@@ -76,6 +73,8 @@ const zoom = computed(() => instance.viewport.value.zoom);
 			:nodes="initialNodes"
 			:edges="initialEdges"
 			:node-types="nodeTypes"
+			snap-to-grid
+			:snap-grid="[GRID_SIZE, GRID_SIZE]"
 			fit-view-on-init
 			pan-on-scroll
 			:min-zoom="0"

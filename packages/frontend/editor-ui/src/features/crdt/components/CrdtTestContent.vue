@@ -4,15 +4,19 @@ import NodeCreation from '@/features/shared/nodeCreator/views/NodeCreation.vue';
 import type { AddedNodesAndConnections, INodeUi, ToggleNodeCreatorOptions } from '@/Interface';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { ref } from 'vue';
+import { provide, ref } from 'vue';
 import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
+import { WorkflowAwarenessKey } from '../types/awareness.types';
 import type { WorkflowNode } from '../types/workflowDocument.types';
 import CrdtParameterTestPanel from './CrdtParameterTestPanel.vue';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 
 const doc = useWorkflowDoc();
+// Create awareness at the parent level and provide for children
 const awareness = useWorkflowAwareness({ awareness: doc.awareness });
+provide(WorkflowAwarenessKey, awareness);
+
 const instance = useVueFlow(doc.workflowId);
 const selectedNode = ref<string | null>(null);
 

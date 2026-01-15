@@ -124,6 +124,17 @@ export function useWorkflowAwareness(
 		const myClientId = awareness.clientId;
 		const { added, updated, removed } = event;
 
+		// Early return: skip entirely when only our own state changed
+		// This happens frequently during drag/cursor moves and has no effect on collaborators map
+		const hasOtherClients =
+			added.some((cid) => cid !== myClientId) ||
+			updated.some((cid) => cid !== myClientId) ||
+			removed.some((cid) => cid !== myClientId);
+
+		if (!hasOtherClients) {
+			return;
+		}
+
 		// Handle removed clients
 		for (const cid of removed) {
 			if (cid === myClientId) continue;
