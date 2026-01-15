@@ -28,6 +28,7 @@ import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
+import { createTalkToShrinkTool } from '../tools/talk-to-shrink.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
 import type { WorkflowMetadata } from '../types/tools';
@@ -165,6 +166,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
+			createTalkToShrinkTool(),
 		];
 
 		// Conditionally add workflow examples tool if feature flag is enabled
