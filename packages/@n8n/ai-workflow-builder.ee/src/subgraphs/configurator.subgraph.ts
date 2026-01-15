@@ -101,6 +101,8 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 export interface ConfiguratorSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	/** Separate LLM for parameter updater chain (defaults to llm if not provided) */
+	llmParameterUpdater?: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
 	featureFlags?: BuilderFeatureFlags;
@@ -124,11 +126,14 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
+		// Use separate LLM for parameter updater if provided
+		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
+
 		// Create base tools
 		const baseTools = [
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
-				config.llm, // Uses same LLM for parameter updater chain
+				parameterUpdaterLLM, // Uses separate LLM for parameter updater chain
 				config.logger,
 				config.instanceUrl,
 			),
