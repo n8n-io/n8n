@@ -99,6 +99,12 @@ BasePage - Common utilities
 
 See `CONTRIBUTING.md` for detailed patterns and conventions.
 
+## Debugging
+
+See [README.md#debugging](./README.md#debugging) for detailed instructions on:
+- **Keepalive mode** - Keep containers running after tests with `N8N_CONTAINERS_KEEPALIVE=true`
+- **Victoria exports** - Logs/metrics automatically attached on failure, importable locally via `scripts/import-victoria-data.mjs`
+
 ## Reference Files
 
 | Purpose | File |
