@@ -368,6 +368,69 @@ describe('chatPanel.store', () => {
 		});
 	});
 
+	describe('openSource tracking', () => {
+		it('should set openSource to ask_button by default when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.openSource).toBe('ask_button');
+		});
+
+		it('should set openSource to helper when opening with credential help', async () => {
+			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0];
+			const credType = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			};
+
+			await chatPanelStore.openWithCredHelp(credType);
+
+			expect(chatPanelStateStore.openSource).toBe('helper');
+		});
+
+		it('should set openSource to helper when opening with error helper', async () => {
+			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0];
+			const errorContext: ChatRequest.ErrorContext = {
+				error: {
+					name: 'TestError',
+					message: 'test error',
+				},
+				node: {
+					id: 'node-1',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			};
+
+			await chatPanelStore.openWithErrorHelper(errorContext);
+
+			expect(chatPanelStateStore.openSource).toBe('helper');
+		});
+
+		it('should clear openSource when closing', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			expect(chatPanelStateStore.openSource).toBe('ask_button');
+
+			chatPanelStore.close();
+
+			expect(chatPanelStateStore.openSource).toBe(null);
+		});
+
+		it('should expose openSource as computed property', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStore.openSource).toBe('ask_button');
+		});
+	});
+
 	describe('computed properties', () => {
 		it('should compute isAssistantModeActive correctly', () => {
 			chatPanelStateStore.activeMode = 'assistant';
