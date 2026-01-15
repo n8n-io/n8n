@@ -2529,6 +2529,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
@@ -2803,7 +2804,7 @@ export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BI
 
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;

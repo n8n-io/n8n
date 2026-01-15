@@ -41,6 +41,7 @@ export class ModuleRegistry {
 		'dynamic-credentials',
 		'chat-hub',
 		'sso-oidc',
+		'sso-saml',
 		'log-streaming',
 	];
 
