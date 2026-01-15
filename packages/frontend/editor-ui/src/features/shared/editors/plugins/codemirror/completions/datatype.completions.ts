@@ -120,10 +120,11 @@ export async function datatypeCompletions(
 
 		if (resolved === null) return null;
 
-		options = attempt(
-			() => datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context)),
-			() => [],
-		);
+		try {
+			options = (await datatypeOptions({ resolved, base, tail })).map(stripExcessParens(context));
+		} catch {
+			options = [];
+		}
 	}
 
 	if (tail !== '') {
@@ -206,7 +207,7 @@ async function explicitDataTypeOptions(
 			`={{ ${expression} }}`,
 			targetNodeParameterContext?.nodeName,
 		);
-		return datatypeOptions({
+		return await datatypeOptions({
 			resolved,
 			base: expression,
 			tail: '',
@@ -217,7 +218,7 @@ async function explicitDataTypeOptions(
 	}
 }
 
-function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {
+async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -253,7 +254,7 @@ function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {
 	}
 
 	if (typeof resolved === 'object') {
-		return objectOptions(input as AutocompleteInput<IDataObject>);
+		return await objectOptions(input as AutocompleteInput<IDataObject>);
 	}
 
 	return [];
@@ -396,7 +397,9 @@ const createCompletionOption = ({
 	return option;
 };
 
-const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const customObjectOptions = async (
+	input: AutocompleteInput<IDataObject>,
+): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
 	if (!resolved) return [];
@@ -408,11 +411,11 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return inputOptions(base);
+		return await inputOptions(base);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return nodeRefOptions(base);
+		return await nodeRefOptions(base);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -424,7 +427,7 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	return [];
 };
 
-const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -437,7 +440,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = customObjectOptions(input);
+	const customOptions = await customObjectOptions(input);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
