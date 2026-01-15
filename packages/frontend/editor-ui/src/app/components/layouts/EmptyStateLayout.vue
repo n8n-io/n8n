@@ -158,6 +158,10 @@ const containerStyle = computed(() => ({
 	width: 100%;
 }
 
+.welcomeTitle {
+	margin-bottom: var(--spacing--2xl);
+}
+
 .actionCard {
 	width: 192px;
 	height: 230px;
