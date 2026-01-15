@@ -1,3 +1,17 @@
+## [1.123.15](https://github.com/n8n-io/n8n/compare/n8n@1.123.14...n8n@1.123.15) (2026-01-15)
+
+
+### Bug Fixes
+
+* Apply source control configuration changes to all multi main instances ([#24391](https://github.com/n8n-io/n8n/issues/24391)) ([e6737d2](https://github.com/n8n-io/n8n/commit/e6737d24a8ebc0725ddf73779ff870389689bd6d))
+
+
+### Features
+
+* **GitHub Trigger Node:** Add automatic webhook signature verification ([#24389](https://github.com/n8n-io/n8n/issues/24389)) ([afe3223](https://github.com/n8n-io/n8n/commit/afe322325502f448b33bff1db1575e4447c28a36))
+
+
+
 ## [1.123.14](https://github.com/n8n-io/n8n/compare/n8n@1.123.13...n8n@1.123.14) (2026-01-14)
 
 
