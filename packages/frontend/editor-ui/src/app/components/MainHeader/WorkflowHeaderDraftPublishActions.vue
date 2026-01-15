@@ -594,7 +594,7 @@ defineExpose({
 }
 
 .publishDropdown {
-	z-index: 9999 !important;
+	z-index: 9999;
 }
 
 .shortcut {
@@ -603,18 +603,28 @@ defineExpose({
 	margin-left: var(--spacing--xs);
 }
 
-.publish {
-	border-bottom-right-radius: 0;
-	border-top-right-radius: 0;
+.publish,
+.publish:disabled,
+.publish:hover:disabled {
+	border-bottom-right-radius: 0px;
+	border-top-right-radius: 0px;
+	border-right-color: transparent;
+}
+
+.publish:hover {
+	border-right-color: inherit;
 }
 
 .dropdownButton {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
-	margin-left: -1px;
 }
 
 .splitButton {
 	display: inline-flex;
+}
+
+.splitButton:has(.publish:not(:disabled):hover) .dropdownButton {
+	border-left-color: transparent;
 }
 </style>

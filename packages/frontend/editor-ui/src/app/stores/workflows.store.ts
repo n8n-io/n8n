@@ -2093,6 +2093,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		publishWorkflow,
+		saveNamedVersion,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,

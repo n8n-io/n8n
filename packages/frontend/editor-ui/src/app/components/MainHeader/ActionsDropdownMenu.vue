@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
-import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';

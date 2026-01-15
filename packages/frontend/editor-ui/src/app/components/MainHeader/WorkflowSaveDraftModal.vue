@@ -11,6 +11,11 @@ import { useToast } from '@/app/composables/useToast';
 import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
 import { telemetry } from '@/app/plugins/telemetry';
 
+export type WorkflowSaveDraftModalEventBusEvents = {
+	saved: { versionId: string; name: string; description?: string };
+	cancel: undefined;
+};
+
 const modalBus = createEventBus();
 const i18n = useI18n();
 
