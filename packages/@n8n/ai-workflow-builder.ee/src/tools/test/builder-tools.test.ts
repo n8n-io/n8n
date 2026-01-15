@@ -4,10 +4,10 @@ import { createNodeType, nodeTypes } from '../../../test/test-utils';
 import { getAddNodeToolBase } from '../add-node.tool';
 import { getBuilderToolsForDisplay } from '../builder-tools';
 
-jest.mock('../get-best-practices.tool', () => ({
-	GET_BEST_PRACTICES_TOOL: {
-		toolName: 'get_best_practices',
-		displayTitle: 'Get best practices',
+jest.mock('../get-documentation.tool', () => ({
+	GET_DOCUMENTATION_TOOL: {
+		toolName: 'get_documentation',
+		displayTitle: 'Getting documentation',
 	},
 }));
 
@@ -103,7 +103,7 @@ describe('builder-tools', () => {
 				featureFlags: { templateExamples: true },
 			});
 
-			// 12 tools: best_practices, workflow_examples, node_search, node_details, add_node,
+			// 12 tools: get_documentation, workflow_examples, node_search, node_details, add_node,
 			// connect_nodes, remove_connection, remove_node, update_node_parameters,
 			// get_node_parameter, validate_structure, validate_configuration
 			expect(tools).toHaveLength(12);

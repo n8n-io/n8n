@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, AIMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
@@ -24,7 +24,7 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
+import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
@@ -162,7 +162,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create base tools
 		const baseTools = [
-			createGetBestPracticesTool(),
+			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
@@ -298,11 +298,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		}
 
-		const bestPracticesTool = state.messages.find(
-			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
-		);
-
-		// Build lookup map
+		// Build lookup map for resource hydration
 		const nodeTypeMap = new Map<string, INodeTypeDescription>();
 		for (const nt of this.parsedNodeTypes) {
 			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
@@ -356,10 +352,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		});
 
-		// Return hydrated output, including templateIds from workflow examples
+		// Return hydrated output with best practices from state (updated by get_documentation tool)
 		return {
 			nodesFound: hydratedNodesFound,
-			bestPractices: bestPracticesTool?.text,
+			bestPractices: state.bestPractices,
 			templateIds: state.templateIds ?? [],
 		};
 	}

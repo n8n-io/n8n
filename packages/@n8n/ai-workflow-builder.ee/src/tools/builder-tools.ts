@@ -5,7 +5,7 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { getAddNodeToolBase } from './add-node.tool';
 import { CONNECT_NODES_TOOL } from './connect-nodes.tool';
-import { GET_BEST_PRACTICES_TOOL } from './get-best-practices.tool';
+import { GET_DOCUMENTATION_TOOL } from './get-documentation.tool';
 import { GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { GET_WORKFLOW_EXAMPLES_TOOL } from './get-workflow-examples.tool';
 import { NODE_DETAILS_TOOL } from './node-details.tool';
@@ -28,7 +28,7 @@ export function getBuilderToolsForDisplay({
 	nodeTypes: INodeTypeDescription[];
 	featureFlags?: BuilderFeatureFlags;
 }): BuilderToolBase[] {
-	const tools: BuilderToolBase[] = [GET_BEST_PRACTICES_TOOL];
+	const tools: BuilderToolBase[] = [GET_DOCUMENTATION_TOOL];
 
 	// Conditionally add workflow examples tool based on feature flag
 	// Only enabled when flag is explicitly true
