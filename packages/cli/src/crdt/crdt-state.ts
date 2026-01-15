@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { CRDTEngine, createCRDTProvider, type CRDTDoc, type Unsubscribe } from '@n8n/crdt';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { CRDTEngine, createCRDTProvider, type CRDTDoc } from '@n8n/crdt';
+import debounce from 'lodash/debounce';
+import type { Workflow } from 'n8n-workflow';
 
 interface Subscriber {
 	userId: User['id'];
@@ -19,6 +21,99 @@ export interface WorkflowSeedData {
 	settings?: Record<string, unknown>;
 }
 
+const DEBOUNCE_DELAY_MS = 1500; // 1.5 seconds
+const MAX_WAIT_MS = 5000; // 5 seconds max wait
+
+/**
+ * A workflow room manages a single CRDT document and its associated workflow.
+ * Handles debounced autosaving and change detection via state vectors.
+ */
+export class WorkflowRoom {
+	private readonly debouncedSave: ReturnType<typeof debounce>;
+	private lastSavedStateVector: Uint8Array | null = null;
+
+	constructor(
+		readonly doc: CRDTDoc,
+		readonly workflow: Workflow,
+		private readonly unsubscribe: Unsubscribe,
+		readonly originalVersionId: string,
+		private readonly saveCallback: (room: WorkflowRoom) => Promise<void>,
+		private readonly logger: Logger,
+	) {
+		this.debouncedSave = debounce(
+			() => {
+				this.logger.debug('[CRDT] Executing debounced save', { docId: doc.id });
+				void this.saveCallback(this);
+			},
+			DEBOUNCE_DELAY_MS,
+			{ maxWait: MAX_WAIT_MS },
+		);
+
+		// Initialize state vector baseline - document is "clean" after seeding
+		this.updateLastSavedStateVector();
+	}
+
+	/**
+	 * Schedule a debounced save. Call this after each document update.
+	 */
+	scheduleSave(): void {
+		this.debouncedSave();
+	}
+
+	/**
+	 * Check if there are unsaved changes by comparing state vectors.
+	 */
+	hasUnsavedChanges(): boolean {
+		if (!this.lastSavedStateVector) {
+			this.logger.debug('[CRDT] No lastSavedStateVector, assuming changes exist', {
+				docId: this.doc.id,
+			});
+			return true;
+		}
+
+		const currentStateVector = this.doc.encodeStateVector();
+		const hasChanges = Buffer.compare(currentStateVector, this.lastSavedStateVector) !== 0;
+
+		this.logger.debug('[CRDT] State vector comparison', {
+			docId: this.doc.id,
+			hasChanges,
+			currentVectorLength: currentStateVector.length,
+			savedVectorLength: this.lastSavedStateVector.length,
+		});
+
+		return hasChanges;
+	}
+
+	/**
+	 * Update the state vector after a successful save.
+	 */
+	updateLastSavedStateVector(): void {
+		this.lastSavedStateVector = this.doc.encodeStateVector();
+		this.logger.debug('[CRDT] Updated lastSavedStateVector', {
+			docId: this.doc.id,
+			vectorLength: this.lastSavedStateVector.length,
+		});
+	}
+
+	/**
+	 * Cancel any pending debounced save and trigger an immediate final save.
+	 * Returns a promise that resolves when the save completes.
+	 */
+	async finalSave(): Promise<void> {
+		this.debouncedSave.cancel();
+		this.logger.debug('[CRDT] Triggering final save', { docId: this.doc.id });
+		await this.saveCallback(this);
+	}
+
+	/**
+	 * Clean up resources.
+	 */
+	destroy(): void {
+		this.debouncedSave.cancel();
+		this.unsubscribe();
+	}
+}
+
 /**
  * In-memory state management for CRDT documents.
  *
@@ -31,6 +126,9 @@ export interface WorkflowSeedData {
 export class CRDTState {
 	/** CRDT documents by docId */
 	private docs = new Map<string, CRDTDoc>();
+
+	/** Workflow rooms by docId - each room has a doc, workflow, and sync subscriptions */
+	private rooms = new Map<string, WorkflowRoom>();
 
 	/** Track which documents have been seeded with initial data */
 	private seededDocs = new Set<string>();
@@ -166,6 +264,12 @@ export class CRDTState {
 	 * This removes the document from memory and clears seeded state.
 	 */
 	cleanupDoc(docId: string): void {
+		const room = this.rooms.get(docId);
+		if (room) {
+			room.destroy();
+			this.rooms.delete(docId);
+		}
+
 		const doc = this.docs.get(docId);
 		if (doc) {
 			doc.destroy();
@@ -173,6 +277,43 @@ export class CRDTState {
 			this.seededDocs.delete(docId);
 			this.logger.debug('Cleaned up CRDT document', { docId });
 		}
+	}
+
+	/**
+	 * Create and register a workflow room for a document.
+	 * The room handles its own debounced saving via the provided callback.
+	 */
+	createWorkflowRoom(
+		docId: string,
+		workflow: Workflow,
+		unsubscribe: Unsubscribe,
+		originalVersionId: string,
+		saveCallback: (room: WorkflowRoom) => Promise<void>,
+	): WorkflowRoom {
+		const doc = this.docs.get(docId);
+		if (!doc) {
+			throw new Error(`Document not found: ${docId}`);
+		}
+
+		const room = new WorkflowRoom(
+			doc,
+			workflow,
+			unsubscribe,
+			originalVersionId,
+			saveCallback,
+			this.logger,
+		);
+		this.rooms.set(docId, room);
+		this.logger.debug('[CRDT] Created workflow room', { docId, workflowId: workflow.id });
+		return room;
+	}
+
+	/**
+	 * Get the workflow room for a document.
+	 * Returns undefined if the document doesn't have an associated room.
+	 */
+	getRoom(docId: string): WorkflowRoom | undefined {
+		return this.rooms.get(docId);
 	}
 
 	/**

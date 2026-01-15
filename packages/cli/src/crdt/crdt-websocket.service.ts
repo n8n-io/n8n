@@ -6,13 +6,19 @@ import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import type { IncomingMessage, Server } from 'http';
 import { ServerResponse } from 'http';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
+import { v4 as uuid } from 'uuid';
 import type { WebSocket } from 'ws';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
+import { NodeTypes } from '@/node-types';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { CRDTState } from './crdt-state';
+import { CRDTState, WorkflowRoom } from './crdt-state';
+import { syncWorkflowWithDoc } from './sync-workflow-with-doc';
 
 interface CRDTConnection {
 	ws: WebSocket;
@@ -42,6 +48,8 @@ export class CRDTWebSocketService {
 		private readonly authService: AuthService,
 		private readonly state: CRDTState,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {}
 
 	/**
@@ -104,7 +112,7 @@ export class CRDTWebSocketService {
 			return;
 		}
 
-		this.logger.debug('CRDT WebSocket connected', { docId, userId: user.id });
+		this.logger.debug('[CRDT] WebSocket connected', { docId, userId: user.id });
 
 		// Seed workflow data on first connection
 		if (this.state.needsSeeding(docId)) {
@@ -140,57 +148,101 @@ export class CRDTWebSocketService {
 
 		ws.on('close', () => {
 			this.removeConnection(connection);
-			this.logger.debug('CRDT WebSocket disconnected', { docId, userId: user.id });
+			this.logger.debug('[CRDT] WebSocket disconnected', { docId, userId: user.id });
 		});
 
 		ws.on('error', (error) => {
-			this.logger.error('CRDT WebSocket error', { docId, userId: user.id, error });
+			this.logger.error('[CRDT] WebSocket error', { docId, userId: user.id, error });
 			this.removeConnection(connection);
 		});
 	}
 
 	/**
-	 * Load workflow from database and seed into CRDT document
+	 * Load workflow from database and seed into CRDT document.
+	 * Also creates a Workflow instance and sets up sync with the CRDT document.
 	 */
 	private async seedWorkflowDoc(docId: string): Promise<void> {
 		// docId is the workflow ID
-		const workflow = await this.workflowRepository.findById(docId);
+		const workflowEntity = await this.workflowRepository.findById(docId);
 
-		if (!workflow) {
+		if (!workflowEntity) {
 			throw new Error(`Workflow not found: ${docId}`);
 		}
 
+		// Seed the CRDT document with workflow data
 		this.state.seedWorkflow(docId, {
-			id: workflow.id,
-			name: workflow.name,
-			nodes: workflow.nodes,
-			connections: workflow.connections as Record<string, unknown>,
-			settings: workflow.settings as Record<string, unknown> | undefined,
+			id: workflowEntity.id,
+			name: workflowEntity.name,
+			nodes: workflowEntity.nodes,
+			connections: workflowEntity.connections as Record<string, unknown>,
+			settings: workflowEntity.settings as Record<string, unknown> | undefined,
 		});
 
-		this.logger.debug('Seeded workflow into CRDT document', {
+		// Create a Workflow instance
+		const workflow = new Workflow({
+			id: workflowEntity.id,
+			name: workflowEntity.name,
+			nodes: workflowEntity.nodes,
+			connections: workflowEntity.connections,
+			active: workflowEntity.activeVersionId !== null,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowEntity.staticData,
+			settings: workflowEntity.settings,
+		});
+
+		// Set up sync between CRDT document and Workflow instance
+		const doc = this.state.getDoc(docId);
+		const unsubscribe = syncWorkflowWithDoc(doc, workflow);
+
+		// Create the workflow room with a save callback
+		this.state.createWorkflowRoom(
 			docId,
-			workflowId: workflow.id,
-			nodeCount: workflow.nodes.length,
+			workflow,
+			unsubscribe,
+			workflowEntity.versionId,
+			async (room) => await this.saveWorkflow(room),
+		);
+
+		this.logger.debug('[CRDT] Seeded workflow into CRDT document', {
+			docId,
+			workflowId: workflowEntity.id,
+			nodeCount: workflowEntity.nodes.length,
+			versionId: workflowEntity.versionId,
 		});
 	}
 
 	private handleMessage(connection: CRDTConnection, data: ArrayBuffer | Buffer) {
-		const { docId } = connection;
+		const { docId, userId } = connection;
 
 		const rawData = new Uint8Array(data instanceof ArrayBuffer ? data : data.buffer);
 		const { messageType, payload } = decodeMessage(rawData);
 
 		if (messageType === MESSAGE_SYNC) {
+			this.logger.debug('[CRDT] Received sync message', {
+				docId,
+				userId,
+				payloadSize: payload.length,
+			});
+
 			// Apply sync update and broadcast to other clients
 			this.state.applyUpdateBytes(docId, payload);
 			this.broadcastMessage(docId, MESSAGE_SYNC, payload, connection);
+
+			// Schedule a debounced save via the room
+			const room = this.state.getRoom(docId);
+			room?.scheduleSave();
 		} else if (messageType === MESSAGE_AWARENESS) {
+			this.logger.debug('[CRDT] Received awareness message', {
+				docId,
+				userId,
+				payloadSize: payload.length,
+			});
+
 			// Apply awareness update and broadcast to other clients
 			this.state.applyAwarenessBytes(docId, payload);
 			this.broadcastMessage(docId, MESSAGE_AWARENESS, payload, connection);
 		} else {
-			this.logger.warn('Unknown CRDT message type', { docId, messageType });
+			this.logger.warn('[CRDT] Unknown message type', { docId, messageType });
 		}
 	}
 
@@ -239,10 +291,80 @@ export class CRDTWebSocketService {
 			docConnections.delete(connection);
 			if (docConnections.size === 0) {
 				this.connections.delete(docId);
-				// Clean up the document when no more connections exist
-				this.state.cleanupDoc(docId);
-				this.logger.debug('Room closed, document cleaned up', { docId });
+				this.logger.debug('[CRDT] Last connection removed, closing room', { docId });
+
+				// Trigger final save via the room, then clean up
+				const room = this.state.getRoom(docId);
+				if (room) {
+					void room.finalSave().finally(() => {
+						this.state.cleanupDoc(docId);
+						this.logger.debug('[CRDT] Room closed, document cleaned up', { docId });
+					});
+				} else {
+					this.state.cleanupDoc(docId);
+				}
 			}
+		}
+	}
+
+	/**
+	 * Save the workflow from a room to the database.
+	 * Only saves if there are unsaved changes (detected via state vector comparison).
+	 * Creates a new version in workflow history when saving.
+	 */
+	private async saveWorkflow(room: WorkflowRoom): Promise<void> {
+		const docId = room.doc.id;
+		this.logger.debug('[CRDT] saveWorkflow called', { docId });
+
+		// Skip if no changes since last save (compare state vectors)
+		if (!room.hasUnsavedChanges()) {
+			this.logger.debug('[CRDT] No changes to save, skipping', { docId });
+			return;
+		}
+
+		const { workflow } = room;
+
+		try {
+			// Convert nodes from object to array format for database
+			const nodes = Object.values(workflow.nodes);
+			const connections = workflow.connectionsBySourceNode;
+
+			// Generate a new versionId for this save
+			const versionId = uuid();
+
+			// Save to workflow history (saveVersion only uses nodes, connections, versionId)
+			await this.workflowHistoryService.saveVersion(
+				'CRDT Sync',
+				{ nodes, connections, versionId } as IWorkflowBase,
+				docId,
+				true,
+			);
+
+			// Update the main workflow record
+			await this.workflowRepository.update(
+				{ id: docId },
+				{
+					name: workflow.name,
+					nodes,
+					connections,
+					settings: workflow.settings,
+					versionId,
+					updatedAt: new Date(),
+				},
+			);
+
+			// Update state vector after successful save
+			room.updateLastSavedStateVector();
+
+			this.logger.debug('[CRDT] Saved workflow to database', {
+				docId,
+				workflowId: workflow.id,
+				versionId,
+				nodeCount: nodes.length,
+				connectionCount: Object.keys(connections).length,
+			});
+		} catch (error) {
+			this.logger.error('[CRDT] Failed to save workflow', { docId, error });
 		}
 	}
 }
