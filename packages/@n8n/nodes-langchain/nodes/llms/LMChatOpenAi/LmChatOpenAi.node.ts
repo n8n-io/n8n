@@ -186,7 +186,7 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-4o-mini',
+				default: 'gpt-5-mini',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -197,7 +197,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-4.1-mini' },
+				default: { mode: 'list', value: 'gpt-5-mini' },
 				required: true,
 				modes: [
 					{
@@ -214,7 +214,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'gpt-4.1-mini',
+						placeholder: 'gpt-5-mini',
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',
@@ -753,11 +753,13 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		const timeout = options.timeout;
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			}),
+		};
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -795,7 +797,7 @@ export class LmChatOpenAi implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
