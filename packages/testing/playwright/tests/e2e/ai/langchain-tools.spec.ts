@@ -5,7 +5,6 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
 } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
-import { capabilities } from '../../../fixtures/capabilities';
 import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper functions for common operations
@@ -52,7 +51,7 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
-test.use({ addContainerCapability: capabilities.proxy });
+test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
@@ -61,8 +60,9 @@ test.describe('Langchain Integration @capability:proxy', () => {
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Tool Usage Notifications', () => {
+	test.describe('Tool Usage Notifications @fixme', () => {
+		test.fixme();
+
 		test('should show tool info notice if no existing tools were used during execution', async ({
 			n8n,
 		}) => {

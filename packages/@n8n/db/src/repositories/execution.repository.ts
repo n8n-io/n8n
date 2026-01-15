@@ -37,6 +37,7 @@ import {
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -423,9 +424,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		return await this.manager.transaction(async (manager) => {
+			// Update status, set startedAt only if not already set (preserves original for resumed executions)
+			await manager
+				.createQueryBuilder()
+				.update(ExecutionEntity)
+				.set({
+					status: 'running',
+					startedAt: () => 'COALESCE(startedAt, :startedAt)',
+				})
+				.setParameter('startedAt', DateUtils.mixedDateToUtcDatetimeString(startedAt))
+				.where('id = :id', { id: executionId })
+				.execute();
 
-		return startedAt;
+			// Fetch the actual startedAt
+			const { startedAt: actualStartedAt } = await manager.findOneOrFail(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			a.ok(actualStartedAt);
+			return actualStartedAt;
+		});
 	}
 
 	/**
@@ -1222,5 +1242,37 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 		// Just return the string data as-is.
 		return data;
+	}
+
+	async findByStopExecutionsFilter(
+		query: ExecutionSummaries.StopExecutionFilterQuery,
+	): Promise<Array<{ id: string }>> {
+		if (!query.status || query.status.length === 0) return [];
+
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: In(query.status),
+		};
+
+		if (query.workflowId !== 'all') {
+			where.workflowId = query.workflowId;
+		}
+
+		const startedAtConditions = [];
+
+		if (query.startedAfter)
+			startedAtConditions.push(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
+			);
+
+		if (query.startedBefore)
+			startedAtConditions.push(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
+			);
+
+		if (startedAtConditions.length > 0) {
+			where.startedAt = And(...startedAtConditions);
+		}
+
+		return await this.find({ select: ['id'], where });
 	}
 }

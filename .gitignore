@@ -23,6 +23,7 @@ packages/**/.turbo
 CHANGELOG-*.md
 *.mdx
 build-storybook.log
+build.log
 *.junit.xml
 junit.xml
 test-results.json
@@ -45,3 +46,5 @@ packages/cli/THIRD_PARTY_LICENSES.md
 .nyc_output
 packages/cli/src/commands/export/outputs
 *.bak
+.data
+.data/

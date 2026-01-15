@@ -22,7 +22,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['python', 'pythonNative'],
+				language: ['pythonNative'],
 				mode: ['runOnceForAllItems'],
 			},
 		},
@@ -31,24 +31,13 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['python', 'pythonNative'],
+				language: ['pythonNative'],
 				mode: ['runOnceForEachItem'],
 			},
 		},
 	},
 	{
-		displayName: PRINT_INSTRUCTION,
-		name: 'notice',
-		type: 'notice',
-		displayOptions: {
-			show: {
-				language: ['python'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The native Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {

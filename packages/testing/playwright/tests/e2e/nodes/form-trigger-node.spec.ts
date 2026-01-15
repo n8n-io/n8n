@@ -1,3 +1,5 @@
+import type { IWorkflowBase } from 'n8n-workflow';
+
 import { test, expect } from '../../../fixtures/base';
 
 test.describe('Form Trigger', () => {
@@ -119,5 +121,204 @@ test.describe('Form Trigger', () => {
 
 		// Close the form page
 		await formPage.close();
+	});
+
+	test.describe('form execution with basic auth', () => {
+		const password = new Date().toDateString();
+
+		test.use({
+			httpCredentials: {
+				username: 'test',
+				password,
+			},
+		});
+
+		test('form submission works with basic auth', async ({ api, n8n }) => {
+			const { id, name } = await api.credentials.createCredential({
+				name: 'Basic Auth test:test',
+				type: 'httpBasicAuth',
+				data: {
+					user: 'test',
+					password,
+				},
+			});
+
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							authentication: 'basicAuth',
+							formTitle: 'Test',
+							options: {
+								respondWithOptions: {
+									values: {
+										formSubmittedText: 'This worked',
+									},
+								},
+							},
+						},
+						type: 'n8n-nodes-base.formTrigger',
+						typeVersion: 2.5,
+						position: [0, 0],
+						id: '49b31a69-3fc9-43d0-944e-990783330e7a',
+						name: 'On form submission',
+						webhookId: '17eae80c-039e-4779-be68-08cd5afc5f65',
+						credentials: {
+							httpBasicAuth: {
+								id,
+								name,
+							},
+						},
+					},
+				],
+				connections: {},
+				pinData: {},
+				meta: {
+					instanceId: 'acd7615bcc3af421bbd7517e305cc16505176a6a47045dbe39e25d904c940573',
+				},
+			};
+
+			const { workflowId } = await api.workflows.createWorkflowFromDefinition(workflow, {
+				makeUnique: true,
+			});
+
+			await n8n.page.goto(`/workflow/${workflowId}`);
+
+			// Start the workflow execution so it's waiting for form submissions
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+
+			// Get the form test URL from the NDV
+			await n8n.canvas.openNode('On form submission');
+			const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
+			const formUrl = await formUrlLocator.textContent();
+
+			// Open form URL in a new browser tab
+
+			const formPage = await n8n.page.context().newPage();
+			await formPage.goto(formUrl!);
+
+			// Submit the form
+			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await expect(formPage.getByText('This worked')).toBeVisible();
+		});
+
+		test('multi-step form submission works with basic auth', async ({ api, n8n }) => {
+			const { id, name } = await api.credentials.createCredential({
+				name: 'Basic Auth test:test',
+				type: 'httpBasicAuth',
+				data: {
+					user: 'test',
+					password,
+				},
+			});
+
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							authentication: 'basicAuth',
+							formTitle: 'Test',
+						},
+						type: 'n8n-nodes-base.formTrigger',
+						typeVersion: 2.5,
+						position: [0, 0],
+						id: '49b31a69-3fc9-43d0-944e-990783330e7a',
+						name: 'On form submission',
+						webhookId: '17eae80c-039e-4779-be68-08cd5afc5f64',
+						credentials: {
+							httpBasicAuth: {
+								id,
+								name,
+							},
+						},
+					},
+					{
+						parameters: {
+							options: {
+								formDescription: 'Step 2',
+							},
+						},
+						type: 'n8n-nodes-base.form',
+						typeVersion: 2.5,
+						position: [208, 0],
+						id: 'e748b959-faeb-4476-aa30-1c7a6434843a',
+						name: 'Form',
+						webhookId: '1e1a6d32-d3a4-4150-886b-2119cc4072bc',
+					},
+					{
+						parameters: {
+							operation: 'completion',
+							completionTitle: 'Success',
+							completionMessage: 'This worked',
+							options: {},
+						},
+						type: 'n8n-nodes-base.form',
+						typeVersion: 2.5,
+						position: [416, 0],
+						id: '2e52c834-e08a-4848-bd86-be1f7909a956',
+						name: 'Form1',
+						webhookId: '1839391a-f07d-4bee-858f-678c1b45252b',
+					},
+				],
+				connections: {
+					'On form submission': {
+						main: [
+							[
+								{
+									node: 'Form',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Form: {
+						main: [
+							[
+								{
+									node: 'Form1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+				pinData: {},
+				meta: {
+					templateCredsSetupCompleted: true,
+					instanceId: 'acd7615bcc3af421bbd7517e305cc16505176a6a47045dbe39e25d904c940573',
+				},
+			};
+
+			const { workflowId } = await api.workflows.createWorkflowFromDefinition(workflow, {
+				makeUnique: true,
+			});
+
+			await n8n.page.goto(`/workflow/${workflowId}`);
+
+			// Start the workflow execution so it's waiting for form submissions
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+
+			// Get the form test URL from the NDV
+			await n8n.canvas.openNode('On form submission');
+			const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
+			const formUrl = await formUrlLocator.textContent();
+
+			// Open form URL in a new browser tab
+
+			const formPage = await n8n.page.context().newPage();
+			await formPage.goto(formUrl!);
+
+			// Submit first page
+			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await expect(formPage.getByText('Step 2')).toBeVisible();
+
+			// submit second page
+			await formPage.getByRole('button', { name: 'Submit' }).click();
+			await expect(formPage.getByText('This worked')).toBeVisible();
+		});
 	});
 });
