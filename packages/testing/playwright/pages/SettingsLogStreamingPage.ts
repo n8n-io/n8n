@@ -199,6 +199,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		const hostInput = this.page.getByTestId('parameter-input-host').locator('input');
 		const portInput = this.page.getByTestId('parameter-input-port').locator('input');
 
+		// Wait for inputs to be visible before filling
+		await hostInput.waitFor({ state: 'visible', timeout: 10000 });
+		await portInput.waitFor({ state: 'visible', timeout: 10000 });
+
 		await hostInput.clear();
 		await hostInput.fill(config.host);
 		await this.page.waitForTimeout(200);
