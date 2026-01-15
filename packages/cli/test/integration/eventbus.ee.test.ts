@@ -312,9 +312,12 @@ test('should send message to sentry ', async () => {
 
 test('DELETE /eventbus/destination delete all destinations by id', async () => {
 	const existingDestinations = await destinationService.findDestination();
-	const existingDestinationIds = existingDestinations
-		.map((d) => d.id)
-		.filter((id): id is string => !!id);
+	const existingDestinationIds = existingDestinations.reduce<string[]>((acc, d) => {
+		if (d.id) {
+			acc.push(d.id);
+		}
+		return acc;
+	}, []);
 
 	await Promise.all(
 		existingDestinationIds.map(async (id) => {
