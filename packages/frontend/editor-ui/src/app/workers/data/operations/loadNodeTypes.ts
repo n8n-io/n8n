@@ -8,7 +8,11 @@
  * called from within web workers while keeping the code modular.
  */
 
-import { getNodeTypes, getNodeTypeVersions } from '@n8n/rest-api-client/api/nodeTypes';
+import {
+	getNodeTypes,
+	getNodeTypeVersions,
+	getNodeTypesByIdentifier,
+} from '@n8n/rest-api-client/api/nodeTypes';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { DataWorkerState } from '../types';
@@ -33,6 +37,16 @@ function getNodeTypeVersionsFromDescription(nodeType: INodeTypeDescription): num
 		return version;
 	}
 	return [1];
+}
+
+/**
+ * Create a REST API context for making authenticated requests
+ */
+function createRestApiContext(baseUrl: string) {
+	return {
+		baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl,
+		pushRef: '',
+	};
 }
 
 /**
@@ -115,16 +129,24 @@ export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Pr
 					await exec(state, `DELETE FROM nodeTypes WHERE id = '${id}'`);
 				}
 
-				// If there are added node types, fetch all and insert the new ones
+				// Fetch only the missing node types using the new endpoint
 				if (addedVersions.length > 0) {
-					const addedSet = new Set(addedVersions);
-					const nodeTypes: INodeTypeDescription[] = await getNodeTypes(baseUrl);
+					console.log(
+						`[DataWorker] Fetching ${addedVersions.length} missing node types by identifier...`,
+					);
+					const restApiContext = createRestApiContext(baseUrl);
+					const nodeTypes: INodeTypeDescription[] = await getNodeTypesByIdentifier(
+						restApiContext,
+						addedVersions,
+					);
+					console.log(`[DataWorker] Received ${nodeTypes.length} node types from server`);
 
 					for (const nodeType of nodeTypes) {
 						const versions = getNodeTypeVersionsFromDescription(nodeType);
 						for (const version of versions) {
 							const id = getNodeTypeId(nodeType.name, version);
-							if (addedSet.has(id)) {
+							// Only insert if this is one of the added versions we requested
+							if (addedVersions.includes(id)) {
 								await exec(
 									state,
 									`INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES ('${id}', '${JSON.stringify(nodeType).replace(/'/g, "''")}', datetime('now'))`,

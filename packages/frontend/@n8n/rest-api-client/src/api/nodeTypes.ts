@@ -1,6 +1,7 @@
 import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
+	GetNodeTypesByIdentifierRequestDto,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
@@ -40,6 +41,22 @@ export async function getNodeTypes(baseUrl: string) {
 
 export async function getNodeTypeVersions(baseUrl: string): Promise<string[]> {
 	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/node-versions.json');
+}
+
+/**
+ * Fetch specific node types by their identifier (name@version format)
+ * This is useful for incremental syncs where only missing node types need to be fetched
+ *
+ * @param context - The REST API context containing base URL and auth info
+ * @param identifiers - Array of node type identifiers in "name@version" format
+ * @returns Array of node type descriptions for the requested identifiers
+ */
+export async function getNodeTypesByIdentifier(
+	context: IRestApiContext,
+	identifiers: string[],
+): Promise<INodeTypeDescription[]> {
+	const body: GetNodeTypesByIdentifierRequestDto = { identifiers };
+	return await makeRestApiRequest(context, 'POST', '/node-types/by-identifier', body);
 }
 
 export async function fetchCommunityNodeTypes(

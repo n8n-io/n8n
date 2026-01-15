@@ -3,6 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { initialize as initializeWorkers } from '@/app/workers';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
@@ -214,7 +215,9 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 
 	// Initialize run data worker and load node types
-	await initializeWorkers({ baseUrl: rootStore.baseUrl });
+	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+		await initializeWorkers({ baseUrl: rootStore.baseUrl });
+	}
 
 	authenticatedFeaturesInitialized = true;
 }
