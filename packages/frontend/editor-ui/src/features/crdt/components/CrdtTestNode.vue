@@ -4,8 +4,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import type { NodeProps } from '@vue-flow/core';
 import { Handle, Position } from '@vue-flow/core';
-import { computed } from 'vue';
-import { useNodeReactive, useWorkflowDoc } from '../composables';
+import { computed, onScopeDispose, shallowRef, triggerRef } from 'vue';
+import { useWorkflowDoc } from '../composables';
 import { useWorkflowAwarenessOptional } from '../composables/useWorkflowAwareness';
 import type { ComputedHandle } from '../types/workflowDocument.types';
 
@@ -15,45 +15,49 @@ const awareness = useWorkflowAwarenessOptional();
 
 const props = defineProps<NodeProps>();
 
-// Use reactive node reference that updates when handles change
-const node = useNodeReactive(doc, props.id);
+// Get initial node data (static - for type/icon)
+const initialNode = doc.findNode(props.id);
+
+// Fallback to default handles if server hasn't computed them yet
+const getDefaultInputs = (): ComputedHandle[] => {
+	if (initialNode?.type?.toLowerCase().includes('trigger')) {
+		return []; // Trigger nodes have no inputs
+	}
+	return [{ handleId: 'inputs/main/0', type: 'main', mode: 'inputs', index: 0 }];
+};
+const getDefaultOutputs = (): ComputedHandle[] => {
+	return [{ handleId: 'outputs/main/0', type: 'main', mode: 'outputs', index: 0 }];
+};
+
+const inputHandles = shallowRef<ComputedHandle[]>(
+	initialNode?.inputs?.length ? initialNode.inputs : getDefaultInputs(),
+);
+const outputHandles = shallowRef<ComputedHandle[]>(
+	initialNode?.outputs?.length ? initialNode.outputs : getDefaultOutputs(),
+);
+
+// Subscribe only to handle changes (not position/params)
+const { off: offHandles } = doc.onNodeHandlesChange(({ nodeId, inputs, outputs }) => {
+	if (nodeId === props.id) {
+		inputHandles.value = inputs;
+		outputHandles.value = outputs;
+		triggerRef(inputHandles);
+		triggerRef(outputHandles);
+	}
+});
+
+onScopeDispose(() => {
+	offHandles();
+});
 
 const nodeType = computed(() => {
-	if (!node.value?.type) return undefined;
-	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+	if (!initialNode?.type) return undefined;
+	return nodeTypesStore.getNodeType(initialNode.type, initialNode.typeVersion);
 });
 
 const icon = computed(() => {
 	if (!nodeType.value) return undefined;
 	return getNodeIconSource(nodeType.value);
-});
-
-/**
- * Input handles from server-computed data.
- * Falls back to single main input if not available.
- */
-const inputHandles = computed((): ComputedHandle[] => {
-	if (node.value?.inputs && node.value.inputs.length > 0) {
-		return node.value.inputs;
-	}
-	// Fallback for nodes without computed handles (e.g., REST mode or old data)
-	// Check if it's a trigger node (no inputs)
-	if (node.value?.type?.toLowerCase().includes('trigger')) {
-		return [];
-	}
-	return [{ handleId: 'inputs/main/0', type: 'main', mode: 'inputs', index: 0 }];
-});
-
-/**
- * Output handles from server-computed data.
- * Falls back to single main output if not available.
- */
-const outputHandles = computed((): ComputedHandle[] => {
-	if (node.value?.outputs && node.value.outputs.length > 0) {
-		return node.value.outputs;
-	}
-	// Fallback for nodes without computed handles
-	return [{ handleId: 'outputs/main/0', type: 'main', mode: 'outputs', index: 0 }];
 });
 
 /**
@@ -65,37 +69,66 @@ function isMainType(type: string): boolean {
 }
 
 /**
- * Split handles by position for proper offset calculation.
+ * Handle with pre-computed offset style to avoid re-renders.
+ * By pre-computing the style in a computed property, we avoid calling
+ * functions in the template's :style binding which causes re-renders.
  */
-const mainInputHandles = computed(() => inputHandles.value.filter((h) => isMainType(h.type)));
-const nonMainInputHandles = computed(() => inputHandles.value.filter((h) => !isMainType(h.type)));
-const mainOutputHandles = computed(() => outputHandles.value.filter((h) => isMainType(h.type)));
-const nonMainOutputHandles = computed(() => outputHandles.value.filter((h) => !isMainType(h.type)));
+interface MappedHandle extends ComputedHandle {
+	offsetStyle: Record<string, string>;
+}
 
 /**
- * Calculate offset style for a handle within its position group.
+ * Calculate offset style for a handle at a given index in a group.
  * Uses the same algorithm as CanvasNode.vue: (100 / (total + 1)) * (index + 1)%
- * This ensures handles are evenly distributed within the node bounds.
  */
-function getHandleOffsetStyle(
-	handle: ComputedHandle,
-	groupHandles: ComputedHandle[],
+function calculateOffsetStyle(
+	index: number,
+	total: number,
+	isMain: boolean,
 ): Record<string, string> {
-	const indexInGroup = groupHandles.findIndex((h) => h.handleId === handle.handleId);
-	const totalInGroup = groupHandles.length;
-
-	// Calculate percentage offset: distributes handles evenly within the node
-	// e.g., 1 handle: 50%, 2 handles: 33%/66%, 3 handles: 25%/50%/75%, etc.
-	const offset = (100 / (totalInGroup + 1)) * (indexInGroup + 1);
-
-	if (isMainType(handle.type)) {
-		// Vertical distribution for left/right handles
+	const offset = (100 / (total + 1)) * (index + 1);
+	if (isMain) {
 		return { top: `${offset}%` };
 	} else {
-		// Horizontal distribution for top/bottom handles
 		return { left: `${offset}%` };
 	}
 }
+
+/**
+ * Pre-compute handles with their offset styles.
+ * This prevents re-renders during drag by avoiding function calls in template.
+ */
+const mappedInputHandles = computed((): MappedHandle[] => {
+	const handles = inputHandles.value;
+	const mainHandles = handles.filter((h) => isMainType(h.type));
+	const nonMainHandles = handles.filter((h) => !isMainType(h.type));
+
+	return handles.map((handle) => {
+		const isMain = isMainType(handle.type);
+		const group = isMain ? mainHandles : nonMainHandles;
+		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
+		return {
+			...handle,
+			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
+		};
+	});
+});
+
+const mappedOutputHandles = computed((): MappedHandle[] => {
+	const handles = outputHandles.value;
+	const mainHandles = handles.filter((h) => isMainType(h.type));
+	const nonMainHandles = handles.filter((h) => !isMainType(h.type));
+
+	return handles.map((handle) => {
+		const isMain = isMainType(handle.type);
+		const group = isMain ? mainHandles : nonMainHandles;
+		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
+		return {
+			...handle,
+			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
+		};
+	});
+});
 
 /**
  * Find collaborator who has this node selected (if any).
@@ -114,52 +147,36 @@ const selectedByCollaborator = computed(() => {
 		:class="{ 'crdt-node--selected-by-collaborator': selectedByCollaborator }"
 		:style="selectedByCollaborator ? { '--collaborator--color': selectedByCollaborator.color } : {}"
 	>
-		<!-- Main input handles (left side) -->
+		<!-- Input handles (main = left, non-main = bottom) -->
 		<Handle
-			v-for="handle in mainInputHandles"
+			v-for="handle in mappedInputHandles"
 			:id="handle.handleId"
 			:key="handle.handleId"
 			type="target"
-			:position="Position.Left"
-			class="crdt-handle crdt-handle--left"
-			:style="getHandleOffsetStyle(handle, mainInputHandles)"
-		/>
-
-		<!-- Non-main input handles (bottom side - for AI model/tool inputs) -->
-		<Handle
-			v-for="handle in nonMainInputHandles"
-			:id="handle.handleId"
-			:key="handle.handleId"
-			type="target"
-			:position="Position.Bottom"
-			class="crdt-handle crdt-handle--bottom crdt-handle--non-main"
-			:style="getHandleOffsetStyle(handle, nonMainInputHandles)"
+			:position="isMainType(handle.type) ? Position.Left : Position.Bottom"
+			:class="[
+				'crdt-handle',
+				isMainType(handle.type) ? 'crdt-handle--left' : 'crdt-handle--bottom crdt-handle--non-main',
+			]"
+			:style="handle.offsetStyle"
 		/>
 
 		<!-- Node content -->
 		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" />
 		<span v-else>{{ data.label }}</span>
 
-		<!-- Main output handles (right side) -->
+		<!-- Output handles (main = right, non-main = top) -->
 		<Handle
-			v-for="handle in mainOutputHandles"
+			v-for="handle in mappedOutputHandles"
 			:id="handle.handleId"
 			:key="handle.handleId"
 			type="source"
-			:position="Position.Right"
-			class="crdt-handle crdt-handle--right"
-			:style="getHandleOffsetStyle(handle, mainOutputHandles)"
-		/>
-
-		<!-- Non-main output handles (top side) -->
-		<Handle
-			v-for="handle in nonMainOutputHandles"
-			:id="handle.handleId"
-			:key="handle.handleId"
-			type="source"
-			:position="Position.Top"
-			class="crdt-handle crdt-handle--top crdt-handle--non-main"
-			:style="getHandleOffsetStyle(handle, nonMainOutputHandles)"
+			:position="isMainType(handle.type) ? Position.Right : Position.Top"
+			:class="[
+				'crdt-handle',
+				isMainType(handle.type) ? 'crdt-handle--right' : 'crdt-handle--top crdt-handle--non-main',
+			]"
+			:style="handle.offsetStyle"
 		/>
 
 		<!-- Collaborator selection indicator -->
