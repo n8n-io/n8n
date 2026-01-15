@@ -323,7 +323,7 @@ export class KafkaTrigger implements INodeType {
 		const onUnsubscribedtopicsReceived = consumer.on(
 			consumer.events.RECEIVED_UNSUBSCRIBED_TOPICS,
 			() => {
-				this.logger.info('Consumer has unsubscribed from topics');
+				this.logger.warn('Consumer received messages for unsubscribed topics');
 			},
 		);
 		const onStop = consumer.on(consumer.events.STOP, async (error) => {
