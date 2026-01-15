@@ -122,9 +122,10 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async saveDestination(): Promise<void> {
-		await this.getDestinationSaveButton().click();
-		// Wait for save to complete - button should show success state or modal should update
-		await this.page.waitForTimeout(1000);
+		const saveButton = this.getDestinationSaveButton();
+		await saveButton.click();
+		// Wait for save to complete by checking if test button appears
+		await this.getSendTestEventButton().waitFor({ state: 'visible', timeout: 10000 });
 	}
 
 	async deleteDestination(): Promise<void> {
@@ -227,8 +228,6 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		const testButton = this.getSendTestEventButton();
-		await testButton.waitFor({ state: 'visible', timeout: 15000 });
-		await testButton.click();
+		await this.getSendTestEventButton().click();
 	}
 }
