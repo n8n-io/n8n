@@ -35,6 +35,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
+const ERROR_KEYS_TO_IGNORE = ['stack', 'node'];
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
@@ -131,6 +132,12 @@ export const createExecuteWorkflowTool = (
 					executionId: output.executionId,
 				},
 			};
+			if (!output.success && output.error) {
+				telemetryPayload.results.error = JSON.stringify(
+					output.error,
+					(key: string, value: unknown) => (ERROR_KEYS_TO_IGNORE.includes(key) ? undefined : value),
+				);
+			}
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
