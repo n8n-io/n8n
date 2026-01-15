@@ -111,7 +111,6 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
-	isToolType,
 	isHitlToolType,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
@@ -915,11 +914,7 @@ export function useCanvasOperations() {
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
-		if (
-			isNewHitlToolNode &&
-			isToolType(lastInteractedWithNode.type) &&
-			lastInteractedWithNodeConnection
-		) {
+		if (isNewHitlToolNode && lastInteractedWithNodeConnection) {
 			const { type: connectionType } = parseCanvasConnectionHandleString(
 				lastInteractedWithNodeHandle,
 			);
@@ -1223,7 +1218,6 @@ export function useCanvasOperations() {
 				const isNewHitlToolNode = isHitlToolType(node.type);
 				if (
 					isNewHitlToolNode &&
-					isToolType(lastInteractedWithNode.type) &&
 					lastInteractedWithNodeConnection &&
 					connectionType === NodeConnectionTypes.AiTool
 				) {
