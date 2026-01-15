@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
+import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +11,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -38,6 +38,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 
 const props = defineProps<{
@@ -50,6 +51,10 @@ const props = defineProps<{
 	tags: IWorkflowDb['tags'];
 	currentFolder?: FolderShortInfo;
 	meta: IWorkflowDb['meta'];
+}>();
+
+const emit = defineEmits<{
+	'workflow:saved': [];
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
@@ -66,6 +71,7 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
+const workflowActivate = useWorkflowActivate();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
 
@@ -80,6 +86,8 @@ const onExecutionsTab = computed(() => {
 		VIEWS.EXECUTION_PREVIEW,
 	].includes((route.name as string) || '');
 });
+
+const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -111,8 +119,8 @@ function handleFileImport() {
 	}
 }
 
-const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>>>(() => {
-	const actions: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
+const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
+	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
@@ -191,6 +199,14 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
+	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
+			label: locale.baseText('menuActions.unpublish'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
+
 	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
 		if (props.isArchived) {
 			actions.push({
@@ -202,7 +218,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
 				disabled: !onWorkflowPage.value || props.isNewWorkflow,
-				class: $style.deleteItem,
+				customClass: $style.deleteItem,
 				divided: true,
 			});
 		} else {
@@ -210,7 +226,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
 				disabled: !onWorkflowPage.value || props.isNewWorkflow,
-				class: $style.deleteItem,
+				customClass: $style.deleteItem,
 				divided: true,
 			});
 		}
@@ -218,6 +234,38 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 
 	return actions;
 });
+
+function onUnpublishWorkflow() {
+	const workflowId = getWorkflowId(props.id, route.params.name);
+
+	if (!workflowId || !activeVersion.value) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: activeVersion.value.name,
+			eventBus: unpublishEventBus,
+		},
+	});
+}
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
@@ -288,6 +336,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
+				emit('workflow:saved');
+
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
 				void router.push({
 					query: {
@@ -362,11 +412,22 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 			break;
 		}
-
+		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
+			onUnpublishWorkflow();
+			break;
+		}
 		default:
 			break;
 	}
 }
+
+onMounted(() => {
+	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
+});
 
 defineExpose({
 	importFileRef,
@@ -381,24 +442,11 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<N8nDropdownMenu
+		<N8nActionDropdown
 			:items="workflowMenuItems"
-			:teleported="true"
-			placement="bottom-end"
-			:extra-popper-class="$style.actionsDropdown"
 			data-test-id="workflow-menu"
 			@select="onWorkflowMenuSelect"
-		>
-			<template #trigger>
-				<N8nIconButton
-					icon="ellipsis"
-					type="highlight"
-					size="medium"
-					aria-label="More workflow actions"
-					data-test-id="workflow-menu-button"
-				/>
-			</template>
-		</N8nDropdownMenu>
+		/>
 	</div>
 </template>
 <style lang="scss" module>
@@ -411,8 +459,5 @@ defineExpose({
 }
 .hiddenInput {
 	display: none;
-}
-.actionsDropdown {
-	z-index: 9999 !important;
 }
 </style>

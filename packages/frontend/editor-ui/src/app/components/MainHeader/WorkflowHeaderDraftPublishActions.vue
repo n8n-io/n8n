@@ -11,8 +11,8 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_SAVE_DRAFT_MODAL_KEY,
 } from '@/app/constants';
-import { N8nButton, N8nTooltip, N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nButton, N8nTooltip, N8nActionDropdown, N8nIconButton } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -33,6 +33,7 @@ import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useToast } from '@/app/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -293,12 +294,13 @@ const latestPublishDate = computed(() => {
 });
 
 // Dropdown menu items
-const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
-	const items: Array<DropdownMenuItemProps<string>> = [
+const dropdownMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
+	const items: Array<ActionDropdownItem<string>> = [
 		{
 			id: 'publish',
 			label: i18n.baseText('workflows.publish'),
 			disabled: !publishButtonConfig.value.enabled || readOnlyForPublish.value,
+			shortcut: { keys: ['P'] },
 		},
 		{
 			id: 'save-draft',
@@ -308,6 +310,7 @@ const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 				props.isNewWorkflow ||
 				(!uiStore.stateIsDirty &&
 					workflowsStore.workflow.versionId === workflowsStore.workflow.activeVersion?.versionId),
+			shortcut: { metaKey: true, keys: ['S'] },
 		},
 	];
 
@@ -318,6 +321,7 @@ const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 			label: i18n.baseText('menuActions.unpublish'),
 			disabled: false,
 			divided: true,
+			shortcut: { metaKey: true, keys: ['U'] },
 		});
 	}
 
@@ -392,74 +396,41 @@ const onUnpublishWorkflow = async () => {
 	});
 };
 
-// Track dropdown open state
-const dropdownOpen = ref(false);
-
-// Get shortcut label for dropdown item
-const getShortcutForItem = (itemId: string): string => {
-	const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-	const cmdKey = isMac ? '⌘' : 'Ctrl';
-
-	switch (itemId) {
-		case 'publish':
-			return 'P';
-		case 'save-draft':
-			return `${cmdKey} S`;
-		case 'unpublish':
-			return `${cmdKey} U`;
-		default:
-			return '';
-	}
-};
-
-// Keyboard shortcuts
-const handleKeyboardShortcut = (event: KeyboardEvent) => {
-	// Don't handle shortcuts if user is typing in an input/textarea
-	const target = event.target as HTMLElement;
-	if (
-		target.tagName === 'INPUT' ||
-		target.tagName === 'TEXTAREA' ||
-		target.contentEditable === 'true'
-	) {
-		return;
-	}
-
-	// Prevent default for our shortcuts
-	if (event.key === 'p' && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
-		event.preventDefault();
-		if (
-			!publishButtonConfig.value.enabled ||
-			readOnlyForPublish.value ||
-			shouldHidePublishButton.value
-		) {
-			return;
-		}
-		void onPublishButtonClick();
-	} else if (event.key === 's' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
-		event.preventDefault();
-		const saveDraftItem = dropdownMenuItems.value.find((item) => item.id === 'save-draft');
-		if (saveDraftItem && !saveDraftItem.disabled && !shouldHidePublishButton.value) {
-			void onDropdownMenuSelect('save-draft');
-		}
-	} else if (event.key === 'u' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
-		event.preventDefault();
-		const unpublishItem = dropdownMenuItems.value.find((item) => item.id === 'unpublish');
-		if (unpublishItem && !unpublishItem.disabled && !shouldHidePublishButton.value) {
-			void onDropdownMenuSelect('unpublish');
-		}
-	}
-};
+// Keyboard shortcuts using useKeybindings
+useKeybindings(
+	computed(() => ({
+		p: {
+			disabled: () =>
+				!publishButtonConfig.value.enabled ||
+				readOnlyForPublish.value ||
+				shouldHidePublishButton.value,
+			run: () => void onPublishButtonClick(),
+		},
+		'ctrl+s': {
+			disabled: () => {
+				const saveDraftItem = dropdownMenuItems.value.find((item) => item.id === 'save-draft');
+				return !saveDraftItem || saveDraftItem.disabled || shouldHidePublishButton.value;
+			},
+			run: () => void onDropdownMenuSelect('save-draft'),
+		},
+		'ctrl+u': {
+			disabled: () => {
+				const unpublishItem = dropdownMenuItems.value.find((item) => item.id === 'unpublish');
+				return !unpublishItem || unpublishItem.disabled || shouldHidePublishButton.value;
+			},
+			run: () => void onDropdownMenuSelect('unpublish'),
+		},
+	})),
+);
 
 onMounted(() => {
 	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
 	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
-	document.addEventListener('keydown', handleKeyboardShortcut);
 });
 
 onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
 	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
-	document.removeEventListener('keydown', handleKeyboardShortcut);
 });
 
 defineExpose({
@@ -517,33 +488,24 @@ defineExpose({
 						</div>
 					</N8nButton>
 				</N8nTooltip>
-				<N8nDropdownMenu
-					v-model="dropdownOpen"
+				<N8nActionDropdown
 					:items="dropdownMenuItems"
-					:loading="autoSaveForPublish"
 					placement="bottom-end"
-					:teleported="true"
-					:extra-popper-class="$style.publishDropdown"
 					data-test-id="workflow-publish-dropdown"
 					@select="onDropdownMenuSelect"
 				>
-					<template #trigger>
+					<template #activator>
 						<N8nIconButton
 							icon="chevron-down"
 							:disabled="readOnlyForPublish"
 							:class="$style.dropdownButton"
 							type="secondary"
-							icon-size="large"
+							size="medium"
 							aria-label="Open publish actions menu"
 							data-test-id="workflow-publish-dropdown-button"
 						/>
 					</template>
-					<template #item-trailing="{ item }">
-						<span v-if="getShortcutForItem(item.id)" :class="$style.shortcut">
-							{{ getShortcutForItem(item.id) }}
-						</span>
-					</template>
-				</N8nDropdownMenu>
+				</N8nActionDropdown>
 			</div>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
@@ -611,16 +573,6 @@ defineExpose({
 .flex {
 	display: flex;
 	align-items: center;
-}
-
-.publishDropdown {
-	z-index: 9999;
-}
-
-.shortcut {
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	margin-left: var(--spacing--xs);
 }
 
 .publish,

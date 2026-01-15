@@ -9,9 +9,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nTooltip, N8nText, N8nIconButton } from '@n8n/design-system';
-import N8nDropdownMenu from '@n8n/design-system/v2/components/DropdownMenu/DropdownMenu.vue';
-import type { DropdownMenuItemProps } from '@n8n/design-system/v2/components/DropdownMenu/DropdownMenu.types';
+import { N8nTooltip, N8nText, N8nActionToggle } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -179,14 +177,6 @@ const mainTooltipFormattedDate = computed(() => {
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
-const dropdownMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
-	return props.actions.map((action) => ({
-		id: action.value,
-		label: action.label,
-		disabled: action.disabled,
-	}));
-});
-
 const onAction = (value: string) => {
 	const action = value as WorkflowHistoryActionTypes[number];
 	emit('action', {
@@ -314,25 +304,14 @@ onMounted(() => {
 						</N8nText>
 					</div>
 				</div>
-				<N8nDropdownMenu
-					:items="dropdownMenuItems"
-					:teleported="true"
+				<N8nActionToggle
+					:class="$style.actions"
+					:actions="props.actions"
 					placement="bottom-end"
-					@select="onAction"
-					@update:model-value="onVisibleChange"
-				>
-					<template #trigger>
-						<N8nIconButton
-							:class="$style.actions"
-							icon="ellipsis"
-							type="highlight"
-							size="small"
-							aria-label="More actions"
-							data-test-id="workflow-history-item-actions"
-							@click.stop
-						/>
-					</template>
-				</N8nDropdownMenu>
+					@action="onAction"
+					@click.stop
+					@visible-change="onVisibleChange"
+				/>
 			</div>
 		</li>
 	</N8nTooltip>
