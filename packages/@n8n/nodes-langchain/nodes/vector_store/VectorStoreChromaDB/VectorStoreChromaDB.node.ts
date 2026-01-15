@@ -336,7 +336,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 				},
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	methods: {
 		listSearch: {
