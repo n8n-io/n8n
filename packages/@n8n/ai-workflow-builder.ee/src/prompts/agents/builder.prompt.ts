@@ -35,8 +35,8 @@ NEVER respond to the user without calling validate_structure first`;
 const NODE_CREATION = `Each add_nodes call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
 - name: Descriptive name (e.g., "Fetch Weather Data")
-- connectionParametersReasoning: Explain your thinking about connection parameters
-- connectionParameters: Parameters that affect connections (or {{}} if none needed)`;
+- initialParametersReasoning: Explain your thinking about initial parameters
+- initialParameters: Parameters to set initially (or {{}} if none needed)`;
 
 const WORKFLOW_CONFIG_NODE = `Always include a Workflow Configuration node at the start of every workflow.
 
@@ -63,21 +63,41 @@ const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Error handling for external service calls
 `;
 
-const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
+const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES
 
-Default values often hide connection inputs/outputs. You MUST explicitly configure parameters that affect connections:
+Default values often hide connection inputs/outputs or select wrong resources. You MUST explicitly set initial parameters:
 - Vector Store: Mode parameter affects available connections - always set explicitly (e.g., mode: "insert", "retrieve", "retrieve-as-tool")
 - AI Agent: hasOutputParser is off by default, but your workflow may need it to be on
 - Document Loader: textSplittingMode affects whether it accepts a text splitter input - always set explicitly (e.g., textSplittingMode: "custom")
+- Nodes with resources (Gmail, Notion, etc.): resource and operation affect which parameters are available
 
-ALWAYS check node details and set connectionParameters explicitly.`;
+ALWAYS check node details and set initialParameters explicitly.`;
 
-const CONNECTION_PARAMETERS = `- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
+const INITIAL_PARAMETERS_EXAMPLES = `- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
 - AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Vector Store insert for AI Agent: reasoning="Vector store will be used for AI Agent needs retrieve-as-tool mode", parameters={{ mode: "retrieve-as-tool" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
-- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
+- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure
+- Nodes with resource/operation (Gmail, Notion, Google Sheets, etc.): See <resource_operation_pattern> for details`;
+
+const RESOURCE_OPERATION_PATTERN = `For nodes with [Resources: ...] in discovery context, you MUST set resource and operation in initialParameters:
+
+WHY: Setting resource/operation during node creation enables the Configurator to filter parameters efficiently.
+
+HOW: Look at the discovery context for available resources and operations, then set based on user intent:
+- Gmail "send email": {{ resource: "message", operation: "send" }}
+- Gmail "get emails": {{ resource: "message", operation: "getAll" }}
+- Notion "archive page": {{ resource: "page", operation: "archive" }}
+- Notion "create database entry": {{ resource: "databasePage", operation: "create" }}
+- Google Sheets "append row": {{ resource: "sheet", operation: "append" }}
+
+EXAMPLES:
+- User wants to "send a daily email summary" → Gmail with {{ resource: "message", operation: "send" }}
+- User wants to "read data from spreadsheet" → Google Sheets with {{ resource: "sheet", operation: "read" }}
+- User wants to "create a new Notion page" → Notion with {{ resource: "page", operation: "create" }}
+
+IMPORTANT: Choose the operation that matches user intent. If unclear, pick the most likely operation based on context`;
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.configuration;
 
@@ -177,7 +197,7 @@ const SWITCH_NODE_PATTERN = `For Switch nodes with multiple routing paths:
 - Configurator will fill in the actual condition values later
 - Use descriptive node names like "Route by Amount" or "Route by Status"
 
-Example connectionParameters for 3-way routing:
+Example initialParameters for 3-way routing:
 {{
   "mode": "rules",
   "rules": {{
@@ -314,7 +334,8 @@ export function buildBuilderPrompt(): string {
 		.section('data_parsing_strategy', DATA_PARSING)
 		.section('proactive_design', PROACTIVE_DESIGN)
 		.section('node_defaults_warning', NODE_DEFAULTS)
-		.section('connection_parameters_examples', CONNECTION_PARAMETERS)
+		.section('initial_parameters_examples', INITIAL_PARAMETERS_EXAMPLES)
+		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
 		.section('node_connections_understanding', AI_CONNECTIONS)
 		.section('branching', BRANCHING)
