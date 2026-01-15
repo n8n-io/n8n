@@ -39,8 +39,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async fillField(key: string, value: string): Promise<void> {
-		// Note: With new N8nInput, data-test-id is on the input/textarea element itself
-		const input = this.root.getByTestId(`parameter-input-${key}`);
+		const input = this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
 		await input.fill(value);
 		await expect(input).toHaveValue(value);
 	}

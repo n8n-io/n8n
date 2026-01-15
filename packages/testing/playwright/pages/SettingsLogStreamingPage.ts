@@ -196,9 +196,8 @@ export class SettingsLogStreamingPage extends BasePage {
 		await this.typeDestinationName(config.name);
 
 		// Fill syslog config - host and port fields
-		// Note: With new N8nInput, data-test-id is on the input element itself
-		const hostInput = this.page.getByTestId('parameter-input-host');
-		const portInput = this.page.getByTestId('parameter-input-port');
+		const hostInput = this.page.getByTestId('parameter-input-host').locator('input');
+		const portInput = this.page.getByTestId('parameter-input-port').locator('input');
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
