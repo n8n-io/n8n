@@ -138,6 +138,9 @@ onBeforeUnmount(() => {
 					</N8nText>
 				</div>
 			</div>
+			<div v-if="$slots.belowContent" :class="$style.belowContent">
+				<slot name="belowContent" />
+			</div>
 		</div>
 	</N8nCard>
 </template>
@@ -184,5 +187,9 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.belowContent {
+	margin-top: var(--spacing--sm);
 }
 </style>

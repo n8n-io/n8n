@@ -2986,6 +2986,7 @@
 	"tagsView.notBeingUsed": "Not being used",
 	"onboarding.title": "Demo: {name}",
 	"template.buttons.goBackButton": "Go back",
+	"template.buttons.tryTemplate": "Try template",
 	"template.buttons.useThisWorkflowButton": "Use this workflow",
 	"template.details.appsInTheCollection": "This collection features",
 	"template.details.appsInTheWorkflow": "Apps in this workflow",
