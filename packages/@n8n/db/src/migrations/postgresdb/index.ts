@@ -134,6 +134,7 @@ import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
 import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddChatMessageIndices';
 import { AddCredentialUseScopeToRoles1768475341537 } from '../common/1768475341537-AddCredentialUseScopeToRoles';
+import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -273,4 +274,5 @@ export const postgresMigrations: Migration[] = [
 	ExpandInsightsWorkflowIdLength1766500000000,
 	ChangeWorkflowStatisticsFKToNoAction1767018516000,
 	AddCredentialUseScopeToRoles1768475341537,
+	ExpandModelColumnLength1768402473068,
 ];
