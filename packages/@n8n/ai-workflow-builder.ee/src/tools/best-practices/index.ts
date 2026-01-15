@@ -14,8 +14,8 @@ import { FormInputBestPractices } from './form-input';
 // import { KnowledgeBaseBestPractices } from './knowledge-base';
 // import { MonitoringBestPractices } from './monitoring';
 import { NotificationBestPractices } from './notification';
-import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 import { SchedulingBestPractices } from './scheduling';
+import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 import { TriageBestPractices } from './triage';
 
 export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument | undefined> = {
