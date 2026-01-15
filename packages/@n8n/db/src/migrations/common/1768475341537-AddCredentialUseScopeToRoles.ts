@@ -81,14 +81,15 @@ export class AddCredentialUseScopeToRoles1768475341537 implements ReversibleMigr
 		// Remove credential:use scopes only from roles that also have credential:read
 		// This is the exact inverse of what up() does, ensuring we don't remove
 		// manually granted credential:use scopes from roles without credential:read.
-		// Using EXISTS for cross-database compatibility.
+		// Using a subquery to find roleSlug values that have credential:read,
+		// then deleting credential:use rows for those roles.
+		// This approach works across all databases without requiring table aliases.
 		const deleteQuery = `
-			DELETE FROM ${roleScopeTableName} rs1
-			WHERE rs1.${roleScopeScopeSlugColumn} = :useScope
-				AND EXISTS (
-					SELECT 1 FROM ${roleScopeTableName} rs2
-					WHERE rs2.${roleScopeRoleSlugColumn} = rs1.${roleScopeRoleSlugColumn}
-						AND rs2.${roleScopeScopeSlugColumn} = :readScope
+			DELETE FROM ${roleScopeTableName}
+			WHERE ${roleScopeScopeSlugColumn} = :useScope
+				AND ${roleScopeRoleSlugColumn} IN (
+					SELECT ${roleScopeRoleSlugColumn} FROM ${roleScopeTableName}
+					WHERE ${roleScopeScopeSlugColumn} = :readScope
 				)
 		`;
 
