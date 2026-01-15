@@ -109,9 +109,23 @@ export class LicenseService {
 		return this.license.getManagementJwt();
 	}
 
-	async activateLicense(activationKey: string, eulaUri?: string) {
+	// Overload signatures
+	async activateLicense(activationKey: string): Promise<void>;
+	async activateLicense(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	// Implementation signature
+	async activateLicense(
+		activationKey: string,
+		eulaUri?: string,
+		userEmail?: string,
+	): Promise<void> {
 		try {
-			await this.license.activate(activationKey, eulaUri);
+			if (eulaUri && userEmail) {
+				await this.license.activate(activationKey, eulaUri, userEmail);
+			} else if (!eulaUri && !userEmail) {
+				await this.license.activate(activationKey);
+			} else {
+				throw new BadRequestError('When providing eulaUri, userEmail is required');
+			}
 		} catch (e) {
 			// Check if this is a EULA_REQUIRED error from license server
 			if (this.isEulaRequiredError(e)) {
