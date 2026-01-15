@@ -96,6 +96,18 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	}),
 }));
 
+// Mock useBrowserNotifications
+const mockShowNotification = vi.fn();
+const mockIsNotificationsEnabled = { value: false };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		showNotification: mockShowNotification,
+		isEnabled: mockIsNotificationsEnabled,
+		canPrompt: { value: false },
+		requestPermission: vi.fn(),
+	}),
+}));
+
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -1444,6 +1456,23 @@ describe('AI Builder store', () => {
 
 			expect(track).not.toHaveBeenCalledWith('End of response from builder', expect.anything());
 		});
+
+		it('includes tab_visible in abort telemetry', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			await builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					tab_visible: expect.any(Boolean),
+				}),
+			);
+		});
 	});
 
 	describe('workflowTodos', () => {
@@ -2061,6 +2090,48 @@ describe('AI Builder store', () => {
 				// Should still load messages but without revertVersion (error is caught)
 				expect(builderStore.chatMessages).toHaveLength(1);
 			});
+
+			it('should restore lastUserMessageId from loaded session', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mock API to return messages with a user message
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'First user message',
+									id: 'user-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Assistant response',
+									id: 'assistant-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Second user message',
+									id: 'user-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have 3 messages
+				expect(builderStore.chatMessages).toHaveLength(3);
+
+				// lastUserMessageId should be set to the last user message ID
+				expect(builderStore.lastUserMessageId).toBe('user-msg-2');
+			});
 		});
 
 		describe('restoreToVersion', () => {
@@ -2177,6 +2248,147 @@ describe('AI Builder store', () => {
 			builderStore.clearDoneIndicatorTitle();
 
 			expect(setDocumentTitleMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Browser notifications', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let capturedOnMessageCallback: ((data: any) => void) | null = null;
+		let capturedDoneCallback: (() => void) | null = null;
+
+		beforeEach(() => {
+			mockShowNotification.mockClear();
+			mockShowNotification.mockReturnValue({
+				onclick: null,
+				close: vi.fn(),
+			});
+			capturedOnMessageCallback = null;
+			capturedDoneCallback = null;
+
+			// Mock chatWithBuilder to capture the onMessage and done callbacks
+			apiSpy.mockImplementation((_context, _options, onMessage, onDone) => {
+				capturedOnMessageCallback = onMessage;
+				capturedDoneCallback = onDone;
+			});
+		});
+
+		const triggerSuccessfulStreamingComplete = async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			// Trigger sendChatMessage to start streaming and capture callbacks
+			await builderStore.sendChatMessage({ text: 'test message' });
+
+			// Simulate a workflow-updated message to indicate successful build
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Simulate successful completion by calling the done callback
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+		};
+
+		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				'aiAssistant.builder.notification.title',
+				expect.objectContaining({
+					body: 'aiAssistant.builder.notification.body',
+					icon: '/favicon.ico',
+					requireInteraction: false,
+				}),
+			);
+		});
+
+		it('should NOT show browser notification when build is aborted', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			builderStore.streaming = true;
+			builderStore.abortStreaming();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when tab is visible', async () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when notifications are not enabled', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = false;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should use workflow-specific tag to prevent duplicate notifications from the same workflow', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					tag: 'workflow-build-test-workflow-123',
+				}),
+			);
+		});
+
+		it('should set onclick handler that focuses window when notification is created', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const mockNotification = {
+				onclick: null as ((ev: Event) => void) | null,
+				close: vi.fn(),
+			};
+			mockShowNotification.mockReturnValue(mockNotification);
+
+			const windowFocusSpy = vi.spyOn(window, 'focus').mockImplementation(() => {});
+
+			await triggerSuccessfulStreamingComplete();
+
+			// Verify onclick handler was set
+			expect(mockNotification.onclick).not.toBeNull();
+
+			// Simulate clicking the notification
+			if (mockNotification.onclick) {
+				mockNotification.onclick(new Event('click'));
+			}
+
+			expect(windowFocusSpy).toHaveBeenCalled();
+			expect(mockNotification.close).toHaveBeenCalled();
+
+			windowFocusSpy.mockRestore();
 		});
 	});
 });

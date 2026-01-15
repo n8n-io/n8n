@@ -1198,6 +1198,9 @@ onBeforeUnmount(() => {
 							<N8nInputNumber
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
+								controls-position="right"
+								size="medium"
+								:controls="true"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								:min="0"
@@ -1345,13 +1348,10 @@ onBeforeUnmount(() => {
 .time-saved-input {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
 
-	:global(.el-input) {
-		width: var(--spacing--3xl);
-	}
-
-	span {
-		margin-left: var(--spacing--2xs);
+	:global(.el-input-number) {
+		width: var(--spacing--4xl);
 	}
 }
 

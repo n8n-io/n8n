@@ -240,8 +240,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
-		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		await userEvent.type(timeSavedPerExecutionInput, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -263,8 +264,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
-		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput);
@@ -289,8 +291,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
-		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -313,8 +316,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
-		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
