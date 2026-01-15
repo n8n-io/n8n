@@ -6,6 +6,7 @@ import type {
 	Workflow,
 	INodeConnections,
 	WorkflowExecuteMode,
+	INodeTypes,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
@@ -96,6 +97,9 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 				},
 			}),
 		},
+		isHitlToolType: vi.fn((nodeType: string) => {
+			return nodeType.toLowerCase().includes('hitltool');
+		}),
 	};
 });
 
@@ -5511,6 +5515,125 @@ describe('useCanvasOperations', () => {
 
 			expect(nodesToMove).toHaveLength(2);
 			expect(nodesToMove.find((n) => n.name === 'Start')).toBeUndefined();
+		});
+	});
+
+	describe('createConnectionToLastInteractedWithNode - HITL node handling', () => {
+		it('should create HITL node connection pattern when adding HITL tool node with existing connection', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			// Setup: Agent -> Tool connection
+			const agentNode = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: AGENT_NODE_TYPE,
+				position: [100, 100],
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool',
+				type: 'n8n-nodes-base.calculator',
+				position: [300, 300],
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				name: 'HITL',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const agentNodeTypeDescription = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.AiTool],
+			});
+			const toolNodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.calculator',
+				inputs: [NodeConnectionTypes.AiTool],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			const hitlNodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.manualChatTriggerHitlTool',
+				inputs: [NodeConnectionTypes.AiTool],
+				outputs: [NodeConnectionTypes.AiTool],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				if (type === AGENT_NODE_TYPE) return agentNodeTypeDescription;
+				if (type === 'n8n-nodes-base.calculator') return toolNodeTypeDescription;
+				if (type === 'n8n-nodes-base.manualChatTriggerHitlTool') return hitlNodeTypeDescription;
+				return null;
+			});
+
+			workflowsStore.workflow.nodes = [agentNode, toolNode];
+			workflowsStore.workflow.connections = {
+				[agentNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			// Create mock nodeTypes for the workflow object
+			const mockNodeTypes = mock<INodeTypes>({
+				getByNameAndVersion: vi.fn((type: string) => {
+					if (type === AGENT_NODE_TYPE) return { description: agentNodeTypeDescription };
+					if (type === 'n8n-nodes-base.calculator') return { description: toolNodeTypeDescription };
+					if (type === 'n8n-nodes-base.manualChatTriggerHitlTool')
+						return { description: hitlNodeTypeDescription };
+					return null;
+				}),
+			});
+
+			const workflowObject = createTestWorkflowObject({
+				...workflowsStore.workflow,
+				nodeTypes: mockNodeTypes,
+			});
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.workflowObject = workflowObject;
+
+			workflowsStore.getNodeById = vi.fn((id: string) => {
+				if (id === 'agent') return agentNode;
+				if (id === 'tool') return toolNode;
+				if (id === 'hitl') return hitlNode;
+				return undefined;
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'Agent') return agentNode;
+				if (name === 'Tool') return toolNode;
+				if (name === 'HITL') return hitlNode;
+				return null;
+			});
+			workflowsStore.addConnection = vi.fn();
+			workflowsStore.removeConnection = vi.fn();
+			workflowsStore.addNode = vi.fn();
+
+			// Mock the last interacted node as the tool node with an existing connection
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: agentNode.id,
+				target: toolNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			const { addNode } = useCanvasOperations();
+
+			// Act: Add HITL node
+			await nextTick();
+			addNode(hitlNode, hitlNodeTypeDescription, { isAutoAdd: false });
+			await nextTick();
+
+			// Assert: Should create 2 connections:
+			// 1. Connection from HITL to Tool (original target)
+			// 2. Connection from Agent to HITL (new)
+			// And delete the original connection from Agent to Tool
+			expect(workflowsStore.addConnection).toHaveBeenCalledTimes(2);
+			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(1);
 		});
 	});
 });
