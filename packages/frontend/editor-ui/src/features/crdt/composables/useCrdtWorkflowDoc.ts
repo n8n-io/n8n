@@ -1,7 +1,7 @@
 import { computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin, CRDTAwareness } from '@n8n/crdt';
-import { isMapChange, ChangeOrigin as CO } from '@n8n/crdt';
+import { isMapChange, ChangeOrigin as CO, seedValueDeep, setNestedValue, toJSON } from '@n8n/crdt';
 import { useCRDTSync } from './useCRDTSync';
 import type {
 	WorkflowDocument,
@@ -73,7 +73,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		const name = crdtNode.get('name') as string | undefined;
 		const type = crdtNode.get('type') as string | undefined;
 		const typeVersion = crdtNode.get('typeVersion') as number | undefined;
-		const parameters = crdtNode.get('parameters') as Record<string, unknown> | undefined;
+		// Parameters are stored as deep CRDT structures, convert to plain object
+		const rawParams = crdtNode.get('parameters');
+		const parameters = (toJSON(rawParams) as Record<string, unknown>) ?? {};
 
 		return {
 			id,
@@ -81,7 +83,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			name: name ?? id,
 			type: type ?? 'unknown',
 			typeVersion: typeVersion ?? 1,
-			parameters: parameters ?? {},
+			parameters,
 		};
 	}
 
@@ -186,7 +188,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			crdtNode.set('name', node.name);
 			crdtNode.set('type', node.type);
 			crdtNode.set('typeVersion', node.typeVersion);
-			crdtNode.set('parameters', node.parameters);
+			// Deep seed parameters for fine-grained conflict resolution
+			crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
 			nodesMap.set(node.id, crdtNode);
 		});
 		// Hook triggers via onDeepChange subscription (handles both local + remote)
@@ -203,7 +206,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 				crdtNode.set('name', node.name);
 				crdtNode.set('type', node.type);
 				crdtNode.set('typeVersion', node.typeVersion);
-				crdtNode.set('parameters', node.parameters);
+				// Deep seed parameters for fine-grained conflict resolution
+				crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
 				nodesMap.set(node.id, crdtNode);
 			}
 		});
@@ -231,15 +235,52 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		});
 	}
 
+	/**
+	 * Replace all parameters for a node.
+	 * Use updateNodeParamAtPath for fine-grained updates.
+	 */
 	function updateNodeParams(nodeId: string, params: Record<string, unknown>): void {
 		if (!doc) return;
 
 		doc.transact(() => {
 			const crdtNode = getCrdtNode(nodeId);
 			if (crdtNode) {
-				crdtNode.set('parameters', params);
+				// Deep seed the new parameters for fine-grained conflict resolution
+				crdtNode.set('parameters', seedValueDeep(doc!, params));
 			}
 		});
+	}
+
+	/**
+	 * Update a specific parameter path within a node's parameters.
+	 * This enables fine-grained updates that won't conflict with changes to other parameters.
+	 *
+	 * @param nodeId - The node ID
+	 * @param path - Array of keys to the parameter (e.g., ['operation'] or ['assignments', 'assignments', '0', 'name'])
+	 * @param value - The new value (will be deep-seeded if object/array)
+	 */
+	function updateNodeParamAtPath(nodeId: string, path: string[], value: unknown): void {
+		if (!doc || path.length === 0) return;
+
+		doc.transact(() => {
+			const crdtNode = getCrdtNode(nodeId);
+			if (!crdtNode) return;
+
+			const parametersMap = crdtNode.get('parameters') as CRDTMap<unknown> | undefined;
+			if (!parametersMap) return;
+
+			setNestedValue(doc!, parametersMap, path, value);
+		});
+	}
+
+	/**
+	 * Get the raw CRDT parameters map for a node (for advanced use cases).
+	 * Returns undefined if node doesn't exist.
+	 */
+	function getNodeParametersMap(nodeId: string): CRDTMap<unknown> | undefined {
+		const crdtNode = getCrdtNode(nodeId);
+		if (!crdtNode) return undefined;
+		return crdtNode.get('parameters') as CRDTMap<unknown> | undefined;
 	}
 
 	// --- Lifecycle ---
@@ -284,6 +325,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		removeNode,
 		updateNodePositions,
 		updateNodeParams,
+		updateNodeParamAtPath,
+		getNodeParametersMap,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,

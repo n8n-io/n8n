@@ -2,17 +2,19 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodeCreation from '@/features/shared/nodeCreator/views/NodeCreation.vue';
 import type { AddedNodesAndConnections, INodeUi, ToggleNodeCreatorOptions } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { useVueFlow } from '@vue-flow/core';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { ref } from 'vue';
-import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
+import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import type { WorkflowNode } from '../types/workflowDocument.types';
+import CrdtParameterTestPanel from './CrdtParameterTestPanel.vue';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 
 const doc = useWorkflowDoc();
 const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 const instance = useVueFlow(doc.workflowId);
+const selectedNode = ref<string | null>(null);
 
 // Dummy state for NodeCreation props
 const createNodeActive = ref(false);
@@ -99,35 +101,53 @@ const onNodeCreatorClose = () => {
 	console.log('Node creator closed');
 	createNodeActive.value = false;
 };
+
+instance.onNodeDoubleClick(({ event, node }) => {
+	selectedNode.value = node.id;
+	// console.log('Node double-clicked:', event, node);
+});
 </script>
 
 <template>
-	<div :class="$style.toolbar">
-		<button :disabled="!doc.canUndo.value" :class="$style.button" @click="doc.undo()">Undo</button>
-		<button :disabled="!doc.canRedo.value" :class="$style.button" @click="doc.redo()">Redo</button>
-		<span v-if="awareness.isReady.value" :class="$style.collaborators">
-			{{ awareness.collaboratorCount.value }} online
-		</span>
+	<div :class="$style.container">
+		<div :class="$style.toolbar">
+			<button :disabled="!doc.canUndo.value" :class="$style.button" @click="doc.undo()">
+				Undo
+			</button>
+			<button :disabled="!doc.canRedo.value" :class="$style.button" @click="doc.redo()">
+				Redo
+			</button>
+			<span v-if="awareness.isReady.value" :class="$style.collaborators">
+				{{ awareness.collaboratorCount.value }} online
+			</span>
+		</div>
+		<WorkflowCanvas v-if="doc.isReady.value" />
+		<div v-else-if="doc.state.value === 'connecting'" :class="$style.loading">
+			Connecting to workflow...
+		</div>
+		<div v-else-if="doc.state.value === 'error'" :class="$style.error">
+			<h2>Error Loading CRDT Workflow</h2>
+			<p>{{ doc.error.value }}</p>
+		</div>
+		<NodeCreation
+			:create-node-active="createNodeActive"
+			:node-view-scale="nodeViewScale"
+			:focus-panel-active="focusPanelActive"
+			@toggle-node-creator="onToggleNodeCreator"
+			@add-nodes="onAddNodesAndConnections"
+			@close="onNodeCreatorClose"
+		/>
+		<CrdtParameterTestPanel v-if="doc.isReady.value" v-model="selectedNode" />
 	</div>
-	<WorkflowCanvas v-if="doc.isReady.value" />
-	<div v-else-if="doc.state.value === 'connecting'" :class="$style.loading">
-		Connecting to workflow...
-	</div>
-	<div v-else-if="doc.state.value === 'error'" :class="$style.error">
-		<h2>Error Loading CRDT Workflow</h2>
-		<p>{{ doc.error.value }}</p>
-	</div>
-	<NodeCreation
-		:create-node-active="createNodeActive"
-		:node-view-scale="nodeViewScale"
-		:focus-panel-active="focusPanelActive"
-		@toggle-node-creator="onToggleNodeCreator"
-		@add-nodes="onAddNodesAndConnections"
-		@close="onNodeCreatorClose"
-	/>
 </template>
 
 <style lang="scss" module>
+.container {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
 .toolbar {
 	position: absolute;
 	top: var(--spacing--sm);

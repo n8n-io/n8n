@@ -1,5 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { CRDTEngine, createCRDTProvider, type CRDTDoc, type Unsubscribe } from '@n8n/crdt';
+import {
+	CRDTEngine,
+	createCRDTProvider,
+	seedValueDeep,
+	type CRDTDoc,
+	type Unsubscribe,
+} from '@n8n/crdt';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import debounce from 'lodash/debounce';
@@ -347,12 +353,23 @@ export class CRDTState {
 
 			// Seed nodes - each node is a nested CRDTMap for fine-grained updates
 			const nodesMap = doc.getMap<unknown>('nodes');
-			for (const node of workflow.nodes as Array<{ id: string; [key: string]: unknown }>) {
+			for (const node of workflow.nodes as Array<{
+				id: string;
+				parameters?: Record<string, unknown>;
+				[key: string]: unknown;
+			}>) {
 				if (node.id) {
 					// Create a nested CRDTMap for this node
 					const nodeMap = doc.createMap<unknown>();
 					for (const [key, value] of Object.entries(node)) {
-						nodeMap.set(key, value);
+						if (key === 'parameters' && value !== undefined) {
+							// Deep seed parameters for fine-grained conflict resolution
+							// This allows concurrent edits to different parameter fields
+							nodeMap.set(key, seedValueDeep(doc, value));
+						} else {
+							// Other node properties (id, type, name, position, etc.) stored flat
+							nodeMap.set(key, value);
+						}
 					}
 					nodesMap.set(node.id, nodeMap);
 				}

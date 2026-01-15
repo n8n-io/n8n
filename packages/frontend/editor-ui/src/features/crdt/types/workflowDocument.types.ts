@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import type { EventHookOn } from '@vueuse/core';
-import type { CRDTAwareness } from '@n8n/crdt';
+import type { CRDTAwareness, CRDTMap } from '@n8n/crdt';
 import type { WorkflowAwarenessState } from './awareness.types';
 
 /**
@@ -99,8 +99,17 @@ export interface WorkflowDocument {
 	/** Update node positions (batch) */
 	updateNodePositions(updates: NodePositionChange[]): void;
 
-	/** Update node parameters */
+	/** Update node parameters (replaces all parameters) */
 	updateNodeParams(nodeId: string, params: Record<string, unknown>): void;
+
+	/**
+	 * Update a specific parameter at a given path.
+	 * This enables fine-grained updates that won't conflict with changes to other parameters.
+	 * @param nodeId - The node ID
+	 * @param path - Array of keys to the parameter (e.g., ['operation'] or ['fields', '0', 'name'])
+	 * @param value - The new value
+	 */
+	updateNodeParamAtPath?(nodeId: string, path: string[], value: unknown): void;
 
 	// --- Remote Change Events (VueUse EventHook pattern) ---
 	// CRDT: fires when other users make changes
@@ -128,4 +137,11 @@ export interface WorkflowDocument {
 	 * Only available for CRDT documents, null for REST documents.
 	 */
 	readonly awareness: CRDTAwareness<WorkflowAwarenessState> | null;
+
+	/**
+	 * Get the raw CRDT parameters map for a node (CRDT only).
+	 * Useful for advanced use cases like subscribing to parameter changes.
+	 * Returns undefined if node doesn't exist or if using REST document.
+	 */
+	getNodeParametersMap?(nodeId: string): CRDTMap<unknown> | undefined;
 }

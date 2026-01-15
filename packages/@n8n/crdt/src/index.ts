@@ -74,6 +74,9 @@ export {
 	addDocId,
 } from './protocol';
 
+// Utilities
+export { seedValueDeep, toJSON, getNestedValue, setNestedValue } from './utils';
+
 /**
  * Creates a CRDT provider based on the given configuration.
  * @param config - Configuration specifying which CRDT engine to use
