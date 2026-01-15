@@ -11,12 +11,18 @@ import {
 } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import type { License } from '@/license';
+import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+
+// Setup license mock BEFORE test server initialization
+const isLicensedMock = jest.fn(() => true);
+mockInstance(License, {
+	isLicensed: isLicensedMock,
+});
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
@@ -29,6 +35,8 @@ beforeAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
+	// Reset the mock to return true by default for each test
+	isLicensedMock.mockImplementation(() => true);
 });
 
 describe('When public API is disabled', () => {
@@ -391,7 +399,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -424,7 +431,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const notAllowedScope = getOwnerOnlyApiKeyScopes()[0];
 
