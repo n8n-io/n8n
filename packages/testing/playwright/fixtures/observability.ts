@@ -34,7 +34,7 @@ async function attachLogsOnFailure(
 	try {
 		// Query all logs from the last N minutes
 		const logs = await obs.logs.query('*', {
-			limit: 500,
+			limit: 1000,
 			start: `${lookback}m`,
 		});
 
@@ -48,8 +48,14 @@ async function attachLogsOnFailure(
 			return acc;
 		}, {});
 
-		// Format logs for attachment
+		// Sort logs within each container by timestamp
+		for (const containerLogs of Object.values(groupedLogs)) {
+			containerLogs.sort((a, b) => (a._time ?? '').localeCompare(b._time ?? ''));
+		}
+
+		// Format logs for attachment (containers sorted alphabetically)
 		const formattedLogs = Object.entries(groupedLogs)
+			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([container, containerLogs]) => {
 				const logLines = containerLogs.map((log) => `[${log._time}] ${log.message}`).join('\n');
 				return `=== ${container} ===\n${logLines}`;
@@ -59,12 +65,6 @@ async function attachLogsOnFailure(
 		await testInfo.attach('container-logs', {
 			body: formattedLogs,
 			contentType: 'text/plain',
-		});
-
-		// Also attach raw JSON for programmatic access
-		await testInfo.attach('container-logs-json', {
-			body: JSON.stringify(groupedLogs, null, 2),
-			contentType: 'application/json',
 		});
 	} catch (error) {
 		// Don't fail the test if log collection fails
@@ -89,7 +89,7 @@ async function attachLogsOnFailure(
  * The autoAttachLogs fixture:
  * - Runs automatically for every test (auto: true)
  * - Only collects logs when a test fails AND observability is enabled
- * - Attaches logs as both plaintext and JSON for debugging
+ * - Attaches logs as plaintext, sorted by container and timestamp
  */
 export const observabilityFixtures: Fixtures<
 	ObservabilityTestFixtures,
