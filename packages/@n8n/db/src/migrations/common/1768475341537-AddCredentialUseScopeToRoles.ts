@@ -73,7 +73,7 @@ export class AddCredentialUseScopeToRoles1768475341537 implements ReversibleMigr
 		logger.info('Added credential:use scope to all roles with credential:read');
 	}
 
-	async down({ escape, runQuery, logger }: MigrationContext) {
+	async down({ escape, runQuery, logger, dbType }: MigrationContext) {
 		const roleScopeTableName = escape.tableName('role_scope');
 		const roleScopeRoleSlugColumn = escape.columnName('roleSlug');
 		const roleScopeScopeSlugColumn = escape.columnName('scopeSlug');
@@ -81,10 +81,21 @@ export class AddCredentialUseScopeToRoles1768475341537 implements ReversibleMigr
 		// Remove credential:use scopes only from roles that also have credential:read
 		// This is the exact inverse of what up() does, ensuring we don't remove
 		// manually granted credential:use scopes from roles without credential:read.
-		// Using a subquery to find roleSlug values that have credential:read,
-		// then deleting credential:use rows for those roles.
-		// This approach works across all databases without requiring table aliases.
-		const deleteQuery = `
+		// MySQL requires wrapping the subquery in a derived table to avoid error 1093
+		// (cannot delete from table while selecting from same table in subquery).
+		const isMysql = dbType === 'mysqldb';
+		const deleteQuery = isMysql
+			? `
+			DELETE FROM ${roleScopeTableName}
+			WHERE ${roleScopeScopeSlugColumn} = :useScope
+				AND ${roleScopeRoleSlugColumn} IN (
+					SELECT * FROM (
+						SELECT ${roleScopeRoleSlugColumn} FROM ${roleScopeTableName}
+						WHERE ${roleScopeScopeSlugColumn} = :readScope
+					) AS tmp
+				)
+		`
+			: `
 			DELETE FROM ${roleScopeTableName}
 			WHERE ${roleScopeScopeSlugColumn} = :useScope
 				AND ${roleScopeRoleSlugColumn} IN (
