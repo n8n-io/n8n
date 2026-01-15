@@ -2817,9 +2817,10 @@ describe('WorkflowExecute', () => {
 			const convertBinaryDataSpy = jest.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT
-			await workflowExecute.run(workflow, trigger, {
-				nodeName: nodeWithBinary.name,
-				mode: 'inclusive',
+			await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: nodeWithBinary.name, mode: 'inclusive' },
 			});
 			await waitPromise.promise;
 
