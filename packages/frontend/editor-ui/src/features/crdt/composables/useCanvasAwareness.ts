@@ -39,19 +39,27 @@ export function useCanvasAwareness(options: UseCanvasAwarenessOptions): void {
 
 	// --- Cursor tracking ---
 	// Track mouse position in flow coordinates and broadcast to awareness
+	// Note: We calculate coordinates manually instead of using screenToFlowCoordinate()
+	// because that function applies snap-to-grid, causing cursors to jump by grid increments
 
 	const unsubPaneMouseMove = instance.onPaneMouseMove((event) => {
 		if (!awareness.isReady.value) return;
 
-		// Convert screen coordinates to flow coordinates (accounts for pan/zoom)
-		const flowCoords = instance.screenToFlowCoordinate({
-			x: event.clientX,
-			y: event.clientY,
-		});
+		// Get the container element bounding rect for coordinate calculation
+		const containerEl = instance.vueFlowRef.value;
+		if (!containerEl) return;
+
+		const containerRect = containerEl.getBoundingClientRect();
+		const { x: panX, y: panY, zoom } = instance.viewport.value;
+
+		// Convert screen coords to flow coords without snapping
+		// Formula: flowCoord = (screenCoord - containerOffset - pan) / zoom
+		const flowX = (event.clientX - containerRect.left - panX) / zoom;
+		const flowY = (event.clientY - containerRect.top - panY) / zoom;
 
 		awareness.updateCursor({
-			x: flowCoords.x,
-			y: flowCoords.y,
+			x: flowX,
+			y: flowY,
 		});
 	});
 
