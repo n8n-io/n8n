@@ -151,8 +151,8 @@ export const createExecuteWorkflowTool = (
 				success: false,
 				executionId: isTimeout ? error.executionId : null,
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
-					: error.message,
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
+					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
 			telemetryPayload.results = {
