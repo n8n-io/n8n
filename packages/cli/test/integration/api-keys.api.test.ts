@@ -9,7 +9,6 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 
 import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -26,7 +25,6 @@ mockInstance(License, {
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);

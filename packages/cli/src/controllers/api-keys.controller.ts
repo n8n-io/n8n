@@ -11,7 +11,7 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
+import { getApiKeyScopesForRole, type ApiKeyScope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -127,7 +127,7 @@ export class ApiKeysController {
 	 * If the API Key Scopes feature is not licensed, returns all available scopes for the user's role.
 	 * Otherwise, returns the requested scopes.
 	 */
-	private resolveScopesForUser(user: AuthenticatedRequest['user'], requestedScopes: string[]) {
+	private resolveScopesForUser(user: AuthenticatedRequest['user'], requestedScopes: ApiKeyScope[]) {
 		return this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
 			? requestedScopes
 			: getApiKeyScopesForRole(user);
