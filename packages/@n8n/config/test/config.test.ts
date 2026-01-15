@@ -410,6 +410,7 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			timeout: 3600000,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,

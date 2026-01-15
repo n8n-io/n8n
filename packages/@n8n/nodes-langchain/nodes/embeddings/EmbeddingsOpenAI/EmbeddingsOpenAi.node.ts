@@ -258,11 +258,9 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+		};
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,

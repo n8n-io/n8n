@@ -753,11 +753,13 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		const timeout = options.timeout;
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			}),
+		};
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -795,7 +797,7 @@ export class LmChatOpenAi implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
