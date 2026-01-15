@@ -78,7 +78,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		endDate: Date,
 		rules: DiffRule[] = [],
 		skipRules: DiffRule[] = [],
-		metaData: Partial<Record<keyof DiffMetaData, boolean>>,
+		metaData?: Partial<Record<keyof DiffMetaData, boolean>>,
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
