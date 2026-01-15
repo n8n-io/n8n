@@ -33,6 +33,7 @@ const props = defineProps<{
 	data: {
 		workflowId: string;
 		versionId: string;
+		eventBus?: ReturnType<typeof createEventBus<WorkflowSaveDraftModalEventBusEvents>>;
 	};
 }>();
 
@@ -94,6 +95,15 @@ async function handleSaveDraft() {
 		telemetry.track('User saved draft version from canvas', {
 			workflow_id: data.value.workflowId,
 		});
+
+		// Emit saved event if eventBus is provided (e.g., from workflow history)
+		if (props.data.eventBus) {
+			props.data.eventBus.emit('saved', {
+				versionId: data.value.versionId,
+				name: versionName.value,
+				description: description.value,
+			});
+		}
 
 		// Close the modal after successful save
 		modalBus.emit('close');
