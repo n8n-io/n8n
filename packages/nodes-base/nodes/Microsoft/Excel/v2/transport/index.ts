@@ -19,7 +19,9 @@ export async function microsoftApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('microsoftExcelOAuth2Api');
 	const baseUrl = (
-		(typeof credentials.graphApiBaseUrl === 'string' ? credentials.graphApiBaseUrl : 'https://graph.microsoft.com')
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {

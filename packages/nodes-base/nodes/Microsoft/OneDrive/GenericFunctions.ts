@@ -23,7 +23,9 @@ export async function microsoftApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
 	const baseUrl = (
-		(typeof credentials.graphApiBaseUrl === 'string' ? credentials.graphApiBaseUrl : null) || 'https://graph.microsoft.com'
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
@@ -151,7 +153,9 @@ export async function getPath(
 ): Promise<string> {
 	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
 	const baseUrl = (
-		(credentials.graphApiBaseUrl as string) || 'https://graph.microsoft.com'
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 	const responseData = (await microsoftApiRequest.call(
 		this,

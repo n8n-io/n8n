@@ -24,7 +24,9 @@ export async function microsoftApiRequest(
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
 	const baseUrl = (
-		(typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl) || 'https://graph.microsoft.com'
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
 	let apiUrl = `${baseUrl}/v1.0/me${resource}`;

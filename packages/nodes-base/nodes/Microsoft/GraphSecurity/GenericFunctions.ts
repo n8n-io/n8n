@@ -27,7 +27,9 @@ export async function msGraphSecurityApiRequest(
 	} = credentials;
 
 	const baseUrl = (
-		credentials.graphApiBaseUrl || 'https://graph.microsoft.com'
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
 	const options: IRequestOptions = {

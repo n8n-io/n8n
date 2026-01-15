@@ -34,7 +34,6 @@ export class MicrosoftEntra implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://graph.microsoft.com/v1.0',
 			headers: {
 				'Content-Type': 'application/json',
 			},
