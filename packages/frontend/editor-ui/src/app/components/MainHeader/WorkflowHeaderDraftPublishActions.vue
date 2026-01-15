@@ -404,21 +404,21 @@ useKeybindings(
 				!publishButtonConfig.value.enabled ||
 				readOnlyForPublish.value ||
 				shouldHidePublishButton.value,
-			run: () => void onPublishButtonClick(),
+			run: () => onPublishButtonClick(),
 		},
 		'ctrl+s': {
 			disabled: () => {
 				const saveDraftItem = dropdownMenuItems.value.find((item) => item.id === 'save-draft');
 				return !saveDraftItem || saveDraftItem.disabled || shouldHidePublishButton.value;
 			},
-			run: () => void onDropdownMenuSelect('save-draft'),
+			run: () => onDropdownMenuSelect('save-draft'),
 		},
 		'ctrl+u': {
 			disabled: () => {
 				const unpublishItem = dropdownMenuItems.value.find((item) => item.id === 'unpublish');
 				return !unpublishItem || unpublishItem.disabled || shouldHidePublishButton.value;
 			},
-			run: () => void onDropdownMenuSelect('unpublish'),
+			run: () => onDropdownMenuSelect('unpublish'),
 		},
 	})),
 );
