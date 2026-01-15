@@ -51,18 +51,18 @@ jobs:
       - name: Cherry-pick to public repo
         run: |
           COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
-          git remote add public https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
-          git fetch public master
-          git checkout public/master
+          git remote add public-repo https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
+          git fetch public-repo master
+          git checkout public-repo/master
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git cherry-pick "$COMMIT_TO_PUBLISH"
-          git push public HEAD:master
+          git push public-repo HEAD:master
 
       - name: Sync public back to private
         run: |
-          git fetch public master
-          git push origin public/master:master --force
+          git fetch public-repo master
+          git push origin public-repo/master:master --force
 
       - name: Notify on failure
         if: failure()
