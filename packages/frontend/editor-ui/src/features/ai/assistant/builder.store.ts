@@ -16,7 +16,6 @@ import {
 	chatWithBuilder,
 	getAiSessions,
 	getBuilderCredits,
-	getSessionsMetadata,
 	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
 import {
@@ -106,7 +105,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean>(false);
 	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
 		success: 0,
 		error: 0,
@@ -190,6 +188,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const hasNoCreditsRemaining = computed(() => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
+
+	const hasMessages = computed(() => chatMessages.value.length > 0);
 
 	// Chat management functions
 	/**
@@ -747,36 +747,29 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	async function fetchSessionsMetadata() {
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
-			hasMessages.value = false;
-			return;
-		}
-
-		try {
-			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
-			hasMessages.value = response.hasMessages;
-		} catch (error) {
-			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = false;
-		}
-	}
-
-	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	// Watch workflowId changes to reset chat and load sessions when workflow changes
 	watch(
 		() => workflowsStore.workflowId,
-		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
+		(newWorkflowId, oldWorkflowId) => {
+			if (newWorkflowId === oldWorkflowId) {
+				return;
+			}
+
+			if (streaming.value) {
+				abortStreaming();
+			}
+
+			resetBuilderChat();
+
+			// Load sessions if we have a valid saved workflow, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
 				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {
-				void fetchSessionsMetadata();
-			} else {
-				hasMessages.value = false;
+				void fetchBuilderCredits();
+				void loadSessions();
 			}
 		},
 	);
@@ -894,7 +887,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
-		hasMessages: computed(() => hasMessages.value),
+		hasMessages,
 		workflowTodos,
 		lastUserMessageId,
 
@@ -907,7 +900,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
-		fetchSessionsMetadata,
 		trackWorkflowBuilderJourney,
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
