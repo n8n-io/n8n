@@ -37,6 +37,7 @@ import {
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -423,9 +424,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		return await this.manager.transaction(async (manager) => {
+			// Update status, set startedAt only if not already set (preserves original for resumed executions)
+			await manager
+				.createQueryBuilder()
+				.update(ExecutionEntity)
+				.set({
+					status: 'running',
+					startedAt: () => 'COALESCE(startedAt, :startedAt)',
+				})
+				.setParameter('startedAt', DateUtils.mixedDateToUtcDatetimeString(startedAt))
+				.where('id = :id', { id: executionId })
+				.execute();
 
-		return startedAt;
+			// Fetch the actual startedAt
+			const { startedAt: actualStartedAt } = await manager.findOneOrFail(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			a.ok(actualStartedAt);
+			return actualStartedAt;
+		});
 	}
 
 	/**
