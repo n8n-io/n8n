@@ -228,7 +228,7 @@ const publishButtonConfig = computed(() => {
 			showVersionInfo: true,
 		},
 		'published-with-changes': {
-			text: i18n.baseText('workflows.publish'),
+			text: i18n.baseText('workflows.publishChanges'),
 			enabled: true,
 			showIndicator: true,
 			indicatorClass: 'changes',
@@ -236,7 +236,7 @@ const publishButtonConfig = computed(() => {
 			showVersionInfo: false,
 		},
 		'published-node-issues': {
-			text: i18n.baseText('workflows.publish'),
+			text: i18n.baseText('workflows.publishChanges'),
 			enabled: false,
 			showIndicator: true,
 			indicatorClass: 'error',
@@ -250,7 +250,7 @@ const publishButtonConfig = computed(() => {
 			showVersionInfo: true,
 		},
 		'published-invalid-trigger': {
-			text: i18n.baseText('workflows.publish'),
+			text: i18n.baseText('workflows.publishChanges'),
 			enabled: false,
 			showIndicator: true,
 			indicatorClass: 'changes',
