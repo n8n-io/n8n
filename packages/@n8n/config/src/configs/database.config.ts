@@ -143,12 +143,6 @@ export class SqliteConfig {
 	poolSize: number = 3;
 
 	/**
-	 * Enable SQLite WAL mode.
-	 */
-	@Env('DB_SQLITE_ENABLE_WAL')
-	enableWAL: boolean = this.poolSize > 1;
-
-	/**
 	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
 	 *
 	 * @warning Long-running blocking operation that will increase startup time.

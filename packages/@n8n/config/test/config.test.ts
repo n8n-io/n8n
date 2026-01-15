@@ -96,7 +96,6 @@ describe('GlobalConfig', () => {
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: true,
 				executeVacuumOnStartup: false,
 				poolSize: 3,
 			},
