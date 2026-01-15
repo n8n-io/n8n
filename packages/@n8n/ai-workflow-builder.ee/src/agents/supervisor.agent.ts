@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
 import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
@@ -104,8 +105,10 @@ export class SupervisorAgent {
 
 	/**
 	 * Invoke the supervisor to get routing decision
+	 * @param context - Supervisor context with messages and workflow state
+	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
-	async invoke(context: SupervisorContext): Promise<SupervisorRouting> {
+	async invoke(context: SupervisorContext, config?: RunnableConfig): Promise<SupervisorRouting> {
 		const agent = systemPrompt.pipe<SupervisorRouting>(
 			this.llm.withStructuredOutput(supervisorRoutingSchema, {
 				name: 'routing_decision',
@@ -117,6 +120,6 @@ export class SupervisorAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return await agent.invoke({ messages: messagesToSend });
+		return await agent.invoke({ messages: messagesToSend }, config);
 	}
 }

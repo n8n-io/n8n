@@ -37,10 +37,23 @@ export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
 	values: typeof WorkflowState.State;
 };
 
+/**
+ * Per-stage LLM configuration for the workflow builder.
+ * All stages must be configured with an LLM instance.
+ */
+export interface StageLLMs {
+	supervisor: BaseChatModel;
+	responder: BaseChatModel;
+	discovery: BaseChatModel;
+	builder: BaseChatModel;
+	configurator: BaseChatModel;
+	parameterUpdater: BaseChatModel;
+}
+
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmSimpleTask: BaseChatModel;
-	llmComplexTask: BaseChatModel;
+	/** Per-stage LLM configuration */
+	stageLLMs: StageLLMs;
 	logger?: Logger;
 	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
@@ -80,8 +93,7 @@ export interface ChatPayload {
 export class WorkflowBuilderAgent {
 	private checkpointer: MemorySaver;
 	private parsedNodeTypes: INodeTypeDescription[];
-	private llmSimpleTask: BaseChatModel;
-	private llmComplexTask: BaseChatModel;
+	private stageLLMs: StageLLMs;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
 	private instanceUrl?: string;
@@ -90,8 +102,7 @@ export class WorkflowBuilderAgent {
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
-		this.llmSimpleTask = config.llmSimpleTask;
-		this.llmComplexTask = config.llmComplexTask;
+		this.stageLLMs = config.stageLLMs;
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
@@ -107,8 +118,7 @@ export class WorkflowBuilderAgent {
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
 		return createMultiAgentWorkflowWithSubgraphs({
 			parsedNodeTypes: this.parsedNodeTypes,
-			llmSimpleTask: this.llmSimpleTask,
-			llmComplexTask: this.llmComplexTask,
+			stageLLMs: this.stageLLMs,
 			logger: this.logger,
 			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,

@@ -169,9 +169,15 @@ export class AiWorkflowBuilderService {
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			// Use the same model for all stages in production
+			stageLLMs: {
+				supervisor: anthropicClaude,
+				responder: anthropicClaude,
+				discovery: anthropicClaude,
+				builder: anthropicClaude,
+				configurator: anthropicClaude,
+				parameterUpdater: anthropicClaude,
+			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
