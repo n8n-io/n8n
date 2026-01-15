@@ -44,6 +44,7 @@ export async function selectNewActiveTab(state: CoordinatorState): Promise<void>
 			// Initialize the new active tab's data worker
 			try {
 				await tab.dataWorker.initialize();
+				state.initialized = true;
 				console.log(`[Coordinator] New active tab ${tabId} initialized`);
 			} catch (error) {
 				console.error('[Coordinator] Failed to initialize new active tab:', error);

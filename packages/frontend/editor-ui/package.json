@@ -82,7 +82,6 @@
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "nickvdyck": "link:@aspect-build/nickvdyck/nickvdyck/nickvdyck",
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",

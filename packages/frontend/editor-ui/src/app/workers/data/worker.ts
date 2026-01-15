@@ -61,7 +61,7 @@ async function isOpfsAvailable(): Promise<boolean> {
  * Determine if the database file already exists within the AccessHandlePoolVFS directory
  */
 function databaseAlreadyExists(): boolean {
-	const vfs = state.vfs as AccessHandlePoolVFS | null;
+	const vfs = state.vfs;
 	if (!vfs) {
 		return false;
 	}

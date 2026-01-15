@@ -27,8 +27,11 @@ export const dataWorker = new Worker(new URL('../data/worker.ts', import.meta.ur
 export const coordinator = Comlink.wrap<CoordinatorApi>(sharedWorker.port);
 
 // State
-const tabState = {
-	tabId: null as string | null,
+const tabState: {
+	tabId: string | null;
+	isRegistered: boolean;
+} = {
+	tabId: null,
 	isRegistered: false,
 };
 
@@ -47,10 +50,8 @@ export async function registerTab(): Promise<string> {
 	const channel = new MessageChannel();
 
 	// Connect one end to the data worker
+	// The data worker will expose its API on this port via its onmessage handler
 	dataWorker.postMessage({ type: 'connect', port: channel.port1 }, [channel.port1]);
-
-	// Expose the data worker API on port1 for the coordinator to use
-	Comlink.expose(Comlink.wrap<DataWorkerApi>(dataWorker), channel.port1);
 
 	// Register with the coordinator, passing port2 for it to communicate with our data worker
 	const newTabId = await coordinator.registerTab(Comlink.transfer(channel.port2, [channel.port2]));
