@@ -166,12 +166,6 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 						type: 'string',
 					},
 				],
-				examples: [
-					{
-						example: '$evaluateExpression("1+1")',
-						evaluated: 'e.g. 2',
-					},
-				],
 			},
 			true,
 		),

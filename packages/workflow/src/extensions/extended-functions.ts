@@ -70,31 +70,6 @@ ifEmpty.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/convenience',
 };
 
-function evaluateExpression(expression: string): any {
-	if (arguments.length !== 1) {
-		throw new ExpressionExtensionError('expected one argument (expression) for this function');
-	}
-	try {
-		return new Function(`return (${expression});`)();
-	} catch (err) {
-		throw new ExpressionError(`Invalid expression: ${expression}`);
-	}
-}
-
-evaluateExpression.doc = {
-	name: 'evaluateExpression',
-	description: 'Evaluates the given expression',
-	returnType: 'any',
-	args: [
-		{
-			name: 'expression',
-			description: 'The expression to evaluate',
-			type: 'string',
-		},
-	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
-};
-
 export const extendedFunctions = {
 	min,
 	max,
@@ -107,5 +82,4 @@ export const extendedFunctions = {
 	$average: average,
 	$not: not,
 	$ifEmpty: ifEmpty,
-	$evaluateExpression: evaluateExpression,
 };

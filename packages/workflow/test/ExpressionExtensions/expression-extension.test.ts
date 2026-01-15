@@ -238,16 +238,6 @@ describe('Expression Parser', () => {
 			expect(evaluate('={{ $ifEmpty([1], "default") }}')).toEqual([1]);
 			expect(evaluate('={{ $ifEmpty({a: 1}, "default") }}')).toEqual({ a: 1 });
 		});
-		test('$evaluateExpression', () => {
-			expect(evaluate('={{ $evaluateExpression("1+1") }}')).toEqual(2);
-			expect(evaluate("={{ $evaluateExpression(\"'hello' + ' world'\") }}")).toEqual('hello world');
-			expect(evaluate('={{ $evaluateExpression("1 === 1") }}')).toEqual(true);
-			expect(evaluate('={{ $evaluateExpression("1 > 2") }}')).toEqual(false);
-			expect(evaluate('={{ $evaluateExpression("[1,2,3].length") }}')).toEqual(3);
-			expect(evaluate('={{ $evaluateExpression("({ a: 1, b: 2 }).a") }}')).toEqual(1);
-			expect(evaluate('={{ $evaluateExpression("null") }}')).toBeNull();
-			expect(evaluate('={{ $evaluateExpression("undefined") }}')).toBeUndefined();
-		});
 	});
 
 	describe('Test extend with undefined', () => {
