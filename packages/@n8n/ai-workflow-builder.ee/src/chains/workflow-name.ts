@@ -20,9 +20,8 @@ export async function workflowNameChain(
 		initialPrompt,
 	});
 
-	const structuredOutput = (await modelWithStructure.invoke(prompt, config)) as z.infer<
-		typeof nameSchema
-	>;
+	const rawOutput = await modelWithStructure.invoke(prompt, config);
+	const structuredOutput = nameSchema.parse(rawOutput);
 
 	return {
 		name: structuredOutput.name,

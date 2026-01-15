@@ -14,44 +14,12 @@ export interface LLMProviderConfig {
 	headers?: Record<string, string>;
 }
 
-export const o4mini = async (config: LLMProviderConfig) => {
+export const gpt52 = async (config: LLMProviderConfig) => {
 	const { ChatOpenAI } = await import('@langchain/openai');
 	return new ChatOpenAI({
-		model: 'o4-mini-2025-04-16',
-		apiKey: config.apiKey,
-		configuration: {
-			baseURL: config.baseUrl,
-			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
-			},
-		},
-	});
-};
-
-export const gpt41mini = async (config: LLMProviderConfig) => {
-	const { ChatOpenAI } = await import('@langchain/openai');
-	return new ChatOpenAI({
-		model: 'gpt-4.1-mini-2025-04-14',
+		model: 'gpt-5.2-2025-12-11',
 		apiKey: config.apiKey,
 		temperature: 0,
-		maxTokens: -1,
-		configuration: {
-			baseURL: config.baseUrl,
-			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
-			},
-		},
-	});
-};
-
-export const gpt41 = async (config: LLMProviderConfig) => {
-	const { ChatOpenAI } = await import('@langchain/openai');
-	return new ChatOpenAI({
-		model: 'gpt-4.1-2025-04-14',
-		apiKey: config.apiKey,
-		temperature: 0.3,
 		maxTokens: -1,
 		configuration: {
 			baseURL: config.baseUrl,
@@ -164,13 +132,10 @@ function createOpenRouterModel(modelName: string) {
 
 // OpenRouter model factories
 export const glm47 = createOpenRouterModel('thudm/glm-4-plus');
-export const grokCodeFast = createOpenRouterModel('x-ai/grok-3-fast');
-export const gemini3Flash = createOpenRouterModel('google/gemini-2.5-flash-preview');
+export const gemini3Flash = createOpenRouterModel('google/gemini-3-flash-preview');
 export const deepseekV32 = createOpenRouterModel('deepseek/deepseek-chat-v3-0324');
-export const grok41Fast = createOpenRouterModel('x-ai/grok-3-mini-fast');
-export const gemini3Pro = createOpenRouterModel('google/gemini-2.5-pro-preview');
+export const gemini3Pro = createOpenRouterModel('google/gemini-3-pro-preview');
 export const devstral = createOpenRouterModel('mistralai/devstral-small');
-export const minimaxM21 = createOpenRouterModel('minimax/minimax-m1');
 
 // ============================================================================
 // Model Registry
@@ -199,18 +164,13 @@ export type ModelId =
 	| 'claude-opus-4.5'
 	| 'claude-sonnet-4.5'
 	| 'claude-haiku-4.5'
-	| 'gpt-4.1'
-	| 'gpt-4.1-mini'
-	| 'o4-mini'
+	| 'gpt-5.2'
 	// OpenRouter models
 	| 'glm-4.7'
-	| 'grok-code-fast'
 	| 'gemini-3-flash'
 	| 'deepseek-v3.2'
-	| 'grok-4.1-fast'
 	| 'gemini-3-pro'
-	| 'devstral'
-	| 'minimax-m2.1';
+	| 'devstral';
 
 /**
  * Model factory functions mapped by model ID.
@@ -223,30 +183,22 @@ export const MODEL_FACTORIES: Record<
 	'claude-opus-4.5': anthropicClaudeOpus45,
 	'claude-sonnet-4.5': anthropicClaudeSonnet45,
 	'claude-haiku-4.5': anthropicHaiku45,
-	'gpt-4.1': gpt41,
-	'gpt-4.1-mini': gpt41mini,
-	'o4-mini': o4mini,
+	'gpt-5.2': gpt52,
 	// OpenRouter models
 	'glm-4.7': glm47,
-	'grok-code-fast': grokCodeFast,
 	'gemini-3-flash': gemini3Flash,
 	'deepseek-v3.2': deepseekV32,
-	'grok-4.1-fast': grok41Fast,
 	'gemini-3-pro': gemini3Pro,
 	devstral,
-	'minimax-m2.1': minimaxM21,
 };
 
 /** OpenRouter model IDs for API key resolution */
 const OPENROUTER_MODELS: ModelId[] = [
 	'glm-4.7',
-	'grok-code-fast',
 	'gemini-3-flash',
 	'deepseek-v3.2',
-	'grok-4.1-fast',
 	'gemini-3-pro',
 	'devstral',
-	'minimax-m2.1',
 ];
 
 /**
@@ -256,7 +208,7 @@ export function getApiKeyEnvVar(modelId: ModelId): string {
 	if (OPENROUTER_MODELS.includes(modelId)) {
 		return 'OPENROUTER_API_KEY';
 	}
-	if (modelId.startsWith('gpt') || modelId.startsWith('o4')) {
+	if (modelId.startsWith('gpt')) {
 		return 'N8N_AI_OPENAI_KEY';
 	}
 	return 'N8N_AI_ANTHROPIC_KEY';
@@ -264,8 +216,21 @@ export function getApiKeyEnvVar(modelId: ModelId): string {
 
 /**
  * List of available model IDs for CLI help text.
+ * Explicitly defined to avoid type casting Object.keys().
  */
-export const AVAILABLE_MODELS: ModelId[] = Object.keys(MODEL_FACTORIES) as ModelId[];
+export const AVAILABLE_MODELS: readonly ModelId[] = [
+	// Native models
+	'claude-opus-4.5',
+	'claude-sonnet-4.5',
+	'claude-haiku-4.5',
+	'gpt-5.2',
+	// OpenRouter models
+	'glm-4.7',
+	'gemini-3-flash',
+	'deepseek-v3.2',
+	'gemini-3-pro',
+	'devstral',
+] as const;
 
 /**
  * Default model used when no model is specified.

@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessage, BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { RunnableConfig } from '@langchain/core/runnables';
 
@@ -13,6 +13,7 @@ import {
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import { isAIMessage } from '../types/langchain';
 import type { SimpleWorkflow } from '../types/workflow';
 import {
 	getErrorEntry,
@@ -162,6 +163,12 @@ export class ResponderAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return (await agent.invoke({ messages: messagesToSend }, config)) as AIMessage;
+		const result = await agent.invoke({ messages: messagesToSend }, config);
+		if (!isAIMessage(result)) {
+			return new AIMessage({
+				content: 'I encountered an issue generating a response. Please try again.',
+			});
+		}
+		return result;
 	}
 }
