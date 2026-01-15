@@ -37,7 +37,7 @@
     "axios": "catalog:",
     "dotenv": "17.2.3",
     "nanoid": "catalog:",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
