@@ -273,6 +273,6 @@ export const postgresMigrations: Migration[] = [
 	AddChatMessageIndices1766068346315,
 	ExpandInsightsWorkflowIdLength1766500000000,
 	ChangeWorkflowStatisticsFKToNoAction1767018516000,
-	AddCredentialUseScopeToRoles1768475341537,
 	ExpandModelColumnLength1768402473068,
+	AddCredentialUseScopeToRoles1768475341537,
 ];
