@@ -24,7 +24,6 @@ import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { DatabaseConfig } from '@n8n/config';
 
 @Service()
 export class ImportService {
@@ -57,7 +56,6 @@ export class ImportService {
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
-		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	async initRecords() {
