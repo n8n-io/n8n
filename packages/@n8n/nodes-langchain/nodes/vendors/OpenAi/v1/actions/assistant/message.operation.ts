@@ -182,14 +182,18 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
 	const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+	const timeout = options.timeout;
 
 	const client = new OpenAIClient({
 		apiKey: credentials.apiKey as string,
 		maxRetries: options.maxRetries ?? 2,
-		timeout: options.timeout ?? 10000,
+		timeout: timeout ?? 10000,
 		baseURL,
 		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL),
+			dispatcher: getProxyAgent(baseURL, {
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			}),
 		},
 		defaultHeaders,
 	});
