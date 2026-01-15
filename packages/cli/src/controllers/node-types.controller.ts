@@ -1,6 +1,6 @@
-import { GlobalConfig } from '@n8n/config';
-import { Post, RestController } from '@n8n/decorators';
 import { GetNodeTypesByIdentifierRequestDto } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import { Body, Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
@@ -87,9 +87,9 @@ export class NodeTypesController {
 	 */
 	@Post('/by-identifier')
 	async getNodeTypesByIdentifier(
-		req: Request<{}, {}, GetNodeTypesByIdentifierRequestDto>,
+		@Body payload: GetNodeTypesByIdentifierRequestDto,
 	): Promise<INodeTypeDescription[]> {
-		const { identifiers } = req.body;
+		const { identifiers = [] } = payload;
 
 		const defaultLocale = this.globalConfig.defaultLocale;
 		const nodeTypes: INodeTypeDescription[] = [];
