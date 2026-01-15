@@ -134,7 +134,6 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-	nodeName: string,
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
@@ -151,7 +150,7 @@ function buildMessageContent(
 	}
 
 	// Default: simple string content
-	return `Calling ${nodeName} with input: ${JSON.stringify(toolInput)}`;
+	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
@@ -219,13 +218,7 @@ export function buildSteps(
 			};
 
 			// Build message content using provider-specific logic
-			const messageContent = buildMessageContent(
-				providerMetadata,
-				toolInput,
-				toolId,
-				toolName,
-				tool.action.nodeName,
-			);
+			const messageContent = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 			const syntheticAIMessage = new AIMessage({
 				content: messageContent,
