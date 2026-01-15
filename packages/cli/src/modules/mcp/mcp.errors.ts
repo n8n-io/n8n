@@ -45,6 +45,7 @@ export class WorkflowAccessError extends UserError {
 
 	constructor(message: string, reason: WorkflowNotFoundReason) {
 		super(message);
+		this.name = 'WorkflowAccessError';
 		this.reason = reason;
 	}
 }

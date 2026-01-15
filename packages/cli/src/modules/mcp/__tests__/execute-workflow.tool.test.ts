@@ -146,8 +146,8 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(existingWorkflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
-				try {
-					await executeWorkflow(
+				await expect(
+					executeWorkflow(
 						user,
 						workflowFinderService,
 						workflowRepository,
@@ -155,11 +155,10 @@ describe('execute-workflow MCP tool', () => {
 						workflowRunner,
 						'no-permission-workflow',
 						undefined,
-					);
-				} catch (error) {
-					expect(error).toBeInstanceOf(WorkflowAccessError);
-					expect((error as WorkflowAccessError).reason).toBe('no_permission');
-				}
+					),
+				).rejects.toMatchObject({
+					reason: 'no_permission',
+				});
 			});
 
 			test('throws error when workflow is archived', async () => {
@@ -197,8 +196,8 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 
-				try {
-					await executeWorkflow(
+				await expect(
+					executeWorkflow(
 						user,
 						workflowFinderService,
 						workflowRepository,
@@ -206,11 +205,10 @@ describe('execute-workflow MCP tool', () => {
 						workflowRunner,
 						'archived-workflow',
 						undefined,
-					);
-				} catch (error) {
-					expect(error).toBeInstanceOf(WorkflowAccessError);
-					expect((error as WorkflowAccessError).reason).toBe('workflow_archived');
-				}
+					),
+				).rejects.toMatchObject({
+					reason: 'workflow_archived',
+				});
 			});
 
 			test('throws error when workflow is not available in MCP', async () => {
@@ -242,8 +240,8 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 
-				try {
-					await executeWorkflow(
+				await expect(
+					executeWorkflow(
 						user,
 						workflowFinderService,
 						workflowRepository,
@@ -251,11 +249,10 @@ describe('execute-workflow MCP tool', () => {
 						workflowRunner,
 						'unavailable-workflow',
 						undefined,
-					);
-				} catch (error) {
-					expect(error).toBeInstanceOf(WorkflowAccessError);
-					expect((error as WorkflowAccessError).reason).toBe('not_available_in_mcp');
-				}
+					),
+				).rejects.toMatchObject({
+					reason: 'not_available_in_mcp',
+				});
 			});
 
 			test('throws error when workflow has unsupported trigger nodes', async () => {
@@ -319,8 +316,8 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 
-				try {
-					await executeWorkflow(
+				await expect(
+					executeWorkflow(
 						user,
 						workflowFinderService,
 						workflowRepository,
@@ -328,11 +325,10 @@ describe('execute-workflow MCP tool', () => {
 						workflowRunner,
 						'unsupported-trigger',
 						undefined,
-					);
-				} catch (error) {
-					expect(error).toBeInstanceOf(WorkflowAccessError);
-					expect((error as WorkflowAccessError).reason).toBe('unsupported_trigger');
-				}
+					),
+				).rejects.toMatchObject({
+					reason: 'unsupported_trigger',
+				});
 			});
 
 			test('throws error when no supported trigger node is found', async () => {
