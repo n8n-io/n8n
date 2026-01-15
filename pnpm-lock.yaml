@@ -1680,8 +1680,8 @@ importers:
         specifier: 'catalog:'
         version: 1.20.0
       '@n8n_io/license-sdk':
-        specifier: 2.24.1
-        version: 2.24.1
+        specifier: 2.25.0
+        version: 2.25.0
       '@parcel/watcher':
         specifier: ^2.5.1
         version: 2.5.1
@@ -6520,8 +6520,8 @@ packages:
     resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.24.1':
-    resolution: {integrity: sha512-nrITEzOmFonFXD5XtzHjpY/s1kpKksYQoY5HBqhzRkGq3ldEO3nLKDl6RG9AEtkKKlKkid3lzviZJCIDINZlQw==}
+  '@n8n_io/license-sdk@2.25.0':
+    resolution: {integrity: sha512-6pNo09XHhBb+igaHfpuvLez+IxcerzRWMFUH1eqAOOE0Uf5orQp8j5p5RE7ohNZYtxlMoL/PcsQIXK5uHBycwg==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.1':
@@ -23037,7 +23037,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.20.0': {}
 
-  '@n8n_io/license-sdk@2.24.1':
+  '@n8n_io/license-sdk@2.25.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

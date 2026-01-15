@@ -112,7 +112,7 @@
     "@n8n/typeorm": "catalog:",
     "@n8n/utils": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "@n8n_io/license-sdk": "2.24.1",
+    "@n8n_io/license-sdk": "2.25.0",
     "@parcel/watcher": "^2.5.1",
     "@rudderstack/rudder-sdk-node": "3.0.0",
     "@sentry/node": "catalog:",
