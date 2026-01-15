@@ -126,10 +126,17 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			DEFAULT_SEPARATORS,
 		);
 
-		if (
-			!Array.isArray(rawSeparators) ||
-			!rawSeparators.every((el) => typeof el === 'string')
+		let separators: string[];
+
+		// If the fallback default was returned
+		if (rawSeparators === null || rawSeparators === undefined) {
+			separators = DEFAULT_SEPARATORS;
+		} else if (
+			Array.isArray(rawSeparators) &&
+			rawSeparators.every((el) => typeof el === 'string')
 		) {
+			separators = rawSeparators;
+		} else {
 			throw new Error('Separators must be a JSON array of strings');
 		}
 
