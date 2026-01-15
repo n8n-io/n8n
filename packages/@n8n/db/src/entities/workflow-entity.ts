@@ -19,7 +19,6 @@ import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
 import type { WorkflowHistory } from './workflow-history';
-import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
@@ -90,10 +89,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
-
-	@OneToMany('WorkflowStatistics', 'workflow')
-	@JoinColumn({ referencedColumnName: 'workflow' })
-	statistics: WorkflowStatistics[];
 
 	@Column({
 		type: dbType === 'sqlite' ? 'text' : 'json',

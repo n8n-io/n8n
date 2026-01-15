@@ -40,7 +40,16 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set URL to https://api.example.com/weather"
 - "Add header Authorization: Bearer token"
 - "Set method to POST"
-- "Add field 'status' with value 'processed'"`;
+- "Add field 'status' with value 'processed'"
+
+RESOURCE/OPERATION HANDLING:
+For nodes with resource/operation patterns (Gmail, Notion, Google Sheets, Google Drive, Slack, etc.):
+- The Builder agent has ALREADY set resource and operation - check the workflow JSON
+- Usually you should NOT change these - focus on configuring other parameters
+- If you DO need to change resource/operation (e.g., user explicitly requests it or Builder made a mistake):
+  - ONLY use values from the DISCOVERY CONTEXT section - it lists valid resource/operation combinations
+  - NEVER hallucinate or guess operation names - if it's not in discovery context, it doesn't exist
+- The parameter list you receive is filtered based on the current resource/operation`;
 
 const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
 
@@ -54,6 +63,30 @@ Examples in parameter configuration:
 - "Set field to ={{ $json.fieldName }}"
 - "Set value to ={{ $('Previous Node').item.json.value }}"
 - "Set message to ={{ $('HTTP Request').item.json.message }}"`;
+
+const EXPRESSION_TECHNIQUES = `Expressions support JavaScript methods
+
+Regex operations:
+- Test pattern: ={{ /pattern/.test($json.text) }}
+- Extract match: ={{ $json.text.match(/pattern/)?.[1] }}
+- Replace text: ={{ $json.text.replace(/pattern/, 'replacement') }}
+- Split by pattern: ={{ $json.text.split(/pattern/) }}
+
+String operations:
+- Uppercase: ={{ $json.text.toUpperCase() }}
+- Trim whitespace: ={{ $json.text.trim() }}
+- Substring: ={{ $json.text.substring(0, 10) }}
+
+Array operations:
+- First item: ={{ $json.items[0] }}
+- Filter: ={{ $json.items.filter(i => i.active) }}
+- Map: ={{ $json.items.map(i => i.name) }}
+- Join: ={{ $json.items.join(', ') }}
+
+Generating items from expressions (use with Split Out node):
+- Create array from comma string: ={{ $json.text.split(',') }}
+- Generate range: ={{ Array.from({{length: 5}}, (_, i) => i + 1) }}
+- Use with Split Out node to create multiple output items from a single input`;
 
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
@@ -75,10 +108,17 @@ const CRITICAL_PARAMETERS = `- HTTP Request: URL, method, headers (if auth neede
 - AI nodes: Prompts, models, configurations
 - Tool nodes: Use $fromAI for dynamic recipient/subject/message fields`;
 
-const DEFAULT_VALUES_WARNING = `Defaults are traps that cause runtime failures. Examples:
-- Document Loader defaults to 'json' but MUST be 'binary' when processing files
-- HTTP Request defaults to GET but APIs often need POST
-- Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)`;
+const DEFAULT_VALUES_GUIDE = `PRINCIPLE: User requests ALWAYS take precedence. When user specifies a model, parameter, or value - use exactly what they requested.
+
+SAFE DEFAULTS - Trust these unless user specifies otherwise:
+- Chat Model nodes (lmChat*): Model defaults are maintained and current by n8n. Only set model parameter when user requests a specific model.
+- Embedding nodes (embeddings*): Model defaults are maintained and current by n8n. Only set model parameter when user requests a specific model.
+- LLM parameters (temperature, topP, maxTokens): Node defaults are sensible. Only configure when user explicitly requests specific values.
+
+UNSAFE DEFAULTS - Always set based on workflow context:
+- Document Loader dataType: Defaults to 'json' but MUST be 'binary' when processing files (PDF, DOCX, images, etc.)
+- HTTP Request method: Defaults to GET. Set the request method based on API requirements.
+- Vector Store mode: Context-dependent. Set explicitly: 'insert' for storing documents, 'retrieve' for querying, 'retrieve-as-tool' when used with AI Agent`;
 
 const SWITCH_NODE_CONFIGURATION = `Switch nodes require configuring rules.values[] array - each entry creates one output:
 
@@ -127,7 +167,8 @@ const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
-- Add commentary between tool calls - execute tools silently`;
+- Add commentary between tool calls - execute tools silently
+- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT`;
 
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `
@@ -169,9 +210,10 @@ export function buildConfiguratorPrompt(): string {
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
 		.section('data_referencing', DATA_REFERENCING)
+		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
-		.section('default_values_warning', DEFAULT_VALUES_WARNING)
+		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
 		.section('response_format', RESPONSE_FORMAT)
