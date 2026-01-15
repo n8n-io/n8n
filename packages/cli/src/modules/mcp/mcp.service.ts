@@ -9,6 +9,8 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -26,6 +28,8 @@ export class McpService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly roleService: RoleService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	getServer(user: User) {
@@ -68,6 +72,8 @@ export class McpService {
 				webhookTest: this.globalConfig.endpoints.webhookTest,
 			},
 			this.telemetry,
+			this.roleService,
+			this.projectService,
 		);
 		server.registerTool(
 			workflowDetailsTool.name,
