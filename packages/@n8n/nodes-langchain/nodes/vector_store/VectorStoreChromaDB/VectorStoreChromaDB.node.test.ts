@@ -49,7 +49,10 @@ jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 				return config.populateVectorStore.apply(config, args);
 			}
 			async chromaCollectionsSearch(...args: unknown[]) {
-				return config.methods.listSearch.chromaCollectionsSearch.apply(this as any, args as any);
+				return await config.methods.listSearch.chromaCollectionsSearch.apply(
+					this as any,
+					args as any,
+				);
 			}
 		},
 }));
@@ -238,7 +241,7 @@ describe('VectorStoreChromaDB.node', () => {
 
 	describe('listSearch', () => {
 		it('should list collections for self-hosted', async () => {
-			const collections = [{ name: 'collection1' }, { name: 'collection2' }];
+			const collections = [{ name: 'Collection1' }, { name: 'Collection2' }];
 			mockChromaClientInstance.listCollections.mockResolvedValue(collections as any);
 
 			const context = {
@@ -258,8 +261,8 @@ describe('VectorStoreChromaDB.node', () => {
 
 			expect(result).toEqual({
 				results: [
-					{ name: 'collection1', value: 'collection1' },
-					{ name: 'collection2', value: 'collection2' },
+					{ name: 'Collection1', value: 'Collection1' },
+					{ name: 'Collection2', value: 'Collection2' },
 				],
 			});
 		});

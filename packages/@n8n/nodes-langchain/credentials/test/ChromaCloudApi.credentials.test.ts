@@ -26,17 +26,17 @@ describe('ChromaCloudApi Credential', () => {
 			'={{$credentials.apiKey}}',
 		);
 	});
-
+	const chromaCloudApi2 = new ChromaCloudApi();
 	it('should use changed baseUrl in test request when property is modified', () => {
 		const customBaseUrl = 'https://custom.chroma.example.com';
 
-		const baseUrlProp = chromaCloudApi.properties.find((p) => p.name === 'baseUrl');
+		const baseUrlProp = chromaCloudApi2.properties.find((p) => p.name === 'baseUrl');
 		expect(baseUrlProp).toBeDefined();
 		baseUrlProp!.default = customBaseUrl;
 
 		expect(baseUrlProp!.default).toBe(customBaseUrl);
 
-		const baseURLExpression = chromaCloudApi.test.request.baseURL;
+		const baseURLExpression = chromaCloudApi2.test.request.baseURL;
 		expect(baseURLExpression).toBe('={{$credentials.baseUrl}}');
 
 		const credentials = { baseUrl: baseUrlProp!.default };
