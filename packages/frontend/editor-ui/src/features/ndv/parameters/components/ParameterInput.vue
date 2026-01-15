@@ -877,7 +877,7 @@ async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
 	}
 
 	emit('focus');
-	trackBuilderPlaceholders();
+	void trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {
