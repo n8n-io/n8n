@@ -696,6 +696,295 @@ describe('operations-processor', () => {
 					{ node: 'Central Node', type: 'main', index: 1 },
 				]);
 			});
+
+			it('should update $node["name"] expression references in node parameters', () => {
+				const nodeWithExpression = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						value: '={{ $node["Node 1"].json.field }}',
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithExpression],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Renamed Node',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				expect(updatedNode?.parameters?.value).toBe('={{ $node["Renamed Node"].json.field }}');
+			});
+
+			it('should update $() function expression references', () => {
+				const nodeWithExpression = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						value: "={{ $('Node 1').first().json.data }}",
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithExpression],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Source Node',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				expect(updatedNode?.parameters?.value).toBe("={{ $('Source Node').first().json.data }}");
+			});
+
+			it('should update $items() function expression references', () => {
+				const nodeWithExpression = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						value: '={{ $items("Node 1", 0) }}',
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithExpression],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Data Node',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				expect(updatedNode?.parameters?.value).toBe('={{ $items("Data Node", 0) }}');
+			});
+
+			it('should update nested parameter expressions', () => {
+				const nodeWithNestedExpression = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						options: {
+							nested: {
+								value: "={{ $('Node 1').json.field }}",
+							},
+						},
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithNestedExpression],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'NewNode',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				expect((updatedNode?.parameters?.options as Record<string, unknown>)?.nested).toEqual({
+					value: "={{ $('NewNode').json.field }}",
+				});
+			});
+
+			it('should not update expressions referencing different nodes', () => {
+				const nodeWithExpression = createNode({
+					id: 'node3',
+					name: 'Node 3',
+					parameters: {
+						value: '={{ $node["Node 2"].json.field }}',
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, node2, nodeWithExpression],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Renamed',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node3');
+				// Should remain unchanged - references Node 2, not Node 1
+				expect(updatedNode?.parameters?.value).toBe('={{ $node["Node 2"].json.field }}');
+			});
+
+			it('should update multiple expression references in the same parameter', () => {
+				const nodeWithMultipleRefs = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						value: "={{ $('Node 1').json.a + $node['Node 1'].json.b }}",
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithMultipleRefs],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Source',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				expect(updatedNode?.parameters?.value).toBe(
+					"={{ $('Source').json.a + $node['Source'].json.b }}",
+				);
+			});
+
+			it('should not update non-expression string parameters', () => {
+				const nodeWithPlainString = createNode({
+					id: 'node2',
+					name: 'Node 2',
+					parameters: {
+						// This is NOT an expression (doesn't start with =)
+						description: 'This references Node 1 in plain text',
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, nodeWithPlainString],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Renamed',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedNode = result.nodes.find((n) => n.id === 'node2');
+				// Plain strings should not be modified
+				expect(updatedNode?.parameters?.description).toBe('This references Node 1 in plain text');
+			});
+
+			it('should update expressions in Form node HTML fields', () => {
+				const formNode = createNode({
+					id: 'form1',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
+					parameters: {
+						formFields: {
+							values: [
+								{ fieldType: 'text', fieldLabel: 'Name' },
+								{
+									fieldType: 'html',
+									html: "<p>Data from {{ $('Node 1').json.field }}</p>",
+								},
+								{ fieldType: 'email', fieldLabel: 'Email' },
+							],
+						},
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, formNode],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Data Source',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedFormNode = result.nodes.find((n) => n.id === 'form1');
+				const formFields = updatedFormNode?.parameters?.formFields as {
+					values: Array<{ fieldType: string; html?: string }>;
+				};
+				const htmlField = formFields.values.find((f) => f.fieldType === 'html');
+				expect(htmlField?.html).toBe("<p>Data from {{ $('Data Source').json.field }}</p>");
+			});
+
+			it('should update expressions in Code node jsCode', () => {
+				const codeNode = createNode({
+					id: 'code1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					parameters: {
+						jsCode: "const data = $('Node 1').item.json;\nreturn { result: data };",
+					},
+				});
+				const workflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [node1, codeNode],
+					connections: {},
+				};
+
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'renameNode',
+						nodeId: 'node1',
+						oldName: 'Node 1',
+						newName: 'Input Node',
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				const updatedCodeNode = result.nodes.find((n) => n.id === 'code1');
+				expect(updatedCodeNode?.parameters?.jsCode).toBe(
+					"const data = $('Input Node').item.json;\nreturn { result: data };",
+				);
+			});
 		});
 
 		describe('multiple operations', () => {

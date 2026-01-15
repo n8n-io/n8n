@@ -1,6 +1,53 @@
-import type { INode, IConnections } from 'n8n-workflow';
+import type { INode, IConnections, INodeParameters, NodeParameterValueType } from 'n8n-workflow';
+import {
+	applyAccessPatterns,
+	NODES_WITH_RENAMABLE_CONTENT,
+	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
+	FORM_NODE_TYPE,
+} from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+
+/**
+ * Type guard to check if a value is a valid NodeParameterValueType
+ */
+function isNodeParameterValueType(value: unknown): value is NodeParameterValueType {
+	if (value === null || value === undefined) return true;
+	const type = typeof value;
+	if (type === 'string' || type === 'number' || type === 'boolean') return true;
+	if (Array.isArray(value)) return value.every(isNodeParameterValueType);
+	if (type === 'object') return true;
+	return false;
+}
+
+/**
+ * Type guard to check if a value is a record with string keys
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type guard for form field with HTML content
+ */
+function isHtmlFormField(
+	field: unknown,
+): field is { fieldType: string; html: NodeParameterValueType } {
+	return (
+		isRecord(field) &&
+		'fieldType' in field &&
+		field.fieldType === 'html' &&
+		'html' in field &&
+		isNodeParameterValueType(field.html)
+	);
+}
+
+/**
+ * Type guard for form fields structure
+ */
+function isFormFieldsWithValues(value: unknown): value is { values?: unknown[] } {
+	return isRecord(value) && (!('values' in value) || Array.isArray(value.values));
+}
 
 /**
  * Type for operation handler functions
@@ -280,7 +327,54 @@ function applySetNameOperation(
 }
 
 /**
- * Handle 'renameNode' operation - rename a node and update all connection references
+ * Recursively update node name references in parameter values
+ */
+function renameNodeInParameterValue(
+	parameterValue: NodeParameterValueType,
+	currentName: string,
+	newName: string,
+	{ hasRenamableContent } = { hasRenamableContent: false },
+): NodeParameterValueType {
+	if (typeof parameterValue !== 'object') {
+		if (
+			typeof parameterValue === 'string' &&
+			(parameterValue.charAt(0) === '=' || hasRenamableContent)
+		) {
+			return applyAccessPatterns(parameterValue, currentName, newName);
+		}
+		return parameterValue;
+	}
+
+	if (parameterValue === null) {
+		return parameterValue;
+	}
+
+	if (Array.isArray(parameterValue)) {
+		const mappedArray = parameterValue.map((item) => {
+			if (!isNodeParameterValueType(item)) return item;
+			return renameNodeInParameterValue(item, currentName, newName, {
+				hasRenamableContent,
+			});
+		});
+		return mappedArray as NodeParameterValueType;
+	}
+
+	const returnData: Record<string, NodeParameterValueType> = {};
+	for (const parameterName of Object.keys(parameterValue)) {
+		const value = parameterValue[parameterName as keyof typeof parameterValue];
+		if (isNodeParameterValueType(value)) {
+			returnData[parameterName] = renameNodeInParameterValue(value, currentName, newName, {
+				hasRenamableContent,
+			});
+		} else {
+			returnData[parameterName] = value as NodeParameterValueType;
+		}
+	}
+	return returnData;
+}
+
+/**
+ * Handle 'renameNode' operation - rename a node and update all connection references and expressions
  */
 function applyRenameNodeOperation(
 	workflow: SimpleWorkflow,
@@ -319,7 +413,62 @@ function applyRenameNodeOperation(
 		}
 	}
 
-	return { ...workflow, nodes, connections };
+	// 3. Update expressions in all nodes that reference the renamed node
+	const updatedNodes = nodes.map((node) => {
+		// Update expressions in parameters
+		let parameters = renameNodeInParameterValue(
+			node.parameters,
+			oldName,
+			newName,
+		) as INodeParameters;
+
+		// Handle special node types with renamable content (Code nodes, etc.)
+		if (NODES_WITH_RENAMABLE_CONTENT.has(node.type) && parameters.jsCode) {
+			parameters = {
+				...parameters,
+				jsCode: renameNodeInParameterValue(parameters.jsCode, oldName, newName, {
+					hasRenamableContent: true,
+				}),
+			};
+		}
+
+		// Handle HTML node types
+		if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type) && parameters.html) {
+			parameters = {
+				...parameters,
+				html: renameNodeInParameterValue(parameters.html, oldName, newName, {
+					hasRenamableContent: true,
+				}),
+			};
+		}
+
+		// Handle Form node - HTML is nested inside formFields.values[].html
+		if (node.type === FORM_NODE_TYPE && isRecord(parameters.formFields)) {
+			const formFields = parameters.formFields;
+			if (isFormFieldsWithValues(formFields) && Array.isArray(formFields.values)) {
+				const updatedValues = formFields.values.map((field) => {
+					if (isHtmlFormField(field)) {
+						return {
+							...field,
+							html: renameNodeInParameterValue(field.html, oldName, newName, {
+								hasRenamableContent: true,
+							}),
+						};
+					}
+					return field;
+				});
+				const updatedFormFields = { ...formFields, values: updatedValues };
+				parameters = {
+					...parameters,
+					formFields: updatedFormFields as NodeParameterValueType,
+				};
+			}
+		}
+
+		return { ...node, parameters };
+	});
+
+	return { ...workflow, nodes: updatedNodes, connections };
 }
 
 /**
