@@ -64,7 +64,7 @@ export interface FrontendSettings {
 	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
+	databaseType: 'sqlite' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;

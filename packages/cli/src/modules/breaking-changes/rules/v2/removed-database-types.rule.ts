@@ -33,7 +33,7 @@ export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
 			recommendations: [],
 		};
 
-		const dbType = this.globalConfig.database.type;
+		const dbType = this.globalConfig.database.type as string;
 
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			result.isAffected = true;

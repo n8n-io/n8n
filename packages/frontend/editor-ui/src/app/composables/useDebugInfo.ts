@@ -61,11 +61,7 @@ export function useDebugInfo() {
 			nodeJsVersion: settingsStore.nodeJsVersion,
 			nodeEnv: settingsStore.nodeEnv,
 			database:
-				settingsStore.databaseType === 'postgresdb'
-					? 'postgres'
-					: settingsStore.databaseType === 'mysqldb'
-						? 'mysql'
-						: settingsStore.databaseType,
+				settingsStore.databaseType === 'postgresdb' ? 'postgres' : settingsStore.databaseType,
 			executionMode: settingsStore.isQueueModeEnabled
 				? settingsStore.isMultiMain
 					? 'scaling (multi-main)'

@@ -33,22 +33,11 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				// In MySQL foreignKey names must be unique across all tables and
 				// TypeORM creates predictable names based on the columnName.
 				// So the temp table's foreignKey clashes with the current table's.
-				name: context.isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withIndexOn(['executionId', 'key'], true);
 
-		if (context.isMysql) {
-			await context.runQuery(`
-				INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
-				SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
-				FROM ${executionMetadataTable}
-				GROUP BY ${executionId}, ${key}
-				ON DUPLICATE KEY UPDATE
-						id = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${id}), ${executionMetadataTableTemp}.${id}),
-						value = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${value}), ${executionMetadataTableTemp}.${value});
-				`);
-		} else {
-			await context.runQuery(`
+		await context.runQuery(`
 			INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
 			SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
 			FROM ${executionMetadataTable}
@@ -58,7 +47,6 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 					value = EXCLUDED.value
 			WHERE EXCLUDED.id > ${executionMetadataTableTemp}.id;
 		`);
-		}
 
 		await dropTable(executionMetadataTableRaw);
 		await context.runQuery(
@@ -97,7 +85,7 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				// In MySQL foreignKey names must be unique across all tables and
 				// TypeORM creates predictable names based on the columnName.
 				// So the temp table's foreignKey clashes with the current table's.
-				name: context.isMysql ? nanoid() : undefined,
+				name: undefined,
 			});
 
 		await context.runQuery(`

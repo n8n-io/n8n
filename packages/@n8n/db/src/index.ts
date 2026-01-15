@@ -29,7 +29,6 @@ export * from './subscribers';
 export { Column as DslColumn } from './migrations/dsl/column';
 export { CreateTable } from './migrations/dsl/table';
 export { sqliteMigrations } from './migrations/sqlite';
-export { mysqlMigrations } from './migrations/mysqldb';
 export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
