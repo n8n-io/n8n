@@ -1,4 +1,5 @@
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE } from '@n8n/db';
@@ -91,9 +92,7 @@ describe('API Key Scopes License Enforcement', () => {
 
 	describe('When feat:apiKeyScopes IS licensed', () => {
 		test('POST /api-keys should honor custom scopes', async () => {
-			// Explicitly ensure the API Key Scopes feature is licensed
-			isLicensedMock.mockImplementation(() => true);
-
+			// API Key Scopes feature is licensed by default (set in beforeEach)
 			const expiresAt = Date.now() + 1000;
 
 			const response = await testServer
@@ -112,9 +111,7 @@ describe('API Key Scopes License Enforcement', () => {
 		});
 
 		test('PATCH /api-keys/:id should honor custom scopes', async () => {
-			// Explicitly ensure the API Key Scopes feature is licensed
-			isLicensedMock.mockImplementation(() => true);
-
+			// API Key Scopes feature is licensed by default (set in beforeEach)
 			// Create an API key with one scope
 			const createResponse = await testServer
 				.authAgentFor(member)
