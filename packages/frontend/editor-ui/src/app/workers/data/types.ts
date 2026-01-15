@@ -71,6 +71,7 @@ export interface DataWorkerState {
 	sqlite3: SQLiteAPI | null;
 	db: number | null;
 	vfs: AccessHandlePoolVFS | null;
+	initPromise: Promise<void> | null;
 }
 
 /**

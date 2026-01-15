@@ -35,6 +35,7 @@ const state: DataWorkerState = {
 	sqlite3: null,
 	db: null,
 	vfs: null,
+	initPromise: null,
 };
 
 const DB_NAME = 'n8n';
@@ -81,6 +82,11 @@ function databaseAlreadyExists(): boolean {
  * Initialize the SQLite database with OPFS persistence
  */
 async function initialize(): Promise<void> {
+	// Return cached promise if initialization is already in progress
+	if (state.initPromise) {
+		return await state.initPromise;
+	}
+
 	if (state.initialized) {
 		console.log('[DataWorker] Already initialized');
 		return;
@@ -88,19 +94,24 @@ async function initialize(): Promise<void> {
 
 	console.log('[DataWorker] Initializing...');
 
-	const opfsAvailable = await isOpfsAvailable();
-	console.log('[DataWorker] OPFS available:', opfsAvailable);
-	console.log('[DataWorker] Storage API:', typeof navigator !== 'undefined' && !!navigator.storage);
-	console.log(
-		'[DataWorker] getDirectory method:',
-		typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory,
-	);
+	state.initPromise = (async () => {
+		const opfsAvailable = await isOpfsAvailable();
+		console.log('[DataWorker] OPFS available:', opfsAvailable);
+		console.log(
+			'[DataWorker] Storage API:',
+			typeof navigator !== 'undefined' && !!navigator.storage,
+		);
+		console.log(
+			'[DataWorker] getDirectory method:',
+			typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory,
+		);
 
-	if (!opfsAvailable) {
-		console.warn('[DataWorker] OPFS is not available - database will not persist across sessions');
-	}
+		if (!opfsAvailable) {
+			console.warn(
+				'[DataWorker] OPFS is not available - database will not persist across sessions',
+			);
+		}
 
-	try {
 		const module = await SQLiteESMFactory();
 		state.sqlite3 = SQLite.Factory(module) as SQLiteAPI;
 
@@ -133,9 +144,15 @@ async function initialize(): Promise<void> {
 		}
 
 		state.initialized = true;
+	})();
+
+	try {
+		await state.initPromise;
 	} catch (error) {
 		console.error('[DataWorker] Failed to initialize:', error);
 		throw error;
+	} finally {
+		state.initPromise = null;
 	}
 }
 
