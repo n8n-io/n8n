@@ -125,11 +125,14 @@ function filterHitlToolProperties(
 			continue;
 		}
 
-		// Keep responseType but default to 'approval' for HITL use case
+		// Convert to hidden property and keep 'approval' by default
 		if (prop.name === 'responseType') {
-			const cloned = deepCopy(prop);
-			cloned.default = 'approval';
-			filtered.push(cloned);
+			filtered.push({
+				displayName: 'Response Type',
+				name: 'responseType',
+				type: 'hidden',
+				default: 'approval',
+			});
 			continue;
 		}
 

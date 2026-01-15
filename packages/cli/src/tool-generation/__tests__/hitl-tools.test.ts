@@ -301,7 +301,7 @@ describe('hitl-tools', () => {
 			});
 		});
 
-		it('should keep responseType visible with approval as default', () => {
+		it('should make responseType hidden with approval as default', () => {
 			fullNodeWrapper.description.properties.push({
 				displayName: 'Response Type',
 				name: 'responseType',
@@ -317,7 +317,7 @@ describe('hitl-tools', () => {
 				(prop: INodeProperties) => prop.name === 'responseType',
 			);
 			expect(responseTypeProp).toBeDefined();
-			expect(responseTypeProp?.type).toBe('options');
+			expect(responseTypeProp?.type).toBe('hidden');
 			expect(responseTypeProp?.default).toBe('approval');
 		});
 
