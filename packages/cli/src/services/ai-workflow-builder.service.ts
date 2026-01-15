@@ -25,6 +25,8 @@ export class WorkflowBuilderService {
 
 	private client: AiAssistantClient | undefined;
 
+	private initPromise: Promise<AiWorkflowBuilderService> | undefined;
+
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
@@ -37,59 +39,67 @@ export class WorkflowBuilderService {
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
-		if (!this.service) {
-			// Create AiAssistantClient if baseUrl is configured
-			const baseUrl = this.config.aiAssistant.baseUrl;
-			if (baseUrl) {
-				const licenseCert = await this.license.loadCertStr();
-				const consumerId = this.license.getConsumerId();
+		if (this.service) return this.service;
 
-				this.client = new AiAssistantClient({
-					licenseCert,
-					consumerId,
-					baseUrl,
-					n8nVersion: N8N_VERSION,
-					instanceId: this.instanceSettings.instanceId,
-				});
+		this.initPromise ??= this.initializeService();
 
-				// Register for license certificate updates
-				this.license.onCertRefresh((cert) => {
-					this.client?.updateLicenseCert(cert);
-				});
-			}
+		return await this.initPromise;
+	}
 
-			// Create callback that uses the push service
-			const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
-				this.push.sendToUsers(
-					{
-						type: 'updateBuilderCredits',
-						data: {
-							creditsQuota,
-							creditsClaimed,
-						},
-					},
-					[userId],
-				);
-			};
+	private async initializeService(): Promise<AiWorkflowBuilderService> {
+		// Create AiAssistantClient if baseUrl is configured
+		const baseUrl = this.config.aiAssistant.baseUrl;
+		if (baseUrl) {
+			const licenseCert = await this.license.loadCertStr();
+			const consumerId = this.license.getConsumerId();
 
-			// Callback for AI Builder to send telemetry events
-			const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
-				this.telemetry.track(event, properties);
-			};
+			this.client = new AiAssistantClient({
+				licenseCert,
+				consumerId,
+				baseUrl,
+				n8nVersion: N8N_VERSION,
+				instanceId: this.instanceSettings.instanceId,
+			});
 
-			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
-
-			this.service = new AiWorkflowBuilderService(
-				nodeTypeDescriptions,
-				this.client,
-				this.logger,
-				this.instanceSettings.instanceId,
-				this.urlService.getInstanceBaseUrl(),
-				N8N_VERSION,
-				onCreditsUpdated,
-				onTelemetryEvent,
-			);
+			// Register for license certificate updates
+			this.license.onCertRefresh((cert) => {
+				this.client?.updateLicenseCert(cert);
+			});
 		}
+
+		// Create callback that uses the push service
+		const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+			this.push.sendToUsers(
+				{
+					type: 'updateBuilderCredits',
+					data: {
+						creditsQuota,
+						creditsClaimed,
+					},
+				},
+				[userId],
+			);
+		};
+
+		// Callback for AI Builder to send telemetry events
+		const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
+			this.telemetry.track(event, properties);
+		};
+
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+		this.loadNodesAndCredentials.releaseTypes();
+
+		this.service = new AiWorkflowBuilderService(
+			nodeTypeDescriptions,
+			this.client,
+			this.logger,
+			this.instanceSettings.instanceId,
+			this.urlService.getInstanceBaseUrl(),
+			N8N_VERSION,
+			onCreditsUpdated,
+			onTelemetryEvent,
+		);
 
 		return this.service;
 	}

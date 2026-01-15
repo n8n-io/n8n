@@ -2529,6 +2529,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to

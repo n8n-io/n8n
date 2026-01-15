@@ -61,7 +61,7 @@ const onClose = () => {
 									data-test-id="eula-link"
 								>
 									{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}
-								</a>
+								</a>.
 							</span>
 						</template>
 					</N8nCheckbox>
