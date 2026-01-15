@@ -25,7 +25,7 @@ describe('get_documentation tool', () => {
 			const result = createGetDocumentationTool();
 
 			expect(result.toolName).toBe('get_documentation');
-			expect(result.displayTitle).toBe('Getting best practices');
+			expect(result.displayTitle).toBe('Getting documentation');
 			expect(result.tool.name).toBe('get_documentation');
 		});
 
@@ -191,6 +191,29 @@ describe('get_documentation tool', () => {
 
 			expect(result).toContain('<best_practices>');
 			expect(result).toContain('<node_recommendations>');
+		});
+	});
+
+	describe('empty results', () => {
+		it('should return a message when no documentation is available for requested techniques', async () => {
+			const { tool } = createGetDocumentationTool();
+
+			const command = await tool.invoke(
+				{
+					requests: [
+						{
+							type: DocumentationType.BEST_PRACTICES,
+							// SCHEDULING has undefined documentation
+							techniques: [WorkflowTechnique.SCHEDULING],
+						},
+					],
+				},
+				mockConfig,
+			);
+			const result = getMessageContent(command);
+
+			expect(result).toBe('No documentation available for the requested items.');
+			expect(result).not.toContain('<best_practices>');
 		});
 	});
 });

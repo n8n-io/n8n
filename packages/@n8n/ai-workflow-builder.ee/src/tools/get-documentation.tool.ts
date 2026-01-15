@@ -104,7 +104,7 @@ function formatNodeRecommendations(categories: RecommendationCategoryType[]): st
 
 export const GET_DOCUMENTATION_TOOL: BuilderToolBase = {
 	toolName: 'get_documentation',
-	displayTitle: 'Getting best practices',
+	displayTitle: 'Getting documentation',
 };
 
 /**
