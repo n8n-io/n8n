@@ -78,6 +78,7 @@ type ExceptionPaths = {
 	processedDataManager: IProcessedDataConfig;
 	'ui.banners.dismissed': string[] | undefined;
 	easyAIWorkflowOnboarded: boolean | undefined;
+	'ai.allowSendingParameterValues': boolean | undefined;
 };
 
 // -----------------------------------
