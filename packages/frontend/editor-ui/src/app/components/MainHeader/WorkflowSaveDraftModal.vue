@@ -37,14 +37,6 @@ const props = defineProps<{
 	};
 }>();
 
-const data = ref<{
-	workflowId: string;
-	versionId: string;
-}>({
-	workflowId: '',
-	versionId: '',
-});
-
 const isSaveDisabled = computed(() => {
 	return saving.value || versionName.value.trim().length === 0;
 });
@@ -56,9 +48,8 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	// Initialize data from props when modal is mounted
-	if (props.data) {
-		data.value = props.data;
+	// Initialize version name from props when modal is mounted
+	if (props.data?.versionId) {
 		versionName.value = generateVersionName(props.data.versionId);
 		description.value = '';
 	} else if (!versionName.value) {
@@ -80,10 +71,10 @@ async function handleSaveDraft() {
 
 	try {
 		// Save the named version without publishing
-		await workflowsStore.saveNamedVersion(data.value.workflowId, {
+		await workflowsStore.saveNamedVersion(props.data.workflowId, {
 			name: versionName.value,
 			description: description.value,
-			versionId: data.value.versionId,
+			versionId: props.data.versionId,
 		});
 
 		showMessage({
@@ -93,13 +84,13 @@ async function handleSaveDraft() {
 		});
 
 		telemetry.track('User saved draft version from canvas', {
-			workflow_id: data.value.workflowId,
+			workflow_id: props.data.workflowId,
 		});
 
 		// Emit saved event if eventBus is provided (e.g., from workflow history)
 		if (props.data.eventBus) {
 			props.data.eventBus.emit('saved', {
-				versionId: data.value.versionId,
+				versionId: props.data.versionId,
 				name: versionName.value,
 				description: description.value,
 			});
