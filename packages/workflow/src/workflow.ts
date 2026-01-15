@@ -39,7 +39,8 @@ import type {
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import * as NodeHelpers from './node-helpers';
-import { renameFormFields, renameNodeInParameterValue } from './node-parameters/rename-node-utils';
+import { renameFormFields } from './node-parameters/rename-node-utils';
+import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
 import { dedupe } from './utils';
 
@@ -331,18 +332,54 @@ export class Workflow {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
-	/**
-	 * @deprecated Use the standalone `renameNodeInParameterValue` function from 'n8n-workflow' instead
-	 */
 	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
 		{ hasRenamableContent } = { hasRenamableContent: false },
 	): NodeParameterValueType {
-		return renameNodeInParameterValue(parameterValue, currentName, newName, {
-			hasRenamableContent,
-		});
+		if (typeof parameterValue !== 'object') {
+			// Reached the actual value
+			if (
+				typeof parameterValue === 'string' &&
+				(parameterValue.charAt(0) === '=' || hasRenamableContent)
+			) {
+				parameterValue = applyAccessPatterns(parameterValue, currentName, newName);
+			}
+
+			return parameterValue;
+		}
+
+		if (Array.isArray(parameterValue)) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const returnArray: any[] = [];
+
+			for (const currentValue of parameterValue) {
+				returnArray.push(
+					this.renameNodeInParameterValue(
+						currentValue as NodeParameterValueType,
+						currentName,
+						newName,
+					),
+				);
+			}
+
+			return returnArray;
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const returnData: any = {};
+
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.renameNodeInParameterValue(
+				parameterValue![parameterName as keyof typeof parameterValue],
+				currentName,
+				newName,
+				{ hasRenamableContent },
+			);
+		}
+
+		return returnData;
 	}
 
 	/**
@@ -385,14 +422,14 @@ export class Workflow {
 		// Update the expressions which reference the node
 		// with its old name
 		for (const node of Object.values(this.nodes)) {
-			node.parameters = renameNodeInParameterValue(
+			node.parameters = this.renameNodeInParameterValue(
 				node.parameters,
 				currentName,
 				newName,
 			) as INodeParameters;
 
 			if (NODES_WITH_RENAMABLE_CONTENT.has(node.type)) {
-				node.parameters.jsCode = renameNodeInParameterValue(
+				node.parameters.jsCode = this.renameNodeInParameterValue(
 					node.parameters.jsCode,
 					currentName,
 					newName,
@@ -400,7 +437,7 @@ export class Workflow {
 				);
 			}
 			if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type)) {
-				node.parameters.html = renameNodeInParameterValue(
+				node.parameters.html = this.renameNodeInParameterValue(
 					node.parameters.html,
 					currentName,
 					newName,
@@ -409,7 +446,7 @@ export class Workflow {
 			}
 			if (NODES_WITH_RENAMABLE_FORM_HTML_CONTENT.has(node.type)) {
 				renameFormFields(node, (p) =>
-					renameNodeInParameterValue(p, currentName, newName, {
+					this.renameNodeInParameterValue(p, currentName, newName, {
 						hasRenamableContent: true,
 					}),
 				);

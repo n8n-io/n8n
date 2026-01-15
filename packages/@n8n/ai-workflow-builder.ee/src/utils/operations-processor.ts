@@ -1,53 +1,25 @@
-import type { INode, IConnections, INodeParameters, NodeParameterValueType } from 'n8n-workflow';
-import {
-	NODES_WITH_RENAMABLE_CONTENT,
-	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
-	FORM_NODE_TYPE,
-	renameNodeInParameterValue,
-} from 'n8n-workflow';
+import type { INode, IConnections, INodeTypes, INodeType } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 
 /**
- * Type guard to check if a value is a valid NodeParameterValueType
+ * Minimal INodeTypes mock for use with Workflow.renameNode().
+ * The renameNode method doesn't use nodeTypes, but the Workflow constructor requires it.
+ * This mock returns undefined for all lookups, which the constructor handles gracefully
+ * by skipping default parameter resolution for unknown nodes.
  */
-function isNodeParameterValueType(value: unknown): value is NodeParameterValueType {
-	if (value === null || value === undefined) return true;
-	const type = typeof value;
-	if (type === 'string' || type === 'number' || type === 'boolean') return true;
-	if (Array.isArray(value)) return value.every(isNodeParameterValueType);
-	if (type === 'object') return true;
-	return false;
-}
-
-/**
- * Type guard to check if a value is a record with string keys
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
- * Type guard for form field with HTML content
- */
-function isHtmlFormField(
-	field: unknown,
-): field is { fieldType: string; html: NodeParameterValueType } {
-	return (
-		isRecord(field) &&
-		'fieldType' in field &&
-		field.fieldType === 'html' &&
-		'html' in field &&
-		isNodeParameterValueType(field.html)
-	);
-}
-
-/**
- * Type guard for form fields structure
- */
-function isFormFieldsWithValues(value: unknown): value is { values?: unknown[] } {
-	return isRecord(value) && (!('values' in value) || Array.isArray(value.values));
-}
+const minimalNodeTypes: INodeTypes = {
+	getByName() {
+		return undefined as unknown as INodeType;
+	},
+	getByNameAndVersion() {
+		return undefined as unknown as INodeType;
+	},
+	getKnownTypes() {
+		return {};
+	},
+};
 
 /**
  * Type for operation handler functions
@@ -327,7 +299,9 @@ function applySetNameOperation(
 }
 
 /**
- * Handle 'renameNode' operation - rename a node and update all connection references and expressions
+ * Handle 'renameNode' operation - rename a node and update all connection references and expressions.
+ * Uses the Workflow.renameNode() method to handle all the complexity of updating expressions,
+ * connections, and special node types.
  */
 function applyRenameNodeOperation(
 	workflow: SimpleWorkflow,
@@ -335,93 +309,25 @@ function applyRenameNodeOperation(
 ): SimpleWorkflow {
 	if (operation.type !== 'renameNode') return workflow;
 
-	const { nodeId, oldName, newName } = operation;
+	const { oldName, newName } = operation;
 
-	// 1. Update node name
-	const nodes = workflow.nodes.map((node) => {
-		if (node.id === nodeId) {
-			return { ...node, name: newName };
-		}
-		return node;
+	// Create a Workflow instance to leverage its renameNode method
+	// We use a minimal nodeTypes mock since renameNode doesn't need the full registry
+	const workflowInstance = new Workflow({
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		nodeTypes: minimalNodeTypes,
+		active: false,
 	});
 
-	// 2. Update connections - rename source keys and target references
-	const connections: IConnections = {};
-	for (const [sourceNodeName, nodeConnections] of Object.entries(workflow.connections)) {
-		const newSourceName = sourceNodeName === oldName ? newName : sourceNodeName;
-		connections[newSourceName] = {};
+	workflowInstance.renameNode(oldName, newName);
 
-		for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
-			if (Array.isArray(outputs)) {
-				connections[newSourceName][connectionType] = outputs.map((outputConnections) => {
-					if (Array.isArray(outputConnections)) {
-						return outputConnections.map((conn) => ({
-							...conn,
-							node: conn.node === oldName ? newName : conn.node,
-						}));
-					}
-					return outputConnections;
-				});
-			}
-		}
-	}
-
-	// 3. Update expressions in all nodes that reference the renamed node
-	const updatedNodes = nodes.map((node) => {
-		// Update expressions in parameters
-		let parameters = renameNodeInParameterValue(
-			node.parameters,
-			oldName,
-			newName,
-		) as INodeParameters;
-
-		// Handle special node types with renamable content (Code nodes, etc.)
-		if (NODES_WITH_RENAMABLE_CONTENT.has(node.type) && parameters.jsCode) {
-			parameters = {
-				...parameters,
-				jsCode: renameNodeInParameterValue(parameters.jsCode, oldName, newName, {
-					hasRenamableContent: true,
-				}),
-			};
-		}
-
-		// Handle HTML node types
-		if (NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(node.type) && parameters.html) {
-			parameters = {
-				...parameters,
-				html: renameNodeInParameterValue(parameters.html, oldName, newName, {
-					hasRenamableContent: true,
-				}),
-			};
-		}
-
-		// Handle Form node - HTML is nested inside formFields.values[].html
-		if (node.type === FORM_NODE_TYPE && isRecord(parameters.formFields)) {
-			const formFields = parameters.formFields;
-			if (isFormFieldsWithValues(formFields) && Array.isArray(formFields.values)) {
-				const updatedValues = formFields.values.map((field) => {
-					if (isHtmlFormField(field)) {
-						return {
-							...field,
-							html: renameNodeInParameterValue(field.html, oldName, newName, {
-								hasRenamableContent: true,
-							}),
-						};
-					}
-					return field;
-				});
-				const updatedFormFields = { ...formFields, values: updatedValues };
-				parameters = {
-					...parameters,
-					formFields: updatedFormFields as NodeParameterValueType,
-				};
-			}
-		}
-
-		return { ...node, parameters };
-	});
-
-	return { ...workflow, nodes: updatedNodes, connections };
+	// Convert back to SimpleWorkflow format
+	return {
+		...workflow,
+		nodes: Object.values(workflowInstance.nodes),
+		connections: workflowInstance.connectionsBySourceNode,
+	};
 }
 
 /**
