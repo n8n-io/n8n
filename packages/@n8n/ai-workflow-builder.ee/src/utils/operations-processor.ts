@@ -1,21 +1,21 @@
-import type { INode, IConnections, INodeTypes, INodeType } from 'n8n-workflow';
+import type { INode, IConnections, INodeTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 
 /**
- * Minimal INodeTypes mock for use with Workflow.renameNode().
+ * Minimal INodeTypes implementation for use with Workflow.renameNode().
  * The renameNode method doesn't use nodeTypes, but the Workflow constructor requires it.
- * This mock returns undefined for all lookups, which the constructor handles gracefully
- * by skipping default parameter resolution for unknown nodes.
+ * By returning undefined, we ensure the Workflow constructor skips parameter processing
+ * for nodes (see lines 97-107 in workflow.ts), which preserves original parameters.
+ *
+ * Note: We cast the functions to the expected types because the INodeTypes interface
+ * doesn't explicitly allow undefined returns, but the Workflow constructor handles
+ * undefined gracefully by skipping parameter processing for that node.
  */
 const minimalNodeTypes: INodeTypes = {
-	getByName() {
-		return undefined as unknown as INodeType;
-	},
-	getByNameAndVersion() {
-		return undefined as unknown as INodeType;
-	},
+	getByName: (() => undefined) as unknown as INodeTypes['getByName'],
+	getByNameAndVersion: (() => undefined) as unknown as INodeTypes['getByNameAndVersion'],
 	getKnownTypes() {
 		return {};
 	},
