@@ -85,20 +85,31 @@ const containerStyle = computed(() => ({
 		:style="containerStyle"
 	>
 		<div :class="$style.content">
-			<div :class="$style.header">
-				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
-					{{ emptyStateHeading }}
-				</N8nHeading>
-				<div v-if="showRecommendedTemplatesInline" :class="$style.actions">
-					<ReadyToRunButton />
-					<N8nButton type="primary" data-test-id="new-workflow-button" @click="addWorkflow">
-						{{ i18n.baseText('generic.create.workflow') }}
-					</N8nButton>
-				</div>
-			</div>
+			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
+				{{ emptyStateHeading }}
+			</N8nHeading>
 
 			<div v-if="showRecommendedTemplatesInline" :class="$style.templatesSection">
 				<RecommendedTemplatesSection />
+
+				<div :class="$style.orDivider">
+					<N8nText size="medium" color="text-light">
+						{{ i18n.baseText('generic.or') }}
+					</N8nText>
+				</div>
+
+				<div :class="$style.actionButtons">
+					<ReadyToRunButton type="secondary" size="large" />
+					<N8nButton
+						type="secondary"
+						icon="file"
+						size="large"
+						data-test-id="start-from-scratch-button"
+						@click="addWorkflow"
+					>
+						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+					</N8nButton>
+				</div>
 			</div>
 			<div v-else :class="$style.noTemplatesContent">
 				<N8nText tag="p" size="large" color="text-base">
@@ -132,7 +143,7 @@ const containerStyle = computed(() => ({
 .emptyStateLayout {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--lg) var(--spacing--2xl) 0;
+	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
 	max-width: var(--content-container--width);
 
 	&.noTemplatesContent {
@@ -145,14 +156,6 @@ const containerStyle = computed(() => ({
 	flex-direction: column;
 	align-items: center;
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	width: 100%;
-	margin-bottom: var(--spacing--md);
 }
 
 .actionCard {
@@ -175,11 +178,6 @@ const containerStyle = computed(() => ({
 			color: var(--color--primary);
 		}
 	}
-
-	&.loading {
-		pointer-events: none;
-		opacity: 0.7;
-	}
 }
 
 .cardContent {
@@ -197,5 +195,17 @@ const containerStyle = computed(() => ({
 	svg {
 		transition: color 0.3s ease;
 	}
+}
+
+.orDivider {
+	margin-top: var(--spacing--lg);
+	text-align: center;
+}
+
+.actionButtons {
+	display: flex;
+	justify-content: center;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--lg);
 }
 </style>

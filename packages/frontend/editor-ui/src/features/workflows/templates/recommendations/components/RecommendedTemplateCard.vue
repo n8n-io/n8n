@@ -8,7 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
@@ -124,42 +124,16 @@ onBeforeUnmount(() => {
 		<div :class="$style.cardContent">
 			<div v-if="templateNodes.length > 0" :class="$style.nodes">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
-					<NodeIcon :size="18" :stroke-width="1.5" :node-type="nodeType" />
+					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
 				</div>
 			</div>
 			<N8nText size="large" :bold="true">
 				{{ template.name }}
 			</N8nText>
-			<div v-if="template.user?.username" :class="$style.author">
-				<img
-					v-if="template.user.avatar"
-					:src="template.user.avatar"
-					:alt="template.user.username"
-					:class="$style.avatar"
-				/>
-				<N8nIcon v-else icon="user" size="small" />
-				<N8nText size="small" color="text-base">
-					{{ template.user.username }}
-				</N8nText>
-				<span v-if="template.user.verified" :class="$style.verified">
-					<N8nIcon icon="shield-half" size="small" color="text-light" />
-					<N8nText size="small" color="text-base">
-						{{ i18n.baseText('templates.card.verified') }}
-					</N8nText>
-				</span>
-			</div>
-			<div v-if="template.categories?.length" :class="$style.categories">
-				<N8nTag
-					v-for="category in template.categories"
-					:key="category.id"
-					:text="category.name"
-					:clickable="false"
-				/>
-			</div>
 			<div :class="$style.stats">
 				<div :class="$style.statItem">
-					<N8nIcon icon="clock" size="small" />
-					<N8nText size="small" color="text-light">
+					<N8nIcon icon="clock" size="medium" color="text-base" />
+					<N8nText size="small" color="text-dark">
 						{{
 							i18n.baseText('templates.card.setupTime', {
 								interpolate: { count: setupTimeMinutes },
@@ -176,6 +150,7 @@ onBeforeUnmount(() => {
 .suggestion {
 	display: flex;
 	flex-direction: column;
+	padding: var(--spacing--lg);
 	justify-content: space-between;
 	min-width: 200px;
 	background-color: var(--color--background--light-3);
@@ -186,6 +161,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	flex: 1;
 }
 
 .nodes {
@@ -194,7 +170,7 @@ onBeforeUnmount(() => {
 }
 
 .nodeIcon {
-	padding: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
 	background-color: var(--dialog--color--background);
 	border-radius: var(--radius--lg);
 	z-index: 1;
@@ -204,36 +180,8 @@ onBeforeUnmount(() => {
 	margin-right: var(--spacing--3xs);
 }
 
-.author {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.verified {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	margin-left: var(--spacing--xs);
-}
-
-.avatar {
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	border-radius: 50%;
-	object-fit: cover;
-}
-
-.categories {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
-}
-
 .stats {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--sm);
+	margin-top: auto;
 }
 
 .statItem {

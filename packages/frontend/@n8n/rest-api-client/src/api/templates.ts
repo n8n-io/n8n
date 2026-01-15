@@ -70,8 +70,6 @@ export interface ITemplatesWorkflow {
 	totalViews: number;
 	user: {
 		username: string;
-		avatar?: string;
-		verified?: boolean;
 	};
 }
 
