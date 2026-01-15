@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { isSamlLicensed, isSamlLicensedAndEnabled } from '../saml-helpers';
+import { isSamlLicensed, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 export const samlLicensedAndEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isSamlLicensedAndEnabled()) {

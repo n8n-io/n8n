@@ -12,19 +12,18 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { UrlService } from '@/services/url.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
+import * as samlHelpers from '../saml-helpers';
 import { SamlValidator } from '../saml-validator';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@/services/url.service';
-import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
-import { SamlService } from '@/sso.ee/saml/saml.service.ee';
-import * as ssoHelpers from '@/sso.ee/sso-helpers';
-
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { SamlService } from '../saml.service.ee';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -203,7 +202,7 @@ describe('SamlService', () => {
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
 			.mockImplementation(async () => await Promise.resolve());
-		jest.spyOn(samlHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
+		jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
 
 		samlService = new SamlService(
 			logger,
@@ -681,7 +680,7 @@ describe('SamlService', () => {
 				.spyOn(samlService, 'saveSamlPreferencesToDb')
 				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 			// Mock SAML login as disabled to avoid metadata validation
-			jest.spyOn(samlHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 		});
 
 		test('should publish reload command in multi-main setup', async () => {
@@ -782,7 +781,7 @@ describe('SamlService', () => {
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
 				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 			// Mock SAML as disabled
-			jest.spyOn(samlHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 
 			await samlService.reload();
 

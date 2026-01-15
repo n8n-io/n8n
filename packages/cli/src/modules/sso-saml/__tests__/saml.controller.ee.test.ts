@@ -6,19 +6,22 @@ import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
-import type { SamlService } from '../../saml.service.ee';
-import { getServiceProviderConfigTestReturnUrl } from '../../service-provider.ee';
-import type { SamlUserAttributes } from '../../types';
+import { isConnectionTestRequest } from '../saml-helpers';
 import { SamlController } from '../saml.controller.ee';
+import type { SamlService } from '../saml.service.ee';
+import { getServiceProviderConfigTestReturnUrl } from '../service-provider.ee';
+import type { SamlUserAttributes } from '../types';
 
 // Mock the saml-helpers module
-jest.mock('../../saml-helpers', () => ({
+jest.mock('../saml-helpers', () => ({
 	isConnectionTestRequest: jest.fn(),
-	isSamlLicensedAndEnabled: jest.fn(),
 }));
 
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../../saml-helpers';
+jest.mock('@/sso.ee/sso-helpers', () => ({
+	isSamlLicensedAndEnabled: jest.fn(),
+}));
 
 const authService = mock<AuthService>();
 const samlService = mock<SamlService>();
