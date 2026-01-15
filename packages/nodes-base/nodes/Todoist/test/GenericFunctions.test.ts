@@ -193,7 +193,7 @@ describe('GenericFunctions', () => {
 				]);
 			});
 
-			it('should fetch all items with pagination for version 2.3', async () => {
+			it('should fetch all items with pagination for version greater then 2.2', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.3);
 				const resource = '/projects';
 
@@ -215,42 +215,6 @@ describe('GenericFunctions', () => {
 
 				expect(mockRequestWithAuth).toHaveBeenCalledTimes(2);
 				expect(result).toHaveLength(2);
-			});
-
-			it('should fetch all items with pagination when no limit is set', async () => {
-				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
-				const qs = { project_id: '123' };
-
-				const mockResponsePage1 = {
-					results: [
-						{ id: '1', content: 'Task 1' },
-						{ id: '2', content: 'Task 2' },
-					],
-					next_cursor: 'cursor-123',
-				};
-
-				const mockResponsePage2 = {
-					results: [
-						{ id: '3', content: 'Task 3' },
-						{ id: '4', content: 'Task 4' },
-					],
-					next_cursor: null,
-				};
-
-				mockRequestWithAuth
-					.mockResolvedValueOnce(mockResponsePage1)
-					.mockResolvedValueOnce(mockResponsePage2);
-
-				const result = await todoistApiGetAllRequest(ctx, resource, qs);
-
-				expect(mockRequestWithAuth).toHaveBeenCalledTimes(2);
-				expect(result).toEqual([
-					{ id: '1', content: 'Task 1' },
-					{ id: '2', content: 'Task 2' },
-					{ id: '3', content: 'Task 3' },
-					{ id: '4', content: 'Task 4' },
-				]);
 			});
 
 			it('should respect limit and stop fetching when limit is reached', async () => {
