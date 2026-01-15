@@ -606,8 +606,8 @@ defineExpose({
 .publish,
 .publish:disabled,
 .publish:hover:disabled {
-	border-bottom-right-radius: 0px;
-	border-top-right-radius: 0px;
+	border-bottom-right-radius: 0;
+	border-top-right-radius: 0;
 	border-right-color: transparent;
 }
 

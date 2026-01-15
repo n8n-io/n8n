@@ -39,7 +39,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 
 const props = defineProps<{
@@ -68,7 +67,6 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
-const workflowActivate = useWorkflowActivate();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
 
@@ -196,14 +194,6 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
-			label: locale.baseText('menuActions.unpublish'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
-
 	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
 		if (props.isArchived) {
 			actions.push({
@@ -231,38 +221,6 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 
 	return actions;
 });
-
-function onUnpublishWorkflow() {
-	const workflowId = getWorkflowId(props.id, route.params.name);
-
-	if (!workflowId || !activeVersion.value) {
-		toast.showMessage({
-			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
-			type: 'warning',
-		});
-		return;
-	}
-
-	const unpublishEventBus = createEventBus();
-	unpublishEventBus.once('unpublish', async () => {
-		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
-		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
-		if (success) {
-			toast.showMessage({
-				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
-				type: 'success',
-			});
-		}
-	});
-
-	uiStore.openModalWithData({
-		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-		data: {
-			versionName: activeVersion.value.name,
-			eventBus: unpublishEventBus,
-		},
-	});
-}
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
@@ -407,22 +365,11 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 			break;
 		}
-		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
-			onUnpublishWorkflow();
-			break;
-		}
+
 		default:
 			break;
 	}
 }
-
-onMounted(() => {
-	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
-});
-
-onBeforeUnmount(() => {
-	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
-});
 
 defineExpose({
 	importFileRef,
