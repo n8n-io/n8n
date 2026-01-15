@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, Variables } from '@n8n/db';
+import type { IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
@@ -103,10 +104,11 @@ describe('shouldRestartParentExecution', () => {
 
 describe('removeDefaultValues', () => {
 	const DEFAULT_EXECUTION_TIMEOUT = 3600;
+	const DEFAULT = 'DEFAULT';
 
 	it('should remove errorWorkflow when set to DEFAULT', () => {
-		const settings = {
-			errorWorkflow: 'DEFAULT' as const,
+		const settings: IWorkflowSettings = {
+			errorWorkflow: DEFAULT,
 			timezone: 'America/New_York',
 		};
 		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
@@ -116,14 +118,14 @@ describe('removeDefaultValues', () => {
 	});
 
 	it('should remove all keys set to DEFAULT', () => {
-		const settings = {
-			errorWorkflow: 'DEFAULT' as const,
-			timezone: 'DEFAULT' as const,
-			saveDataErrorExecution: 'DEFAULT' as const,
-			saveDataSuccessExecution: 'DEFAULT' as const,
-			saveManualExecutions: 'DEFAULT' as const,
-			saveExecutionProgress: 'DEFAULT' as const,
-			callerPolicy: 'workflowsFromSameOwner' as const,
+		const settings: IWorkflowSettings = {
+			errorWorkflow: DEFAULT,
+			timezone: DEFAULT,
+			saveDataErrorExecution: DEFAULT,
+			saveDataSuccessExecution: DEFAULT,
+			saveManualExecutions: DEFAULT,
+			saveExecutionProgress: DEFAULT,
+			callerPolicy: 'workflowsFromSameOwner',
 		};
 		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(result).toEqual({
@@ -132,7 +134,7 @@ describe('removeDefaultValues', () => {
 	});
 
 	it('should remove executionTimeout when it matches default', () => {
-		const settings = {
+		const settings: IWorkflowSettings = {
 			executionTimeout: 3600,
 			timezone: 'America/New_York',
 		};
@@ -143,7 +145,7 @@ describe('removeDefaultValues', () => {
 	});
 
 	it('should keep executionTimeout when it differs from default', () => {
-		const settings = {
+		const settings: IWorkflowSettings = {
 			executionTimeout: 7200,
 			timezone: 'America/New_York',
 		};
@@ -155,10 +157,10 @@ describe('removeDefaultValues', () => {
 	});
 
 	it('should keep non-DEFAULT values', () => {
-		const settings = {
+		const settings: IWorkflowSettings = {
 			errorWorkflow: 'some-workflow-id',
 			timezone: 'America/New_York',
-			saveDataErrorExecution: 'all' as const,
+			saveDataErrorExecution: 'all',
 		};
 		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(result).toEqual({
@@ -170,7 +172,7 @@ describe('removeDefaultValues', () => {
 
 	it('should not mutate the original settings object', () => {
 		const settings = {
-			errorWorkflow: 'DEFAULT' as const,
+			errorWorkflow: DEFAULT,
 			timezone: 'America/New_York',
 			executionTimeout: 3600,
 		};
