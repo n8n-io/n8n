@@ -5812,6 +5812,39 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create a new user');
 		});
 
+		test('should check for skipNameGeneration and use displayName', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should check for skipNameGeneration and use defaults.name', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.defaults.name = 'Test Node Default';
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node Default');
+		});
+
 		test('should return resource-operation-based name when action is not available', () => {
 			// Arrange
 			const nodeParameters: INodeParameters = {
