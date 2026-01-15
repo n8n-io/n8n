@@ -65,7 +65,7 @@ onMounted(async () => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--md);
-	margin-bottom: var(--spacing--md);
+	margin-bottom: var(--spacing--xs);
 
 	@media (max-width: vars.$breakpoint-xs) {
 		flex-direction: column;
@@ -82,7 +82,7 @@ onMounted(async () => {
 .suggestions {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--spacing--md);
+	gap: var(--spacing--2xs);
 	min-height: 182px;
 
 	@media (max-width: vars.$breakpoint-md) {
