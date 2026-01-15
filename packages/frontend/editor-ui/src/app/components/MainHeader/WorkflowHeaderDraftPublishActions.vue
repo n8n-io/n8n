@@ -502,7 +502,7 @@ defineExpose({
 					v-model="dropdownOpen"
 					:items="dropdownMenuItems"
 					:loading="autoSaveForPublish"
-					placement="bottom"
+					placement="bottom-end"
 					:teleported="true"
 					:extra-popper-class="$style.publishDropdown"
 					data-test-id="workflow-publish-dropdown"
@@ -547,7 +547,7 @@ defineExpose({
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--3xs);
 }
 
 .activeVersionIndicator {
@@ -562,6 +562,7 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-block;
+	margin-right: var(--spacing--2xs);
 }
 
 .indicatorDot {

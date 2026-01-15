@@ -50,7 +50,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 				:disabled="isNewWorkflow"
 				:loading="isWorkflowSaving"
 				data-test-id="workflow-history-button"
-				type="secondary"
+				type="highlight"
 				icon="history"
 				size="medium"
 			/>

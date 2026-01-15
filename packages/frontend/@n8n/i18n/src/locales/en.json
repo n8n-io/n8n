@@ -3280,7 +3280,7 @@
 	"workflowHistory.item.actions.clone": "Clone to new workflow",
 	"workflowHistory.item.actions.open": "Open version in new tab",
 	"workflowHistory.item.actions.download": "Download",
-	"workflowHistory.item.actions.saveAsNamed": "Create draft",
+	"workflowHistory.item.actions.saveAsNamed": "Create version",
 	"workflowHistory.item.actions.rename": "Rename version",
 	"workflowHistory.item.unsaved.title": "Unsaved version",
 	"workflowHistory.item.latest": "Latest saved",

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
@@ -12,7 +12,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -81,8 +80,6 @@ const onExecutionsTab = computed(() => {
 		VIEWS.EXECUTION_PREVIEW,
 	].includes((route.name as string) || '');
 });
-
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -395,7 +392,7 @@ defineExpose({
 			<template #trigger>
 				<N8nIconButton
 					icon="ellipsis"
-					type="tertiary"
+					type="highlight"
 					size="medium"
 					aria-label="More workflow actions"
 					data-test-id="workflow-menu-button"
