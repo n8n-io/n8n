@@ -31,6 +31,7 @@ describe('eligibleModules', () => {
 			'dynamic-credentials',
 			'chat-hub',
 			'sso-oidc',
+			'sso-saml',
 			'log-streaming',
 		]);
 	});
@@ -49,6 +50,7 @@ describe('eligibleModules', () => {
 			'dynamic-credentials',
 			'chat-hub',
 			'sso-oidc',
+			'sso-saml',
 			'log-streaming',
 		]);
 	});
