@@ -251,6 +251,9 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 | Date/time operations | Date & Time |
 | Compare datasets | Compare Datasets |
 | Throw errors | Stop and Error |
+| Convert data to file | Convert to File |
+| Extract data from file | Extract From File |
+| Read/write local files | Read/Write Files from Disk |
 | Regex pattern matching | If node with expression |
 | Extract text with regex | Edit Fields (Set) with expression |
 | Validate text format | If node with regex expression |

@@ -63,6 +63,18 @@ const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Error handling for external service calls
 `;
 
+const NODE_AUTO_ITERATION = `Most n8n nodes automatically process each input item individually - you don't need explicit loops. However, some nodes have different behavior:
+
+**Nodes that DON'T auto-iterate (process all items at once):**
+- Code node in "Run Once for All Items" mode (default mode)
+- Aggregate node (designed to combine items)
+
+**For nodes that need item-by-item processing with rate limiting:**
+Use Loop Over Items node to batch API calls and avoid rate limits.
+
+**Merge multiple branches behavior:**
+When two branches connect to the SAME input of a node directly (not using Merge node), that node executes TWICE - once per branch. Use Merge node to combine data into one branch with a single list of items.`;
+
 const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
 
 Default values often hide connection inputs/outputs. You MUST explicitly configure parameters that affect connections:
@@ -150,8 +162,11 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
    - Use for: Primary AI logic, chatbots, autonomous workflows
 
 2. **AI Agent Tool** (@n8n/n8n-nodes-langchain.agentTool)
-   - Sub-node that acts as a tool for another AI Agent
-   - Use for: Multi-agent systems where one agent calls another
+   - Sub-node that allows a root-level agent to call OTHER AGENTS as tools
+   - Enables multi-agent orchestration without sub-workflow complexity
+   - Can nest multiple layers for complex multi-tiered use cases
+   - Description parameter tells parent agent when to delegate to this sub-agent
+   - Use for: Specialized sub-agents (researcher, writer, reviewer), task delegation
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;
@@ -313,6 +328,7 @@ export function buildBuilderPrompt(): string {
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
 		.section('data_parsing_strategy', DATA_PARSING)
 		.section('proactive_design', PROACTIVE_DESIGN)
+		.section('node_auto_iteration', NODE_AUTO_ITERATION)
 		.section('node_defaults_warning', NODE_DEFAULTS)
 		.section('connection_parameters_examples', CONNECTION_PARAMETERS)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
