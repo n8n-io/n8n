@@ -120,11 +120,20 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			null,
 		) as SupportedTextSplitterLanguage | null;
 
-		const separators = (this.getNodeParameter(
+		const rawSeparators = this.getNodeParameter(
 			'separators',
 			itemIndex,
 			DEFAULT_SEPARATORS,
-		) ?? DEFAULT_SEPARATORS) as string[];
+		);
+
+		if (
+			!Array.isArray(rawSeparators) ||
+			!rawSeparators.every((el) => typeof el === 'string')
+		) {
+			throw new Error('Separators must be a JSON array of strings');
+		}
+
+		const separators: string[] = rawSeparators;
 
 		const params: RecursiveCharacterTextSplitterParams = {
 			separators,
