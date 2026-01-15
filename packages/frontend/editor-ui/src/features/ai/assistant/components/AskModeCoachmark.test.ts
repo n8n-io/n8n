@@ -54,9 +54,7 @@ describe('AskModeCoachmark', () => {
 		expect(emitted().dismiss).toHaveLength(1);
 	});
 
-	it('passes visible prop to tooltip', () => {
-		// When visible is false, the tooltip handles hiding internally
-		// We just verify the component renders without errors
+	it('hides coachmark content when visible is false', () => {
 		const { getByText } = renderComponent({
 			props: {
 				visible: false,
@@ -68,5 +66,10 @@ describe('AskModeCoachmark', () => {
 
 		// Slot content should always be rendered
 		expect(getByText('Toggle Button')).toBeInTheDocument();
+
+		// The coachmark content should be hidden (tooltip popper has display: none)
+		const title = getByText('Ask mode enabled');
+		const popperElement = title.closest('.el-popper');
+		expect(popperElement).toHaveStyle({ display: 'none' });
 	});
 });
