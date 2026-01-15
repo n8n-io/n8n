@@ -107,12 +107,14 @@ export class LogsPanel {
 	}
 
 	/**
-	 * Clicks the session ID button to show the tooltip and extracts the full session ID.
+	 * Hovers over the session ID button to show the tooltip and extracts the full session ID.
 	 * @returns The full session ID string
 	 */
 	async getSessionId(): Promise<string> {
-		await this.getSessionIdButton().click();
-		const tooltipText = await this.getSessionIdTooltip().textContent();
+		await this.getSessionIdButton().hover();
+		const tooltip = this.getSessionIdTooltip();
+		await tooltip.waitFor({ state: 'visible' });
+		const tooltipText = await tooltip.textContent();
 		if (!tooltipText) {
 			throw new Error('Session ID tooltip text is empty');
 		}
