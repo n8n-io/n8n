@@ -8,6 +8,9 @@ export { useRestWorkflowDoc } from './useRestWorkflowDoc';
 // Inject helper
 export { useWorkflowDoc, useWorkflowDocOptional } from './useWorkflowSync';
 
+// Reactive node access
+export { useNodeReactive } from './useNodeReactive';
+
 // Canvas adapter (Vue Flow bridge)
 export { useCanvasSync } from './useCanvasSync';
 

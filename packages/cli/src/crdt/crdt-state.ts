@@ -9,11 +9,49 @@ import {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import debounce from 'lodash/debounce';
-import type { Workflow } from 'n8n-workflow';
+import type { IConnections, Workflow } from 'n8n-workflow';
+
+import { calculateNodeSize } from './node-size-calculator';
 
 interface Subscriber {
 	userId: User['id'];
 	pushRef: string;
+}
+
+/**
+ * Flat edge format stored in CRDT (Vue Flow native).
+ */
+export interface CRDTEdge {
+	id: string;
+	source: string;
+	target: string;
+	sourceHandle: string;
+	targetHandle: string;
+}
+
+/**
+ * Computed handle for a node (Vue Flow compatible).
+ * Pre-computed on the server to avoid expression evaluation on the main thread.
+ */
+export interface ComputedHandle {
+	handleId: string; // e.g., "inputs/main/0" or "outputs/ai_tool/1"
+	type: string; // NodeConnectionType (e.g., "main", "ai_tool")
+	mode: 'inputs' | 'outputs';
+	index: number;
+	displayName?: string;
+	required?: boolean;
+	maxConnections?: number;
+}
+
+/**
+ * Node data for seeding, including pre-computed handles.
+ */
+export interface NodeSeedData {
+	id: string;
+	name: string;
+	inputs?: ComputedHandle[];
+	outputs?: ComputedHandle[];
+	[key: string]: unknown;
 }
 
 /**
@@ -22,9 +60,54 @@ interface Subscriber {
 export interface WorkflowSeedData {
 	id: string;
 	name: string;
-	nodes: unknown[];
-	connections: Record<string, unknown>;
+	nodes: NodeSeedData[];
+	connections: IConnections;
 	settings?: Record<string, unknown>;
+}
+
+/**
+ * Convert IConnections (nested format) to flat edges (Vue Flow format).
+ *
+ * @param connections - IConnections from workflow
+ * @param nodeIdByName - Map from node name to node ID
+ * @returns Flat edges array
+ */
+function iConnectionsToEdges(
+	connections: IConnections,
+	nodeIdByName: Map<string, string>,
+): CRDTEdge[] {
+	const edges: CRDTEdge[] = [];
+
+	for (const [sourceName, sourceConns] of Object.entries(connections)) {
+		const sourceId = nodeIdByName.get(sourceName);
+		if (!sourceId) continue;
+
+		for (const [type, outputs] of Object.entries(sourceConns)) {
+			if (!outputs) continue;
+
+			outputs.forEach((targets, outputIndex) => {
+				if (!targets) return;
+
+				targets.forEach((target) => {
+					const targetId = nodeIdByName.get(target.node);
+					if (!targetId) return;
+
+					const sourceHandle = `outputs/${type}/${outputIndex}`;
+					const targetHandle = `inputs/${target.type}/${target.index}`;
+
+					edges.push({
+						id: `[${sourceId}/${sourceHandle}][${targetId}/${targetHandle}]`,
+						source: sourceId,
+						target: targetId,
+						sourceHandle,
+						targetHandle,
+					});
+				});
+			});
+		}
+	}
+
+	return edges;
 }
 
 const DEBOUNCE_DELAY_MS = 1500; // 1.5 seconds
@@ -195,7 +278,6 @@ export class CRDTState {
 		const doc = this.getOrCreateDoc(docId);
 		const awareness = doc.getAwareness();
 		awareness.applyUpdate(update);
-		this.logger.debug('Applied awareness update', { docId, size: update.length });
 	}
 
 	/**
@@ -333,6 +415,8 @@ export class CRDTState {
 	/**
 	 * Seed a document with workflow data.
 	 * This should only be called once per document (on first connection).
+	 *
+	 * Converts IConnections to flat edges format for CRDT storage.
 	 */
 	seedWorkflow(docId: string, workflow: WorkflowSeedData): void {
 		if (this.seededDocs.has(docId)) {
@@ -341,6 +425,17 @@ export class CRDTState {
 		}
 
 		const doc = this.getOrCreateDoc(docId);
+
+		// Build node name -> id lookup for edge conversion
+		const nodeIdByName = new Map<string, string>();
+		for (const node of workflow.nodes) {
+			if (node.id && node.name) {
+				nodeIdByName.set(node.name, node.id);
+			}
+		}
+
+		// Convert IConnections to flat edges
+		const edges = iConnectionsToEdges(workflow.connections, nodeIdByName);
 
 		doc.transact(() => {
 			// Seed workflow metadata
@@ -353,11 +448,7 @@ export class CRDTState {
 
 			// Seed nodes - each node is a nested CRDTMap for fine-grained updates
 			const nodesMap = doc.getMap<unknown>('nodes');
-			for (const node of workflow.nodes as Array<{
-				id: string;
-				parameters?: Record<string, unknown>;
-				[key: string]: unknown;
-			}>) {
+			for (const node of workflow.nodes) {
 				if (node.id) {
 					// Create a nested CRDTMap for this node
 					const nodeMap = doc.createMap<unknown>();
@@ -366,19 +457,48 @@ export class CRDTState {
 							// Deep seed parameters for fine-grained conflict resolution
 							// This allows concurrent edits to different parameter fields
 							nodeMap.set(key, seedValueDeep(doc, value));
+						} else if ((key === 'inputs' || key === 'outputs') && Array.isArray(value)) {
+							// Store pre-computed handles as CRDT arrays
+							const handlesArray = doc.createArray<unknown>();
+							for (const handle of value as ComputedHandle[]) {
+								const handleMap = doc.createMap<unknown>();
+								handleMap.set('handleId', handle.handleId);
+								handleMap.set('type', handle.type);
+								handleMap.set('mode', handle.mode);
+								handleMap.set('index', handle.index);
+								if (handle.displayName) handleMap.set('displayName', handle.displayName);
+								if (handle.required !== undefined) handleMap.set('required', handle.required);
+								if (handle.maxConnections !== undefined)
+									handleMap.set('maxConnections', handle.maxConnections);
+								handlesArray.push(handleMap);
+							}
+							nodeMap.set(key, handlesArray);
 						} else {
 							// Other node properties (id, type, name, position, etc.) stored flat
 							nodeMap.set(key, value);
 						}
 					}
+
+					// Compute and store node size based on handles
+					const size = calculateNodeSize({
+						inputs: node.inputs ?? [],
+						outputs: node.outputs ?? [],
+					});
+					nodeMap.set('size', [size.width, size.height]);
+
 					nodesMap.set(node.id, nodeMap);
 				}
 			}
 
-			// Seed connections
-			const connectionsMap = doc.getMap<unknown>('connections');
-			for (const [key, value] of Object.entries(workflow.connections)) {
-				connectionsMap.set(key, value);
+			// Seed edges (flat format, Vue Flow compatible)
+			const edgesMap = doc.getMap<unknown>('edges');
+			for (const edge of edges) {
+				const edgeMap = doc.createMap<unknown>();
+				edgeMap.set('source', edge.source);
+				edgeMap.set('target', edge.target);
+				edgeMap.set('sourceHandle', edge.sourceHandle);
+				edgeMap.set('targetHandle', edge.targetHandle);
+				edgesMap.set(edge.id, edgeMap);
 			}
 		});
 
@@ -387,6 +507,7 @@ export class CRDTState {
 			docId,
 			workflowId: workflow.id,
 			nodeCount: workflow.nodes.length,
+			edgeCount: edges.length,
 		});
 	}
 }

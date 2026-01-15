@@ -1,18 +1,52 @@
-import { onScopeDispose } from 'vue';
-import type { Node, VueFlowStore } from '@vue-flow/core';
-import type { WorkflowDocument, WorkflowNode } from '../types/workflowDocument.types';
+import { nextTick, onScopeDispose } from 'vue';
+import type { Node, Edge, VueFlowStore } from '@vue-flow/core';
+import type { WorkflowDocument, WorkflowNode, WorkflowEdge } from '../types/workflowDocument.types';
 
 /**
  * Transform WorkflowNode to Vue Flow Node format.
- * Only includes what Vue Flow needs: id, position, label.
+ * Includes id, position, label, and size (width/height) from CRDT.
  */
 function toVueFlowNode(node: WorkflowNode): Node {
-	return {
+	const vueFlowNode: Node = {
 		id: node.id,
 		type: 'crdt-node',
 		position: { x: node.position[0], y: node.position[1] },
 		data: { label: node.name },
 	};
+
+	// Add size if available from CRDT (server-computed)
+	if (node.size) {
+		vueFlowNode.width = node.size[0];
+		vueFlowNode.height = node.size[1];
+	}
+
+	return vueFlowNode;
+}
+
+/**
+ * Transform WorkflowEdge to Vue Flow Edge format.
+ */
+function toVueFlowEdge(edge: WorkflowEdge): Edge {
+	return {
+		id: edge.id,
+		source: edge.source,
+		target: edge.target,
+		sourceHandle: edge.sourceHandle,
+		targetHandle: edge.targetHandle,
+	};
+}
+
+/**
+ * Create a deterministic edge ID from connection info.
+ * Format: "[sourceId/sourceHandle][targetId/targetHandle]"
+ */
+function createEdgeId(
+	source: string,
+	target: string,
+	sourceHandle: string | null | undefined,
+	targetHandle: string | null | undefined,
+): string {
+	return `[${source}/${sourceHandle ?? ''}][${target}/${targetHandle ?? ''}]`;
 }
 
 export interface UseCanvasSyncOptions {
@@ -22,11 +56,17 @@ export interface UseCanvasSyncOptions {
 	instance: VueFlowStore;
 }
 
+/** Return type for useCanvasSync */
+export interface UseCanvasSyncResult {
+	initialNodes: Node[];
+	initialEdges: Edge[];
+}
+
 /**
  * Canvas sync adapter - bridges WorkflowDocument with Vue Flow.
  *
  * Handles persistent document sync:
- * - Initial nodes returned for VueFlow :nodes prop
+ * - Initial nodes and edges returned for VueFlow :nodes/:edges props
  * - Local changes: Vue Flow events → document mutations
  * - Remote changes: document events → Vue Flow updates
  *
@@ -38,20 +78,21 @@ export interface UseCanvasSyncOptions {
  * const doc = useCrdtWorkflowDoc({ docId: 'workflow-123' });
  * const instance = useVueFlow('workflow-123');
  *
- * // Wire up document sync and get initial nodes
- * const initialNodes = useCanvasSync({ doc, instance });
+ * // Wire up document sync and get initial nodes/edges
+ * const { initialNodes, initialEdges } = useCanvasSync({ doc, instance });
  *
- * // Pass initial nodes to VueFlow
- * // <VueFlow :id="doc.workflowId" :nodes="initialNodes" fit-view-on-init />
+ * // Pass initial data to VueFlow
+ * // <VueFlow :id="doc.workflowId" :nodes="initialNodes" :edges="initialEdges" />
  * ```
  */
-export function useCanvasSync(options: UseCanvasSyncOptions): Node[] {
+export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResult {
 	const { doc, instance } = options;
 
-	// --- Initial nodes for Vue Flow ---
+	// --- Initial data for Vue Flow ---
 	const initialNodes = doc.getNodes().map(toVueFlowNode);
+	const initialEdges = doc.getEdges().map(toVueFlowEdge);
 
-	// --- Local → Document ---
+	// --- Local → Document: Nodes ---
 
 	// Wire drag stop to commit positions to CRDT document
 	const unsubDragStop = instance.onNodeDragStop((event) => {
@@ -72,7 +113,35 @@ export function useCanvasSync(options: UseCanvasSyncOptions): Node[] {
 		}
 	});
 
-	// --- Remote → Vue Flow ---
+	// --- Local → Document: Edges ---
+
+	// Wire connection creation to CRDT document
+	const unsubConnect = instance.onConnect((connection) => {
+		const edgeId = createEdgeId(
+			connection.source,
+			connection.target,
+			connection.sourceHandle,
+			connection.targetHandle,
+		);
+		doc.addEdge({
+			id: edgeId,
+			source: connection.source,
+			target: connection.target,
+			sourceHandle: connection.sourceHandle ?? 'outputs/main/0',
+			targetHandle: connection.targetHandle ?? 'inputs/main/0',
+		});
+	});
+
+	// Wire edge removal to CRDT document
+	const unsubEdgesChange = instance.onEdgesChange((changes) => {
+		for (const change of changes) {
+			if (change.type === 'remove') {
+				doc.removeEdge(change.id);
+			}
+		}
+	});
+
+	// --- Remote → Vue Flow: Nodes ---
 
 	const { off: offNodeAdded } = doc.onNodeAdded((node) => {
 		instance.addNodes([toVueFlowNode(node)]);
@@ -86,15 +155,50 @@ export function useCanvasSync(options: UseCanvasSyncOptions): Node[] {
 		instance.updateNode(nodeId, { position: { x: position[0], y: position[1] } });
 	});
 
+	// Handle changes require calling updateNodeInternals to recalculate handle positions
+	// See: https://vueflow.dev/guide/handle.html#dynamic-handle-positions-adding-removing-handles-dynamically
+	const { off: offNodeHandles } = doc.onNodeHandlesChange(({ nodeId }) => {
+		// Wait for Vue to update the DOM with new handles before recalculating positions
+		void nextTick(() => {
+			instance.updateNodeInternals([nodeId]);
+		});
+	});
+
+	// Size changes update node width/height and recalculate internals
+	const { off: offNodeSize } = doc.onNodeSizeChange(({ nodeId, size }) => {
+		// Update node dimensions in Vue Flow
+		instance.updateNode(nodeId, { width: size[0], height: size[1] });
+		// Wait for Vue to update the DOM before recalculating handle positions
+		void nextTick(() => {
+			instance.updateNodeInternals([nodeId]);
+		});
+	});
+
+	// --- Remote → Vue Flow: Edges ---
+
+	const { off: offEdgeAdded } = doc.onEdgeAdded((edge) => {
+		instance.addEdges([toVueFlowEdge(edge)]);
+	});
+
+	const { off: offEdgeRemoved } = doc.onEdgeRemoved((edgeId) => {
+		instance.removeEdges([edgeId]);
+	});
+
 	// --- Cleanup ---
 
 	onScopeDispose(() => {
 		unsubDragStop.off();
 		unsubNodesChange.off();
+		unsubConnect.off();
+		unsubEdgesChange.off();
 		offNodeAdded();
 		offNodeRemoved();
 		offNodePosition();
+		offNodeHandles();
+		offNodeSize();
+		offEdgeAdded();
+		offEdgeRemoved();
 	});
 
-	return initialNodes;
+	return { initialNodes, initialEdges };
 }

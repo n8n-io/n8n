@@ -1,5 +1,7 @@
 import type { CRDTDoc, CRDTMap, Unsubscribe } from '@n8n/crdt';
-import type { IConnections, INode, Workflow } from 'n8n-workflow';
+import type { IConnections, INode, NodeConnectionType, Workflow } from 'n8n-workflow';
+
+import type { CRDTEdge } from './crdt-state';
 
 /**
  * Synchronizes a Workflow instance with a CRDT document.
@@ -8,6 +10,9 @@ import type { IConnections, INode, Workflow } from 'n8n-workflow';
  * the Workflow instance accordingly. The Workflow's nodes and connections
  * are updated via its setNodes and setConnections methods.
  *
+ * Edges are stored flat in CRDT (Vue Flow format) and converted to
+ * IConnections format for the Workflow class.
+ *
  * @param doc - The CRDT document to sync from
  * @param workflow - The Workflow instance to keep in sync
  * @returns An unsubscribe function to stop syncing
@@ -15,7 +20,38 @@ import type { IConnections, INode, Workflow } from 'n8n-workflow';
 export function syncWorkflowWithDoc(doc: CRDTDoc, workflow: Workflow): Unsubscribe {
 	const meta = doc.getMap<unknown>('meta');
 	const nodesMap = doc.getMap<unknown>('nodes');
-	const connectionsMap = doc.getMap<unknown>('connections');
+	const edgesMap = doc.getMap<unknown>('edges');
+
+	/**
+	 * Build a lookup map from node ID to node name.
+	 * Used for converting edges (use node IDs) to IConnections (use node names).
+	 */
+	function getNodeNameById(): Map<string, string> {
+		const map = new Map<string, string>();
+		for (const [id, nodeValue] of nodesMap.entries()) {
+			if (nodeValue && typeof nodeValue === 'object') {
+				const node =
+					'toJSON' in nodeValue
+						? (nodeValue as { toJSON(): INode }).toJSON()
+						: (nodeValue as INode);
+				if (node?.name) {
+					map.set(id, node.name);
+				}
+			}
+		}
+		return map;
+	}
+
+	/**
+	 * Sync edges from CRDT to Workflow.setConnections().
+	 * Converts flat edge format to nested IConnections format.
+	 */
+	function syncEdges(): void {
+		const edges = extractEdges(edgesMap);
+		const nodeNameById = getNodeNameById();
+		const connections = edgesToIConnections(edges, nodeNameById);
+		workflow.setConnections(connections);
+	}
 
 	// Sync meta changes (name, settings)
 	const metaUnsub = meta.onDeepChange(() => {
@@ -33,19 +69,20 @@ export function syncWorkflowWithDoc(doc: CRDTDoc, workflow: Workflow): Unsubscri
 	const nodesUnsub = nodesMap.onDeepChange(() => {
 		const nodes = extractNodes(nodesMap);
 		workflow.setNodes(nodes);
+		// Also resync edges since node names might have changed
+		syncEdges();
 	});
 
-	// Sync connections changes
-	const connectionsUnsub = connectionsMap.onDeepChange(() => {
-		const connections = connectionsMap.toJSON() as IConnections;
-		workflow.setConnections(connections);
+	// Sync edge changes
+	const edgesUnsub = edgesMap.onDeepChange(() => {
+		syncEdges();
 	});
 
 	// Return combined unsubscribe function
 	return () => {
 		metaUnsub();
 		nodesUnsub();
-		connectionsUnsub();
+		edgesUnsub();
 	};
 }
 
@@ -70,4 +107,82 @@ function extractNodes(nodesMap: CRDTMap<unknown>): INode[] {
 	}
 
 	return nodes;
+}
+
+/**
+ * Extract edges from a CRDT edges map as an array.
+ */
+function extractEdges(edgesMap: CRDTMap<unknown>): CRDTEdge[] {
+	const edges: CRDTEdge[] = [];
+
+	for (const [id, edgeValue] of edgesMap.entries()) {
+		let edge: CRDTEdge;
+		// Handle CRDTMap (nested structure) or plain object
+		if (edgeValue && typeof edgeValue === 'object' && 'toJSON' in edgeValue) {
+			edge = (edgeValue as { toJSON(): CRDTEdge }).toJSON();
+		} else {
+			edge = edgeValue as CRDTEdge;
+		}
+
+		if (edge) {
+			edges.push({ ...edge, id });
+		}
+	}
+
+	return edges;
+}
+
+/**
+ * Parse a handle string into type and index.
+ * Handle format: "{mode}/{type}/{index}" e.g., "outputs/main/0"
+ */
+function parseHandle(handle: string): { type: NodeConnectionType; index: number } {
+	const parts = handle.split('/');
+	// Format: mode/type/index (e.g., "outputs/main/0")
+	const type = (parts[1] ?? 'main') as NodeConnectionType;
+	const index = parseInt(parts[2] ?? '0', 10);
+	return { type, index };
+}
+
+/**
+ * Convert flat edges array to nested IConnections format.
+ *
+ * @param edges - Flat edges array (Vue Flow format)
+ * @param nodeNameById - Map from node ID to node name
+ * @returns IConnections format expected by Workflow class
+ */
+function edgesToIConnections(edges: CRDTEdge[], nodeNameById: Map<string, string>): IConnections {
+	const connections: IConnections = {};
+
+	for (const edge of edges) {
+		const sourceName = nodeNameById.get(edge.source);
+		const targetName = nodeNameById.get(edge.target);
+
+		// Skip edges where we can't resolve node names
+		if (!sourceName || !targetName) continue;
+
+		const { type: sourceType, index: sourceIndex } = parseHandle(edge.sourceHandle);
+		const { type: targetType, index: targetIndex } = parseHandle(edge.targetHandle);
+
+		// Initialize nested structure
+		connections[sourceName] ??= {};
+		connections[sourceName][sourceType] ??= [];
+
+		// Ensure array has enough slots (sparse array handling)
+		while (connections[sourceName][sourceType].length <= sourceIndex) {
+			connections[sourceName][sourceType].push(null);
+		}
+
+		// Initialize the connections array for this output index
+		connections[sourceName][sourceType][sourceIndex] ??= [];
+
+		// Add the connection
+		connections[sourceName][sourceType][sourceIndex]!.push({
+			node: targetName,
+			type: targetType,
+			index: targetIndex,
+		});
+	}
+
+	return connections;
 }

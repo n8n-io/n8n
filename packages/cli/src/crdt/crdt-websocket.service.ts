@@ -1,13 +1,27 @@
 import { Logger } from '@n8n/backend-common';
-import { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from '@n8n/crdt';
+import {
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	encodeMessage,
+	decodeMessage,
+	type CRDTDoc,
+	type CRDTMap,
+	type Unsubscribe,
+} from '@n8n/crdt';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import type { IncomingMessage, Server } from 'http';
 import { ServerResponse } from 'http';
-import type { IWorkflowBase } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
+	IWorkflowBase,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { v4 as uuid } from 'uuid';
 import type { WebSocket } from 'ws';
@@ -17,7 +31,8 @@ import { AuthService } from '@/auth/auth.service';
 import { NodeTypes } from '@/node-types';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { CRDTState, WorkflowRoom } from './crdt-state';
+import { CRDTState, WorkflowRoom, type ComputedHandle, type NodeSeedData } from './crdt-state';
+import { calculateNodeSize } from './node-size-calculator';
 import { syncWorkflowWithDoc } from './sync-workflow-with-doc';
 
 interface CRDTConnection {
@@ -160,6 +175,9 @@ export class CRDTWebSocketService {
 	/**
 	 * Load workflow from database and seed into CRDT document.
 	 * Also creates a Workflow instance and sets up sync with the CRDT document.
+	 *
+	 * Handles are computed server-side using NodeHelpers.getNodeInputs/getNodeOutputs
+	 * to avoid expression evaluation on the main thread in the frontend.
 	 */
 	private async seedWorkflowDoc(docId: string): Promise<void> {
 		// docId is the workflow ID
@@ -169,16 +187,7 @@ export class CRDTWebSocketService {
 			throw new Error(`Workflow not found: ${docId}`);
 		}
 
-		// Seed the CRDT document with workflow data
-		this.state.seedWorkflow(docId, {
-			id: workflowEntity.id,
-			name: workflowEntity.name,
-			nodes: workflowEntity.nodes,
-			connections: workflowEntity.connections as Record<string, unknown>,
-			settings: workflowEntity.settings as Record<string, unknown> | undefined,
-		});
-
-		// Create a Workflow instance
+		// Create a Workflow instance FIRST (needed for handle computation)
 		const workflow = new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,
@@ -190,9 +199,37 @@ export class CRDTWebSocketService {
 			settings: workflowEntity.settings,
 		});
 
+		// Compute handles for each node and prepare seed data
+		const nodesWithHandles = this.computeNodeHandles(workflow, workflowEntity.nodes);
+
+		// Seed the CRDT document with workflow data including pre-computed handles
+		this.state.seedWorkflow(docId, {
+			id: workflowEntity.id,
+			name: workflowEntity.name,
+			nodes: nodesWithHandles,
+			connections: workflowEntity.connections,
+			settings: workflowEntity.settings as Record<string, unknown> | undefined,
+		});
+
 		// Set up sync between CRDT document and Workflow instance
 		const doc = this.state.getDoc(docId);
-		const unsubscribe = syncWorkflowWithDoc(doc, workflow);
+		const syncUnsub = syncWorkflowWithDoc(doc, workflow);
+
+		// Set up handle recomputation when parameters change
+		const handleUnsub = this.setupHandleRecomputation(doc, workflow);
+
+		// Subscribe to document updates to broadcast server-side changes (like handle recomputation)
+		// to all connected clients
+		const updateUnsub = doc.onUpdate((update) => {
+			this.broadcastToAll(docId, MESSAGE_SYNC, update);
+		});
+
+		// Combined unsubscribe
+		const unsubscribe = () => {
+			syncUnsub();
+			handleUnsub();
+			updateUnsub();
+		};
 
 		// Create the workflow room with a save callback
 		this.state.createWorkflowRoom(
@@ -209,6 +246,189 @@ export class CRDTWebSocketService {
 			nodeCount: workflowEntity.nodes.length,
 			versionId: workflowEntity.versionId,
 		});
+	}
+
+	/**
+	 * Compute input and output handles for all nodes in a workflow.
+	 * Uses NodeHelpers.getNodeInputs/getNodeOutputs which can evaluate expressions.
+	 */
+	private computeNodeHandles(workflow: Workflow, nodes: INode[]): NodeSeedData[] {
+		return nodes.map((node) => {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeTypeDescription = nodeType?.description;
+
+			let inputs: ComputedHandle[] = [];
+			let outputs: ComputedHandle[] = [];
+
+			if (nodeTypeDescription) {
+				// Compute inputs
+				const rawInputs = NodeHelpers.getNodeInputs(workflow, node, nodeTypeDescription);
+				inputs = this.normalizeHandles(rawInputs, 'inputs');
+
+				// Compute outputs
+				const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription);
+				outputs = this.normalizeHandles(rawOutputs, 'outputs');
+			}
+
+			return {
+				...node,
+				inputs,
+				outputs,
+			} as NodeSeedData;
+		});
+	}
+
+	/**
+	 * Normalize raw inputs/outputs into ComputedHandle format.
+	 * Handles both simple string types and full configuration objects.
+	 */
+	private normalizeHandles(
+		rawHandles: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
+		mode: 'inputs' | 'outputs',
+	): ComputedHandle[] {
+		const handles: ComputedHandle[] = [];
+
+		// Group by type to compute correct indices
+		const byType = new Map<string, number>();
+
+		for (const raw of rawHandles) {
+			// Normalize to object form
+			const config =
+				typeof raw === 'string'
+					? { type: raw as NodeConnectionType }
+					: (raw as INodeInputConfiguration);
+
+			const type = config.type;
+			const currentIndex = byType.get(type) ?? 0;
+			byType.set(type, currentIndex + 1);
+
+			handles.push({
+				handleId: `${mode}/${type}/${currentIndex}`,
+				type,
+				mode,
+				index: currentIndex,
+				displayName: config.displayName,
+				required: config.required,
+				maxConnections: config.maxConnections,
+			});
+		}
+
+		return handles;
+	}
+
+	/**
+	 * Set up handle recomputation when node parameters change.
+	 * This is necessary because handles can be dynamic based on parameter values
+	 * (e.g., Merge node's numberInputs parameter controls input count).
+	 */
+	private setupHandleRecomputation(doc: CRDTDoc, workflow: Workflow): Unsubscribe {
+		const nodesMap = doc.getMap<unknown>('nodes');
+
+		return nodesMap.onDeepChange((changes) => {
+			// Check if any parameter changes occurred
+			const affectedNodeIds = new Set<string>();
+
+			for (const change of changes) {
+				// path format: [nodeId, 'parameters', ...paramPath]
+				if (change.path.length >= 2 && change.path[1] === 'parameters') {
+					affectedNodeIds.add(change.path[0] as string);
+				}
+			}
+
+			if (affectedNodeIds.size === 0) return;
+
+			// Recompute handles for affected nodes
+			doc.transact(() => {
+				for (const nodeId of affectedNodeIds) {
+					const nodeMap = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (!nodeMap) continue;
+
+					// Read node data directly from CRDT (not from Workflow instance)
+					// This ensures we have the latest parameters, since multiple onDeepChange
+					// handlers may fire in undefined order
+					const node = this.crdtNodeMapToINode(nodeMap);
+					if (!node) continue;
+
+					const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					if (!nodeType?.description) continue;
+
+					// Recompute handles using the fresh node data from CRDT
+					const rawInputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+					const newInputs = this.normalizeHandles(rawInputs, 'inputs');
+
+					const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType.description);
+					const newOutputs = this.normalizeHandles(rawOutputs, 'outputs');
+
+					// Update handles in CRDT
+					this.updateHandlesInCRDT(doc, nodeMap, 'inputs', newInputs);
+					this.updateHandlesInCRDT(doc, nodeMap, 'outputs', newOutputs);
+
+					// Compute and store node size based on updated handles
+					const size = calculateNodeSize({ inputs: newInputs, outputs: newOutputs });
+					nodeMap.set('size', [size.width, size.height]);
+				}
+			});
+		});
+	}
+
+	/**
+	 * Convert a CRDT node map to an INode object.
+	 * Reads directly from CRDT to get the latest data.
+	 */
+	private crdtNodeMapToINode(nodeMap: CRDTMap<unknown>): INode | null {
+		const id = nodeMap.get('id') as string | undefined;
+		const name = nodeMap.get('name') as string | undefined;
+		const type = nodeMap.get('type') as string | undefined;
+		const typeVersion = nodeMap.get('typeVersion') as number | undefined;
+		const position = nodeMap.get('position') as [number, number] | undefined;
+
+		if (!id || !name || !type) return null;
+
+		// Get parameters - handle both CRDTMap and plain object
+		const rawParams = nodeMap.get('parameters');
+		let parameters: Record<string, unknown> = {};
+		if (rawParams && typeof rawParams === 'object') {
+			if ('toJSON' in rawParams) {
+				parameters = (rawParams as { toJSON(): Record<string, unknown> }).toJSON();
+			} else {
+				parameters = rawParams as Record<string, unknown>;
+			}
+		}
+
+		return {
+			id,
+			name,
+			type,
+			typeVersion: typeVersion ?? 1,
+			position: position ?? [0, 0],
+			parameters,
+		} as INode;
+	}
+
+	/**
+	 * Update handles array in CRDT for a node.
+	 */
+	private updateHandlesInCRDT(
+		doc: CRDTDoc,
+		nodeMap: CRDTMap<unknown>,
+		key: 'inputs' | 'outputs',
+		handles: ComputedHandle[],
+	): void {
+		// Create new handles array
+		const handlesArray = doc.createArray<unknown>();
+		for (const handle of handles) {
+			const handleMap = doc.createMap<unknown>();
+			handleMap.set('handleId', handle.handleId);
+			handleMap.set('type', handle.type);
+			handleMap.set('mode', handle.mode);
+			handleMap.set('index', handle.index);
+			if (handle.displayName) handleMap.set('displayName', handle.displayName);
+			if (handle.required !== undefined) handleMap.set('required', handle.required);
+			if (handle.maxConnections !== undefined)
+				handleMap.set('maxConnections', handle.maxConnections);
+			handlesArray.push(handleMap);
+		}
+		nodeMap.set(key, handlesArray);
 	}
 
 	private handleMessage(connection: CRDTConnection, data: ArrayBuffer | Buffer) {
@@ -232,12 +452,6 @@ export class CRDTWebSocketService {
 			const room = this.state.getRoom(docId);
 			room?.scheduleSave();
 		} else if (messageType === MESSAGE_AWARENESS) {
-			this.logger.debug('[CRDT] Received awareness message', {
-				docId,
-				userId,
-				payloadSize: payload.length,
-			});
-
 			// Apply awareness update and broadcast to other clients
 			this.state.applyAwarenessBytes(docId, payload);
 			this.broadcastMessage(docId, MESSAGE_AWARENESS, payload, connection);
@@ -269,6 +483,21 @@ export class CRDTWebSocketService {
 
 		for (const conn of docConnections) {
 			if (conn !== sender && conn.ws.readyState === conn.ws.OPEN) {
+				this.sendMessage(conn.ws, messageType, payload);
+			}
+		}
+	}
+
+	/**
+	 * Broadcast an encoded message to ALL connected clients (no sender exclusion).
+	 * Used for server-originated updates like handle recomputation.
+	 */
+	private broadcastToAll(docId: string, messageType: number, payload: Uint8Array) {
+		const docConnections = this.connections.get(docId);
+		if (!docConnections) return;
+
+		for (const conn of docConnections) {
+			if (conn.ws.readyState === conn.ws.OPEN) {
 				this.sendMessage(conn.ws, messageType, payload);
 			}
 		}

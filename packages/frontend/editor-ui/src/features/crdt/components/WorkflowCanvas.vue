@@ -29,8 +29,8 @@ const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 // Provide awareness for child components
 provide(WorkflowAwarenessKey, awareness);
 
-// Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes
-const initialNodes = useCanvasSync({ doc, instance });
+// Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes/edges
+const { initialNodes, initialEdges } = useCanvasSync({ doc, instance });
 
 // Wire awareness ↔ Vue Flow (ephemeral state: cursors, selections, live drag)
 useCanvasAwareness({ instance, awareness });
@@ -74,6 +74,7 @@ const zoom = computed(() => instance.viewport.value.zoom);
 		<VueFlow
 			:id="doc.workflowId"
 			:nodes="initialNodes"
+			:edges="initialEdges"
 			:node-types="nodeTypes"
 			fit-view-on-init
 			pan-on-scroll
@@ -109,27 +110,5 @@ const zoom = computed(() => instance.viewport.value.zoom);
 	position: relative;
 	width: 100%;
 	height: 100%;
-}
-
-.toolbar {
-	position: absolute;
-	top: var(--spacing--sm);
-	left: var(--spacing--sm);
-	z-index: 10;
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.button {
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
-	background-color: var(--color--background);
-	color: var(--color--text);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
 }
 </style>

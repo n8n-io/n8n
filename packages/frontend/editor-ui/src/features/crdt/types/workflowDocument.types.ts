@@ -9,6 +9,27 @@ import type { WorkflowAwarenessState } from './awareness.types';
 export type WorkflowDocumentState = 'idle' | 'connecting' | 'ready' | 'error';
 
 /**
+ * Pre-computed handle for a node (Vue Flow compatible).
+ * Computed on the server to avoid expression evaluation on the main thread.
+ */
+export interface ComputedHandle {
+	/** Handle ID: "{mode}/{type}/{index}" e.g., "inputs/main/0" */
+	handleId: string;
+	/** Connection type (e.g., "main", "ai_tool", "model") */
+	type: string;
+	/** Handle mode */
+	mode: 'inputs' | 'outputs';
+	/** Index within the type group */
+	index: number;
+	/** Optional display name */
+	displayName?: string;
+	/** Whether connection is required */
+	required?: boolean;
+	/** Maximum number of connections allowed */
+	maxConnections?: number;
+}
+
+/**
  * Raw workflow node data (not Vue Flow Node).
  * This is the canonical format stored in CRDT/REST.
  */
@@ -19,17 +40,35 @@ export interface WorkflowNode {
 	type: string;
 	typeVersion: number;
 	parameters: Record<string, unknown>;
+	/** Pre-computed input handles from server */
+	inputs?: ComputedHandle[];
+	/** Pre-computed output handles from server */
+	outputs?: ComputedHandle[];
+	/** Pre-computed node size [width, height] from server */
+	size?: [number, number];
 }
 
 /**
- * Raw workflow edge data (future).
+ * Raw workflow edge data in Vue Flow native format.
+ * Stored flat in CRDT, converted to IConnections for Workflow class.
+ *
+ * Handle format: "{mode}/{type}/{index}"
+ * Examples:
+ *   - "outputs/main/0" (first main output)
+ *   - "inputs/main/2" (third main input)
+ *   - "outputs/ai_tool/0" (first AI tool output)
  */
 export interface WorkflowEdge {
+	/** Edge ID: "[sourceId/sourceHandle][targetId/targetHandle]" */
 	id: string;
+	/** Source node ID (UUID) */
 	source: string;
+	/** Target node ID (UUID) */
 	target: string;
-	sourceHandle?: string;
-	targetHandle?: string;
+	/** Source handle: "outputs/{type}/{index}" */
+	sourceHandle: string;
+	/** Target handle: "inputs/{type}/{index}" */
+	targetHandle: string;
 }
 
 /** Node position change event payload */
@@ -42,6 +81,19 @@ export interface NodePositionChange {
 export interface NodeParamsChange {
 	nodeId: string;
 	params: Record<string, unknown>;
+}
+
+/** Node handles change event payload (inputs/outputs recomputed) */
+export interface NodeHandlesChange {
+	nodeId: string;
+	inputs: ComputedHandle[];
+	outputs: ComputedHandle[];
+}
+
+/** Node size change event payload (recomputed when handles change) */
+export interface NodeSizeChange {
+	nodeId: string;
+	size: [number, number];
 }
 
 /**
@@ -111,6 +163,20 @@ export interface WorkflowDocument {
 	 */
 	updateNodeParamAtPath?(nodeId: string, path: string[], value: unknown): void;
 
+	// --- Edge Mutations ---
+
+	/**
+	 * Add an edge to the workflow.
+	 * @param edge - The edge to add
+	 */
+	addEdge(edge: WorkflowEdge): void;
+
+	/**
+	 * Remove an edge by ID.
+	 * @param edgeId - The edge ID to remove
+	 */
+	removeEdge(edgeId: string): void;
+
 	// --- Remote Change Events (VueUse EventHook pattern) ---
 	// CRDT: fires when other users make changes
 	// REST: never fires (single user)
@@ -126,6 +192,18 @@ export interface WorkflowDocument {
 
 	/** Subscribe to node parameter changes (future) */
 	onNodeParamsChange: EventHookOn<NodeParamsChange>;
+
+	/** Subscribe to node handle changes (inputs/outputs recomputed by server) */
+	onNodeHandlesChange: EventHookOn<NodeHandlesChange>;
+
+	/** Subscribe to node size changes (recomputed when handles change) */
+	onNodeSizeChange: EventHookOn<NodeSizeChange>;
+
+	/** Subscribe to edge additions */
+	onEdgeAdded: EventHookOn<WorkflowEdge>;
+
+	/** Subscribe to edge removals */
+	onEdgeRemoved: EventHookOn<string>;
 
 	/** Find a node by ID */
 	findNode(nodeId: string): WorkflowNode | undefined;

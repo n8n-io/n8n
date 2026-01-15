@@ -9,6 +9,9 @@ import type {
 	WorkflowEdge,
 	NodePositionChange,
 	NodeParamsChange,
+	NodeHandlesChange,
+	NodeSizeChange,
+	ComputedHandle,
 } from '../types/workflowDocument.types';
 import type { WorkflowAwarenessState } from '../types/awareness.types';
 
@@ -57,15 +60,30 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const nodeRemovedHook = createEventHook<string>();
 	const nodePositionHook = createEventHook<NodePositionChange>();
 	const nodeParamsHook = createEventHook<NodeParamsChange>();
+	const nodeHandlesHook = createEventHook<NodeHandlesChange>();
+	const nodeSizeHook = createEventHook<NodeSizeChange>();
+	const edgeAddedHook = createEventHook<WorkflowEdge>();
+	const edgeRemovedHook = createEventHook<string>();
 
-	// Cleanup function for nodes map subscription
+	// Cleanup functions for map subscriptions
 	let unsubscribeNodesChange: (() => void) | null = null;
+	let unsubscribeEdgesChange: (() => void) | null = null;
 
 	// --- Helpers ---
 
 	function getCrdtNode(nodeId: string): CRDTMap<unknown> | undefined {
 		if (!doc) return undefined;
 		return doc.getMap('nodes').get(nodeId) as CRDTMap<unknown> | undefined;
+	}
+
+	function crdtEdgeToWorkflowEdge(id: string, crdtEdge: CRDTMap<unknown>): WorkflowEdge {
+		return {
+			id,
+			source: crdtEdge.get('source') as string,
+			target: crdtEdge.get('target') as string,
+			sourceHandle: crdtEdge.get('sourceHandle') as string,
+			targetHandle: crdtEdge.get('targetHandle') as string,
+		};
 	}
 
 	function crdtNodeToWorkflowNode(id: string, crdtNode: CRDTMap<unknown>): WorkflowNode {
@@ -76,6 +94,14 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		// Parameters are stored as deep CRDT structures, convert to plain object
 		const rawParams = crdtNode.get('parameters');
 		const parameters = (toJSON(rawParams) as Record<string, unknown>) ?? {};
+		// Handles are stored as CRDT arrays, convert to plain arrays
+		const rawInputs = crdtNode.get('inputs');
+		const rawOutputs = crdtNode.get('outputs');
+		const inputs = rawInputs ? (toJSON(rawInputs) as ComputedHandle[]) : undefined;
+		const outputs = rawOutputs ? (toJSON(rawOutputs) as ComputedHandle[]) : undefined;
+		// Size is stored as [width, height] tuple
+		const rawSize = crdtNode.get('size');
+		const size = rawSize ? (toJSON(rawSize) as [number, number]) : undefined;
 
 		return {
 			id,
@@ -84,6 +110,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			type: type ?? 'unknown',
 			typeVersion: typeVersion ?? 1,
 			parameters,
+			inputs,
+			outputs,
+			size,
 		};
 	}
 
@@ -123,34 +152,95 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 					// Delete: remote/undoRedo (local already removed from Vue Flow)
 					void nodeRemovedHook.trigger(nodeId);
 				}
-			} else if (needsUIUpdate(origin)) {
-				// Nested property changes: remote/undoRedo need UI update
-				// Local changes already reflected in Vue Flow
+			} else {
+				// Nested property changes
 				const prop = rest[0];
 
-				if (prop === 'position' && Array.isArray(change.value)) {
-					const position = change.value as [number, number];
-					void nodePositionHook.trigger({ nodeId, position });
-				} else if (prop === 'parameters' && typeof change.value === 'object') {
-					const params = change.value as Record<string, unknown>;
-					void nodeParamsHook.trigger({ nodeId, params });
+				// Handle and size changes are ALWAYS server-computed,
+				// so they should ALWAYS trigger UI update regardless of origin.
+				// Even local parameter changes result in server-computed handle/size updates.
+				if (prop === 'inputs' || prop === 'outputs') {
+					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (crdtNode) {
+						const rawInputs = crdtNode.get('inputs');
+						const rawOutputs = crdtNode.get('outputs');
+						const inputs = rawInputs ? (toJSON(rawInputs) as ComputedHandle[]) : [];
+						const outputs = rawOutputs ? (toJSON(rawOutputs) as ComputedHandle[]) : [];
+						void nodeHandlesHook.trigger({ nodeId, inputs, outputs });
+					}
+				} else if (prop === 'size') {
+					// Size is server-computed based on handles, always trigger UI update
+					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (crdtNode) {
+						const rawSize = crdtNode.get('size');
+						const size: [number, number] = rawSize
+							? (toJSON(rawSize) as [number, number])
+							: [96, 96];
+						void nodeSizeHook.trigger({ nodeId, size });
+					}
+				} else if (needsUIUpdate(origin)) {
+					// Other property changes: only update UI for remote/undoRedo
+					// Local changes are already reflected in Vue Flow
+					if (prop === 'position' && Array.isArray(change.value)) {
+						const position = change.value as [number, number];
+						void nodePositionHook.trigger({ nodeId, position });
+					} else if (prop === 'parameters' && typeof change.value === 'object') {
+						const params = change.value as Record<string, unknown>;
+						void nodeParamsHook.trigger({ nodeId, params });
+					}
 				}
 			}
 		}
 	}
 
+	/**
+	 * Handle edge changes from CRDT.
+	 */
+	function handleEdgeChanges(changes: DeepChange[], origin: ChangeOrigin): void {
+		if (!doc) return;
+
+		const edgesMap = doc.getMap('edges');
+
+		for (const change of changes) {
+			if (!isMapChange(change)) continue;
+
+			const [edgeId, ...rest] = change.path;
+			if (typeof edgeId !== 'string') continue;
+
+			// Only handle top-level edge changes (add/delete)
+			if (rest.length === 0) {
+				if (change.action === 'add') {
+					// Add: trigger for both local + remote + undoRedo (all need Vue Flow update)
+					const crdtEdge = edgesMap.get(edgeId) as CRDTMap<unknown> | undefined;
+					if (crdtEdge) {
+						const edge = crdtEdgeToWorkflowEdge(edgeId, crdtEdge);
+						void edgeAddedHook.trigger(edge);
+					}
+				} else if (change.action === 'delete' && needsUIUpdate(origin)) {
+					// Delete: remote/undoRedo (local already removed from Vue Flow)
+					void edgeRemovedHook.trigger(edgeId);
+				}
+			}
+			// Edge properties don't change after creation - edges are immutable
+		}
+	}
+
 	// Handle CRDT document ready
 	crdt.onReady((crdtDoc) => {
-		console.log('[useCrdtWorkflowDoc] onReady callback - accessing nodes map...');
 		doc = crdtDoc;
 
 		const nodesMap = doc.getMap('nodes');
-		console.log('[useCrdtWorkflowDoc] Got nodes map');
+		const edgesMap = doc.getMap('edges');
 
 		// Subscribe to deep changes on nodes map
 		// Local add needs Vue Flow update; remote changes need Vue Flow update
 		unsubscribeNodesChange = nodesMap.onDeepChange((changes, origin) => {
 			handleChanges(changes, origin);
+		});
+
+		// Subscribe to edge changes
+		unsubscribeEdgesChange = edgesMap.onDeepChange((changes, origin) => {
+			handleEdgeChanges(changes, origin);
 		});
 	});
 
@@ -172,8 +262,18 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	}
 
 	function getEdges(): WorkflowEdge[] {
-		// Future implementation
-		return [];
+		if (!doc) return [];
+
+		const edgesMap = doc.getMap('edges');
+		const edges: WorkflowEdge[] = [];
+
+		for (const [id, value] of edgesMap.entries()) {
+			if (value && typeof value === 'object') {
+				edges.push(crdtEdgeToWorkflowEdge(id, value as CRDTMap<unknown>));
+			}
+		}
+
+		return edges;
 	}
 
 	// --- Mutations ---
@@ -283,6 +383,39 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		return crdtNode.get('parameters') as CRDTMap<unknown> | undefined;
 	}
 
+	// --- Edge Mutations ---
+
+	/**
+	 * Add an edge to the workflow.
+	 * Edges are stored flat in CRDT, keyed by edge ID.
+	 */
+	function addEdge(edge: WorkflowEdge): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			const edgesMap = doc!.getMap('edges');
+			const crdtEdge = doc!.createMap();
+			crdtEdge.set('source', edge.source);
+			crdtEdge.set('target', edge.target);
+			crdtEdge.set('sourceHandle', edge.sourceHandle);
+			crdtEdge.set('targetHandle', edge.targetHandle);
+			edgesMap.set(edge.id, crdtEdge);
+		});
+		// Hook triggers via onDeepChange subscription
+	}
+
+	/**
+	 * Remove an edge by ID.
+	 */
+	function removeEdge(edgeId: string): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			doc?.getMap('edges').delete(edgeId);
+		});
+		// No hook trigger - Vue Flow already removed the edge before calling this
+	}
+
 	// --- Lifecycle ---
 
 	async function connect(): Promise<void> {
@@ -292,6 +425,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	function disconnect(): void {
 		unsubscribeNodesChange?.();
 		unsubscribeNodesChange = null;
+		unsubscribeEdgesChange?.();
+		unsubscribeEdgesChange = null;
 		crdt.disconnect();
 		doc = null;
 	}
@@ -327,10 +462,16 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		updateNodeParams,
 		updateNodeParamAtPath,
 		getNodeParametersMap,
+		addEdge,
+		removeEdge,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
+		onNodeHandlesChange: nodeHandlesHook.on,
+		onNodeSizeChange: nodeSizeHook.on,
+		onEdgeAdded: edgeAddedHook.on,
+		onEdgeRemoved: edgeRemovedHook.on,
 		findNode,
 		get awareness(): CRDTAwareness<WorkflowAwarenessState> | null {
 			return crdt.awareness as CRDTAwareness<WorkflowAwarenessState> | null;

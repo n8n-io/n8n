@@ -9,6 +9,8 @@ import type {
 	WorkflowEdge,
 	NodePositionChange,
 	NodeParamsChange,
+	NodeHandlesChange,
+	NodeSizeChange,
 } from '../types/workflowDocument.types';
 
 export interface UseRestWorkflowDocOptions {
@@ -46,6 +48,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 
 	// Internal state
 	const nodesCache = ref<WorkflowNode[]>([]);
+	const edgesCache = ref<WorkflowEdge[]>([]);
 	const state = ref<WorkflowDocumentState>('idle');
 	const error = ref<string | null>(null);
 	const isReady = computed(() => state.value === 'ready');
@@ -104,8 +107,17 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	}
 
 	function getEdges(): WorkflowEdge[] {
-		// Future implementation
-		return [];
+		return edgesCache.value;
+	}
+
+	// --- Edge Mutations (local only - not saved to server) ---
+
+	function addEdge(edge: WorkflowEdge): void {
+		edgesCache.value = [...edgesCache.value, edge];
+	}
+
+	function removeEdge(edgeId: string): void {
+		edgesCache.value = edgesCache.value.filter((e) => e.id !== edgeId);
 	}
 
 	// --- Mutations (local only - not saved to server) ---
@@ -153,6 +165,10 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	const nodeRemovedHook = createEventHook<string>();
 	const nodePositionHook = createEventHook<NodePositionChange>();
 	const nodeParamsHook = createEventHook<NodeParamsChange>();
+	const nodeHandlesHook = createEventHook<NodeHandlesChange>();
+	const nodeSizeHook = createEventHook<NodeSizeChange>();
+	const edgeAddedHook = createEventHook<WorkflowEdge>();
+	const edgeRemovedHook = createEventHook<string>();
 
 	// Auto-cleanup on scope dispose
 	onScopeDispose(() => {
@@ -182,10 +198,16 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		removeNode,
 		updateNodePositions,
 		updateNodeParams,
+		addEdge,
+		removeEdge,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,
 		onNodeParamsChange: nodeParamsHook.on,
+		onNodeHandlesChange: nodeHandlesHook.on,
+		onNodeSizeChange: nodeSizeHook.on,
+		onEdgeAdded: edgeAddedHook.on,
+		onEdgeRemoved: edgeRemovedHook.on,
 		findNode,
 		// No awareness for REST documents (single user mode)
 		awareness: null,
