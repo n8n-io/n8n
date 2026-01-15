@@ -73,6 +73,16 @@ export const test = base.extend<
 
 			const container = await createN8NStack(config);
 			await use(container);
+
+			if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
+				console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+				console.log(`    URL: ${container.baseUrl}`);
+				console.log(`    Project: ${container.projectName}`);
+				console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+				console.log('=========================================================\n');
+				return;
+			}
+
 			await container.stop();
 		},
 		{ scope: 'worker', box: true },
