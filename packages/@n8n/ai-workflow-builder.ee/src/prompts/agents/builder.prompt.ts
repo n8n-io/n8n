@@ -110,8 +110,8 @@ AI CAPABILITY CONNECTIONS are REVERSED in direction:
 Sub-nodes (tools, memory, models) connect TO the AI Agent, NOT from it.
 The sub-node is the SOURCE, the AI Agent is the TARGET.
 
-⚠️ WRONG: AI Agent → Calculator Tool (NEVER do this)
-✅ CORRECT: Calculator Tool → AI Agent (tool provides capability to agent)
+WRONG: AI Agent -> Calculator Tool (NEVER do this)
+CORRECT: Calculator Tool -> AI Agent (tool provides capability to agent)
 
 When calling connect_nodes for AI sub-nodes:
 - sourceNodeName: The sub-node (tool, memory, model, parser)
@@ -191,11 +191,63 @@ const AI_AGENT_VS_CHAIN = `When to use AI Agent vs Basic LLM Chain:
 - Tasks involve analysis, summarization, or multi-step reasoning
 - The workflow processes data with AI/LLM capabilities
 
-**USE Basic LLM Chain ONLY when:**
+**USE Basic LLM Chain (@n8n/n8n-nodes-langchain.chainLlm) ONLY when:**
 - Simple single-turn text generation without tools
 - User explicitly asks for "basic chain" or "simple LLM"
 
-CRITICAL: When in doubt, prefer AI Agent. NEVER use provider nodes (openAi, googleGemini, chainLlm) for main AI processing - only as sub-nodes connected to AI Agent.`;
+When in doubt, prefer AI Agent over Basic LLM Chain.
+
+Chat Model nodes (lmChatOpenAi, lmChatGoogleGemini, etc.) are SUB-NODES - they connect TO AI Agent or Basic LLM Chain via ai_languageModel, never used standalone for text processing.`;
+
+const OPENAI_NODE_USAGE = `The @n8n/n8n-nodes-langchain.openAi node has SPECIFIC use cases:
+
+VALID uses for @n8n/n8n-nodes-langchain.openAi (standalone):
+- Image generation (DALL-E)
+- Audio transcription (Whisper)
+- Text-to-speech
+- Other OpenAI-specific operations that are NOT agentic
+
+DO NOT use @n8n/n8n-nodes-langchain.openAi for:
+- Text analysis or summarization (use AI Agent instead)
+- Chat completions in workflows (use AI Agent instead)
+- Any agentic task requiring reasoning (use AI Agent instead)
+
+For agentic use cases:
+- WRONG: Schedule Trigger -> @n8n/n8n-nodes-langchain.openAi -> Gmail
+- CORRECT: Schedule Trigger -> AI Agent <- OpenAI Chat Model [ai_languageModel]
+
+When the task involves AI processing, analysis, summarization, or reasoning:
+Use AI Agent (@n8n/n8n-nodes-langchain.agent) with a chat model sub-node (lmChatOpenAi, lmChatGoogleGemini, etc.)`;
+
+const MULTI_TRIGGER_WORKFLOWS = `Some workflows require MULTIPLE triggers for different entry points:
+
+**Examples requiring multiple triggers:**
+- "React to both form submissions AND emails" -> n8n Form Trigger + Gmail Trigger
+- "Handle webhook calls AND scheduled runs" -> Webhook + Schedule Trigger
+- "Process incoming chats AND scheduled tasks" -> Chat Trigger + Schedule Trigger
+
+**How to build:**
+1. Create each trigger node separately
+2. Each trigger starts its own execution path
+3. Paths may converge later using Merge node if needed
+
+IMPORTANT: If the user prompt mentions TWO different input sources (e.g., "website form OR email"), you need TWO trigger nodes.`;
+
+const SHARED_MEMORY_PATTERN = `When a workflow has BOTH a scheduled AI task AND a chat interface for querying results:
+
+**Pattern: Share memory between AI Agent and Chat Trigger**
+1. Create ONE Window Buffer Memory node
+2. Connect the SAME memory node to BOTH:
+   - The AI Agent that processes data (via ai_memory)
+   - The Chat Trigger's AI Agent that answers queries (via ai_memory)
+
+This allows users to query the AI about previously processed data through chat.
+
+Example structure:
+- Schedule Trigger → AI Agent (data processing) ← Memory Node
+- Telegram Trigger → AI Agent (chat queries) ← Memory Node (same one!)
+
+CRITICAL: Both AI Agents must connect to the SAME memory node for context sharing.`;
 
 const RAG_PATTERN = `For RAG (Retrieval-Augmented Generation) workflows:
 
@@ -325,12 +377,12 @@ ai_vectorStore - Vector store provides retrieval (when used as tool):
 - Vector Store (mode: retrieve-as-tool) → AI Agent [ai_tool]
 
 COMMON MISTAKES TO AVOID:
-❌ AI Agent → OpenAI Chat Model (WRONG - model provides TO agent)
-❌ AI Agent → Calculator Tool (WRONG - tool provides TO agent)
-❌ AI Agent → Window Buffer Memory (WRONG - memory provides TO agent)
-✅ OpenAI Chat Model → AI Agent (CORRECT)
-✅ Calculator Tool → AI Agent (CORRECT)
-✅ Window Buffer Memory → AI Agent (CORRECT)
+WRONG: AI Agent -> OpenAI Chat Model (model provides TO agent)
+WRONG: AI Agent -> Calculator Tool (tool provides TO agent)
+WRONG: AI Agent -> Window Buffer Memory (memory provides TO agent)
+CORRECT: OpenAI Chat Model -> AI Agent
+CORRECT: Calculator Tool -> AI Agent
+CORRECT: Window Buffer Memory -> AI Agent
 </connection_type_reference>`;
 
 const RESTRICTIONS = `- Respond before calling validate_structure
@@ -363,6 +415,9 @@ export function buildBuilderPrompt(): string {
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
 		.section('ai_agent_vs_chain', AI_AGENT_VS_CHAIN)
+		.section('openai_node_usage', OPENAI_NODE_USAGE)
+		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
+		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)

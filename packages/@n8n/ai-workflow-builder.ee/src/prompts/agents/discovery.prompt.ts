@@ -217,6 +217,30 @@ const SUB_NODES_SEARCHES = `When searching for AI nodes, ALSO search for their r
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"`;
 
+const AI_NODE_SELECTION = `CRITICAL: Choose the correct AI node based on task type.
+
+**Use AI Agent (@n8n/n8n-nodes-langchain.agent) for:**
+- Text analysis, summarization, or classification
+- Processing data with AI/LLM (e.g., "analyze weather", "summarize emails")
+- Any task requiring reasoning or decision-making
+- Chat completions or conversational AI
+- Multi-step AI tasks
+
+**Use @n8n/n8n-nodes-langchain.openAi ONLY for:**
+- Image generation (DALL-E)
+- Audio transcription (Whisper)
+- Text-to-speech
+- Embeddings generation
+- Other OpenAI-specific operations that are NOT text analysis/reasoning
+
+WRONG: Recommending openAi node for "analyze weather data" or "summarize news"
+CORRECT: Recommending AI Agent for analysis/summarization tasks
+
+When user asks for AI processing, analysis, or summarization:
+1. Recommend AI Agent (@n8n/n8n-nodes-langchain.agent)
+2. Also recommend a Chat Model sub-node (lmChatOpenAi, lmChatGoogleGemini, etc.)
+3. Do NOT recommend the standalone openAi node for these tasks`;
+
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.usage;
 
 const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node. Code nodes are slower (sandboxed environment).
@@ -370,6 +394,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('connection_changing_parameters', CONNECTION_PARAMETERS)
 		.section('dynamic_output_nodes', DYNAMIC_OUTPUT_NODES)
 		.section('sub_nodes_searches', SUB_NODES_SEARCHES)
+		.section('ai_node_selection', AI_NODE_SELECTION)
 		.section('structured_output_parser', STRUCTURED_OUTPUT_PARSER)
 		.section('critical_rules', CRITICAL_RULES)
 		.section('do_not', RESTRICTIONS)
