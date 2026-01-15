@@ -60,7 +60,9 @@ jobs:
           git push public HEAD:master
 
       - name: Sync public back to private
-        run: git push origin HEAD:master --force
+        run: |
+          git fetch public master
+          git push origin public/master:master --force
 
       - name: Notify on failure
         if: failure()
