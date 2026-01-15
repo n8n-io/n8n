@@ -31,6 +31,9 @@ const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'latex',
 	'html',
 ];
+
+const DEFAULT_SEPARATORS = ['\n\n', '\n', ' ', ''];
+
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
@@ -76,6 +79,14 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 				default: 0,
 			},
 			{
+				displayName: 'Separators',
+				name: 'separators',
+				type: 'json',
+				default: DEFAULT_SEPARATORS,
+				description:
+					'JSON array of separators, evaluated in order. Defaults match LangChain.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
@@ -88,7 +99,10 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 						name: 'splitCode',
 						default: 'markdown',
 						type: 'options',
-						options: supportedLanguages.map((lang) => ({ name: lang, value: lang })),
+						options: supportedLanguages.map((lang) => ({
+							name: lang,
+							value: lang,
+						})),
 					},
 				],
 			},
@@ -105,9 +119,15 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			itemIndex,
 			null,
 		) as SupportedTextSplitterLanguage | null;
+
+		const separators = (this.getNodeParameter(
+			'separators',
+			itemIndex,
+			DEFAULT_SEPARATORS,
+		) ?? DEFAULT_SEPARATORS) as string[];
+
 		const params: RecursiveCharacterTextSplitterParams = {
-			// TODO: These are the default values, should we allow the user to change them?
-			separators: ['\n\n', '\n', ' ', ''],
+			separators,
 			chunkSize,
 			chunkOverlap,
 			keepSeparator: false,
