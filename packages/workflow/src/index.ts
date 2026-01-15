@@ -84,6 +84,7 @@ export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
+export { renameNodeInParameterValue, renameFormFields } from './node-parameters/rename-node-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
 

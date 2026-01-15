@@ -1,9 +1,9 @@
 import type { INode, IConnections, INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 import {
-	applyAccessPatterns,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	FORM_NODE_TYPE,
+	renameNodeInParameterValue,
 } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
@@ -324,53 +324,6 @@ function applySetNameOperation(
 		...workflow,
 		name: operation.name,
 	};
-}
-
-/**
- * Recursively update node name references in parameter values
- */
-function renameNodeInParameterValue(
-	parameterValue: NodeParameterValueType,
-	currentName: string,
-	newName: string,
-	{ hasRenamableContent } = { hasRenamableContent: false },
-): NodeParameterValueType {
-	if (typeof parameterValue !== 'object') {
-		if (
-			typeof parameterValue === 'string' &&
-			(parameterValue.charAt(0) === '=' || hasRenamableContent)
-		) {
-			return applyAccessPatterns(parameterValue, currentName, newName);
-		}
-		return parameterValue;
-	}
-
-	if (parameterValue === null) {
-		return parameterValue;
-	}
-
-	if (Array.isArray(parameterValue)) {
-		const mappedArray = parameterValue.map((item) => {
-			if (!isNodeParameterValueType(item)) return item;
-			return renameNodeInParameterValue(item, currentName, newName, {
-				hasRenamableContent,
-			});
-		});
-		return mappedArray as NodeParameterValueType;
-	}
-
-	const returnData: Record<string, NodeParameterValueType> = {};
-	for (const parameterName of Object.keys(parameterValue)) {
-		const value = parameterValue[parameterName as keyof typeof parameterValue];
-		if (isNodeParameterValueType(value)) {
-			returnData[parameterName] = renameNodeInParameterValue(value, currentName, newName, {
-				hasRenamableContent,
-			});
-		} else {
-			returnData[parameterName] = value as NodeParameterValueType;
-		}
-	}
-	return returnData;
 }
 
 /**
