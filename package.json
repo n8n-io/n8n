@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -53,12 +53,12 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
-    "@babel/preset-env": "^7.26.0",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "cross-env": "^7.0.3",
     "eslint": "catalog:",
@@ -80,7 +80,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.5.4",
+    "turbo": "2.7.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -127,7 +127,9 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
-      "qs@6": "6.14.1"
+      "qs@6": "6.14.1",
+      "@smithy/config-resolver": ">=4.4.0",
+      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -143,7 +145,8 @@
       "minifaker": "patches/minifaker.patch",
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
-      "v-code-diff": "patches/v-code-diff.patch"
+      "v-code-diff": "patches/v-code-diff.patch",
+      "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
   }
 }

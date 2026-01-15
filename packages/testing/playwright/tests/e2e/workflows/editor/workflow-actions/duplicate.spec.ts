@@ -8,12 +8,8 @@ test.describe('Workflow Duplicate @fixme', () => {
 
 	const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
-		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-	});
-
 	test('should duplicate unsaved workflow', async ({ n8n }) => {
+		await n8n.start.fromBlankCanvas();
 		const uniqueTag = `Duplicate-${nanoid(6)}`;
 		await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, uniqueTag);
 
@@ -21,8 +17,9 @@ test.describe('Workflow Duplicate @fixme', () => {
 	});
 
 	test('should duplicate saved workflow', async ({ n8n }) => {
-		await n8n.canvas.saveWorkflow();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		const uniqueTag = `Duplicate-${nanoid(6)}`;
 		await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, uniqueTag);
