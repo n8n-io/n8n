@@ -50,13 +50,13 @@ jobs:
 
       - name: Cherry-pick to public repo
         run: |
-          MERGE_COMMIT=$(git rev-parse HEAD)
+          COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
           git remote add public https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
           git fetch public master
           git checkout public/master
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git cherry-pick "$MERGE_COMMIT"
+          git cherry-pick "$COMMIT_TO_PUBLISH"
           git push public HEAD:master
 
       - name: Sync public back to private
