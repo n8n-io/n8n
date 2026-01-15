@@ -5584,7 +5584,7 @@ describe('useCanvasOperations', () => {
 					if (type === 'n8n-nodes-base.calculator') return { description: toolNodeTypeDescription };
 					if (type === 'n8n-nodes-base.manualChatTriggerHitlTool')
 						return { description: hitlNodeTypeDescription };
-					return null;
+					throw new Error(`Unknown node type: ${type}`);
 				}),
 			});
 
