@@ -2804,7 +2804,7 @@ export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BI
 
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
