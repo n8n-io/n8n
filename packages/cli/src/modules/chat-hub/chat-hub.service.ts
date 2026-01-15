@@ -18,11 +18,11 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
@@ -48,9 +48,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -66,7 +64,6 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	EXECUTION_FINISHED_STATUSES,
-	EXECUTION_POLL_INTERVAL,
 	JSONL_STREAM_HEADERS,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
@@ -100,8 +97,6 @@ export class ChatHubService {
 		private readonly executionManager: ChatExecutionManager,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly activeExecutions: ActiveExecutions,
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly chatHubAgentService: ChatHubAgentService,
@@ -110,12 +105,11 @@ export class ChatHubService {
 		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
-		await this.workflowRepository.delete(workflowId);
+		await this.chatHubWorkflowService.deleteWorkflow(workflowId);
 	}
 
 	private getErrorMessage(execution: IExecutionResponse): string | undefined {
@@ -540,6 +534,7 @@ export class ChatHubService {
 			attachments,
 			[],
 			timeZone,
+			null,
 			trx,
 		);
 	}
@@ -556,6 +551,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		contextFiles: IBinaryData[],
 		timeZone: string,
+		vectorStoreTableName: string | null,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -575,6 +571,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			timeZone,
+			vectorStoreTableName,
 			trx,
 		);
 	}
@@ -633,6 +630,7 @@ export class ChatHubService {
 			attachments,
 			agent.files,
 			timeZone,
+			`chat-hub-agent-${user.id}-${agent.id}`,
 			trx,
 		);
 	}
@@ -877,7 +875,7 @@ export class ChatHubService {
 		);
 
 		try {
-			await this.waitForExecutionCompletion(executionId);
+			await this.chatHubWorkflowService.waitForExecutionCompletion(executionId);
 			const execution = await this.executionRepository.findSingleExecution(executionId, {
 				includeData: true,
 				unflattenData: true,
@@ -976,7 +974,7 @@ export class ChatHubService {
 				null,
 			);
 
-			await this.waitForExecutionCompletion(execution.id);
+			await this.chatHubWorkflowService.waitForExecutionCompletion(execution.id);
 
 			const completed = await this.executionRepository.findSingleExecution(execution.id, {
 				includeData: true,
@@ -1324,83 +1322,8 @@ export class ChatHubService {
 
 		await Promise.all([
 			streamClosePromise, // To prevent premature workflow/execution deletion, wait for stream to close
-			this.waitForExecutionCompletion(executionId),
+			this.chatHubWorkflowService.waitForExecutionCompletion(executionId),
 		]);
-	}
-
-	private async waitForExecutionCompletion(executionId: string): Promise<void> {
-		if (this.instanceSettings.isMultiMain) {
-			return await this.waitForExecutionPoller(executionId);
-		} else {
-			return await this.waitForExecutionPromise(executionId);
-		}
-	}
-
-	private async waitForExecutionPoller(executionId: string): Promise<void> {
-		return await new Promise<void>((resolve, reject) => {
-			const poller = setInterval(async () => {
-				try {
-					const execution = await this.executionRepository.findSingleExecution(executionId, {
-						includeData: false,
-						unflattenData: false,
-					});
-
-					// Stop polling when execution is done (or missing if instance doesn't save executions)
-					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
-						this.logger.debug(
-							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
-						);
-						clearInterval(poller);
-
-						if (execution?.status === 'canceled') {
-							reject(new ManualExecutionCancelledError(executionId));
-						} else {
-							resolve();
-						}
-					}
-				} catch (error) {
-					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
-					clearInterval(poller);
-
-					if (error instanceof Error) {
-						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
-							error,
-						});
-					} else {
-						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
-					}
-
-					if (error instanceof Error) {
-						reject(error);
-					} else {
-						reject(new Error('Unknown error while polling execution status'));
-					}
-				}
-			}, EXECUTION_POLL_INTERVAL);
-		});
-	}
-
-	private async waitForExecutionPromise(executionId: string): Promise<void> {
-		try {
-			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
-			const result = await this.activeExecutions.getPostExecutePromise(executionId);
-			if (!result) {
-				throw new OperationalError('There was a problem executing the chat workflow.');
-			}
-		} catch (error: unknown) {
-			if (error instanceof ExecutionNotFoundError) {
-				return;
-			}
-
-			if (error instanceof ManualExecutionCancelledError) {
-				throw error;
-			}
-
-			if (error instanceof Error) {
-				this.logger.error(`Error during chat workflow execution: ${error}`);
-			}
-			throw error;
-		}
 	}
 
 	private async executeChatWorkflowWithCleanup(
@@ -1678,7 +1601,7 @@ export class ChatHubService {
 			'chat',
 		);
 
-		await this.waitForExecutionCompletion(executionId);
+		await this.chatHubWorkflowService.waitForExecutionCompletion(executionId);
 
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,

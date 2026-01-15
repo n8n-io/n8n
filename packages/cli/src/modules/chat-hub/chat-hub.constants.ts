@@ -73,11 +73,25 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 	},
 };
 
+export const EMBEDDINGS_NODE_TYPE_MAP: Partial<Record<ChatHubLLMProvider, INodeTypeNameVersion>> = {
+	openai: {
+		name: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+		version: 1.2,
+	},
+	google: {
+		name: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+		version: 1,
+	},
+};
+
 export const NODE_NAMES = {
 	CHAT_TRIGGER: 'When chat message received',
 	REPLY_AGENT: 'AI Agent',
 	TITLE_GENERATOR_AGENT: 'Title Generator Agent',
 	CHAT_MODEL: 'Chat Model',
+	EMBEDDINGS_MODEL: 'Embeddings Model',
+	VECTOR_STORE: 'Vector Store',
+	VECTOR_STORE_QUESTION_TOOL: 'Vector Store Question Tool',
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',

@@ -12,6 +12,7 @@ import {
 	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
+	ExecutionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
@@ -26,6 +27,7 @@ import {
 	INodeCredentials,
 	IRunExecutionData,
 	IWorkflowBase,
+	ManualExecutionCancelledError,
 	MEMORY_BUFFER_WINDOW_NODE_TYPE,
 	MEMORY_MANAGER_NODE_TYPE,
 	MERGE_NODE_TYPE,
@@ -38,11 +40,20 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	EXECUTION_FINISHED_STATUSES,
+	EXECUTION_POLL_INTERVAL,
+	getModelMetadata,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+} from './chat-hub.constants';
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
 import { PdfExtractorService } from './pdf-extractor.service';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ActiveExecutions } from '@/active-executions';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -52,6 +63,9 @@ export class ChatHubWorkflowService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly pdfService: PdfExtractorService,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async createChatWorkflow(
@@ -67,6 +81,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
+		vectorStoreTableName: string | null,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -89,6 +104,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
+				vectorStoreTableName,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -273,6 +289,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		vectorStoreTableName,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -284,14 +301,21 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
+		vectorStoreTableName: string | null;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model, contextFiles);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(
+			history,
+			model,
+			contextFiles.filter((c) => c.mimeType !== 'application/pdf'),
+		);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
+		const pdfFiles = contextFiles.filter((c) => c.mimeType === 'application/pdf');
+		const shouldIncludeVectorStoreTool = pdfFiles.length >= 0 && vectorStoreTableName !== null;
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -301,6 +325,52 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
+			...(shouldIncludeVectorStoreTool
+				? ([
+						{
+							parameters: {
+								options: {},
+							},
+							type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+							typeVersion: 1.2,
+							position: [800, 720],
+							id: uuidv4(),
+							name: NODE_NAMES.EMBEDDINGS_MODEL,
+							credentials: {
+								openAiApi: {
+									id: 'aZCclrndUB6H1A7E',
+									name: 'OpenAi account',
+								},
+							},
+						},
+						{
+							parameters: {
+								memoryKey: {
+									__rl: true,
+									mode: 'list',
+									value: vectorStoreTableName,
+								},
+							},
+							type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+							typeVersion: 1.3,
+							position: [720, 288],
+							id: uuidv4(),
+							name: NODE_NAMES.VECTOR_STORE,
+						},
+						{
+							parameters: {
+								description: `Use this tool to query following documents that the user has provided for context:
+${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join(',')}
+`,
+							},
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							typeVersion: 1.1,
+							position: [800, 496],
+							id: uuidv4(),
+							name: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
+						},
+					] satisfies INode[])
+				: []),
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
@@ -344,7 +414,18 @@ export class ChatHubWorkflowService {
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				[NodeConnectionTypes.AiLanguageModel]: [
-					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					[
+						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						...(shouldIncludeVectorStoreTool
+							? [
+									{
+										node: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
+										type: NodeConnectionTypes.AiLanguageModel,
+										index: 0,
+									},
+								]
+							: []),
+					],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
@@ -382,6 +463,43 @@ export class ChatHubWorkflowService {
 
 				return acc;
 			}, {}),
+			...(shouldIncludeVectorStoreTool
+				? {
+						[NODE_NAMES.EMBEDDINGS_MODEL]: {
+							[NodeConnectionTypes.AiEmbedding]: [
+								[
+									{
+										node: NODE_NAMES.VECTOR_STORE,
+										type: NodeConnectionTypes.AiEmbedding,
+										index: 0,
+									},
+								],
+							],
+						},
+						[NODE_NAMES.VECTOR_STORE]: {
+							[NodeConnectionTypes.AiVectorStore]: [
+								[
+									{
+										node: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
+										type: NodeConnectionTypes.AiVectorStore,
+										index: 0,
+									},
+								],
+							],
+						},
+						[NODE_NAMES.VECTOR_STORE_QUESTION_TOOL]: {
+							[NodeConnectionTypes.AiTool]: [
+								[
+									{
+										node: NODE_NAMES.REPLY_AGENT,
+										type: NodeConnectionTypes.AiTool,
+										index: 0,
+									},
+								],
+							],
+						},
+					}
+				: {}),
 		};
 
 		const nodeExecutionStack = this.prepareExecutionData(
@@ -980,5 +1098,252 @@ Respond the title only:`,
 			return 'video';
 		}
 		return 'file';
+	}
+
+	async createDocumentsInsertionWorkflow(
+		userId: string,
+		projectId: string,
+		attachments: IBinaryData[],
+		memoryKey: string,
+		trx: EntityManager,
+	) {
+		const triggerNode: INode = {
+			parameters: {
+				options: {
+					allowFileUploads: true,
+				},
+			},
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			typeVersion: 1.4,
+			position: [-48, 0],
+			id: uuidv4(),
+			name: 'When chat message received',
+			webhookId: '643c5bec-7b34-4874-b812-e7a023d59995',
+		};
+		const nodes: INode[] = [
+			{
+				parameters: {
+					mode: 'insert',
+					memoryKey: {
+						__rl: true,
+						value: memoryKey,
+						mode: 'list',
+					},
+				},
+				type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+				typeVersion: 1.3,
+				position: [208, 0],
+				id: uuidv4(),
+				name: 'Simple Vector Store',
+			},
+			triggerNode,
+			{
+				parameters: {
+					options: {},
+				},
+				type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+				typeVersion: 1.2,
+				position: [128, 464],
+				id: uuidv4(),
+				name: 'Embeddings OpenAI',
+				credentials: {
+					openAiApi: {
+						id: 'aZCclrndUB6H1A7E',
+						name: 'OpenAi account',
+					},
+				},
+			},
+			{
+				parameters: {
+					dataType: 'binary',
+					options: {},
+				},
+				type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+				typeVersion: 1.1,
+				position: [320, 192],
+				id: uuidv4(),
+				name: 'Default Data Loader',
+			},
+		];
+		const connections: IConnections = {
+			'Simple Vector Store': {
+				main: [[]],
+			},
+			'When chat message received': {
+				main: [
+					[
+						{
+							node: 'Simple Vector Store',
+							type: 'main',
+							index: 0,
+						},
+					],
+				],
+			},
+			'Embeddings OpenAI': {
+				ai_embedding: [
+					[
+						{
+							node: 'Simple Vector Store',
+							type: 'ai_embedding',
+							index: 0,
+						},
+					],
+				],
+			},
+			'Default Data Loader': {
+				ai_document: [
+					[
+						{
+							node: 'Simple Vector Store',
+							type: 'ai_document',
+							index: 0,
+						},
+					],
+				],
+			},
+		};
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: triggerNode,
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId: uuidv4(),
+									action: 'sendMessage',
+									chatInput: '',
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+
+		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
+			const newWorkflow = new WorkflowEntity();
+
+			// Chat workflows are created as archived to hide them
+			// from the user by default while they are being run.
+			newWorkflow.isArchived = true;
+
+			newWorkflow.versionId = uuidv4();
+			newWorkflow.name = `Chat files insertion ${uuidv4()}`;
+			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
+			newWorkflow.nodes = nodes;
+			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
+
+			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+
+			await em.save<SharedWorkflow>(
+				this.sharedWorkflowRepository.create({
+					role: 'workflow:owner',
+					projectId,
+					workflow,
+				}),
+			);
+
+			return {
+				workflowData: workflow,
+				executionData: createRunExecutionData({
+					executionData: {
+						nodeExecutionStack,
+					},
+					manualData: {
+						userId,
+					},
+				}),
+			};
+		});
+	}
+
+	async deleteWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
+
+	async waitForExecutionCompletion(executionId: string): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			return await this.waitForExecutionPoller(executionId);
+		} else {
+			return await this.waitForExecutionPromise(executionId);
+		}
+	}
+
+	private async waitForExecutionPoller(executionId: string): Promise<void> {
+		return await new Promise<void>((resolve, reject) => {
+			const poller = setInterval(async () => {
+				try {
+					const execution = await this.executionRepository.findSingleExecution(executionId, {
+						includeData: false,
+						unflattenData: false,
+					});
+
+					// Stop polling when execution is done (or missing if instance doesn't save executions)
+					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+						this.logger.debug(
+							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
+						);
+						clearInterval(poller);
+
+						if (execution?.status === 'canceled') {
+							reject(new ManualExecutionCancelledError(executionId));
+						} else {
+							resolve();
+						}
+					}
+				} catch (error) {
+					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
+					clearInterval(poller);
+
+					if (error instanceof Error) {
+						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
+							error,
+						});
+					} else {
+						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
+					}
+
+					if (error instanceof Error) {
+						reject(error);
+					} else {
+						reject(new Error('Unknown error while polling execution status'));
+					}
+				}
+			}, EXECUTION_POLL_INTERVAL);
+		});
+	}
+
+	private async waitForExecutionPromise(executionId: string): Promise<void> {
+		try {
+			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
+			const result = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!result) {
+				throw new OperationalError('There was a problem executing the chat workflow.');
+			}
+		} catch (error: unknown) {
+			if (error instanceof ExecutionNotFoundError) {
+				return;
+			}
+
+			if (error instanceof ManualExecutionCancelledError) {
+				throw error;
+			}
+
+			if (error instanceof Error) {
+				this.logger.error(`Error during chat workflow execution: ${error}`);
+			}
+			throw error;
+		}
 	}
 }

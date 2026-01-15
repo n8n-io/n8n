@@ -16,6 +16,8 @@ import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import type { IBinaryData } from 'n8n-workflow';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 @Service()
 export class ChatHubAgentService {
@@ -24,6 +26,8 @@ export class ChatHubAgentService {
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
 	) {}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
@@ -87,9 +91,16 @@ export class ChatHubAgentService {
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
-		return agent;
 
 		// TODO: revert files on error
+
+		await this.insertDocuments(
+			user,
+			agent,
+			data.files.filter((f) => f.mimeType === 'application/pdf'),
+		);
+
+		return agent;
 	}
 
 	async updateAgent(
@@ -151,6 +162,8 @@ export class ChatHubAgentService {
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
+		// TODO: insert new documents, delete old documents
+
 		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
 	}
@@ -165,6 +178,38 @@ export class ChatHubAgentService {
 		await this.chatHubAttachmentService.deleteAgentAttachmentById(id);
 		await this.chatAgentRepository.deleteAgent(id);
 
+		// TODO: delete documents
+
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
+	}
+
+	private async insertDocuments(user: User, agent: ChatHubAgent, files: IBinaryData[]) {
+		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
+			async (trx) => {
+				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+				return await this.chatHubWorkflowService.createDocumentsInsertionWorkflow(
+					user.id,
+					project.id,
+					files,
+					`chat-hub-agent-${user.id}-${agent.id}`,
+					trx,
+				);
+			},
+		);
+
+		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			user,
+			workflowData,
+			executionData,
+			undefined,
+			false,
+			'chat', // TODO: check which one to use
+		);
+
+		try {
+			await this.chatHubWorkflowService.waitForExecutionCompletion(execution.executionId);
+		} finally {
+			//await this.chatHubWorkflowService.deleteWorkflow(workflowData.id);
+		}
 	}
 }
