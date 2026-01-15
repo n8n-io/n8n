@@ -24,6 +24,7 @@ import {
 	N8nInputLabel,
 	N8nIcon,
 	N8nText,
+	N8nSelect2,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
@@ -358,6 +359,12 @@ function handleFileClick(index: number) {
 	window.open(url, '_blank');
 }
 
+const pdfIncludeOptions = [
+	{ value: 'fullText', label: 'As text (entire file)' },
+	{ value: 'embedding', label: 'As text (for querying)', disabled: true },
+	{ value: 'pdf', label: 'As PDF', disabled: true },
+];
+
 const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
 
@@ -507,6 +514,13 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 							<span :class="$style.fileName">
 								{{ file.fileName }}
 							</span>
+							<N8nSelect2
+								v-if="file.mimeType === 'application/pdf'"
+								model-value="fullText"
+								variant="ghost"
+								label-key="label"
+								:items="pdfIncludeOptions"
+							/>
 							<N8nIconButton
 								icon="trash-2"
 								type="tertiary"
