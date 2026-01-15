@@ -161,7 +161,14 @@ To merge the data of two branches together in a single run, use a merge node. Th
 
 Examples:
 - Enriching a dataset with another one
-- Matching items between two datasets`;
+- Matching items between two datasets
+
+CRITICAL: Merge vs Aggregate distinction:
+- **MERGE**: Multiple PARALLEL branches → single flow (set numberInputs to match input count!)
+- **AGGREGATE**: Multiple ITEMS in ONE branch → single item
+
+If you have 3 RSS feeds running in parallel, use MERGE with numberInputs: 3.
+If you have 1 branch producing 10 items to combine, use AGGREGATE.`;
 
 const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node types:
 
@@ -175,6 +182,20 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;
+
+const AI_AGENT_VS_CHAIN = `When to use AI Agent vs Basic LLM Chain:
+
+**USE AI AGENT (@n8n/n8n-nodes-langchain.agent) when:**
+- The prompt asks for "AI", "agent", or "AI processing"
+- You need tool-calling, system prompts, or memory
+- Tasks involve analysis, summarization, or multi-step reasoning
+- The workflow processes data with AI/LLM capabilities
+
+**USE Basic LLM Chain ONLY when:**
+- Simple single-turn text generation without tools
+- User explicitly asks for "basic chain" or "simple LLM"
+
+CRITICAL: When in doubt, prefer AI Agent. NEVER use provider nodes (openAi, googleGemini, chainLlm) for main AI processing - only as sub-nodes connected to AI Agent.`;
 
 const RAG_PATTERN = `For RAG (Retrieval-Augmented Generation) workflows:
 
@@ -341,6 +362,7 @@ export function buildBuilderPrompt(): string {
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
+		.section('ai_agent_vs_chain', AI_AGENT_VS_CHAIN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)

@@ -241,8 +241,8 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 | Filter items by condition | Filter |
 | Route by condition | If or Switch |
 | Split array into items | Split Out |
-| Combine multiple items | Aggregate |
-| Merge data from branches | Merge |
+| Combine items from SAME branch into one | Aggregate |
+| Combine outputs from PARALLEL branches | Merge (set numberInputs!) |
 | Summarize/pivot data | Summarize |
 | Sort items | Sort |
 | Remove duplicates | Remove Duplicates |
@@ -277,6 +277,12 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 - Regex operations (use expressions in If or Edit Fields nodes)
 - Text extraction or parsing (use Edit Fields with expressions)
 - Logging using console.log unless user explicitly asks - only useful for debugging, not production`;
+
+const EXPLICIT_INTEGRATIONS = `When user explicitly requests a specific service or integration:
+- ALWAYS use the exact integration requested (e.g., "use Perplexity" → Perplexity node, NOT SerpAPI)
+- Do NOT substitute with similar services unless the requested one doesn't exist in n8n
+- Search for the requested integration first before considering alternatives
+- Examples: "use Gemini" → Google Gemini; "send via Telegram" → Telegram node`;
 
 const CRITICAL_RULES = `- NEVER ask clarifying questions
 - ALWAYS call get_documentation first (with best_practices, and node_recommendations if AI tasks are needed)
@@ -360,6 +366,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('technique_clarifications', TECHNIQUE_CLARIFICATIONS)
 		.section('node_recommendations_guidance', NODE_RECOMMENDATIONS_GUIDANCE)
 		.section('code_node_alternatives', CODE_NODE_ALTERNATIVES)
+		.section('explicit_integrations', EXPLICIT_INTEGRATIONS)
 		.section('connection_changing_parameters', CONNECTION_PARAMETERS)
 		.section('dynamic_output_nodes', DYNAMIC_OUTPUT_NODES)
 		.section('sub_nodes_searches', SUB_NODES_SEARCHES)
