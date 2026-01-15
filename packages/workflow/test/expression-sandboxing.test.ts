@@ -2,7 +2,7 @@ import { Tournament } from '@n8n/tournament';
 
 import {
 	DollarSignValidator,
-	FunctionThisSanitizer,
+	ThisSanitizer,
 	PrototypeSanitizer,
 	sanitizer,
 	DOLLAR_SIGN_ERROR,
@@ -16,7 +16,7 @@ const tournament = new Tournament(
 	undefined,
 	undefined,
 	{
-		before: [FunctionThisSanitizer],
+		before: [ThisSanitizer],
 		after: [PrototypeSanitizer, DollarSignValidator],
 	},
 );
@@ -395,7 +395,7 @@ describe('PrototypeSanitizer', () => {
 	});
 });
 
-describe('FunctionThisSanitizer', () => {
+describe('ThisSanitizer', () => {
 	describe('call expression where callee is function expression', () => {
 		it('should transform call expression', () => {
 			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
@@ -529,6 +529,95 @@ describe('FunctionThisSanitizer', () => {
 				$json: { value: 'workflow-data' },
 			});
 			expect(result).toBe('workflow-data');
+		});
+	});
+
+	describe('globalThis access via arrow functions', () => {
+		it('should replace globalThis with empty object', () => {
+			const result = tournament.execute('{{ (() => globalThis)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+			expect(result).not.toBe(globalThis);
+		});
+
+		it('should block process.env access via globalThis', () => {
+			const result = tournament.execute('{{ (() => globalThis.process)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should block chained globalThis access', () => {
+			const result = tournament.execute('{{ ((g) => g.process)((() => globalThis)()) }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should block env access via nested arrow functions', () => {
+			// This payload attempts to access process.env via chained arrow functions
+			// With the fix, globalThis becomes {}, so g.process is undefined,
+			// and accessing .env on undefined throws an error - which is the desired security outcome
+			expect(() => {
+				tournament.execute('{{ ((p) => p.env)(((g) => g.process)((() => globalThis)())) }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrow();
+		});
+
+		it('should replace globalThis with empty object in non-arrow contexts too', () => {
+			// globalThis is replaced with {} at AST level, regardless of context
+			const result = tournament.execute('{{ globalThis }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+		});
+
+		it('should still allow access to workflow data via variables', () => {
+			const result = tournament.execute('{{ (() => $json.value)() }}', {
+				__sanitize: sanitizer,
+				$json: { value: 'test-value' },
+			});
+			expect(result).toBe('test-value');
+		});
+	});
+
+	describe('this access via arrow functions', () => {
+		it('should replace this with safe context in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {} });
+		});
+
+		it('should block process.env access via this in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this?.process)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+			expect(result).not.toHaveProperty('env');
+		});
+
+		it('should block this access in nested arrow functions', () => {
+			const result = tournament.execute('{{ (() => (() => this)())() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {} });
+		});
+
+		it('should block this?.process?.env access pattern', () => {
+			const result = tournament.execute('{{ (() => this?.process?.env)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should still work with this in regular function expressions', () => {
+			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
 		});
 	});
 });
