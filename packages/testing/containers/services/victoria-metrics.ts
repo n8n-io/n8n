@@ -167,7 +167,7 @@ export class MetricsHelper {
 			throw new Error(`VictoriaMetrics export failed: ${response.status}`);
 		}
 
-		return response.text();
+		return await response.text();
 	}
 
 	async query(query: string): Promise<MetricResult[]> {
