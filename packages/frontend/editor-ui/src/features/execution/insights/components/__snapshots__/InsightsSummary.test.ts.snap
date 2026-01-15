@@ -2,7 +2,6 @@
 
 exports[`InsightsSummary > should render the summary correctly 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs"></ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -11,7 +10,6 @@ exports[`InsightsSummary > should render the summary correctly 1`] = `
 
 exports[`InsightsSummary > should render the summary correctly 2`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -56,7 +54,6 @@ exports[`InsightsSummary > should render the summary correctly 2`] = `
 
 exports[`InsightsSummary > should render the summary correctly 3`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -98,7 +95,6 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
 
 exports[`InsightsSummary > should render the summary correctly 4`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 2%</span>
@@ -143,7 +139,6 @@ exports[`InsightsSummary > should render the summary correctly 4`] = `
 
 exports[`InsightsSummary > should render the summary correctly 5`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><!--v-if--></span></a>
@@ -173,7 +168,6 @@ exports[`InsightsSummary > should render the summary correctly 5`] = `
 
 exports[`InsightsSummary > should render the summary correctly 6`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0%</span>
@@ -215,7 +209,6 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
 
 exports[`InsightsSummary > with different date ranges > should render with 'custom range' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -260,7 +253,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'cust
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 7 days (week preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -305,7 +297,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 14 days (2weeks preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -350,7 +341,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 24 hours (day preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -395,7 +385,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 30 days (month preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -440,7 +429,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 90 days (quarter preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -485,7 +473,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 180 days (6months preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
@@ -530,7 +517,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 365 days (year preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
