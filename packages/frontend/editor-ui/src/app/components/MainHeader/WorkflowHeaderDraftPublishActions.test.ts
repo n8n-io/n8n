@@ -28,10 +28,39 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+const mockCancelAutoSave = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: mockSaveCurrentWorkflow,
+		cancelAutoSave: mockCancelAutoSave,
+	}),
+}));
+
+const mockGetWorkflowVersion = vi.fn().mockResolvedValue(null);
+
+vi.mock('@/features/workflows/workflowHistory/workflowHistory.store', () => ({
+	useWorkflowHistoryStore: () => ({
+		getWorkflowVersion: mockGetWorkflowVersion,
+	}),
+}));
+
+vi.mock('@/app/stores/workflowAutosave.store', () => ({
+	useWorkflowAutosaveStore: () => ({
+		autoSaveState: 'idle',
+		pendingAutoSave: null,
+	}),
+}));
+
+vi.mock('@/app/composables/useWorkflowActivate', () => ({
+	useWorkflowActivate: () => ({
+		unpublishWorkflowFromHistory: vi.fn().mockResolvedValue(true),
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: vi.fn(),
 	}),
 }));
 
@@ -128,6 +157,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockGetWorkflowVersion.mockClear();
+		mockGetWorkflowVersion.mockResolvedValue(null);
+		mockCancelAutoSave.mockClear();
 	});
 
 	afterEach(() => {
@@ -205,9 +237,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
 		});
 
-		it('should show active version indicator when user does not have workflow:publish permission but workflow is currently published', () => {
+		it('should not show active version info when user does not have workflow:publish permission', () => {
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
-			const { getByTestId } = renderComponent({
+			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					readOnly: false,
@@ -219,8 +251,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
+			// Version info is hidden when user lacks publish permission (showVersionInfo: false)
+			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-active-version-info')).not.toBeInTheDocument();
 		});
 	});
 
@@ -258,8 +291,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
-		it('should be hidden when user has only workflow:publish permission', () => {
-			const { queryByTestId } = renderComponent({
+		it('should be visible when user has only workflow:publish permission', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					readOnly: false,
@@ -271,7 +304,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+			// Button is visible when user has publish permission (even without update)
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
 		});
 
 		it('should be visible when user has both workflow:update and workflow:publish permissions', () => {
@@ -310,7 +344,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
 			expect(openModalSpy).toHaveBeenCalledWith({
 				name: WORKFLOW_PUBLISH_MODAL_KEY,
-				data: {},
+				data: { initialVersionName: undefined },
 			});
 		});
 
@@ -326,7 +360,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
 			expect(openModalSpy).toHaveBeenCalledWith({
 				name: WORKFLOW_PUBLISH_MODAL_KEY,
-				data: {},
+				data: { initialVersionName: undefined },
 			});
 		});
 
@@ -347,7 +381,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
 			expect(openModalSpy).toHaveBeenCalledWith({
 				name: WORKFLOW_PUBLISH_MODAL_KEY,
-				data: {},
+				data: { initialVersionName: undefined },
 			});
 		});
 

@@ -478,11 +478,14 @@ defineExpose({
 							<template v-if="publishButtonConfig.tooltip">
 								{{ publishButtonConfig.tooltip }} <br />
 							</template>
-							<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
+							<div
+								v-if="activeVersion && publishButtonConfig.showVersionInfo"
+								data-test-id="workflow-active-version-info"
+							>
 								<span data-test-id="workflow-active-version-indicator">{{ activeVersionName }}</span
 								><br />{{ i18n.baseText('workflowHistory.item.active') }}
 								<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
-							</template>
+							</div>
 						</div>
 					</template>
 					<N8nButton
@@ -491,7 +494,7 @@ defineExpose({
 						:class="$style.publish"
 						type="secondary"
 						size="medium"
-						data-test-id="workflow-publish-button"
+						data-test-id="workflow-open-publish-modal-button"
 						@click="onPublishButtonClick"
 					>
 						<div :class="[$style.flex]">
