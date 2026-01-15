@@ -1,11 +1,13 @@
 import { computed } from 'vue';
-import type { INodeCredentialsDetails } from 'n8n-workflow';
+import type { INodeCredentialsDetails, NodeParameterValueType } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { useCredentialSetupState } from './useCredentialSetupState';
+import { useParameterSetupState } from './useParameterSetupState';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import type { ParameterKey } from '../templates.types';
 
 export const useSetupWorkflowCredentialsModalState = () => {
 	const workflowsStore = useWorkflowsStore();
@@ -27,6 +29,16 @@ export const useSetupWorkflowCredentialsModalState = () => {
 		setSelectedCredentialId,
 		unsetSelectedCredential,
 	} = useCredentialSetupState(workflowNodes);
+
+	const {
+		nodesWithRequiredParameters,
+		allRequiredParameterUsages,
+		parameterValues,
+		numFilledParameters,
+		numTotalRequiredParameters,
+		setParameterValue: setParameterValueInternal,
+		setInitialParameterValues,
+	} = useParameterSetupState(workflowNodes);
 
 	/**
 	 * Selects initial credentials. For existing workflows this means using
@@ -115,6 +127,39 @@ export const useSetupWorkflowCredentialsModalState = () => {
 		setInitialCredentialSelection();
 	};
 
+	/**
+	 * Sets a parameter value on the node in the workflow.
+	 */
+	const setParameterValue = (parameterKey: ParameterKey, value: NodeParameterValueType) => {
+		setParameterValueInternal(parameterKey, value);
+
+		// Find the parameter usage to get node name and parameter name
+		const usage = allRequiredParameterUsages.value.find((u) => u.key === parameterKey);
+		if (!usage) {
+			return;
+		}
+
+		// Update the node in the workflow
+		const node = workflowsStore.getNodeByName(usage.nodeName);
+		if (!node) {
+			return;
+		}
+
+		workflowState.updateNodeProperties({
+			name: usage.nodeName,
+			properties: {
+				parameters: {
+					...node.parameters,
+					[usage.parameter.name]: value,
+				},
+			},
+		});
+
+		// Re-initialize to pick up any changes to displayOptions
+		// (some parameters may become visible/hidden based on other parameter values)
+		setInitialParameterValues();
+	};
+
 	return {
 		appCredentials,
 		credentialOverrides,
@@ -125,5 +170,12 @@ export const useSetupWorkflowCredentialsModalState = () => {
 		setInitialCredentialSelection,
 		setCredential,
 		unsetCredential,
+		// Parameter-related exports
+		nodesWithRequiredParameters,
+		parameterValues,
+		numFilledParameters,
+		numTotalRequiredParameters,
+		setParameterValue,
+		setInitialParameterValues,
 	};
 };

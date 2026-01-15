@@ -163,6 +163,16 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				},
 				typeVersion: 1,
 			},
+			{
+				parameters: {
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.3,
+				position: [2064, 320],
+				id: 'feeb3fe1-2f49-46e8-a851-ece761e8fc67',
+				name: 'HTTP Request',
+			},
 		],
 		settings: {},
 		connections: {
@@ -171,6 +181,13 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 					[
 						{
 							node: 'Archive Page',
+							type: 'main',
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'HTTP Request',
 							type: 'main',
 							index: 0,
 						},
@@ -297,7 +314,7 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 			{
 				name: 'Actions',
 				description: 'Nodes that perform actions in Notion',
-				nodes: ['Archive Page'],
+				nodes: ['Archive Page', 'HTTP Request'],
 			},
 		],
 	},

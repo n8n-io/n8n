@@ -4,6 +4,7 @@ import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWo
 import { useI18n } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
+import SetupTemplateFormParameterStep from './SetupTemplateFormParameterStep.vue';
 import { onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -28,10 +29,16 @@ const {
 	setInitialCredentialSelection,
 	setCredential,
 	unsetCredential,
+	// Parameter-related
+	nodesWithRequiredParameters,
+	parameterValues,
+	setParameterValue,
+	setInitialParameterValues,
 } = useSetupWorkflowCredentialsModalState();
 
 onMounted(() => {
 	setInitialCredentialSelection();
+	setInitialParameterValues();
 
 	telemetry.track('User opened cred setup', { source: 'canvas' });
 });
@@ -71,6 +78,28 @@ onUnmounted(() => {
 							:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
 							@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
 							@credential-deselected="unsetCredential($event.credentialUsageKey)"
+						/>
+					</ol>
+				</div>
+
+				<div
+					v-if="nodesWithRequiredParameters.length > 0"
+					:class="$style.parametersSection"
+					data-test-id="parameters-section"
+				>
+					<N8nHeading tag="h3" size="medium" :class="$style.sectionTitle">
+						{{ i18n.baseText('templateSetup.parameters.sectionTitle') }}
+					</N8nHeading>
+
+					<ol :class="$style.appCredentialsContainer">
+						<SetupTemplateFormParameterStep
+							v-for="(nodeParams, index) in nodesWithRequiredParameters"
+							:key="nodeParams.nodeName"
+							:class="$style.appCredential"
+							:order="credentialUsages.length + index + 1"
+							:node-parameters="nodeParams"
+							:parameter-values="parameterValues"
+							@parameter-changed="setParameterValue($event.parameterKey, $event.value)"
 						/>
 					</ol>
 				</div>
@@ -119,5 +148,15 @@ onUnmounted(() => {
 .footer {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.parametersSection {
+	margin-top: var(--spacing--2xl);
+	padding-top: var(--spacing--2xl);
+	border-top: 1px solid var(--color--foreground--tint-1);
+}
+
+.sectionTitle {
+	margin-bottom: var(--spacing--lg);
 }
 </style>

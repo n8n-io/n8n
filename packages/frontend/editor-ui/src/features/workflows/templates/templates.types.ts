@@ -1,5 +1,10 @@
 import type { INodeUi } from '@/Interface';
-import type { INodeCredentialDescription, INodeCredentialsDetails } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeProperties,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import type { TemplateCredentialKey } from './utils/templateTransforms';
 
 export type NodeCredentials = {
@@ -52,3 +57,29 @@ export type AppCredentials<TNode extends BaseNode> = {
  * }
  */
 export type NormalizedTemplateNodeCredentials = Record<string, string>;
+
+/**
+ * Key for tracking a required parameter. Format: "nodeName-parameterName"
+ */
+export type ParameterKey = `${string}-${string}`;
+
+/**
+ * Represents a required parameter usage for a specific node.
+ */
+export interface RequiredParameterUsage {
+	key: ParameterKey;
+	nodeName: string;
+	nodeType: string;
+	parameter: INodeProperties;
+	currentValue: NodeParameterValueType;
+}
+
+/**
+ * Groups all required parameters for a single node.
+ */
+export interface NodeRequiredParameters {
+	nodeName: string;
+	nodeType: string;
+	nodeDisplayName: string;
+	parameters: RequiredParameterUsage[];
+}
