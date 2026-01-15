@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Close from 'virtual:icons/mdi/close';
+import Refresh from 'virtual:icons/mdi/refresh';
 import { computed, nextTick, onMounted } from 'vue';
 
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
@@ -26,6 +27,12 @@ async function getStarted() {
 	void nextTick(() => {
 		chatEventBus.emit('scrollToBottom');
 	});
+}
+
+function resetChat() {
+	if (chatStore.resetSession) {
+		chatStore.resetSession();
+	}
 }
 
 async function initialize() {
@@ -57,14 +64,19 @@ onMounted(async () => {
 				<h1>
 					{{ t('title') }}
 				</h1>
-				<button
-					v-if="showCloseButton"
-					class="chat-close-button"
-					:title="t('closeButtonTooltip')"
-					@click="closeChat"
-				>
-					<Close height="18" width="18" />
-				</button>
+				<div class="chat-header-actions">
+					<button class="chat-header-button" :title="t('resetConversation')" @click="resetChat">
+						<Refresh height="18" width="18" />
+					</button>
+					<button
+						v-if="showCloseButton"
+						class="chat-header-button chat-close-button"
+						:title="t('closeButtonTooltip')"
+						@click="closeChat"
+					>
+						<Close height="18" width="18" />
+					</button>
+				</div>
 			</div>
 			<p v-if="t('subtitle')">{{ t('subtitle') }}</p>
 		</template>
@@ -84,11 +96,18 @@ onMounted(async () => {
 	align-items: center;
 }
 
-.chat-close-button {
+.chat-header-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--chat--header--actions--gap, 8px);
+}
+
+.chat-header-button {
 	display: flex;
 	border: none;
 	background: none;
 	cursor: pointer;
+	color: var(--chat--close--button--color, inherit);
 
 	&:hover {
 		color: var(--chat--close--button--color-hover, var(--chat--color--primary));

@@ -4,6 +4,7 @@ import { ref, watch } from 'vue';
 
 import Message from '@n8n/chat/components/Message.vue';
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+import StarterPrompts from '@n8n/chat/components/StarterPrompts.vue';
 import { useChat } from '@n8n/chat/composables';
 import type { ChatMessage } from '@n8n/chat/types';
 
@@ -19,6 +20,10 @@ defineSlots<{
 const chatStore = useChat();
 const messageComponents = ref<Array<InstanceType<typeof Message>>>([]);
 const { initialMessages, waitingForResponse } = chatStore;
+
+function onStarterPromptClick(message: string) {
+	void chatStore.sendMessage(message);
+}
 
 watch(
 	() => messageComponents.value.length,
@@ -49,6 +54,8 @@ watch(
 			:key="initialMessage.id"
 			:message="initialMessage"
 		/>
+
+		<StarterPrompts v-if="messages.length === 0" @select="onStarterPromptClick" />
 
 		<template v-for="message in messages" :key="message.id">
 			<Message ref="messageComponents" :message="message">
