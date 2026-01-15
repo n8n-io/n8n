@@ -753,11 +753,13 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		const timeout = options.timeout;
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			}),
+		};
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -795,12 +797,15 @@ export class LmChatOpenAi implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)
+			// that reject strict: null in tool definitions
+			supportsStrictToolCalling: false,
 		};
 
 		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility

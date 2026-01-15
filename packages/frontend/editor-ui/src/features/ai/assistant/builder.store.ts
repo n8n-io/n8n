@@ -39,6 +39,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -50,7 +51,11 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
 	| 'field_focus_placeholder_in_ndv'
 	| 'no_placeholder_values_left'
-	| 'revert_version_from_builder';
+	| 'revert_version_from_builder'
+	| 'browser_notification_ask_permission'
+	| 'browser_notification_accept'
+	| 'browser_notification_dismiss'
+	| 'browser_generation_done_notified';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -58,6 +63,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	revert_user_message_id?: string;
 	revert_version_id?: string;
 	no_versions_reverted?: number;
+	completion_type?: 'workflow-ready' | 'input-needed';
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -247,10 +253,67 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			user_message_id: userMessageId,
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
+			tab_visible: document.visibilityState === 'visible',
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...payload,
 			...getTodosToTrack(),
 		});
+	}
+
+	type CompletionType = 'workflow-ready' | 'input-needed';
+
+	/**
+	 * Checks if the current streaming response included a workflow update.
+	 * Used to determine whether to show "workflow ready" or "input needed" notification.
+	 */
+	function hasWorkflowUpdateInCurrentBatch(userMessageId: string): boolean {
+		return chatMessages.value.some(
+			(msg) => msg.type === 'workflow-updated' && msg.id?.startsWith(userMessageId),
+		);
+	}
+
+	/**
+	 * Shows a browser notification when the AI builder completes.
+	 * Only shows if browser notifications are enabled.
+	 * Clicking the notification focuses the window and closes it.
+	 */
+	function notifyOnCompletion(completionType: CompletionType) {
+		const { showNotification, isEnabled } = useBrowserNotifications();
+		if (!isEnabled.value) {
+			return;
+		}
+
+		const workflowName = workflowsStore.workflowName;
+
+		const titleKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.title'
+				: 'aiAssistant.builder.notification.inputNeeded.title';
+
+		const bodyKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.body'
+				: 'aiAssistant.builder.notification.inputNeeded.body';
+
+		const notification = showNotification(locale.baseText(titleKey), {
+			body: locale.baseText(bodyKey, {
+				interpolate: { workflowName },
+			}),
+			icon: '/favicon.ico',
+			tag: `workflow-build-${workflowsStore.workflowId}`,
+			requireInteraction: false,
+		});
+
+		if (notification) {
+			trackWorkflowBuilderJourney('browser_generation_done_notified', {
+				completion_type: completionType,
+			});
+
+			notification.onclick = () => {
+				window.focus();
+				notification.close();
+			};
+		}
 	}
 
 	function stopStreaming(payload?: StopStreamingPayload) {
@@ -261,11 +324,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		trackEndBuilderResponse(payload);
+
+		// Capture userMessageId before clearing currentStreamingMessage
+		const userMessageId = currentStreamingMessage.value?.userMessageId;
 		currentStreamingMessage.value = undefined;
 
+		const wasAborted = payload && 'aborted' in payload && payload.aborted;
+
 		// Update page title on completion. We show Done when the user is not on the page
+		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			if (!wasAborted && userMessageId) {
+				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
+					? 'workflow-ready'
+					: 'input-needed';
+				notifyOnCompletion(completionType);
+			}
 		} else {
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 		}
@@ -604,6 +679,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					.filter((msg) => msg.type !== 'workflow-updated');
 
 				chatMessages.value = convertedMessages;
+
+				// Restore lastUserMessageId from the loaded session for telemetry tracking
+				const lastUserMsg = [...convertedMessages]
+					.reverse()
+					.find((msg) => msg.role === 'user' && msg.type === 'text');
+				if (lastUserMsg) {
+					lastUserMessageId.value = lastUserMsg.id;
+				}
 			}
 
 			return sessions;

@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -71,6 +70,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			WorkflowHistoryButton: {
 				template: '<div data-test-id="workflow-history-button-stub"></div>',
 			},
+			N8nTooltip: {
+				template: '<div><slot name="content" /><slot /></div>',
+			},
 		},
 	},
 });
@@ -136,32 +138,25 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Active version indicator', () => {
-		it('should not show active version indicator when there is no active version', async () => {
+		it('should not show active version indicator when there is no active version', () => {
 			workflowsStore.workflow.activeVersion = null;
 
-			const { queryByTestId, getByTestId } = renderComponent();
+			const { queryByTestId } = renderComponent();
 
-			// Hover over publish button to open tooltip
-			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
-
+			expect(queryByTestId('workflow-active-version-info')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
 		});
 
-		it('should show active version indicator when there is an active version', async () => {
+		it('should show active version indicator when there is an active version', () => {
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
 
 			const { getByTestId } = renderComponent();
 
-			// Hover over publish button to open tooltip
-			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
-
-			// Wait for tooltip to appear (show-after is 300ms)
-			await waitFor(() => {
-				expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-			});
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
 
-		it('should use latest activation date from workflowPublishHistory when available', async () => {
+		it('should use latest activation date from workflowPublishHistory when available', () => {
 			const oldDate = '2024-01-01T00:00:00.000Z';
 			const latestActivationDate = '2024-06-15T10:30:00.000Z';
 			workflowsStore.workflow.activeVersion = {
@@ -198,6 +193,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent({
 				global: {
 					stubs: {
+						N8nTooltip: {
+							template: '<div><slot name="content" /></div>',
+						},
 						TimeAgo: {
 							props: ['date'],
 							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
@@ -206,14 +204,26 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			// Hover over publish button to open tooltip
-			await userEvent.hover(getByTestId('workflow-open-publish-modal-button'));
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
+			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		});
 
-			// Wait for tooltip to appear (show-after is 300ms)
-			await waitFor(() => {
-				expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-				expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		it('should show active version indicator when user does not have workflow:publish permission but workflow is currently published', () => {
+			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
 			});
+
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 		});
 	});
 
