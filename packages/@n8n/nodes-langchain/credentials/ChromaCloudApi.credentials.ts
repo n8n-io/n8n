@@ -36,6 +36,13 @@ export class ChromaCloudApi implements ICredentialType {
 			default: '',
 			description: 'Optional: Database name (auto-resolved if API key is scoped to single DB)',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: 'https://api.trychroma.com',
+			required: true,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -49,7 +56,7 @@ export class ChromaCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.trychroma.com',
+			baseURL: '={{$credentials.baseUrl}}',
 			url: '/api/v2',
 			method: 'GET',
 		},
