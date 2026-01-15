@@ -16,6 +16,7 @@ import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { mock } from 'jest-mock-extended';
 
 // Setup license mock BEFORE test server initialization
 const isLicensedMock = jest.fn(() => true);
@@ -25,6 +26,7 @@ mockInstance(License, {
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
+const license = mock<License>();
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
