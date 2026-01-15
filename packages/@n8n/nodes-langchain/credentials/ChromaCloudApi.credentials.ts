@@ -49,7 +49,7 @@ export class ChromaCloudApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'x-chroma-token': '={{$credentials.apiKey}}',
 			},
 		},
 	};
