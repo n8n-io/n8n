@@ -25,6 +25,7 @@ export type N8NConfig = StackConfig;
 
 export interface N8NStack {
 	baseUrl: string;
+	projectName: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
@@ -130,14 +131,24 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const levelPromises = level.map(async (name) => {
 			const service = SERVICE_REGISTRY[name];
 			const options = service.getOptions?.(ctx);
-			const result = await service.start(network, uniqueProjectName, options, ctx);
-			return { name, service, result };
+			try {
+				const result = await service.start(network, uniqueProjectName, options, ctx);
+				return { name, service, result };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+			}
 		});
 
 		const results = await Promise.all(levelPromises);
 
 		for (const { name, service, result } of results) {
-			containers.push(result.container);
+			// Some services (e.g., tracing) return multiple containers
+			const serviceContainers =
+				'containers' in result && Array.isArray(result.containers)
+					? (result.containers as StartedTestContainer[])
+					: [result.container];
+			containers.push(...serviceContainers);
 			serviceResults[name] = result;
 
 			if (service.env) {
@@ -245,6 +256,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	return {
 		baseUrl,
+		projectName: uniqueProjectName,
 		stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
 		containers,
 		serviceResults,

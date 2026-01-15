@@ -17,7 +17,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	SampleTemplates,
-	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 } from '@/features/workflows/templates/utils/workflowSamples';
 import {
@@ -102,11 +101,6 @@ export async function executionFinished(
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isPrebuiltAgentTemplateId(templateId)) {
-			telemetry.track('User executed pre-built Agent', {
-				template: templateId,
-				status: data.status,
-			});
 		} else if (isTutorialTemplateId(templateId)) {
 			telemetry.track('User executed tutorial template', {
 				template: templateId,

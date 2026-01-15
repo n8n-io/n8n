@@ -1,6 +1,6 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionError } from './errors';
+import { ExpressionDestructuringError, ExpressionError } from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
@@ -11,6 +11,10 @@ export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a func
 const EMPTY_CONTEXT = b.objectExpression([
 	b.property('init', b.identifier('process'), b.objectExpression([])),
 ]);
+
+const SAFE_GLOBAL = b.objectExpression([]);
+
+const SAFE_THIS = b.sequenceExpression([b.literal(0), EMPTY_CONTEXT]);
 
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
@@ -53,10 +57,12 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 	return isPropertyDollar && !isObjectDollar && isObjectValid;
 };
 
+const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
+
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
  */
-export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
+export const ThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 	astVisit(ast, {
 		visitCallExpression(path) {
 			const { node } = path;
@@ -112,6 +118,44 @@ export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 			]);
 			path.replace(boundFunction);
 			return false;
+		},
+
+		visitIdentifier(path) {
+			this.traverse(path);
+			const { node } = path;
+
+			if (GLOBAL_IDENTIFIERS.has(node.name)) {
+				const parent: unknown = path.parent;
+				const isPropertyName =
+					typeof parent === 'object' &&
+					parent !== null &&
+					'name' in parent &&
+					parent.name === 'property';
+
+				if (!isPropertyName) path.replace(SAFE_GLOBAL);
+			}
+		},
+
+		visitThisExpression(path) {
+			this.traverse(path);
+
+			/**
+			 * Replace `this` with a safe context object.
+			 * This prevents arrow functions from accessing the real global context:
+			 *
+			 * ```js
+			 * (() => this?.process)()  // becomes (() => (0, { process: {} })?.process)()
+			 * ```
+			 *
+			 * Arrow functions don't have their own `this` binding - they inherit from
+			 * the outer lexical scope. Without this fix, `this` inside an arrow function
+			 * would resolve to the Node.js global object, exposing process.env and other
+			 * sensitive data.
+			 *
+			 * We use SAFE_THIS (a sequence expression) instead of EMPTY_CONTEXT directly
+			 * to ensure the object literal is unambiguously parsed as an expression.
+			 */
+			path.replace(SAFE_THIS);
 		},
 	});
 };
@@ -225,12 +269,34 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				);
 			}
 		},
+
+		visitObjectPattern(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const prop of node.properties) {
+				if (prop.type === 'Property') {
+					let keyName: string | undefined;
+
+					if (prop.key.type === 'Identifier') {
+						keyName = prop.key.name;
+					} else if (prop.key.type === 'StringLiteral' || prop.key.type === 'Literal') {
+						keyName = String(prop.key.value);
+					}
+
+					if (keyName !== undefined && !isSafeObjectProperty(keyName)) {
+						throw new ExpressionDestructuringError(keyName);
+					}
+				}
+			}
+		},
 	});
 };
 
 export const sanitizer = (value: unknown): unknown => {
-	if (!isSafeObjectProperty(value as string)) {
-		throw new ExpressionError(`Cannot access "${value as string}" due to security concerns`);
+	const propertyKey = String(value);
+	if (!isSafeObjectProperty(propertyKey)) {
+		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
 	return value;
 };

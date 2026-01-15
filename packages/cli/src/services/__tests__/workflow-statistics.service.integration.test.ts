@@ -84,6 +84,7 @@ describe('WorkflowStatisticsService', () => {
 					latestEvent: expect.any(Date),
 					name: 'production_success',
 					workflowId: workflow.id,
+					workflowName: workflow.name,
 				});
 			},
 		);
@@ -115,6 +116,7 @@ describe('WorkflowStatisticsService', () => {
 					latestEvent: expect.any(Date),
 					name: mode === 'manual' ? 'manual_success' : 'production_success',
 					workflowId: workflow.id,
+					workflowName: workflow.name,
 				});
 			},
 		);
@@ -163,6 +165,7 @@ describe('WorkflowStatisticsService', () => {
 					latestEvent: expect.any(Date),
 					name: status === 'success' ? 'production_success' : 'production_error',
 					workflowId: workflow.id,
+					workflowName: workflow.name,
 				});
 			},
 		);
@@ -194,6 +197,7 @@ describe('WorkflowStatisticsService', () => {
 					latestEvent: expect.any(Date),
 					name: 'production_error',
 					workflowId: workflow.id,
+					workflowName: workflow.name,
 				});
 			},
 		);
