@@ -22,6 +22,7 @@ export class LogStreamingModule implements ModuleInterface {
 		const { LogStreamingDestinationService } = await import('./log-streaming-destination.service');
 		const destinationService = Container.get(LogStreamingDestinationService);
 		await destinationService.loadDestinationsFromDb();
+		await destinationService.initialize();
 	}
 
 	async entities() {

@@ -7,6 +7,7 @@ import type TestAgent from 'supertest/lib/agent';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
@@ -17,12 +18,14 @@ jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 const tlsServer = new TlsSyslogServer();
 let serverPort: number;
 let eventBus: MessageEventBus;
+let destinationService: LogStreamingDestinationService;
 let authOwnerAgent: TestAgent;
 let logger: Logger;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
+	modules: ['log-streaming'],
 });
 
 afterAll(async () => {
@@ -41,6 +44,9 @@ beforeAll(async () => {
 	eventBus = Container.get(MessageEventBus);
 	logger = Container.get(Logger);
 	await eventBus.initialize();
+
+	destinationService = Container.get(LogStreamingDestinationService);
+	await destinationService.initialize();
 });
 
 describe('TLS Syslog E2E', () => {
@@ -51,8 +57,13 @@ describe('TLS Syslog E2E', () => {
 		tlsServer.clearMessages();
 	});
 
-	afterEach(() => {
-		eventBus.destinations = {};
+	afterEach(async () => {
+		const destinations = await destinationService.findDestination();
+		for (const destination of destinations) {
+			if (destination.id) {
+				await destinationService.removeDestination(destination.id, false);
+			}
+		}
 	});
 
 	test('should send message over real TLS connection', async () => {
