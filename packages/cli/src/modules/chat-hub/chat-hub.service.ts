@@ -158,7 +158,12 @@ export class ChatHubService {
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 
-	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
+	async sendHumanMessage(
+		res: Response,
+		user: User,
+		payload: HumanMessagePayload,
+		authenticationToken: string,
+	) {
 		const {
 			sessionId,
 			messageId,
@@ -220,6 +225,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
+					authenticationToken,
 					trx,
 				);
 			});
@@ -305,7 +311,12 @@ export class ChatHubService {
 		}
 	}
 
-	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+	async editMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		authenticationToken: string,
+	) {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -383,6 +394,7 @@ export class ChatHubService {
 						session.tools,
 						attachments,
 						tz,
+						authenticationToken,
 						trx,
 					);
 				}
@@ -421,7 +433,12 @@ export class ChatHubService {
 		);
 	}
 
-	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
+	async regenerateAIMessage(
+		res: Response,
+		user: User,
+		payload: RegenerateMessagePayload,
+		authenticationToken: string,
+	) {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -469,6 +486,7 @@ export class ChatHubService {
 					session.tools,
 					attachments,
 					tz,
+					authenticationToken,
 					trx,
 				);
 
@@ -502,6 +520,7 @@ export class ChatHubService {
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
+		authenticationToken: string,
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
@@ -511,6 +530,7 @@ export class ChatHubService {
 				model.workflowId,
 				message,
 				attachments,
+				authenticationToken,
 				trx,
 			);
 		}
@@ -524,6 +544,7 @@ export class ChatHubService {
 				message,
 				attachments,
 				timeZone,
+				authenticationToken,
 				trx,
 			);
 		}
@@ -539,6 +560,7 @@ export class ChatHubService {
 			tools,
 			attachments,
 			timeZone,
+			authenticationToken,
 			trx,
 		);
 	}
@@ -554,6 +576,7 @@ export class ChatHubService {
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
+		authenticationToken: string,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -572,6 +595,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			timeZone,
+			authenticationToken,
 			trx,
 		);
 	}
@@ -584,6 +608,7 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		timeZone: string,
+		authenticationToken: string,
 		trx: EntityManager,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
@@ -629,6 +654,7 @@ export class ChatHubService {
 			tools,
 			attachments,
 			timeZone,
+			authenticationToken,
 			trx,
 		);
 	}
@@ -639,6 +665,7 @@ export class ChatHubService {
 		workflowId: string,
 		message: string,
 		attachments: IBinaryData[],
+		authenticationToken: string,
 		trx: EntityManager,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -710,6 +737,7 @@ export class ChatHubService {
 			sessionId,
 			message,
 			attachments,
+			authenticationToken,
 		);
 
 		const executionData = createRunExecutionData({

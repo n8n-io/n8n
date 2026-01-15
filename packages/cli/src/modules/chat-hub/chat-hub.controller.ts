@@ -39,6 +39,8 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+import { AuthService } from '@/auth/auth.service';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -48,6 +50,7 @@ export class ChatHubController {
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
+		private readonly authService: AuthService,
 	) {}
 
 	@Post('/models')
@@ -135,11 +138,22 @@ export class ChatHubController {
 		@Body payload: ChatHubSendMessageRequest,
 	) {
 		let shouldRethrow = false;
+		const authenticationToken = this.authService.getAuthTokenFromRequest(req);
+		if (!authenticationToken) {
+			// This case should never happen, but better to handle it, than to
+			// enforce it in typescript
+			throw new UnauthenticatedError();
+		}
 		try {
-			await this.chatService.sendHumanMessage(res, req.user, {
-				...payload,
-				userId: req.user.id,
-			});
+			await this.chatService.sendHumanMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					userId: req.user.id,
+				},
+				authenticationToken,
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -179,13 +193,24 @@ export class ChatHubController {
 		@Body payload: ChatHubEditMessageRequest,
 	) {
 		let shouldRethrow = false;
+		const authenticationToken = this.authService.getAuthTokenFromRequest(req);
+		if (!authenticationToken) {
+			// This case should never happen, but better to handle it, than to
+			// enforce it in typescript
+			throw new UnauthenticatedError();
+		}
 		try {
-			await this.chatService.editMessage(res, req.user, {
-				...payload,
-				sessionId,
-				editId,
-				userId: req.user.id,
-			});
+			await this.chatService.editMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					editId,
+					userId: req.user.id,
+				},
+				authenticationToken,
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -225,13 +250,24 @@ export class ChatHubController {
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
 		let shouldRethrow = false;
+		const authenticationToken = this.authService.getAuthTokenFromRequest(req);
+		if (!authenticationToken) {
+			// This case should never happen, but better to handle it, than to
+			// enforce it in typescript
+			throw new UnauthenticatedError();
+		}
 		try {
-			await this.chatService.regenerateAIMessage(res, req.user, {
-				...payload,
-				sessionId,
-				retryId,
-				userId: req.user.id,
-			});
+			await this.chatService.regenerateAIMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					retryId,
+					userId: req.user.id,
+				},
+				authenticationToken,
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
