@@ -67,12 +67,12 @@ export async function initialize(state: CoordinatorState): Promise<void> {
  * @param sql - The SQL statement to execute
  */
 export async function exec(state: CoordinatorState, sql: string): Promise<void> {
+	await ensureInitialized(state, async () => await initialize(state));
+
 	const worker = getActiveDataWorker(state);
 	if (!worker) {
 		throw new Error('[Coordinator] No active data worker available');
 	}
-
-	await ensureInitialized(state, async () => await initialize(state));
 
 	await worker.exec(sql);
 }
@@ -85,12 +85,12 @@ export async function exec(state: CoordinatorState, sql: string): Promise<void> 
  * @returns Query result with columns and rows
  */
 export async function query(state: CoordinatorState, sql: string): Promise<QueryResult> {
+	await ensureInitialized(state, async () => await initialize(state));
+
 	const worker = getActiveDataWorker(state);
 	if (!worker) {
 		throw new Error('[Coordinator] No active data worker available');
 	}
-
-	await ensureInitialized(state, async () => await initialize(state));
 
 	return await worker.query(sql);
 }
@@ -108,12 +108,12 @@ export async function queryWithParams(
 	sql: string,
 	params: unknown[],
 ): Promise<QueryResult> {
+	await ensureInitialized(state, async () => await initialize(state));
+
 	const worker = getActiveDataWorker(state);
 	if (!worker) {
 		throw new Error('[Coordinator] No active data worker available');
 	}
-
-	await ensureInitialized(state, async () => await initialize(state));
 
 	return await worker.queryWithParams(sql, params);
 }

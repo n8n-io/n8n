@@ -227,6 +227,37 @@ describe('Coordinator Query Operations', () => {
 
 			await expect(exec(state, 'INVALID SQL')).rejects.toThrow('Exec failed');
 		});
+
+		it('should fetch worker after initialization to use current active tab', async () => {
+			const firstWorker = createMockDataWorker({
+				initialize: vi.fn().mockImplementation(async () => {
+					// Simulate active tab change during initialization
+					state.activeTabId = 'second-tab';
+				}),
+			});
+			const secondWorker = createMockDataWorker();
+
+			const firstTab = createMockTabConnection({
+				id: 'first-tab',
+				dataWorker: firstWorker,
+				isActive: true,
+			});
+			const secondTab = createMockTabConnection({
+				id: 'second-tab',
+				dataWorker: secondWorker,
+				isActive: false,
+			});
+
+			const state = createMockState({ activeTabId: 'first-tab', initialized: false });
+			state.tabs.set('first-tab', firstTab);
+			state.tabs.set('second-tab', secondTab);
+
+			await exec(state, 'INSERT INTO test VALUES (1)');
+
+			// Should use second worker (current active) not first worker (initial active)
+			expect(secondWorker.exec).toHaveBeenCalledWith('INSERT INTO test VALUES (1)');
+			expect(firstWorker.exec).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('query', () => {
