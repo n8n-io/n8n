@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
+import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
@@ -21,6 +21,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 export class McpService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
@@ -52,6 +53,7 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
+			this.workflowRepository,
 			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
