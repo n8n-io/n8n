@@ -92,6 +92,9 @@ describe('API Key Scopes License Enforcement', () => {
 
 	describe('When feat:apiKeyScopes IS licensed', () => {
 		test('POST /api-keys should honor custom scopes', async () => {
+			// Explicitly ensure the API Key Scopes feature is licensed
+			isLicensedMock.mockImplementation(() => true);
+
 			const expiresAt = Date.now() + 1000;
 
 			const response = await testServer
@@ -110,6 +113,9 @@ describe('API Key Scopes License Enforcement', () => {
 		});
 
 		test('PATCH /api-keys/:id should honor custom scopes', async () => {
+			// Explicitly ensure the API Key Scopes feature is licensed
+			isLicensedMock.mockImplementation(() => true);
+
 			// Create an API key with one scope
 			const createResponse = await testServer
 				.authAgentFor(member)
