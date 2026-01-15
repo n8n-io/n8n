@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -825,13 +824,13 @@ function selectInput() {
 	}
 }
 
-const trackBuilderPlaceholders = useDebounceFn(() => {
+function trackBuilderPlaceholders() {
 	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
 		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
 			node_type: node.value.type,
 		});
 	}
-}, 100);
+}
 
 async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
 	// When called from template @focus="setFocus", the first arg is a FocusEvent, not a boolean
@@ -877,7 +876,7 @@ async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
 	}
 
 	emit('focus');
-	void trackBuilderPlaceholders();
+	trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {
