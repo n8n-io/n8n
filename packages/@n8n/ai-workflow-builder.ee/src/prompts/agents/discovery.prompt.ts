@@ -5,6 +5,7 @@
  * the user's request. Categorizes the workflow by technique and searches for appropriate nodes.
  */
 
+import { RecommendationCategory } from '@/types';
 import {
 	TechniqueDescription,
 	WorkflowTechnique,
@@ -142,7 +143,7 @@ const DISCOVERY_ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 
 YOUR ROLE: Identify relevant n8n nodes and their connection-changing parameters.`;
 
-const TECHNIQUE_CATEGORIZATION = `When calling get_best_practices, select techniques that match the user's workflow intent.
+const TECHNIQUE_CATEGORIZATION = `When calling get_documentation with type: "best_practices", select techniques that match the user's workflow intent.
 
 <available_techniques>
 {techniques}
@@ -278,7 +279,7 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 - Logging using console.log unless user explicitly asks - only useful for debugging, not production`;
 
 const CRITICAL_RULES = `- NEVER ask clarifying questions
-- ALWAYS call get_best_practices first
+- ALWAYS call get_documentation first (with best_practices, and node_recommendations if AI tasks are needed)
 - THEN Call search_nodes to learn about available nodes and their inputs and outputs
 - FINALLY call get_node_details IN PARALLEL for speed to get more details about RELEVANT node
 - ALWAYS extract version number from <version> tag in node details
@@ -289,6 +290,14 @@ const CRITICAL_RULES = `- NEVER ask clarifying questions
 - When user specifies a model name (e.g., 'gpt-4.1-mini') try to use this if it is a valid option
 - PREFER native n8n nodes (especially Edit Fields) over Code node`;
 
+const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in get_documentation requests:
+- User mentions generic tasks like "generate image", "transcribe audio", "analyze text"
+- The user's request falls within one of the node recommendation categories: ${Object.values(RecommendationCategory).join(', ')}
+
+Do NOT request node_recommendations when:
+- It is clear for each recommendation category what nodes the user would like to use
+- It is clear how to configure the nodes they have requested to use (e.g. what model to use for an agent)`;
+
 const RESTRICTIONS = `- Output text commentary between tool calls
 - Include bestPractices or categorization in submit_discovery_results
 - Flag parameters that don't affect connections
@@ -298,7 +307,7 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const { includeExamples } = options;
 
 	const tools = [
-		'- get_best_practices: Retrieve best practices (internal context)',
+		'- get_documentation: Retrieve best practices and/or node recommendations. Pass an array of requests, each with type "best_practices" (requires techniques array) or "node_recommendations" (requires categories array)',
 		'- search_nodes: Find n8n nodes by keyword',
 		'- get_node_details: Get complete node information including <connections>',
 	];
@@ -317,7 +326,7 @@ function generateProcessSteps(options: DiscoveryPromptOptions): string {
 
 	const steps: string[] = [
 		'**Analyze user prompt** - Extract services, models, and technologies mentioned',
-		'**Call get_best_practices** with identified techniques (internal context)',
+		'**Call get_documentation** with requests array containing best_practices (with techniques) and optionally node_recommendations (with categories for AI tasks)',
 	];
 
 	if (includeExamples) {
@@ -349,6 +358,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('process', processSteps)
 		.section('technique_categorization', TECHNIQUE_CATEGORIZATION)
 		.section('technique_clarifications', TECHNIQUE_CLARIFICATIONS)
+		.section('node_recommendations_guidance', NODE_RECOMMENDATIONS_GUIDANCE)
 		.section('code_node_alternatives', CODE_NODE_ALTERNATIVES)
 		.section('connection_changing_parameters', CONNECTION_PARAMETERS)
 		.section('dynamic_output_nodes', DYNAMIC_OUTPUT_NODES)
