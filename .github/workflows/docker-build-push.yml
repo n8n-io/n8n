@@ -251,45 +251,11 @@ jobs:
 
       - name: Get manifest digests for attestation
         id: get-digests
-        run: |
-          # Get the digest of each multi-arch manifest for SLSA provenance and VEX attestation
-          get_digest() {
-            local IMAGE=$1
-            docker buildx imagetools inspect "$IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"'
-          }
-
-          # Extract image name (without tag) from a full image reference
-          get_image_name() {
-            local TAG=$1
-            echo "${TAG%:*}"  # Remove everything after the last colon
-          }
-
-          N8N_TAG="${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          RUNNERS_TAG="${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          DISTROLESS_TAG="${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
-
-          if [[ -n "$N8N_TAG" ]]; then
-            echo "n8n_digest=$(get_digest "$N8N_TAG")" >> "$GITHUB_OUTPUT"
-            echo "n8n_image=$(get_image_name "$N8N_TAG")" >> "$GITHUB_OUTPUT"
-          fi
-          if [[ -n "$RUNNERS_TAG" ]]; then
-            echo "runners_digest=$(get_digest "$RUNNERS_TAG")" >> "$GITHUB_OUTPUT"
-            echo "runners_image=$(get_image_name "$RUNNERS_TAG")" >> "$GITHUB_OUTPUT"
-          fi
-          if [[ -n "$DISTROLESS_TAG" ]]; then
-            echo "runners_distroless_digest=$(get_digest "$DISTROLESS_TAG")" >> "$GITHUB_OUTPUT"
-            echo "runners_distroless_image=$(get_image_name "$DISTROLESS_TAG")" >> "$GITHUB_OUTPUT"
-          fi
-
-          echo "=== Manifest Digests ==="
-          echo "n8n: $(get_digest "$N8N_TAG" 2>/dev/null || echo 'N/A')"
-          echo "runners: $(get_digest "$RUNNERS_TAG" 2>/dev/null || echo 'N/A')"
-          echo "runners-distroless: $(get_digest "$DISTROLESS_TAG" 2>/dev/null || echo 'N/A')"
-          echo ""
-          echo "=== Image Names ==="
-          echo "n8n: $(get_image_name "$N8N_TAG")"
-          echo "runners: $(get_image_name "$RUNNERS_TAG")"
-          echo "runners-distroless: $(get_image_name "$DISTROLESS_TAG")"
+        env:
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+        run: node .github/scripts/docker/get-manifest-digests.mjs
 
   call-success-url:
     name: Call Success URL
