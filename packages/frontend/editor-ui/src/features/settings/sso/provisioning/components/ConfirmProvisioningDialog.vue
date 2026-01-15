@@ -105,12 +105,12 @@ const onConfirmProvisioningSetting = () => {
 			</div>
 			<div class="mb-s">
 				<N8nText
-					color="text-base"
 					v-n8n-html="
 						locale.baseText(
 							'settings.provisioningConfirmDialog.breakingChangeDescription.secondLine',
 						)
 					"
+					color="text-base"
 				></N8nText>
 			</div>
 			<ul :class="$style.list" class="mb-s">
@@ -177,9 +177,11 @@ const onConfirmProvisioningSetting = () => {
 					"
 					data-test-id="provisioning-confirmation-checkbox"
 				>
-					<N8nText color="text-base">{{
-						locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
-					}}</N8nText>
+					<template #label>
+						<N8nText color="text-base">{{
+							locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
+						}}</N8nText>
+					</template>
 				</N8nCheckbox>
 			</N8nCard>
 		</div>

@@ -240,9 +240,7 @@ describe('SettingsUsageAndPlan', () => {
 			const eulaModal = await findByTestId('eula-acceptance-modal');
 			expect(eulaModal).toBeInTheDocument();
 
-			const checkbox = (await findByTestId('eula-checkbox')).querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const checkbox = await findByTestId('eula-checkbox');
 			await userEvent.click(checkbox);
 
 			const acceptButton = await findByTestId('eula-accept-button');
@@ -322,9 +320,7 @@ describe('SettingsUsageAndPlan', () => {
 			expect(eulaModal).toBeInTheDocument();
 
 			// Accept EULA
-			const checkbox = (await findByTestId('eula-checkbox')).querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const checkbox = await findByTestId('eula-checkbox');
 			await userEvent.click(checkbox);
 
 			const acceptButton = await findByTestId('eula-accept-button');
