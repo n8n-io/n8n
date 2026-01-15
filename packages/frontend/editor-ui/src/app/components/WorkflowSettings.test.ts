@@ -242,7 +242,7 @@ describe('WorkflowSettingsVue', () => {
 
 		const timeSavedPerExecutionInput = getByTestId(
 			'workflow-settings-time-saved-per-execution',
-		)?.querySelector('input[type="number"]')!;
+		).querySelector('input[type="number"]')!;
 
 		await userEvent.type(timeSavedPerExecutionInput, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -266,7 +266,7 @@ describe('WorkflowSettingsVue', () => {
 
 		const timeSavedPerExecutionInput = getByTestId(
 			'workflow-settings-time-saved-per-execution',
-		)?.querySelector('input[type="number"]')!;
+		).querySelector('input[type="number"]')!;
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput);
