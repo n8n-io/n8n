@@ -228,7 +228,11 @@ test.describe('Workflow templates', () => {
 		test('should save template id with the workflow', async ({ n8n }) => {
 			await n8n.templatesComposer.importFirstTemplate();
 
-			const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
+			// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
+			await n8n.canvas.hitExecuteWorkflow();
+
+			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+			const saveResponse = await saveResponsePromise;
 
 			const requestBody = saveResponse.request().postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
