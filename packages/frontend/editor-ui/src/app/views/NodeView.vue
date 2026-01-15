@@ -273,7 +273,6 @@ const {
 	fitView,
 	openWorkflowTemplate,
 	openWorkflowTemplateFromJSON,
-	requireNodeTypeDescription,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
