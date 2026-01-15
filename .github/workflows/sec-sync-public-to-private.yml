@@ -51,4 +51,4 @@ jobs:
           fi
 
           git reset --hard public-master
-          git push origin master --force
+          git push origin master --force-with-lease
