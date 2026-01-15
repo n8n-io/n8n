@@ -47,6 +47,17 @@ export async function createEngineRequests(
 			let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
 			let thinkingSignature: string | undefined;
 
+			// First check additionalKwargs on the toolCall itself (Gemini thought signatures via LangChain)
+			if (toolCall.additionalKwargs) {
+				const geminiSignatures = toolCall.additionalKwargs[
+					'__gemini_function_call_thought_signatures__'
+				] as Record<string, string> | undefined;
+				if (geminiSignatures && typeof geminiSignatures === 'object') {
+					// Get signature for this specific tool call
+					thoughtSignature = geminiSignatures[toolCall.toolCallId];
+				}
+			}
+
 			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
 				for (const message of toolCall.messageLog) {
 					// Check if message has content that could contain thought_signature or thinking blocks
@@ -57,8 +68,8 @@ export async function createEngineRequests(
 							// Look for thought_signature in content blocks (Gemini)
 							// and thinking/redacted_thinking blocks (Anthropic)
 							for (const block of content) {
-								// Gemini thought_signature
-								if (isGeminiThoughtSignatureBlock(block)) {
+								// Gemini thought_signature as content block (only if not already found)
+								if (!thoughtSignature && isGeminiThoughtSignatureBlock(block)) {
 									thoughtSignature = block.thoughtSignature;
 								}
 
@@ -73,6 +84,23 @@ export async function createEngineRequests(
 								}
 							}
 						}
+
+						// Also check additional_kwargs on the message for Gemini thought signatures
+						// LangChain stores them in __gemini_function_call_thought_signatures__
+						if (!thoughtSignature && 'additional_kwargs' in message) {
+							const msgAdditionalKwargs = message.additional_kwargs as
+								| Record<string, unknown>
+								| undefined;
+							if (msgAdditionalKwargs) {
+								const geminiSignatures = msgAdditionalKwargs[
+									'__gemini_function_call_thought_signatures__'
+								] as Record<string, string> | undefined;
+								if (geminiSignatures && typeof geminiSignatures === 'object') {
+									thoughtSignature = geminiSignatures[toolCall.toolCallId];
+								}
+							}
+						}
+
 						if (thoughtSignature || thinkingContent) break;
 					}
 				}

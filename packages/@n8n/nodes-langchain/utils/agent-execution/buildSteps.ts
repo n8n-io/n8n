@@ -228,6 +228,14 @@ export function buildSteps(
 				// Note: tool_calls is only used when content is a string
 				// When content is an array (thinking mode), tool_use blocks are in the content array
 				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
+				// Include additional_kwargs with Gemini thought signatures for LangChain to pass back
+				...(providerMetadata.thoughtSignature && {
+					additional_kwargs: {
+						__gemini_function_call_thought_signatures__: {
+							[toolId]: providerMetadata.thoughtSignature,
+						},
+					},
+				}),
 			});
 
 			// Extract tool input arguments for the result

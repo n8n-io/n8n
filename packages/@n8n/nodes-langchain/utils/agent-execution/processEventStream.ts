@@ -70,6 +70,8 @@ export async function processEventStream(
 									output.content ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
+								// Preserve additional_kwargs for Gemini thought signatures
+								additionalKwargs: output.additional_kwargs as Record<string, unknown> | undefined,
 							});
 						}
 					}
