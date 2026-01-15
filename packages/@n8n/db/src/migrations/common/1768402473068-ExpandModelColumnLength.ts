@@ -1,7 +1,7 @@
 import type { ReversibleMigration, MigrationContext } from '../migration-types';
 
 export class ExpandModelColumnLength1768402473068 implements ReversibleMigration {
-	async up({ isSqlite, isMysql, isPostgres, escape, queryRunner }: MigrationContext) {
+	async up({ isSqlite, isPostgres, escape, queryRunner }: MigrationContext) {
 		const messagesTable = escape.tableName('chat_hub_messages');
 		const sessionsTable = escape.tableName('chat_hub_sessions');
 		const modelColumn = escape.columnName('model');
@@ -12,13 +12,6 @@ export class ExpandModelColumnLength1768402473068 implements ReversibleMigration
 			);
 			await queryRunner.query(
 				`ALTER TABLE ${sessionsTable} ALTER COLUMN ${modelColumn} TYPE VARCHAR(256);`,
-			);
-		} else if (isMysql) {
-			await queryRunner.query(
-				`ALTER TABLE ${messagesTable} MODIFY COLUMN ${modelColumn} VARCHAR(256);`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${sessionsTable} MODIFY COLUMN ${modelColumn} VARCHAR(256);`,
 			);
 		} else if (isSqlite) {
 			for (const table of [messagesTable, sessionsTable]) {
@@ -32,7 +25,7 @@ export class ExpandModelColumnLength1768402473068 implements ReversibleMigration
 		}
 	}
 
-	async down({ isSqlite, isMysql, isPostgres, escape, queryRunner }: MigrationContext) {
+	async down({ isSqlite, isPostgres, escape, queryRunner }: MigrationContext) {
 		const messagesTable = escape.tableName('chat_hub_messages');
 		const sessionsTable = escape.tableName('chat_hub_sessions');
 		const modelColumn = escape.columnName('model');
@@ -50,19 +43,6 @@ export class ExpandModelColumnLength1768402473068 implements ReversibleMigration
 			);
 			await queryRunner.query(
 				`ALTER TABLE ${sessionsTable} ALTER COLUMN ${modelColumn} TYPE VARCHAR(64);`,
-			);
-		} else if (isMysql) {
-			await queryRunner.query(
-				`UPDATE ${messagesTable} SET ${modelColumn} = LEFT(${modelColumn}, 64) WHERE CHAR_LENGTH(${modelColumn}) > 64;`,
-			);
-			await queryRunner.query(
-				`UPDATE ${sessionsTable} SET ${modelColumn} = LEFT(${modelColumn}, 64) WHERE CHAR_LENGTH(${modelColumn}) > 64;`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${messagesTable} MODIFY COLUMN ${modelColumn} VARCHAR(64);`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${sessionsTable} MODIFY COLUMN ${modelColumn} VARCHAR(64);`,
 			);
 		} else if (isSqlite) {
 			for (const table of [messagesTable, sessionsTable]) {
