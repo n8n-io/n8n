@@ -377,19 +377,6 @@ export const routes: RouteRecordRaw[] = [
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
-		beforeEnter: (to, _from, next) => {
-			const { check } = useEnvFeatureFlag();
-			if (check.value('CRDT')) {
-				next({
-					name: VIEWS.WORKFLOW_CRDT,
-					params: {
-						name: to.params.name,
-					},
-				});
-			} else {
-				next();
-			}
-		},
 	},
 	{
 		path: '/workflow-crdt/:name/:nodeId?',
@@ -399,6 +386,14 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		props: true,
+		beforeEnter: (to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
 	},
 	{
 		path: '/workflow',
