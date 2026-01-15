@@ -644,6 +644,229 @@ describe('useCanvasOperations', () => {
 			expect(position[0]).toBeLessThanOrEqual(80);
 			expect(position[1]).toBe(320);
 		});
+
+		it('should position HITL node vertically between main node and tool node when inserted via connection', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 400],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			// Mock the tool node as lastInteractedWithNode
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...hitlNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// HITL node should be positioned vertically between main and tool nodes
+			// Y position should be halfway between 100 and 400 = 250 + offsets
+			expect(position[1]).toBe(256);
+			// X position should be tool node X minus half of CONFIGURABLE_NODE_SIZE width
+			// CONFIGURABLE_NODE_SIZE = [256, 96], so 100 - 128 = -28 + offsets
+			expect(position[0]).toBeLessThan(100);
+		});
+
+		it('should move tool node vertically if HITL node would be too close', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			// Tool node is too close to main node (less than PUSH_NODES_OFFSET)
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 150],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const setNodePositionByIdSpy = vi.spyOn(workflowState, 'setNodePositionById');
+
+			const { resolveNodePosition } = useCanvasOperations();
+			resolveNodePosition({ ...hitlNode, position: undefined }, nodeTypeDescription);
+
+			// Tool node should be moved vertically because it's too close
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(
+				toolNode.id,
+				expect.arrayContaining([100, expect.any(Number)]),
+			);
+
+			// The Y position should be different from the original
+			const callArgs = setNodePositionByIdSpy.mock.calls[0][1] as [number, number];
+			expect(callArgs[1]).not.toBe(150);
+		});
+
+		it('should not apply HITL positioning if node is not a HITL tool type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 300],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			// Regular node, not a HITL tool
+			const regularNode = createTestNode({
+				id: 'regular',
+				type: 'n8n-nodes-base.set',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(regularNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...regularNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// Regular node should not get HITL positioning
+			// It should follow normal positioning rules (to the right of last interacted node)
+			expect(position[1]).not.toBe(200); // Not halfway between main and tool
+		});
+
+		it('should not apply HITL positioning if lastInteractedWithNode is not a tool type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			// Not a tool node
+			const regularNode = createTestNode({
+				id: 'regular',
+				name: 'Regular Node',
+				position: [100, 300],
+				type: 'n8n-nodes-base.set',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = regularNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...hitlNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// Should not apply HITL positioning when last interacted node is not a tool
+			expect(position[1]).not.toBe(200);
+		});
 	});
 
 	describe('updateNodesPosition', () => {
@@ -2218,6 +2441,71 @@ describe('useCanvasOperations', () => {
 						filter: {
 							nodes: ['allowedType'],
 						},
+					},
+				],
+			});
+			const targetHandle: IConnection = {
+				node: targetNode.name,
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+
+			const { isConnectionAllowed, editableWorkflowObject } = useCanvasOperations();
+
+			editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+			nodeTypesStore.getNodeType = vi.fn(
+				(nodeTypeName: string) =>
+					({
+						[sourceNode.type]: sourceNodeTypeDescription,
+						[targetNode.type]: targetNodeTypeDescription,
+					})[nodeTypeName],
+			);
+
+			expect(isConnectionAllowed(sourceNode, targetNode, sourceHandle, targetHandle)).toBe(false);
+		});
+
+		it('should return false if target node type is not allowed by source node output filter', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+			const sourceNodeTypeDescription = mockNodeTypeDescription({
+				name: sourceNode.type,
+				outputs: [
+					{
+						type: NodeConnectionTypes.Main,
+						filter: {
+							nodes: ['allowedType'],
+						},
+					},
+				],
+			});
+			const sourceHandle: IConnection = {
+				node: sourceNode.name,
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			};
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+			const targetNodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionTypes.Main,
 					},
 				],
 			});

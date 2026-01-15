@@ -1,23 +1,23 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
-import type {
-	IExecuteFunctions,
-	ISupplyDataFunctions,
-	EngineResponse,
-	EngineRequest,
-} from 'n8n-workflow';
-
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
+	buildResponseMetadata,
+	createEngineRequests,
 	loadMemory,
 	processEventStream,
-	createEngineRequests,
 	saveToMemory,
+	type RequestResponseMetadata,
 } from '@utils/agent-execution';
+import type {
+	EngineRequest,
+	EngineResponse,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import { SYSTEM_MESSAGE } from '../../prompt';
-import type { AgentResult, RequestResponseMetadata } from '../types';
-import { buildResponseMetadata } from './buildResponseMetadata';
+import type { AgentResult } from '../types';
 import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
@@ -44,6 +44,7 @@ export async function runAgent(
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
 	const invokeParams = {
+		// steps are passed to the ToolCallingAgent in the runnable sequence to keep track of tool calls
 		steps,
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,

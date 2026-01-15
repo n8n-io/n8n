@@ -35,9 +35,53 @@ describe('Send and Wait utils tests', () => {
 					default: '',
 				},
 			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
 
-			const result = getSendAndWaitProperties(targetProperties);
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 
+			expect(result).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'options',
+						options: expect.arrayContaining([
+							expect.objectContaining({
+								name: 'extraProperty',
+							}),
+						]),
+					}),
+				]),
+			);
+		});
+
+		it('should include extra options when provided', () => {
+			const targetProperties: INodeProperties[] = [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 			expect(result).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({

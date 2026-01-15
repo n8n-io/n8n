@@ -84,6 +84,7 @@ export function getSendAndWaitProperties(
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		extraOptions?: INodeProperties[];
 	},
 ) {
 	const buttonStyle: INodeProperties = {
@@ -250,7 +251,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption, appendAttributionOption],
+			options: [limitWaitTimeOption, appendAttributionOption, ...(options?.extraOptions ?? [])],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -303,6 +304,7 @@ export function getSendAndWaitProperties(
 				},
 				limitWaitTimeOption,
 				appendAttributionOption,
+				...(options?.extraOptions ?? []),
 			],
 			displayOptions: {
 				show: {
