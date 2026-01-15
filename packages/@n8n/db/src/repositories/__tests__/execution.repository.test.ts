@@ -417,6 +417,7 @@ describe('ExecutionRepository', () => {
 			updateQueryBuilder = mock<UpdateQueryBuilder<ExecutionEntity>>();
 			updateQueryBuilder.update.mockReturnThis();
 			updateQueryBuilder.set.mockReturnThis();
+			updateQueryBuilder.setParameter.mockReturnThis();
 			updateQueryBuilder.where.mockReturnThis();
 			updateQueryBuilder.execute.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
@@ -447,6 +448,7 @@ describe('ExecutionRepository', () => {
 				status: 'running',
 				startedAt: expect.any(Function),
 			});
+			expect(updateQueryBuilder.setParameter).toHaveBeenCalledWith('startedAt', expect.any(String));
 			expect(updateQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: executionId });
 			expect(updateQueryBuilder.execute).toHaveBeenCalled();
 
