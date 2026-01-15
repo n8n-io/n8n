@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
