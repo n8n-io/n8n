@@ -156,8 +156,8 @@ function prepareRequestedNodesForExecution(
 			metadata: {
 				preserveSourceOverwrite: true,
 				preservedSourceOverwrite: executionData.metadata?.preservedSourceOverwrite ?? {
-					previousNode: parentSourceNode,
-					previousNodeOutput: parentOutputIndex,
+					previousNode: defaultParentSourceNode,
+					previousNodeOutput: defaultParentOutputIndex,
 					previousNodeRun: parentRunIndex,
 				},
 			},
