@@ -9,7 +9,12 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TriggerCloseError,
+} from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -164,6 +169,13 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to return the headers received from Kafka',
 					},
 					{
+						displayName: 'Rebalance Timeout',
+						name: 'rebalanceTimeout',
+						type: 'number',
+						default: 600000,
+						description: 'The maximum time allowed for a consumer to join the group',
+					},
+					{
 						displayName: 'Session Timeout',
 						name: 'sessionTimeout',
 						type: 'number',
@@ -232,159 +244,123 @@ export class KafkaTrigger implements INodeType {
 			maxInFlightRequests,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
+			rebalanceTimeout: this.getNodeParameter('options.rebalanceTimeout', 600000) as number,
 		});
-
-		let closeFunctionWasCalled = false;
-		let isReconnecting = false;
-		let reconnectAttempts = 0;
-		const MAX_RECONNECT_DELAY = 30000;
-
-		async function closeFunction() {
-			closeFunctionWasCalled = true;
-			try {
-				await consumer.disconnect();
-			} catch (error) {
-				// Ignore errors during intentional shutdown
-			}
-		}
-
-		const reconnect = async () => {
-			if (closeFunctionWasCalled || isReconnecting) return;
-
-			isReconnecting = true;
-			reconnectAttempts++;
-
-			// Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
-			const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
-
-			this.logger.info('Attempting to reconnect Kafka consumer', {
-				groupId,
-				topic,
-				attempt: reconnectAttempts,
-				delayMs: delay,
-			});
-
-			await sleep(delay);
-
-			try {
-				try {
-					await consumer.disconnect();
-				} catch (disconnectError) {
-					this.logger.debug('Error during disconnect (expected after crash)', {
-						error:
-							disconnectError instanceof Error ? disconnectError.message : String(disconnectError),
-					});
-				}
-
-				await startConsumer();
-
-				reconnectAttempts = 0;
-				this.logger.info('Kafka consumer reconnected successfully', { groupId, topic });
-			} catch (error) {
-				this.logger.error('Failed to reconnect Kafka consumer', {
-					error: error instanceof Error ? error.message : String(error),
-					groupId,
-					topic,
-					attempt: reconnectAttempts,
-				});
-				// Schedule next attempt after this function completes to allow flag reset
-				setTimeout(() => {
-					isReconnecting = false;
-					void reconnect();
-				}, 0);
-				return;
-			}
-
-			isReconnecting = false;
-		};
-
-		const registry = useSchemaRegistry ? new SchemaRegistry({ host: schemaRegistryUrl }) : null;
 
 		const startConsumer = async () => {
-			await consumer.connect();
+			try {
+				await consumer.connect();
 
-			await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
-			await consumer.run({
-				autoCommitInterval: (options.autoCommitInterval as number) || null,
-				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic: messageTopic, message }) => {
-					let data: IDataObject = {};
-					let value = message.value?.toString() as string;
+				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-					if (options.jsonParseMessage) {
-						try {
-							value = JSON.parse(value);
-						} catch (error) {
-							this.logger.debug('Failed to parse message as JSON', {
-								error: error instanceof Error ? error.message : String(error),
-							});
+				await consumer.run({
+					autoCommitInterval: (options.autoCommitInterval as number) || null,
+					autoCommitThreshold: (options.autoCommitThreshold as number) || null,
+					eachMessage: async ({ topic: messageTopic, message }) => {
+						let data: IDataObject = {};
+						let value = message.value?.toString() as string;
+
+						if (options.jsonParseMessage) {
+							try {
+								value = jsonParse(value);
+							} catch (error) {
+								this.logger.warn('Could not parse message to JSON, returning as string', { error });
+							}
 						}
-					}
 
-					if (registry) {
-						try {
-							value = await registry.decode(message.value as Buffer);
-						} catch (error) {
-							this.logger.warn('Failed to decode message with schema registry', {
-								error: error instanceof Error ? error.message : String(error),
-							});
+						if (useSchemaRegistry) {
+							try {
+								const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+								value = await registry.decode(message.value as Buffer);
+							} catch (error) {
+								this.logger.warn(
+									'Could not decode message with Schema Registry, returning original message',
+									{ error },
+								);
+							}
 						}
-					}
 
-					if (options.returnHeaders && message.headers) {
-						data.headers = Object.fromEntries(
-							Object.entries(message.headers).map(([headerKey, headerValue]) => [
-								headerKey,
-								headerValue?.toString('utf8') ?? '',
-							]),
-						);
-					}
+						if (options.returnHeaders && message.headers) {
+							data.headers = Object.fromEntries(
+								Object.entries(message.headers).map(([headerKey, headerValue]) => [
+									headerKey,
+									headerValue?.toString('utf8') ?? '',
+								]),
+							);
+						}
 
-					data.message = value;
-					data.topic = messageTopic;
+						data.message = value;
+						data.topic = messageTopic;
 
-					if (options.onlyMessage) {
-						//@ts-ignore
-						data = value;
-					}
-					let responsePromise = undefined;
-					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-						responsePromise = this.helpers.createDeferredPromise<IRun>();
-						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
-					} else {
-						this.emit([this.helpers.returnJsonArray([data])]);
-					}
-					if (responsePromise) {
-						await responsePromise.promise;
-					}
-				},
-			});
+						if (options.onlyMessage) {
+							data = value as unknown as IDataObject;
+						}
+
+						if (!parallelProcessing && (options.nodeVersion as number) > 1) {
+							const responsePromise = this.helpers.createDeferredPromise<IRun>();
+							this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
+							await responsePromise.promise;
+						} else {
+							this.emit([this.helpers.returnJsonArray([data])]);
+						}
+					},
+				});
+			} catch (error) {
+				this.logger.error('Failed to start Kafka consumer', { error });
+				throw new NodeOperationError(this.getNode(), error);
+			}
 		};
 
-		consumer.on(consumer.events.CRASH, (event) => {
-			if (!closeFunctionWasCalled && !isReconnecting) {
-				this.logger.error('Kafka consumer crashed, will attempt to reconnect', {
-					error: event.payload.error.message,
-					groupId,
-					topic,
-				});
-				void reconnect();
-			}
+		const onConnected = consumer.on(consumer.events.CONNECT, () => {
+			this.logger.info('Kafka consumer connected');
+		});
+		const onGroupJoin = consumer.on(consumer.events.GROUP_JOIN, () => {
+			this.logger.info('Consumer has joined the group');
+		});
+		const onRequestTimeout = consumer.on(consumer.events.REQUEST_TIMEOUT, () => {
+			this.logger.error('Consumer request timed out');
+		});
+		const onUnsubscribedtopicsReceived = consumer.on(
+			consumer.events.RECEIVED_UNSUBSCRIBED_TOPICS,
+			() => {
+				this.logger.info('Consumer has unsubscribed from topics');
+			},
+		);
+		const onStop = consumer.on(consumer.events.STOP, async (error) => {
+			this.logger.error('Consumer has stopped', { error });
+		});
+		const onDisconnect = consumer.on(consumer.events.DISCONNECT, async (error) => {
+			this.logger.error('Consumer has disconnected', { error });
+		});
+		const onCommitOffsets = consumer.on(consumer.events.COMMIT_OFFSETS, () => {
+			this.logger.info('Consumer offsets committed!');
+		});
+		const onRebalancing = consumer.on(consumer.events.REBALANCING, async (error) => {
+			this.logger.error('Consumer is rebalancing', { error });
+		});
+		const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
+			this.logger.error('Consumer has crashed', { error });
 		});
 
-		consumer.on(consumer.events.DISCONNECT, () => {
-			if (!closeFunctionWasCalled && !isReconnecting) {
-				this.logger.warn('Kafka consumer disconnected unexpectedly', { groupId, topic });
-				void reconnect();
-			}
-		});
+		const closeFunction = async () => {
+			try {
+				// Clean up listeners
+				onConnected();
+				onGroupJoin();
+				onRequestTimeout();
+				onUnsubscribedtopicsReceived();
+				onStop();
+				onDisconnect();
+				onCommitOffsets();
+				onRebalancing();
+				onCrash();
 
-		consumer.on(consumer.events.STOP, () => {
-			if (!closeFunctionWasCalled && !isReconnecting) {
-				this.logger.warn('Kafka consumer stopped unexpectedly', { groupId, topic });
-				void reconnect();
+				await consumer.stop();
+				await consumer.disconnect();
+			} catch (error) {
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
 			}
-		});
+		};
 
 		if (this.getMode() !== 'manual') {
 			await startConsumer();
