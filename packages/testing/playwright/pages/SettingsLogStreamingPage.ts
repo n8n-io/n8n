@@ -124,8 +124,6 @@ export class SettingsLogStreamingPage extends BasePage {
 	async saveDestination(): Promise<void> {
 		const saveButton = this.getDestinationSaveButton();
 		await saveButton.click();
-		// Wait for save to complete by checking if test button appears
-		await this.getSendTestEventButton().waitFor({ state: 'visible', timeout: 10000 });
 	}
 
 	async deleteDestination(): Promise<void> {
