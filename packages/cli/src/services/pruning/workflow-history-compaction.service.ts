@@ -11,29 +11,39 @@ import { strict } from 'node:assert';
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
  *
- * Every hour (`compactingTimeWindowHours` / 2):
+ * Every hour (`optimizingTimeWindowHours` / 2):
  *
  * 1. Find workflows with new versions in the time window determined
- *    by `compactingMinimumAgeHours` and `compactingTimeWindowHours`
+ *    by `optimizingMinimumAgeHours` and `optimizingTimeWindowHours`
  *
  * 2. For each workflow, fetch all versions in that window and remove
- *    versions based on workflowHistoryRepo.pruneHistory.
+ *    redundant versions i.e. versions which hold no meaningful data compared
+ *    to the next iteration, e.g. only change is node parameter { a: 'the quick' }
+ *    to { a: 'the quick brown fox' }
  *
- * This currently removes any *redundant* versions, i.e. versions
- * which hold no meaningful data compared to the next iteration
- * e.g. only change is node parameter { a: 'the quick' } to { a: 'the quick brown fox' }
+ * Every day:
  *
- * We may introduce more stricter rules in the future, likely with
- * a mechanism to run this pruning on demand.
+ * 1. Find workflows with new versions in the time window determined
+ *    by `trimmingMinimumAgeDays` and `trimmingTimeWindowDays`
+ *
+ * 2. For each workflow, fetch all versions in that window and leave behind
+ *    only one version every minute to four hours, depending on the size of the
+ *    workflow.
+ *
+ * Neither of these operations will remove active or named versions, and a version
+ * followed by a version from a different author.
+ *
+ * This compaction happens in addition to workflow history pruning.
+ *
  */
 @Service()
 export class WorkflowHistoryCompactionService {
-	private compactingInterval: NodeJS.Timeout | undefined;
+	private optimizingInterval: NodeJS.Timeout | undefined;
 	private trimmingInterval: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
 
-	private isCompactingRecentHistories = false;
+	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
 
 	constructor(
@@ -61,17 +71,17 @@ export class WorkflowHistoryCompactionService {
 		const { connectionState } = this.dbConnection;
 		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
 
-		this.logger.debug('Started workflow histories compaction and trimming', { ...this.config });
+		this.logger.debug('Started workflow histories optimization and trimming', { ...this.config });
 
-		this.scheduleRollingCompacting();
+		this.scheduleOptimization();
 		this.scheduleTrimming();
 	}
 
 	@OnLeaderStepdown()
 	stopCompacting() {
-		if (!this.compactingInterval && !this.trimmingInterval) return;
+		if (!this.optimizingInterval && !this.trimmingInterval) return;
 
-		clearInterval(this.compactingInterval);
+		clearInterval(this.optimizingInterval);
 		clearInterval(this.trimmingInterval);
 
 		this.logger.debug('Stopped workflow histories compaction and trimming');
@@ -99,19 +109,19 @@ export class WorkflowHistoryCompactionService {
 		this.logger.debug('Trimming histories once a day at 3am server time');
 	}
 
-	private scheduleRollingCompacting() {
-		// We run compaction twice as often as the window for which we compact workflows
+	private scheduleOptimization() {
+		// We run optimization twice as often as the window for which we optimize workflows
 		// This allows redundancy for covering first and last versions in the window, accounts
 		// for restarts and other small gaps, e.g. caused by the next internal needing to wait
 		// for computing resources if the instance is busy
-		const rateMs = (this.config.compactingTimeWindowHours / 2) * Time.hours.toMilliseconds;
-		this.compactingInterval = setInterval(async () => await this.compactRecentHistories(), rateMs);
+		const rateMs = (this.config.optimizingTimeWindowHours / 2) * Time.hours.toMilliseconds;
+		this.optimizingInterval = setInterval(async () => await this.optimizeHistories(), rateMs);
 
 		this.logger.debug(
-			`Compacting histories every ${this.config.compactingTimeWindowHours / 2.0} hour(s)`,
+			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
 
-		void this.compactRecentHistories();
+		void this.optimizeHistories();
 	}
 
 	@OnShutdown()
@@ -155,27 +165,27 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
-	private async compactRecentHistories(): Promise<void> {
-		if (this.isCompactingRecentHistories) {
-			this.logger.warn('Skipping recent compaction as there is already a running iteration');
+	private async optimizeHistories(): Promise<void> {
+		if (this.isOptimizingHistories) {
+			this.logger.warn('Skipping recent optimization as there is already a running iteration');
 			return;
 		}
-		this.isCompactingRecentHistories = true;
+		this.isOptimizingHistories = true;
 
 		const startDelta =
-			(this.config.compactingMinimumAgeHours + this.config.compactingTimeWindowHours) *
+			(this.config.optimizingMinimumAgeHours + this.config.optimizingTimeWindowHours) *
 			Time.hours.toMilliseconds;
-		const endDelta = this.config.compactingMinimumAgeHours * Time.hours.toMilliseconds;
+		const endDelta = this.config.optimizingMinimumAgeHours * Time.hours.toMilliseconds;
 
 		try {
 			await this.compactHistories(
 				startDelta,
 				endDelta,
 				[RULES.mergeAdditiveChanges],
-				[SKIP_RULES.makeSkipTimeDifference(this.config.minimumTimeBetweenSessionsMs)],
+				[SKIP_RULES.makeSkipTimeDifference(20 * 60 * 1000)],
 			);
 		} finally {
-			this.isCompactingRecentHistories = false;
+			this.isOptimizingHistories = false;
 		}
 	}
 
