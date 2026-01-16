@@ -899,7 +899,7 @@
     "aws4": "1.11.0",
     "basic-auth": "catalog:",
     "change-case": "4.1.2",
-    "cheerio": "1.0.0-rc.6",
+    "cheerio": "1.1.0",
     "chokidar": "catalog:",
     "cron": "3.1.7",
     "csv-parse": "5.5.0",
