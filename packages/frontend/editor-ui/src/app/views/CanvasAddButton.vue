@@ -32,7 +32,7 @@ const containerCssVars = computed(() => ({
 			placement="top"
 			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
-			:popper-class="$style.tooltip"
+			:content-class="$style.tooltip"
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">

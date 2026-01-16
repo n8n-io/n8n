@@ -19,7 +19,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 		:show-after="500"
 		:visible="visible"
 		:teleported="false"
-		:content-class="$style.popper"
+		:content-class="$style.content"
 		:avoid-collisions="false"
 	>
 		<template #content>
@@ -38,7 +38,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 	height: 100%;
 }
 
-.popper {
+.content {
 	white-space: nowrap;
 }
 </style>
