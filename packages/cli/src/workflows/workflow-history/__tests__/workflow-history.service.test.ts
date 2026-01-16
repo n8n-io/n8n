@@ -1,6 +1,6 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
-import { mock, mockClear } from 'jest-mock-extended';
+import { mockClear } from 'jest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -247,11 +247,11 @@ describe('WorkflowHistoryService', () => {
 			mockClear(workflowFinderService.findWorkflowForUser);
 			mockTransactionManager.findOne.mockReset();
 			mockTransactionManager.save.mockReset();
-			workflowHistoryRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
+			workflowHistoryRepository.manager.transaction = jest
+				.fn()
+				.mockImplementation(async (callback) => {
 					return await callback(mockTransactionManager);
-				}),
-			} as any;
+				});
 		});
 
 		it('should update version with name and description', async () => {
