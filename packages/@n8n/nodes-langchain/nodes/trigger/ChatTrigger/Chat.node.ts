@@ -243,41 +243,46 @@ export class Chat implements INodeType {
 			includeNodeParameters: true,
 		});
 
+		const executeWorkflowTrigger = connectedNodes.find(
+			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger' && !node.disabled,
+		);
+
 		let chatTrigger: INode | NodeTypeAndVersion | undefined | null = connectedNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
 		);
 
 		if (!chatTrigger) {
 			try {
-				// try to get chat trigger from workflow if node working as a tool
 				chatTrigger = this.getChatTrigger();
 			} catch (error) {}
 		}
 
-		if (!chatTrigger) {
+		if (!chatTrigger && !executeWorkflowTrigger) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Workflow must be started from a chat trigger node',
 			);
 		}
 
-		const parameters = chatTrigger.parameters as {
-			mode?: 'hostedChat' | 'webhook';
-			options: { responseMode: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
-		};
+		if (chatTrigger) {
+			const parameters = chatTrigger.parameters as {
+				mode?: 'hostedChat' | 'webhook';
+				options: { responseMode: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
+			};
 
-		if (parameters.mode === 'webhook') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'"Embeded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
-			);
-		}
+			if (parameters.mode === 'webhook') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'"Embeded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
+				);
+			}
 
-		if (parameters.options.responseMode !== 'responseNodes') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'"Response Mode" in the chat trigger node must be set to "Respond Nodes"',
-			);
+			if (parameters.options.responseMode !== 'responseNodes') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'"Response Mode" in the chat trigger node must be set to "Respond Nodes"',
+				);
+			}
 		}
 
 		const message = (this.getNodeParameter('message', 0) as string) ?? '';

@@ -151,6 +151,44 @@ export class ChatService {
 		}
 	}
 
+	private async checkSubExecutionForChatNode(
+		execution: IExecutionResponse,
+	): Promise<IExecutionResponse | null> {
+		if (execution.status !== 'waiting') return null;
+
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
+		if (typeof lastNodeExecuted !== 'string') return null;
+
+		const runData = execution.data.resultData.runData[lastNodeExecuted];
+		if (!runData || runData.length === 0) return null;
+
+		const lastRun = runData[runData.length - 1];
+		const metadata = lastRun.metadata;
+
+		const waitingNode = execution.workflowData?.nodes?.find(
+			(node) => node.name === lastNodeExecuted,
+		);
+		if (
+			waitingNode?.type === 'n8n-nodes-base.executeWorkflow' &&
+			metadata?.subExecution?.executionId
+		) {
+			const subExecution = await this.executionManager.findExecution(
+				metadata.subExecution.executionId,
+			);
+
+			if (subExecution) {
+				const subLastNode = getLastNodeExecuted(subExecution);
+				const subMessage = getMessage(subExecution);
+
+				if (subMessage !== undefined && subLastNode) {
+					return subExecution;
+				}
+			}
+		}
+
+		return null;
+	}
+
 	private processSuccessExecution(session: Session) {
 		closeConnection(session.connection);
 		return;
@@ -177,9 +215,14 @@ export class ChatService {
 
 				if (!session.executionId || !session.connection) return;
 
-				const execution = await this.getExecutionOrCleanupSession(session.executionId, sessionKey);
+				let execution = await this.getExecutionOrCleanupSession(session.executionId, sessionKey);
 
 				if (!execution) return;
+
+				const subExecution = await this.checkSubExecutionForChatNode(execution);
+				if (subExecution) {
+					execution = subExecution;
+				}
 
 				if (session.nodeWaitingForChatResponse) {
 					this.waitForChatResponseOrContinue(execution, session);
@@ -241,8 +284,14 @@ export class ChatService {
 	}
 
 	private async resumeExecution(executionId: string, message: ChatMessage, sessionKey: string) {
-		const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
+		let execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
 		if (!execution || execution.status !== 'waiting') return;
+
+		const subExecution = await this.checkSubExecutionForChatNode(execution);
+		if (subExecution) {
+			execution = subExecution;
+		}
+
 		await this.executionManager.runWorkflow(execution, message);
 	}
 
