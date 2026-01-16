@@ -1,6 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 
-import { type IConnections, type INode, type INodeParameters, type IWorkflowBase } from '../src';
+import {
+	type IConnections,
+	type INode,
+	type INodeParameters,
+	type IWorkflowBase,
+	type NodeParameterValue,
+} from '../src';
 import {
 	compareNodes,
 	compareWorkflowsNodes,
@@ -281,28 +287,34 @@ describe('compareWorkflowsNodes', () => {
 });
 
 describe('determineNodeSize', () => {
-	it('should return 0 for an empty parameters object', () => {
+	it('should return 1 for an empty parameters object', () => {
 		const parameters = {};
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(0);
+		expect(result).toBe(1);
+	});
+
+	it('should return 1 for an empty parameters array', () => {
+		const parameters: NodeParameterValue[] = [];
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(1);
 	});
 
 	it('should return the length of a single string parameter', () => {
 		const parameters = { param1: 'value1' };
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(6); // 'value1'.length
+		expect(result).toBe(7);
 	});
 
 	it('should return the sum of lengths of multiple string parameters', () => {
 		const parameters = { param1: 'value1', param2: 'value2' };
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(12); // 'value1'.length + 'value2'.length
+		expect(result).toBe(13);
 	});
 
 	it('should count non-string values as 1', () => {
 		const parameters = { param1: 42, param2: true, param3: null };
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(3); // Each non-string value counts as 1
+		expect(result).toBe(4);
 	});
 
 	it('should handle nested objects', () => {
@@ -313,19 +325,19 @@ describe('determineNodeSize', () => {
 			},
 		};
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(12); // 'value1'.length + 'value2'.length
+		expect(result).toBe(14);
 	});
 
 	it('should handle arrays of strings', () => {
 		const parameters = { param1: ['value1', 'value2'] };
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(12); // 'value1'.length + 'value2'.length
+		expect(result).toBe(14);
 	});
 
 	it('should handle arrays of mixed types', () => {
 		const parameters = { param1: ['value1', 42, true] };
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(8); // 'value1'.length + 1 (number) + 1 (boolean)
+		expect(result).toBe(10);
 	});
 
 	it('should handle deeply nested structures', () => {
@@ -338,7 +350,7 @@ describe('determineNodeSize', () => {
 			},
 		} as INodeParameters;
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(18); // 'value1'.length + 'value2'.length + 'value3'.length
+		expect(result).toBe(23);
 	});
 
 	it('should handle empty arrays and objects', () => {
@@ -347,7 +359,7 @@ describe('determineNodeSize', () => {
 			param2: {},
 		};
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(0);
+		expect(result).toBe(3);
 	});
 
 	it('should handle a mix of strings, objects, and arrays', () => {
@@ -360,7 +372,7 @@ describe('determineNodeSize', () => {
 			param3: [42, 'value5'],
 		};
 		const result = determineNodeSize(parameters);
-		expect(result).toBe(31); // 'value1'.length + 'value2'.length + 'value3'.length + 'value4'.length + 'value5'.length + 1 (number)
+		expect(result).toBe(35);
 	});
 });
 
@@ -652,8 +664,8 @@ describe('groupWorkflows', () => {
 					createdAt,
 				});
 
-			const createMetaData = (workflowSizeChars: number): DiffMetaData => ({
-				workflowSizeChars,
+			const createMetaData = (workflowSizeScore: number): DiffMetaData => ({
+				workflowSizeScore,
 			});
 
 			const wcs = mock<WorkflowChangeSet<INode>>({});

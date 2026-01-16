@@ -148,7 +148,7 @@ export class WorkflowHistoryCompactionService {
 					),
 				],
 				[],
-				{ workflowSizeChars: true },
+				{ workflowSizeScore: true },
 			);
 		} finally {
 			this.isTrimmingHistories = false;

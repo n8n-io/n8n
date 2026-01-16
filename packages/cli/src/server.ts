@@ -54,7 +54,6 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
@@ -137,38 +136,9 @@ export class Server extends AbstractServer {
 			await import('@/controllers/tags.controller');
 		}
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
-			await Container.get(SamlService).init();
-			await import('@/sso.ee/saml/routes/saml.controller.ee');
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
-		}
-
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller');
 			await import('@/controllers/posthog.controller');
-		}
-
-		// ----------------------------------------
-		// OIDC
-		// ----------------------------------------
-
-		try {
-			// in the short term, we load the OIDC module here to ensure it is initialized
-			// ideally we want to migrate this to a module and be able to load it dynamically
-			// when the license changes, but that requires some refactoring
-			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-			await Container.get(OidcService).init();
-			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-		} catch (error) {
-			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
 		}
 
 		// ----------------------------------------
