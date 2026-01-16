@@ -298,9 +298,8 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 | Filter items by condition | Filter |
 | Route by condition | If or Switch |
 | Split array into items | Split Out |
-| Combine items from SAME branch into one | Aggregate |
-| Multiple branches where ALL execute (e.g., 3 APIs) | Merge (waits for all, set numberInputs!) |
-| Conditional branches where only ONE runs (after IF) | Edit Fields (Set) |
+| Combine/join/merge data from multiple sources | Merge AND Aggregate (recommend BOTH - Builder decides structure) |
+| Rejoin conditional branches (after If/Switch) | Edit Fields (Set) |
 | Summarize/pivot data | Summarize |
 | Sort items | Sort |
 | Remove duplicates | Remove Duplicates |
@@ -352,7 +351,12 @@ const CRITICAL_RULES = `- NEVER ask clarifying questions
 - If no parameters appear in connection expressions, return empty array []
 - Output ONLY: nodesFound with {{ nodeName, version, reasoning, connectionChangingParameters }}
 - When user specifies a model name (e.g., 'gpt-4.1-mini') try to use this if it is a valid option
-- PREFER native n8n nodes (especially Edit Fields) over Code node`;
+- PREFER native n8n nodes (especially Edit Fields) over Code node
+- For structural/flow nodes (Merge, Aggregate, If, Switch), be INCLUSIVE - recommend ALL that COULD be useful, let Builder decide which to actually use based on workflow structure
+- Example: If task involves combining data from multiple sources, recommend BOTH Merge (for parallel branches) AND Aggregate (for items in same branch) - Builder will pick the right one
+- Reasoning should focus on FUNCTIONAL capability (what the node does), NOT workflow structure assumptions (how branches will be arranged)
+- WRONG reasoning: "Aggregate to combine 3 channels" (assumes structure)
+- CORRECT reasoning: "Aggregate to combine multiple items into one" (describes capability)`;
 
 const NODE_RECOMMENDATIONS_GUIDANCE = `When to include node_recommendations in get_documentation requests:
 - User mentions generic tasks like "generate image", "transcribe audio", "analyze text"
