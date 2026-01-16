@@ -43,4 +43,11 @@ export const quickStartWorkflows: QuickStartWorkflow[] = [
 		workflow: READY_TO_RUN_AI_WORKFLOW,
 		nodeTypes: ['n8n-nodes-base.rssFeedReadTool', '@n8n/n8n-nodes-langchain.agent'],
 	},
+	{
+		id: 'quick-start-ai-agent',
+		name: 'AI Agent workflow',
+		description: 'Get started with AI agents - summarize news with AI',
+		workflow: READY_TO_RUN_AI_WORKFLOW,
+		nodeTypes: ['n8n-nodes-base.rssFeedReadTool', '@n8n/n8n-nodes-langchain.agent'],
+	},
 ];
