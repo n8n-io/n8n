@@ -28,6 +28,25 @@ const focusPanelActive = ref(false);
 
 const nodeTypesStore = useNodeTypesStore();
 
+/**
+ * Generate a unique node name by checking existing nodes in the CRDT document.
+ * Appends a number suffix if the name already exists (e.g., "AI Agent" -> "AI Agent1" -> "AI Agent2")
+ */
+function generateUniqueNodeName(baseName: string, additionalNames: string[] = []): string {
+	const existingNames = new Set([...doc.getNodes().map((n) => n.name), ...additionalNames]);
+
+	if (!existingNames.has(baseName)) {
+		return baseName;
+	}
+
+	// Try appending numbers until we find a unique name
+	let counter = 1;
+	while (existingNames.has(`${baseName}${counter}`)) {
+		counter++;
+	}
+	return `${baseName}${counter}`;
+}
+
 function requireNodeTypeDescription(
 	type: INodeUi['type'],
 	version?: INodeUi['typeVersion'],
@@ -54,13 +73,14 @@ function requireNodeTypeDescription(
 	} as INodeTypeDescription;
 }
 
-// Dummy handlers that log results
 const onToggleNodeCreator = (options: ToggleNodeCreatorOptions) => {
-	console.log('Toggle node creator:', options);
 	createNodeActive.value = options.createNodeActive ?? !createNodeActive.value;
 };
 
 const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
+	// Track names of nodes being added in this batch to avoid duplicates within the same transaction
+	const namesInBatch: string[] = [];
+
 	const nodesToAdd: WorkflowNode[] = payload.nodes.map((node, index) => {
 		const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 
@@ -75,11 +95,15 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 
 		const position: [number, number] = [100 + index * 200, 100];
 
-		const name =
+		const baseName =
 			node.name ??
 			(typeof nodeTypeDescription.defaults.name === 'string'
 				? nodeTypeDescription.defaults.name
 				: nodeTypeDescription.displayName);
+
+		// Generate a unique name considering both existing nodes and nodes being added in this batch
+		const name = generateUniqueNodeName(baseName, namesInBatch);
+		namesInBatch.push(name);
 
 		// Create a temporary node object to pass to getNodeParameters
 		const tempNode = {
@@ -123,7 +147,6 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 			const targetNode = nodesToAdd[conn.to.nodeIndex];
 
 			if (!sourceNode || !targetNode) {
-				console.warn('Invalid connection: node index out of bounds', conn);
 				continue;
 			}
 
@@ -153,13 +176,11 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 };
 
 const onNodeCreatorClose = () => {
-	console.log('Node creator closed');
 	createNodeActive.value = false;
 };
 
-instance.onNodeDoubleClick(({ event, node }) => {
+instance.onNodeDoubleClick(({ node }) => {
 	selectedNode.value = node.id;
-	// console.log('Node double-clicked:', event, node);
 });
 </script>
 
