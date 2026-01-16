@@ -9,7 +9,7 @@ import { WORKFLOW_VERSION_RENAME_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionRenameModalEventBusEvents } from './WorkflowVersionRenameModal.vue';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 
 const mockShowMessage = vi.fn();
 
@@ -38,7 +38,7 @@ const initialState = {
 	},
 };
 
-const mockVersion: WorkflowHistory = {
+const mockVersion: WorkflowVersion = {
 	versionId: 'version-123',
 	workflowId: 'workflow-456',
 	name: 'Initial Version Name',
@@ -244,9 +244,9 @@ describe('WorkflowVersionRenameModal', () => {
 
 	describe('version without name', () => {
 		it('should start with empty name input when version has no name', () => {
-			const versionWithoutName: WorkflowHistory = {
+			const versionWithoutName: WorkflowVersion = {
 				...mockVersion,
-				name: null as never,
+				name: null,
 			};
 
 			const { getByTestId } = renderModal({
