@@ -137,6 +137,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
