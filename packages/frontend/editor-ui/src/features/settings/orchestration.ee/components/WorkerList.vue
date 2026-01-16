@@ -12,7 +12,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import WorkerCard from './WorkerCard.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
-import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
+import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
 withDefaults(
 	defineProps<{
 		autoRefreshEnabled?: boolean;
@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div>
-		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<ConnectionTracker class="actions"></ConnectionTracker>
 		<div :class="$style.workerListHeader">
 			<N8nHeading tag="h1" size="2xlarge">{{ pageTitle }}</N8nHeading>
 		</div>

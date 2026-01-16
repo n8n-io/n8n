@@ -7,6 +7,7 @@ import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
+import { useNetworkStatus } from '@/app/composables/useNetworkStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
@@ -39,6 +40,9 @@ useHistoryHelper(route);
 useWorkflowDiffRouting();
 
 useTelemetryInitializer();
+
+// Initialize global network status tracking
+useNetworkStatus();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
