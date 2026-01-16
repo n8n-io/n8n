@@ -19,16 +19,11 @@ const githubOutput = process.env.GITHUB_OUTPUT || null;
 
 function getDigest(imageRef) {
 	if (!imageRef) return '';
-	try {
-		const raw = execSync(`docker buildx imagetools inspect "${imageRef}" --raw`, {
-			encoding: 'utf8',
-			stdio: ['pipe', 'pipe', 'pipe'],
-		});
-		const hash = execSync('sha256sum', { input: raw, encoding: 'utf8' }).split(' ')[0].trim();
-		return `sha256:${hash}`;
-	} catch {
-		return '';
-	}
+	const raw = execSync(`docker buildx imagetools inspect "${imageRef}" --raw`, {
+		encoding: 'utf8',
+	});
+	const hash = execSync('sha256sum', { input: raw, encoding: 'utf8' }).split(' ')[0].trim();
+	return `sha256:${hash}`;
 }
 
 function getImageName(imageRef) {
