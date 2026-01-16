@@ -8,34 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
-
-// Lazy loading state
-const cardRef = ref<HTMLElement | null>(null);
-const isVisible = ref(false);
-let observer: IntersectionObserver | null = null;
-
-onMounted(() => {
-	if (cardRef.value) {
-		observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting) {
-					isVisible.value = true;
-					// Stop observing once visible (no need to track anymore)
-					observer?.disconnect();
-				}
-			},
-			{
-				rootMargin: '100px', // Start loading slightly before visible
-				threshold: 0,
-			},
-		);
-		observer.observe(cardRef.value);
-	}
-});
-
-onBeforeUnmount(() => {
-	observer?.disconnect();
-});
+import { requestRender, markRenderComplete, cancelRender } from '../utils/previewQueue';
 
 const props = withDefaults(
 	defineProps<{
@@ -50,10 +23,52 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-
 const nodeTypesStore = useNodeTypesStore();
 const { getTemplateRoute, trackTemplateClick } = useResourceCenterStore();
 const router = useRouter();
+
+// Lazy loading and queue state
+const cardRef = ref<HTMLElement | null>(null);
+const isVisible = ref(false);
+const canRender = ref(false);
+let observer: IntersectionObserver | null = null;
+
+// Generate a unique ID for this card's preview
+const previewId = computed(() => `template-preview-${props.template.id}`);
+
+onMounted(() => {
+	if (cardRef.value) {
+		observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					isVisible.value = true;
+					// Request a render slot from the queue
+					requestRender(previewId.value, () => {
+						canRender.value = true;
+					});
+					// Stop observing once visible
+					observer?.disconnect();
+				}
+			},
+			{
+				rootMargin: '100px', // Start loading slightly before visible
+				threshold: 0,
+			},
+		);
+		observer.observe(cardRef.value);
+	}
+});
+
+onBeforeUnmount(() => {
+	observer?.disconnect();
+	// Cancel any pending render request
+	cancelRender(previewId.value);
+});
+
+// Called when WorkflowPreview finishes loading
+const onPreviewReady = () => {
+	markRenderComplete(previewId.value);
+};
 
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
@@ -91,9 +106,9 @@ const handleClick = async () => {
 <template>
 	<div ref="cardRef" :class="$style.card" @click="handleClick">
 		<div :class="$style.imageContainer">
-			<!-- Only render WorkflowPreview when card is visible (lazy loading) -->
+			<!-- Only render WorkflowPreview when queue allows (canRender) -->
 			<WorkflowPreview
-				v-if="template.workflow && isVisible"
+				v-if="template.workflow && canRender"
 				:workflow="template.workflow"
 				:can-open-n-d-v="false"
 				:hide-node-issues="true"
@@ -101,6 +116,7 @@ const handleClick = async () => {
 				hide-controls
 				loader-type="spinner"
 				:class="$style.workflowPreview"
+				@ready="onPreviewReady"
 			/>
 			<div v-else :class="$style.imagePlaceholder" />
 			<div v-if="templateNodes.length > 0" :class="$style.nodesBadge">

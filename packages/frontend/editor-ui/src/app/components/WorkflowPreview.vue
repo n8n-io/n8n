@@ -39,6 +39,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	close: [];
+	ready: [];
 }>();
 
 const i18n = useI18n();
@@ -170,6 +171,8 @@ const onReady = () => {
 			iframeRef.value?.contentWindow?.focus();
 		});
 	}
+
+	emit('ready');
 };
 
 const onOpenNDV = () => {
