@@ -286,7 +286,7 @@ describe('FromAiParametersModal', () => {
 		await userEvent.clear(paramInput);
 		await userEvent.type(paramInput, 'given value');
 		await userEvent.click(getByTestId('execute-workflow-button'));
-		
+
 		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
 			query: {
 				Test_Node: {
