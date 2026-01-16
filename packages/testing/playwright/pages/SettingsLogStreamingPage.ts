@@ -232,14 +232,8 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		const responsePromise = this.page.waitForResponse(
-			(res) => res.url().includes('/eventbus/testmessage') && res.request().method() === 'GET',
-		);
-
 		const testButton = this.getSendTestEventButton();
 		await testButton.waitFor({ state: 'visible' });
 		await testButton.click();
-
-		await responsePromise;
 	}
 }
