@@ -1158,12 +1158,11 @@ export class SourceControlImportService {
 		return ['string', 'number', 'boolean', 'date'].includes(type);
 	}
 
-	async importDataTablesFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	async importDataTablesFromWorkFolder(candidates: SourceControlledFile[], _userId: string) {
 		if (candidates.length === 0) {
 			return;
 		}
 
-		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const projects = await this.projectRepository.find({ select: ['id'] });
 		const existingProjectIds = new Set(projects.map((p) => p.id));
 
@@ -1185,14 +1184,14 @@ export class SourceControlImportService {
 					continue;
 				}
 
-				// Use personal project as fallback if referenced project doesn't exist
-				const targetProjectId = existingProjectIds.has(dataTable.projectId)
-					? dataTable.projectId
-					: personalProject.id;
+				// Preserve the original projectId from remote, even if project doesn't exist locally
+				// This prevents false "modified" status on subsequent pulls
+				const targetProjectId = dataTable.projectId;
 
-				if (targetProjectId !== dataTable.projectId) {
-					this.logger.info(
-						`Project ${dataTable.projectId} not found for data table ${dataTable.name}, using personal project ${personalProject.id} instead`,
+				if (!existingProjectIds.has(targetProjectId)) {
+					this.logger.warn(
+						`Project ${targetProjectId} not found for data table ${dataTable.name}. ` +
+							"The data table will be associated with this project once it's synced.",
 					);
 				}
 
@@ -1209,7 +1208,7 @@ export class SourceControlImportService {
 					{
 						id: dataTable.id,
 						name: dataTable.name,
-						project: { id: targetProjectId },
+						projectId: targetProjectId,
 						createdAt: dataTable.createdAt,
 						updatedAt: dataTable.updatedAt,
 					},
