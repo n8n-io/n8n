@@ -318,6 +318,14 @@ export type RenderNotice = {
 	message: string;
 };
 
+export type RenderCallout = {
+	id: string;
+	type: 'callout';
+	level: number;
+	message: string;
+	theme?: 'info' | 'success' | 'warning' | 'danger' | 'secondary';
+};
+
 export type RenderEmpty = {
 	id: string;
 	type: 'empty';
@@ -326,7 +334,13 @@ export type RenderEmpty = {
 	key: 'emptyData' | 'emptySchema' | 'emptySchemaWithBinary' | 'executeSchema';
 };
 
-export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
+export type Renders =
+	| RenderHeader
+	| RenderItem
+	| RenderIcon
+	| RenderNotice
+	| RenderCallout
+	| RenderEmpty;
 
 const icons = {
 	binary: DATA_TYPE_ICON_MAP.file,
@@ -505,6 +519,17 @@ export const useFlattenSchema = () => {
 
 			if (closedNodes.value.has(item.node.name)) {
 				return acc;
+			}
+
+			if (item.node.type === 'n8n-nodes-base.merge' && item.itemsCount > 1) {
+				const mergeCallout: RenderCallout = {
+					id: `${item.node.name}-mergeNotice`,
+					type: 'callout',
+					level: 2,
+					message: useI18n().baseText('dataMapping.schemaView.mergeNotice'),
+					theme: 'info',
+				};
+				acc.push(mergeCallout);
 			}
 
 			if (isEmptySchema(item.schema)) {
