@@ -1,6 +1,7 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
+import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
@@ -25,6 +26,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useNetworkStore } from '@/app/stores/network.store';
 
 export function useWorkflowSaving({
 	router,
@@ -52,6 +54,7 @@ export function useWorkflowSaving({
 		useWorkflowHelpers();
 
 	const autosaveStore = useWorkflowAutosaveStore();
+	const networkStore = useNetworkStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -532,6 +535,11 @@ export function useWorkflowSaving({
 			return;
 		}
 
+		// Don't schedule if we're offline
+		if (!networkStore.isOnline) {
+			return;
+		}
+
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};
@@ -542,6 +550,18 @@ export function useWorkflowSaving({
 		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Watch for network coming back online
+	watch(
+		() => networkStore.isOnline,
+		(isOnline, wasOnline) => {
+			if (isOnline && !wasOnline) {
+				if (uiStore.stateIsDirty) {
+					scheduleAutoSave();
+				}
+			}
+		},
+	);
 
 	return {
 		promptSaveUnsavedWorkflowChanges,
