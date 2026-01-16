@@ -25,6 +25,7 @@ test.describe('Log Streaming Settings', () => {
 	test.describe('licensed', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.api.enableFeature('logStreaming');
+			await n8n.api.deleteAllLogStreamingDestinations();
 			await n8n.navigate.toLogStreaming();
 		});
 
@@ -35,7 +36,7 @@ test.describe('Log Streaming Settings', () => {
 		});
 
 		test('should show the add destination modal', async ({ n8n }) => {
-			await n8n.settingsLogStreaming.clickAddFirstDestination();
+			await n8n.settingsLogStreaming.addDestination();
 			await expect(n8n.settingsLogStreaming.getDestinationModal()).toBeVisible();
 			await expect(n8n.settingsLogStreaming.getSelectDestinationType()).toBeVisible();
 			await expect(n8n.settingsLogStreaming.getSelectDestinationButton()).toBeVisible();

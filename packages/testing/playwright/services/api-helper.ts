@@ -375,6 +375,16 @@ export class ApiHelpers {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Delete all log streaming destinations.
+	 */
+	async deleteAllLogStreamingDestinations(): Promise<void> {
+		const destinations = await this.getLogStreamingDestinations();
+		for (const destination of destinations) {
+			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(
