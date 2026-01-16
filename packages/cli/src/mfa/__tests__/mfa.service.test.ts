@@ -162,4 +162,57 @@ describe('MfaService', () => {
 			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, '');
 		});
 	});
+
+	describe('enforceMFA', () => {
+		it('should enforce MFA when license allows and value is true', async () => {
+			mockLicense.isMFAEnforcementLicensed.mockReturnValue(true);
+
+			await mfaService.enforceMFA(true);
+
+			expect(mockLicense.isMFAEnforcementLicensed).toHaveBeenCalledTimes(1);
+			expect(mockSettingsRepository.upsert).toHaveBeenCalledWith(
+				{
+					key: MFA_ENFORCE_SETTING,
+					value: 'true',
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, 'true');
+		});
+
+		it('should disable MFA enforcement when license allows and value is false', async () => {
+			mockLicense.isMFAEnforcementLicensed.mockReturnValue(true);
+
+			await mfaService.enforceMFA(false);
+
+			expect(mockLicense.isMFAEnforcementLicensed).toHaveBeenCalledTimes(1);
+			expect(mockSettingsRepository.upsert).toHaveBeenCalledWith(
+				{
+					key: MFA_ENFORCE_SETTING,
+					value: 'false',
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, 'false');
+		});
+
+		it('should force value to false when license does not allow MFA enforcement', async () => {
+			mockLicense.isMFAEnforcementLicensed.mockReturnValue(false);
+
+			await mfaService.enforceMFA(true);
+
+			expect(mockLicense.isMFAEnforcementLicensed).toHaveBeenCalledTimes(1);
+			expect(mockSettingsRepository.upsert).toHaveBeenCalledWith(
+				{
+					key: MFA_ENFORCE_SETTING,
+					value: 'false',
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, 'false');
+		});
+	});
 });
