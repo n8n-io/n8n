@@ -12,20 +12,21 @@ import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
-} from '../middleware/saml-enabled-middleware';
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../saml-helpers';
-import { SamlService } from '../saml.service.ee';
+} from './middleware/saml-enabled-middleware';
+import { isConnectionTestRequest } from './saml-helpers';
+import { SamlService } from './saml.service.ee';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
-} from '../service-provider.ee';
-import type { SamlLoginBinding } from '../types';
-import { getInitSSOFormView } from '../views/init-sso-post';
+} from './service-provider.ee';
+import type { SamlLoginBinding } from './types';
+import { getInitSSOFormView } from './views/init-sso-post';
 
 @RestController('/sso/saml')
 export class SamlController {

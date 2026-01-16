@@ -1,10 +1,11 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
 import pLimit from 'p-limit';
 
-import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
+import { getTracingCallbacks, runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
 import { toLangsmithEvaluationResult } from './feedback';
 import type {
 	Evaluator,
@@ -778,16 +779,22 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	// Create traceable wrapper ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
+	// IMPORTANT: Get callbacks INSIDE the traceable wrapper where AsyncLocalStorage context
+	// is correctly set, then pass them explicitly to genFn to avoid race conditions.
 	const traceableGenerateWorkflow = traceable(
 		async (args: {
 			prompt: string;
-			genFn: (prompt: string) => Promise<SimpleWorkflow>;
+			genFn: (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow>;
 			limiter?: LlmCallLimiter;
 			genTimeoutMs?: number;
 		}): Promise<SimpleWorkflow> => {
+			// Get callbacks inside traceable where context is correct
+			// Returns undefined if not in a traceable context (e.g., unit tests)
+			const callbacks = await getTracingCallbacks();
+
 			return await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: args.genFn(args.prompt),
+					promise: args.genFn(args.prompt, callbacks),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});

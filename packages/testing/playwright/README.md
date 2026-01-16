@@ -192,5 +192,58 @@ test.afterEach(async ({ proxyServer }) => {
 
 This prevents expectations from one test affecting others and ensures test isolation.
 
+## Debugging
+
+### Keepalive Mode
+
+Use `N8N_CONTAINERS_KEEPALIVE=true` to keep containers running after tests complete. Useful for:
+- Inspecting n8n instance state after a failure
+- Exploring configured integrations (email, OIDC, source control)
+- Manual testing against a pre-configured environment
+
+```bash
+N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite --grep "@capability:email" --workers 1
+```
+
+After tests complete, connection details are printed:
+```
+=== KEEPALIVE: Containers left running for debugging ===
+    URL: http://localhost:54321
+    Project: n8n-stack-abc123
+    Cleanup: pnpm --filter n8n-containers stack:clean:all
+=========================================================
+```
+
+Clean up when done: `pnpm --filter n8n-containers stack:clean:all`
+
+### Victoria Export on Failure
+
+When tests fail with observability enabled, logs and metrics are automatically exported as Currents attachments:
+
+| Attachment | Description |
+|------------|-------------|
+| `container-logs` | Human-readable logs grouped by container |
+| `victoria-logs-export.jsonl` | Raw logs in JSON Lines format |
+| `victoria-metrics-export.jsonl` | All metrics in JSON Lines format |
+
+#### Importing into a local Victoria instance
+
+1. Download the `.jsonl` attachments from Currents
+2. Import into running Victoria containers (e.g., from keepalive mode):
+
+```bash
+node scripts/import-victoria-data.mjs victoria-metrics-export.jsonl victoria-logs-export.jsonl
+```
+
+Or start standalone containers first with `--start`:
+
+```bash
+node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl victoria-logs-export.jsonl
+```
+
+3. Query locally:
+   - **Metrics UI:** http://localhost:8428/vmui/
+   - **Logs UI:** http://localhost:9428/select/vmui/
+
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).
