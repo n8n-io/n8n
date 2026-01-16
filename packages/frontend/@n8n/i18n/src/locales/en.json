@@ -117,6 +117,7 @@
 	"generic.credentials": "Credentials",
 	"generic.workflow": "Workflow | {count} Workflow | {count} Workflows",
 	"generic.workflowSaved": "Workflow changes saved",
+	"generic.autosave.retrying": "Autosave failed: {error}\nRetrying in {retryIn}...",
 	"generic.editor": "Editor",
 	"generic.seePlans": "See plans",
 	"generic.loading": "Loading",
