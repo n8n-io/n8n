@@ -28,14 +28,14 @@ export const isOversizedValue = (value: unknown): boolean =>
 
 export const createCellClass =
 	(col: DataTableColumn) =>
-	(params: CellClassParams): string => {
+	(params: CellClassParams<DataTableRow>): string => {
 		if (params.data?.id === ADD_ROW_ROW_ID) {
 			return 'add-row-cell';
 		}
 		if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
 			return 'boolean-cell';
 		}
-		const rowValue = (params.data as DataTableRow | undefined)?.[col.name];
+		const rowValue = params.data?.[col.name];
 		if (isOversizedValue(rowValue)) {
 			return 'oversized-cell';
 		}
@@ -57,11 +57,11 @@ export const createValueGetter =
 	};
 
 export const createCellRendererSelector =
-	(col: DataTableColumn) => (params: ICellRendererParams) => {
+	(col: DataTableColumn) => (params: ICellRendererParams<DataTableRow>) => {
 		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
 			return {};
 		}
-		let rowValue = (params.data as DataTableRow | undefined)?.[col.name];
+		let rowValue = params.data?.[col.name];
 		if (rowValue === undefined) {
 			rowValue = null;
 		}
