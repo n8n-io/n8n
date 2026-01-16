@@ -263,7 +263,7 @@ describe('RoleRepository', () => {
 
 	describe('updateRole()', () => {
 		describe('transaction handling', () => {
-			it('should use transactions for non-SQLite legacy databases', async () => {
+			it('should use transactions', async () => {
 				//
 				// ARRANGE
 				//
