@@ -116,6 +116,47 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	/**
+	 * Share a workflow with users or projects
+	 */
+	async shareWorkflow(workflowId: string, shareWithIds: string[]): Promise<void> {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share workflow: ${await response.text()}`);
+		}
+	}
+
+	/**
+	 * Get all workflows
+	 */
+	async getWorkflows(): Promise<IWorkflowBase[]> {
+		const response = await this.api.request.get('/rest/workflows');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return Array.isArray(result) ? result : (result.data ?? []);
+	}
+
+	/**
+	 * Get a specific workflow by ID
+	 */
+	async getWorkflow(workflowId: string): Promise<IWorkflowBase> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,
