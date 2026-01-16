@@ -131,16 +131,17 @@ const handleClick = async () => {
 
 .nodesBadge {
 	position: absolute;
-	top: var(--spacing--xs);
-	right: var(--spacing--xs);
+	top: 0;
+	right: 0;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--4xs);
 	background-color: var(--color--background--light-3);
-	border-radius: var(--radius);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	border-bottom-left-radius: var(--radius);
+	border-bottom: 1px solid var(--color--foreground--tint-1);
+	border-left: 1px solid var(--color--foreground--tint-1);
 }
 
 .nodeIcon {
