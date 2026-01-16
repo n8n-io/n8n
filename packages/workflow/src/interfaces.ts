@@ -1312,6 +1312,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
+
+export type ChatNodeMessageWithButtons = {
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
+	text: string;
+	blockUserInput: boolean;
+	buttons: Array<{
+		text: string;
+		link: string;
+		type: ChatNodeMessageButtonType;
+	}>;
+};
+
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1340,7 +1359,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

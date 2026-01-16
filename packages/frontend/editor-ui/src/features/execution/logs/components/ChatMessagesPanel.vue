@@ -303,6 +303,29 @@ async function copySessionId() {
 		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
 			var(--chat--input--line-height)
 	);
+	--chat--transition-duration: 0.3s;
+	--chat--button--font-size: var(--font-size--2xs);
+	--chat--button--line-height: 1;
+	--chat--button--border-radius: var(--radius);
+	--chat--button--padding: var(--spacing--2xs) var(--spacing--xs);
+	--chat--button--color--primary: var(--button--color--text--primary);
+	--chat--button--background--primary: var(--button--color--background--primary);
+	--chat--button--border--primary: none;
+	--chat--button--color--primary--hover: var(--button--color--text--primary);
+	--chat--button--background--primary--hover: var(
+		--button--color--background--primary--hover-active-focus
+	);
+	--chat--button--border--primary--hover: none;
+	--chat--button--color--secondary: var(--button--color--text--secondary);
+	--chat--button--background--secondary: var(--button--color--background--secondary);
+	--chat--button--border--secondary: var(--border-width) var(--button--border-color--secondary)
+		var(--border-style);
+	--chat--button--color--secondary--hover: var(
+		--button--color--text--secondary--hover-active-focus
+	);
+	--chat--button--background--secondary--hover: var(--button--color--background--secondary--hover);
+	--chat--button--border--secondary--hover: var(--border-width)
+		var(--button--border-color--secondary--hover-active-focus) var(--border-style);
 	height: 100%;
 	display: flex;
 	flex-direction: column;

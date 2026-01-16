@@ -9,7 +9,7 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	RESPOND_TO_CHAT_NODE_TYPE,
+	CHAT_NODE_TYPE,
 	createRunExecutionData,
 	NodeOperationError,
 	type INode,
@@ -1768,7 +1768,7 @@ describe('chatHub', () => {
 								{
 									id: 'respond-1',
 									name: 'Respond to Chat',
-									type: RESPOND_TO_CHAT_NODE_TYPE,
+									type: CHAT_NODE_TYPE,
 									typeVersion: 1,
 									position: [200, 0],
 									parameters: {
@@ -1920,7 +1920,7 @@ describe('chatHub', () => {
 								{
 									id: 'respond-1',
 									name: 'Respond to Chat',
-									type: RESPOND_TO_CHAT_NODE_TYPE,
+									type: CHAT_NODE_TYPE,
 									typeVersion: 1,
 									position: [200, 0],
 									parameters: {
