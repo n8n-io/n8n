@@ -157,6 +157,22 @@ export type {
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
 
+export {
+	RISK_CATEGORIES,
+	type RiskCategory,
+	type CredentialLocation,
+	type NodeLocation,
+	type CommunityNodeDetails,
+	type CustomNodeDetails,
+	type StandardSection,
+	type InstanceSection,
+	type N8nVersionInfo,
+	type StandardReport,
+	type InstanceReport,
+	type AuditReport,
+	type SecurityAuditResponse,
+	type RunAuditOptions,
+} from './schemas/security-audit.schema';
 export type {
 	SecretsProviderType,
 	SecretsProviderState,

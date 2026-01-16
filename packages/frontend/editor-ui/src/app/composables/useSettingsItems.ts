@@ -136,6 +136,15 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.MIGRATION_REPORT } },
 		});
 
+		menuItems.push({
+			id: 'settings-security-audit',
+			icon: 'lock',
+			label: i18n.baseText('settings.securityAudit'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.SECURITY_AUDIT),
+			route: { to: { name: VIEWS.SECURITY_AUDIT } },
+		});
+
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;
 
