@@ -127,6 +127,8 @@ import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/17
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
+import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -259,6 +261,8 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowPublishScopeToProjectRoles1766064542000,
 	AddChatMessageIndices1766068346315,
 	ChangeWorkflowStatisticsFKToNoAction1767018516000,
+	ExpandModelColumnLength1768402473068,
+	AddStoredAtToExecutionEntity1768557000000,
 ];
 
 export { sqliteMigrations };
