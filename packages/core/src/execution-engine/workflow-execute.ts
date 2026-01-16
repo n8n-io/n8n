@@ -66,7 +66,7 @@ import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext } from './node-execution-context';
+import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1527,18 +1527,14 @@ export class WorkflowExecute {
 									// paired items. This is necessary because the workflow data
 									// proxy works on input data which normally scrubs paired
 									// item information before executing the node.
-									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
-									if (
-										isToolExecution &&
-										typeof item.pairedItem === 'object' &&
-										'sourceOverwrite' in item.pairedItem
-									) {
+									const sourceOverwrite = resolveSourceOverwrite(item, executionData);
+									if (sourceOverwrite) {
 										return {
 											...item,
 											pairedItem: {
 												item: itemIndex,
 												input: inputIndex || undefined,
-												sourceOverwrite: item.pairedItem.sourceOverwrite,
+												sourceOverwrite,
 											},
 										};
 									}
