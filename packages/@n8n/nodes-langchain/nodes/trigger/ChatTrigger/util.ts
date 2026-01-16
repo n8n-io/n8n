@@ -151,7 +151,7 @@ export function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 		text: message,
 		blockUserInput,
 		// the buttons are reversed to show the primary button first
-		buttons: config.options.reverse().map((option) => ({
+		buttons: [...config.options].reverse().map((option) => ({
 			text: option.label,
 			link: option.url,
 			type: option.style as ChatNodeMessageButtonType,
