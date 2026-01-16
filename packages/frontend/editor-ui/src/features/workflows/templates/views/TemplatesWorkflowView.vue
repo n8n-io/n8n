@@ -153,12 +153,12 @@ onBeforeUnmount(() => {
 			<div :class="$style.contentContainer">
 				<div :class="$style.content">
 					<div :class="$style.templateCard">
-						<RecommendedTemplateCard v-if="template" :template="template">
+						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
 							<template v-if="!isPreviewVisible" #belowContent>
 								<N8nButton
 									data-test-id="use-template-button"
 									:label="i18n.baseText('template.buttons.tryTemplate')"
-									size="large"
+									size="medium"
 									@click.stop="openTemplateSetup(templateId, $event)"
 								/>
 							</template>

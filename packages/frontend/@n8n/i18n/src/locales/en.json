@@ -3010,6 +3010,7 @@
 	"templates.workflows": "Workflows",
 	"templates.workflowsNotFound": "Workflow could not be found",
 	"templates.card.setupTime": "{count} min setup",
+	"templates.card.verified": "Verified",
 	"textEdit.edit": "Edit",
 	"userActivity.daysAgo": "{count} days ago",
 	"userActivity.lastTime": "Last {time}",

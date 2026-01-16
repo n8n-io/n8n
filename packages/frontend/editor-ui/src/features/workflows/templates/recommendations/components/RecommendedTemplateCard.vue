@@ -5,8 +5,8 @@ import { type ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { useI18n } from '@n8n/i18n';
-import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
@@ -16,6 +16,7 @@ import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransfo
 const props = defineProps<{
 	template: ITemplatesWorkflowFull;
 	tileNumber?: number;
+	showDetails?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -119,17 +120,47 @@ onBeforeUnmount(() => {
 	<N8nCard ref="cardRef" :class="$style.suggestion" @click="handleUseTemplate">
 		<div :class="$style.cardContent">
 			<div v-if="templateNodes.length > 0" :class="$style.nodes">
-				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
-					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
-				</div>
+				<NodeIcon
+					v-for="nodeType in templateNodes"
+					:key="nodeType!.name"
+					:size="20"
+					:node-type="nodeType"
+				/>
 			</div>
 			<N8nText size="large" :bold="true">
 				{{ template.name }}
 			</N8nText>
+			<div v-if="showDetails && template.user" :class="$style.userInfo">
+				<img
+					v-if="template.user.avatar"
+					:src="template.user.avatar"
+					:alt="template.user.name"
+					:class="$style.userAvatar"
+				/>
+				<N8nIcon v-else icon="user" size="medium" color="text-base" />
+				<N8nText size="medium" color="text-base">
+					{{ template.user.name }}
+				</N8nText>
+				<span v-if="template.user.verified" :class="$style.verifiedBadge">
+					<N8nIcon icon="shield-half" size="medium" color="text-base" />
+					<N8nText size="medium" color="text-base">
+						{{ i18n.baseText('templates.card.verified') }}
+					</N8nText>
+				</span>
+			</div>
+			<div v-if="showDetails && template.categories?.length" :class="$style.categories">
+				<N8nTag
+					v-for="category in template.categories"
+					:key="category.id"
+					:text="category.name"
+					:clickable="false"
+					:class="$style.categoryTag"
+				/>
+			</div>
 			<div :class="$style.stats">
 				<div :class="$style.statItem">
 					<N8nIcon icon="clock" size="medium" color="text-base" />
-					<N8nText size="small" color="text-dark">
+					<N8nText size="medium" color="text-base">
 						{{
 							i18n.baseText('templates.card.setupTime', {
 								interpolate: { count: setupTimeMinutes },
@@ -138,7 +169,7 @@ onBeforeUnmount(() => {
 					</N8nText>
 				</div>
 			</div>
-			<div v-if="$slots.belowContent" :class="$style.belowContent">
+			<div v-if="$slots.belowContent">
 				<slot name="belowContent" />
 			</div>
 		</div>
@@ -165,18 +196,39 @@ onBeforeUnmount(() => {
 
 .nodes {
 	display: flex;
-	flex-direction: row;
+	gap: var(--spacing--xs);
 }
 
-.nodeIcon {
-	padding: 0 var(--spacing--2xs);
-	background-color: var(--dialog--color--background);
-	border-radius: var(--radius--lg);
-	z-index: 1;
+.userInfo {
 	display: flex;
-	flex-direction: column;
-	align-items: end;
-	margin-right: var(--spacing--3xs);
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.userAvatar {
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.verifiedBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--xs);
+}
+
+.categories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.categoryTag {
+	--tag--height: var(--spacing--lg);
+	--tag--border-color: transparent;
+	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .stats {
@@ -187,9 +239,5 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.belowContent {
-	margin-top: var(--spacing--sm);
 }
 </style>
