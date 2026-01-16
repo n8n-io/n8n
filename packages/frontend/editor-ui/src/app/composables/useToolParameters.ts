@@ -134,8 +134,8 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 		const newSelectedTool = selectedToolMap[newNode.name];
 		if (newSelectedTool) {
 			const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-			const schema = selectedToolData?.inputSchema as JSONSchema7;
-			if (schema.properties) {
+			const schema = selectedToolData?.inputSchema as JSONSchema7 | undefined;
+			if (schema?.properties) {
 				for (const [propertyName, value] of Object.entries(schema.properties)) {
 					const type =
 						typeof value === 'object' && 'type' in value && typeof value.type === 'string'
