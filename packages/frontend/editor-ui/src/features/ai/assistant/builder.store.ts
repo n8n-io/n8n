@@ -792,6 +792,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			// loadSessions has its own guards for workflow saved state and deduplication
 			if (
 				newWorkflowId &&
+				route?.name &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {

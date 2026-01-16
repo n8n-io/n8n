@@ -2009,7 +2009,7 @@ describe('AI Builder store', () => {
 				mockGetAiSessions.mockResolvedValueOnce({ sessions: [] });
 
 				// First call - should make API request
-				await builderStore.loadSessions(true);
+				await builderStore.loadSessions();
 
 				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
 				expect(builderStore.chatMessages).toHaveLength(0);
