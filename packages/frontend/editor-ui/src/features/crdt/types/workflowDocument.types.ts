@@ -202,11 +202,18 @@ export interface WorkflowDocument {
 	/** Subscribe to node size changes (recomputed when handles change) */
 	onNodeSizeChange: EventHookOn<NodeSizeChange>;
 
-	/** Subscribe to edge additions */
+	/** Subscribe to edge additions (remote/undo only - for Vue Flow sync) */
 	onEdgeAdded: EventHookOn<WorkflowEdge>;
 
-	/** Subscribe to edge removals */
+	/** Subscribe to edge removals (remote/undo only - for Vue Flow sync) */
 	onEdgeRemoved: EventHookOn<string>;
+
+	/**
+	 * Subscribe to any edge change (all origins - for reactivity).
+	 * Fires for local, remote, and undo/redo changes.
+	 * Use this when you need to react to edge count changes (e.g., handle connectivity).
+	 */
+	onEdgesChanged: EventHookOn<undefined>;
 
 	/** Find a node by ID */
 	findNode(nodeId: string): WorkflowNode | undefined;

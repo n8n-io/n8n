@@ -556,14 +556,14 @@ export class CRDTWebSocketService {
 
 	/**
 	 * Save the workflow from a room to the database.
-	 * Only saves if there are unsaved changes (detected via state vector comparison).
+	 * Only saves if there are unsaved changes (dirty flag set by scheduleSave).
 	 * Creates a new version in workflow history when saving.
 	 */
 	private async saveWorkflow(room: WorkflowRoom): Promise<void> {
 		const docId = room.doc.id;
 		this.logger.debug('[CRDT] saveWorkflow called', { docId });
 
-		// Skip if no changes since last save (compare state vectors)
+		// Skip if no changes since last save
 		if (!room.hasUnsavedChanges()) {
 			this.logger.debug('[CRDT] No changes to save, skipping', { docId });
 			return;
@@ -600,8 +600,8 @@ export class CRDTWebSocketService {
 				},
 			);
 
-			// Update state vector after successful save
-			room.updateLastSavedStateVector();
+			// Mark room as clean after successful save
+			room.markClean();
 
 			this.logger.debug('[CRDT] Saved workflow to database', {
 				docId,

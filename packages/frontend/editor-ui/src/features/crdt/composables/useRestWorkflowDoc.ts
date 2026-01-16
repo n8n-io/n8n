@@ -2,6 +2,7 @@ import { ref, computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
+import type { IConnections } from 'n8n-workflow';
 import type {
 	WorkflowDocument,
 	WorkflowDocumentState,
@@ -71,6 +72,62 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		};
 	}
 
+	/**
+	 * Convert IConnections (n8n format, keyed by node name) to WorkflowEdge[] (Vue Flow format, keyed by node ID).
+	 * IConnections structure:
+	 * {
+	 *   [sourceNodeName]: {
+	 *     [connectionType]: [ // array indexed by output index
+	 *       [{ node: targetNodeName, type: targetType, index: targetIndex }],
+	 *       null,
+	 *       [{ node: anotherTargetName, type: "main", index: 0 }]
+	 *     ]
+	 *   }
+	 * }
+	 */
+	function transformConnections(connections: IConnections, nodes: INodeUi[]): WorkflowEdge[] {
+		const edges: WorkflowEdge[] = [];
+
+		// Build name → id lookup
+		const nodeIdByName = new Map<string, string>();
+		for (const node of nodes) {
+			nodeIdByName.set(node.name, node.id);
+		}
+
+		// Iterate through all connections
+		for (const [sourceNodeName, nodeConnections] of Object.entries(connections)) {
+			const sourceId = nodeIdByName.get(sourceNodeName);
+			if (!sourceId) continue;
+
+			for (const [connectionType, outputIndexes] of Object.entries(nodeConnections)) {
+				if (!outputIndexes) continue;
+
+				outputIndexes.forEach((targetConnections, outputIndex) => {
+					if (!targetConnections) return;
+
+					for (const targetConnection of targetConnections) {
+						const targetId = nodeIdByName.get(targetConnection.node);
+						if (!targetId) continue;
+
+						const sourceHandle = `outputs/${connectionType}/${outputIndex}`;
+						const targetHandle = `inputs/${targetConnection.type}/${targetConnection.index}`;
+						const edgeId = `[${sourceId}/${sourceHandle}][${targetId}/${targetHandle}]`;
+
+						edges.push({
+							id: edgeId,
+							source: sourceId,
+							target: targetId,
+							sourceHandle,
+							targetHandle,
+						});
+					}
+				});
+			}
+		}
+
+		return edges;
+	}
+
 	async function connect(): Promise<void> {
 		if (state.value === 'ready' || state.value === 'connecting') {
 			return;
@@ -86,6 +143,9 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 			// Transform nodes to WorkflowNode format
 			nodesCache.value = workflow.nodes.map(transformNode);
 
+			// Transform connections to WorkflowEdge format
+			edgesCache.value = transformConnections(workflow.connections, workflow.nodes);
+
 			state.value = 'ready';
 		} catch (err) {
 			state.value = 'error';
@@ -97,6 +157,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	function disconnect(): void {
 		state.value = 'idle';
 		nodesCache.value = [];
+		edgesCache.value = [];
 		error.value = null;
 	}
 
@@ -174,6 +235,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
+	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes
 
 	// Auto-cleanup on scope dispose
 	onScopeDispose(() => {
@@ -214,6 +276,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		onNodeSizeChange: nodeSizeHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
+		onEdgesChanged: edgesChangedHook.on,
 		findNode,
 		// No awareness for REST documents (single user mode)
 		awareness: null,

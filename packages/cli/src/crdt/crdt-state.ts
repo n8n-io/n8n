@@ -115,11 +115,16 @@ const MAX_WAIT_MS = 5000; // 5 seconds max wait
 
 /**
  * A workflow room manages a single CRDT document and its associated workflow.
- * Handles debounced autosaving and change detection via state vectors.
+ * Handles debounced autosaving and change detection.
+ *
+ * Note: We use a simple "dirty" flag for change detection instead of state vector
+ * comparison because Yjs deletions are tombstones that don't increment the deleting
+ * client's clock - they just reference existing items. This means state vectors
+ * don't change for deletion-only updates.
  */
 export class WorkflowRoom {
 	private readonly debouncedSave: ReturnType<typeof debounce>;
-	private lastSavedStateVector: Uint8Array | null = null;
+	private isDirty = false;
 
 	constructor(
 		readonly doc: CRDTDoc,
@@ -137,51 +142,34 @@ export class WorkflowRoom {
 			DEBOUNCE_DELAY_MS,
 			{ maxWait: MAX_WAIT_MS },
 		);
-
-		// Initialize state vector baseline - document is "clean" after seeding
-		this.updateLastSavedStateVector();
 	}
 
 	/**
 	 * Schedule a debounced save. Call this after each document update.
+	 * Marks the room as dirty (has unsaved changes).
 	 */
 	scheduleSave(): void {
+		this.isDirty = true;
 		this.debouncedSave();
 	}
 
 	/**
-	 * Check if there are unsaved changes by comparing state vectors.
+	 * Check if there are unsaved changes.
 	 */
 	hasUnsavedChanges(): boolean {
-		if (!this.lastSavedStateVector) {
-			this.logger.debug('[CRDT] No lastSavedStateVector, assuming changes exist', {
-				docId: this.doc.id,
-			});
-			return true;
-		}
-
-		const currentStateVector = this.doc.encodeStateVector();
-		const hasChanges = Buffer.compare(currentStateVector, this.lastSavedStateVector) !== 0;
-
-		this.logger.debug('[CRDT] State vector comparison', {
+		this.logger.debug('[CRDT] Checking unsaved changes', {
 			docId: this.doc.id,
-			hasChanges,
-			currentVectorLength: currentStateVector.length,
-			savedVectorLength: this.lastSavedStateVector.length,
+			isDirty: this.isDirty,
 		});
-
-		return hasChanges;
+		return this.isDirty;
 	}
 
 	/**
-	 * Update the state vector after a successful save.
+	 * Mark the room as clean (no unsaved changes) after a successful save.
 	 */
-	updateLastSavedStateVector(): void {
-		this.lastSavedStateVector = this.doc.encodeStateVector();
-		this.logger.debug('[CRDT] Updated lastSavedStateVector', {
-			docId: this.doc.id,
-			vectorLength: this.lastSavedStateVector.length,
-		});
+	markClean(): void {
+		this.isDirty = false;
+		this.logger.debug('[CRDT] Marked room as clean', { docId: this.doc.id });
 	}
 
 	/**
@@ -259,7 +247,7 @@ export class CRDTState {
 	applyUpdateBytes(docId: string, update: Uint8Array): void {
 		const doc = this.getOrCreateDoc(docId);
 		doc.applyUpdate(update);
-		this.logger.debug('Applied CRDT update', { docId, size: update.length });
+		this.logger.debug('[CRDT] Applied update', { docId, size: update.length });
 	}
 
 	/**

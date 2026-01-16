@@ -1,6 +1,7 @@
 import { nextTick, onScopeDispose } from 'vue';
-import type { Node, Edge, VueFlowStore } from '@vue-flow/core';
+import type { Node, Edge, VueFlowStore, Connection } from '@vue-flow/core';
 import type { WorkflowDocument, WorkflowNode, WorkflowEdge } from '../types/workflowDocument.types';
+import { useConnectionValidation } from './useConnectionValidation';
 
 /**
  * Transform WorkflowNode to Vue Flow Node format.
@@ -60,6 +61,8 @@ export interface UseCanvasSyncOptions {
 export interface UseCanvasSyncResult {
 	initialNodes: Node[];
 	initialEdges: Edge[];
+	/** Validation function for Vue Flow's :is-valid-connection prop */
+	isValidConnection: (connection: Connection) => boolean;
 }
 
 /**
@@ -88,6 +91,9 @@ export interface UseCanvasSyncResult {
 export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResult {
 	const { doc, instance } = options;
 
+	// --- Connection validation ---
+	const { isValidConnection, validateConnection } = useConnectionValidation({ doc });
+
 	// --- Initial data for Vue Flow ---
 	const initialNodes = doc.getNodes().map(toVueFlowNode);
 	const initialEdges = doc.getEdges().map(toVueFlowEdge);
@@ -115,20 +121,44 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 
 	// --- Local → Document: Edges ---
 
-	// Wire connection creation to CRDT document
+	// Wire connection creation to CRDT document (with validation)
 	const unsubConnect = instance.onConnect((connection) => {
+		// Validate the connection before adding
+		// Vue Flow's isValidConnection prevents most invalid connections visually,
+		// but we double-check here for safety (e.g., programmatic connections)
+		const validation = validateConnection(connection);
+		if (!validation.valid) {
+			return;
+		}
+
 		const edgeId = createEdgeId(
 			connection.source,
 			connection.target,
 			connection.sourceHandle,
 			connection.targetHandle,
 		);
+
+		const sourceHandle = connection.sourceHandle ?? 'outputs/main/0';
+		const targetHandle = connection.targetHandle ?? 'inputs/main/0';
+
+		// Add to Vue Flow FIRST (before CRDT, to avoid duplicate check failing)
+		instance.addEdges([
+			{
+				id: edgeId,
+				source: connection.source,
+				target: connection.target,
+				sourceHandle,
+				targetHandle,
+			},
+		]);
+
+		// Then add to CRDT for persistence and sync
 		doc.addEdge({
 			id: edgeId,
 			source: connection.source,
 			target: connection.target,
-			sourceHandle: connection.sourceHandle ?? 'outputs/main/0',
-			targetHandle: connection.targetHandle ?? 'inputs/main/0',
+			sourceHandle,
+			targetHandle,
 		});
 	});
 
@@ -200,5 +230,5 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		offEdgeRemoved();
 	});
 
-	return { initialNodes, initialEdges };
+	return { initialNodes, initialEdges, isValidConnection };
 }

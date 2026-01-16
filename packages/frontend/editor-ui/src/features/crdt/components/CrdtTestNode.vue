@@ -3,7 +3,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import type { NodeProps } from '@vue-flow/core';
-import { Handle, Position } from '@vue-flow/core';
+import { Handle, Position, useNode } from '@vue-flow/core';
 import { computed, onScopeDispose, shallowRef, triggerRef } from 'vue';
 import { useWorkflowDoc } from '../composables';
 import { useWorkflowAwarenessOptional } from '../composables/useWorkflowAwareness';
@@ -14,6 +14,10 @@ const nodeTypesStore = useNodeTypesStore();
 const awareness = useWorkflowAwarenessOptional();
 
 const props = defineProps<NodeProps>();
+
+// Use Vue Flow's built-in node composable for efficient edge tracking
+// This provides a reactive ComputedRef<GraphEdge[]> that Vue Flow maintains internally
+const { connectedEdges } = useNode(props.id);
 
 // Get initial node data (static - for type/icon)
 const initialNode = doc.findNode(props.id);
@@ -54,12 +58,27 @@ function isMainType(type: string): boolean {
 }
 
 /**
- * Handle with pre-computed offset style to avoid re-renders.
- * By pre-computing the style in a computed property, we avoid calling
- * functions in the template's :style binding which causes re-renders.
+ * Handle with pre-computed values to avoid re-renders.
+ * By pre-computing these in a computed property, we avoid calling
+ * functions in the template which causes re-renders.
  */
 interface MappedHandle extends ComputedHandle {
+	/** Whether this is a "main" type handle (horizontal flow: left/right) */
+	isMain: boolean;
+	/** Pre-computed offset style for positioning */
 	offsetStyle: Record<string, string>;
+	/** Pre-computed position for Vue Flow Handle component */
+	position:
+		| typeof Position.Left
+		| typeof Position.Right
+		| typeof Position.Top
+		| typeof Position.Bottom;
+	/** Pre-computed CSS classes */
+	classes: string[];
+	/** Whether this handle can start a connection (drag from it) */
+	connectableStart: boolean;
+	/** Whether this handle can end a connection (drop onto it) */
+	connectableEnd: boolean;
 }
 
 /**
@@ -80,8 +99,24 @@ function calculateOffsetStyle(
 }
 
 /**
- * Pre-compute handles with their offset styles.
+ * Count connections for a specific handle from Vue Flow's connectedEdges.
+ * Uses Vue Flow's reactive edge tracking instead of manual CRDT edge filtering.
+ */
+function countHandleConnections(handleId: string, mode: 'inputs' | 'outputs'): number {
+	const edges = connectedEdges.value;
+	if (mode === 'outputs') {
+		// Count edges where this node is the source with this handle
+		return edges.filter((e) => e.sourceHandle === handleId).length;
+	} else {
+		// Count edges where this node is the target with this handle
+		return edges.filter((e) => e.targetHandle === handleId).length;
+	}
+}
+
+/**
+ * Pre-compute handles with all template values to avoid re-renders.
  * This prevents re-renders during drag by avoiding function calls in template.
+ * Uses Vue Flow's reactive connectedEdges so connectivity updates automatically.
  */
 const mappedInputHandles = computed((): MappedHandle[] => {
 	const handles = inputHandles.value;
@@ -92,9 +127,32 @@ const mappedInputHandles = computed((): MappedHandle[] => {
 		const isMain = isMainType(handle.type);
 		const group = isMain ? mainHandles : nonMainHandles;
 		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
+
+		// Check if max connections reached using Vue Flow's edge tracking
+		const currentConnections = countHandleConnections(handle.handleId, 'inputs');
+		const limitReached =
+			handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
+
+		// Input handles:
+		// - Main inputs: can only END connections (not start)
+		// - Non-main inputs (ai_tool, model, etc.): can both start and end (bidirectional)
+		const connectableStart = !limitReached && !isMain;
+		const connectableEnd = !limitReached;
+
+		// Pre-compute position and classes to avoid template function calls
+		const position = isMain ? Position.Left : Position.Bottom;
+		const classes = isMain
+			? ['crdt-handle', 'crdt-handle--left']
+			: ['crdt-handle', 'crdt-handle--bottom', 'crdt-handle--non-main'];
+
 		return {
 			...handle,
+			isMain,
 			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
+			position,
+			classes,
+			connectableStart,
+			connectableEnd,
 		};
 	});
 });
@@ -108,9 +166,32 @@ const mappedOutputHandles = computed((): MappedHandle[] => {
 		const isMain = isMainType(handle.type);
 		const group = isMain ? mainHandles : nonMainHandles;
 		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
+
+		// Check if max connections reached using Vue Flow's edge tracking
+		const currentConnections = countHandleConnections(handle.handleId, 'outputs');
+		const limitReached =
+			handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
+
+		// Output handles:
+		// - Main outputs: can only START connections (not end - you don't drop onto outputs)
+		// - Non-main outputs: can both start and end (bidirectional)
+		const connectableStart = !limitReached;
+		const connectableEnd = !limitReached && !isMain;
+
+		// Pre-compute position and classes to avoid template function calls
+		const position = isMain ? Position.Right : Position.Top;
+		const classes = isMain
+			? ['crdt-handle', 'crdt-handle--right']
+			: ['crdt-handle', 'crdt-handle--top', 'crdt-handle--non-main'];
+
 		return {
 			...handle,
+			isMain,
 			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
+			position,
+			classes,
+			connectableStart,
+			connectableEnd,
 		};
 	});
 });
@@ -138,11 +219,10 @@ const selectedByCollaborator = computed(() => {
 			:id="handle.handleId"
 			:key="handle.handleId"
 			type="target"
-			:position="isMainType(handle.type) ? Position.Left : Position.Bottom"
-			:class="[
-				'crdt-handle',
-				isMainType(handle.type) ? 'crdt-handle--left' : 'crdt-handle--bottom crdt-handle--non-main',
-			]"
+			:position="handle.position"
+			:connectable-start="handle.connectableStart"
+			:connectable-end="handle.connectableEnd"
+			:class="handle.classes"
 			:style="handle.offsetStyle"
 		/>
 
@@ -156,11 +236,10 @@ const selectedByCollaborator = computed(() => {
 			:id="handle.handleId"
 			:key="handle.handleId"
 			type="source"
-			:position="isMainType(handle.type) ? Position.Right : Position.Top"
-			:class="[
-				'crdt-handle',
-				isMainType(handle.type) ? 'crdt-handle--right' : 'crdt-handle--top crdt-handle--non-main',
-			]"
+			:position="handle.position"
+			:connectable-start="handle.connectableStart"
+			:connectable-end="handle.connectableEnd"
+			:class="handle.classes"
 			:style="handle.offsetStyle"
 		/>
 
@@ -174,7 +253,7 @@ const selectedByCollaborator = computed(() => {
 <style scoped>
 .crdt-node {
 	position: relative;
-	border: 1px solid #777;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
 	background: var(--node--color--background, #fff);
 	/* Default size - Vue Flow overrides via width/height when set on the node */
@@ -207,9 +286,10 @@ const selectedByCollaborator = computed(() => {
 	background: var(--color--primary);
 }
 
-/* Left handles (main inputs) */
+/* Left handles (main inputs) - not draggable */
 .crdt-handle--left {
 	left: -6px;
+	cursor: default;
 }
 
 /* Right handles (main outputs) */

@@ -26,11 +26,14 @@ const instance = useVueFlow(doc.workflowId);
 // Inject awareness from parent (CrdtTestContent provides it)
 const awareness = useWorkflowAwarenessInject();
 
-// Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes/edges
-const { initialNodes, initialEdges } = useCanvasSync({ doc, instance });
+// Wire document ↔ Vue Flow (bidirectional sync) and get initial nodes/edges + validation
+const { initialNodes, initialEdges, isValidConnection } = useCanvasSync({ doc, instance });
 
 // Wire awareness ↔ Vue Flow (ephemeral state: cursors, selections, live drag)
 useCanvasAwareness({ instance, awareness });
+
+// Note: Delete/Backspace key handling is built into Vue Flow via delete-key-code prop (default: Backspace)
+// Vue Flow automatically removes selected nodes/edges and triggers onNodesChange/onEdgesChange
 
 /**
  * Generate a visually distinct color from a number using golden ratio distribution.
@@ -73,12 +76,15 @@ const zoom = computed(() => instance.viewport.value.zoom);
 			:nodes="initialNodes"
 			:edges="initialEdges"
 			:node-types="nodeTypes"
+			:is-valid-connection="isValidConnection"
+			:delete-key-code="['Backspace', 'Delete']"
 			snap-to-grid
 			:snap-grid="[GRID_SIZE, GRID_SIZE]"
 			fit-view-on-init
 			pan-on-scroll
 			:min-zoom="0"
 			:max-zoom="4"
+			edges-selectable
 		>
 			<!-- Cursors rendered inside viewport (like React Flow's edgelabel-renderer) -->
 			<template #zoom-pane>

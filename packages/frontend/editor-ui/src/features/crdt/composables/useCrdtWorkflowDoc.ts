@@ -64,6 +64,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
+	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
 
 	// Cleanup functions for map subscriptions
 	let unsubscribeNodesChange: (() => void) | null = null;
@@ -200,6 +201,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		if (!doc) return;
 
 		const edgesMap = doc.getMap('edges');
+		let hasEdgeChange = false;
 
 		for (const change of changes) {
 			if (!isMapChange(change)) continue;
@@ -209,19 +211,26 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 
 			// Only handle top-level edge changes (add/delete)
 			if (rest.length === 0) {
-				if (change.action === 'add') {
-					// Add: trigger for both local + remote + undoRedo (all need Vue Flow update)
+				hasEdgeChange = true;
+
+				if (change.action === 'add' && needsUIUpdate(origin)) {
+					// Add: remote/undoRedo only (local edge added directly by onConnect handler)
 					const crdtEdge = edgesMap.get(edgeId) as CRDTMap<unknown> | undefined;
 					if (crdtEdge) {
 						const edge = crdtEdgeToWorkflowEdge(edgeId, crdtEdge);
 						void edgeAddedHook.trigger(edge);
 					}
 				} else if (change.action === 'delete' && needsUIUpdate(origin)) {
-					// Delete: remote/undoRedo (local already removed from Vue Flow)
+					// Delete: remote/undoRedo only (local delete already handled by Vue Flow)
 					void edgeRemovedHook.trigger(edgeId);
 				}
 			}
 			// Edge properties don't change after creation - edges are immutable
+		}
+
+		// Fire general edges changed hook for ALL origins (for reactivity like handle connectivity)
+		if (hasEdgeChange) {
+			void edgesChangedHook.trigger(undefined);
 		}
 	}
 
@@ -438,7 +447,6 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			crdtEdge.set('targetHandle', edge.targetHandle);
 			edgesMap.set(edge.id, crdtEdge);
 		});
-		// Hook triggers via onDeepChange subscription
 	}
 
 	/**
@@ -510,6 +518,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodeSizeChange: nodeSizeHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
+		onEdgesChanged: edgesChangedHook.on,
 		findNode,
 		get awareness(): CRDTAwareness<WorkflowAwarenessState> | null {
 			return crdt.awareness as CRDTAwareness<WorkflowAwarenessState> | null;
