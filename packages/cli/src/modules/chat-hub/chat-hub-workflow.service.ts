@@ -55,7 +55,6 @@ import {
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import { PdfExtractorService } from './pdf-extractor.service';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ActiveExecutions } from '@/active-executions';
 import { InstanceSettings } from 'n8n-core';
@@ -68,7 +67,6 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-		private readonly pdfService: PdfExtractorService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
@@ -928,19 +926,6 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			if (this.isTextFile(attachment.mimeType)) {
 				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
 				const content = buffer.toString('utf-8');
-
-				if (currentTotalSize + content.length > maxTotalPayloadSize) {
-					throw new TotalFileSizeExceededError();
-				}
-
-				return {
-					type: 'text',
-					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
-				};
-			}
-
-			if (attachment.mimeType === 'application/pdf') {
-				const content = await this.pdfService.extractTextFromPdf(attachment);
 
 				if (currentTotalSize + content.length > maxTotalPayloadSize) {
 					throw new TotalFileSizeExceededError();

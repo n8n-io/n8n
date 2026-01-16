@@ -9,7 +9,6 @@ import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { PdfExtractorService } from '../pdf-extractor.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 
@@ -34,7 +33,6 @@ describe('ChatHubWorkflowService', () => {
 			agentRepository,
 		);
 
-		const pdfService = mock<PdfExtractorService>();
 		const activeExecutions = mock<ActiveExecutions>();
 		const instanceSettings = mock<InstanceSettings>();
 		const executionRepository = mock<ExecutionRepository>();
@@ -44,7 +42,6 @@ describe('ChatHubWorkflowService', () => {
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
-			pdfService,
 			activeExecutions,
 			instanceSettings,
 			executionRepository,

@@ -24,7 +24,6 @@ import {
 	N8nInputLabel,
 	N8nIcon,
 	N8nText,
-	N8nSelect2,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
@@ -32,12 +31,13 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
-import type { IBinaryData, INode } from 'n8n-workflow';
+import { VECTOR_STORE_PGVECTOR_NODE_TYPE, type IBinaryData, type INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import {
 	personalAgentDefaultIcon,
 	isLlmProviderModel,
 	createMimeTypes,
+	isHiddenTool,
 } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -141,9 +141,7 @@ const canSelectTools = computed(
 );
 
 // Filter out vector store tools for display in ToolsSelector
-const displayTools = computed(() =>
-	tools.value.filter((tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector'),
-);
+const displayTools = computed(() => tools.value.filter((tool) => !isHiddenTool(tool)));
 
 const hasPdfFiles = computed(() => files.value.some((file) => file.mimeType === 'application/pdf'));
 
@@ -190,8 +188,9 @@ watch(
 
 		// Extract vector store configuration from tools
 		const vectorStoreTool = agent.tools?.find(
-			(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+			(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
 		);
+
 		if (vectorStoreTool) {
 			enableVectorStore.value = true;
 			vectorStoreTableName.value = String(vectorStoreTool.parameters.tableName) || 'n8n_vectors';
@@ -258,7 +257,7 @@ async function onSave() {
 				parameters: {
 					tableName: vectorStoreTableName.value,
 				},
-				type: '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+				type: VECTOR_STORE_PGVECTOR_NODE_TYPE,
 				typeVersion: 1.3,
 				position: [0, 0],
 				id: '',
@@ -273,14 +272,14 @@ async function onSave() {
 
 			// Remove any existing vector store tools and add the new one
 			const filteredTools = allTools.filter(
-				(tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+				(tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE,
 			);
 			allTools.length = 0;
 			allTools.push(...filteredTools, vectorStoreTool);
 		} else {
 			// Remove vector store tool if disabled
 			const filteredTools = allTools.filter(
-				(tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+				(tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE,
 			);
 			allTools.length = 0;
 			allTools.push(...filteredTools);
@@ -362,7 +361,7 @@ function onSelectTools() {
 			onConfirm: (newTools: INode[]) => {
 				// Keep vector store tool if it exists, add other tools
 				const vectorStoreTool = tools.value.find(
-					(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+					(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
 				);
 				tools.value = vectorStoreTool ? [...newTools, vectorStoreTool] : newTools;
 			},
@@ -447,12 +446,6 @@ function onVectorStoreCredentialSelected(credentialId: string) {
 function onVectorStoreCredentialDeselected() {
 	vectorStoreCredentialId.value = null;
 }
-
-const pdfIncludeOptions = [
-	{ value: 'fullText', label: 'As text (entire file)', disabled: true },
-	{ value: 'embedding', label: 'As text (for querying)' },
-	{ value: 'pdf', label: 'As PDF', disabled: true },
-];
 
 const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
@@ -603,13 +596,6 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 							<span :class="$style.fileName">
 								{{ file.fileName }}
 							</span>
-							<N8nSelect2
-								v-if="file.mimeType === 'application/pdf'"
-								model-value="embedding"
-								variant="ghost"
-								label-key="label"
-								:items="pdfIncludeOptions"
-							/>
 							<N8nIconButton
 								icon="trash-2"
 								type="tertiary"

@@ -8,7 +8,11 @@ import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
+import {
+	isLlmProviderModel,
+	createMimeTypes,
+	isHiddenTool,
+} from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -67,11 +71,7 @@ const acceptedMimeTypes = computed(() =>
 const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
 // Filter out vector store tools from display
-const displayTools = computed(
-	() =>
-		selectedTools?.filter((tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector') ??
-		[],
-);
+const displayTools = computed(() => selectedTools?.filter((tool) => !isHiddenTool(tool)) ?? []);
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
