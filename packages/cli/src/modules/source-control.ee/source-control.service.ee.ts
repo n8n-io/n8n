@@ -335,7 +335,7 @@ export class SourceControlService {
 			we keep track of them in a single file unlike workflows and credentials
 		*/
 			filesToPush
-				.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
+				.filter((f) => ['workflow', 'credential', 'project', 'datatable'].includes(f.type))
 				.forEach((e) => {
 					if (e.status !== 'deleted') {
 						filesToBePushed.add(e.file);
@@ -380,6 +380,14 @@ export class SourceControlService {
 			if (variablesChanges) {
 				filesToBePushed.add(variablesChanges.file);
 				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
+			}
+
+			const dataTableCandidates = filterByType(filesToPush, 'datatable');
+			if (dataTableCandidates.length > 0) {
+				await this.sourceControlExportService.exportDataTablesToWorkFolder(
+					dataTableCandidates,
+					context,
+				);
 			}
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
@@ -504,6 +512,16 @@ export class SourceControlService {
 		}
 		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
+
+		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
+		if (dataTableCandidates.length > 0) {
+			await this.sourceControlImportService.importDataTablesFromWorkFolder(
+				dataTableCandidates,
+				user.id,
+			);
+		}
+		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
+		await this.sourceControlImportService.deleteDataTablesNotInWorkfolder(dataTablesToBeDeleted);
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);

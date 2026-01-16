@@ -41,12 +41,14 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
+	readOnly,
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onRenameColumn: (columnId: string, columnName: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
+	readOnly?: Ref<boolean>;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const { mapToAGCellType } = useDataTableTypes();
@@ -59,14 +61,14 @@ export const useDataTableColumns = ({
 			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
-			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			editable: (params) => !readOnly?.value && params.data?.id !== ADD_ROW_ROW_ID,
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
 			headerComponentParams: {
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
-				allowMenuActions: true,
+				allowMenuActions: !readOnly?.value,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
@@ -151,7 +153,7 @@ export const useDataTableColumns = ({
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {
-						if (params.value === ADD_ROW_ROW_ID) {
+						if (params.value === ADD_ROW_ROW_ID && !readOnly?.value) {
 							return {
 								component: AddRowButton,
 								params: { onClick: onAddRowClick },
@@ -196,7 +198,7 @@ export const useDataTableColumns = ({
 					resizable: false,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn },
+					headerComponentParams: { onAddColumn, disabled: readOnly?.value ?? false },
 				},
 			),
 		];

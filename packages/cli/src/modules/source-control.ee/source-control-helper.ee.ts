@@ -22,6 +22,7 @@ import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { StatusResourceOwner } from './types/resource-owner';
+import type { ExportableDataTable, ExportableDataTableColumn } from './types/exportable-data-table';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -40,6 +41,10 @@ export function getCredentialExportPath(
 	credentialExportFolder: string,
 ): string {
 	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
+}
+
+export function getDataTableExportPath(dataTableId: string, dataTableExportFolder: string): string {
+	return safeJoinPath(dataTableExportFolder, `${dataTableId}.json`);
 }
 
 export function getVariablesPath(gitFolder: string): string {
@@ -72,15 +77,38 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	}
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		typeof (error as { code: unknown }).code === 'string'
+	);
+}
+
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
 	try {
 		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
 			fallbackValue: { folders: [] },
 		});
 	} catch (error) {
-		// Return fallback if file not found
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
 			return { folders: [] };
+		}
+		throw error;
+	}
+}
+
+export async function readDataTablesFromSourceControlFile(
+	file: string,
+): Promise<ExportableDataTable[]> {
+	try {
+		return jsonParse<ExportableDataTable[]>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: [],
+		});
+	} catch (error) {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
+			return [];
 		}
 		throw error;
 	}
@@ -164,11 +192,12 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 }
 
 function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
-	return (
-		files.filter((file, index, self) => {
-			return self.findIndex((f) => f.id === file.id) === index;
-		}) || []
-	);
+	if (!files || !Array.isArray(files)) {
+		return [];
+	}
+	return files.filter((file, index, self) => {
+		return self.findIndex((f) => f.id === file.id) === index;
+	});
 }
 
 export function getTrackingInformationFromPullResult(
@@ -274,4 +303,48 @@ export function isWorkflowModified(
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+}
+
+/**
+ * Compares two data table columns arrays to check if they are equal
+ */
+function areDataTableColumnsEqual(
+	localColumns: ExportableDataTableColumn[],
+	remoteColumns: ExportableDataTableColumn[],
+): boolean {
+	if (localColumns.length !== remoteColumns.length) {
+		return false;
+	}
+
+	const sortedLocal = [...localColumns].sort((a, b) => a.id.localeCompare(b.id));
+	const sortedRemote = [...remoteColumns].sort((a, b) => a.id.localeCompare(b.id));
+
+	return sortedLocal.every((localCol, idx) => {
+		const remoteCol = sortedRemote[idx];
+		return (
+			localCol.id === remoteCol.id &&
+			localCol.name === remoteCol.name &&
+			localCol.type === remoteCol.type &&
+			localCol.index === remoteCol.index
+		);
+	});
+}
+
+/**
+ * Checks if a data table has been modified by comparing basic properties and schema (columns)
+ * between local and remote versions
+ */
+export function isDataTableModified(
+	localDt: ExportableDataTable,
+	remoteDt: ExportableDataTable,
+): boolean {
+	if (localDt.name !== remoteDt.name) {
+		return true;
+	}
+
+	if (localDt.projectId !== remoteDt.projectId) {
+		return true;
+	}
+
+	return !areDataTableColumnsEqual(localDt.columns, remoteDt.columns);
 }
