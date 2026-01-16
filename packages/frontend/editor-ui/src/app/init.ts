@@ -5,7 +5,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { initialize as initializeWorkers } from '@/app/workers';
+
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
 	registerModuleModals,
@@ -216,6 +216,7 @@ export async function initializeAuthenticatedFeatures(
 
 	// Initialize run data worker and load node types
 	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+		const { initialize: initializeWorkers } = await import('@/app/workers');
 		await initializeWorkers({ baseUrl: rootStore.baseUrl });
 	}
 
