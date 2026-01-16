@@ -179,14 +179,6 @@ describe('chatPanel.store', () => {
 			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth);
 		});
 
-		it('should reset builder chat after timeout', () => {
-			chatPanelStore.close();
-
-			vi.runAllTimers();
-
-			expect(builderStore.resetBuilderChat).toHaveBeenCalled();
-		});
-
 		it('should reset assistant chat only if session ended', () => {
 			assistantStore.isSessionEnded = true;
 
@@ -445,7 +437,6 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			await chatPanelStore.open({ mode: 'builder' });
 			builderStore.streaming = false;
-			builderStore.resetBuilderChat.mockClear();
 
 			// Navigate to executions view (not a builder view, triggers close)
 			mockRoute.name = VIEWS.EXECUTIONS;
@@ -454,8 +445,9 @@ describe('chatPanel.store', () => {
 			// Run timers for the close timeout
 			vi.runAllTimers();
 
-			// Builder chat should be reset since we're not streaming
-			expect(builderStore.resetBuilderChat).toHaveBeenCalled();
+			// Builder chat should be closed since we're not streaming, but not reset
+			expect(chatPanelStore.isOpen).toEqual(false);
+			expect(builderStore.resetBuilderChat).not.toHaveBeenCalled();
 		});
 	});
 });
