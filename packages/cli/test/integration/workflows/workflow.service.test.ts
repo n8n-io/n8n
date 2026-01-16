@@ -75,6 +75,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 });
 
 afterEach(async () => {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { CHAT_STORE, CHAT_SESSIONS_PAGE_SIZE } from './constants';
+import { CHAT_SESSIONS_PAGE_SIZE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
@@ -36,7 +36,7 @@ import {
 	type ChatHubAgentDto,
 	type ChatHubCreateAgentRequest,
 	type ChatHubUpdateAgentRequest,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
 	type ChatHubLLMProvider,
@@ -61,14 +61,16 @@ import {
 	flattenModel,
 	createHumanMessageFromStreamingState,
 	promisifyStreamingApi,
+	createFakeAgent,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { STORES } from '@n8n/stores/constants';
 
-export const useChatStore = defineStore(CHAT_STORE, () => {
+export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -139,25 +141,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return chain;
 		}
 
-		let id: ChatMessageId | undefined;
-
 		// Find the most recent descendant message starting from messageId...
-		const stack = [messageId];
-		let latest: ChatMessageId | null = null;
+		let latest: ChatMessageId = messageId;
 
-		while ((id = stack.pop())) {
-			const message: ChatMessage = messages[id];
-			if (!latest || message.createdAt > messages[latest].createdAt) {
-				latest = id;
+		while (true) {
+			const responses: string[] = messages[latest].responses;
+
+			if (responses.length === 0) {
+				break;
 			}
 
-			for (const responseId of message.responses) {
-				stack.push(responseId);
-			}
-		}
-
-		if (!latest) {
-			return chain;
+			// Responses are sorted by create date, so the last item is the latest
+			latest = responses[responses.length - 1];
 		}
 
 		// ...and then walk back to the root following previousMessageId links
@@ -439,7 +434,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function onStreamMessage(chunk: EnrichedStructuredChunk) {
+	function onStreamMessage(chunk: MessageChunk) {
 		if (!streaming.value) {
 			return;
 		}
@@ -588,23 +583,45 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		content: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		keepAttachmentIndices: number[] = [],
+		newFiles: File[] = [],
 	) {
 		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[editId];
 		const previousMessageId = message?.previousMessageId ?? null;
+		const binaryData = await Promise.all(newFiles.map(convertFileToBinaryData));
 		const payload: ChatHubEditMessageRequest = {
 			model: agent.model,
 			messageId: promptId,
 			message: content,
 			credentials,
+			newAttachments: binaryData.map((attachment) => ({
+				fileName: attachment.fileName ?? 'unnamed file',
+				mimeType: attachment.mimeType,
+				data: attachment.data,
+			})),
+			keepAttachmentIndices,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
 		if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
 		}
+
+		// Combine kept existing attachments with new attachments for optimistic UI
+		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
+			const attachment = message?.attachments[index];
+			if (!attachment) return [];
+			return [
+				{
+					fileName: attachment.fileName ?? 'unnamed file',
+					mimeType: attachment.mimeType ?? 'application/octet-stream',
+					data: '', // Binary data not needed for display (accessed via download URL)
+				},
+			];
+		});
 
 		streaming.value = {
 			promptPreviousMessageId: previousMessageId,
@@ -615,7 +632,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
 			tools: [],
-			attachments: [],
+			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
 		telemetry.track('User edited chat hub message', {
@@ -785,6 +802,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				inputModalities: [],
 				available: true,
 			},
+			groupName: null,
+			groupIcon: null,
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -846,22 +865,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return agent;
 		}
 
-		return {
-			model,
-			name: fallback?.name ?? '',
-			description: null,
-			icon: fallback?.icon ?? null,
-			createdAt: null,
-			updatedAt: null,
-			// Assume file attachment and tools are supported
-			metadata: {
-				inputModalities: ['text', 'file'],
-				capabilities: {
-					functionCalling: true,
-				},
-				available: true,
-			},
-		};
+		return createFakeAgent(model, fallback);
 	}
 
 	async function fetchAllChatSettings() {

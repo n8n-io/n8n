@@ -27,6 +27,7 @@ import assert from 'node:assert';
 import { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
@@ -70,6 +71,7 @@ export class TestRunnerService {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -279,6 +281,14 @@ export class TestRunnerService {
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
+
+		this.eventService.emit('workflow-executed', {
+			user: metadata.userId ? { id: metadata.userId } : undefined,
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			source: 'evaluation',
+		});
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {

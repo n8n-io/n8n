@@ -169,25 +169,29 @@ export class AiWorkflowBuilderService {
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			// Use the same model for all stages in production
+			stageLLMs: {
+				supervisor: anthropicClaude,
+				responder: anthropicClaude,
+				discovery: anthropicClaude,
+				builder: anthropicClaude,
+				configurator: anthropicClaude,
+				parameterUpdater: anthropicClaude,
+			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
-			onGenerationSuccess: async () => {
-				await this.onGenerationSuccess(user, authHeaders);
-			},
 			runMetadata: {
 				n8nVersion: this.n8nVersion,
 				featureFlags: featureFlags ?? {},
 			},
+			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
 		});
 
-		return agent;
+		return { agent };
 	}
 
 	private async onGenerationSuccess(
@@ -214,7 +218,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.id, payload.featureFlags);
+		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
@@ -222,7 +226,7 @@ export class AiWorkflowBuilderService {
 			yield output;
 		}
 
-		// After the stream completes, track telemetry
+		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
 				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
@@ -300,5 +304,17 @@ export class AiWorkflowBuilderService {
 			creditsQuota: -1,
 			creditsClaimed: 0,
 		};
+	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified messageId
+	 * Used when restoring to a previous version
+	 */
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		messageId: string,
+	): Promise<boolean> {
+		return await this.sessionManager.truncateMessagesAfter(workflowId, user.id, messageId);
 	}
 }
