@@ -2146,7 +2146,9 @@
 	"projectRoles.workflow:publish.tooltip": "Publish and unpublish workflows",
 
 	"projectRoles.credential:read": "View",
-	"projectRoles.credential:read.tooltip": "View credentials details (secret masked) and use them in workflows",
+	"projectRoles.credential:read.tooltip": "View credentials details (secret masked) for governance and audit purposes",
+	"projectRoles.credential:use": "Use",
+	"projectRoles.credential:use.tooltip": "Use credentials in workflows, OAuth, and other operations",
 	"projectRoles.credential:update": "Edit",
 	"projectRoles.credential:update.tooltip": "Edit credential details including secret",
 	"projectRoles.credential:create": "Create",

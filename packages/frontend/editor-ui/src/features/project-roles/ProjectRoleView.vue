@@ -63,6 +63,15 @@ const { state: form, isLoading } = useAsyncState(
 	{ shallow: false },
 );
 
+// Ensure credential:read is present when credential:use is present
+const normalizedScopes = computed(() => {
+	const scopes = [...form.value.scopes];
+	if (scopes.includes('credential:use') && !scopes.includes('credential:read')) {
+		scopes.push('credential:read');
+	}
+	return scopes;
+});
+
 const hasUnsavedChanges = computed(() => {
 	if (!initialState.value) return false;
 
@@ -71,7 +80,7 @@ const hasUnsavedChanges = computed(() => {
 	// Using `??` wouldn't work here because `""` is a valid value and not `null` or `undefined`.
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	if (!isEqual(initialState.value.description ?? null, form.value.description || null)) return true;
-	if (!isEqual(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
+	if (!isEqual(sortBy(initialState.value.scopes), sortBy(normalizedScopes.value))) return true;
 
 	return false;
 });
@@ -95,7 +104,7 @@ const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 const workflow = (['read', 'update', 'create', 'publish', 'move', 'delete'] as const).map(
 	(action) => `workflow:${action}` as const,
 );
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+const credential = (['read', 'use', 'update', 'create', 'share', 'move', 'delete'] as const).map(
 	(action) => `credential:${action}` as const,
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
@@ -130,10 +139,28 @@ const scopes = {
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
-	if (index !== -1) {
+	const isRemoving = index !== -1;
+
+	if (isRemoving) {
 		form.value.scopes.splice(index, 1);
 	} else {
 		form.value.scopes.push(scope);
+	}
+
+	// Handle credential scope dependencies
+	if (scope === 'credential:use') {
+		// If enabling credential:use, also enable credential:read if not already present
+		if (!isRemoving && !form.value.scopes.includes('credential:read')) {
+			form.value.scopes.push('credential:read');
+		}
+	} else if (scope === 'credential:read') {
+		// If disabling credential:read, also disable credential:use if present
+		if (isRemoving) {
+			const useIndex = form.value.scopes.indexOf('credential:use');
+			if (useIndex !== -1) {
+				form.value.scopes.splice(useIndex, 1);
+			}
+		}
 	}
 
 	if (scope.startsWith('dataTable:') && scope.endsWith(':read')) {
@@ -154,6 +181,7 @@ async function createProjectRole() {
 	try {
 		const role = await rolesStore.createProjectRole({
 			...form.value,
+			scopes: normalizedScopes.value,
 			description: form.value.description ?? undefined,
 			roleType: 'project',
 		});
@@ -211,6 +239,7 @@ async function updateProjectRole(slug: string) {
 	try {
 		const role = await rolesStore.updateProjectRole(slug, {
 			...form.value,
+			scopes: normalizedScopes.value,
 			description: form.value.description ?? undefined,
 		});
 
@@ -403,7 +432,7 @@ const displayNameValidationRules = [
 							>
 								<N8nFormInput
 									:data-test-id="`scope-checkbox-${scope}`"
-									:model-value="form.scopes.includes(scope)"
+									:model-value="normalizedScopes.includes(scope)"
 									:label="i18n.baseText(`projectRoles.${scope}`)"
 									validate-on-blur
 									type="checkbox"
