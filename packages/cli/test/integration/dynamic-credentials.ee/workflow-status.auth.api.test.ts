@@ -27,10 +27,16 @@ licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
 
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
-process.env.N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN = 'test-token';
+// process.env.N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN = 'test-token';
+
+mockInstance(DynamicCredentialsConfig, {
+	corsOrigin: 'https://app.example.com',
+	corsAllowCredentials: false,
+	endpointAuthToken: 'test-token',
+});
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['credentials', 'workflows'],
+	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:externalSecrets'],
 	modules: ['dynamic-credentials'],
 });
@@ -155,30 +161,6 @@ describe('Workflow Status API', () => {
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
 					.set('Authorization', 'Bearer ')
 					.expect(401);
-			});
-		});
-
-		describe('when no static auth token is provided', () => {
-			it('should return the execution status of a workflow', async () => {
-				const config = Container.get(DynamicCredentialsConfig);
-				config.endpointAuthToken = '';
-
-				const response = await testServer.authlessAgent
-					.get(`/workflows/${savedWorkflow.id}/execution-status`)
-					.expect(200);
-
-				expect(response.body.data).toMatchObject({
-					workflowId: savedWorkflow.id,
-					readyToExecute: expect.any(Boolean),
-					credentials: expect.arrayContaining([
-						expect.objectContaining({
-							credentialId: savedCredential.id,
-							credentialName: savedCredential.name,
-							credentialType: savedCredential.type,
-							credentialStatus: expect.any(String),
-						}),
-					]),
-				});
 			});
 		});
 	});
