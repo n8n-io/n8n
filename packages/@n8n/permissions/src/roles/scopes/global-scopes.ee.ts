@@ -10,6 +10,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'banner:dismiss',
 	'credential:create',
 	'credential:read',
+	'credential:use',
 	'credential:update',
 	'credential:delete',
 	'credential:list',
