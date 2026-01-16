@@ -18,7 +18,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { inE2ETests } from '@/constants';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -167,7 +166,6 @@ export class E2EController {
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -282,9 +280,11 @@ export class E2EController {
 	}
 
 	private async resetLogStreaming() {
-		for (const id in this.eventBus.destinations) {
-			await this.eventBus.removeDestination(id, false);
-			await this.logStreamingDestinationsService.deleteDestinationFromDb(id);
+		const destinations = await this.logStreamingDestinationsService.findDestination();
+		for (const destination of destinations) {
+			if (destination.id) {
+				await this.logStreamingDestinationsService.removeDestination(destination.id, false);
+			}
 		}
 	}
 

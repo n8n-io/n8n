@@ -8,28 +8,16 @@ import type { FlowResult } from 'samlify/types/src/flow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
-
-import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
-import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '../sso-helpers';
+} from '@/sso.ee/sso-helpers';
 
-/**
- *  Check whether the SAML feature is licensed and enabled in the instance
- */
-export function isSamlLoginEnabled(): boolean {
-	return Container.get(GlobalConfig).sso.saml.loginEnabled;
-}
-
-export function getSamlLoginLabel(): string {
-	return Container.get(GlobalConfig).sso.saml.loginLabel;
-}
+import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
+import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
@@ -49,14 +37,6 @@ export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 
 export function setSamlLoginLabel(label: string): void {
 	Container.get(GlobalConfig).sso.saml.loginLabel = label;
-}
-
-export function isSamlLicensed(): boolean {
-	return Container.get(License).isSamlEnabled();
-}
-
-export function isSamlLicensedAndEnabled(): boolean {
-	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
 }
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {

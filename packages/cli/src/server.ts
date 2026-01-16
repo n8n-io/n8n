@@ -136,20 +136,6 @@ export class Server extends AbstractServer {
 			await import('@/controllers/tags.controller');
 		}
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
-			await Container.get(SamlService).init();
-			await import('@/sso.ee/saml/routes/saml.controller.ee');
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
-		}
-
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller');
 			await import('@/controllers/posthog.controller');
