@@ -62,6 +62,9 @@ test.describe('Access Control Boundaries', () => {
 			credentialName,
 		);
 
+		const apiKeyInput = adminN8n.credentials.credentialModal.getFieldInput('apiKey');
+		await expect(apiKeyInput).toHaveValue(/__n8n_BLANK_VALUE_/);
+
 		await adminN8n.credentials.credentialModal.changeTab('Sharing');
 		await expect(adminN8n.credentials.credentialModal.getUsersSelect()).toBeVisible();
 
