@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
@@ -16,11 +16,11 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -36,6 +36,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'execution:stopMany': [];
 }>();
 
 const route = useRoute();
@@ -52,7 +53,6 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
-const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
@@ -146,9 +146,8 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: string | number | boolean) {
-	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
-	emit('update:autoRefresh', boolValue);
+function onAutoRefreshChange(enabled: boolean) {
+	emit('update:autoRefresh', enabled);
 }
 
 function scrollToActiveCard(): void {
@@ -177,11 +176,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div
-		ref="sidebarContainerRef"
-		:class="['executions-sidebar', $style.container]"
-		data-test-id="executions-sidebar"
-	>
+	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
 			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
@@ -194,16 +189,20 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
+			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
-			<ElCheckbox
+			<N8nCheckbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
-			>
-				{{ i18n.baseText('executionsList.autoRefresh') }}
-			</ElCheckbox>
-			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
+			/>
+			<ExecutionsFilter
+				popover-side="right"
+				popover-align="start"
+				@filter-changed="onFilterChanged"
+			/>
 		</div>
 		<div
 			ref="executionListRef"
@@ -270,15 +269,15 @@ const goToUpgrade = () => {
 .heading {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-	padding-right: var(--spacing--lg);
+	align-items: center;
+	padding-right: var(--spacing--md);
 }
 
 .controls {
-	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
 
 	button {
@@ -336,10 +335,5 @@ const goToUpgrade = () => {
 		height: 60px;
 		border-radius: 0;
 	}
-}
-
-:deep(.el-checkbox) {
-	display: flex;
-	align-items: center;
 }
 </style>

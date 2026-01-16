@@ -6,7 +6,6 @@ import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators'
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,6 +16,7 @@ import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')
@@ -31,6 +31,7 @@ export class InvitationController {
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -64,7 +65,7 @@ export class InvitationController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (!(await this.ownershipService.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);
@@ -88,26 +89,17 @@ export class InvitationController {
 	}
 
 	/**
-	 * Fill out user shell with first name, last name, and password.
+	 * Process invitation acceptance: validate users, update invitee, and handle authentication.
 	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
+	private async processInvitationAcceptance(
+		inviterId: string,
+		inviteeId: string,
+		firstName: string,
+		lastName: string,
+		password: string,
 		req: AuthlessRequest,
 		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		const { inviterId, firstName, lastName, password } = payload;
-
+	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
 			relations: ['role'],
@@ -157,5 +149,87 @@ export class InvitationController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password using JWT token.
+	 */
+	@Post('/accept', { skipAuth: true })
+	async acceptInvitationWithToken(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.token) {
+			this.logger.debug('Request to accept invitation failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId and inviteeId from JWT token
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
+			token: payload.token,
+		});
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
+	 */
+	@Post('/:id/accept', { skipAuth: true })
+	async acceptInvitation(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+		@Param('id') inviteeId: string,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.inviterId || !inviteeId) {
+			this.logger.debug(
+				'Request to accept invitation failed because inviterId or inviteeId is missing',
+			);
+			throw new BadRequestError('InviterId and inviteeId are required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		const inviterId = payload.inviterId;
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
 	}
 }

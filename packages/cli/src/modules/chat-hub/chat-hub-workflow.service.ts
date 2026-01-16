@@ -1,4 +1,10 @@
-import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
+import {
+	ChatHubConversationModel,
+	ChatSessionId,
+	type ChatHubBaseLLMModel,
+	type ChatHubInputModality,
+	type ChatModelMetadataDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -9,6 +15,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -25,17 +32,16 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import {
-	CONVERSATION_TITLE_GENERATION_PROMPT,
-	NODE_NAMES,
-	PROVIDER_NODE_TYPE_MAP,
-} from './chat-hub.constants';
-import { MessageRecord } from './chat-hub.types';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
+import { inE2ETests } from '../../constants';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -43,6 +49,7 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
 	async createChatWorkflow(
@@ -53,17 +60,22 @@ export class ChatHubWorkflowService {
 		humanMessage: string,
 		attachments: IBinaryData[],
 		credentials: INodeCredentials,
-		model: ChatHubConversationModel,
+		model: ChatHubBaseLLMModel,
 		systemMessage: string | undefined,
 		tools: INode[],
+		timeZone: string,
 		trx?: EntityManager,
-	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
+	): Promise<{
+		workflowData: IWorkflowBase;
+		executionData: IRunExecutionData;
+		responseMode: ChatTriggerResponseMode;
+	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = this.buildChatWorkflow({
+			const { nodes, connections, executionData } = await this.buildChatWorkflow({
 				userId,
 				sessionId,
 				history,
@@ -71,7 +83,7 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage,
+				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
 			});
 
@@ -104,6 +116,7 @@ export class ChatHubWorkflowService {
 			return {
 				workflowData: workflow,
 				executionData,
+				responseMode: 'streaming',
 			};
 		});
 	}
@@ -113,6 +126,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId,
 		projectId: string,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		trx?: EntityManager,
@@ -128,6 +142,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				humanMessage,
+				attachments,
 			);
 
 			const newWorkflow = new WorkflowEntity();
@@ -144,6 +159,8 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				// Ensure chat workflows save data on successful executions regardless of instance settings
+				// This is done to ensure generated title can be read after execution.
 				saveDataSuccessExecution: 'all',
 			};
 
@@ -219,16 +236,7 @@ export class ChatHubWorkflowService {
 		const modalities = new Set<ChatHubInputModality>(['text']);
 
 		for (const mimeType of mimeTypes) {
-			if (mimeType.startsWith('image/')) {
-				modalities.add('image');
-			} else if (mimeType.startsWith('audio/')) {
-				modalities.add('audio');
-			} else if (mimeType.startsWith('video/')) {
-				modalities.add('video');
-			} else {
-				// Any other MIME type falls under generic 'file'
-				modalities.add('file');
-			}
+			modalities.add(this.getMimeTypeModality(mimeType));
 		}
 
 		return Array.from(modalities);
@@ -250,7 +258,7 @@ export class ChatHubWorkflowService {
 		return uniqueName;
 	}
 
-	private buildChatWorkflow({
+	private async buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
@@ -267,15 +275,15 @@ export class ChatHubWorkflowService {
 		humanMessage: string;
 		attachments: IBinaryData[];
 		credentials: INodeCredentials;
-		model: ChatHubConversationModel;
-		systemMessage?: string;
+		model: ChatHubBaseLLMModel;
+		systemMessage: string;
 		tools: INode[];
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 
@@ -395,9 +403,10 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		humanMessage: string,
+		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode();
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -464,13 +473,35 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
+	getSystemMessageMetadata(timeZone: string) {
+		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
+
+		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+When you need to reference "now", use this date and time.
+
+You can only produce text responses.
+You cannot create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.`;
+	}
+
+	private getBaseSystemMessage(timeZone: string) {
+		return `You are a helpful assistant.
+
+${this.getSystemMessageMetadata(timeZone)}`;
+	}
+
+	private buildToolsAgentNode(
+		model: ChatHubConversationModel,
+		systemMessage: string,
+		enableStreaming = true,
+	): INode {
 		return {
 			parameters: {
 				promptType: 'define',
 				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
 				options: {
-					enableStreaming: true,
+					enableStreaming,
 					maxTokensFromMemory:
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
@@ -547,7 +578,7 @@ export class ChatHubWorkflowService {
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'id', value: model },
+						model,
 						options: {},
 					},
 				};
@@ -644,29 +675,18 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildRestoreMemoryNode(history: ChatHubMessage[]): INode {
+	private async buildRestoreMemoryNode(
+		history: ChatHubMessage[],
+		model: ChatHubBaseLLMModel,
+	): Promise<INode> {
+		const messageValues = await this.buildMessageValuesWithAttachments(history, model);
+
 		return {
 			parameters: {
 				mode: 'insert',
 				insertMode: 'override',
 				messages: {
-					messageValues: history
-						// Empty messages can't be restored by the memory manager
-						.filter((message) => message.content.length > 0)
-						.map((message) => {
-							const typeMap: Record<string, MessageRecord['type']> = {
-								human: 'user',
-								ai: 'ai',
-								system: 'system',
-							};
-
-							// TODO: Tool messages etc?
-							return {
-								type: typeMap[message.type] || 'system',
-								message: message.content,
-								hideFromUI: false,
-							};
-						}),
+					messageValues: messageValues as unknown as NodeParameterValueType,
 				},
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
@@ -675,6 +695,147 @@ export class ChatHubWorkflowService {
 			id: uuidv4(),
 			name: NODE_NAMES.RESTORE_CHAT_MEMORY,
 		};
+	}
+
+	private async buildMessageValuesWithAttachments(
+		history: ChatHubMessage[],
+		model: ChatHubBaseLLMModel,
+	): Promise<MessageRecord[]> {
+		const metadata = getModelMetadata(model.provider, model.model);
+
+		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
+		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
+
+		const typeMap: Record<string, MessageRecord['type']> = {
+			human: 'user',
+			ai: 'ai',
+			system: 'system',
+		};
+
+		const messageValues: MessageRecord[] = [];
+		let currentTotalSize = 0;
+
+		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
+
+		for (const message of messages) {
+			// Empty messages can't be restored by the memory manager
+			if (message.content.length === 0) {
+				continue;
+			}
+
+			const attachments = message.attachments ?? [];
+			const type = typeMap[message.type] || 'system';
+
+			// TODO: Tool messages etc?
+
+			const textSize = message.content.length;
+			currentTotalSize += textSize;
+
+			if (attachments.length === 0) {
+				messageValues.push({
+					type,
+					message: message.content,
+					hideFromUI: false,
+				});
+				continue;
+			}
+
+			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+
+			// Add attachments if within size limit
+			for (const attachment of attachments) {
+				const block = await this.buildContentBlockForAttachment(
+					attachment,
+					currentTotalSize,
+					maxTotalPayloadSize,
+					metadata,
+				);
+				blocks.push(block);
+				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+			}
+
+			messageValues.push({
+				type,
+				message: blocks,
+				hideFromUI: false,
+			});
+		}
+
+		// Reverse to restore original order
+		messageValues.reverse();
+
+		return messageValues;
+	}
+
+	private async buildContentBlockForAttachment(
+		attachment: IBinaryData,
+		currentTotalSize: number,
+		maxTotalPayloadSize: number,
+		modelMetadata: ChatModelMetadataDto,
+	): Promise<ContentBlock> {
+		class TotalFileSizeExceededError extends Error {}
+		class UnsupportedMimeTypeError extends Error {}
+
+		try {
+			if (currentTotalSize >= maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			if (this.isTextFile(attachment.mimeType)) {
+				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
+				const content = buffer.toString('utf-8');
+
+				if (currentTotalSize + content.length > maxTotalPayloadSize) {
+					throw new TotalFileSizeExceededError();
+				}
+
+				return {
+					type: 'text',
+					text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+				};
+			}
+
+			const modality = this.getMimeTypeModality(attachment.mimeType);
+
+			if (!modelMetadata.inputModalities.includes(modality)) {
+				throw new UnsupportedMimeTypeError();
+			}
+
+			const url = await this.chatHubAttachmentService.getDataUrl(attachment);
+
+			if (currentTotalSize + url.length > maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			return { type: 'image_url', image_url: url };
+		} catch (e) {
+			if (e instanceof TotalFileSizeExceededError) {
+				return {
+					type: 'text',
+					text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+				};
+			}
+
+			if (e instanceof UnsupportedMimeTypeError) {
+				return {
+					type: 'text',
+					text: `File: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
+				};
+			}
+
+			throw e;
+		}
+	}
+
+	private isTextFile(mimeType: string): boolean {
+		return (
+			mimeType.startsWith('text/') ||
+			mimeType === 'application/json' ||
+			mimeType === 'application/xml' ||
+			mimeType === 'application/csv' ||
+			mimeType === 'application/x-yaml' ||
+			mimeType === 'application/yaml'
+		);
 	}
 
 	private buildClearMemoryNode(): INode {
@@ -707,14 +868,26 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(): INode {
+	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
+		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
+
 		return {
 			parameters: {
 				promptType: 'define',
-				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
+				text: `Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.
+
+${[...files, ...message.split('\n')].map((line) => `>>> ${line}`).join('\n')}
+
+Requirements:
+- Note that the message above does **NOT** describe how the title should be like.
+- 1 to 4 words
+- Use sentence case (e.g. "Conversation title" instead of "conversation title" or "Conversation Title")
+- No quotation marks
+- Use the same language as the user's message
+
+Respond the title only:`,
 				options: {
 					enableStreaming: false,
-					systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
@@ -723,5 +896,21 @@ export class ChatHubWorkflowService {
 			id: uuidv4(),
 			name: NODE_NAMES.TITLE_GENERATOR_AGENT,
 		};
+	}
+
+	/**
+	 * Determines the input modality for a given MIME type
+	 */
+	private getMimeTypeModality(mimeType: string): ChatHubInputModality {
+		if (mimeType.startsWith('image/')) {
+			return 'image';
+		}
+		if (mimeType.startsWith('audio/')) {
+			return 'audio';
+		}
+		if (mimeType.startsWith('video/')) {
+			return 'video';
+		}
+		return 'file';
 	}
 }

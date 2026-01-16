@@ -2,7 +2,8 @@ import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.t
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
-	CHAT_AGENTS_VIEW,
+	CHAT_WORKFLOW_AGENTS_VIEW,
+	CHAT_PERSONAL_AGENTS_VIEW,
 	TOOLS_SELECTOR_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -11,16 +12,20 @@ import {
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
-import SettingsChatHubView from './SettingsChatHubView.vue';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
-const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
-const ChatAgentsView = async () => await import('@/features/ai/chatHub/ChatAgentsView.vue');
+const ChatWorkflowAgentsView = async () =>
+	await import('@/features/ai/chatHub/ChatWorkflowAgentsView.vue');
+const ChatPersonalAgentsView = async () =>
+	await import('@/features/ai/chatHub/ChatPersonalAgentsView.vue');
+const SettingsChatHubView = async () =>
+	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
 	name: 'Chat',
-	description: 'Interact with various LLM models or your n8n AI agents.',
+	description: 'Chat with LLM models or your n8n AI agents.',
 	icon: 'chat',
 	modals: [
 		{
@@ -55,7 +60,6 @@ export const ChatModule: FrontendModuleDescription = {
 					provider: null,
 					initialValue: null,
 					onSelect: () => {},
-					onCreateNew: () => {},
 				},
 			},
 		},
@@ -89,11 +93,9 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			name: CHAT_VIEW,
 			path: '/home/chat',
-			components: {
-				default: ChatView,
-				sidebar: ChatSidebar,
-			},
+			component: ChatView,
 			meta: {
+				layout: 'chat',
 				middleware: ['authenticated'],
 				getProperties() {
 					return {
@@ -105,11 +107,9 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			name: CHAT_CONVERSATION_VIEW,
 			path: '/home/chat/:id',
-			components: {
-				default: ChatView,
-				sidebar: ChatSidebar,
-			},
+			component: ChatView,
 			meta: {
+				layout: 'chat',
 				middleware: ['authenticated'],
 				getProperties() {
 					return {
@@ -119,13 +119,25 @@ export const ChatModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			name: CHAT_AGENTS_VIEW,
-			path: '/home/chat/agents',
-			components: {
-				default: ChatAgentsView,
-				sidebar: ChatSidebar,
-			},
+			name: CHAT_WORKFLOW_AGENTS_VIEW,
+			path: '/home/chat/workflow-agents',
+			component: ChatWorkflowAgentsView,
 			meta: {
+				layout: 'chat',
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
+			},
+		},
+		{
+			name: CHAT_PERSONAL_AGENTS_VIEW,
+			path: '/home/chat/personal-agents',
+			component: ChatPersonalAgentsView,
+			meta: {
+				layout: 'chat',
 				middleware: ['authenticated'],
 				getProperties() {
 					return {
@@ -137,10 +149,9 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			path: 'chat',
 			name: CHAT_SETTINGS_VIEW,
-			components: {
-				settingsView: SettingsChatHubView,
-			},
+			component: SettingsChatHubView,
 			meta: {
+				layout: 'settings',
 				middleware: ['authenticated', 'rbac'],
 				middlewareOptions: {
 					rbac: {
@@ -175,6 +186,9 @@ export const ChatModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
+			},
 		},
 	],
 };

@@ -133,6 +133,23 @@ export const moveDataTableColumnApi = async (
 	);
 };
 
+export const renameDataTableColumnApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	columnId: string,
+	name: string,
+) => {
+	return await makeRestApiRequest<DataTableColumn>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/rename`,
+		{
+			name,
+		},
+	);
+};
+
 export const getDataTableRowsApi = async (
 	context: IRestApiContext,
 	dataTableId: string,

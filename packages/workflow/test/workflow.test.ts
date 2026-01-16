@@ -1743,6 +1743,8 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 				const nodes: INode[] = [
 					{
 						name: 'Node1',

@@ -4,13 +4,16 @@ export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
-export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
+export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
+
+export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
+export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
 
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
@@ -47,6 +50,7 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 
 export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
+export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -56,8 +60,11 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
+export { CreateWorkflowDto } from './workflows/create-workflow.dto';
+export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -99,6 +106,7 @@ export { CreateDataTableColumnDto } from './data-table/create-data-table-column.
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
+export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
 
 export {
 	OAuthClientResponseDto,
@@ -106,3 +114,5 @@ export {
 	DeleteOAuthClientResponseDto,
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+
+export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';

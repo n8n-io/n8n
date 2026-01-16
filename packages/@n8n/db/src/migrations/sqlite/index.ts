@@ -46,6 +46,11 @@ import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopes
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
+import { AddCreatorIdToProjectTable1764276827837 } from './1764276827837-AddCreatorIdToProjectTable';
+import { AddResolvableFieldsToCredentials1764689448000 } from './1764689448000-AddResolvableFieldsToCredentials';
+import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdForeignKeys';
+import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
+import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -112,9 +117,18 @@ import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/17
 import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
+import { ActivateExecuteWorkflowTriggerWorkflows1763048000000 } from '../common/1763048000000-ActivateExecuteWorkflowTriggerWorkflows';
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
+import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
+import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
+import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
+import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
+import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -235,6 +249,20 @@ const sqliteMigrations: Migration[] = [
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
+	ActivateExecuteWorkflowTriggerWorkflows1763048000000,
+	AddCreatorIdToProjectTable1764276827837,
+	CreateDynamicCredentialResolverTable1764682447000,
+	AddDynamicCredentialEntryTable1764689388394,
+	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddResolvableFieldsToCredentials1764689448000,
+	AddIconToAgentTable1765788427674,
+	AddAgentIdForeignKeys1765886667897,
+	AddWorkflowVersionIdToExecutionData1765892199653,
+	AddWorkflowPublishScopeToProjectRoles1766064542000,
+	AddChatMessageIndices1766068346315,
+	ChangeWorkflowStatisticsFKToNoAction1767018516000,
+	ExpandModelColumnLength1768402473068,
+	AddStoredAtToExecutionEntity1768557000000,
 ];
 
 export { sqliteMigrations };

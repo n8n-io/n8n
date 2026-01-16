@@ -30,9 +30,10 @@ import {
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -46,14 +47,17 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
+	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
@@ -62,12 +66,15 @@ const i18n = useI18n();
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
+const scrollableRef = useTemplateRef('scrollable');
+
+const scrollableSize = useElementSize(scrollableRef);
+
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
 const isResponding = computed(() => chatStore.isResponding(sessionId.value));
 const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const currentConversation = computed(() =>
 	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
@@ -132,6 +139,8 @@ const shouldSkipNextScrollTrigger = ref(false);
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
+	const provider = route.query.provider;
+	const model = route.query.model;
 
 	if (!isNewSession.value) {
 		return null;
@@ -145,6 +154,17 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 		return chatStore.getAgent({ provider: 'n8n', workflowId });
 	}
 
+	if (typeof provider === 'string' && typeof model === 'string') {
+		const parsedModel = chatHubConversationModelSchema.safeParse({
+			provider,
+			model,
+		});
+
+		if (parsedModel.success) {
+			return chatStore.getAgent(parsedModel.data);
+		}
+	}
+
 	return null;
 });
 
@@ -156,10 +176,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 			return null;
 		}
 
-		return chatStore.getAgent(
-			model,
-			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
-		);
+		return chatStore.getAgent(model, {
+			name: currentConversation.value?.agentName || currentConversation.value?.model,
+			icon: currentConversation.value?.agentIcon,
+		});
 	}
 
 	if (modelFromQuery.value) {
@@ -167,14 +187,17 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
+		return chatStore.streaming.agent;
 	}
 
 	if (!defaultModel.value) {
 		return null;
 	}
 
-	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+	return chatStore.getAgent(defaultModel.value, {
+		name: defaultModel.value.cachedDisplayName,
+		icon: defaultModel.value.cachedIcon,
+	});
 });
 
 const customAgentId = computed(() =>
@@ -182,7 +205,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {
@@ -228,31 +251,41 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
-	if (!chatStore.agentsReady) {
-		return null;
+const messagingState = computed<MessagingState>(() => {
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
 	}
 
-	if (!selectedModel.value) {
+	if (chatStore.agentsReady && !selectedModel.value) {
 		return 'missingAgent';
 	}
 
-	if (isMissingSelectedCredential.value) {
+	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
 		return 'missingCredentials';
 	}
 
-	return null;
+	return 'idle';
 });
 
 const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
+const canAcceptFiles = computed(() => {
+	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value,
-);
+		!isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -300,12 +333,13 @@ watch(
 watch(
 	() => chatStore.agents,
 	(models) => {
-		if (!models || !!selectedModel.value || !isNewSession.value) {
+		const settings = settingsStore.moduleSettings?.['chat-hub'];
+
+		if (!models || !!selectedModel.value || !isNewSession.value || !settings) {
 			return;
 		}
 
-		const model = findOneFromModelsResponse(models) ?? null;
-
+		const model = findOneFromModelsResponse(models, settings.providers);
 		if (model) {
 			void handleSelectAgent(model);
 		}
@@ -317,12 +351,13 @@ watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
+		editingMessageId.value = undefined;
 
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
@@ -362,8 +397,16 @@ watch(
 watch(
 	defaultAgent,
 	(agent, prevAgent) => {
-		if (defaultModel.value && agent && agent.name !== prevAgent?.name) {
+		if (defaultModel.value && agent?.name && agent.name !== prevAgent?.name) {
 			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
+		}
+
+		if (
+			defaultModel.value &&
+			agent?.icon &&
+			(agent.icon.type !== prevAgent?.icon?.type || agent.icon.value !== prevAgent.icon.value)
+		) {
+			defaultModel.value = { ...defaultModel.value, cachedIcon: agent.icon };
 		}
 
 		if (
@@ -377,7 +420,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments: File[]) {
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -390,17 +433,16 @@ function onSubmit(message: string, attachments: File[]) {
 	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	void chatStore.sendMessage(
+	await chatStore.sendMessage(
 		sessionId.value,
 		message,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
-		selectedModel.value.name,
 	);
 
-	inputRef.value?.setText('');
+	inputRef.value?.reset();
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -420,29 +462,34 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
+		!editingMessageId.value ||
 		isResponding.value ||
-		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
-		selectedModel.value.model,
+		editingMessageId.value,
+		content,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
 		isResponding.value ||
 		message.type !== 'ai' ||
@@ -454,25 +501,34 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	const messageToRetry = message.id;
 
-	chatStore.regenerateMessage(
+	editingMessageId.value = undefined;
+
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
-	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+async function handleSelectModel(
+	selection: ChatHubConversationModel,
+	selectedAgent?: ChatModelDto,
+) {
+	const agent = selectedAgent ?? chatStore.getAgent(selection);
 
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
+			await chatStore.updateSessionModel(sessionId.value, selection, agent.name);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected model');
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
-		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+		defaultModel.value = {
+			...selection,
+			cachedDisplayName: agent.name,
+			cachedIcon: agent.icon ?? undefined,
+		};
 
 		// Remove query params (if exists) and focus input
 		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
@@ -480,7 +536,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 }
 
 async function handleSelectAgent(selection: ChatModelDto) {
-	await handleSelectModel(selection.model, selection.name);
+	await handleSelectModel(selection.model, selection);
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -503,7 +559,7 @@ async function handleUpdateTools(newTools: INode[]) {
 		try {
 			await chatStore.updateToolsInSession(sessionId.value, newTools);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected tools');
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
 		}
 	}
 }
@@ -536,7 +592,13 @@ function handleOpenWorkflow(workflowId: string) {
 }
 
 function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
@@ -591,11 +653,14 @@ function onFilesDropped(files: File[]) {
 					<ChatMessage
 						v-for="(message, index) in chatMessages"
 						:key="message.id"
+						ref="messages"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="message.status === 'running'"
+						:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
+						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
+						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
 							didSubmitInCurrentSession &&
 							message.type === 'ai' &&
@@ -604,6 +669,7 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
+						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -627,11 +693,9 @@ function onFilesDropped(files: File[]) {
 						:class="$style.prompt"
 						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
-						:is-responding="isResponding"
+						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
-						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
-						:issue="issue"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"

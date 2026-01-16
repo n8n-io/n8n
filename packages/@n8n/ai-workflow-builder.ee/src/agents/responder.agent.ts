@@ -1,51 +1,26 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessage, BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
+
+import {
+	buildResponderPrompt,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildGeneralErrorGuidance,
+} from '@/prompts/agents/responder.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import { isAIMessage } from '../types/langchain';
 import type { SimpleWorkflow } from '../types/workflow';
-import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
-
-/**
- * Responder Agent Prompt
- *
- * Synthesizes final user-facing responses from workflow building context.
- * Also handles conversational queries.
- */
-const RESPONDER_PROMPT = `You are a helpful AI assistant for n8n workflow automation.
-
-You have access to context about what has been built, including:
-- Discovery results (nodes found)
-- Builder output (workflow structure)
-- Configuration summary (setup instructions)
-
-FOR WORKFLOW COMPLETION RESPONSES:
-When you receive [Internal Context], synthesize a clean user-facing response:
-1. Summarize what was built in a friendly way
-2. Explain the workflow structure briefly
-3. Include setup instructions if provided
-4. Ask if user wants adjustments
-
-Example response structure:
-"I've created your [workflow type] workflow! Here's what it does:
-[Brief explanation of the flow]
-
-**Setup Required:**
-[List any configuration steps from the context]
-
-Let me know if you'd like to adjust anything."
-
-FOR QUESTIONS/CONVERSATIONS:
-- Be friendly and concise
-- Explain n8n capabilities when asked
-- Provide practical examples when helpful
-
-RESPONSE STYLE:
-- Keep responses focused and not overly long
-- Use markdown formatting for readability
-- Be conversational and helpful`;
+import {
+	getErrorEntry,
+	getBuilderOutput,
+	getConfiguratorOutput,
+	hasRecursionErrorsCleared,
+} from '../utils/coordination-log';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -53,7 +28,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
 		[
 			{
 				type: 'text',
-				text: RESPONDER_PROMPT,
+				text: buildResponderPrompt(),
 				cache_control: { type: 'ephemeral' },
 			},
 		],
@@ -77,6 +52,8 @@ export interface ResponderContext {
 	discoveryContext?: DiscoveryContext | null;
 	/** Current workflow state */
 	workflowJSON: SimpleWorkflow;
+	/** Summary of previous conversation (from compaction) */
+	previousSummary?: string;
 }
 
 /**
@@ -98,15 +75,49 @@ export class ResponderAgent {
 	private buildContextMessage(context: ResponderContext): HumanMessage | null {
 		const contextParts: string[] = [];
 
-		// Check for errors first - if there's an error, surface it prominently
+		// Previous conversation summary (from compaction)
+		if (context.previousSummary) {
+			contextParts.push(`**Previous Conversation Summary:**\n${context.previousSummary}`);
+		}
+
+		// Check for state management actions (compact/clear)
+		const stateManagementEntry = context.coordinationLog.find(
+			(e) => e.phase === 'state_management',
+		);
+		if (stateManagementEntry) {
+			contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
+		}
+
+		// Check for errors - provide context-aware guidance (AI-1812)
+		// Skip errors that have been cleared (AI-1812)
 		const errorEntry = getErrorEntry(context.coordinationLog);
-		if (errorEntry) {
+		const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
+
+		if (errorEntry && !errorsCleared) {
+			const hasWorkflow = context.workflowJSON.nodes.length > 0;
+			const errorMessage = errorEntry.summary.toLowerCase();
+			const isRecursionError =
+				errorMessage.includes('recursion') ||
+				errorMessage.includes('maximum number of steps') ||
+				errorMessage.includes('iteration limit');
+
 			contextParts.push(
 				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
 			);
-			contextParts.push(
-				'Please apologize to the user and explain that something went wrong while building their workflow.',
-			);
+
+			// AI-1812: Provide better guidance based on workflow state and error type
+			if (isRecursionError && hasWorkflow) {
+				// Recursion error but workflow was created
+				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
+				contextParts.push(...guidance);
+			} else if (isRecursionError && !hasWorkflow) {
+				// Recursion error and no workflow created
+				const guidance = buildRecursionErrorNoWorkflowGuidance();
+				contextParts.push(...guidance);
+			} else {
+				// Other errors (not recursion-related)
+				contextParts.push(buildGeneralErrorGuidance());
+			}
 		}
 
 		// Discovery context
@@ -141,8 +152,10 @@ export class ResponderAgent {
 
 	/**
 	 * Invoke the responder agent with the given context
+	 * @param context - Responder context with messages and workflow state
+	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
-	async invoke(context: ResponderContext): Promise<AIMessage> {
+	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
 		const agent = systemPrompt.pipe(this.llm);
 
 		const contextMessage = this.buildContextMessage(context);
@@ -150,6 +163,12 @@ export class ResponderAgent {
 			? [...context.messages, contextMessage]
 			: context.messages;
 
-		return (await agent.invoke({ messages: messagesToSend })) as AIMessage;
+		const result = await agent.invoke({ messages: messagesToSend }, config);
+		if (!isAIMessage(result)) {
+			return new AIMessage({
+				content: 'I encountered an issue generating a response. Please try again.',
+			});
+		}
+		return result;
 	}
 }

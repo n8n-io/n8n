@@ -4,6 +4,7 @@ import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import { jsonrepair } from 'jsonrepair';
 import merge from 'lodash/merge';
+import path from 'path';
 
 import { ALPHABET } from './constants';
 import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
@@ -17,6 +18,21 @@ const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
+
+/**
+ * Type guard for plain objects suitable for key-based traversal/serialization.
+ *
+ * Returns `true` for objects whose prototype is `Object.prototype` (object literals)
+ * or `null` (`Object.create(null)`), and `false` for arrays and non-plain objects
+ * such as `Date`, `Map`, `Set`, and class instances.
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+
+	return Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null;
+}
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
@@ -87,6 +103,13 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.value;
 		case Syntax.ArrayExpression:
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		case Syntax.UnaryExpression: {
+			const value = syntaxNodeToValue(expression.argument);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
+			}
+			return value;
+		}
 		default:
 			return undefined;
 	}
@@ -350,6 +373,7 @@ const unsafeObjectProperties = new Set([
 	'mainModule',
 	'binding',
 	'_load',
+	'prepareStackTrace',
 ]);
 
 /**
@@ -437,4 +461,41 @@ export function isCommunityPackageName(packageName: string): boolean {
 	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
 
 	return !!nameMatch;
+}
+
+export function dedupe<T>(arr: T[]): T[] {
+	return [...new Set(arr)];
+}
+
+/**
+ * Extracts a safe filename from a path or filename string.
+ *
+ * Handles both Unix and Windows path separators, removing directory
+ * components and null bytes to return just the filename.
+ *
+ * @param fileName - The filename or path to sanitize
+ * @returns The extracted filename without path components
+ *
+ * @example
+ * sanitizeFilename('path/to/file.txt') // returns 'file.txt'
+ * sanitizeFilename('/tmp/upload/doc.pdf') // returns 'doc.pdf'
+ * sanitizeFilename('C:\\Users\\file.txt') // returns 'file.txt'
+ * sanitizeFilename('../../../etc/passwd') // returns 'passwd'
+ */
+export function sanitizeFilename(fileName: string): string {
+	// Normalize to forward slashes first to handle Windows paths on Unix
+	const normalized = fileName.replace(/\\/g, '/');
+
+	// Extract just the filename, stripping all directory components
+	let sanitized = path.basename(normalized);
+
+	// Remove null bytes which could be used for null byte injection attacks
+	sanitized = sanitized.replace(/\0/g, '');
+
+	// If the result is empty or just dots, use a default name
+	if (!sanitized || /^\.+$/.test(sanitized)) {
+		sanitized = 'untitled';
+	}
+
+	return sanitized;
 }

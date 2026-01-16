@@ -151,9 +151,6 @@ describe('AiWorkflowBuilderService', () => {
 
 		// Mock AI assistant client
 		mockClient = mock<AiAssistantClient>();
-		(mockClient.generateApiProxyCredentials as jest.Mock).mockResolvedValue({
-			apiKey: 'test-api-key',
-		});
 		(mockClient.getBuilderApiProxyToken as jest.Mock).mockResolvedValue({
 			tokenType: 'Bearer',
 			accessToken: 'test-access-token',
@@ -188,11 +185,15 @@ describe('AiWorkflowBuilderService', () => {
 		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
 		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
 
-		// Mock WorkflowBuilderAgent
-		MockedWorkflowBuilderAgent.mockImplementation(() => {
+		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
+		MockedWorkflowBuilderAgent.mockImplementation((config) => {
 			const mockAgent = mock<WorkflowBuilderAgent>();
 			(mockAgent.chat as jest.Mock).mockImplementation(async function* () {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
+				// Simulate the agent calling onGenerationSuccess after successful stream
+				if (config.onGenerationSuccess) {
+					await config.onGenerationSuccess();
+				}
 			});
 			return mockAgent;
 		});
@@ -209,6 +210,7 @@ describe('AiWorkflowBuilderService', () => {
 			mockLogger,
 			'test-instance-id',
 			'https://n8n.example.com',
+			'1.0.0',
 			mockOnCreditsUpdated,
 		);
 	});
@@ -221,6 +223,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 
@@ -247,6 +250,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 
@@ -271,6 +275,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 
@@ -297,6 +302,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a simple workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'test-workflow' },
@@ -342,11 +348,9 @@ describe('AiWorkflowBuilderService', () => {
 			// Verify key configuration properties
 			expect(config).toHaveProperty('parsedNodeTypes');
 			expect(config).toHaveProperty('instanceUrl', 'https://n8n.example.com');
-			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer');
 			expect(config).toHaveProperty('checkpointer', mockMemorySaver);
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
-			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
 			// Verify checkpointer comes from SessionManagerService
 			expect(mockSessionManager.getCheckpointer).toHaveBeenCalled();
 		});
@@ -370,11 +374,9 @@ describe('AiWorkflowBuilderService', () => {
 			// Verify key configuration properties
 			expect(config).toHaveProperty('parsedNodeTypes');
 			expect(config).toHaveProperty('instanceUrl', undefined);
-			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer', undefined);
 			expect(config).toHaveProperty('checkpointer');
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
-			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
 		});
 
 		it('should throw LLMServiceError when model setup fails', async () => {
@@ -422,14 +424,12 @@ describe('AiWorkflowBuilderService', () => {
 			delete process.env.N8N_AI_ANTHROPIC_KEY;
 		});
 
-		it('should call onGenerationSuccess callback when not using deprecated credentials', async () => {
+		it('should call markBuilderSuccess after stream completes', async () => {
 			const generator = service.chat(mockPayload, mockUser);
-			await generator.next();
-
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
-
-			// Call the onGenerationSuccess callback
-			await config.onGenerationSuccess!();
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
 
 			expect(mockClient.markBuilderSuccess).toHaveBeenCalledWith(mockUser, {
 				Authorization: 'Bearer test-access-token',
@@ -438,12 +438,10 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should call onCreditsUpdated callback after markBuilderSuccess', async () => {
 			const generator = service.chat(mockPayload, mockUser);
-			await generator.next();
-
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
-
-			// Call the onGenerationSuccess callback
-			await config.onGenerationSuccess!();
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
 
 			// Verify callback was called with correct parameters
 			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
@@ -567,6 +565,7 @@ describe('AiWorkflowBuilderService', () => {
 		it('should handle complete workflow from chat to session retrieval', async () => {
 			const workflowId = 'integration-test-workflow';
 			const mockPayload: ChatPayload = {
+				id: '545623',
 				message: 'Create a workflow with HTTP request',
 				workflowContext: {
 					currentWorkflow: { id: workflowId },

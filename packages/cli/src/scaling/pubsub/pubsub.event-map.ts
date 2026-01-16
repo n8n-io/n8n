@@ -26,6 +26,8 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	'reload-source-control-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -56,6 +58,7 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -64,6 +67,7 @@ export type PubSubCommandMap = {
 
 	'display-workflow-activation': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'display-workflow-deactivation': {

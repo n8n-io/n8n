@@ -1,4 +1,5 @@
 import basicAuth from 'basic-auth';
+import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
@@ -6,7 +7,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 	ICredentialDataDecryptedObject,
+	MultiPartFormData,
+	INode,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -134,17 +140,31 @@ export const isIpWhitelisted = (
 		whitelist = whitelist.split(',').map((entry) => entry.trim());
 	}
 
-	for (const address of whitelist) {
-		if (ip?.includes(address)) {
-			return true;
-		}
+	const allowList = getAllowList(whitelist);
 
-		if (ips.some((entry) => entry.includes(address))) {
-			return true;
-		}
+	if (allowList.check(ip ?? '')) {
+		return true;
+	}
+
+	if (ips.some((ipEntry) => allowList.check(ipEntry))) {
+		return true;
 	}
 
 	return false;
+};
+
+const getAllowList = (whitelist: string[]) => {
+	const allowList = new BlockList();
+
+	for (const entry of whitelist) {
+		try {
+			allowList.addAddress(entry);
+		} catch {
+			// Ignore invalid entries
+		}
+	}
+
+	return allowList;
 };
 
 export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
@@ -202,9 +222,25 @@ export async function validateWebhookAuthentication(
 
 		const providedAuth = basicAuth(req);
 		// Authorization data is missing
-		if (!providedAuth) throw new WebhookAuthorizationError(401);
+		if (!providedAuth) {
+			const authToken = headers['x-auth-token'];
+			if (!authToken) {
+				throw new WebhookAuthorizationError(401);
+			}
 
-		if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
+			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
+			if (
+				!expectedAuthToken ||
+				typeof authToken !== 'string' ||
+				expectedAuthToken.length !== authToken.length ||
+				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken))
+			) {
+				throw new WebhookAuthorizationError(403);
+			}
+		} else if (
+			providedAuth.name !== expectedAuth.user ||
+			providedAuth.pass !== expectedAuth.password
+		) {
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(403);
 		}
@@ -283,4 +319,102 @@ export async function validateWebhookAuthentication(
 			throw new WebhookAuthorizationError(403, error.message);
 		}
 	}
+}
+
+export async function handleFormData(
+	context: IWebhookFunctions,
+	prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const { data, files } = req.body;
+
+	const returnItem: INodeExecutionData = {
+		json: {
+			headers: req.headers,
+			params: req.params,
+			query: req.query,
+			body: data,
+		},
+	};
+
+	if (files && Object.keys(files).length) {
+		returnItem.binary = {};
+	}
+
+	let count = 0;
+
+	for (const key of Object.keys(files)) {
+		const processFiles: MultiPartFormData.File[] = [];
+		let multiFile = false;
+		if (Array.isArray(files[key])) {
+			processFiles.push.apply(processFiles, files[key]);
+			multiFile = true;
+		} else {
+			processFiles.push(files[key]);
+		}
+
+		let fileCount = 0;
+		for (const file of processFiles) {
+			let binaryPropertyName = key;
+			if (binaryPropertyName.endsWith('[]')) {
+				binaryPropertyName = binaryPropertyName.slice(0, -2);
+			}
+			if (!binaryPropertyName.trim().length) {
+				binaryPropertyName = `data${count}`;
+			} else if (multiFile) {
+				binaryPropertyName += fileCount++;
+			}
+			if (options.binaryPropertyName) {
+				binaryPropertyName = `${options.binaryPropertyName}${count}`;
+			}
+
+			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+				file.filepath,
+				file.originalFilename ?? file.newFilename,
+				file.mimetype,
+			);
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
+
+			count += 1;
+		}
+	}
+
+	return { workflowData: prepareOutput(returnItem) };
+}
+
+export async function generateFormPostBasicAuthToken(
+	context: IWebhookFunctions,
+	authPropertyName: string,
+) {
+	const node = context.getNode();
+
+	const authentication = context.getNodeParameter(authPropertyName);
+	if (authentication === 'none') return;
+
+	let credentials: ICredentialDataDecryptedObject | undefined;
+
+	try {
+		credentials = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
+	} catch {}
+
+	return generateBasicAuthToken(node, credentials);
+}
+
+export function generateBasicAuthToken(
+	node: INode,
+	credentials: ICredentialDataDecryptedObject | undefined,
+) {
+	if (!credentials || !credentials.user || !credentials.password) {
+		return;
+	}
+
+	const token = createHmac('sha256', `${credentials.user}:${credentials.password}`)
+		.update(`${node.id}-${node.webhookId}`)
+		.digest('hex');
+
+	return token;
 }

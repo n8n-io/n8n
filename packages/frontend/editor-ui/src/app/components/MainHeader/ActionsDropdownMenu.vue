@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
@@ -12,9 +12,9 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	IS_DRAFT_PUBLISH_ENABLED,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	WORKFLOW_DESCRIPTION_MODAL_KEY,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -53,10 +53,6 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 }>();
 
-const emit = defineEmits<{
-	'workflow:saved': [];
-}>();
-
 const importFileRef = ref<HTMLInputElement | undefined>();
 const toast = useToast();
 const locale = useI18n();
@@ -88,8 +84,6 @@ const onExecutionsTab = computed(() => {
 });
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
-
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -130,7 +124,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (isDraftPublishEnabled && isSharingEnabled.value) {
+	if (isSharingEnabled.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
@@ -161,6 +155,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
+			disabled: !onWorkflowPage.value || !props.id,
+		});
+		actions.unshift({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescription'),
 			disabled: !onWorkflowPage.value || !props.id,
 		});
 
@@ -196,12 +195,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (
-		isDraftPublishEnabled &&
-		activeVersion.value &&
-		props.workflowPermissions.update &&
-		!props.readOnly
-	) {
+	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
 			label: locale.baseText('menuActions.unpublish'),
@@ -237,8 +231,54 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	return actions;
 });
 
+function onUnpublishWorkflow() {
+	const workflowId = getWorkflowId(props.id, route.params.name);
+
+	if (!workflowId || !activeVersion.value) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: activeVersion.value.name,
+			eventBus: unpublishEventBus,
+		},
+	});
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
+		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
+			const workflowId = getWorkflowId(props.id, route.params.name);
+			if (!workflowId) return;
+
+			const workflowDescription = workflowsStore.getWorkflowById(workflowId).description;
+			uiStore.openModalWithData({
+				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+				data: {
+					workflowId,
+					workflowDescription,
+				},
+			});
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
 				name: DUPLICATE_MODAL_KEY,
@@ -292,8 +332,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
-				emit('workflow:saved');
-
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
 				void router.push({
 					query: {
@@ -369,36 +407,21 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
-			if (!workflowId || !activeVersion.value) {
-				return;
-			}
-
-			const unpublishEventBus = createEventBus();
-			unpublishEventBus.once('unpublish', async () => {
-				const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
-				uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
-				if (success) {
-					toast.showMessage({
-						title: locale.baseText('workflowHistory.action.unpublish.success.title'),
-						type: 'success',
-					});
-				}
-			});
-
-			uiStore.openModalWithData({
-				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-				data: {
-					versionName: activeVersion.value.name,
-					eventBus: unpublishEventBus,
-				},
-			});
+			onUnpublishWorkflow();
 			break;
 		}
 		default:
 			break;
 	}
 }
+
+onMounted(() => {
+	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
+});
 
 defineExpose({
 	importFileRef,

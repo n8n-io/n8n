@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
+import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import type MarkdownIt from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -19,38 +16,61 @@ import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
-const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
-	defineProps<{
-		message: ChatMessage;
-		compact: boolean;
-		isEditing: boolean;
-		isStreaming: boolean;
-		cachedAgentDisplayName: string | null;
-		/**
-		 * minHeight allows scrolling agent's response to the top while it is being generated
-		 */
-		minHeight?: number;
-	}>();
+interface MergedAttachment {
+	isNew: boolean;
+	file: File;
+	downloadUrl?: string;
+	index: number;
+}
+
+const {
+	message,
+	compact,
+	isEditing,
+	isEditSubmitting,
+	hasSessionStreaming,
+	minHeight,
+	cachedAgentDisplayName,
+	cachedAgentIcon,
+	containerWidth,
+} = defineProps<{
+	message: ChatMessage;
+	compact: boolean;
+	isEditing: boolean;
+	isEditSubmitting: boolean;
+	hasSessionStreaming: boolean;
+	cachedAgentDisplayName: string | null;
+	cachedAgentIcon: AgentIconOrEmoji | null;
+	/**
+	 * minHeight allows scrolling agent's response to the top while it is being generated
+	 */
+	minHeight?: number;
+	containerWidth: number;
+}>();
 
 const emit = defineEmits<{
 	startEdit: [];
 	cancelEdit: [];
-	update: [message: ChatMessage];
+	update: [content: string, keptAttachmentIndices: number[], newFiles: File[]];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
 }>();
 
-const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const i18n = useI18n();
+const styles = useCssModule();
 
 const editedText = ref('');
+const newFiles = ref<File[]>([]);
+const removedExistingIndices = ref<Set<number>>(new Set());
+const fileInputRef = useTemplateRef('fileInputRef');
+const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
-const justCopied = ref(false);
-const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
+const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const messageContent = computed(() => message.content);
 
 const speech = useSpeechSynthesis(messageContent, {
@@ -66,7 +86,7 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
+	return chatStore.getAgent(model, { name: cachedAgentDisplayName, icon: cachedAgentIcon });
 });
 
 const attachments = computed(() =>
@@ -81,14 +101,22 @@ const attachments = computed(() =>
 	})),
 );
 
-async function handleCopy() {
-	const text = message.content;
-	await clipboard.copy(text);
-	justCopied.value = true;
-	setTimeout(() => {
-		justCopied.value = false;
-	}, 1000);
-}
+const mergedAttachments = computed(() => [
+	...attachments.value.flatMap<MergedAttachment>(({ downloadUrl, file }, idx) =>
+		removedExistingIndices.value.has(idx) ? [] : [{ isNew: false, file, index: idx, downloadUrl }],
+	),
+	...newFiles.value.map<MergedAttachment>((file, index) => ({ isNew: true, file, index })),
+]);
+
+const hideMessage = computed(() => {
+	return message.status === 'success' && message.content === '';
+});
+
+const hoveredCodeBlockContent = computed(() => {
+	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
+
+	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
+});
 
 function handleEdit() {
 	emit('startEdit');
@@ -103,10 +131,61 @@ function handleConfirmEdit() {
 		return;
 	}
 
-	emit('update', { ...message, content: editedText.value });
+	// Calculate which original indices to keep (not removed)
+	const keptAttachmentIndices = message.attachments
+		.map((_, idx) => idx)
+		.filter((idx) => !removedExistingIndices.value.has(idx));
+
+	emit('update', editedText.value, keptAttachmentIndices, newFiles.value);
 }
 
+function handleAttachClick() {
+	fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+
+	if (!files || files.length === 0) {
+		return;
+	}
+
+	for (const file of Array.from(files)) {
+		newFiles.value.push(file);
+	}
+
+	if (target) {
+		target.value = '';
+	}
+}
+
+function handleRemoveFile(file: MergedAttachment) {
+	if (file.isNew) {
+		newFiles.value = newFiles.value.filter((_, idx) => idx !== file.index);
+		return;
+	}
+
+	removedExistingIndices.value.add(file.index);
+}
+
+function addFiles(files: File[]) {
+	for (const file of files) {
+		newFiles.value.push(file);
+	}
+}
+
+// Expose method for parent component to add files via template ref
+defineExpose({
+	addFiles,
+});
+
 function handleKeydownTextarea(e: KeyboardEvent) {
+	if (e.key === 'Escape') {
+		emit('cancelEdit');
+		return;
+	}
+
 	const trimmed = editedText.value.trim();
 
 	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
@@ -133,20 +212,26 @@ function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
 }
 
-const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-	vueMarkdownItInstance.use(markdownLink, {
-		attrs: {
-			target: '_blank',
-			rel: 'noopener',
-		},
-	});
-};
+function handleMouseMove(e: MouseEvent | FocusEvent) {
+	const container =
+		e.target instanceof HTMLElement || e.target instanceof SVGElement
+			? e.target.closest('pre')?.querySelector(`.${styles.codeBlockActions}`)
+			: null;
+
+	hoveredCodeBlockActions.value = container instanceof HTMLElement ? container : null;
+}
+
+function handleMouseLeave() {
+	hoveredCodeBlockActions.value = null;
+}
 
 // Watch for isEditing prop changes to initialize edit mode
 watch(
 	() => isEditing,
 	(editing) => {
 		editedText.value = editing ? message.content : '';
+		newFiles.value = [];
+		removedExistingIndices.value = new Set();
 	},
 	{ immediate: true },
 );
@@ -170,6 +255,7 @@ onBeforeMount(() => {
 
 <template>
 	<div
+		v-if="!hideMessage"
 		:class="[
 			$style.message,
 			message.type === 'human' ? $style.user : $style.assistant,
@@ -177,49 +263,80 @@ onBeforeMount(() => {
 				[$style.compact]: compact,
 			},
 		]"
-		:style="minHeight ? { minHeight: `${minHeight}px` } : undefined"
+		:style="{
+			minHeight: minHeight ? `${minHeight}px` : undefined,
+			'--container--width': `${containerWidth}px`,
+		}"
 		:data-message-id="message.id"
+		:data-test-id="`chat-message-${message.id}`"
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
-			<N8nIcon v-else icon="sparkles" width="20" height="20" />
+			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
 		<div :class="$style.content">
+			<input
+				v-if="message.type === 'human'"
+				ref="fileInputRef"
+				type="file"
+				data-test-id="message-edit-file-input"
+				:class="$style.fileInput"
+				multiple
+				@change="handleFileSelect"
+			/>
 			<div v-if="isEditing" :class="$style.editContainer">
-				<div v-if="attachments.length > 0" :class="$style.attachments">
+				<div
+					v-if="message.type === 'human' && mergedAttachments.length > 0"
+					:class="$style.attachments"
+				>
 					<ChatFile
-						v-for="(attachment, index) in attachments"
+						v-for="(attachment, index) in mergedAttachments"
 						:key="index"
 						:file="attachment.file"
-						:is-removable="false"
-						:href="attachment.downloadUrl"
+						is-removable
+						:href="attachment.isNew ? undefined : attachment.downloadUrl"
+						@remove="handleRemoveFile(attachment)"
 					/>
 				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
 					type="textarea"
-					:autosize="{ minRows: 3, maxRows: 20 }"
+					:autosize="{ minRows: 1, maxRows: 20 }"
 					:class="$style.textarea"
 					@keydown="handleKeydownTextarea"
 				/>
-				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
-						{{ i18n.baseText('chatHub.message.edit.cancel') }}
-					</N8nButton>
-					<N8nButton
-						type="primary"
-						size="small"
-						:disabled="!editedText.trim()"
-						@click="handleConfirmEdit"
-					>
-						{{ i18n.baseText('chatHub.message.edit.send') }}
-					</N8nButton>
+				<div :class="$style.editFooter">
+					<N8nIconButton
+						v-if="message.type === 'human'"
+						native-type="button"
+						type="secondary"
+						icon="paperclip"
+						text
+						@click.stop="handleAttachClick"
+					/>
+					<div :class="$style.editActions">
+						<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+							{{ i18n.baseText('chatHub.message.edit.cancel') }}
+						</N8nButton>
+						<N8nButton
+							type="primary"
+							size="small"
+							:disabled="!editedText.trim() || isEditSubmitting"
+							:loading="isEditSubmitting"
+							@click="handleConfirmEdit"
+						>
+							{{ i18n.baseText('chatHub.message.edit.send') }}
+						</N8nButton>
+					</div>
 				</div>
 			</div>
 			<div v-else>
-				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+				<div
+					:class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]"
+					@mousemove="handleMouseMove"
+					@mouseleave="handleMouseLeave"
+				>
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
 							v-for="(attachment, index) in attachments"
@@ -232,27 +349,25 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
 						v-else
-						:key="forceReRenderKey"
+						:key="markdown.forceReRenderKey.value"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
 								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
-						:options="markdownOptions"
-						:plugins="[linksNewTabPlugin]"
+						:options="markdown.options"
+						:plugins="markdown.plugins.value"
 					/>
 				</div>
-				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
+				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					:message="message"
-					:alternatives="message.alternatives"
-					@copy="handleCopy"
+					:has-session-streaming="hasSessionStreaming"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
@@ -260,6 +375,12 @@ onBeforeMount(() => {
 				/>
 			</div>
 		</div>
+		<Teleport
+			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
+			:to="hoveredCodeBlockActions"
+		>
+			<CopyButton :content="hoveredCodeBlockContent" />
+		</Teleport>
 	</div>
 </template>
 
@@ -392,6 +513,7 @@ onBeforeMount(() => {
 	}
 
 	pre {
+		width: 100%;
 		font-family: inherit;
 		font-size: inherit;
 		margin: 0;
@@ -400,20 +522,55 @@ onBeforeMount(() => {
 		padding: var(--chat--spacing);
 		background: var(--chat--message--pre--background);
 		border-radius: var(--chat--border-radius);
+		position: relative;
+
+		code:last-of-type {
+			padding-bottom: 0;
+		}
+
+		& .codeBlockActions {
+			position: sticky;
+			top: var(--spacing--sm);
+			display: flex;
+			justify-content: flex-end;
+			height: 32px;
+			pointer-events: none;
+
+			& > * {
+				pointer-events: auto;
+			}
+		}
+
+		& .codeBlockActions ~ code {
+			margin-top: -32px;
+		}
+
+		& ~ pre {
+			margin-bottom: 1em;
+		}
+	}
+
+	.tableContainer {
+		width: var(--container--width);
+		padding-bottom: 1em;
+		padding-left: calc((var(--container--width) - 100%) / 2);
+		padding-right: var(--spacing--lg);
+		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
+		overflow-x: auto;
 	}
 
 	table {
-		width: 100%;
+		width: fit-content;
 		border-bottom: var(--border);
 		border-top: var(--border);
 		border-width: 2px;
-		margin-bottom: 1em;
 		border-color: var(--color--text--shade-1);
 	}
 
 	th,
 	td {
 		padding: 0.25em 1em 0.25em 0;
+		min-width: 12em;
 	}
 
 	th {
@@ -463,10 +620,20 @@ onBeforeMount(() => {
 	padding: 0 !important;
 }
 
+.fileInput {
+	display: none;
+}
+
+.editFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
 .editActions {
 	display: flex;
-	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .typingIndicator {

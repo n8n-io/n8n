@@ -13,8 +13,8 @@ const timings = [];
 const images = Object.values(TEST_CONTAINER_IMAGES);
 
 for (const image of images) {
-	// Skip local builds that won't exist in registry
-	if (image.includes(':local') && !process.env.N8N_DOCKER_IMAGE) {
+	// Skip :local tagged images - these are locally built and won't exist in any registry
+	if (image.endsWith(':local')) {
 		console.log(`\n⏭️  Skipping ${image} (local build)`);
 		continue;
 	}

@@ -8,7 +8,7 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { sanitizeCustomCss, sanitizeHtml } from './utils';
+import { sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
 
 const SANDBOX_CSP =
 	'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
@@ -83,7 +83,7 @@ export const renderFormCompletion = async (
 		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
-		redirectUrl,
+		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
 	});
 
 	return { noWebhookResponse: true };

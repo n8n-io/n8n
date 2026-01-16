@@ -2,6 +2,7 @@ import * as NodeExecuteFunctions from './node-execute-functions';
 
 export * from './binary-data';
 export * from './constants';
+export { StorageConfig } from './storage.config';
 export * from './credentials';
 export * from './data-deduplication-service';
 export * from './encryption';
@@ -17,3 +18,5 @@ export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
 export type * from './interfaces';
 export * from './node-execute-functions';
 export { NodeExecuteFunctions };
+
+export { CUSTOM_NODES_PACKAGE_NAME } from './nodes-loader/constants';

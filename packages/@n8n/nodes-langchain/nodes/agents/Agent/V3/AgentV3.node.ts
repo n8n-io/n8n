@@ -11,6 +11,7 @@ import type {
 
 import {
 	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -27,7 +28,7 @@ export class AgentV3 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [3],
+			version: [3, 3.1],
 			defaults: {
 				name: 'AI Agent',
 				color: '#404040',
@@ -47,7 +48,14 @@ export class AgentV3 implements INodeType {
 					type: 'callout',
 					default: '',
 				},
-				promptTypeOptions,
+				{
+					...promptTypeOptionsDeprecated,
+					displayOptions: { show: { '@version': [{ _cnd: { lt: 3.1 } }] } },
+				},
+				{
+					...promptTypeOptions,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 3.1 } }] } },
+				},
 				{
 					...textFromGuardrailsNode,
 					displayOptions: {

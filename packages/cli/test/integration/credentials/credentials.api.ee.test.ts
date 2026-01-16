@@ -109,6 +109,23 @@ describe('POST /credentials', () => {
 			"You don't have the permissions to save the credential in this project.",
 		);
 	});
+
+	test('chat users cannot create credentials', async () => {
+		const chatUser = await createUser({ role: { slug: 'global:chatUser' } });
+		const chatUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			chatUser.id,
+		);
+
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: chatUserPersonalProject.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
 });
 
 // ----------------------------------------

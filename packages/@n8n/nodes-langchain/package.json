@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.122.0",
+  "version": "2.4.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -178,7 +178,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
-    "@azure/identity": "4.3.0",
+    "@azure/identity": "catalog:",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",
@@ -203,7 +203,7 @@
     "@langchain/redis": "1.0.1",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/weaviate": "1.0.1",
-    "@modelcontextprotocol/sdk": "1.20.0",
+    "@modelcontextprotocol/sdk": "1.25.2",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
@@ -214,7 +214,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "^5.0.2",
-    "@qdrant/js-client-rest": "^1.15.0",
+    "@qdrant/js-client-rest": "^1.16.2",
     "@supabase/supabase-js": "2.49.9",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
@@ -230,7 +230,7 @@
     "ignore": "^5.2.0",
     "js-tiktoken": "^1.0.12",
     "jsdom": "23.0.1",
-    "langchain": "1.1.1",
+    "langchain": "1.2.3",
     "@langchain/classic": "1.0.5",
     "lodash": "catalog:",
     "mammoth": "1.11.0",
@@ -248,7 +248,7 @@
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
     "undici": "^6.21.0",
-    "weaviate-client": "3.6.2",
+    "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }

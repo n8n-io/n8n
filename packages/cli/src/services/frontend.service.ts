@@ -10,8 +10,6 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
-import { UrlService } from './url.service';
-
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -24,13 +22,15 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+
+import { UrlService } from './url.service';
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
@@ -38,6 +38,9 @@ import {
 export type PublicFrontendSettings = {
 	/** Controls initialization flow in settings store */
 	settingsMode: FrontendSettings['settingsMode'];
+
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
@@ -89,11 +92,16 @@ export type PublicFrontendSettings = {
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
 		};
 	};
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
 };
 
 @Service()
 export class FrontendService {
-	settings: FrontendSettings;
+	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -113,12 +121,10 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
-
-		this.initSettings();
-
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
@@ -141,7 +147,7 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
-	private initSettings() {
+	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -192,9 +198,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -230,7 +233,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -374,10 +377,12 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): FrontendSettings {
+	async getSettings(): Promise<FrontendSettings> {
+		if (!this.settings) {
+			await this.initSettings();
+		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
@@ -390,7 +395,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -517,18 +522,21 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	getPublicSettings(): PublicFrontendSettings {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
+			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
-		} = this.getSettings();
+			mfa,
+		} = await this.getSettings();
 
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
+			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: {
 				saml: {
@@ -544,6 +552,9 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
 		return publicSettings;
 	}
 

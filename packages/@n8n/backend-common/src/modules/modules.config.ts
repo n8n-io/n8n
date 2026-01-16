@@ -8,10 +8,14 @@ export const MODULE_NAMES = [
 	'community-packages',
 	'data-table',
 	'mcp',
-	'chat-hub',
 	'provisioning',
 	'breaking-changes',
+	'source-control',
 	'dynamic-credentials',
+	'chat-hub',
+	'sso-oidc',
+	'sso-saml',
+	'log-streaming',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

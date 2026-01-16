@@ -12,6 +12,8 @@ import {
 	snapPositionToGrid,
 	calculateNodeSize,
 	GRID_SIZE,
+	doRectsOverlap,
+	canUsePosition,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -575,3 +577,61 @@ function createTestGraphNode(data: Partial<GraphNode> = {}): GraphNode {
 		...data,
 	};
 }
+
+describe('doRectsOverlap', () => {
+	it('should return true when rectangles overlap', () => {
+		const rect1 = { x: 0, y: 0, width: 100, height: 100 };
+		const rect2 = { x: 50, y: 50, width: 100, height: 100 };
+		expect(doRectsOverlap(rect1, rect2)).toBe(true);
+	});
+
+	it('should return false when rectangles do not overlap horizontally', () => {
+		const rect1 = { x: 0, y: 0, width: 100, height: 100 };
+		const rect2 = { x: 150, y: 0, width: 100, height: 100 };
+		expect(doRectsOverlap(rect1, rect2)).toBe(false);
+	});
+
+	it('should return false when rectangles do not overlap vertically', () => {
+		const rect1 = { x: 0, y: 0, width: 100, height: 100 };
+		const rect2 = { x: 0, y: 150, width: 100, height: 100 };
+		expect(doRectsOverlap(rect1, rect2)).toBe(false);
+	});
+
+	it('should return false when rectangles touch but do not overlap', () => {
+		const rect1 = { x: 0, y: 0, width: 100, height: 100 };
+		const rect2 = { x: 100, y: 0, width: 100, height: 100 };
+		expect(doRectsOverlap(rect1, rect2)).toBe(false);
+	});
+
+	it('should return true when one rectangle contains another', () => {
+		const rect1 = { x: 0, y: 0, width: 200, height: 200 };
+		const rect2 = { x: 50, y: 50, width: 50, height: 50 };
+		expect(doRectsOverlap(rect1, rect2)).toBe(true);
+	});
+});
+
+describe('canUsePosition', () => {
+	it('should return true when positions are far apart', () => {
+		const pos1: XYPosition = [0, 0];
+		const pos2: XYPosition = [200, 200];
+		expect(canUsePosition(pos1, pos2)).toBe(true);
+	});
+
+	it('should return false when positions overlap', () => {
+		const pos1: XYPosition = [0, 0];
+		const pos2: XYPosition = [50, 50];
+		expect(canUsePosition(pos1, pos2)).toBe(false);
+	});
+
+	it('should return true when positions are separated horizontally', () => {
+		const pos1: XYPosition = [0, 0];
+		const pos2: XYPosition = [DEFAULT_NODE_SIZE[0] + 1, 0];
+		expect(canUsePosition(pos1, pos2)).toBe(true);
+	});
+
+	it('should return true when positions are separated vertically', () => {
+		const pos1: XYPosition = [0, 0];
+		const pos2: XYPosition = [0, DEFAULT_NODE_SIZE[1] + 1];
+		expect(canUsePosition(pos1, pos2)).toBe(true);
+	});
+});

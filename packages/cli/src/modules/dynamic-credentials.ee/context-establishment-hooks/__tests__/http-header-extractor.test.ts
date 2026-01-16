@@ -1,27 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import type { INodeExecutionData } from 'n8n-workflow';
 
 import { HttpHeaderExtractor } from '../http-header-extractor';
+import { createOptions, createTriggerItem } from './utils';
 
 describe('HttpHeaderExtractor', () => {
 	let extractor: HttpHeaderExtractor;
 	let mockLogger: jest.Mocked<Logger>;
-
-	// Factory functions for test data
-	const createTriggerItem = (headers?: Record<string, unknown>): INodeExecutionData => ({
-		json: { headers },
-		pairedItem: { item: 0 },
-	});
-
-	const createOptions = (
-		overrides?: Partial<ContextEstablishmentOptions>,
-	): ContextEstablishmentOptions =>
-		({
-			triggerItems: [createTriggerItem({ authorization: 'Bearer test-token-123' })],
-			options: {},
-			...overrides,
-		}) as ContextEstablishmentOptions;
 
 	beforeAll(() => {
 		mockLogger = {

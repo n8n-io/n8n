@@ -83,11 +83,14 @@ type EntityName =
 	| 'DataTableColumn'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
+	| 'ChatHubAgent'
 	| 'OAuthClient'
 	| 'AuthorizationCode'
 	| 'AccessToken'
 	| 'RefreshToken'
-	| 'UserConsent';
+	| 'UserConsent'
+	| 'DynamicCredentialEntry'
+	| 'DynamicCredentialResolver';
 
 /**
  * Truncate specific DB tables in a test DB.

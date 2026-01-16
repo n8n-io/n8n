@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag } from '@n8n/design-system';
+import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -26,6 +26,7 @@ import type {
 	FeatureFlags,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
@@ -262,6 +263,7 @@ export interface IWorkflowDb {
 		updatedAt?: string;
 	};
 	activeVersion?: WorkflowHistory | null;
+	checksum?: string;
 }
 
 // For workflow list we don't need the full workflow data
@@ -420,6 +422,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	binaryMode?: WorkflowSettingsBinaryMode;
 	availableInMCP?: boolean;
 }
 
@@ -429,7 +432,13 @@ export interface ITimeoutHMS {
 	seconds: number;
 }
 
-export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR' | 'DEBUG';
+export type WorkflowTitleStatus =
+	| 'EXECUTING'
+	| 'IDLE'
+	| 'ERROR'
+	| 'DEBUG'
+	| 'AI_BUILDING'
+	| 'AI_DONE';
 
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
@@ -768,6 +777,7 @@ export interface ITabBarItem {
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 	isArchived?: boolean;
+	active?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -802,9 +812,16 @@ export type SchemaType =
 	| 'object'
 	| 'function'
 	| 'null'
-	| 'undefined';
+	| 'undefined'
+	| 'binary';
 
-export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+export type Schema = {
+	type: SchemaType;
+	key?: string;
+	value: string | Schema[];
+	path: string;
+	binaryData?: BinaryMetadata;
+};
 
 export type NodeAuthenticationOption = {
 	name: string;
@@ -847,11 +864,11 @@ export type CloudUpdateLinkSourceType =
 	| 'evaluations'
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
-	| 'custom-roles';
+	| 'custom-roles'
+	| 'main-sidebar';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
@@ -874,7 +891,9 @@ export type UTMCampaign =
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
 	| 'upgrade-builder'
-	| 'upgrade-custom-roles';
+	| 'upgrade-custom-roles'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-main-sidebar';
 
 export type AddedNode = {
 	type: string;

@@ -331,26 +331,128 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('variable events', () => {
-		it('should track on `variable-created` event', () => {
-			eventService.emit('variable-created', {});
+		it('should track on `variable-created` event without projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {});
-
-			eventService.emit('variable-created', { projectId: 'projectId' });
+			eventService.emit('variable-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-created` event with projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
 
-		it('should track on `variable-updated` event', () => {
-			eventService.emit('variable-updated', {});
+		it('should track on `variable-updated` event without projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {});
-
-			eventService.emit('variable-updated', { projectId: 'projectId' });
+			eventService.emit('variable-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-updated` event with projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+				project_id: 'projectId',
+			});
+		});
+
+		it('should track on `variable-deleted` event without projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-deleted` event with projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
@@ -373,6 +475,18 @@ describe('TelemetryEventRelay', () => {
 				is_valid: true,
 				is_new: false,
 				error_message: undefined,
+			});
+		});
+
+		it('should track on `external-secrets-provider-reloaded` event', () => {
+			const event: RelayEventMap['external-secrets-provider-reloaded'] = {
+				vaultType: 'aws',
+			};
+
+			eventService.emit('external-secrets-provider-reloaded', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User reloaded external secrets', {
+				vault_type: 'aws',
 			});
 		});
 	});
@@ -765,6 +879,63 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should truncate node_graph_string when it exceeds size limit', async () => {
+			const largeNodeGraph: INodesGraphResult = {
+				nodeGraph: {
+					node_types: Array.from({ length: 1000 }, (_, i) => `n8n-nodes-base.node${i}`),
+					node_connections: Array.from({ length: 1000 }, (_, i) => ({
+						start: `${i}`,
+						end: `${i + 1}`,
+					})),
+					nodes: Object.fromEntries(
+						Array.from({ length: 500 }, (_, i) => [
+							`${i}`,
+							{
+								id: `node-${i}`,
+								type: `n8n-nodes-base.veryLongNodeTypeName${i}`,
+								version: 1,
+								position: [i * 100, i * 100],
+							},
+						]),
+					),
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: {},
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			};
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
+
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: '{}',
+				public_api: false,
+				project_id: 'project123',
+				project_type: 'personal',
+			});
+		});
+
 		it('should track on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {
@@ -882,6 +1053,10 @@ describe('TelemetryEventRelay', () => {
 				num_tags: 0,
 				public_api: false,
 				sharing_role: undefined,
+				meta: undefined, // workflow.meta is undefined in mock
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
 			});
 		});
 
@@ -1269,7 +1444,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					id: 'node1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					parameters: {},
 					typeVersion: 1,
 					position: [100, 200],

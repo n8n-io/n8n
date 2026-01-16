@@ -47,12 +47,8 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'remove_node',
 ];
 
-/**
- * Parent graph nodes that should emit user-facing messages
- * - agent: V1 single agent (backward compatibility)
- * - responder: The ONLY node that should emit in multi-agent mode
- */
-const EMITTING_NODES = ['agent', 'responder'];
+/** Parent graph node that emits user-facing messages */
+const EMITTING_NODES = ['responder'];
 
 /** Parent graph nodes to skip entirely (internal coordination) */
 const SKIPPED_NODES = [
@@ -159,35 +155,6 @@ export function cleanContextTags(text: string): string {
 // CHUNK PROCESSORS
 // ============================================================================
 
-/** Handle delete_messages node update */
-function processDeleteMessages(update: unknown): StreamOutput | null {
-	const typed = update as { messages?: MessageContent[] } | undefined;
-	if (!typed?.messages?.length) return null;
-
-	const messageChunk: AgentMessageChunk = {
-		role: 'assistant',
-		type: 'message',
-		text: 'Deleted, refresh?',
-	};
-	return { messages: [messageChunk] };
-}
-
-/** Handle compact_messages node update */
-function processCompactMessages(update: unknown): StreamOutput | null {
-	const typed = update as { messages?: MessageContent[] } | undefined;
-	if (!typed?.messages?.length) return null;
-
-	const content = extractMessageContent(typed.messages);
-	if (!content) return null;
-
-	const messageChunk: AgentMessageChunk = {
-		role: 'assistant',
-		type: 'message',
-		text: content,
-	};
-	return { messages: [messageChunk] };
-}
-
 /** Handle process_operations node update */
 function processOperationsUpdate(update: unknown): StreamOutput | null {
 	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown } | undefined;
@@ -234,16 +201,13 @@ function processToolChunk(chunk: unknown): StreamOutput | null {
 
 /** Process a single chunk from updates stream mode */
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
-	// Guard against null/undefined chunks
 	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
 
-	// Special nodes first (backward compatibility)
-	if (nodeUpdate.delete_messages) {
-		return processDeleteMessages(nodeUpdate.delete_messages);
+	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
+		return null;
 	}
-	if (nodeUpdate.compact_messages) {
-		return processCompactMessages(nodeUpdate.compact_messages);
-	}
+
+	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
 	}
@@ -354,11 +318,25 @@ function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	const rawText = extractHumanMessageText(msg.content);
 	const cleanedText = cleanContextTags(rawText);
 
-	return {
+	const result: Record<string, unknown> = {
 		role: 'user',
 		type: 'message',
 		text: cleanedText,
 	};
+
+	// Extract versionId from additional_kwargs and expose as revertVersionId
+	const versionId = msg.additional_kwargs?.versionId;
+	if (typeof versionId === 'string') {
+		result.revertVersionId = versionId;
+	}
+
+	// Extract messageId from additional_kwargs
+	const messageId = msg.additional_kwargs?.messageId;
+	if (typeof messageId === 'string') {
+		result.id = messageId;
+	}
+
+	return result;
 }
 
 /** Process array content from AIMessage and return formatted text messages */
