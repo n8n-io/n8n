@@ -13,7 +13,10 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { WorkflowsController } from '../workflows.controller';
+import type { WorkflowRequest } from '../workflow.request';
+import type { WorkflowService } from '../workflow.service';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -320,6 +323,181 @@ describe('WorkflowsController', () => {
 					includeGlobal: true,
 				});
 			});
+		});
+	});
+
+	describe('saveVersion', () => {
+		it('should call workflowService.saveNamedVersion with correct parameters', async () => {
+			// Arrange
+			const mockUser = mock<User>({ id: 'user-123' });
+			const workflowId = 'workflow-456';
+			const mockRequest = mock<WorkflowRequest.SaveVersion>({
+				user: mockUser,
+				params: { workflowId },
+			});
+			const body = {
+				name: 'My Named Version',
+				description: 'A test description',
+				versionId: 'version-789',
+			};
+
+			const mockWorkflow = mock<WorkflowEntity>({
+				id: workflowId,
+				versionId: 'version-789',
+				nodes: [],
+				connections: {},
+			});
+
+			const collaborationService = mock<CollaborationService>();
+			const workflowService = mock<WorkflowService>();
+
+			collaborationService.validateWriteLock.mockResolvedValue(undefined);
+			workflowService.saveNamedVersion.mockResolvedValue(mockWorkflow);
+			workflowService.getWorkflowScopes.mockResolvedValue(['workflow:read', 'workflow:update']);
+
+			controller.collaborationService = collaborationService;
+			controller.workflowService = workflowService;
+
+			// Act
+			const result = await controller.saveVersion(mockRequest, res, workflowId, body as any);
+
+			// Assert
+			expect(collaborationService.validateWriteLock).toHaveBeenCalledWith(
+				mockUser.id,
+				workflowId,
+				'update',
+			);
+			expect(workflowService.saveNamedVersion).toHaveBeenCalledWith(mockUser, workflowId, {
+				name: 'My Named Version',
+				description: 'A test description',
+				versionId: 'version-789',
+			});
+			expect(workflowService.getWorkflowScopes).toHaveBeenCalledWith(mockUser, workflowId);
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				workflowId,
+				mockUser.id,
+			);
+			expect(result).toMatchObject({
+				id: workflowId,
+				scopes: ['workflow:read', 'workflow:update'],
+			});
+		});
+
+		it('should call workflowService.saveNamedVersion with only name when no description or versionId provided', async () => {
+			// Arrange
+			const mockUser = mock<User>({ id: 'user-123' });
+			const workflowId = 'workflow-456';
+			const mockRequest = mock<WorkflowRequest.SaveVersion>({
+				user: mockUser,
+				params: { workflowId },
+			});
+			const body = {
+				name: 'My Named Version',
+			};
+
+			const mockWorkflow = mock<WorkflowEntity>({
+				id: workflowId,
+				nodes: [],
+				connections: {},
+			});
+
+			const collaborationService = mock<CollaborationService>();
+			const workflowService = mock<WorkflowService>();
+
+			collaborationService.validateWriteLock.mockResolvedValue(undefined);
+			workflowService.saveNamedVersion.mockResolvedValue(mockWorkflow);
+			workflowService.getWorkflowScopes.mockResolvedValue(['workflow:read']);
+
+			controller.collaborationService = collaborationService;
+			controller.workflowService = workflowService;
+
+			// Act
+			await controller.saveVersion(mockRequest, res, workflowId, body as any);
+
+			// Assert
+			expect(workflowService.saveNamedVersion).toHaveBeenCalledWith(mockUser, workflowId, {
+				name: 'My Named Version',
+				description: undefined,
+				versionId: undefined,
+			});
+		});
+
+		it('should validate write lock before saving', async () => {
+			// Arrange
+			const mockUser = mock<User>({ id: 'user-123' });
+			const workflowId = 'workflow-456';
+			const mockRequest = mock<WorkflowRequest.SaveVersion>({
+				user: mockUser,
+				params: { workflowId },
+			});
+			const body = { name: 'Test Version' };
+
+			const collaborationService = mock<CollaborationService>();
+			const workflowService = mock<WorkflowService>();
+
+			collaborationService.validateWriteLock.mockRejectedValue(
+				new ForbiddenError('User does not have write lock'),
+			);
+
+			controller.collaborationService = collaborationService;
+			controller.workflowService = workflowService;
+
+			// Act & Assert
+			await expect(
+				controller.saveVersion(mockRequest, res, workflowId, body as any),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(collaborationService.validateWriteLock).toHaveBeenCalledWith(
+				mockUser.id,
+				workflowId,
+				'update',
+			);
+			expect(workflowService.saveNamedVersion).not.toHaveBeenCalled();
+		});
+
+		it('should return workflow with scopes and checksum', async () => {
+			// Arrange
+			const mockUser = mock<User>({ id: 'user-123' });
+			const workflowId = 'workflow-456';
+			const mockRequest = mock<WorkflowRequest.SaveVersion>({
+				user: mockUser,
+				params: { workflowId },
+			});
+			const body = { name: 'Test Version' };
+
+			const mockWorkflow = Object.assign(new WorkflowEntity(), {
+				id: workflowId,
+				name: 'Test Workflow',
+				versionId: 'version-123',
+				nodes: [],
+				connections: {},
+			});
+
+			const collaborationService = mock<CollaborationService>();
+			const workflowService = mock<WorkflowService>();
+
+			collaborationService.validateWriteLock.mockResolvedValue(undefined);
+			workflowService.saveNamedVersion.mockResolvedValue(mockWorkflow);
+			workflowService.getWorkflowScopes.mockResolvedValue([
+				'workflow:read',
+				'workflow:update',
+				'workflow:publish',
+			]);
+
+			controller.collaborationService = collaborationService;
+			controller.workflowService = workflowService;
+
+			// Act
+			const result = await controller.saveVersion(mockRequest, res, workflowId, body as any);
+
+			// Assert
+			expect(result).toHaveProperty('scopes', [
+				'workflow:read',
+				'workflow:update',
+				'workflow:publish',
+			]);
+			expect(result).toHaveProperty('checksum');
+			expect(typeof result.checksum).toBe('string');
 		});
 	});
 });
