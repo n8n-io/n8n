@@ -497,7 +497,7 @@ export class SourceControlImportService {
 				relations: ['columns', 'project'],
 			});
 			return dataTables.map((table) => {
-				let ownedBy: StatusResourceOwner | undefined = undefined;
+				let ownedBy: StatusResourceOwner | null = null;
 				if (table.project?.type === 'personal') {
 					const ownerRelation = table.project.projectRelations?.find(
 						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
