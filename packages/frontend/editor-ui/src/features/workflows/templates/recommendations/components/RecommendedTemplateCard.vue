@@ -4,8 +4,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
-import { useUIStore } from '@/app/stores/ui.store';
-import { FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
@@ -25,7 +23,6 @@ const nodeTypesStore = useNodeTypesStore();
 const { getTemplateRoute, trackTemplateTileClick, trackTemplateShown } =
 	useRecommendedTemplatesStore();
 const router = useRouter();
-const uiStore = useUIStore();
 
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
@@ -88,7 +85,6 @@ const trackWhenVisible = () => {
 const handleUseTemplate = async () => {
 	trackTemplateTileClick(props.template.id);
 	await router.push(getTemplateRoute(props.template.id));
-	uiStore.closeModal(FEATURED_TEMPLATES_MODAL_KEY);
 };
 
 onMounted(() => {

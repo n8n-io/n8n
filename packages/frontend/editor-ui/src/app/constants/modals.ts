@@ -35,7 +35,6 @@ export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
 
-export const FEATURED_TEMPLATES_MODAL_KEY = 'featuredTemplates';
 export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';

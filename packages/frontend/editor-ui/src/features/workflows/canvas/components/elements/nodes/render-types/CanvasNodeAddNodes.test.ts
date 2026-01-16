@@ -3,7 +3,7 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { TEMPLATES_URLS, VIEWS, FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
+import { TEMPLATES_URLS, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -138,28 +138,6 @@ describe('CanvasNodeAddNodes', () => {
 			await userEvent.click(link);
 
 			expect(trackTemplatesClick).toHaveBeenCalledWith(TemplateClickSource.emptyWorkflowLink);
-		});
-
-		it('should open modal when recommended templates is enabled', async () => {
-			settingsStore.settings.templates = { enabled: true, host: '' };
-			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => true);
-			uiStore.openModal = vi.fn();
-			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
-				get: vi.fn(() => false),
-			});
-
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
-
-			const link = getByTestId('canvas-template-link');
-			await userEvent.click(link);
-
-			expect(uiStore.openModal).toHaveBeenCalledWith(FEATURED_TEMPLATES_MODAL_KEY);
 		});
 
 		it('should navigate to templates view when custom host is configured', async () => {
