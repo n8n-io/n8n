@@ -122,6 +122,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		const body: IDataObject = {
 			'@odata.type': '#microsoft.graph.fileAttachment',
 			name: fileName,
+			contentType: binaryData.mimeType || 'application/octet-stream',
 			contentBytes: binaryData.data,
 		};
 
