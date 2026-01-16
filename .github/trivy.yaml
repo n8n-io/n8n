@@ -1,0 +1,5 @@
+# Trivy configuration for n8n security scans
+# See: https://trivy.dev/latest/docs/references/configuration/config-file/
+vulnerability:
+  vex:
+    - vex.openvex.json
