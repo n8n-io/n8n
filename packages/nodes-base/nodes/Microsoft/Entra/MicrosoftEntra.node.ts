@@ -37,6 +37,8 @@ export class MicrosoftEntra implements INodeType {
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			baseURL:
+				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0',
 		},
 		properties: [
 			{
