@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -457,12 +457,6 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			if (Container.get(DatabaseConfig).isLegacySqlite) {
-				this.logger.warn(
-					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
-				);
-				return;
-			}
 			const { WorkflowIndexService } = await import(
 				'@/modules/workflow-index/workflow-index.service'
 			);
