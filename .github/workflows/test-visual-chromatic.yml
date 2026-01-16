@@ -50,7 +50,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system --filter=@n8n/storybook
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system
 
       - name: Publish to Chromatic
         uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11

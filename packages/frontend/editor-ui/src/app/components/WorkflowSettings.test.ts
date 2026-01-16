@@ -135,22 +135,92 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
-	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent({ pinia });
+	describe('Error Workflow', () => {
+		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
-		const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			await nextTick();
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
 
-		// first is `- No Workflow -`, second is the workflow returned by
-		// `workflowsStore.fetchAllWorkflows`
-		expect(dropdownItems).toHaveLength(2);
-		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
-		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				query: undefined,
-			}),
-		);
+			// first is `- No Workflow -`, second is the workflow returned by
+			// `workflowsStore.fetchAllWorkflows`
+			expect(dropdownItems).toHaveLength(2);
+			expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
+			expect(searchWorkflowsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					query: undefined,
+				}),
+			);
+		});
+
+		it('should initialize undefined errorWorkflow to DEFAULT', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should send DEFAULT value for errorWorkflow to backend when set to "No Workflow"', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+				errorWorkflow: 'some-workflow-id',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select "No Workflow" (first option)
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should save workflow with errorWorkflow when a specific workflow is selected', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select the test workflow (second option)
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: '1' }),
+				}),
+			);
+		});
 	});
 
 	it('should not remove valid workflow ID characters', async () => {
@@ -240,7 +310,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -262,7 +334,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput as Element);
@@ -287,7 +361,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -310,7 +386,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
