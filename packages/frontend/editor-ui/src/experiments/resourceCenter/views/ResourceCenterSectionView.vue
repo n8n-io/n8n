@@ -176,7 +176,7 @@ onMounted(() => {
 
 .breadcrumbLink {
 	font-family: 'DM Sans', var(--font-family);
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	color: var(--color--primary);
 	cursor: pointer;
 	transition: color 0.2s ease;
@@ -193,8 +193,8 @@ onMounted(() => {
 
 .breadcrumbCurrent {
 	font-family: 'DM Sans', var(--font-family);
-	font-size: var(--font-size--md);
-	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	color: var(--color--text--shade-1);
 	font-weight: 500;
 }
 
@@ -210,7 +210,7 @@ onMounted(() => {
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
 	letter-spacing: -0.01em;
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	margin: 0;
 }
 

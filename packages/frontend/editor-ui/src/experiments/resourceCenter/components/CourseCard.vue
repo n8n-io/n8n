@@ -1,52 +1,44 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import type { YouTubeVideo } from '../data/resourceCenterData';
+import type { Course } from '../data/resourceCenterData';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 
-const props = withDefaults(
-	defineProps<{
-		video: YouTubeVideo;
-		iconType?: 'youtube' | 'lightbulb';
-	}>(),
-	{
-		iconType: 'youtube',
-	},
-);
+const props = defineProps<{
+	course: Course;
+}>();
 
 const i18n = useI18n();
-const { trackVideoClick } = useResourceCenterStore();
+const { trackCourseClick } = useResourceCenterStore();
 
-const openVideo = () => {
-	trackVideoClick(props.video.videoId, props.video.title);
-	window.open(`https://www.youtube.com/watch?v=${props.video.videoId}`, '_blank');
+const openCourse = () => {
+	trackCourseClick(props.course.id, props.course.title);
+	window.open(props.course.url, '_blank');
 };
 </script>
 
 <template>
-	<div :class="$style.card" @click="openVideo">
+	<div :class="$style.card" @click="openCourse">
 		<div :class="$style.thumbnailContainer">
-			<img :src="video.thumbnailUrl" :alt="video.title" :class="$style.thumbnail" loading="lazy" />
-			<div :class="$style.playButton">
-				<div :class="$style.playIcon" />
-			</div>
+			<img
+				:src="course.thumbnailUrl"
+				:alt="course.title"
+				:class="$style.thumbnail"
+				loading="lazy"
+			/>
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.titleRow">
-				<N8nIcon
-					:icon="iconType === 'youtube' ? 'youtube' : 'lightbulb'"
-					:class="$style.icon"
-					size="medium"
-				/>
-				<h3 :class="$style.title">{{ video.title }}</h3>
+				<N8nIcon icon="graduation-cap" :class="$style.icon" size="medium" />
+				<h3 :class="$style.title">{{ course.title }}</h3>
 			</div>
-			<div v-if="video.duration || video.level" :class="$style.meta">
-				<span v-if="video.duration">{{ video.duration }}</span>
-				<span v-if="video.duration && video.level" :class="$style.separator">·</span>
-				<span v-if="video.level">
+			<div :class="$style.meta">
+				<span v-if="course.duration">{{ course.duration }}</span>
+				<span v-if="course.duration && course.lessonCount" :class="$style.separator">·</span>
+				<span v-if="course.lessonCount">
 					{{
-						i18n.baseText('experiments.resourceCenter.video.level', {
-							interpolate: { level: video.level },
+						i18n.baseText('experiments.resourceCenter.course.lessons', {
+							interpolate: { count: course.lessonCount },
 						})
 					}}
 				</span>
@@ -68,15 +60,10 @@ const openVideo = () => {
 			transform: translateY(-2px);
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 		}
-
-		.playButton {
-			transform: translate(-50%, -50%) scale(1.1);
-		}
 	}
 }
 
 .thumbnailContainer {
-	position: relative;
 	width: 100%;
 	height: 170px;
 	overflow: hidden;
@@ -91,31 +78,6 @@ const openVideo = () => {
 	height: 100%;
 	object-fit: cover;
 	transition: transform 0.35s ease;
-}
-
-.playButton {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: 56px;
-	height: 56px;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.9);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.playIcon {
-	width: 0;
-	height: 0;
-	border-style: solid;
-	border-width: 10px 0 10px 18px;
-	border-color: transparent transparent transparent #f00;
-	margin-left: 4px;
 }
 
 .content {

@@ -13,6 +13,10 @@ export interface QuickStartWorkflow {
 	workflow: WorkflowDataCreate;
 	// Node types for card icons - extracted from workflow.nodes
 	nodeTypes: string[];
+	// Workflow preview image URL
+	previewImageUrl?: string;
+	// Number of nodes in workflow
+	nodeCount?: number;
 }
 
 // Using READY_TO_RUN_AI_WORKFLOW as placeholder for all quick start templates

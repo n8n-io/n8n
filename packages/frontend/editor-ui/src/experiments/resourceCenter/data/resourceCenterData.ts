@@ -9,6 +9,7 @@ export interface YouTubeVideo {
 	description: string;
 	thumbnailUrl: string;
 	duration?: string;
+	level?: 'Beginner' | 'Intermediate' | 'Advanced';
 	author?: string;
 }
 
@@ -18,6 +19,8 @@ export interface Course {
 	description: string;
 	url: string;
 	thumbnailUrl: string;
+	duration?: string;
+	lessonCount?: number;
 	type?: string;
 }
 
@@ -54,6 +57,8 @@ export const courses: Course[] = [
 			'Official video course covering workflows, APIs, webhooks, nodes, error handling, and debugging. Perfect starting point.',
 		url: 'https://docs.n8n.io/video-courses/',
 		thumbnailUrl: 'https://img.youtube.com/vi/RpjQTGKm-ok/hq720.jpg',
+		duration: '3 hours',
+		lessonCount: 12,
 		type: 'Video',
 	},
 	{
@@ -63,6 +68,8 @@ export const courses: Course[] = [
 			'Master complex data flows, advanced nodes, sub-workflows, error workflows, and enterprise features.',
 		url: 'https://docs.n8n.io/video-courses/',
 		thumbnailUrl: 'https://img.youtube.com/vi/3w7xIMKLVAg/hq720.jpg',
+		duration: '4 hours',
+		lessonCount: 15,
 		type: 'Video',
 	},
 ];
@@ -76,6 +83,7 @@ export const learningVideos: YouTubeVideo[] = [
 			'Complete 3-hour tutorial covering setup, first automation, lead management, web scraping, and AI agents',
 		thumbnailUrl: 'https://img.youtube.com/vi/JIaxjH2CyFc/hq720.jpg',
 		duration: '3 hours',
+		level: 'Beginner',
 		author: 'Data Science with Harshit',
 	},
 	{
@@ -84,18 +92,24 @@ export const learningVideos: YouTubeVideo[] = [
 		description:
 			'Quick and practical introduction to building your first automation workflow from scratch',
 		thumbnailUrl: 'https://img.youtube.com/vi/lSwMtsm6oDU/hq720.jpg',
+		duration: '45 min',
+		level: 'Beginner',
 	},
 	{
 		videoId: '1MwLNrGxs_o',
 		title: 'Creating Your First Simple Workflow',
 		description: 'Step-by-step tutorial for creating your first n8n workflow using basic nodes',
 		thumbnailUrl: 'https://img.youtube.com/vi/1MwLNrGxs_o/hq720.jpg',
+		duration: '20 min',
+		level: 'Beginner',
 	},
 	{
 		videoId: 'wq7ZM-VNJBU',
 		title: 'Understanding n8n Nodes',
 		description: 'Deep dive into how nodes work and how to use them effectively in your workflows',
 		thumbnailUrl: 'https://img.youtube.com/vi/wq7ZM-VNJBU/hq720.jpg',
+		duration: '30 min',
+		level: 'Intermediate',
 	},
 	{
 		videoId: 'KFKx8BmQBfE',
@@ -103,12 +117,44 @@ export const learningVideos: YouTubeVideo[] = [
 		description:
 			'Master API integrations and HTTP requests to connect any service to your workflows',
 		thumbnailUrl: 'https://img.youtube.com/vi/KFKx8BmQBfE/hq720.jpg',
+		duration: '35 min',
+		level: 'Intermediate',
 	},
 	{
 		videoId: '6fXjBuFmVQw',
 		title: 'Advanced Expression Functions',
 		description: 'Unlock the power of expressions and data transformations for dynamic workflows',
 		thumbnailUrl: 'https://img.youtube.com/vi/6fXjBuFmVQw/hq720.jpg',
+		duration: '25 min',
+		level: 'Advanced',
+	},
+];
+
+// Quick tips - short tutorial videos
+export const quickTips: YouTubeVideo[] = [
+	{
+		videoId: '1MwLNrGxs_o',
+		title: 'Quick Tip: Using the Set Node',
+		description: 'Learn how to transform and manipulate data with the Set node',
+		thumbnailUrl: 'https://img.youtube.com/vi/1MwLNrGxs_o/hq720.jpg',
+		duration: '5 min',
+		level: 'Beginner',
+	},
+	{
+		videoId: 'wq7ZM-VNJBU',
+		title: 'Quick Tip: Error Handling Basics',
+		description: 'Set up basic error handling to make your workflows more robust',
+		thumbnailUrl: 'https://img.youtube.com/vi/wq7ZM-VNJBU/hq720.jpg',
+		duration: '8 min',
+		level: 'Beginner',
+	},
+	{
+		videoId: 'KFKx8BmQBfE',
+		title: 'Quick Tip: Webhook Triggers',
+		description: 'Configure webhook triggers to start workflows from external events',
+		thumbnailUrl: 'https://img.youtube.com/vi/KFKx8BmQBfE/hq720.jpg',
+		duration: '6 min',
+		level: 'Beginner',
 	},
 ];
 

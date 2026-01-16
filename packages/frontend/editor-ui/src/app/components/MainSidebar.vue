@@ -96,7 +96,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
-		icon: 'book-open',
+		icon: 'lightbulb',
 		label: i18n.baseText('experiments.resourceCenter.sidebar'),
 		position: 'bottom',
 		available: isResourceCenterEnabled.value,

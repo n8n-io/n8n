@@ -5,17 +5,17 @@ import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
 		template: ITemplatesWorkflowFull;
-		variant?: 'default' | 'noSetup';
+		noSetup?: boolean;
 		onClickOverride?: () => void;
 	}>(),
 	{
-		variant: 'default',
+		noSetup: false,
 		onClickOverride: undefined,
 	},
 );
@@ -30,58 +30,23 @@ const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
 
 	const uniqueNodeTypes = new Set(props.template.nodes.map((node) => node.name));
-	const nodeTypesArray = Array.from(uniqueNodeTypes);
+	const nodeTypesArray = Array.from(uniqueNodeTypes).slice(0, 4);
 
-	const nodesToShow = [];
-
-	// Show up to 2 node icons
-	for (const nodeType of nodeTypesArray.slice(0, 2)) {
-		const nodeTypeData = nodeTypesStore.getNodeType(nodeType);
-		if (nodeTypeData) {
-			nodesToShow.push(nodeTypeData);
-		}
-	}
-
-	return nodesToShow;
+	return nodeTypesArray.map((nodeType) => nodeTypesStore.getNodeType(nodeType)).filter(Boolean);
 });
 
-const cleanTitle = computed(() => {
-	if (!props.template?.name) return '';
-
-	return props.template.name
-		.replace(
-			/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu,
-			'',
-		) // Remove emojis
-		.replace(/\s+/g, ' ') // Replace multiple whitespace with single space
-		.trim();
+const remainingNodeCount = computed(() => {
+	if (!props.template?.nodes) return 0;
+	const uniqueNodeTypes = new Set(props.template.nodes.map((node) => node.name));
+	return Math.max(0, uniqueNodeTypes.size - 4);
 });
 
-const cleanDescription = computed(() => {
-	if (!props.template?.description) return '';
-
-	return (
-		props.template.description
-			.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
-			.replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
-			.replace(/`(.*?)`/g, '$1') // Remove inline code `text`
-			.replace(/!\[(.*?)\]\(.*?\)/g, '') // Remove images
-			.replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links [text](url) -> text
-			.replace(/#{1,6}\s/g, '') // Remove headers # ## ### etc
-			.replace(/^\s*[-*+]\s/gm, '') // Remove list bullets
-			.replace(/^\s*\d+\.\s/gm, '') // Remove numbered list
-			.replace(
-				/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu,
-				'',
-			) // Remove emojis
-			.replace(/[\r\n\t\f\v]/g, ' ') // Replace line breaks and tabs with spaces
-			.replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ') // Replace unicode whitespace
-			// Actual variation selector character class
-			// eslint-disable-next-line no-misleading-character-class
-			.replace(/[\u200B-\u200D\uFEFF\uFE0F]/g, '') // Remove zero-width characters and variation selectors
-			.replace(/\s+/g, ' ') // Replace multiple whitespace with single space
-			.trim()
-	);
+const setupMinutes = computed(() => {
+	// Estimate setup time based on number of nodes
+	const nodeCount = props.template?.nodes?.length ?? 0;
+	if (nodeCount <= 3) return 5;
+	if (nodeCount <= 6) return 10;
+	return 15;
 });
 
 const handleClick = async () => {
@@ -95,95 +60,153 @@ const handleClick = async () => {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" @click="handleClick">
-		<div :class="$style.content">
-			<N8nText size="medium" :bold="true" :class="$style.title">
-				{{ cleanTitle }}
-			</N8nText>
-			<N8nText v-if="cleanDescription" size="small" :class="[$style.description, 'mt-2xs']">
-				{{ cleanDescription }}
-			</N8nText>
-		</div>
-		<div :class="$style.footer">
-			<div v-if="templateNodes.length > 0" :class="$style.nodes">
+	<div :class="$style.card" @click="handleClick">
+		<div :class="$style.imageContainer">
+			<div :class="$style.imagePlaceholder" />
+			<div v-if="templateNodes.length > 0" :class="$style.nodesBadge">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
-					<NodeIcon :size="18" :stroke-width="1.5" :node-type="nodeType" />
+					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
 				</div>
+				<span v-if="remainingNodeCount > 0" :class="$style.moreCount"
+					>+{{ remainingNodeCount }}</span
+				>
 			</div>
-			<span v-if="variant === 'noSetup'" :class="$style.label">
-				{{ i18n.baseText('experiments.resourceCenter.badge.noSetup') }}
-			</span>
 		</div>
-	</N8nCard>
+		<div :class="$style.content">
+			<div :class="$style.titleRow">
+				<N8nIcon icon="workflow" :class="$style.icon" size="medium" />
+				<h3 :class="$style.title">{{ template.name }}</h3>
+			</div>
+			<div :class="$style.meta">
+				<N8nIcon icon="clock" :class="$style.clockIcon" size="xsmall" />
+				<span>
+					{{
+						i18n.baseText('experiments.resourceCenter.template.setupTime', {
+							interpolate: { minutes: setupMinutes },
+						})
+					}}
+				</span>
+			</div>
+		</div>
+	</div>
 </template>
 
 <style lang="scss" module>
 .card {
+	flex: 1 1 0;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-	flex: 1 1 0;
-	min-width: 200px;
-	background-color: var(--color--background--light-2);
-	cursor: pointer !important;
-	transition: all 0.2s ease;
+	cursor: pointer;
+	transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 
 	&:hover {
-		background-color: var(--color--foreground--tint-2);
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		.imageContainer {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		}
 	}
 }
 
-.content {
-	flex: 1;
-}
-
-.title {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
+.imageContainer {
+	position: relative;
+	width: 100%;
+	height: 170px;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	line-height: var(--line-height--md);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius--lg);
+	border: 1px solid var(--color--foreground--tint-1);
+	transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.description {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	line-height: var(--line-height--md);
-	color: var(--color--text--tint-1);
+.imagePlaceholder {
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(
+		135deg,
+		var(--color--foreground--tint-2) 0%,
+		var(--color--foreground--tint-1) 100%
+	);
 }
 
-.footer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--md);
-}
-
-.nodes {
+.nodesBadge {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
 	display: flex;
 	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs);
+	background-color: var(--color--background--light-3);
+	border-radius: var(--radius);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .nodeIcon {
-	z-index: 1;
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	margin-right: var(--spacing--3xs);
+	width: 20px;
+	height: 20px;
 }
 
-.label {
+.moreCount {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background-color: var(--color--foreground--tint-1);
+	border: 1px solid var(--color--background--shade-1);
+	font-size: 8px;
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--bold);
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding-top: var(--spacing--xs);
+}
+
+.titleRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.icon {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	width: 20px;
+	height: 20px;
+}
+
+.title {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+	line-height: var(--line-height--md);
+	font-size: var(--font-size--sm);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	margin: 0;
+}
+
+.meta {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
-	color: var(--color--success);
+	color: var(--color--text--tint-1);
+	padding-left: calc(20px + var(--spacing--2xs)); /* align with title text (icon width + gap) */
+}
+
+.clockIcon {
+	color: var(--color--text--tint-1);
 }
 </style>
