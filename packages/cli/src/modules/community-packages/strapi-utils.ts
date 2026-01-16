@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { ErrorReporter } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
 
 interface ResponseData<T> {
 	data: Array<Entity<T>>;
@@ -26,11 +27,12 @@ interface Pagination {
 
 const REQUEST_TIMEOUT_MS = 3000;
 
-export async function paginatedRequest<T>(url: string): Promise<T[]> {
+export async function paginatedRequest<T>(url: string, qs: IDataObject = {}): Promise<T[]> {
 	let returnData: T[] = [];
 	let responseData: T[] | undefined = [];
 
 	const params = {
+		...qs,
 		pagination: {
 			page: 1,
 			pageSize: 25,
@@ -73,4 +75,45 @@ export async function paginatedRequest<T>(url: string): Promise<T[]> {
 	} while (responseData?.length);
 
 	return returnData;
+}
+
+export async function metadataRequest<T>(url: string): Promise<T[]> {
+	let response;
+
+	const params = {
+		fields: ['npmVersion', 'name'],
+		pagination: {
+			pageSize: 1000,
+		},
+	};
+
+	try {
+		response = await axios.get<ResponseData<T>>(url, {
+			headers: { 'Content-Type': 'application/json' },
+			params,
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	} catch (error) {
+		Container.get(ErrorReporter).error(error, {
+			tags: { source: 'communityNodesMetadataRequest' },
+		});
+		Container.get(Logger).error(
+			`Error while fetching community nodes metadata: ${(error as Error).message}`,
+		);
+	}
+
+	const responseData: T[] =
+		response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes })) || [];
+
+	return responseData;
+}
+
+export function buildStrapiUpdateQuery(ids: number[]): IDataObject {
+	return {
+		filters: {
+			id: {
+				$in: ids,
+			},
+		},
+	};
 }
