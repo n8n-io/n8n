@@ -115,6 +115,7 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push n8n Docker image
+        id: build-n8n
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -124,12 +125,13 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
       - name: Build and push task runners Docker image (Alpine)
+        id: build-runners
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -139,12 +141,13 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
       - name: Build and push task runners Docker image (distroless)
+        id: build-runners-distroless
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -154,7 +157,7 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: true
+          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
@@ -166,6 +169,13 @@ jobs:
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
+    outputs:
+      n8n_digest: ${{ steps.get-digests.outputs.n8n_digest }}
+      n8n_image: ${{ steps.get-digests.outputs.n8n_image }}
+      runners_digest: ${{ steps.get-digests.outputs.runners_digest }}
+      runners_image: ${{ steps.get-digests.outputs.runners_image }}
+      runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
+      runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -239,6 +249,14 @@ jobs:
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
           done
 
+      - name: Get manifest digests for attestation
+        id: get-digests
+        env:
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
   call-success-url:
     name: Call Success URL
     needs: [create_multi_arch_manifest]
@@ -253,6 +271,113 @@ jobs:
           echo "Calling success URL: ${{ env.SUCCESS_URL }}"
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
+
+  # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+  provenance-n8n:
+    name: SLSA Provenance (n8n)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  provenance-runners:
+    name: SLSA Provenance (runners)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.runners_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  provenance-runners-distroless:
+    name: SLSA Provenance (runners-distroless)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # VEX Attestation - Documents which CVEs affect us (vex.openvex.json)
+  vex-attestation:
+    name: VEX Attestation
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
+    if: |
+      always() &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'rc' ||
+       needs.determine-build-context.outputs.release_type == 'nightly')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+
+      - name: Login to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest VEX to n8n image
+        if: needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+
+      - name: Attest VEX to runners image
+        if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+
+      - name: Attest VEX to runners-distroless image
+        if: needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   security-scan:
     name: Security Scan
