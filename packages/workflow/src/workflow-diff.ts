@@ -1,7 +1,13 @@
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 
-import type { IConnections, INode, IWorkflowBase } from '.';
+import type {
+	IConnections,
+	INode,
+	INodeParameters,
+	IWorkflowBase,
+	NodeParameterValueType,
+} from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
 
 export type WorkflowDiffBase = Omit<
@@ -163,6 +169,41 @@ const makeSkipTimeDifference = (timeDiffMs: number) => {
 	};
 };
 
+const makeMergeShortTimeSpan = (timeDiffMs: number) => {
+	return <N extends DiffableNode = DiffableNode>(
+		prev: DiffableWorkflow<N>,
+		next: DiffableWorkflow<N>,
+	) => {
+		const timeDifference = next.createdAt.getTime() - prev.createdAt.getTime();
+
+		return Math.abs(timeDifference) < timeDiffMs;
+	};
+};
+
+// Takes a mapping from minimumSize to the minimum time between versions and
+// applies the largest one applicable to the given workflow
+function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<number, number>) {
+	const pairs = [...mapping.entries()]
+		.sort((a, b) => b[0] - a[0])
+		.map(([count, time]) => [count, makeMergeShortTimeSpan(time)] as const);
+
+	return <N extends DiffableNode = DiffableNode>(
+		prev: DiffableWorkflow<N>,
+		next: DiffableWorkflow<N>,
+		_wcs: WorkflowChangeSet<N>,
+		metaData: DiffMetaData,
+	) => {
+		if (metaData.workflowSizeScore === undefined) {
+			console.warn('Called mergeDependingOnSizeRule rule without providing required metaData');
+			return false;
+		}
+		for (const [count, time] of pairs) {
+			if (metaData.workflowSizeScore > count) return time(prev, next);
+		}
+		return false;
+	};
+}
+
 function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 	prev: DiffableWorkflow<N>,
 	next: DiffableWorkflow<N>,
@@ -172,6 +213,7 @@ function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 
 export const RULES = {
 	mergeAdditiveChanges,
+	makeMergeDependingOnSizeRule,
 };
 
 export const SKIP_RULES = {
@@ -179,15 +221,45 @@ export const SKIP_RULES = {
 	skipDifferentUsers,
 };
 
+// MetaData fields are only included if requested
+export type DiffMetaData = Partial<{
+	workflowSizeScore: number;
+}>;
+
 export type DiffRule<
 	W extends WorkflowDiffBase = WorkflowDiffBase,
 	N extends W['nodes'][number] = W['nodes'][number],
-> = (prev: W, next: W, diff: WorkflowChangeSet<N>) => boolean;
+> = (prev: W, next: W, diff: WorkflowChangeSet<N>, metaData: Partial<DiffMetaData>) => boolean;
+
+// Rough estimation of a node's size in abstract "character" count
+// Does not care about key names which do technically factor in when stringified
+export function determineNodeSize(parameters: INodeParameters | NodeParameterValueType): number {
+	if (!parameters) return 1;
+
+	if (typeof parameters === 'string') {
+		return parameters.length;
+	} else if (typeof parameters !== 'object' || parameters instanceof Date) {
+		return 1;
+	} else if (Array.isArray(parameters)) {
+		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 1);
+	} else {
+		// Record case
+		return Object.values(parameters).reduce<number>(
+			(acc, v) => acc + determineNodeSize(v as NodeParameterValueType),
+			1,
+		);
+	}
+}
+
+function determineNodeParametersSize<W extends WorkflowDiffBase>(workflow: W) {
+	return workflow.nodes.reduce((acc, x) => acc + determineNodeSize(x.parameters), 0);
+}
 
 export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
 	skipRules: Array<DiffRule<W>> = [],
+	metaDataFields?: Partial<Record<keyof DiffMetaData, boolean>>,
 ): { removed: W[]; remaining: W[] } {
 	if (workflows.length === 0) return { removed: [], remaining: [] };
 	if (workflows.length === 1) {
@@ -202,13 +274,25 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 
 	const n = remaining.length;
 
+	const metaData = {
+		// check latest and an "average" workflow to get a somewhat accurate representation
+		// without counting through the entire history
+		workflowSizeScore: metaDataFields?.workflowSizeScore
+			? Math.max(
+					determineNodeParametersSize(workflows[Math.floor(workflows.length / 2)]),
+					determineNodeParametersSize(workflows[workflows.length - 1]),
+				)
+			: undefined,
+	} satisfies DiffMetaData;
+
 	diffLoop: for (let i = n - 1; i > 0; --i) {
 		const wcs = new WorkflowChangeSet(remaining[i - 1], remaining[i]);
+
 		for (const shouldSkip of skipRules) {
-			if (shouldSkip(remaining[i - 1], remaining[i], wcs)) continue diffLoop;
+			if (shouldSkip(remaining[i - 1], remaining[i], wcs, metaData)) continue diffLoop;
 		}
 		for (const rule of rules) {
-			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs);
+			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs, metaData);
 			if (shouldMerge) {
 				const left = remaining.splice(i - 1, 1)[0];
 				removed.push(left);

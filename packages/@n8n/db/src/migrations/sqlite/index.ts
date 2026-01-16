@@ -129,6 +129,7 @@ import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddCredentialUseScopeToRoles1768475341537 } from '../common/1768475341537-AddCredentialUseScopeToRoles';
+import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -263,6 +264,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeWorkflowStatisticsFKToNoAction1767018516000,
 	ExpandModelColumnLength1768402473068,
 	AddCredentialUseScopeToRoles1768475341537,
+	AddStoredAtToExecutionEntity1768557000000,
 ];
 
 export { sqliteMigrations };
