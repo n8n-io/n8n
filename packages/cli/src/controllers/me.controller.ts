@@ -11,8 +11,6 @@ import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -23,12 +21,14 @@ import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
+	isSamlLicensedAndEnabled,
 } from '@/sso.ee/sso-helpers';
+
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
 @RestController('/me')
 export class MeController {
