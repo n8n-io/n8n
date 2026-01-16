@@ -534,7 +534,6 @@ export class ChatHubService {
 			attachments,
 			[],
 			timeZone,
-			null,
 			trx,
 		);
 	}
@@ -551,7 +550,6 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		contextFiles: IBinaryData[],
 		timeZone: string,
-		vectorStoreTableName: string | null,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -571,7 +569,6 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			timeZone,
-			vectorStoreTableName,
 			trx,
 		);
 	}
@@ -630,7 +627,6 @@ export class ChatHubService {
 			attachments,
 			agent.files,
 			timeZone,
-			`chat-hub-agent-${user.id}-${agent.id}`,
 			trx,
 		);
 	}

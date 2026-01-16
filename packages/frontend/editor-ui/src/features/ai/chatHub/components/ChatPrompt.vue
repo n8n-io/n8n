@@ -66,6 +66,13 @@ const acceptedMimeTypes = computed(() =>
 
 const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
+// Filter out vector store tools from display
+const displayTools = computed(
+	() =>
+		selectedTools?.filter((tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector') ??
+		[],
+);
+
 function onMic() {
 	committedSpokenMessage.value = message.value;
 
@@ -285,7 +292,7 @@ defineExpose({
 					<div :class="$style.tools">
 						<ToolsSelector
 							:class="$style.toolsButton"
-							:selected="selectedTools ?? []"
+							:selected="displayTools"
 							:disabled="messagingState !== 'idle' || !isToolsSelectable"
 							:disabled-tooltip="
 								isToolsSelectable

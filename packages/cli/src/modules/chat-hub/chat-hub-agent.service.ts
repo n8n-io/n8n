@@ -18,6 +18,7 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import type { IBinaryData } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 export class ChatHubAgentService {
@@ -184,6 +185,21 @@ export class ChatHubAgentService {
 	}
 
 	private async insertDocuments(user: User, agent: ChatHubAgent, files: IBinaryData[]) {
+		if (files.length === 0) {
+			return;
+		}
+
+		// Find vector store tool in tools array
+		const vectorStoreTool = agent.tools.find(
+			(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+		);
+
+		if (!vectorStoreTool) {
+			throw new BadRequestError(
+				'To insert documents for RAG, vector store tool has to be configured',
+			);
+		}
+
 		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 			async (trx) => {
 				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
@@ -191,7 +207,7 @@ export class ChatHubAgentService {
 					user.id,
 					project.id,
 					files,
-					`chat-hub-agent-${user.id}-${agent.id}`,
+					vectorStoreTool,
 					trx,
 				);
 			},

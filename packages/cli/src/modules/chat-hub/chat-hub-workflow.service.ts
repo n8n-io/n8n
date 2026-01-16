@@ -54,6 +54,7 @@ import { PdfExtractorService } from './pdf-extractor.service';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ActiveExecutions } from '@/active-executions';
 import { InstanceSettings } from 'n8n-core';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -81,7 +82,6 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
-		vectorStoreTableName: string | null,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -104,7 +104,6 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
-				vectorStoreTableName,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -289,7 +288,6 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
-		vectorStoreTableName,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -301,7 +299,6 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
-		vectorStoreTableName: string | null;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -315,7 +312,16 @@ export class ChatHubWorkflowService {
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 		const pdfFiles = contextFiles.filter((c) => c.mimeType === 'application/pdf');
-		const shouldIncludeVectorStoreTool = pdfFiles.length >= 0 && vectorStoreTableName !== null;
+
+		// Find vector store tool in tools array
+		const vectorStoreTool = tools.find(
+			(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+		);
+		const shouldIncludeVectorStoreTool = pdfFiles.length > 0;
+
+		if (pdfFiles.length > 0 && !vectorStoreTool) {
+			throw new BadRequestError('To process PDF files, vector store must be configured.');
+		}
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -325,7 +331,7 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
-			...(shouldIncludeVectorStoreTool
+			...(shouldIncludeVectorStoreTool && vectorStoreTool
 				? ([
 						{
 							parameters: {
@@ -344,15 +350,11 @@ export class ChatHubWorkflowService {
 							},
 						},
 						{
+							...vectorStoreTool,
 							parameters: {
-								memoryKey: {
-									__rl: true,
-									mode: 'list',
-									value: vectorStoreTableName,
-								},
+								...vectorStoreTool.parameters,
+								mode: 'retrieve',
 							},
-							type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
-							typeVersion: 1.3,
 							position: [720, 288],
 							id: uuidv4(),
 							name: NODE_NAMES.VECTOR_STORE,
@@ -360,7 +362,7 @@ export class ChatHubWorkflowService {
 						{
 							parameters: {
 								description: `Use this tool to query following documents that the user has provided for context:
-${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join(',')}
+${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 `,
 							},
 							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
@@ -374,7 +376,11 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join(',')}
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
-		const distinctTools = tools.map((tool, i) => {
+		// Filter out vector store tools from regular tools (they're handled specially above)
+		const regularTools = tools.filter(
+			(tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+		);
+		const distinctTools = regularTools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
 			const position = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
@@ -668,7 +674,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 		const { provider, model } = conversationModel;
 		const common = {
-			position: [608, 304] satisfies [number, number],
+			position: [608, 512] satisfies [number, number],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
@@ -1104,7 +1110,7 @@ Respond the title only:`,
 		userId: string,
 		projectId: string,
 		attachments: IBinaryData[],
-		memoryKey: string,
+		vectorStoreTool: INode,
 		trx: EntityManager,
 	) {
 		const triggerNode: INode = {
@@ -1122,19 +1128,14 @@ Respond the title only:`,
 		};
 		const nodes: INode[] = [
 			{
+				...vectorStoreTool,
 				parameters: {
+					...vectorStoreTool.parameters,
 					mode: 'insert',
-					memoryKey: {
-						__rl: true,
-						value: memoryKey,
-						mode: 'list',
-					},
 				},
-				type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
-				typeVersion: 1.3,
 				position: [208, 0],
 				id: uuidv4(),
-				name: 'Simple Vector Store',
+				name: 'PGVector Store',
 			},
 			triggerNode,
 			{
@@ -1166,14 +1167,14 @@ Respond the title only:`,
 			},
 		];
 		const connections: IConnections = {
-			'Simple Vector Store': {
+			'PGVector Store': {
 				main: [[]],
 			},
 			'When chat message received': {
 				main: [
 					[
 						{
-							node: 'Simple Vector Store',
+							node: 'PGVector Store',
 							type: 'main',
 							index: 0,
 						},
@@ -1184,7 +1185,7 @@ Respond the title only:`,
 				ai_embedding: [
 					[
 						{
-							node: 'Simple Vector Store',
+							node: 'PGVector Store',
 							type: 'ai_embedding',
 							index: 0,
 						},
@@ -1195,7 +1196,7 @@ Respond the title only:`,
 				ai_document: [
 					[
 						{
-							node: 'Simple Vector Store',
+							node: 'PGVector Store',
 							type: 'ai_document',
 							index: 0,
 						},
