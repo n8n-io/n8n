@@ -1,21 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { MockInstance } from 'vitest';
 import type { CoordinatorState, TabConnection } from '../types';
 import type { DataWorkerApi } from '../../data/worker';
 import type * as Comlink from 'comlink';
 import { loadNodeTypes } from './loadNodeTypes';
 
 describe('Coordinator loadNodeTypes Operation', () => {
-	let consoleSpy: {
-		log: MockInstance;
-		error: MockInstance;
-	};
-
 	beforeEach(() => {
-		consoleSpy = {
-			log: vi.spyOn(console, 'log').mockImplementation(() => {}),
-			error: vi.spyOn(console, 'error').mockImplementation(() => {}),
-		};
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 
 	afterEach(() => {

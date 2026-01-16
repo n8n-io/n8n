@@ -45,6 +45,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			sqlite3: {} as DataWorkerState['sqlite3'],
 			db: 1,
 			vfs: null,
+			initPromise: null,
 			...overrides,
 		};
 	}
