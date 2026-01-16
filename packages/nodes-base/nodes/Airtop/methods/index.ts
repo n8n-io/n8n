@@ -1,4 +1,4 @@
-import {
+import type {
 	FieldType,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -7,11 +7,10 @@ import {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { apiRequest } from '../transport';
-import { BASE_URL_V2 } from '../constants';
-
-import { AgentsListResponse } from '../actions/agent/agent.types';
+import type { AgentsListResponse } from '../actions/agent/agent.types';
 import { getAgentDetails } from '../actions/agent/agent.utils';
+import { BASE_URL_V2 } from '../constants';
+import { apiRequest } from '../transport';
 
 const VALID_FIELD_TYPES: readonly FieldType[] = [
 	'boolean',

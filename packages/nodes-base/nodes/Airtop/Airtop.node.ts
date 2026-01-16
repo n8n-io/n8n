@@ -1,7 +1,6 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { agentsResourceMapping, listSearchAgents } from './methods';
 import * as agent from './actions/agent/Agent.resource';
 import * as extraction from './actions/extraction/Extraction.resource';
 import * as file from './actions/file/File.resource';
@@ -9,6 +8,7 @@ import * as interaction from './actions/interaction/Interaction.resource';
 import { router } from './actions/router';
 import * as session from './actions/session/Session.resource';
 import * as window from './actions/window/Window.resource';
+import { agentsResourceMapping, listSearchAgents } from './methods';
 
 export class Airtop implements INodeType {
 	description: INodeTypeDescription = {

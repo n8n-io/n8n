@@ -1,5 +1,11 @@
-import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
+import type { AgentInvocationResponse, AgentParametersInput } from './agent.types';
 import {
 	getAgentDetails,
 	pollAgentStatus,
@@ -8,7 +14,6 @@ import {
 } from './agent.utils';
 import { AGENT_MIN_TIMEOUT_SECONDS, AIRTOP_HOOKS_BASE_URL, ERROR_MESSAGES } from '../../constants';
 import { apiRequest } from '../../transport';
-import { AgentInvocationResponse, AgentParametersInput } from './agent.types';
 
 const displayOptions = {
 	show: {

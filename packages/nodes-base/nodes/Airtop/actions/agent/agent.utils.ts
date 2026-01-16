@@ -1,14 +1,9 @@
-import {
-	IDataObject,
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	NodeOperationError,
-	INode,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { AgentParametersInput, AgentResultResponse, AirtopAgentResponse } from './agent.types';
-import { apiRequest } from '../../transport';
+import type { AgentParametersInput, AgentResultResponse, AirtopAgentResponse } from './agent.types';
 import { AIRTOP_HOOKS_BASE_URL, BASE_URL_V2, ERROR_MESSAGES } from '../../constants';
+import { apiRequest } from '../../transport';
 
 /**
  * Gets the agent input parameters schema.
