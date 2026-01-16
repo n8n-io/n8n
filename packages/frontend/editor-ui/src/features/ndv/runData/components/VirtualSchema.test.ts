@@ -1333,7 +1333,7 @@ describe('VirtualSchema.vue', () => {
 		it('should hide callout when dismissed', async () => {
 			const dismissMock = vi.fn();
 			vi.spyOn(calloutHelpers, 'useCalloutHelpers').mockReturnValue({
-				isCalloutDismissed: vi.fn((id: string) => id === 'ndv.schema.mergeNotice'),
+				isCalloutDismissed: vi.fn((id: string) => id === 'Merge-mergeNotice'),
 				dismissCallout: dismissMock,
 				openSampleWorkflowTemplate: vi.fn(),
 				getTutorialTemplatesNodeCreatorItems: vi.fn(() => []),

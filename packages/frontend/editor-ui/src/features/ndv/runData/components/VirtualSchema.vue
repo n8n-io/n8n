@@ -5,9 +5,9 @@ import Draggable from '@/app/components/Draggable.vue';
 import VirtualSchemaHeader from './VirtualSchemaHeader.vue';
 import VirtualSchemaItem from './VirtualSchemaItem.vue';
 import {
-	RenderCallout,
 	useDataSchema,
 	useFlattenSchema,
+	type RenderCallout,
 	type RenderHeader,
 	type RenderNotice,
 	type Renders,
@@ -411,7 +411,7 @@ const items = computed(() => {
 			props.data.length > 1
 		) {
 			const mergeCallout: RenderCallout = {
-				id: 'ndv.schema.mergeNotice',
+				id: `${props.node.name}-mergeNotice`,
 				type: 'callout',
 				level: 0,
 				message: i18n.baseText('dataMapping.schemaView.mergeNotice'),

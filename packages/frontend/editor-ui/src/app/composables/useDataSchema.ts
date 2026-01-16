@@ -523,7 +523,7 @@ export const useFlattenSchema = () => {
 
 			if (item.node.type === 'n8n-nodes-base.merge' && item.itemsCount > 1) {
 				const mergeCallout: RenderCallout = {
-					id: 'ndv.schema.mergeNotice',
+					id: `${item.node.name}-mergeNotice`,
 					type: 'callout',
 					level: 2,
 					message: useI18n().baseText('dataMapping.schemaView.mergeNotice'),
