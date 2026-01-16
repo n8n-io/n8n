@@ -24,14 +24,11 @@ import { YjsRemoteOrigin, YjsUndoManager, YjsUndoManagerOrigin } from '../undo/y
  * - Local transactions → local
  * - Remote transactions → remote
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getChangeOrigin(transaction: any): ChangeOrigin {
+function getChangeOrigin(transaction: Y.Transaction): ChangeOrigin {
 	// Undo/redo transactions have the UndoManager instance as origin
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (transaction.origin instanceof Y.UndoManager) {
 		return ChangeOrigin.undoRedo;
 	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	return transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
 }
 
@@ -49,27 +46,28 @@ function toJSONValue(value: unknown): unknown {
 /** Symbol to store wrapper reference directly on Y types */
 const WRAPPER = Symbol('crdt-wrapper');
 
+/** Type extension for Y types to store wrapper reference */
+type YTypeWithWrapper = { [WRAPPER]?: YjsMap | YjsArray };
+
 /**
  * Wrap a Yjs type in the appropriate CRDT wrapper, or return primitive as-is.
  * Stores wrapper on the Y type itself to return the same instance on every get().
  */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 function wrapYjsValue(value: unknown): unknown {
 	if (value instanceof Y.Map) {
 		// Store wrapper on the Y.Map itself for identity preservation
-		const yMap = value as any;
+		const yMap = value as Y.Map<unknown> & YTypeWithWrapper;
 		yMap[WRAPPER] ??= new YjsMap(value);
 		return yMap[WRAPPER];
 	}
 	if (value instanceof Y.Array) {
 		// Store wrapper on the Y.Array itself for identity preservation
-		const yArray = value as any;
+		const yArray = value as Y.Array<unknown> & YTypeWithWrapper;
 		yArray[WRAPPER] ??= new YjsArray(value);
 		return yArray[WRAPPER];
 	}
 	return value;
 }
-/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 
 /**
  * Yjs implementation of CRDTArray.
@@ -124,8 +122,7 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 	}
 
 	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const observer = (events: Array<Y.YEvent<Y.Array<unknown>>>, transaction: any) => {
+		const observer = (events: Array<Y.YEvent<Y.Array<unknown>>>, transaction: Y.Transaction) => {
 			const changes: DeepChange[] = [];
 
 			for (const event of events) {
@@ -232,8 +229,7 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 	}
 
 	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>, transaction: any) => {
+		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>, transaction: Y.Transaction) => {
 			const changes: DeepChange[] = [];
 
 			for (const event of events) {
@@ -327,9 +323,12 @@ class YjsDoc implements CRDTDoc {
 	}
 
 	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const wrappedHandler = (update: Uint8Array, _origin: any, _doc: any, transaction: any) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const wrappedHandler = (
+			update: Uint8Array,
+			_origin: unknown,
+			_doc: Y.Doc,
+			transaction: Y.Transaction,
+		) => {
 			const changeOrigin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
 			handler(update, changeOrigin);
 		};

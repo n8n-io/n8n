@@ -98,7 +98,6 @@ await syncB.start();
 - `MockTransport` - In-memory transport for testing
 - `MessagePortTransport` - SharedWorker/Worker/MessageChannel communication
 - `WebSocketTransport` - Server sync with auto-reconnect
-- `BroadcastChannelTransport` - Cross-tab sync (Safari fallback)
 
 ## Transports
 
@@ -144,17 +143,6 @@ const worker = new SharedWorker('worker.js');
 const transport = new MessagePortTransport(worker.port);
 const sync = createSyncProvider(doc, transport);
 await sync.start();
-```
-
-### BroadcastChannel Transport (Cross-tab)
-
-```typescript
-import { BroadcastChannelTransport, createSyncProvider } from '@n8n/crdt';
-
-const transport = new BroadcastChannelTransport('workflow-123');
-const sync = createSyncProvider(doc, transport);
-await sync.start();
-// Messages automatically sync across all tabs on same channel
 ```
 
 ## Not Yet Implemented

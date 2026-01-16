@@ -46,7 +46,6 @@ export {
 	MockTransport,
 	MessagePortTransport,
 	WebSocketTransport,
-	BroadcastChannelTransport,
 	WorkerTransport,
 } from './transports';
 export type { WebSocketTransportConfig, WorkerTransportConfig } from './transports';
