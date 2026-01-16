@@ -55,7 +55,7 @@ export function toJSON(value: unknown): unknown {
 
 	// Check if it's a CRDTMap or CRDTArray (has toJSON method)
 	if (typeof value === 'object' && 'toJSON' in value && typeof value.toJSON === 'function') {
-		return value.toJSON();
+		return (value as { toJSON: () => unknown }).toJSON();
 	}
 
 	return value;

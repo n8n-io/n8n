@@ -109,8 +109,8 @@ export class WorkerTransport implements SyncTransport {
 			this.connectResolve = resolve;
 
 			// Set up message handler
-			this.messageHandler = (event: MessageEvent) => {
-				const data = event.data;
+			this.messageHandler = (event: MessageEvent<Uint8Array | ArrayBuffer>) => {
+				const data: Uint8Array | ArrayBuffer = event.data;
 
 				// Handle binary messages with docId
 				if (data instanceof Uint8Array || data instanceof ArrayBuffer) {

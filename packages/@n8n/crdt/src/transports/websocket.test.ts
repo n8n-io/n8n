@@ -220,7 +220,7 @@ describe('WebSocketTransport', () => {
 			expect(received).toHaveLength(1);
 		});
 
-		it('should stop connection notifications after unsubscribe', async () => {
+		it('should stop connection notifications after unsubscribe', () => {
 			const states: boolean[] = [];
 			const unsubscribe = transport.onConnectionChange((connected) => states.push(connected));
 

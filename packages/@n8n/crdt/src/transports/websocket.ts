@@ -212,7 +212,7 @@ export class WebSocketTransport implements SyncTransport {
 			} catch (error) {
 				clearTimeout(timeoutId);
 				this.isConnecting = false;
-				reject(error);
+				reject(error instanceof Error ? error : new Error(String(error)));
 			}
 		});
 	}
