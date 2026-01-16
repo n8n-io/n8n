@@ -9,6 +9,7 @@ import {
 	saveToMemory,
 	type RequestResponseMetadata,
 } from '@utils/agent-execution';
+import { getTracingConfig } from '@utils/tracing';
 import type {
 	EngineRequest,
 	EngineResponse,
@@ -63,7 +64,7 @@ export async function runAgent(
 		ctx.getNode().typeVersion >= 2.1
 	) {
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
-		const eventStream = executor.streamEvents(
+		const eventStream = executor.withConfig(getTracingConfig(ctx)).streamEvents(
 			{
 				...invokeParams,
 				chat_history: chatHistory,
@@ -100,7 +101,7 @@ export async function runAgent(
 		// Handle regular execution
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 
-		const modelResponse = await executor.invoke({
+		const modelResponse = await executor.withConfig(getTracingConfig(ctx)).invoke({
 			...invokeParams,
 			chat_history: chatHistory,
 		});
