@@ -1511,7 +1511,7 @@
 	"ndv.httpRequest.credentialOnly.docsNotice": "Use the <a target=\"_blank\" href=\"{docsUrl}\">{nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a {nodeName} credential below.",
 	"ndv.binaryData.combinedTooltip": "Specify the path to the binary data entry in the input item or use an expression to access the binary data in previous nodes, e.g. {example}",
 	"ndv.binaryData.separateTooltip": "Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {example}",
-  "noTagsView.createTag": "Create a tag",
+	"noTagsView.createTag": "Create a tag",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
 	"noAnnotationTagsView.title": "Organize your executions",
