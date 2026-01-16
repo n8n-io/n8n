@@ -4,63 +4,28 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
-import { useRoute } from 'vue-router';
-import { BUILDER_ENABLED_VIEWS } from '../constants';
-import type { VIEWS } from '@/app/constants';
+import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
-
-const ASK_MODE_COACHMARK_KEY = 'ask-mode-coachmark';
 
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
-const route = useRoute();
-const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
+
+const { isBuildMode, canToggleModes, shouldShowCoachmark, onDismissCoachmark } =
+	useAskModeCoachmark();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
-const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 const chatWidth = computed(() => chatPanelStore.width);
-
-// Show toggle only when both modes are available in current view
-const canToggleModes = computed(() => {
-	const currentRoute = route?.name;
-	return (
-		settingsStore.isAiAssistantEnabled &&
-		builderStore.isAIBuilderEnabled &&
-		currentRoute &&
-		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
-	);
-});
-
-// Show coachmark when:
-// - Panel is open in Ask mode
-// - Not opened via error/credential helpers
-// - User hasn't dismissed it yet
-// - Toggle is visible (both modes available)
-const shouldShowCoachmark = computed(() => {
-	return Boolean(
-		chatPanelStore.isOpen &&
-			!isBuildMode.value &&
-			chatPanelStore.openSource !== 'helper' &&
-			canToggleModes.value &&
-			!isCalloutDismissed(ASK_MODE_COACHMARK_KEY),
-	);
-});
-
-async function onDismissCoachmark() {
-	await dismissCallout(ASK_MODE_COACHMARK_KEY);
-}
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
