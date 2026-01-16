@@ -60,20 +60,23 @@ export async function msGraphSecurityApiRequest(
 	} catch (error) {
 		const nestedMessage = error?.error?.error?.message;
 
-		if (nestedMessage.startsWith('{"')) {
+		if (nestedMessage?.startsWith('{"')) {
 			error = JSON.parse(nestedMessage as string);
 		}
 
-		if (nestedMessage.startsWith('Http request failed with statusCode=BadRequest')) {
+		if (nestedMessage?.startsWith('Http request failed with statusCode=BadRequest')) {
 			error.error.error.message = 'Request failed with bad request';
-		} else if (nestedMessage.startsWith('Http request failed with')) {
-			const stringified = nestedMessage.split(': ').pop();
+		} else if (nestedMessage?.startsWith('Http request failed with')) {
+			const stringified = nestedMessage?.split(': ').pop();
 			if (stringified) {
 				error = JSON.parse(stringified as string);
 			}
 		}
 
-		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage as string)) {
+		if (
+			nestedMessage &&
+			['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage as string)
+		) {
 			error.error.error.message +=
 				' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter';
 		}

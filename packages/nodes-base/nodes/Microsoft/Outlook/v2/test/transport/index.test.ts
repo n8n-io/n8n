@@ -1,11 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-	IPollFunctions,
-	INode,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../../transport/index';
 

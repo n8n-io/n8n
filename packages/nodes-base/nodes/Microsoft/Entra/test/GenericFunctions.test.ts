@@ -1,10 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-	INode,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest, microsoftApiPaginateRequest } from '../GenericFunctions';
 
@@ -31,6 +26,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+		mockExecuteFunctions.getCredentials = jest.fn();
 		jest.clearAllMocks();
 	});
 
@@ -220,7 +216,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 	describe('microsoftApiPaginateRequest', () => {
 		describe('graphApiBaseUrl from credentials', () => {
 			it('should use base URL from credentials', async () => {
-				const mockResponse = [{ data: 'test' }];
+				const mockResponse = [{ body: { value: [{ id: '1', name: 'Group 1' }] } }];
 				mockRequestWithAuthenticationPaginated.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
@@ -232,20 +228,23 @@ describe('Microsoft Entra GenericFunctions', () => {
 				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
-					mockExecuteFunctions,
 					expect.objectContaining({
 						method: 'GET',
 						uri: 'https://graph.microsoft.us/v1.0/groups',
 						json: true,
 					}),
 					0,
-					expect.any(Object),
+					expect.objectContaining({
+						continue: expect.any(String),
+						request: expect.any(Object),
+						requestInterval: 0,
+					}),
 					'microsoftEntraOAuth2Api',
 				);
 			});
 
 			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
-				const mockResponse = [{ data: 'test' }];
+				const mockResponse = [{ body: { value: [{ id: '1', name: 'Group 1' }] } }];
 				mockRequestWithAuthenticationPaginated.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
@@ -257,20 +256,23 @@ describe('Microsoft Entra GenericFunctions', () => {
 				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
-					mockExecuteFunctions,
 					expect.objectContaining({
 						method: 'GET',
 						uri: 'https://graph.microsoft.com/v1.0/groups',
 						json: true,
 					}),
 					0,
-					expect.any(Object),
+					expect.objectContaining({
+						continue: expect.any(String),
+						request: expect.any(Object),
+						requestInterval: 0,
+					}),
 					'microsoftEntraOAuth2Api',
 				);
 			});
 
 			it('should strip trailing slashes from base URL using regex', async () => {
-				const mockResponse = [{ data: 'test' }];
+				const mockResponse = [{ body: { value: [{ id: '1', name: 'Group 1' }] } }];
 				mockRequestWithAuthenticationPaginated.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
@@ -282,14 +284,17 @@ describe('Microsoft Entra GenericFunctions', () => {
 				await microsoftApiPaginateRequest.call(mockExecuteFunctions, 'GET', '/groups');
 
 				expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
-					mockExecuteFunctions,
 					expect.objectContaining({
 						method: 'GET',
 						uri: 'https://graph.microsoft.com/v1.0/groups',
 						json: true,
 					}),
 					0,
-					expect.any(Object),
+					expect.objectContaining({
+						continue: expect.any(String),
+						request: expect.any(Object),
+						requestInterval: 0,
+					}),
 					'microsoftEntraOAuth2Api',
 				);
 			});

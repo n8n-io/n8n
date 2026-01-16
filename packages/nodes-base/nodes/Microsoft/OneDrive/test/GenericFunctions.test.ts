@@ -22,6 +22,9 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+		mockExecuteFunctions.getWorkflow.mockReturnValue({
+			id: 'test-workflow-id',
+		} as any);
 		jest.clearAllMocks();
 	});
 
@@ -211,7 +214,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 	describe('getPath', () => {
 		describe('graphApiBaseUrl from credentials', () => {
 			it('should use base URL from credentials', async () => {
-				const mockResponse = { name: 'test-item', path: '/folder/item' };
+				const mockResponse = {
+					name: 'test-item',
+					folder: {},
+					parentReference: { path: '/drive/root:/folder' },
+				};
 				mockRequestOAuth2.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
@@ -233,7 +240,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			});
 
 			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
-				const mockResponse = { name: 'test-item', path: '/folder/item' };
+				const mockResponse = {
+					name: 'test-item',
+					folder: {},
+					parentReference: { path: '/drive/root:/folder' },
+				};
 				mockRequestOAuth2.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
@@ -255,7 +266,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			});
 
 			it('should strip trailing slashes from base URL using regex', async () => {
-				const mockResponse = { name: 'test-item', path: '/folder/item' };
+				const mockResponse = {
+					name: 'test-item',
+					folder: {},
+					parentReference: { path: '/drive/root:/folder' },
+				};
 				mockRequestOAuth2.mockResolvedValue(mockResponse);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {
