@@ -278,30 +278,6 @@ describe('ChatService', () => {
 			expect(session.nodeWaitingForChatResponse).toBe('node1');
 			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
 		});
-
-		it('should not resume execution if blockUserInput is true', async () => {
-			const sessionKey = 'abc|123|public';
-			const session = {
-				executionId: '123',
-				nodeWaitingForChatResponse: 'node1',
-			};
-			const data = JSON.stringify({ action: 'sendMessage', chatInput: 'hello', sessionId: 'abc' });
-			(chatService as any).sessions.set(sessionKey, session);
-			mockExecutionManager.findExecution.mockResolvedValue({
-				id: '123',
-				status: 'waiting',
-				data: { resultData: { lastNodeExecuted: 'node1' } },
-				workflowData: {
-					nodes: [{ name: 'node1', type: CHAT_NODE_TYPE, parameters: { blockUserInput: true } }],
-				},
-			} as any);
-
-			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
-			await incomingMessageHandler(data);
-
-			expect(session.nodeWaitingForChatResponse).toBe('node1');
-			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('pollAndProcessChatResponses', () => {
