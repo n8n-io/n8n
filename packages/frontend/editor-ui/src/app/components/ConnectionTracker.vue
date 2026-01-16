@@ -3,6 +3,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNetworkStore } from '@/app/stores/network.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import type { BaseTextKey } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 
@@ -10,7 +11,19 @@ const pushConnectionStore = usePushConnectionStore();
 const networkStore = useNetworkStore();
 const i18n = useI18n();
 
-const connectionStatus = computed(() => {
+type ConnectionStatus =
+	| {
+			hasError: true;
+			message: BaseTextKey;
+			tooltip: BaseTextKey;
+	  }
+	| {
+			hasError: false;
+			message: null;
+			tooltip: null;
+	  };
+
+const connectionStatus = computed<ConnectionStatus>(() => {
 	// Priority 1: Check if browser is offline
 	if (!networkStore.isOnline) {
 		return {
@@ -35,8 +48,8 @@ const connectionStatus = computed(() => {
 
 	return {
 		hasError: false,
-		message: '',
-		tooltip: '',
+		message: null,
+		tooltip: null,
 	};
 });
 </script>
