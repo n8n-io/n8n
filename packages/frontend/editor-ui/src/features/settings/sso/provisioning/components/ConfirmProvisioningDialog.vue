@@ -177,9 +177,11 @@ const onConfirmProvisioningSetting = () => {
 					"
 					data-test-id="provisioning-confirmation-checkbox"
 				>
-					<N8nText color="text-base">{{
-						locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
-					}}</N8nText>
+					<template #label>
+						<N8nText color="text-base">{{
+							locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
+						}}</N8nText>
+					</template>
 				</N8nCheckbox>
 			</N8nCard>
 		</div>
