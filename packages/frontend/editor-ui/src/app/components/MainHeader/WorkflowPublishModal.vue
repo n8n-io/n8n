@@ -172,13 +172,21 @@ async function handlePublish() {
 
 	if (conflictData) {
 		const { trigger, conflict } = conflictData;
-		const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
+		let workflowName;
+		try {
+			const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
+			workflowName = conflictingWorkflow.name;
+		} catch {
+			workflowName = i18n.baseText('workflowActivator.conflictingWebhook.unknownWorkflow', {
+				interpolate: { id: conflict.workflowId },
+			});
+		}
 
 		uiStore.openModalWithData({
 			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 			data: {
 				triggerType: trigger.type,
-				workflowName: conflictingWorkflow.name,
+				workflowName,
 				...conflict,
 			},
 		});
