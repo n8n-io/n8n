@@ -400,7 +400,7 @@ describe('useToolParameters', () => {
 			});
 
 			// Should have hitl query parameter
-			expect(parameters.value.some((p) => p.name === 'HITL_Node_param2')).toBe(true);
+			expect(parameters.value.some((p) => p.name === 'HITL_Node_query.param2')).toBe(true);
 		});
 
 		it('should show selected tool parameters for HITL', async () => {
