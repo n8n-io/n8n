@@ -9,6 +9,7 @@ import {
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
+	buildDataTableCreationGuidance,
 } from '@/prompts/agents/responder.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -21,6 +22,149 @@ import {
 	getConfiguratorOutput,
 	hasRecursionErrorsCleared,
 } from '../utils/coordination-log';
+
+const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+const SET_NODE_TYPE = 'n8n-nodes-base.set';
+
+/**
+ * Column definition with name and type
+ */
+export interface ColumnDefinition {
+	name: string;
+	type: string;
+}
+
+/**
+ * Information about a Data Table node in the workflow
+ */
+export interface DataTableInfo {
+	/** The node name in the workflow */
+	nodeName: string;
+	/** The table name/ID (may be a placeholder) */
+	tableName: string;
+	/** Column definitions with names and types */
+	columns: ColumnDefinition[];
+	/** Whether columns are auto-mapped from input data */
+	isAutoMapped: boolean;
+	/** The operation (insert, update, upsert, get, delete) */
+	operation?: string;
+}
+
+/**
+ * Find nodes that connect to a target node
+ */
+function findPredecessorNodes(workflow: SimpleWorkflow, targetNodeName: string): string[] {
+	const predecessors: string[] = [];
+
+	for (const [sourceName, outputs] of Object.entries(workflow.connections)) {
+		if (!outputs.main) continue;
+
+		for (const connections of outputs.main) {
+			if (!connections) continue;
+			for (const connection of connections) {
+				if (connection.node === targetNodeName) {
+					predecessors.push(sourceName);
+				}
+			}
+		}
+	}
+
+	return predecessors;
+}
+
+/**
+ * Extract field definitions from a Set node's assignments
+ */
+function extractSetNodeFields(workflow: SimpleWorkflow, nodeName: string): ColumnDefinition[] {
+	const node = workflow.nodes.find((n) => n.name === nodeName && n.type === SET_NODE_TYPE);
+	if (!node) return [];
+
+	const params = node.parameters ?? {};
+	const assignments = params.assignments as
+		| { assignments?: Array<{ name: string; type: string }> }
+		| undefined;
+
+	if (!assignments?.assignments) return [];
+
+	return assignments.assignments
+		.filter((a) => a.name && a.type)
+		.map((a) => ({
+			name: a.name,
+			type: mapSetNodeTypeToDataTableType(a.type),
+		}));
+}
+
+/**
+ * Map Set node field types to Data Table column types
+ */
+function mapSetNodeTypeToDataTableType(setNodeType: string): string {
+	switch (setNodeType) {
+		case 'number':
+			return 'number';
+		case 'boolean':
+			return 'boolean';
+		case 'string':
+		default:
+			return 'text';
+	}
+}
+
+/**
+ * Extract data table information from workflow nodes
+ * Used to inform users about data tables they need to create manually
+ */
+function extractDataTableInfo(workflow: SimpleWorkflow): DataTableInfo[] {
+	const dataTableNodes = workflow.nodes.filter((node) => node.type === DATA_TABLE_NODE_TYPE);
+
+	return dataTableNodes.map((node) => {
+		const params = node.parameters ?? {};
+
+		// Extract table name from dataTableId parameter
+		// The structure is: { __rl: true, mode: 'id', value: 'tableName' }
+		let tableName = 'unknown';
+		const dataTableId = params.dataTableId as { value?: string } | undefined;
+		if (dataTableId?.value) {
+			tableName = dataTableId.value;
+		}
+
+		// Check if columns are auto-mapped or explicitly defined
+		const columnsParam = params.columns as
+			| { mappingMode?: string; value?: Record<string, unknown> }
+			| undefined;
+		const isAutoMapped = columnsParam?.mappingMode === 'autoMapInputData';
+
+		let columns: ColumnDefinition[] = [];
+
+		if (!isAutoMapped && columnsParam?.value) {
+			// Columns are explicitly defined - extract names (types default to text)
+			columns = Object.keys(columnsParam.value).map((name) => ({
+				name,
+				type: 'text', // Default type when explicitly defined
+			}));
+		} else if (isAutoMapped) {
+			// Try to infer columns from predecessor Set nodes
+			const predecessors = findPredecessorNodes(workflow, node.name);
+			for (const predecessorName of predecessors) {
+				const setFields = extractSetNodeFields(workflow, predecessorName);
+				if (setFields.length > 0) {
+					columns = setFields;
+					break;
+				}
+			}
+		}
+
+		// Get the operation type
+		const operation = (params.operation as string) ?? 'insert';
+
+		return {
+			nodeName: node.name,
+			tableName,
+			columns,
+			isAutoMapped,
+			operation,
+		};
+	});
+}
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -139,6 +283,14 @@ export class ResponderAgent {
 		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
 		if (configuratorOutput) {
 			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
+		}
+
+		// Data Table creation guidance
+		// If the workflow contains Data Table nodes, inform user they need to create tables manually
+		const dataTableInfo = extractDataTableInfo(context.workflowJSON);
+		if (dataTableInfo.length > 0) {
+			const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
+			contextParts.push(dataTableGuidance);
 		}
 
 		if (contextParts.length === 0) {

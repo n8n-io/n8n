@@ -18,8 +18,9 @@ const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a c
 1. Summarize what was built in a friendly way
 2. Explain the workflow structure briefly
 3. Include setup instructions if provided
-4. Ask if user wants adjustments
-5. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
+4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)
+5. Ask if user wants adjustments
+6. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
 
 Example response structure:
 "I've created your [workflow type] workflow! Here's what it does:
@@ -27,6 +28,8 @@ Example response structure:
 
 **Setup Required:**
 [List any configuration steps from the context]
+
+[If data tables are used, include Data Table creation steps with link to Data Tables tab]
 
 Let me know if you'd like to adjust anything."`;
 
@@ -69,6 +72,70 @@ export function buildGeneralErrorGuidance(): string {
 		'Apologize and explain that a technical error occurred. ' +
 		'Ask if they would like to try again or approach the problem differently.'
 	);
+}
+
+/**
+ * Column definition with name and type
+ */
+interface ColumnDefinition {
+	name: string;
+	type: string;
+}
+
+/**
+ * Data table information for guidance generation
+ */
+interface DataTableInfo {
+	nodeName: string;
+	tableName: string;
+	columns: ColumnDefinition[];
+	isAutoMapped: boolean;
+	operation?: string;
+}
+
+/**
+ * Build guidance for data table creation.
+ * Users need to manually create data tables since the AI workflow builder cannot create them automatically.
+ */
+export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): string {
+	if (dataTables.length === 0) {
+		return '';
+	}
+
+	const parts: string[] = ['**Data Table Setup Required:**'];
+	parts.push(
+		'The workflow uses Data Table nodes, but data tables must be created manually. ' +
+			'Do NOT tell the user that data tables will be created automatically.',
+	);
+
+	parts.push('');
+	parts.push('Include the following steps in your response to the user:');
+	parts.push('');
+	parts.push('## Steps to Create Data Tables');
+	parts.push('');
+	parts.push('1. Go to the [Data Tables tab](/home/datatables)');
+
+	for (const table of dataTables) {
+		parts.push(`2. Click "Create Data Table" and name your table \`${table.tableName}\``);
+
+		if (table.columns.length > 0) {
+			parts.push('3. Add these columns with the following types:');
+			for (const column of table.columns) {
+				parts.push(`   - \`${column.name}\` (${column.type})`);
+			}
+		} else if (table.isAutoMapped) {
+			parts.push(
+				`3. Add columns matching the data fields from the node that connects to "${table.nodeName}". ` +
+					'Check the output of the preceding node to determine the column names and appropriate types (text, number, or boolean).',
+			);
+		} else {
+			parts.push('3. Add columns based on the data you want to store');
+		}
+
+		parts.push('');
+	}
+
+	return parts.join('\n');
 }
 
 export function buildResponderPrompt(): string {
