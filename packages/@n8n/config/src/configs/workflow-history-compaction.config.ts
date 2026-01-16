@@ -38,7 +38,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * The minimum time we leave workflows in the history untouched
 	 * before we start trimming them.
 	 *
-	 * The workflow versions we compare and compact are those with
+	 * The workflow versions we compare and trim are those with
 	 * a `createdAt` value between `trimmingMinimumAgeHours - trimmingTimeWindowHours`
 	 * and `trimmingMinimumAgeHours`
 
@@ -49,7 +49,7 @@ export class WorkflowHistoryCompactionConfig {
 	/**
 	 * The time window we consider when trimming versions.
 	 *
-	 * The workflow versions we compare and compact are those with
+	 * The workflow versions we compare and trim are those with
 	 * a `createdAt` value between `trimmingMinimumAgeDays - trimmingTimeWindowDays`
 	 * and `trimmingMinimumDays`.
 	 *
