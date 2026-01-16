@@ -17,9 +17,14 @@ defineProps<{
 		<MarkdownRenderer :text="text" />
 		<div :class="$style.buttons">
 			<template v-for="button in buttons" :key="button.text">
-				<Button element="a" :href="button.link" :type="button.type" target="_blank">{{
-					button.text
-				}}</Button>
+				<Button
+					element="a"
+					:href="button.link"
+					:type="button.type"
+					target="_blank"
+					rel="noopener noreferrer"
+					>{{ button.text }}</Button
+				>
 			</template>
 		</div>
 	</div>
