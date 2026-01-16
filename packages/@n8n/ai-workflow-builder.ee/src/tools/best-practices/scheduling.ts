@@ -103,39 +103,6 @@ Best Practices:
 - Query efficiently with proper filters
 - Clean up completed tasks periodically
 
-## AI Processing in Scheduled Workflows
-
-When scheduled workflows need AI/LLM processing, ALWAYS use the AI Agent node (@n8n/n8n-nodes-langchain.agent) rather than:
-- Basic LLM Chain (chainLlm)
-- Provider-specific nodes (openAi, googleGemini) for main processing
-
-AI Agent provides:
-- Tool-calling capabilities
-- System prompt configuration
-- Memory integration for context
-- Better orchestration for complex tasks
-
-Only use provider-specific nodes (OpenAI Chat Model, Google Gemini Chat Model) as SUB-NODES connected to the AI Agent via ai_languageModel connection.
-
-Example: For "summarize daily news using GPT", implement:
-- Schedule Trigger -> ... -> AI Agent <- OpenAI Chat Model (sub-node)
-- NOT: Schedule Trigger -> ... -> OpenAI node (wrong - no agent orchestration)
-
-Correct patterns:
-- 3 RSS feeds fetching in parallel -> Use MERGE with numberInputs: 3
-- 1 Gmail node returning 10 emails to combine -> Use AGGREGATE
-- Multiple API calls running simultaneously -> Use MERGE
-- Loop producing multiple items to collect -> Use AGGREGATE
-
-## Using Requested Integrations
-
-When a user explicitly requests a specific service or integration:
-- "use Perplexity for search" -> Use Perplexity node, NOT SerpAPI or other alternatives
-- "use Gemini" -> Use Google Gemini, NOT OpenAI
-- "send via Telegram" -> Use Telegram node, NOT generic HTTP webhook
-
-Do NOT substitute with alternative services unless the requested integration genuinely doesn't exist in n8n. Always search for the specific integration first.
-
 ## Common Pitfalls to Avoid
 
 ### Missed Schedules During Downtime

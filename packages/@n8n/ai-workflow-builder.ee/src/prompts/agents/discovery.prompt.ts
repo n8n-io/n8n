@@ -217,7 +217,7 @@ const SUB_NODES_SEARCHES = `When searching for AI nodes, ALSO search for their r
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"`;
 
-const AI_NODE_SELECTION = `CRITICAL: Choose the correct AI node based on task type.
+const AI_NODE_SELECTION = `CRITICAL: ALWAYS use AI Agent for AI/LLM processing.
 
 **Use AI Agent (@n8n/n8n-nodes-langchain.agent) for:**
 - Text analysis, summarization, or classification
@@ -225,6 +225,7 @@ const AI_NODE_SELECTION = `CRITICAL: Choose the correct AI node based on task ty
 - Any task requiring reasoning or decision-making
 - Chat completions or conversational AI
 - Multi-step AI tasks
+- ANY prompt asking for "AI", "agent", or "AI processing"
 
 **Use @n8n/n8n-nodes-langchain.openAi ONLY for:**
 - Image generation (DALL-E)
@@ -238,8 +239,40 @@ CORRECT: Recommending AI Agent for analysis/summarization tasks
 
 When user asks for AI processing, analysis, or summarization:
 1. Recommend AI Agent (@n8n/n8n-nodes-langchain.agent)
-2. Also recommend a Chat Model sub-node (lmChatOpenAi, lmChatGoogleGemini, etc.)
-3. Do NOT recommend the standalone openAi node for these tasks`;
+2. Recommend OpenAI Chat Model (lmChatOpenAi) as the default chat model - new users get free OpenAI credits
+3. Do NOT recommend the standalone openAi node for these tasks
+4. Do NOT recommend Basic LLM Chain - always prefer AI Agent
+
+**Default Chat Model: OpenAI (lmChatOpenAi)**
+- Use OpenAI Chat Model unless user explicitly requests a different provider (e.g., "use Claude", "use Gemini")
+- OpenAI has the lowest setup friction for new trial users
+- Only use lmChatAnthropic, lmChatGoogleGemini, etc. when explicitly requested
+
+Chat Model nodes are SUB-NODES - they connect TO AI Agent via ai_languageModel, never used standalone for text processing.`;
+
+const AI_AGENT_TOOLS = `When AI Agent needs to perform external actions, use TOOL nodes connected via ai_tool:
+
+**Pattern: AI Agent with Tool nodes**
+- AI Agent decides WHEN and HOW to use tools based on its reasoning
+- Tool nodes connect TO the AI Agent (Tool → AI Agent [ai_tool])
+- The agent can call tools multiple times or skip them entirely based on context
+
+**Common Tool nodes (use INSTEAD of regular nodes when AI Agent is involved):**
+| Regular Node | Tool Node | When to use Tool version |
+|--------------|-----------|--------------------------|
+| googleCalendar | googleCalendarTool | AI Agent creates/manages calendar events |
+| slack | slackTool | AI Agent sends messages or reads channels |
+| gmail | gmailTool | AI Agent sends emails or searches inbox |
+| httpRequest | httpRequestTool | AI Agent makes API calls |
+| calculator | calculatorTool | AI Agent performs calculations |
+
+**When to use Tool nodes vs Regular nodes:**
+- Tool node: AI Agent needs to DECIDE whether/when to perform the action
+- Regular node: Action ALWAYS happens at that point in the workflow
+
+**Example - AI scheduling assistant:**
+WRONG: AI Agent → Google Calendar (calendar always creates event)
+CORRECT: Google Calendar Tool → AI Agent [ai_tool] (agent decides if/when to create event)`;
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.usage;
 
@@ -266,7 +299,8 @@ const CODE_NODE_ALTERNATIVES = `CRITICAL: Prefer native n8n nodes over Code node
 | Route by condition | If or Switch |
 | Split array into items | Split Out |
 | Combine items from SAME branch into one | Aggregate |
-| Combine outputs from PARALLEL branches | Merge (set numberInputs!) |
+| Multiple branches where ALL execute (e.g., 3 APIs) | Merge (waits for all, set numberInputs!) |
+| Conditional branches where only ONE runs (after IF) | Edit Fields (Set) |
 | Summarize/pivot data | Summarize |
 | Sort items | Sort |
 | Remove duplicates | Remove Duplicates |
@@ -395,6 +429,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('dynamic_output_nodes', DYNAMIC_OUTPUT_NODES)
 		.section('sub_nodes_searches', SUB_NODES_SEARCHES)
 		.section('ai_node_selection', AI_NODE_SELECTION)
+		.section('ai_agent_tools', AI_AGENT_TOOLS)
 		.section('structured_output_parser', STRUCTURED_OUTPUT_PARSER)
 		.section('critical_rules', CRITICAL_RULES)
 		.section('do_not', RESTRICTIONS)

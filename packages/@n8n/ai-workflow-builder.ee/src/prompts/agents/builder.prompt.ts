@@ -163,12 +163,41 @@ Examples:
 - Enriching a dataset with another one
 - Matching items between two datasets
 
-CRITICAL: Merge vs Aggregate distinction:
-- **MERGE**: Multiple PARALLEL branches → single flow (set numberInputs to match input count!)
-- **AGGREGATE**: Multiple ITEMS in ONE branch → single item
+CRITICAL: Merge vs Aggregate vs Set distinction:
 
-If you have 3 RSS feeds running in parallel, use MERGE with numberInputs: 3.
-If you have 1 branch producing 10 items to combine, use AGGREGATE.`;
+**MERGE node** - When ALL branches execute (Merge WAITS for all inputs):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> A[API 1]
+    T --> B[API 2]
+    T --> C[API 3]
+    A --> M[Merge<br/>numberInputs: 3]
+    B --> M
+    C --> M
+    M --> Next[Next Step]
+\`\`\`
+Use cases: 3 Slack channels, 3 RSS feeds, multiple API calls that all need to complete.
+
+**AGGREGATE node** - When combining items from a SINGLE branch:
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> G[Gmail<br/>returns 10 emails]
+    G --> A[Aggregate<br/>10 items → 1]
+    A --> Next[Next Step]
+\`\`\`
+Use cases: Gmail returning multiple emails, loop producing items to collect.
+
+**SET node** - When only ONE branch executes (conditional):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> IFNode{{IF}}
+    IFNode -->|true| A[Action A]
+    IFNode -->|false| B[Action B]
+    A --> S[Set]
+    B --> S
+    S --> Next[Next Step]
+\`\`\`
+Use cases: IF node with true/false paths converging. Merge would wait forever for the branch that didn't execute.`;
 
 const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node types:
 
@@ -183,42 +212,6 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;
 
-const AI_AGENT_VS_CHAIN = `When to use AI Agent vs Basic LLM Chain:
-
-**USE AI AGENT (@n8n/n8n-nodes-langchain.agent) when:**
-- The prompt asks for "AI", "agent", or "AI processing"
-- You need tool-calling, system prompts, or memory
-- Tasks involve analysis, summarization, or multi-step reasoning
-- The workflow processes data with AI/LLM capabilities
-
-**USE Basic LLM Chain (@n8n/n8n-nodes-langchain.chainLlm) ONLY when:**
-- Simple single-turn text generation without tools
-- User explicitly asks for "basic chain" or "simple LLM"
-
-When in doubt, prefer AI Agent over Basic LLM Chain.
-
-Chat Model nodes (lmChatOpenAi, lmChatGoogleGemini, etc.) are SUB-NODES - they connect TO AI Agent or Basic LLM Chain via ai_languageModel, never used standalone for text processing.`;
-
-const OPENAI_NODE_USAGE = `The @n8n/n8n-nodes-langchain.openAi node has SPECIFIC use cases:
-
-VALID uses for @n8n/n8n-nodes-langchain.openAi (standalone):
-- Image generation (DALL-E)
-- Audio transcription (Whisper)
-- Text-to-speech
-- Other OpenAI-specific operations that are NOT agentic
-
-DO NOT use @n8n/n8n-nodes-langchain.openAi for:
-- Text analysis or summarization (use AI Agent instead)
-- Chat completions in workflows (use AI Agent instead)
-- Any agentic task requiring reasoning (use AI Agent instead)
-
-For agentic use cases:
-- WRONG: Schedule Trigger -> @n8n/n8n-nodes-langchain.openAi -> Gmail
-- CORRECT: Schedule Trigger -> AI Agent <- OpenAI Chat Model [ai_languageModel]
-
-When the task involves AI processing, analysis, summarization, or reasoning:
-Use AI Agent (@n8n/n8n-nodes-langchain.agent) with a chat model sub-node (lmChatOpenAi, lmChatGoogleGemini, etc.)`;
-
 const MULTI_TRIGGER_WORKFLOWS = `Some workflows require MULTIPLE triggers for different entry points:
 
 **Examples requiring multiple triggers:**
@@ -229,7 +222,7 @@ const MULTI_TRIGGER_WORKFLOWS = `Some workflows require MULTIPLE triggers for di
 **How to build:**
 1. Create each trigger node separately
 2. Each trigger starts its own execution path
-3. Paths may converge later using Merge node if needed
+3. Paths may converge later using Set (Edit Fields) node if needed (only one trigger fires per execution)
 
 IMPORTANT: If the user prompt mentions TWO different input sources (e.g., "website form OR email"), you need TWO trigger nodes.`;
 
@@ -349,11 +342,18 @@ ai_languageModel - Language model provides LLM capability:
 - OpenAI Chat Model → AI Agent
 - Anthropic Chat Model → AI Agent
 
-ai_tool - Tool provides action capability:
+ai_tool - Tool provides action capability to AI Agent:
 - Calculator Tool → AI Agent
 - HTTP Request Tool → AI Agent
 - Code Tool → AI Agent
 - AI Agent Tool → AI Agent (multi-agent systems)
+- Google Calendar Tool → AI Agent (for scheduling/calendar management)
+- Gmail Tool → AI Agent (for email operations)
+- Slack Tool → AI Agent (for messaging)
+
+IMPORTANT: When AI Agent needs to perform external actions (create events, send messages, make API calls),
+use TOOL nodes connected via ai_tool, NOT regular nodes in the main flow.
+Tool nodes let the AI Agent DECIDE when to use them. Regular nodes ALWAYS execute.
 
 ai_memory - Memory provides conversation history:
 - Window Buffer Memory → AI Agent
@@ -414,8 +414,6 @@ export function buildBuilderPrompt(): string {
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
-		.section('ai_agent_vs_chain', AI_AGENT_VS_CHAIN)
-		.section('openai_node_usage', OPENAI_NODE_USAGE)
 		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
 		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
