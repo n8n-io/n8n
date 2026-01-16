@@ -164,7 +164,10 @@ export class SourceControlGitService {
 			const escapedKnownHostsPath = normalizedKnownHostsPath.replace(/"/g, '\\"');
 
 			// Quote paths to handle spaces and special characters
-			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
+			// Use StrictHostKeyChecking=accept-new to protect against MITM attacks:
+			// - First connection: accepts and saves host key to known_hosts
+			// - Subsequent connections: verifies against saved key
+			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=accept-new -i "${escapedPrivateKeyPath}"`;
 
 			this.git = simpleGit(this.gitOptions)
 				.env('GIT_SSH_COMMAND', sshCommand)
