@@ -118,6 +118,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Track the last user message ID for telemetry
 	const lastUserMessageId = ref<string | undefined>();
 
+	// Track whether loadSessions is in progress to prevent duplicate calls
+	const isLoadingSessions = ref(false);
+
 	const documentTitle = useDocumentTitle();
 
 	// Store dependencies
@@ -648,6 +651,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		}
 
+		// Guard: Don't load if workflow is not saved
+		if (!workflowsStore.isWorkflowSaved[workflowId]) {
+			return [];
+		}
+
+		// Guard: Don't load if chat messages are already loaded
+		if (chatMessages.value.length > 0) {
+			return [];
+		}
+
+		// Guard: Prevent duplicate concurrent calls
+		if (isLoadingSessions.value) {
+			return [];
+		}
+
+		isLoadingSessions.value = true;
 		try {
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
 			const sessions = response.sessions || [];
@@ -693,6 +712,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		} catch (error) {
 			console.error('Failed to load AI sessions:', error);
 			return [];
+		} finally {
+			isLoadingSessions.value = false;
 		}
 	}
 
@@ -761,10 +782,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 			resetBuilderChat();
 
-			// Load sessions if we have a valid saved workflow, AI builder is enabled, and we're in a builder-enabled view
+			// Load sessions if AI builder is enabled and we're in a builder-enabled view
+			// loadSessions has its own guards for workflow saved state and deduplication
 			if (
 				newWorkflowId &&
-				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {

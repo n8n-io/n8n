@@ -68,7 +68,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
-			if (!builderStore.streaming && builderStore.chatMessages.length === 0) {
+			if (!builderStore.streaming) {
 				void builderStore.fetchBuilderCredits();
 				void builderStore.loadSessions();
 			}

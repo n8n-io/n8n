@@ -157,25 +157,6 @@ describe('chatPanel.store', () => {
 			expect(builderStore.fetchBuilderCredits).not.toHaveBeenCalled();
 			expect(builderStore.loadSessions).not.toHaveBeenCalled();
 		});
-
-		it('should not fetch credits or load sessions when messages already exist', async () => {
-			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			builderStore.chatMessages = [
-				{
-					id: '1',
-					role: 'user',
-					type: 'text',
-					content: 'test',
-					read: true,
-				} as ChatUI.AssistantMessage,
-			];
-
-			await chatPanelStore.open({ mode: 'builder' });
-
-			expect(chatPanelStateStore.isOpen).toBe(true);
-			expect(builderStore.fetchBuilderCredits).not.toHaveBeenCalled();
-			expect(builderStore.loadSessions).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('close', () => {
