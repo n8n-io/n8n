@@ -37,8 +37,9 @@ export class MfaService {
 	}
 
 	private async loadMFASettings() {
-		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		const value = (await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING))?.value;
 		await this.cacheService.set(MFA_CACHE_KEY, value);
+		return value === 'true';
 	}
 
 	async enforceMFA(value: boolean) {
@@ -57,10 +58,11 @@ export class MfaService {
 	}
 
 	async isMFAEnforced() {
-		return (
-			this.license.isMFAEnforcementLicensed() &&
-			(await this.cacheService.get(MFA_CACHE_KEY)) === 'true'
-		);
+		if (!this.license.isMFAEnforcementLicensed()) return false;
+
+		const cachedValue = await this.cacheService.get(MFA_CACHE_KEY);
+
+		return cachedValue ? cachedValue === 'true' : await this.loadMFASettings();
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
