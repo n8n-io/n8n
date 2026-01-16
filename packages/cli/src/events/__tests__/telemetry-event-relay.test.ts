@@ -879,6 +879,63 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should truncate node_graph_string when it exceeds size limit', async () => {
+			const largeNodeGraph: INodesGraphResult = {
+				nodeGraph: {
+					node_types: Array.from({ length: 1000 }, (_, i) => `n8n-nodes-base.node${i}`),
+					node_connections: Array.from({ length: 1000 }, (_, i) => ({
+						start: `${i}`,
+						end: `${i + 1}`,
+					})),
+					nodes: Object.fromEntries(
+						Array.from({ length: 500 }, (_, i) => [
+							`${i}`,
+							{
+								id: `node-${i}`,
+								type: `n8n-nodes-base.veryLongNodeTypeName${i}`,
+								version: 1,
+								position: [i * 100, i * 100],
+							},
+						]),
+					),
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: {},
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			};
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
+
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: '{}',
+				public_api: false,
+				project_id: 'project123',
+				project_type: 'personal',
+			});
+		});
+
 		it('should track on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {
