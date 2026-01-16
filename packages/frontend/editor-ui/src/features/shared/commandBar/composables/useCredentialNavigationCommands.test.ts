@@ -574,7 +574,7 @@ describe('useCredentialNavigationCommands', () => {
 
 			handlers.onCommandBarChange('gma');
 
-			expect(isLoading.value).toBe(false); // Not in parent node, so shouldn't be loading
+			expect(isLoading.value).toBe(true); // Should show loading during fetch
 		});
 	});
 
