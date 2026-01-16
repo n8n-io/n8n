@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
+
+import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
 
 import { ConflictingStoragePathsError } from '../conflicting-storage-paths.error';
 import { StorageConfig } from '../storage.config';
-
-import { InstanceSettings } from '@/instance-settings';
 
 describe('StorageConfig', () => {
 	const n8nFolder = '~/.n8n';
