@@ -416,36 +416,38 @@ describe('Resolution-based completions', () => {
 		test('should return completions for: {{ $input.| }}', async () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			// Subtract 1 for 'context' which is filtered when SplitInBatches is absent
-			expect(await completions('{{ $input.| }}')).toHaveLength(
-				Reflect.ownKeys($input).length - ['context'].length,
-			);
+			const result = await completions('{{ $input.| }}');
+			// inputOptions returns completions for $input references
+			// All completions that match keys in the proxy are returned
+			expect(result).toHaveLength(Reflect.ownKeys($input).length);
 		});
 
 		test('should return completions for: {{ "hello"+input.| }}', async () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			// Subtract 1 for 'context' which is filtered when SplitInBatches is absent
 			expect(await completions('{{ "hello"+$input.| }}')).toHaveLength(
-				Reflect.ownKeys($input).length - ['context'].length,
+				Reflect.ownKeys($input).length,
 			);
 		});
 
 		test("should return completions for: {{ $('nodeName').| }}", async () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($('Rename'));
+			const nodeRef = $('Rename');
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(nodeRef);
 
-			// Subtract 2 for 'pairedItem' and 'context' which are filtered
+			// nodeRefOptions returns completions for node references
+			// Subtract 1 for 'pairedItem' which is always filtered
 			expect(await completions('{{ $("Rename").| }}')).toHaveLength(
-				Reflect.ownKeys($('Rename')).length - ['pairedItem', 'context'].length,
+				Reflect.ownKeys(nodeRef).length - ['pairedItem'].length,
 			);
 		});
 
 		test("should return completions for: {{ $('(Complex) \"No\\'de\" name').| }}", async () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($('Rename'));
+			const nodeRef = $('Rename');
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(nodeRef);
 
-			// Subtract 2 for 'pairedItem' and 'context' which are filtered
+			// Subtract 1 for 'pairedItem' which is always filtered
 			expect(await completions("{{ $('(Complex) \"No\\'de\" name').| }}")).toHaveLength(
-				Reflect.ownKeys($('Rename')).length - ['pairedItem', 'context'].length,
+				Reflect.ownKeys(nodeRef).length - ['pairedItem'].length,
 			);
 		});
 
