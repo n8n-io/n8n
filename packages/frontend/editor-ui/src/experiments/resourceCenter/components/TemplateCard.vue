@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
@@ -7,6 +7,35 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+
+// Lazy loading state
+const cardRef = ref<HTMLElement | null>(null);
+const isVisible = ref(false);
+let observer: IntersectionObserver | null = null;
+
+onMounted(() => {
+	if (cardRef.value) {
+		observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					isVisible.value = true;
+					// Stop observing once visible (no need to track anymore)
+					observer?.disconnect();
+				}
+			},
+			{
+				rootMargin: '100px', // Start loading slightly before visible
+				threshold: 0,
+			},
+		);
+		observer.observe(cardRef.value);
+	}
+});
+
+onBeforeUnmount(() => {
+	observer?.disconnect();
+});
 
 const props = withDefaults(
 	defineProps<{
@@ -60,9 +89,20 @@ const handleClick = async () => {
 </script>
 
 <template>
-	<div :class="$style.card" @click="handleClick">
+	<div ref="cardRef" :class="$style.card" @click="handleClick">
 		<div :class="$style.imageContainer">
-			<div :class="$style.imagePlaceholder" />
+			<!-- Only render WorkflowPreview when card is visible (lazy loading) -->
+			<WorkflowPreview
+				v-if="template.workflow && isVisible"
+				:workflow="template.workflow"
+				:can-open-n-d-v="false"
+				:hide-node-issues="true"
+				:focus-on-load="false"
+				hide-controls
+				loader-type="spinner"
+				:class="$style.workflowPreview"
+			/>
+			<div v-else :class="$style.imagePlaceholder" />
 			<div v-if="templateNodes.length > 0" :class="$style.nodesBadge">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
 					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
@@ -111,7 +151,7 @@ const handleClick = async () => {
 .imageContainer {
 	position: relative;
 	width: 100%;
-	height: 170px;
+	aspect-ratio: 16 / 9;
 	overflow: hidden;
 	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius--lg);
@@ -127,6 +167,17 @@ const handleClick = async () => {
 		var(--color--foreground--tint-2) 0%,
 		var(--color--foreground--tint-1) 100%
 	);
+}
+
+.workflowPreview {
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+
+	:deep(iframe) {
+		border: none;
+		border-radius: var(--radius--lg);
+	}
 }
 
 .nodesBadge {

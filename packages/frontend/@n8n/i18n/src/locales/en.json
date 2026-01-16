@@ -985,6 +985,8 @@
 	"experiments.resourceCenter.learnN8n.title": "Learn to use n8n",
 	"experiments.resourceCenter.featuredVideos.title": "Featured video tutorials",
 	"experiments.resourceCenter.quickTips.title": "Quick tips",
+	"experiments.resourceCenter.masterclass.title": "Masterclasses",
+	"experiments.resourceCenter.learnTemplates.title": "Starter templates",
 	"experiments.resourceCenter.popularTemplates.title": "Popular templates",
 	"experiments.resourceCenter.automationIdeas.title": "Automation ideas",
 	"experiments.resourceCenter.sandbox.easySetup": "Easy set up",

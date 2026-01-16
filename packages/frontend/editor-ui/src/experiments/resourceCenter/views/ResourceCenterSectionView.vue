@@ -12,6 +12,7 @@ import {
 	inspirationVideos,
 	courses,
 	learningVideos,
+	masterclassVideos,
 	featuredTemplateIds,
 	type YouTubeVideo,
 } from '../data/resourceCenterData';
@@ -42,6 +43,10 @@ const sectionConfig = computed(() => {
 			title: i18n.baseText('experiments.resourceCenter.youtubeLearn.title'),
 			type: 'video',
 		},
+		'masterclass-videos': {
+			title: i18n.baseText('experiments.resourceCenter.masterclass.title'),
+			type: 'video',
+		},
 		'inspiration-videos': {
 			title: i18n.baseText('experiments.resourceCenter.youtubeInspiration.title'),
 			type: 'video',
@@ -64,6 +69,9 @@ const videoItems = computed(() => {
 			break;
 		case 'learning-videos':
 			items = [...learningVideos];
+			break;
+		case 'masterclass-videos':
+			items = [...masterclassVideos];
 			break;
 		case 'inspiration-videos':
 			items = [...inspirationVideos];

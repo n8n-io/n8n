@@ -71,7 +71,7 @@ const openVideo = () => {
 .thumbnailContainer {
 	position: relative;
 	width: 100%;
-	height: 170px;
+	aspect-ratio: 16 / 9;
 	overflow: hidden;
 	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius--lg);
@@ -137,13 +137,14 @@ const openVideo = () => {
 .meta {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	padding-left: calc(20px + var(--spacing--2xs)); /* align with title text (icon width + gap) */
 }
 
 .separator {
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
 }
 </style>

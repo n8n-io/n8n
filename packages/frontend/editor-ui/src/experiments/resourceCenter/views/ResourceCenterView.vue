@@ -16,7 +16,8 @@ import {
 	featuredTemplateIds,
 	inspirationVideos,
 	learningVideos,
-	quickTips,
+	learnTemplateIds,
+	masterclassVideos,
 } from '../data/resourceCenterData';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
@@ -27,7 +28,9 @@ const templatesStore = useTemplatesStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
+const learnTemplates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
+const isLoadingLearnTemplates = ref(false);
 
 const handleQuickStartImport = async (quickStartId: string) => {
 	await resourceCenterStore.createAndOpenQuickStartWorkflow(quickStartId);
@@ -54,6 +57,17 @@ const loadTemplates = async () => {
 	}
 };
 
+const loadLearnTemplates = async () => {
+	if (learnTemplateIds.length === 0) return;
+
+	isLoadingLearnTemplates.value = true;
+	try {
+		learnTemplates.value = await resourceCenterStore.loadTemplates(learnTemplateIds);
+	} finally {
+		isLoadingLearnTemplates.value = false;
+	}
+};
+
 onMounted(() => {
 	// Reset scroll
 	setTimeout(() => {
@@ -64,6 +78,7 @@ onMounted(() => {
 
 	resourceCenterStore.trackResourceCenterView();
 	void loadTemplates();
+	void loadLearnTemplates();
 });
 </script>
 
@@ -123,17 +138,39 @@ onMounted(() => {
 						/>
 					</HorizontalGallery>
 
-					<!-- Quick Tips -->
+					<!-- Masterclass Videos -->
 					<HorizontalGallery
-						:title="i18n.baseText('experiments.resourceCenter.quickTips.title')"
-						:on-title-click="quickTips.length > 3 ? () => handleSeeMore('quick-tips') : undefined"
+						:title="i18n.baseText('experiments.resourceCenter.masterclass.title')"
+						:on-title-click="
+							masterclassVideos.length > 3 ? () => handleSeeMore('masterclass-videos') : undefined
+						"
 					>
 						<VideoThumbCard
-							v-for="video in quickTips.slice(0, 3)"
+							v-for="video in masterclassVideos.slice(0, 3)"
 							:key="video.videoId"
 							:video="video"
-							icon-type="lightbulb"
+							icon-type="youtube"
 						/>
+					</HorizontalGallery>
+
+					<!-- Learn Templates -->
+					<HorizontalGallery
+						v-if="learnTemplates.length > 0 || isLoadingLearnTemplates"
+						:title="i18n.baseText('experiments.resourceCenter.learnTemplates.title')"
+						:on-title-click="() => handleViewAllTemplates()"
+					>
+						<template v-if="isLoadingLearnTemplates">
+							<div :class="$style.loading">
+								<N8nSpinner size="small" />
+							</div>
+						</template>
+						<template v-else>
+							<TemplateCard
+								v-for="template in learnTemplates.slice(0, 3)"
+								:key="template.id"
+								:template="template"
+							/>
+						</template>
 					</HorizontalGallery>
 				</div>
 			</section>
