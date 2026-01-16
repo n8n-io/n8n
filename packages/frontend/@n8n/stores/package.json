@@ -33,6 +33,9 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
+    "bowser": "^2.11.0",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {

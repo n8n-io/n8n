@@ -2559,6 +2559,15 @@ importers:
 
   packages/frontend/@n8n/stores:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/rest-api-client':
+        specifier: workspace:*
+        version: link:../rest-api-client
+      bowser:
+        specifier: ^2.11.0
+        version: 2.11.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
