@@ -27,6 +27,7 @@ import { StructuredToolkit } from '../ai-tool-types';
 import {
 	createHitlToolkit,
 	createHitlToolSupplyData,
+	extendResponseMetadata,
 	makeHandleToolInvocation,
 } from '../get-input-connection-data';
 
@@ -1540,5 +1541,29 @@ describe('createHitlToolSupplyData', () => {
 		expect(toolkit.tools[0].name).toBe('test_tool');
 		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
 		expect(toolkit.tools[0].metadata?.gatedToolNodeName).toBe('Original Tool Node');
+	});
+});
+
+describe('extendResponseMetadata', () => {
+	it('should extend metadata for toolkits', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		const toolkit = new StructuredToolkit([tool]);
+		extendResponseMetadata(toolkit, { name: 'HITL Node' } as INode);
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+	});
+	it('should extend metadata for tools', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		extendResponseMetadata(tool, { name: 'HITL Node' } as INode);
+		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
 	});
 });

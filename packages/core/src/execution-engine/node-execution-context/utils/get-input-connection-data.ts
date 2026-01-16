@@ -342,7 +342,7 @@ function validateInputConfiguration(
 }
 
 // Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
-function extendResponseMetadata(response: unknown, connectedNode: INode) {
+export function extendResponseMetadata(response: unknown, connectedNode: INode) {
 	// Ensure sourceNodeName is set for proper routing
 	if (response instanceof StructuredTool || response instanceof Tool) {
 		response.metadata ??= {};
