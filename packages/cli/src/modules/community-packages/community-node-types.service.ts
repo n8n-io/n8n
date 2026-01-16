@@ -71,7 +71,10 @@ export class CommunityNodeTypesService {
 			if (this.config.enabled && this.config.verifiedEnabled) {
 				const typesToUpdate = await this.detectUpdates(environment);
 
-				if (!typesToUpdate.length) this.updateCommunityNodeTypes(data);
+				if (!typesToUpdate.length) {
+					this.updateCommunityNodeTypes(data);
+					return;
+				}
 
 				const qs = buildStrapiUpdateQuery(typesToUpdate);
 				data = await getCommunityNodeTypes(environment, qs);
