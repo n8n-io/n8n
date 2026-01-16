@@ -1,4 +1,10 @@
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	EngineResponse,
+	IExecuteFunctions,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeOutput,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { convertNodeToHitlTool, createHitlTools, hasSendAndWaitOperation } from '../hitl-tools';
@@ -25,6 +31,25 @@ describe('hitl-tools', () => {
 			} as unknown as INodeTypeDescription;
 
 			expect(hasSendAndWaitOperation(nodeType)).toBe(true);
+		});
+
+		it('should return false for nodes with webhooks and non-array operation options', () => {
+			const nodeType = {
+				name: 'slack',
+				displayName: 'Slack',
+				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: { name: 'Send Message', value: 'sendMessage' },
+						default: 'sendMessage',
+					},
+				],
+			} as unknown as INodeTypeDescription;
+
+			expect(hasSendAndWaitOperation(nodeType)).toBe(false);
 		});
 
 		it('should return false for nodes without webhooks', () => {
@@ -106,7 +131,10 @@ describe('hitl-tools', () => {
 	});
 
 	describe('convertNodeToHitlTool', () => {
-		let fullNodeWrapper: { description: INodeTypeDescription };
+		let fullNodeWrapper: {
+			description: INodeTypeDescription;
+			execute?: (this: IExecuteFunctions, response?: EngineResponse) => Promise<NodeOutput>;
+		};
 
 		beforeEach(() => {
 			fullNodeWrapper = {
@@ -152,6 +180,24 @@ describe('hitl-tools', () => {
 			expect(result.description.name).toBe('slackHitlTool');
 			expect(result.description.displayName).toBe('Slack');
 			expect(result.description.subtitle).toBe('Send and wait');
+		});
+
+		it('should modify the execute method to ensure proper ai_tool logging', async () => {
+			const originalExecute = jest.fn();
+			fullNodeWrapper.execute = originalExecute;
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+
+			const node = {
+				rewireOutputLogTo: undefined,
+			};
+			const context = {
+				getNode: () => node,
+			} as unknown as IExecuteFunctions;
+
+			await result.execute?.call(context);
+
+			expect(node.rewireOutputLogTo).toBe(NodeConnectionTypes.AiTool);
+			expect(originalExecute).toHaveBeenCalled();
 		});
 
 		it('should update inputs and outputs for HITL with labels', () => {
@@ -334,6 +380,20 @@ describe('hitl-tools', () => {
 			);
 			expect(approvalOptionsProp).toBeDefined();
 			expect(approvalOptionsProp?.type).toBe('fixedCollection');
+		});
+
+		it('should keep other options visible for customization', () => {
+			fullNodeWrapper.description.properties.push({
+				displayName: 'Some parameter',
+				name: 'someParameter',
+				type: 'collection',
+				default: {},
+			});
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			const optionsProp = result.description.properties.find(
+				(prop: INodeProperties) => prop.name === 'someParameter',
+			);
+			expect(optionsProp).toBeDefined();
 		});
 	});
 
