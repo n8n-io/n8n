@@ -509,6 +509,7 @@ export class SourceControlStatusService {
 				conflict: false,
 				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -522,6 +523,7 @@ export class SourceControlStatusService {
 				conflict: options.direction === 'push' ? false : true,
 				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -535,6 +537,7 @@ export class SourceControlStatusService {
 				conflict: true,
 				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
