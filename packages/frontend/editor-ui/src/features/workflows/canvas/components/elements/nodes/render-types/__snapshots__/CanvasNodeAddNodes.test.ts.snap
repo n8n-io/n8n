@@ -9,6 +9,7 @@ exports[`CanvasNodeAddNodes > should render node correctly 1`] = `
   
   
   <span
+    class=""
     data-grace-area-trigger=""
     data-state="closed"
   >
