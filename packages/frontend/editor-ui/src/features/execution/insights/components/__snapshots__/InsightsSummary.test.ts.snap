@@ -2,7 +2,6 @@
 
 exports[`InsightsSummary > should render the summary correctly 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs"></ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -11,7 +10,6 @@ exports[`InsightsSummary > should render the summary correctly 1`] = `
 
 exports[`InsightsSummary > should render the summary correctly 2`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -46,7 +44,6 @@ exports[`InsightsSummary > should render the summary correctly 2`] = `
 
 exports[`InsightsSummary > should render the summary correctly 3`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -81,7 +78,6 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
 
 exports[`InsightsSummary > should render the summary correctly 4`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -116,7 +112,6 @@ exports[`InsightsSummary > should render the summary correctly 4`] = `
 
 exports[`InsightsSummary > should render the summary correctly 5`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -146,7 +141,6 @@ exports[`InsightsSummary > should render the summary correctly 5`] = `
 
 exports[`InsightsSummary > should render the summary correctly 6`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -181,7 +175,6 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
 
 exports[`InsightsSummary > with different date ranges > should render with 'custom range' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -216,7 +209,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'cust
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 7 days (week preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -251,7 +243,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 14 days (2weeks preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -286,7 +277,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 24 hours (day preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -321,7 +311,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 30 days (month preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -356,7 +345,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 90 days (quarter preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -391,7 +379,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 180 days (6months preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
@@ -426,7 +413,6 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
 
 exports[`InsightsSummary > with different date ranges > should render with 'last 365 days (year preset)' 1`] = `
 "<div class="insightsWrapper">
-  <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
       <li data-test-id="insights-summary-tab-total"><span data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span data-state="closed" data-grace-area-trigger=""> Prod. executions</span>
