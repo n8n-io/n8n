@@ -205,7 +205,8 @@ export class SettingsLogStreamingPage extends BasePage {
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		// Wait for debounced input update (200ms debounce in ParameterInput.vue)
+		await this.page.waitForTimeout(300);
 		await this.saveDestination();
 	}
 
