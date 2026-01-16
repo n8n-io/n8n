@@ -366,7 +366,9 @@ describe('useToolParameters', () => {
 				type: '@n8n/n8n-nodes-langchain.toolHitlTool',
 				typeVersion: 1,
 				position: [0, 0],
-				parameters: {},
+				parameters: {
+					hitlQuery: "={{ $fromAI('param2', '', 'string') }}",
+				},
 			};
 
 			const mockWorkflow = mock<Workflow>({
@@ -396,6 +398,9 @@ describe('useToolParameters', () => {
 				value: 'Connected Tool',
 				disabled: false,
 			});
+
+			// Should have hitl query parameter
+			expect(parameters.value.some((p) => p.name === 'HITL_Node_param2')).toBe(true);
 		});
 
 		it('should show selected tool parameters for HITL', async () => {
