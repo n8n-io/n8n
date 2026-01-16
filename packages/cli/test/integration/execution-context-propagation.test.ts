@@ -429,7 +429,5 @@ function hasExecutionId(
 		return;
 	}
 
-	throw new Error(
-		`Expected an '{executionId: string, token: string}', instead got ${JSON.stringify(data)}`,
-	);
+	throw new Error(`Expected an '{executionId: string}', instead got ${JSON.stringify(data)}`);
 }
