@@ -368,6 +368,61 @@ describe('Expression', () => {
 				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
 				expect(result).toBeUndefined();
 			});
+
+			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
+				const payload = `={{(() => {
+					const getProto = __lookupGetter__('__proto__');
+					const objProto = getProto.call({});
+					objProto['win'] = 1337;
+					const empty = {};
+					return empty['win'];
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block __lookupGetter__ as bare identifier', () => {
+				expect(evaluate('={{__lookupGetter__}}')).toBeUndefined();
+			});
+
+			it('should block __lookupSetter__ as bare identifier', () => {
+				expect(evaluate('={{__lookupSetter__}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ as bare identifier', () => {
+				expect(evaluate('={{__defineGetter__}}')).toBeUndefined();
+			});
+
+			it('should block __defineSetter__ as bare identifier', () => {
+				expect(evaluate('={{__defineSetter__}}')).toBeUndefined();
+			});
+
+			it('should block TOCTOU bypass via custom toString()', () => {
+				const payload = `={{(() => {
+					function createBypass() {
+						let value = 'noop';
+						return {
+							toString: () => {
+								const current = value;
+								value = 'constructor';
+								return current;
+							}
+						}
+					}
+					return ({})[createBypass()][createBypass()]('return 1')();
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block `__sanitize` override attempt', () => {
+				const payload = `={{(() => {
+					__sanitize = a => a;
+					return this['const' + 'ructor']['const' + 'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow();
+			});
 		});
 	});
 

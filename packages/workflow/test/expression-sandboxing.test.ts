@@ -7,7 +7,11 @@ import {
 	sanitizer,
 	DOLLAR_SIGN_ERROR,
 } from '../src/expression-sandboxing';
-import { ExpressionDestructuringError } from '../src/errors';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+} from '../src/errors';
 
 const tournament = new Tournament(
 	(e) => {
@@ -314,6 +318,70 @@ describe('PrototypeSanitizer', () => {
 		});
 	});
 
+	describe('Class extension bypass attempts', () => {
+		it('should not allow class extending Function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends Function {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class expression extending Function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const Z = class extends Function {}; return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending GeneratorFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends GeneratorFunction {} return new Z("yield 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending AsyncFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends AsyncFunction {} return new Z("return 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending AsyncGeneratorFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends AsyncGeneratorFunction {} return new Z("yield 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should allow class extending safe classes', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Child extends Array {} return new Child(1, 2, 3).length; })() }}',
+					{ __sanitize: sanitizer, Array },
+				);
+			}).not.toThrow();
+		});
+
+		it('should allow class without extends', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { class MyClass {} return new MyClass(); })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).not.toThrow();
+		});
+	});
+
 	describe('Destructuring patterns', () => {
 		it('should not allow destructuring constructor from arrow function', () => {
 			expect(() => {
@@ -391,6 +459,17 @@ describe('PrototypeSanitizer', () => {
 				},
 			);
 			expect(result).toBe(6);
+		});
+
+		it('should not allow computed property destructuring', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const a = "constructor"; const {[a]: c} = {}; return c; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionComputedDestructuringError);
 		});
 	});
 });

@@ -1,6 +1,11 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionDestructuringError, ExpressionError } from './errors';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+	ExpressionError,
+} from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
@@ -229,8 +234,33 @@ export const DollarSignValidator: ASTAfterHook = (ast, _dataNode) => {
 	});
 };
 
+const blockedBaseClasses = new Set([
+	'Function',
+	'GeneratorFunction',
+	'AsyncFunction',
+	'AsyncGeneratorFunction',
+]);
+
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitClassDeclaration(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.superClass?.type === 'Identifier' && blockedBaseClasses.has(node.superClass.name)) {
+				throw new ExpressionClassExtensionError(node.superClass.name);
+			}
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.superClass?.type === 'Identifier' && blockedBaseClasses.has(node.superClass.name)) {
+				throw new ExpressionClassExtensionError(node.superClass.name);
+			}
+		},
+
 		visitMemberExpression(path) {
 			this.traverse(path);
 			const node = path.node;
@@ -276,6 +306,10 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 
 			for (const prop of node.properties) {
 				if (prop.type === 'Property') {
+					if (prop.computed) {
+						throw new ExpressionComputedDestructuringError();
+					}
+
 					let keyName: string | undefined;
 
 					if (prop.key.type === 'Identifier') {
@@ -298,5 +332,5 @@ export const sanitizer = (value: unknown): unknown => {
 	if (!isSafeObjectProperty(propertyKey)) {
 		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
-	return value;
+	return propertyKey;
 };
