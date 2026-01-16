@@ -155,7 +155,7 @@ describe('Test AirtableV2, create operation', () => {
 		});
 	});
 
-	it('should skip validation if typecast option is true', async () => {
+	it('should process binary data even when typecast option is true', async () => {
 		const nodeParameters = {
 			operation: 'create',
 			columns: {
@@ -192,9 +192,8 @@ describe('Test AirtableV2, create operation', () => {
 		const mockExecuteFunctions = createMockExecuteFunction(nodeParameters);
 		await create.execute.call(mockExecuteFunctions, [{ json: {} }], 'appYoLbase', 'tblltable');
 
-		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, [], {
-			skipValidation: true,
-		});
+		// Verify that skipValidation is NOT passed, so binary data can be processed
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, []);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
