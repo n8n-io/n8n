@@ -209,15 +209,15 @@ const handleClick = (event: MouseEvent) => {
 			var(--color--neutral-600)
 		);
 		--button--shadow:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
 			0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100)),
 			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
 		--button--shadow--hover:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
 			0 0 0 1px light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300)),
 			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
 		--button--shadow--active:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
 			0 0 0 1px light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300)),
 			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
 	}
@@ -232,15 +232,12 @@ const handleClick = (event: MouseEvent) => {
 			var(--color--black-alpha-300),
 			var(--color--white-alpha-200)
 		);
-		--button--shadow:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
-			0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
-		--button--shadow--hover:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
-			0 0 0 1px light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200));
-		--button--shadow--active:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
-			0 0 0 1px light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300));
+		--button--shadow: 0 0 0 1px
+			light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+		--button--shadow--hover: 0 0 0 1px
+			light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200));
+		--button--shadow--active: 0 0 0 1px
+			light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300));
 	}
 
 	&.ghost {
