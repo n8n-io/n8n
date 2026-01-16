@@ -5434,6 +5434,21 @@ describe('useCanvasOperations', () => {
 				query: { templateId: 'template-id' },
 			});
 		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			templatesStore.getFixedWorkflowTemplate = vi.fn().mockReturnValue({
+				id: 'workflow-id',
+				name: 'Template Name',
+				workflow: { nodes: [], connections: {} },
+			});
+
+			const { openWorkflowTemplate } = useCanvasOperations();
+			await openWorkflowTemplate('template-id');
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('openWorkflowTempalateFromJSON', () => {
@@ -5477,6 +5492,23 @@ describe('useCanvasOperations', () => {
 					parentFolderId: undefined,
 				},
 			});
+		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			const template: WorkflowDataWithTemplateId = {
+				id: 'workflow-id',
+				name: 'Template Name',
+				nodes: [],
+				connections: {},
+				meta: { templateId: 'template-id' },
+			};
+
+			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
+			await openWorkflowTemplateFromJSON(template);
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 	});
 

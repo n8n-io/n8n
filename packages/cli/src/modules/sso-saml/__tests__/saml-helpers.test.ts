@@ -2,8 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
 
-import * as helpers from '@/sso.ee/saml/saml-helpers';
-import type { SamlUserAttributes } from '@/sso.ee/saml/types';
+import * as helpers from '../saml-helpers';
+import type { SamlUserAttributes } from '../types';
 
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthIdentityRepository);

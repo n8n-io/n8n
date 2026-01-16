@@ -278,7 +278,7 @@ describe('FromAiParametersModal', () => {
 		});
 		await nextTick();
 		const inputs = getByTestId('from-ai-parameters-modal-inputs');
-		const booleanInput = inputs.querySelector('input[value="testBoolean"]') as Element;
+		const booleanInput = getByTestId('query.testBoolean') as Element;
 		const paramInput = inputs.querySelector('input[name="query.testParam"]') as Element;
 		expect(booleanInput).toBeTruthy();
 		expect(paramInput).toBeTruthy();
@@ -286,7 +286,7 @@ describe('FromAiParametersModal', () => {
 		await userEvent.clear(paramInput);
 		await userEvent.type(paramInput, 'given value');
 		await userEvent.click(getByTestId('execute-workflow-button'));
-
+		
 		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
 			query: {
 				Test_Node: {

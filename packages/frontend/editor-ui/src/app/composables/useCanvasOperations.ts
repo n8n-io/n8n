@@ -2789,7 +2789,7 @@ export function useCanvasOperations() {
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
-		await addNodes(convertedNodes ?? []);
+		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
@@ -2958,8 +2958,6 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		uiStore.markStateDirty();
-
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -3005,8 +3003,6 @@ export function useCanvasOperations() {
 			name: workflow.name,
 			workflow,
 		});
-
-		uiStore.markStateDirty();
 
 		canvasStore.stopLoading();
 
