@@ -332,7 +332,12 @@ describe('handleHostedChatResponse', () => {
 		const responseMode = 'hostedChat';
 
 		(res.send as jest.Mock).mockImplementation((data) => {
-			expect(data).toEqual({ executionStarted: true, executionId });
+			expect(data).toEqual({
+				executionStarted: true,
+				executionId,
+				token: expect.any(String),
+			});
+			expect(data.token).toHaveLength(64); // 32 bytes hex = 64 characters
 		});
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
