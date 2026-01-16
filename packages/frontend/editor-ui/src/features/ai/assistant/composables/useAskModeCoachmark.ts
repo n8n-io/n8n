@@ -9,6 +9,9 @@ import type { VIEWS } from '@/app/constants';
 
 export const ASK_MODE_COACHMARK_KEY = 'ask-mode-coachmark';
 
+const isBuilderEnabledView = (name: unknown): name is VIEWS =>
+	BUILDER_ENABLED_VIEWS.includes(name as VIEWS);
+
 export function useAskModeCoachmark() {
 	const chatPanelStore = useChatPanelStore();
 	const builderStore = useBuilderStore();
@@ -20,12 +23,10 @@ export function useAskModeCoachmark() {
 
 	// Show toggle only when both modes are available in current view
 	const canToggleModes = computed(() => {
-		const currentRoute = route?.name;
 		return (
 			settingsStore.isAiAssistantEnabled &&
 			builderStore.isAIBuilderEnabled &&
-			currentRoute &&
-			BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
+			isBuilderEnabledView(route?.name)
 		);
 	});
 
