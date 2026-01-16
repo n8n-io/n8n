@@ -2,10 +2,10 @@ import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { ExecutionDataService } from '../execution-data.service';
+import { FailedRunFactory } from '../failed-run-factory';
 
-describe('ExecutionDataService', () => {
-	const service = new ExecutionDataService();
+describe('FailedRunFactory', () => {
+	const service = new FailedRunFactory();
 
 	describe('generateFailedExecutionFromError', () => {
 		const mode: WorkflowExecuteMode = 'manual';
