@@ -96,15 +96,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			};
 
 			const assistantStore = useAssistantStore();
-			const builderStore = useBuilderStore();
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
 				assistantStore.resetAssistantChat();
-			}
-
-			if (!builderStore.streaming) {
-				builderStore.resetBuilderChat();
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
