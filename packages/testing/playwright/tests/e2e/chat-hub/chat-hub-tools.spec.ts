@@ -14,8 +14,6 @@ test.describe('Tools usage @capability:proxy', () => {
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 
-		// Wait for any grace area triggers to clear before clicking
-		await n8n.page.waitForTimeout(500);
 		await page.getToolsButton().click();
 		await page.toolsModal.getCredentialSelect('Jina AI').click();
 		await page.getVisiblePopoverOption(jinaCredential.name).click();

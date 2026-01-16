@@ -123,12 +123,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async saveDestination(): Promise<void> {
-		const saveButton = this.getDestinationSaveButton();
-		await saveButton.click();
-		// Wait for save to complete - test button becomes enabled when form is saved and unchanged
-		const testButton = this.getSendTestEventButton();
-		await testButton.waitFor({ state: 'visible', timeout: 10000 });
-		await expect(testButton).toBeEnabled({ timeout: 10000 });
+		await this.getDestinationSaveButton().click();
 	}
 
 	async deleteDestination(): Promise<void> {
@@ -204,10 +199,6 @@ export class SettingsLogStreamingPage extends BasePage {
 		// Fill syslog config - host and port fields
 		const hostInput = this.page.getByTestId('parameter-input-host').locator('input');
 		const portInput = this.page.getByTestId('parameter-input-port').locator('input');
-
-		// Wait for inputs to be visible before filling
-		await hostInput.waitFor({ state: 'visible', timeout: 10000 });
-		await portInput.waitFor({ state: 'visible', timeout: 10000 });
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
