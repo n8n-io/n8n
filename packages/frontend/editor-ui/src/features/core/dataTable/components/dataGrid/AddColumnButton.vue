@@ -33,6 +33,7 @@ const props = withDefaults(
 		// the params key is needed so that we can pass this directly to ag-grid as column
 		params: {
 			onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
+			disabled?: boolean;
 		};
 		popoverId?: string;
 		useTextTrigger?: boolean;
@@ -42,6 +43,9 @@ const props = withDefaults(
 		disabled: false,
 	},
 );
+
+// Use disabled from params if available (when used as AG Grid header), otherwise use prop
+const isDisabled = computed(() => props.params?.disabled ?? props.disabled);
 
 const i18n = useI18n();
 const { getIconForType } = useDataTableTypes();
@@ -151,7 +155,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 						<N8nButton
 							data-test-id="data-table-add-column-trigger-button"
 							type="tertiary"
-							:disabled="props.disabled"
+							:disabled="isDisabled"
 						>
 							{{ i18n.baseText('dataTable.addColumn.label') }}
 						</N8nButton>
@@ -162,7 +166,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 							text
 							icon="plus"
 							type="tertiary"
-							:disabled="props.disabled"
+							:disabled="isDisabled"
 						/>
 					</template>
 				</template>
