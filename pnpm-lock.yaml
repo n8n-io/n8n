@@ -2357,6 +2357,9 @@ importers:
       '@vueuse/core':
         specifier: '*'
         version: 10.11.0(vue@3.5.26(typescript@5.9.2))
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.26(typescript@5.9.2))
