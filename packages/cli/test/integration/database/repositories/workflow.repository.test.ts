@@ -368,4 +368,46 @@ describe('WorkflowRepository', () => {
 			});
 		});
 	}
+
+	describe('hasAnyWorkflowsWithErrorWorkflow', () => {
+		it('should return false when no workflows have error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: {} });
+			await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(false);
+		});
+
+		it('should return true when at least one workflow has error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: {} });
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-id-123' } });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true when multiple workflows have error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-1' } });
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-2' } });
+			await createWorkflow({ settings: {} });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when workflows have null settings', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: null as any });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(false);
+		});
+	});
 });
