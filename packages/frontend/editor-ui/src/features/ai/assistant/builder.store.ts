@@ -121,6 +121,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Track whether loadSessions is in progress to prevent duplicate calls
 	const isLoadingSessions = ref(false);
 
+	// Track the workflowId for which sessions have been loaded (or attempted)
+	// to prevent redundant API calls when no session exists
+	const loadedSessionsForWorkflowId = ref<string | undefined>();
+
 	const documentTitle = useDocumentTitle();
 
 	// Store dependencies
@@ -205,6 +209,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
+		loadedSessionsForWorkflowId.value = undefined;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -656,8 +661,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		}
 
-		// Guard: Don't load if chat messages are already loaded
-		if (chatMessages.value.length > 0) {
+		// Guard: Don't load if already loaded for this workflow (even if empty)
+		if (loadedSessionsForWorkflowId.value === workflowId) {
 			return [];
 		}
 
@@ -669,6 +674,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		isLoadingSessions.value = true;
 		try {
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
 			// Load the most recent session if available
