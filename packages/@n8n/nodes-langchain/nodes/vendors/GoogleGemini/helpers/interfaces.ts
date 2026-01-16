@@ -1,4 +1,44 @@
+import type {
+	GenerateContentConfig,
+	GenerationConfig,
+	GenerateContentParameters,
+} from '@google/genai';
 import type { IDataObject } from 'n8n-workflow';
+export { Modality } from '@google/genai';
+
+/* type created based on: https://ai.google.dev/api/generate-content#generationconfig */
+export type GenerateContentGenerationConfig = Pick<
+	GenerationConfig,
+	| 'stopSequences'
+	| 'responseMimeType'
+	| 'responseSchema'
+	| 'responseJsonSchema'
+	| 'responseModalities'
+	| 'candidateCount'
+	| 'maxOutputTokens'
+	| 'temperature'
+	| 'topP'
+	| 'topK'
+	| 'seed'
+	| 'presencePenalty'
+	| 'frequencyPenalty'
+	| 'responseLogprobs'
+	| 'logprobs'
+	| 'speechConfig'
+	| 'thinkingConfig'
+	| 'mediaResolution'
+>;
+
+/* Type created based on: https://ai.google.dev/api/generate-content#method:-models.streamgeneratecontent */
+export interface GenerateContentRequest extends IDataObject {
+	contents: GenerateContentParameters['contents'];
+	tools?: GenerateContentConfig['tools'];
+	toolConfig?: GenerateContentConfig['toolConfig'];
+	systemInstruction?: GenerateContentConfig['systemInstruction'];
+	safetySettings?: GenerateContentConfig['safetySettings'];
+	generationConfig?: GenerateContentGenerationConfig;
+	cachedContent?: string;
+}
 
 export interface GenerateContentResponse {
 	candidates: Array<{
@@ -64,11 +104,49 @@ export interface VeoResponse {
 	};
 }
 
+/**
+ * File Search operation interface for long-running upload operations
+ * Based on: https://ai.google.dev/api/file-search/file-search-stores#method:-media.uploadtofilesearchstore
+ */
+export interface FileSearchOperation {
+	name: string;
+	done: boolean;
+	error?: { message: string };
+	response?: IDataObject;
+}
+
+/**
+ * User configuration for built-in tools in the node parameters
+ */
+export interface BuiltInTools {
+	googleSearch?: boolean;
+	googleMaps?: {
+		latitude?: number | string;
+		longitude?: number | string;
+	};
+	urlContext?: boolean;
+	fileSearch?: {
+		fileSearchStoreNames?: string;
+		metadataFilter?: string;
+	};
+	codeExecution?: boolean;
+}
+
+/**
+ * Tool structure for the Google Gemini API request
+ */
 export interface Tool {
 	functionDeclarations?: Array<{
 		name: string;
 		description: string;
 		parameters: IDataObject;
 	}>;
+	googleSearch?: object;
+	googleMaps?: object;
+	urlContext?: object;
+	fileSearch?: {
+		fileSearchStoreNames?: string[];
+		metadataFilter?: string;
+	};
 	codeExecution?: object;
 }

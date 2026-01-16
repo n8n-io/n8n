@@ -53,32 +53,17 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'sqlite';
 				dbConfig.sqlite = {
 					database: 'test.sqlite',
-					poolSize: 0,
-					enableWAL: false,
+					poolSize: 3,
 					executeVacuumOnStartup: false,
 				};
 			});
 
-			it('should return SQLite connection options when type is sqlite', () => {
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'sqlite',
-					enableWAL: false,
-					...commonOptions,
-					database: path.resolve(n8nFolder, 'test.sqlite'),
-					migrations: sqliteMigrations,
-				});
-			});
-
-			it('should return SQLite connection options with pooling when poolSize > 0', () => {
-				dbConfig.sqlite.poolSize = 5;
-
+			it('should return SQLite pooled connection options when type is sqlite', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toEqual({
 					type: 'sqlite-pooled',
-					poolSize: 5,
+					poolSize: 3,
 					enableWAL: true,
 					acquireTimeout: 60_000,
 					destroyTimeout: 5_000,
@@ -157,6 +142,7 @@ describe('DbConnectionOptions', () => {
 					port: 3306,
 					user: 'root',
 					password: 'password',
+					poolSize: 10,
 				};
 			});
 
@@ -175,6 +161,7 @@ describe('DbConnectionOptions', () => {
 					password: 'password',
 					migrations: mysqlMigrations,
 					timezone: 'Z',
+					poolSize: 10,
 				});
 			});
 
@@ -193,6 +180,7 @@ describe('DbConnectionOptions', () => {
 					password: 'password',
 					migrations: mysqlMigrations,
 					timezone: 'Z',
+					poolSize: 10,
 				});
 			});
 		});

@@ -1,10 +1,13 @@
-import type {
-	INodeProperties,
-	INodePropertyOptions,
-	INodePropertyCollection,
-	INodeParameterResourceLocator,
-	ResourceMapperValue,
-	FilterValue,
+import {
+	type INodeProperties,
+	type INodePropertyOptions,
+	type INodePropertyCollection,
+	type INodeParameterResourceLocator,
+	type ResourceMapperValue,
+	type FilterValue,
+	type NodeConnectionType,
+	nodeConnectionTypes,
+	type IBinaryData,
 } from './interfaces';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -65,5 +68,18 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 export const isFilterValue = (value: unknown): value is FilterValue => {
 	return (
 		typeof value === 'object' && value !== null && 'conditions' in value && 'combinator' in value
+	);
+};
+
+export const isNodeConnectionType = (value: unknown): value is NodeConnectionType => {
+	return nodeConnectionTypes.includes(value as NodeConnectionType);
+};
+
+export const isBinaryValue = (value: unknown): value is IBinaryData => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'mimeType' in value &&
+		('data' in value || 'id' in value)
 	);
 };

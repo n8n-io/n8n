@@ -298,5 +298,39 @@ export const fromFileOptions: INodeProperties = {
 			placeholder: 'e.g. 0',
 			description: 'Start handling records from the requested line number. Starts at 0.',
 		},
+		{
+			displayName: 'Skip Records With Errors',
+			name: 'skipRecordsWithErrors',
+			type: 'fixedCollection',
+			default: { value: { enabled: true, maxSkippedRecords: -1 } },
+			options: [
+				{
+					displayName: 'Value',
+					name: 'value',
+					values: [
+						{
+							displayName: 'Enabled',
+							name: 'enabled',
+							type: 'boolean',
+							default: false,
+							description: 'Whether to skip records with errors when reading from file',
+						},
+						{
+							displayName: 'Max Skipped Records',
+							name: 'maxSkippedRecords',
+							type: 'number',
+							default: -1,
+							description:
+								'The maximum number of records that can be skipped, will throw an error if exceeded. Set to -1 to remove limit.',
+						},
+					],
+				},
+			],
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+		},
 	],
 };

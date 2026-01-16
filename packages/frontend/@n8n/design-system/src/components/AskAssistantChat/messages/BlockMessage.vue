@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 
 interface Props {
@@ -16,11 +16,19 @@ interface Props {
 }
 
 defineProps<Props>();
+const emit = defineEmits<{
+	feedback: [RatingFeedback];
+}>();
 const { renderMarkdown } = useMarkdown();
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
+	>
 		<div :class="$style.block">
 			<div :class="$style.blockTitle">
 				{{ message.title }}
@@ -39,56 +47,56 @@ const { renderMarkdown } = useMarkdown();
 
 <style lang="scss" module>
 .block {
-	font-size: var(--font-size-2xs);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
+	font-size: var(--font-size--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
+	border-radius: var(--radius);
 	word-break: break-word;
 
 	li {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing--xs);
 	}
 }
 
 .blockTitle {
-	border-bottom: var(--border-base);
-	padding: var(--spacing-2xs);
-	font-weight: var(--font-weight-bold);
+	border-bottom: var(--border);
+	padding: var(--spacing--2xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .blockBody {
-	padding: var(--spacing-xs);
+	padding: var(--spacing--xs);
 }
 
 .rendered-content {
 	p {
 		margin: 0;
-		margin: var(--spacing-4xs) 0;
+		margin: var(--spacing--4xs) 0;
 	}
 
 	h1,
 	h2,
 	h3 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-xs);
-		margin: var(--spacing-xs) 0 var(--spacing-4xs);
+		font-weight: var(--font-weight--bold);
+		font-size: var(--font-size--xs);
+		margin: var(--spacing--xs) 0 var(--spacing--4xs);
 	}
 
 	h4,
 	h5,
 	h6 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight--bold);
+		font-size: var(--font-size--2xs);
 	}
 
 	ul,
 	ol {
-		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
+		margin: var(--spacing--4xs) 0 var(--spacing--4xs) var(--spacing--lg);
 
 		ul,
 		ol {
-			margin-left: var(--spacing-xs);
-			margin-top: var(--spacing-4xs);
+			margin-left: var(--spacing--xs);
+			margin-top: var(--spacing--4xs);
 		}
 	}
 
@@ -97,7 +105,7 @@ const { renderMarkdown } = useMarkdown();
 	}
 
 	table {
-		margin: var(--spacing-4xs) 0;
+		margin: var(--spacing--4xs) 0;
 
 		th {
 			white-space: nowrap;
@@ -107,8 +115,8 @@ const { renderMarkdown } = useMarkdown();
 
 		th,
 		td {
-			border: var(--border-base);
-			padding: var(--spacing-4xs);
+			border: var(--border);
+			padding: var(--spacing--4xs);
 		}
 	}
 }

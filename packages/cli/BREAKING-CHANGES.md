@@ -2,6 +2,66 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 2.0.0
+
+### What changed?
+
+The `npm` command is no longer available in the `n8nio/runners` image. Only `pnpm` is available for package management.
+
+### When is action necessary?
+
+If you are extending the `n8nio/runners` image and using `npm` to install dependencies. Replace any `npm install` commands with `pnpm install` in your Dockerfile or scripts.
+
+# 1.122.0
+
+### What changed?
+
+The way to add third-party dependencies to the `n8nio/runners` image has changed. More details [here](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
+
+### When is action necessary?
+
+If you are adding third-party dependencies to the `n8nio/runners` image using `package.json` and `extras.txt` and building the image yourself, please extend the image as instructed in the link above.
+
+# 1.113.0
+
+### What changed?
+
+Support for bare repositories in Git Node was dropped in the cloud version of n8n due to security reasons. Also, an environment variable `N8N_GIT_NODE_DISABLE_BARE_REPOS` was added that allows self-hosted users to disable bare repositories as well.
+
+### When is action necessary?
+
+If you have workflows that use the Git Node and work with bare git repositories.
+
+# 1.109.0
+
+### What changed?
+
+Webhook HTML responses were sandboxed to an iframe starting from 1.103.1 due to security. The sandboxing mechanism is now changed to use `Content-Security-Policy` header instead of an `iframe`. The security guarantees stay the same, but the mechanism is less breaking.
+
+### When is action necessary?
+
+If you have workflows that return HTML responses from `Webhook Trigger` node or `Respond to Webhook` node.
+
+# 1.107.0
+
+## What changed?
+
+The CLI flag `--reinstallMissingPackages`, deprecated a year ago in version 1.154.0, has been removed.
+
+### When is action necessary?
+
+If you are using this flag, please switch to the environment variable `N8N_REINSTALL_MISSING_PACKAGES`.
+
+## 1.103.0
+
+### What changed?
+
+We will no longer be allowing users to use `responseData` within the Webhook node since this is now sandboxed in an iframe, which may break workflows relying on browser APIs like `localStorage` and `fetch` from within custom code.
+
+### When is action necessary?
+
+If your workflow is using the Webhook node and uses JavaScript in `responseData` to make `fetch` calls or access `localStorage`, you may need to refactor it due to the new iframe sandboxing.
+
 ## 1.102.0
 
 ### What changed?
@@ -12,8 +72,8 @@ with libraries like `puppeteer` at the cost of security.
 
 ### When is action necessary?
 
-If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not 
-currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`, 
+If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not
+currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`,
 at your own risk.
 
 ## 1.98.0

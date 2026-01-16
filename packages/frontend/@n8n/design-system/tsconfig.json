@@ -4,6 +4,7 @@
 		"baseUrl": ".",
 		"rootDirs": [".", "../composables/src"],
 		"outDir": "dist",
+		"moduleResolution": "bundler",
 		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
 		"typeRoots": [
 			"./node_modules/@testing-library",

@@ -14,16 +14,24 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
-import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	WorkflowConfigurationError,
+	NodeOperationError,
+} from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
 import {
 	autoDetectResponseMode,
 	handleFormRedirectionCase,
-	getResponseOnReceived,
 	setupResponseNodePromise,
 	prepareExecutionData,
+	handleHostedChatResponse,
+	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -37,6 +45,15 @@ describe('autoDetectResponseMode', () => {
 	beforeEach(() => {
 		workflow = mock<Workflow>();
 		workflow.nodes = {};
+	});
+
+	test('should return hostedChat when start node is CHAT_TRIGGER_NODE_TYPE, method is POST, and public is true', () => {
+		const workflowStartNode = mock<INode>({
+			type: CHAT_TRIGGER_NODE_TYPE,
+			parameters: { options: { responseMode: 'responseNodes' } },
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('hostedChat');
 	});
 
 	test('should return undefined if start node is WAIT_NODE_TYPE with resume not equal to form', () => {
@@ -138,48 +155,49 @@ describe('handleFormRedirectionCase', () => {
 		const result = handleFormRedirectionCase(data, workflowStartNode);
 		expect(result).toEqual(data);
 	});
-});
 
-describe('getResponseOnReceived', () => {
-	const responseCode = 200;
-	const webhookResultData = mock<IWebhookResponseData>();
-
-	beforeEach(() => {
-		jest.resetAllMocks();
-	});
-
-	test('should return response with no data when responseData is "noData"', () => {
-		const callbackData = getResponseOnReceived('noData', webhookResultData, responseCode);
-
-		expect(callbackData).toEqual({ responseCode });
-	});
-
-	test('should return response with responseData when it is defined', () => {
-		const responseData = JSON.stringify({ foo: 'bar' });
-
-		const callbackData = getResponseOnReceived(responseData, webhookResultData, responseCode);
-
-		expect(callbackData).toEqual({ data: responseData, responseCode });
-	});
-
-	test('should return response with webhookResponse when responseData is falsy but webhookResponse exists', () => {
-		const webhookResponse = { success: true };
-		webhookResultData.webhookResponse = webhookResponse;
-
-		const callbackData = getResponseOnReceived(undefined, webhookResultData, responseCode);
-
-		expect(callbackData).toEqual({ data: webhookResponse, responseCode });
-	});
-
-	test('should return default response message when responseData and webhookResponse are falsy', () => {
-		webhookResultData.webhookResponse = undefined;
-
-		const callbackData = getResponseOnReceived(undefined, webhookResultData, responseCode);
-
-		expect(callbackData).toEqual({
-			data: { message: 'Workflow was started' },
-			responseCode,
+	test('should block javascript: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'javascript:alert(document.domain)' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
 		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should block data: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'data:text/html,<script>alert(1)</script>' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should allow https: URLs', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'https://example.com/callback' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toEqual({ redirectURL: 'https://example.com/callback' });
 	});
 });
 
@@ -303,6 +321,61 @@ describe('setupResponseNodePromise', () => {
 	});
 });
 
+describe('handleHostedChatResponse', () => {
+	it('should send executionStarted: true and executionId when responseMode is hostedChat and didSendResponse is false', async () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'hostedChat';
+
+		(res.send as jest.Mock).mockImplementation((data) => {
+			expect(data).toEqual({ executionStarted: true, executionId });
+		});
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).toHaveBeenCalled();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(res.end).toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it('should not send response when responseMode is not hostedChat', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = false;
+		const responseMode = 'responseNode';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(false);
+	});
+
+	it('should not send response when didSendResponse is true', () => {
+		const res = {
+			send: jest.fn(),
+			end: jest.fn(),
+		} as unknown as express.Response;
+		const executionId = 'testExecutionId';
+		let didSendResponse = true;
+		const responseMode = 'hostedChat';
+
+		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
+		expect(res.send).not.toHaveBeenCalled();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+});
+
 describe('prepareExecutionData', () => {
 	const workflowStartNode = mock<INode>({ name: 'Start' });
 	const webhookResultData: IWebhookResponseData = {
@@ -367,10 +440,13 @@ describe('prepareExecutionData', () => {
 			webhookResultData,
 			undefined,
 			{},
-			'targetNode',
+			{ nodeName: 'targetNode', mode: 'inclusive' },
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+		expect(runExecutionData.startData?.destinationNode).toEqual({
+			nodeName: 'targetNode',
+			mode: 'inclusive',
+		});
 	});
 
 	test('should update execution data with execution data merge', () => {
@@ -421,5 +497,20 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+});
+
+describe('getWebhookErrorMessage', () => {
+	const workflowStartNode = mock<INode>({ name: 'Start' });
+	it('should surface WorkflowConfigurationError', () => {
+		const err = new WorkflowConfigurationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toEqual(err.message);
+	});
+
+	it('should obfuscate other errors', () => {
+		const err = new NodeOperationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
+			'Error: Workflow could not be started',
+		);
 	});
 });

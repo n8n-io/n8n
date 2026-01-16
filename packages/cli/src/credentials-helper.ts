@@ -3,8 +3,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError, In } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
@@ -36,12 +42,13 @@ import {
 	isExpression,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
+
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
 const mockNode = {
 	name: '',
@@ -85,6 +92,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {
 		super();
 	}
@@ -248,6 +256,22 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredential: INodeCredentialsDetails,
 		type: string,
 	): Promise<Credentials> {
+		const credential = await this.getCredentialsEntity(nodeCredential, type);
+
+		return new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			credential.data,
+		);
+	}
+
+	/**
+	 * Loads the credentials entity from the database
+	 */
+	private async getCredentialsEntity(
+		nodeCredential: INodeCredentialsDetails,
+		type: string,
+	): Promise<CredentialsEntity> {
 		if (!nodeCredential.id) {
 			throw new UnexpectedError('Found credential with no ID.', {
 				extra: { credentialName: nodeCredential.name },
@@ -270,11 +294,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
-		return new Credentials(
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			credential.data,
-		);
+		return credential;
 	}
 
 	/**
@@ -330,8 +350,38 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData();
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+		const credentials = new Credentials(
+			{ id: credentialsEntity.id, name: credentialsEntity.name },
+			credentialsEntity.type,
+			credentialsEntity.data,
+		);
+		let decryptedDataOriginal = credentials.getData();
+
+		// Check if credential can use external secrets for expression resolution
+		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
+
+		/**
+		 * We skip dynamic credentials resolution when no credentials context is present.
+		 * This helps workflow developers to run workflows with static credentials.
+		 */
+		if (additionalData.executionContext?.credentials !== undefined) {
+			// Resolve dynamic credentials if configured (EE feature)
+			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId: credentialsEntity.resolverId ?? undefined,
+					resolvableAllowFallback: credentialsEntity.resolvableAllowFallback,
+				},
+				decryptedDataOriginal,
+				additionalData.executionContext,
+				additionalData.workflowSettings,
+				canUseExternalSecrets,
+			);
+		}
 
 		if (raw === true) {
 			return decryptedDataOriginal;
@@ -340,9 +390,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
-			nodeCredentials,
 			type,
 			mode,
+			canUseExternalSecrets,
 			executeData,
 			expressionResolveValues,
 		);
@@ -354,9 +404,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
-		credential: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		canUseExternalSecrets: boolean,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -384,7 +434,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
+		if (
+			decryptedData.allowedHttpRequestDomains === undefined &&
+			decryptedDataOriginal.allowedHttpRequestDomains !== undefined
+		) {
+			decryptedData.allowedHttpRequestDomains = decryptedDataOriginal.allowedHttpRequestDomains;
+		}
+		if (
+			decryptedData.allowedDomains === undefined &&
+			decryptedDataOriginal.allowedDomains !== undefined
+		) {
+			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
+		}
+
+		// When using dynamic client registration, fields
+		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// are not shown in the UI, so we need to copy them from the original data.
+		if (decryptedData.useDynamicClientRegistration) {
+			decryptedData.clientId = decryptedDataOriginal.clientId;
+			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
+			decryptedData.authUrl = decryptedDataOriginal.authUrl;
+			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
+			decryptedData.grantType = decryptedDataOriginal.grantType;
+			decryptedData.authentication = decryptedDataOriginal.authentication;
+		}
+
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
 		});
@@ -453,7 +527,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -464,7 +537,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		const resolverId =
+			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+
+		if (credentialsEntity.isResolvable && resolverId) {
+			const credentials = await this.getCredentials(nodeCredentials, type);
+			const staticData = credentials.getData();
+
+			await this.dynamicCredentialsProxy.storeOAuthTokenDataIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId,
+				},
+				data.oauthTokenData as IDataObject,
+				additionalData.executionContext,
+				staticData,
+				additionalData.workflowSettings,
+			);
+			return;
+		}
+
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });
@@ -479,7 +578,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -496,9 +594,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 							role: 'credential:owner',
 							project: {
 								projectRelations: {
-									role: In(['project:personalOwner', 'project:admin']),
+									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 									user: {
-										role: In(['global:owner', 'global:admin']),
+										role: { slug: In([GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug]) },
 									},
 								},
 							},

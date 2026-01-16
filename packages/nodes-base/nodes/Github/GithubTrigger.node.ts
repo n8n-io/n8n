@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,6 +11,7 @@ import type {
 import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
+import { verifySignature } from './GithubTriggerHelpers';
 import { getRepositories, getUsers } from './SearchFunctions';
 
 export class GithubTrigger implements INodeType {
@@ -104,13 +106,13 @@ export class GithubTrigger implements INodeType {
 						placeholder: 'e.g. https://github.com/n8n-io',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
+							regex: 'https:\\/\\/(?:[^/]+)\\/([-_0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+									regex: 'https:\\/\\/([^/]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
 									errorMessage: 'Not a valid Github URL',
 								},
 							},
@@ -158,13 +160,13 @@ export class GithubTrigger implements INodeType {
 						placeholder: 'e.g. https://github.com/n8n-io/n8n',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
+							regex: 'https:\\/\\/(?:[^/]+)\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+									regex: 'https:\\/\\/([^/]+)\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
 									errorMessage: 'Not a valid Github Repository URL',
 								},
 							},
@@ -474,7 +476,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.cause.httpCode === '404') {
+					if (error.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -494,7 +496,7 @@ export class GithubTrigger implements INodeType {
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+						'The Webhook can not work on "localhost". Please setup n8n on a custom domain.',
 					);
 				}
 
@@ -507,12 +509,16 @@ export class GithubTrigger implements INodeType {
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
 				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
+				// Generate a secure random secret for webhook signature verification
+				const webhookSecret = randomBytes(32).toString('hex');
+
 				const body = {
 					name: 'web',
 					config: {
 						url: webhookUrl,
 						content_type: 'json',
 						insecure_ssl: options.insecureSSL ? '1' : '0',
+						secret: webhookSecret,
 					},
 					events,
 					active: true,
@@ -524,7 +530,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.cause.httpCode === '422') {
+					if (error.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
@@ -538,6 +544,8 @@ export class GithubTrigger implements INodeType {
 									// create it again simply save the webhook-id
 									webhookData.webhookId = webhook.id as string;
 									webhookData.webhookEvents = webhook.events as string[];
+									// Legacy webhook without secret on GitHub's side - not setting webhookData.webhookSecret
+									// so signature verification is skipped. To enable it, deactivate and reactivate the workflow.
 									return true;
 								}
 							}
@@ -550,7 +558,7 @@ export class GithubTrigger implements INodeType {
 						);
 					}
 
-					if (error.cause.httpCode === '404') {
+					if (error.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Check that the repository exists and that you have permission to create the webhooks this node requires',
@@ -570,6 +578,7 @@ export class GithubTrigger implements INodeType {
 
 				webhookData.webhookId = responseData.id as string;
 				webhookData.webhookEvents = responseData.events as string[];
+				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -594,6 +603,7 @@ export class GithubTrigger implements INodeType {
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -609,9 +619,19 @@ export class GithubTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify the webhook signature before processing
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 
-		// Check if the webhook is only the ping from Github to confirm if it workshook_id
+		// Check if the webhook is only the ping from Github to confirm if it works
 		if (bodyData.hook_id !== undefined && bodyData.action === undefined) {
 			// Is only the ping and not an actual webhook call. So return 'OK'
 			// but do not start the workflow.

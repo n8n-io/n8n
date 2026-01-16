@@ -4,6 +4,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';
@@ -15,6 +16,7 @@ export class MFAController {
 		private externalHooks: ExternalHooks,
 		private authService: AuthService,
 		private userRepository: UserRepository,
+		private eventService: EventService,
 	) {}
 
 	@Post('/enforce-mfa')
@@ -107,6 +109,16 @@ export class MFAController {
 
 		const updatedUser = await this.mfaService.enableMfa(id);
 
+		this.eventService.emit('user-mfa-enabled', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+		});
+
 		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
@@ -132,7 +144,21 @@ export class MFAController {
 			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 		}
 
-		const updatedUser = await this.userRepository.findOneByOrFail({ id: userId });
+		this.eventService.emit('user-mfa-disabled', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			disableMethod: mfaCodeDefined ? 'mfaCode' : 'recoveryCode',
+		});
+
+		const updatedUser = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}

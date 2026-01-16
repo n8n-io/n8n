@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -47,8 +48,11 @@ export interface IWorkflowResponse extends IWorkflowBase {
 }
 
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
-	owner:
+	extends Omit<
+		IWorkflowBase,
+		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+	> {
+	owner?:
 		| {
 				type: 'personal';
 				personalEmail: string;
@@ -138,6 +142,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;
@@ -154,33 +159,6 @@ export interface IWorkflowStatisticsDataLoaded {
 }
 
 // ----------------------------------
-//          community nodes
-// ----------------------------------
-
-export namespace CommunityPackages {
-	export type ParsedPackageName = {
-		packageName: string;
-		rawString: string;
-		scope?: string;
-		version?: string;
-	};
-
-	export type AvailableUpdates = {
-		[packageName: string]: {
-			current: string;
-			wanted: string;
-			latest: string;
-			location: string;
-		};
-	};
-
-	export type PackageStatusCheck = {
-		status: 'OK' | 'Banned';
-		reason?: string;
-	};
-}
-
-// ----------------------------------
 //               telemetry
 // ----------------------------------
 
@@ -189,6 +167,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
+	crashed?: boolean;
 }
 
 // ----------------------------------

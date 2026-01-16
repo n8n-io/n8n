@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { ExecutionsConfig } from '@n8n/config';
+import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
@@ -11,18 +12,21 @@ import {
 	Workflow,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 } from 'n8n-workflow';
+
+import { JobProcessor } from '../job-processor';
+import type { Job } from '../scaling.types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
 
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),
@@ -32,6 +36,10 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(DataTableProxyService);
+mockInstance(OwnershipService, {
+	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
 
 const processRunExecutionDataMock = jest.fn();
 jest.mock('n8n-core', () => {
@@ -50,6 +58,11 @@ const logger = mock<Logger>({
 	scoped: jest.fn().mockImplementation(() => logger),
 });
 
+const executionsConfig = mock<ExecutionsConfig>({
+	timeout: -1,
+	maxTimeout: 3600,
+});
+
 describe('JobProcessor', () => {
 	it('should refrain from processing a crashed execution', async () => {
 		const executionRepository = mock<ExecutionRepository>();
@@ -62,6 +75,8 @@ describe('JobProcessor', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			executionsConfig,
 			mock(),
 		);
 
@@ -92,20 +107,79 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				manualExecutionService,
+				executionsConfig,
+				mock(),
 			);
 
-			await jobProcessor.processJob(mock<Job>());
+			const job = mock<Job>();
+
+			await jobProcessor.processJob(job);
 
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
+
+			expect(job.progress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'job-finished',
+					success: true,
+				}),
+			);
 		},
 	);
+
+	it('should send job-finished with success=false when execution has errors', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		// First call: initial execution fetch (no error yet)
+		executionRepository.findSingleExecution.mockResolvedValueOnce(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { nodes: [] },
+				data: mock<IRunExecutionData>({
+					executionData: undefined,
+				}),
+			}),
+		);
+		// Second call: after execution completes, fetch again to check for errors
+		executionRepository.findSingleExecution.mockResolvedValueOnce(
+			mock<IExecutionResponse>({
+				status: 'error',
+				data: {
+					resultData: {
+						error: mock<ExecutionError>(),
+					},
+				},
+			}),
+		);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const job = mock<Job>();
+
+		await jobProcessor.processJob(job);
+
+		expect(job.progress).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: 'job-finished',
+				success: false,
+			}),
+		);
+	});
 
 	it('should pass additional data for partial executions to run', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const pinData: IPinData = { pinned: [] };
 		const execution = mock<IExecutionResponse>({
 			mode: 'manual',
-			workflowData: { nodes: [], pinData },
+			workflowData: { id: 'workflow-id', nodes: [], pinData },
 			data: mock<IRunExecutionData>({
 				resultData: {
 					runData: {
@@ -130,16 +204,18 @@ describe('JobProcessor', () => {
 			mock(),
 			mock(),
 			manualExecutionService,
+			executionsConfig,
+			mock(),
 		);
 
 		const executionId = 'execution-id';
 		await jobProcessor.processJob(mock<Job>({ data: { executionId, loadStaticData: false } }));
 
-		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
-			undefined,
-			undefined,
-			undefined,
-		);
+		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+			workflowId: execution.workflowData.id,
+			executionTimeoutTimestamp: undefined,
+			workflowSettings: execution.workflowData.settings,
+		});
 
 		expect(manualExecutionService.runManually).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -192,6 +268,8 @@ describe('JobProcessor', () => {
 				mock(),
 				mock(),
 				manualExecutionService,
+				executionsConfig,
+				mock(),
 			);
 
 			await jobProcessor.processJob(mock<Job>());

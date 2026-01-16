@@ -7,7 +7,7 @@
 	white-space: nowrap;
 	padding: 2px 5px;
 	color: var.$pagination-font-color;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 	@include utils.utils-clearfix;
 
 	span:not([class*='suffix']),
@@ -80,7 +80,7 @@
 			font-size: 12px;
 			width: 12px;
 			height: 12px;
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 
 			svg {
 				width: 12px;
@@ -100,7 +100,7 @@
 	}
 
 	.el-pager li.disabled {
-		color: var(--color-text-lighter);
+		color: var(--color--text--tint-2);
 		cursor: not-allowed;
 	}
 
@@ -143,8 +143,8 @@
 
 	@include mixins.e(sizes) {
 		margin: 0 10px 0 0;
-		font-weight: var(--font-weight-regular);
-		color: var(--color-text-dark);
+		font-weight: var(--font-weight--regular);
+		color: var(--color--text--shade-1);
 
 		.el-input .el-input__inner {
 			font-size: var.$pagination-font-size;
@@ -158,14 +158,14 @@
 
 	@include mixins.e(total) {
 		margin-right: 10px;
-		font-weight: var(--font-weight-regular);
-		color: var(--color-text-dark);
+		font-weight: var(--font-weight--regular);
+		color: var(--color--text--shade-1);
 	}
 
 	@include mixins.e(jump) {
 		margin-left: 24px;
-		font-weight: var(--font-weight-regular);
-		color: var(--color-text-dark);
+		font-weight: var(--font-weight--regular);
+		color: var(--color--text--shade-1);
 
 		.el-input__inner {
 			padding: 0 3px;
@@ -206,13 +206,13 @@
 		.btn-next,
 		.el-pager li {
 			margin: 0 1px;
-			color: var(--color-text-base);
+			color: var(--color--text);
 			min-width: 30px;
-			border-radius: var(--border-radius-base);
+			border-radius: var(--radius);
 			border: 1px solid transparent;
 
 			&.disabled {
-				color: var(--color-text-lighter);
+				color: var(--color--text--tint-2);
 			}
 		}
 
@@ -221,20 +221,20 @@
 			padding: 0;
 
 			&:disabled {
-				color: var(--color-text-lighter);
+				color: var(--color--text--tint-2);
 			}
 		}
 
 		.el-pager li:not(.disabled) {
 			&:hover {
-				color: var(--color-primary);
-				background-color: var(--color-background-xlight);
-				border: 1px solid var(--color-foreground-base);
+				color: var(--color--primary);
+				background-color: var(--color--background--light-3);
+				border: 1px solid var(--color--foreground);
 			}
 
 			&.is-active {
-				border: 1px solid var(--color-primary);
-				color: var(--color-primary);
+				border: 1px solid var(--color--primary);
+				color: var(--color--primary);
 			}
 		}
 
@@ -285,7 +285,7 @@
 			color: var.$pagination-button-color;
 
 			&.disabled {
-				color: var(--color-text-lighter);
+				color: var(--color--text--tint-2);
 			}
 		}
 
@@ -312,7 +312,7 @@
 	}
 }
 
-//@mixin pagination-button {
+// @mixin pagination-button {
 //	display: flex;
 //	justify-content: center;
 //	align-items: center;
@@ -363,9 +363,9 @@
 //		outline: 1px solid getCssVar('pagination-hover-color');
 //		outline-offset: -1px;
 //	}
-//}
+// }
 //
-//@include b(pagination) {
+// @include b(pagination) {
 //	@include set-component-css-var('pagination', $pagination);
 //
 //	white-space: nowrap;
@@ -517,9 +517,9 @@
 //			width: 100px;
 //		}
 //	}
-//}
+// }
 //
-//@include b(pager) {
+// @include b(pager) {
 //	user-select: none;
 //	list-style: none;
 //	font-size: 0;
@@ -531,4 +531,4 @@
 //	li {
 //		@include pagination-button;
 //	}
-//}
+// }

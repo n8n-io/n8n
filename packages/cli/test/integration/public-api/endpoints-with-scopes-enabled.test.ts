@@ -222,7 +222,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					expect(returnedUser.id).toBe(storedUser.id);
 					expect(returnedUser.email).toBe(storedUser.email);
 					expect(returnedUser.email).toBe(payloadUser.email);
-					expect(storedUser.role).toBe(payloadUser.role);
+					expect(storedUser.role.slug).toBe(payloadUser.role);
 				});
 
 				test('should fail to create user when API key doesn\'t have "user:create" scope', async () => {
@@ -267,7 +267,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					expect(response.status).toBe(204);
 					const storedUser = await getUserById(member.id);
-					expect(storedUser.role).toBe(payload.newRoleName);
+					expect(storedUser.role.slug).toBe(payload.newRoleName);
 				});
 
 				test('should fail to change role when API key doesn\'t have "user:changeRole" scope', async () => {
@@ -321,6 +321,33 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					for (const ownerScope of ownerOnlyScopes) {
 						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
 					}
+				});
+
+				it('should remove all API keys when user downgrading to chatUser', async () => {
+					/**
+					 * Arrange
+					 */
+					testServer.license.enable('feat:advancedPermissions');
+
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
+					const admin = await createAdminWithApiKey();
+					const payload = { newRoleName: 'global:chatUser' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${admin.id}/role`)
+						.send(payload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(204);
+
+					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
+					expect(formerAdminApiKey).toBeNull();
 				});
 			});
 
@@ -1069,6 +1096,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						name: 'some-project',
 						icon: null,
 						type: 'team',
+						creatorId: owner.id,
 						description: null,
 						id: expect.any(String),
 						createdAt: expect.any(String),
@@ -1255,7 +1283,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1270,6 +1298,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
 							executionOrder: 'v1',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 
@@ -1324,7 +1354,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1529,7 +1559,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1551,6 +1581,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							saveDataSuccessExecution: 'all',
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 
@@ -1608,7 +1640,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},

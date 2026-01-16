@@ -36,6 +36,7 @@ const emojiRanges = [
 type Props = {
 	buttonTooltip: string;
 	buttonSize?: 'small' | 'large';
+	isReadOnly?: boolean;
 };
 
 const { t } = useI18n();
@@ -88,13 +89,13 @@ const togglePopup = () => {
 <template>
 	<div
 		ref="container"
-		:class="$style.container"
+		:class="{ [$style.container]: true, [$style.isReadOnly]: isReadOnly }"
 		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']">
-			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip">
+			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 				</template>
@@ -104,6 +105,7 @@ const togglePopup = () => {
 					:icon="model.value"
 					:size="buttonSize"
 					:square="true"
+					:disabled="isReadOnly"
 					type="tertiary"
 					data-test-id="icon-picker-button"
 					@click="togglePopup"
@@ -115,6 +117,7 @@ const togglePopup = () => {
 					:square="true"
 					type="tertiary"
 					data-test-id="icon-picker-button"
+					:disabled="isReadOnly"
 					@click="togglePopup"
 				>
 					{{ model.value }}
@@ -155,56 +158,67 @@ const togglePopup = () => {
 .container {
 	position: relative;
 }
+
+.icon-button,
+.emoji-button {
+	.isReadOnly & {
+		pointer-events: none;
+		background-color: var(--input--color--background--disabled);
+	}
+}
+
 .emoji-button {
 	padding: 0;
 }
+
 .popup {
 	position: absolute;
-	z-index: 1;
+	z-index: 9999;
 	width: 426px;
 	max-height: 300px;
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing-4xs);
-	background-color: var(--color-background-xlight);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
-	border-color: var(--color-foreground-dark);
+	margin-top: var(--spacing--4xs);
+	background-color: var(--color--background--light-3);
+	border-radius: var(--radius);
+	border: var(--border);
+	border-color: var(--color--foreground--shade-1);
 
 	.tabs {
-		padding: var(--spacing-2xs);
-		padding-bottom: var(--spacing-5xs);
+		padding: var(--spacing--2xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 
 	.content {
 		display: flex;
 		flex-wrap: wrap;
-		padding: var(--spacing-2xs);
+		padding: var(--spacing--2xs);
 		overflow-y: auto;
 	}
 
 	.icon,
 	.emoji {
 		cursor: pointer;
-		padding: var(--spacing-4xs);
-		border-radius: var(--border-radius-small);
+		padding: var(--spacing--4xs);
+		border-radius: var(--radius--sm);
 
 		&:hover {
-			background-color: var(--color-background-medium);
+			background-color: var(--color--background--shade-1);
 		}
 	}
 
 	.icon {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 
 		&:hover {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 		}
 	}
 
 	.emoji {
-		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
-			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+		font-family:
+			'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
+			'Noto Color Emoji', 'Android Emoji', sans-serif;
 	}
 }
 </style>

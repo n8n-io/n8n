@@ -38,6 +38,7 @@ test('should report filesystem interaction nodes', async () => {
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

@@ -7,8 +7,14 @@
         "createdAt": {
             "type": "string"
         },
+        "description": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
         },
         "meta": {
             "type": "null"
@@ -27,6 +33,23 @@
                     "name": {
                         "type": "string"
                     },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "operation": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
                     "type": {
                         "type": "string"
                     }
@@ -36,15 +59,32 @@
         "pinData": {
             "type": "null"
         },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "availableInMCP": {
+                    "type": "boolean"
+                },
+                "callerPolicy": {
+                    "type": "string"
+                },
+                "executionOrder": {
+                    "type": "string"
+                }
+            }
+        },
         "triggerCount": {
             "type": "integer"
         },
         "updatedAt": {
             "type": "string"
         },
+        "versionCounter": {
+            "type": "integer"
+        },
         "versionId": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

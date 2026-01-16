@@ -1,6 +1,8 @@
 import type { Response } from 'express';
+import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -14,15 +16,19 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 	jsonParse,
+	tryToParseUrl,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import { generateFormPostBasicAuthToken, validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import type { FormTriggerData, FormTriggerInput } from '../interfaces';
+import type { FormTriggerData, FormField } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -54,6 +60,14 @@ export function sanitizeHtml(text: string) {
 			'ol',
 			'li',
 			'p',
+			'table',
+			'thead',
+			'tbody',
+			'tfoot',
+			'td',
+			'tr',
+			'th',
+			'br',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -69,6 +83,8 @@ export function sanitizeHtml(text: string) {
 				'referrerpolicy',
 			],
 			source: ['src', 'type'],
+			td: ['colspan', 'rowspan', 'scope', 'headers'],
+			th: ['colspan', 'rowspan', 'scope', 'headers'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
@@ -115,15 +131,44 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	return sanitize(css, {
 		allowedTags: [], // No HTML tags allowed
 		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
+		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
 	});
+}
+
+/**
+ * Validates that a URL uses a safe scheme.
+ * Returns the normalized URL if valid, or null if invalid.
+ */
+export function validateSafeRedirectUrl(url: string | undefined): string | null {
+	if (!url) return null;
+	const trimmed = url.trim();
+	if (!trimmed) return null;
+
+	try {
+		return tryToParseUrl(trimmed);
+	} catch {
+		return null;
+	}
 }
 
 export function createDescriptionMetadata(description: string) {
 	return description === ''
 		? 'n8n form'
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
+
+/**
+ * Gets the field identifier to use based on node version.
+ * For v2.4+, uses fieldName as the primary identifier.
+ * For earlier versions, falls back to fieldLabel.
+ */
+function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: number): string {
+	if (nodeVersion && nodeVersion >= 2.4 && field.fieldName) {
+		return field.fieldName;
+	}
+
+	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
 export function prepareFormData({
@@ -140,6 +185,8 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
+	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -154,6 +201,8 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
+	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -175,34 +224,45 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
-		if (!redirectUrl.includes('://')) {
-			redirectUrl = `http://${redirectUrl}`;
+		const safeUrl = validateSafeRedirectUrl(redirectUrl);
+		if (safeUrl) {
+			formData.redirectUrl = safeUrl;
 		}
-		formData.redirectUrl = redirectUrl;
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect, placeholder } = field;
+		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
+		const queryParam = getFieldIdentifier(field, nodeVersion);
 
-		const input: IDataObject = {
+		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[field.fieldLabel] ?? '',
+			defaultValue: query[queryParam] ?? defaultValue ?? '',
 			placeholder,
 		};
 
-		if (multiselect) {
+		if (multiselect || (fieldType && ['radio', 'checkbox'].includes(fieldType))) {
 			input.isMultiSelect = true;
 			input.multiSelectOptions =
 				field.fieldOptions?.values.map((e, i) => ({
 					id: `option${i}_${input.id}`,
 					label: e.option,
 				})) ?? [];
+
+			if (fieldType === 'radio') {
+				input.radioSelect = 'radio';
+			} else if (field.limitSelection === 'exact') {
+				input.exactSelectedOptions = field.numberOfSelections;
+			} else if (field.limitSelection === 'range') {
+				input.minSelectedOptions = field.minSelections;
+				input.maxSelectedOptions = field.maxSelections;
+			}
 		} else if (fieldType === 'file') {
 			input.isFileInput = true;
 			input.acceptFileTypes = field.acceptFileTypes;
@@ -226,7 +286,7 @@ export function prepareFormData({
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
 		}
 
-		formData.formFields.push(input as FormTriggerInput);
+		formData.formFields.push(input);
 	}
 
 	return formData;
@@ -253,9 +313,9 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error(`${context.getNode().name} node not correctly configured`),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
@@ -281,10 +341,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
+	nodeVersion?: number,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = field.fieldLabel ?? field.fieldName;
+		const name = getFieldIdentifier(field, nodeVersion);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -305,11 +366,19 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'text') {
 			value = String(value).trim();
 		}
-		if (field.multiselect && typeof value === 'string') {
+		if (
+			(field.multiselect || field.fieldType === 'checkbox' || field.fieldType === 'radio') &&
+			typeof value === 'string'
+		) {
 			value = jsonParse(value);
+
+			if (field.fieldType === 'radio' && Array.isArray(value)) {
+				value = value[0];
+			}
 		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		if (field.fieldType === 'date' && value && field.formatDate) {
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];
@@ -325,8 +394,11 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
+	const { binaryMode } = context.getWorkflowSettings();
 
 	const returnItem: INodeExecutionData = {
 		json: {},
@@ -341,42 +413,62 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map((file) => ({
-				filename: file.originalFilename,
-				mimetype: file.mimetype,
-				size: file.size,
-			}));
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? []
+					: filesInput.map((file) => ({
+							filename: file.originalFilename,
+							mimetype: file.mimetype,
+							size: file.size,
+						}));
 			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
-			bodyData[key] = {
-				filename: filesInput.originalFilename,
-				mimetype: filesInput.mimetype,
-				size: filesInput.size,
-			};
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? {}
+					: {
+							filename: filesInput.originalFilename,
+							mimetype: filesInput.mimetype,
+							size: filesInput.size,
+						};
 			processFiles.push(filesInput);
 		}
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
-		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
+		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
-
-			if (multiFile) {
-				binaryPropertyName += `_${fileCount++}`;
-			}
-
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
 				file.filepath,
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			if (binaryMode === BINARY_MODE_COMBINED) {
+				if (Array.isArray(bodyData[key])) {
+					(bodyData[key] as IDataObject[]).push(binaryData);
+				} else {
+					bodyData[key] = binaryData;
+				}
+			} else {
+				let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+				if (multiFile) {
+					binaryPropertyName += `_${fileCount++}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = binaryData;
+			}
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -406,6 +498,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -419,6 +512,7 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -460,8 +554,11 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
+		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
+	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	res.render('form-trigger', data);
 }
 
@@ -560,6 +657,11 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -573,6 +675,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {

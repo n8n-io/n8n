@@ -4,6 +4,7 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 export default defineConfig(frontendConfig, {
 	rules: {
 		// TODO: Remove these
+		'n8n-local-rules/no-internal-package-import': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'id-denylist': 'warn',
 		'no-case-declarations': 'warn',
@@ -24,7 +25,7 @@ export default defineConfig(frontendConfig, {
 		'@typescript-eslint/dot-notation': 'warn',
 		'@stylistic/lines-between-class-members': 'warn',
 		'@stylistic/member-delimiter-style': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
+		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-empty-interface': 'warn',
 		'@typescript-eslint/no-for-in-array': 'warn',
 		'@typescript-eslint/no-loop-func': 'warn',

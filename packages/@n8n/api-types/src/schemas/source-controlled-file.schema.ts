@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-const FileTypeSchema = z.enum(['credential', 'workflow', 'tags', 'variables', 'file', 'folders']);
+const FileTypeSchema = z.enum([
+	'credential',
+	'workflow',
+	'tags',
+	'variables',
+	'file',
+	'folders',
+	'project',
+]);
 export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.Values;
 
 const FileStatusSchema = z.enum([
@@ -15,6 +23,12 @@ const FileStatusSchema = z.enum([
 	'unknown',
 ]);
 export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
+
+export type SourceControlledFileStatus = z.infer<typeof FileStatusSchema>;
+
+export function isSourceControlledFileStatus(value: unknown): value is SourceControlledFileStatus {
+	return FileStatusSchema.safeParse(value).success;
+}
 
 const FileLocationSchema = z.enum(['local', 'remote']);
 export const SOURCE_CONTROL_FILE_LOCATION = FileLocationSchema.Values;

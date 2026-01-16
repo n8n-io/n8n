@@ -8,6 +8,7 @@ import contacts from './fixtures/contacts.json';
 import contactsSearchResult from './fixtures/contacts_search_result.json';
 import deals from './fixtures/deals.json';
 import dealsSearchResult from './fixtures/deals_search_result.json';
+import engagements from './fixtures/engagements.json';
 
 describe('Hubspot Node', () => {
 	nock.disableNetConnect();
@@ -206,6 +207,95 @@ describe('Hubspot Node', () => {
 				.reply(200, contacts.contacts[0])
 				.get('/contacts/v1/contact/vid/123/profile')
 				.query('formSubmissionMode=newest&showListMemberships=true')
+				.reply(200, contacts.contacts[0])
+				.post('/contacts/v1/contact/createOrUpdate/email/test1@test.com', {
+					properties: [],
+				})
+				.reply(200, contacts.contacts[0])
+				.get('/contacts/v1/contact/vid/204727/profile')
+				.reply(200, contacts.contacts[0])
+				.post('/contacts/v1/contact/createOrUpdate/email/test2@test.com', {
+					properties: [
+						{
+							property: 'hs_buying_role',
+							value: 'CHAMPION;INFLUENCER',
+						},
+						{
+							property: 'hs_country_region_code',
+							value: 'US',
+						},
+						{
+							property: 'hs_email_customer_quarantined_reason',
+							value: 'BLOCKLIST_REMEDIATION',
+						},
+						{
+							property: 'hs_role',
+							value: 'consulting',
+						},
+						{
+							property: 'hs_seniority',
+							value: 'director',
+						},
+						{
+							property: 'hs_sub_role',
+							value: 'account_manager',
+						},
+						{
+							property: 'hs_enriched_email_bounce_detected',
+							value: true,
+						},
+						{
+							property: 'hs_inferred_language_codes',
+							value: 'en',
+						},
+						{
+							property: 'hs_latest_source',
+							value: 'OTHER_CAMPAIGNS',
+						},
+						{
+							property: 'hs_latest_source_timestamp',
+							value: 1735689600000,
+						},
+						{
+							property: 'hs_linkedin_url',
+							value: 'https://linkedin.com/foo',
+						},
+						{
+							property: 'hs_content_membership_email',
+							value: 'member@test.com',
+						},
+						{
+							property: 'military_status',
+							value: 'Foo',
+						},
+						{
+							property: 'hs_persona',
+							value: 'persona_1',
+						},
+						{
+							property: 'hs_prospecting_agent_last_enrolled',
+							value: 1738368000000,
+						},
+						{
+							property: 'hs_prospecting_agent_total_enrolled_count',
+							value: 2,
+						},
+						{
+							property: 'hs_state_code',
+							value: 'CA',
+						},
+						{
+							property: 'hs_timezone',
+							value: 'us_slash_pacific',
+						},
+						{
+							property: 'hs_whatsapp_phone_number',
+							value: '123456789',
+						},
+					],
+				})
+				.reply(200, contacts.contacts[0])
+				.get('/contacts/v1/contact/vid/204727/profile')
 				.reply(200, contacts.contacts[0]);
 		});
 
@@ -260,6 +350,24 @@ describe('Hubspot Node', () => {
 
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['deals.workflow.json'],
+		});
+	});
+
+	describe('engagements', () => {
+		beforeAll(() => {
+			hubspotNock
+				.post('/engagements/v1/engagements', engagements.request.createWithOwnerId)
+				.reply(200, engagements.response.createWithOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createWithoutOwnerId)
+				.reply(200, engagements.response.createWithoutOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createV2_1)
+				.reply(200, engagements.response.createV2_1);
+		});
+
+		afterAll(() => hubspotNock.done());
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['engagements.workflow.json'],
 		});
 	});
 });

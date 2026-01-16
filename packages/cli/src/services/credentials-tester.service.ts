@@ -18,7 +18,6 @@ import type {
 	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
-	IRunExecutionData,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	INodeTypeData,
@@ -27,14 +26,21 @@ import type {
 	IDataObject,
 	IExecuteData,
 } from 'n8n-workflow';
-import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
-
-import { CredentialTypes } from '@/credential-types';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import {
+	VersionedNodeType,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
+
+import { CredentialTypes } from '@/credential-types';
+import { NodeTypes } from '@/node-types';
+import { getAllKeyPaths } from '@/utils';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -102,7 +108,7 @@ export class CredentialsTester {
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values(node.nodeVersions));
+				allNodeTypes.push.apply(allNodeTypes, Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -164,6 +170,24 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	private redactSecrets(
+		message: string,
+		credentialsData: ICredentialsDecrypted['data'],
+		secretPaths: string[],
+	): string {
+		if (secretPaths.length === 0) {
+			return message;
+		}
+		const updatedSecrets = secretPaths
+			.map((path) => get(credentialsData, path))
+			.filter((value) => value !== undefined);
+
+		updatedSecrets.forEach((value) => {
+			message = message.replaceAll(value.toString(), `*****${value.toString().slice(-3)}`);
+		});
+		return message;
+	}
+
 	// eslint-disable-next-line complexity
 	async testCredentials(
 		userId: User['id'],
@@ -178,15 +202,26 @@ export class CredentialsTester {
 			};
 		}
 
+		let credentialsDataSecretKeys: string[] = [];
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					projectId: credentialsDecrypted.homeProject?.id,
+				});
+
+				// Keep all credentials data keys which have a secret value
+				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
+					value.includes('$secrets.'),
+				);
+				const canUseExternalSecrets =
+					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
-					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
+					canUseExternalSecrets,
 					undefined,
 					undefined,
 				);
@@ -202,7 +237,20 @@ export class CredentialsTester {
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const context = new CredentialTestContext();
-			return credentialTestFunction.call(context, credentialsDecrypted);
+			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
+			if (functionResult instanceof Promise) {
+				const result = await functionResult;
+				if (typeof result?.message === 'string') {
+					// Anonymize secret values in the error message
+					result.message = this.redactSecrets(
+						result.message,
+						credentialsDecrypted.data,
+						credentialsDataSecretKeys,
+					);
+				}
+				return result;
+			}
+			return functionResult;
 		}
 
 		// Credentials get tested via request instructions
@@ -280,13 +328,13 @@ export class CredentialsTester {
 			main: [[{ json: {} }]],
 		};
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runExecutionData = createEmptyRunExecutionData();
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId,
+			projectId: credentialsDecrypted.homeProject?.id,
+			currentNodeParameters: node.parameters,
+		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(

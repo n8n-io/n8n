@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -292,7 +292,7 @@ export class SentimentAnalysis implements INodeType {
 						} else {
 							throw error;
 						}
-					} else if (result.resultItem && result.sentimentIndex) {
+					} else if (result.resultItem && result.sentimentIndex !== -1) {
 						const sentimentIndex = result.sentimentIndex;
 						const resultItem = result.resultItem;
 						returnData[sentimentIndex].push(resultItem);

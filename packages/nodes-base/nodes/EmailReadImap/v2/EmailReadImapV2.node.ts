@@ -46,12 +46,12 @@ const versionDescription: INodeTypeDescription = {
 		header: '',
 		executionsHelp: {
 			inactive:
-				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, publish it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			active:
 				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 		},
 		activationHint:
-			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+			'Once you’ve finished building your workflow, publish it to have it also listen continuously (you just won’t see those executions here).',
 	},
 	usableAsTool: true,
 	inputs: [],
@@ -177,6 +177,19 @@ const versionDescription: INodeTypeDescription = {
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
+				{
+					displayName: 'Fetch Only New Emails',
+					name: 'trackLastMessageId',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to fetch only new emails since the last run, or all emails that match the "Custom Email Rules" (["UNSEEN"] by default)',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -247,6 +260,7 @@ export class EmailReadImapV2 implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const node = this.getNode();
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
@@ -258,6 +272,15 @@ export class EmailReadImapV2 implements INodeType {
 		const activatedAt = DateTime.now();
 
 		const staticData = this.getWorkflowStaticData('node');
+		if (node.typeVersion <= 2) {
+			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
+			staticData.lastMessageUid = undefined;
+		}
+
+		if (options.trackLastMessageId === false) {
+			staticData.lastMessageUid = undefined;
+		}
+
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
 		let connection: ImapSimple;
@@ -387,7 +410,7 @@ export class EmailReadImapV2 implements INodeType {
 							 * by checking UIDValidity.
 							 */
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-						} else {
+						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
 							searchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 						}
 

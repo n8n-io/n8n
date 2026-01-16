@@ -67,8 +67,8 @@
 		&.today {
 			position: relative;
 			span {
-				color: var(--color-primary);
-				font-weight: var(--font-weight-bold);
+				color: var(--color--primary);
+				font-weight: var(--font-weight--bold);
 			}
 			&.start-date span,
 			&.end-date span {
@@ -117,7 +117,7 @@
 			background-color: var.$background-color-base;
 			opacity: 1;
 			cursor: not-allowed;
-			color: var(--color-text-lighter);
+			color: var(--color--text--tint-2);
 		}
 
 		&.selected div {
@@ -145,7 +145,7 @@
 	th {
 		padding: 5px;
 		color: var.$datepicker-header-font-color;
-		font-weight: var(--font-weight-regular);
-		border-bottom: solid 1px var(--border-color-light);
+		font-weight: var(--font-weight--regular);
+		border-bottom: solid 1px var(--border-color--light);
 	}
 }
