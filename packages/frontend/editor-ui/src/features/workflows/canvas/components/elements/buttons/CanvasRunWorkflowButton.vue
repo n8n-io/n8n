@@ -54,7 +54,7 @@ const tooltip = computed(() => {
 	if (props.noExecutePermission) {
 		return i18n.baseText('nodeView.runButtonTooltip.noPermission');
 	}
-	return label;
+	return label.value;
 });
 
 const actions = computed(() =>
