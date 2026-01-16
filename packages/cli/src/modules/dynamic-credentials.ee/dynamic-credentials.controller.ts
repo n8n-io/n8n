@@ -8,7 +8,7 @@ import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 import { CredentialsEntity } from '@n8n/db';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverRegistry } from './services';
-import { getBearerToken } from './utils';
+import { getBearerToken, getDynamicCredentialMiddlewares } from './utils';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
@@ -69,7 +69,7 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
 	}
 
-	@Delete('/:id/revoke', { skipAuth: true })
+	@Delete('/:id/revoke', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const token = getBearerToken(req);
@@ -110,7 +110,7 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
 	}
 
-	@Post('/:id/authorize', { skipAuth: true })
+	@Post('/:id/authorize', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const token = getBearerToken(req);

@@ -20,7 +20,7 @@ import type {
 } from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
-import { DynamicCredentialsConfig } from './dynamic-credentials.config';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { StaticAuthService } from '@/services/static-auth-service';
 
 /**

@@ -17,7 +17,7 @@ import type { DynamicCredentialResolverRegistry } from '../credential-resolver-r
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 import { StaticAuthService } from '@/services/static-auth-service';
-import type { DynamicCredentialsConfig } from '../dynamic-credentials.config';
+import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
