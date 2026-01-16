@@ -135,6 +135,7 @@ export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisionin
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 
+export { RunSecurityAuditRequestDto } from './security-audit/run-security-audit.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';

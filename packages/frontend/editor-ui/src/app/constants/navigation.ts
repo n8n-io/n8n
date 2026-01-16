@@ -67,6 +67,7 @@ export const enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
+	SECURITY_AUDIT = 'SecurityAudit',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
