@@ -1,5 +1,6 @@
 import { onScopeDispose } from 'vue';
 import type { VueFlowStore } from '@vue-flow/core';
+import throttle from 'lodash/throttle';
 import type {
 	UseWorkflowAwarenessReturn,
 	DraggingNode,
@@ -42,26 +43,30 @@ export function useCanvasAwareness(options: UseCanvasAwarenessOptions): void {
 	// Note: We calculate coordinates manually instead of using screenToFlowCoordinate()
 	// because that function applies snap-to-grid, causing cursors to jump by grid increments
 
-	const unsubPaneMouseMove = instance.onPaneMouseMove((event) => {
-		if (!awareness.isReady.value) return;
+	// Throttle cursor updates to ~30fps (33ms) for smooth but efficient updates
+	const handleCursorMove = throttle(
+		(event: MouseEvent) => {
+			if (!awareness.isReady.value) return;
 
-		// Get the container element bounding rect for coordinate calculation
-		const containerEl = instance.vueFlowRef.value;
-		if (!containerEl) return;
+			// Get the container element bounding rect for coordinate calculation
+			const containerEl = instance.vueFlowRef.value;
+			if (!containerEl) return;
 
-		const containerRect = containerEl.getBoundingClientRect();
-		const { x: panX, y: panY, zoom } = instance.viewport.value;
+			const containerRect = containerEl.getBoundingClientRect();
+			const { x: panX, y: panY, zoom } = instance.viewport.value;
 
-		// Convert screen coords to flow coords without snapping
-		// Formula: flowCoord = (screenCoord - containerOffset - pan) / zoom
-		const flowX = (event.clientX - containerRect.left - panX) / zoom;
-		const flowY = (event.clientY - containerRect.top - panY) / zoom;
+			// Convert screen coords to flow coords without snapping
+			// Formula: flowCoord = (screenCoord - containerOffset - pan) / zoom
+			const flowX = (event.clientX - containerRect.left - panX) / zoom;
+			const flowY = (event.clientY - containerRect.top - panY) / zoom;
 
-		awareness.updateCursor({
-			x: flowX,
-			y: flowY,
-		});
-	});
+			awareness.updateCursor({ x: flowX, y: flowY });
+		},
+		33,
+		{ trailing: true }, // ensure last position is captured
+	);
+
+	const unsubPaneMouseMove = instance.onPaneMouseMove(handleCursorMove);
 
 	const unsubPaneMouseLeave = instance.onPaneMouseLeave(() => {
 		awareness.updateCursor(null);

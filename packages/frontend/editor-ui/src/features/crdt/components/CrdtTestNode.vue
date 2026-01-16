@@ -18,23 +18,8 @@ const props = defineProps<NodeProps>();
 // Get initial node data (static - for type/icon)
 const initialNode = doc.findNode(props.id);
 
-// Fallback to default handles if server hasn't computed them yet
-const getDefaultInputs = (): ComputedHandle[] => {
-	if (initialNode?.type?.toLowerCase().includes('trigger')) {
-		return []; // Trigger nodes have no inputs
-	}
-	return [{ handleId: 'inputs/main/0', type: 'main', mode: 'inputs', index: 0 }];
-};
-const getDefaultOutputs = (): ComputedHandle[] => {
-	return [{ handleId: 'outputs/main/0', type: 'main', mode: 'outputs', index: 0 }];
-};
-
-const inputHandles = shallowRef<ComputedHandle[]>(
-	initialNode?.inputs?.length ? initialNode.inputs : getDefaultInputs(),
-);
-const outputHandles = shallowRef<ComputedHandle[]>(
-	initialNode?.outputs?.length ? initialNode.outputs : getDefaultOutputs(),
-);
+const inputHandles = shallowRef<ComputedHandle[]>(initialNode?.inputs ?? []);
+const outputHandles = shallowRef<ComputedHandle[]>(initialNode?.outputs ?? []);
 
 // Subscribe only to handle changes (not position/params)
 const { off: offHandles } = doc.onNodeHandlesChange(({ nodeId, inputs, outputs }) => {
