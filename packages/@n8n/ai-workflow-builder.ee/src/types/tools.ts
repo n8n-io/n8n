@@ -147,6 +147,16 @@ export interface RemoveConnectionOutput {
 }
 
 /**
+ * Output type for rename node tool
+ */
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
+}
+
+/**
  * Description of a workflow example we have found
  */
 export interface WorkflowMetadata {

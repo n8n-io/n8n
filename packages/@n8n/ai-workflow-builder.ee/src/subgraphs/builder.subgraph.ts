@@ -17,6 +17,7 @@ import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
+import { createRenameNodeTool } from '../tools/rename-node.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
@@ -113,6 +114,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
+			createRenameNodeTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
 		];
 
