@@ -288,7 +288,7 @@ export class Chat implements INodeType {
 		if (parameters.mode === 'webhook') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'"Embeded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
+				'"Embedded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
 			);
 		}
 
