@@ -111,18 +111,19 @@ export async function execute(
 				// Get fields without skipValidation first to ensure binary data is processed
 				// The resource mapper needs to process binary data into attachment format
 				if (columnsToMatchOn.includes('id')) {
-					const { id, ...fields } = this.getNodeParameter(
+					const fieldsValue: IDataObject = this.getNodeParameter(
 						'columns.value',
 						i,
 						[],
-					) as IDataObject;
+					);
+					const { id, ...fields } = fieldsValue;
 					records.push({ id: id as string, fields });
 				} else {
-					const fields = this.getNodeParameter(
+					const fields: IDataObject = this.getNodeParameter(
 						'columns.value',
 						i,
 						[],
-					) as IDataObject;
+					);
 
 					const matches = findMatches(
 						tableData,

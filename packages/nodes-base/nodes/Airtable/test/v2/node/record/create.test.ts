@@ -155,7 +155,7 @@ describe('Test AirtableV2, create operation', () => {
 		});
 	});
 
-	it('should process binary data even when typecast option is true', async () => {
+	it('should not skip validation when typecast option is true', async () => {
 		const nodeParameters = {
 			operation: 'create',
 			columns: {

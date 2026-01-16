@@ -48,7 +48,7 @@ describe('Test AirtableV2, update operation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should process binary data even when typecast option is true', async () => {
+	it('should not skip validation when typecast option is true', async () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {

@@ -73,7 +73,7 @@ export async function execute(
 
 			if (dataMode === 'defineBelow') {
 				// Get fields without skipValidation first to ensure binary data is processed
-				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
+				const fields: IDataObject = this.getNodeParameter('columns.value', i, []);
 
 				body.fields = fields;
 			}
