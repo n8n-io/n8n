@@ -147,7 +147,7 @@ describe('Coordinator Query Operations', () => {
 		it('should prevent concurrent initialization', async () => {
 			const initializeWorkerFn = vi
 				.fn()
-				.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 50)));
+				.mockImplementation(async () => await new Promise((resolve) => setTimeout(resolve, 50)));
 			const state = createStateWithActiveTab({ initialize: initializeWorkerFn });
 
 			// Start two concurrent initializations

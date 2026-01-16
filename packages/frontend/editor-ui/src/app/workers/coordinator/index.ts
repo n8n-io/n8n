@@ -8,7 +8,6 @@
 
 import * as Comlink from 'comlink';
 import type { CoordinatorApi } from './worker';
-import type { DataWorkerApi } from '../data/worker';
 
 // The SharedWorker coordinator that routes queries
 export const sharedWorker = new SharedWorker(new URL('./worker.ts', import.meta.url), {
