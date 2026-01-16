@@ -424,10 +424,12 @@ describe('Execution Context Propagation Integration Tests', () => {
 
 function hasExecutionId(
 	data: Awaited<ReturnType<WorkflowExecutionService['executeManually']>>,
-): asserts data is { executionId: string } {
+): asserts data is { executionId: string; token: string } {
 	if ('executionId' in data) {
 		return;
 	}
 
-	throw new Error(`Expected an '{executionId: string}', instead got ${JSON.stringify(data)}`);
+	throw new Error(
+		`Expected an '{executionId: string, token: string}', instead got ${JSON.stringify(data)}`,
+	);
 }

@@ -57,6 +57,7 @@ import type {
 } from './webhook.types';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ChatTokenService } from '@/chat/chat-token.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -83,7 +84,11 @@ export function handleHostedChatResponse(
 	executionId: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId });
+		// Generate a secure token for WebSocket authentication
+		const chatTokenService = Container.get(ChatTokenService);
+		const token = chatTokenService.generateToken(executionId);
+
+		res.send({ executionStarted: true, executionId, token });
 		process.nextTick(() => res.end());
 		return true;
 	}

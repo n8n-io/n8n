@@ -153,7 +153,7 @@ function attachFiles() {
 	return [];
 }
 
-function setupWebsocketConnection(executionId: string) {
+function setupWebsocketConnection(executionId: string, token: string) {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
@@ -163,6 +163,7 @@ function setupWebsocketConnection(executionId: string) {
 				executionId,
 				chatStore.currentSessionId.value,
 				true,
+				token,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
 			chatStore.ws.onmessage = (e) => {
@@ -262,8 +263,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	const response = await chatStore.sendMessage(messageText, attachFiles());
 
-	if (response?.executionId) {
-		setupWebsocketConnection(response.executionId);
+	if (response?.executionId && response?.token) {
+		setupWebsocketConnection(response.executionId, response.token);
 	}
 
 	isSubmitting.value = false;

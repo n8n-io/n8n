@@ -182,12 +182,13 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		const response = await runWorkflow(runWorkflowOptions);
 
 		if (response) {
-			if (respondNodesResponseMode.value) {
+			if (respondNodesResponseMode.value && response.token) {
 				const wsUrl = constructChatWebsocketUrl(
 					rootStore.urlBaseEditor,
 					response.executionId as string,
 					currentSessionId.value,
 					false,
+					response.token,
 				);
 
 				ws.value = new WebSocket(wsUrl);
