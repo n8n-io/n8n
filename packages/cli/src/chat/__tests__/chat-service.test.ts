@@ -40,7 +40,6 @@ describe('ChatService', () => {
 		);
 		mockWs = mock<WebSocket>();
 
-		// By default, validate any token as valid
 		mockChatTokenService.validateToken.mockReturnValue(true);
 	});
 

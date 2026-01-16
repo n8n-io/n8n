@@ -245,7 +245,6 @@ export class WorkflowExecutionService {
 
 			const executionId = await this.workflowRunner.run(data);
 
-			// Generate a token for chat WebSocket authentication
 			const token = this.chatTokenService.generateToken(executionId);
 			return { executionId, token };
 		}

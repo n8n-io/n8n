@@ -26,7 +26,7 @@ export function constructChatWebsocketUrl(
 	const baseUrl = new URL(url).origin;
 	const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
 	const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
-	return `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}&token=${encodeURIComponent(token)}${isPublic ? '&isPublic=true' : ''}`;
+	return `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}&token=${token}${isPublic ? '&isPublic=true' : ''}`;
 }
 
 export function parseBotChatMessageContent(message: string): ChatMessage {

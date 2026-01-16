@@ -84,7 +84,6 @@ export function handleHostedChatResponse(
 	executionId: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		// Generate a secure token for WebSocket authentication
 		const chatTokenService = Container.get(ChatTokenService);
 		const token = chatTokenService.generateToken(executionId);
 
