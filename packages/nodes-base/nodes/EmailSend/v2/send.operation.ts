@@ -277,7 +277,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						attachment.cid = propertyName;
 					} else if (disposition === 'auto') {
 						const isReferencedInHtml =
-							mailOptions.html && (mailOptions.html as string).includes(`cid:${propertyName}`);
+							typeof mailOptions.html === 'string' &&
+							mailOptions.html.includes(`cid:${propertyName}`);
 						if (isReferencedInHtml) {
 							attachment.cid = propertyName;
 						}
