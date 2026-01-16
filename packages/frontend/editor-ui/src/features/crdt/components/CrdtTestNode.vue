@@ -2,6 +2,8 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
+import CanvasHandleDiamond from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
+import CanvasHandleDot from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDot.vue';
 import type { NodeProps } from '@vue-flow/core';
 import { Handle, Position, useNode } from '@vue-flow/core';
 import { computed, onScopeDispose, shallowRef, triggerRef } from 'vue';
@@ -73,6 +75,8 @@ interface MappedHandle extends ComputedHandle {
 		| typeof Position.Right
 		| typeof Position.Top
 		| typeof Position.Bottom;
+	/** Position as lowercase string for CSS class */
+	positionClass: 'left' | 'right' | 'top' | 'bottom';
 	/** Pre-computed CSS classes */
 	classes: string[];
 	/** Whether this handle can start a connection (drag from it) */
@@ -141,6 +145,7 @@ const mappedInputHandles = computed((): MappedHandle[] => {
 
 		// Pre-compute position and classes to avoid template function calls
 		const position = isMain ? Position.Left : Position.Bottom;
+		const positionClass = isMain ? 'left' : 'bottom';
 		const classes = isMain
 			? ['crdt-handle', 'crdt-handle--left']
 			: ['crdt-handle', 'crdt-handle--bottom', 'crdt-handle--non-main'];
@@ -150,6 +155,7 @@ const mappedInputHandles = computed((): MappedHandle[] => {
 			isMain,
 			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
 			position,
+			positionClass,
 			classes,
 			connectableStart,
 			connectableEnd,
@@ -180,6 +186,7 @@ const mappedOutputHandles = computed((): MappedHandle[] => {
 
 		// Pre-compute position and classes to avoid template function calls
 		const position = isMain ? Position.Right : Position.Top;
+		const positionClass = isMain ? 'right' : 'top';
 		const classes = isMain
 			? ['crdt-handle', 'crdt-handle--right']
 			: ['crdt-handle', 'crdt-handle--top', 'crdt-handle--non-main'];
@@ -189,6 +196,7 @@ const mappedOutputHandles = computed((): MappedHandle[] => {
 			isMain,
 			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
 			position,
+			positionClass,
 			classes,
 			connectableStart,
 			connectableEnd,
@@ -224,7 +232,18 @@ const selectedByCollaborator = computed(() => {
 			:connectable-end="handle.connectableEnd"
 			:class="handle.classes"
 			:style="handle.offsetStyle"
-		/>
+		>
+			<CanvasHandleDot
+				v-if="handle.isMain"
+				:class="['handle-render', handle.positionClass]"
+				handle-classes="target"
+			/>
+			<CanvasHandleDiamond
+				v-else
+				:class="['handle-render', handle.positionClass]"
+				handle-classes="target"
+			/>
+		</Handle>
 
 		<!-- Node content -->
 		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" />
@@ -241,7 +260,18 @@ const selectedByCollaborator = computed(() => {
 			:connectable-end="handle.connectableEnd"
 			:class="handle.classes"
 			:style="handle.offsetStyle"
-		/>
+		>
+			<CanvasHandleDot
+				v-if="handle.isMain"
+				:class="['handle-render', handle.positionClass]"
+				handle-classes="source"
+			/>
+			<CanvasHandleDiamond
+				v-else
+				:class="['handle-render', handle.positionClass]"
+				handle-classes="source"
+			/>
+		</Handle>
 
 		<!-- Collaborator selection indicator -->
 		<div v-if="selectedByCollaborator" class="collaborator-indicator">
@@ -250,7 +280,7 @@ const selectedByCollaborator = computed(() => {
 	</div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .crdt-node {
 	position: relative;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
@@ -273,46 +303,30 @@ const selectedByCollaborator = computed(() => {
 		0 0 8px var(--collaborator--color);
 }
 
-/* Handle styles */
+/* Handle styles - transparent container like production CanvasHandleRenderer */
 .crdt-handle {
-	width: 12px;
-	height: 12px;
-	background: var(--color--foreground);
-	border: 2px solid var(--color--background);
-	border-radius: 50%;
-}
+	--handle--indicator--width: 16px;
+	--handle--indicator--height: 16px;
 
-.crdt-handle:hover {
-	background: var(--color--primary);
+	width: var(--handle--indicator--width);
+	height: var(--handle--indicator--height);
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	border: 0;
+	z-index: 1;
+	background: transparent;
+	border-radius: 0;
 }
 
 /* Left handles (main inputs) - not draggable */
 .crdt-handle--left {
-	left: -6px;
 	cursor: default;
 }
 
 /* Right handles (main outputs) */
 .crdt-handle--right {
-	right: -6px;
-}
-
-/* Top handles (non-main outputs) */
-.crdt-handle--top {
-	top: -6px;
-}
-
-/* Bottom handles (non-main inputs like AI model/tool) */
-.crdt-handle--bottom {
-	bottom: -6px;
-}
-
-/* Non-main handles have different styling */
-.crdt-handle--non-main {
-	background: var(--color--foreground--tint-1);
-	width: 10px;
-	height: 10px;
-	border-radius: var(--radius--sm);
+	cursor: crosshair;
 }
 
 .collaborator-indicator {
