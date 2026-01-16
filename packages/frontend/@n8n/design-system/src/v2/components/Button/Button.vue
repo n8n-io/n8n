@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useAttrs, useCssModule } from 'vue';
+import { computed, useAttrs, useCssModule, onMounted } from 'vue';
 import type { ButtonHTMLAttributes } from 'vue';
 
 import { N8nIcon } from '@n8n/design-system/components';
@@ -39,15 +39,17 @@ const props = withDefaults(defineProps<Props>(), {
 const $style = useCssModule();
 const attrs = useAttrs() as ButtonHTMLAttributes;
 
-if (import.meta.env.DEV && props.icon) {
-	const hasAccessibleLabel = attrs['aria-label'] || attrs['aria-labelledby'] || attrs.title;
-	if (!hasAccessibleLabel) {
-		console.warn(
-			'[Button] Icon-only buttons should have an accessible label. ' +
-				'Add aria-label, aria-labelledby, or title attribute.',
-		);
+onMounted(() => {
+	if (import.meta.env.DEV && props.icon) {
+		const hasAccessibleLabel = attrs['aria-label'] || attrs['aria-labelledby'] || attrs.title;
+		if (!hasAccessibleLabel) {
+			console.warn(
+				'[Button] Icon-only buttons should have an accessible label. ' +
+					'Add aria-label, aria-labelledby, or title attribute.',
+			);
+		}
 	}
-}
+});
 
 const classes = computed(() =>
 	cn(
@@ -62,20 +64,32 @@ const classes = computed(() =>
 );
 
 const componentTag = computed(() => (props.href ? 'a' : 'button'));
+
+const buttonType = computed(() => {
+	if (props.href) return undefined;
+	return (attrs.type as string) ?? 'button';
+});
+
+const handleClick = (event: MouseEvent) => {
+	if (props.href && props.disabled) {
+		event.preventDefault();
+	}
+};
 </script>
 
 <template>
 	<component
 		:is="componentTag"
+		:type="buttonType"
 		:href="href"
-		:target="href ? '_blank' : undefined"
-		:rel="href ? 'nofollow noopener' : undefined"
+		:rel="href ? 'nofollow noopener noreferrer' : undefined"
 		:disabled="disabled || undefined"
 		:aria-disabled="disabled || undefined"
 		:class="classes"
 		v-bind="attrs"
+		@click="handleClick"
 	>
-		<Transition name="fade">
+		<Transition name="n8n-button-fade">
 			<div v-if="loading" :class="$style['loading-container']">
 				<div :class="$style['loading-spinner']">
 					<N8nIcon icon="loader" size="large" transform-origin="center" />
@@ -93,7 +107,6 @@ const componentTag = computed(() => (props.href ? 'a' : 'button'));
 
 .button {
 	appearance: none;
-	-webkit-appearance: none;
 	touch-action: manipulation;
 	-webkit-tap-highlight-color: transparent;
 	user-select: none;
@@ -103,15 +116,39 @@ const componentTag = computed(() => (props.href ? 'a' : 'button'));
 	font-weight: var(--font-weight--medium);
 	line-height: 1lh;
 	cursor: pointer;
-	transform: scale(1);
 	text-decoration: none;
+
+	// Size variables
 	height: var(--button--height);
 	padding: var(--button--padding);
 	border-radius: var(--button--radius);
 	font-size: var(--button--font-size);
 
+	// Variant variables with defaults
+	--button--color--background: transparent;
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+	--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+	--button--shadow: none;
+	--button--shadow--hover: none;
+	--button--shadow--active: none;
+
+	background-color: var(--button--color--background);
+	color: var(--button--color);
+	box-shadow: var(--button--shadow);
+
 	> * {
 		grid-area: 1 / 1;
+	}
+
+	&:hover {
+		background-color: var(--button--color--background-hover);
+		box-shadow: var(--button--shadow--hover);
+	}
+
+	&:active {
+		background-color: var(--button--color--background-active);
+		box-shadow: var(--button--shadow--active);
 	}
 
 	&:focus {
@@ -122,6 +159,7 @@ const componentTag = computed(() => (props.href ? 'a' : 'button'));
 		@include focus.focus-ring;
 	}
 
+	// Size variants
 	&.xsmall {
 		--button--height: 1.5rem;
 		--button--padding: 0 var(--spacing--2xs);
@@ -143,102 +181,108 @@ const componentTag = computed(() => (props.href ? 'a' : 'button'));
 		--button--font-size: var(--font-size--sm);
 	}
 
+	// Style variants
 	&.solid {
-		background-color: var(--color--orange-400);
-		color: var(--color--neutral-white);
-		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.08),
+		--button--color--background: var(--color--orange-400);
+		--button--color--background-hover: var(--color--orange-500);
+		--button--color--background-active: var(--color--orange-600);
+		--button--color: var(--color--neutral-white);
+		--button--shadow:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
 			0 0 0 1px var(--color--orange-400);
-
-		&:hover {
-			background-color: var(--color--orange-500);
-			box-shadow:
-				0 1px 2px 0 rgba(0, 0, 0, 0.08),
-				0 0 0 1px var(--color--orange-500);
-		}
-
-		&:active {
-			background-color: var(--color--orange-600);
-			box-shadow:
-				0 1px 2px 0 rgba(0, 0, 0, 0.08),
-				0 0 0 1px var(--color--orange-600);
-		}
+		--button--shadow--hover:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px var(--color--orange-500);
+		--button--shadow--active:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px var(--color--orange-600);
 	}
 
 	&.subtle {
-		background-color: var(--color--neutral-200);
-		color: var(--color--neutral-900);
-		box-shadow: 0 0 0 1px var(--color--neutral-200);
-
-		&:hover {
-			background-color: var(--color--neutral-250);
-			box-shadow: 0 0 0 1px var(--color--neutral-250);
-		}
-
-		&:active {
-			background-color: var(--color--neutral-300);
-			box-shadow: 0 0 0 1px var(--color--neutral-300);
-		}
+		--button--color--background: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+		--button--color--background-hover: light-dark(
+			var(--color--neutral-250),
+			var(--color--neutral-700)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--neutral-300),
+			var(--color--neutral-600)
+		);
+		--button--shadow:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100)),
+			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
+		--button--shadow--hover:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300)),
+			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
+		--button--shadow--active:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300)),
+			0 0 0 2px light-dark(transparent, var(--color--black-alpha-100));
 	}
 
 	&.outline {
-		background-color: var(--color--neutral-white);
-		color: var(--color--neutral-900);
-		box-shadow:
-			0 1px 3px 0 rgba(0, 0, 0, 0.1),
-			0 0 0 1px var(--border-color);
-
-		&:hover {
-			background-color: var(--color--neutral-100);
-			box-shadow:
-				0 1px 3px 0 rgba(0, 0, 0, 0.1),
-				0 0 0 1px var(--border-color--strong);
-		}
-
-		&:active {
-			background-color: var(--color--neutral-150);
-			box-shadow:
-				0 1px 3px 0 rgba(0, 0, 0, 0.1),
-				0 0 0 1px var(--border-color--strong);
-		}
+		--button--color--background: transparent;
+		--button--color--background-hover: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-100)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--black-alpha-300),
+			var(--color--white-alpha-200)
+		);
+		--button--shadow:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+		--button--shadow--hover:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200));
+		--button--shadow--active:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
+			0 0 0 1px light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300));
 	}
 
 	&.ghost {
-		background-color: transparent;
-		color: var(--color--neutral-900);
-		box-shadow: 0 0 0 0 transparent;
-
-		&:hover {
-			background-color: var(--color--black-alpha-200);
-			box-shadow: 0 0 0 1px var(--color--black-alpha-200);
-		}
-
-		&:active {
-			background-color: var(--color--black-alpha-300);
-			box-shadow: 0 0 0 1px var(--color--black-alpha-300);
-		}
+		--button--color--background: transparent;
+		--button--color--background-hover: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-100)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--black-alpha-300),
+			var(--color--white-alpha-200)
+		);
+		--button--shadow: 0 0 0 0 transparent;
+		--button--shadow--hover: 0 0 0 1px
+			light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+		--button--shadow--active: 0 0 0 1px
+			light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
 	}
 
 	&.destructive {
-		background-color: var(--color--red-500);
-		color: var(--color--neutral-white);
-		box-shadow:
-			0 1px 2px 0 rgba(0, 0, 0, 0.08),
-			0 0 0 1px var(--color--red-500);
-
-		&:hover {
-			background-color: var(--color--red-600);
-			box-shadow:
-				0 1px 2px 0 rgba(0, 0, 0, 0.08),
-				0 0 0 1px var(--color--red-600);
-		}
-
-		&:active {
-			background-color: var(--color--red-600);
-			box-shadow:
-				0 1px 2px 0 rgba(0, 0, 0, 0.08),
-				0 0 0 1px var(--color--red-600);
-		}
+		--button--color--background: light-dark(var(--color--red-500), var(--color--red-600));
+		--button--color--background-hover: light-dark(var(--color--red-600), var(--color--red-500));
+		--button--color--background-active: light-dark(var(--color--red-600), var(--color--red-400));
+		--button--color: var(--color--neutral-white);
+		--button--shadow:
+			light-dark(
+				0 1px 3px 0 var(--color--black-alpha-100),
+				0 1px 3px 0 var(--color--black-alpha-200)
+			),
+			0 0 0 1px light-dark(var(--color--red-500), var(--color--red-600));
+		--button--shadow--hover:
+			light-dark(
+				0 1px 3px 0 var(--color--black-alpha-100),
+				0 1px 3px 0 var(--color--black-alpha-200)
+			),
+			0 0 0 1px light-dark(var(--color--red-600), var(--color--red-500));
+		--button--shadow--active:
+			light-dark(
+				0 1px 3px 0 var(--color--black-alpha-100),
+				0 1px 3px 0 var(--color--black-alpha-200)
+			),
+			0 0 0 1px light-dark(var(--color--red-600), var(--color--red-400));
 	}
 
 	&.link {
@@ -280,24 +324,37 @@ const componentTag = computed(() => (props.href ? 'a' : 'button'));
 }
 
 .loading-spinner {
-	width: 16px;
-	height: 16px;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	animation: spin 1s linear infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 /* TODO: Move to global animations css library */
-:global(.fade-enter-active),
-:global(.fade-leave-active) {
+:global(.n8n-button-fade-enter-active),
+:global(.n8n-button-fade-leave-active) {
 	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 	transition:
 		opacity 0.2s var(--easing--ease-out),
 		transform 0.2s var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: opacity 0.1s;
+	}
 }
-:global(.fade-enter-from),
-:global(.fade-leave-to) {
+:global(.n8n-button-fade-enter-from),
+:global(.n8n-button-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
 	filter: blur(2px);
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+		filter: none;
+	}
 }
 
 @keyframes spin {
