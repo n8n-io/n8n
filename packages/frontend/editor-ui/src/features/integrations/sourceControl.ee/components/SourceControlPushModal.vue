@@ -812,7 +812,7 @@ onMounted(async () => {
 			</N8nHeading>
 
 			<div
-				v-if="changes.workflow.length || changes.credential.length"
+				v-if="changes.workflow.length || changes.credential.length || changes.datatable.length"
 				:class="[$style.filtersRow]"
 				class="mt-l"
 			>
