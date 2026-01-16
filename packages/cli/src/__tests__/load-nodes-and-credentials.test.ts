@@ -25,6 +25,11 @@ jest.mock('@/push', () => {
 	return { Push };
 });
 
+jest.mock('@/tool-generation', () => ({
+	createAiTools: jest.fn(),
+	createHitlTools: jest.fn(),
+}));
+
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
@@ -577,6 +582,54 @@ describe('LoadNodesAndCredentials', () => {
 			expect(mockLoader.reset).toHaveBeenCalled();
 			expect(mockLoader.loadAll).toHaveBeenCalled();
 			expect(postProcessSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('postProcessLoaders', () => {
+		let instance: LoadNodesAndCredentials;
+		let createAiTools: jest.Mock;
+		let createHitlTools: jest.Mock;
+
+		beforeEach(async () => {
+			// Import the mocked functions
+			const toolGeneration = await import('@/tool-generation');
+			createAiTools = toolGeneration.createAiTools as jest.Mock;
+			createHitlTools = toolGeneration.createHitlTools as jest.Mock;
+
+			// Clear mock calls before each test
+			createAiTools.mockClear();
+			createHitlTools.mockClear();
+
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		it('should call createAiTools and createHitlTools', async () => {
+			// Setup a mock loader
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: { nodes: [], credentials: [] },
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.postProcessLoaders();
+
+			// Verify both are called
+			expect(createAiTools).toHaveBeenCalledTimes(1);
+			expect(createHitlTools).toHaveBeenCalledTimes(1);
+
+			// Verify they are called with the same arguments structure
+			const expectedKnown = expect.objectContaining({
+				nodes: expect.any(Object),
+				credentials: expect.any(Object),
+			});
+			expect(createAiTools).toHaveBeenCalledWith(instance.types, expectedKnown);
+			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
 		});
 	});
 });
