@@ -13,12 +13,14 @@ import {
 	buildRecoveryModeContext,
 	INSTANCE_URL_PROMPT,
 } from '@/prompts/agents/configurator.prompt';
+import type { ResourceLocatorCallback } from '@/types/callbacks';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
+import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -104,6 +106,7 @@ export interface ConfiguratorSubgraphConfig {
 	logger?: Logger;
 	instanceUrl?: string;
 	featureFlags?: BuilderFeatureFlags;
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 export class ConfiguratorSubgraph extends BaseSubgraph<
@@ -134,6 +137,16 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Conditionally add resource locator tool if callback is provided
+			...(config.resourceLocatorCallback
+				? [
+						createGetResourceLocatorOptionsTool(
+							config.parsedNodeTypes,
+							config.resourceLocatorCallback,
+							config.logger,
+						),
+					]
+				: []),
 		];
 
 		// Conditionally add node configuration examples tool if feature flag is enabled

@@ -12,6 +12,7 @@ import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import type { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -36,6 +37,8 @@ export class AiWorkflowBuilderService {
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
+		// eslint-disable-next-line n8n-local-rules/no-type-only-import-in-di -- function type, not DI-injected
+		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
 		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
@@ -167,6 +170,9 @@ export class AiWorkflowBuilderService {
 			userMessageId,
 		);
 
+		// Create resource locator callback scoped to this user if factory is provided
+		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
+
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// We use Sonnet both for simple and complex tasks
@@ -183,6 +189,7 @@ export class AiWorkflowBuilderService {
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			resourceLocatorCallback,
 		});
 
 		return { agent };
