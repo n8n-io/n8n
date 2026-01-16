@@ -113,7 +113,7 @@ export class WorkflowsPage extends BasePage {
 
 	async toggleShowArchived() {
 		await this.openFilters();
-		await this.getShowArchivedCheckbox().locator('span').nth(1).click();
+		await this.getShowArchivedCheckbox().click();
 		await this.closeFilters();
 	}
 
