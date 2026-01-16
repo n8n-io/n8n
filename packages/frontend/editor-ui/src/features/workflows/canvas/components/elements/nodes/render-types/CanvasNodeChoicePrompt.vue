@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NODE_CREATOR_OPEN_SOURCES, VIEWS, FEATURED_TEMPLATES_MODAL_KEY } from '@/app/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -13,8 +13,6 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 const nodeCreatorStore = useNodeCreatorStore();
@@ -23,8 +21,6 @@ const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
-const uiStore = useUIStore();
-const recommendedTemplatesStore = useRecommendedTemplatesStore();
 const assistantStore = useAssistantStore();
 
 const isChatWindowOpen = computed(
@@ -58,11 +54,6 @@ async function onClickTemplatesLink() {
 	trackTemplatesClick(TemplateClickSource.emptyWorkflowLink);
 	if (templatesStore.hasCustomTemplatesHost) {
 		await router.push({ name: VIEWS.TEMPLATES });
-		return;
-	}
-
-	if (recommendedTemplatesStore.isFeatureEnabled()) {
-		uiStore.openModal(FEATURED_TEMPLATES_MODAL_KEY);
 		return;
 	}
 
